@@ -15,6 +15,33 @@
         "typescript-eslint": "^8.60.1",
       },
     },
+    "libraries/hosting": {
+      "name": "@rhombus-std/hosting",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "rollup": "^4.61.0",
+        "rollup-plugin-dts": "^6.4.1",
+        "typescript": "^5.9.0",
+      },
+    },
+    "libraries/hosting.core": {
+      "name": "@rhombus-std/hosting.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "rollup": "^4.61.0",
+        "rollup-plugin-dts": "^6.4.1",
+        "typescript": "^5.9.0",
+      },
+    },
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
@@ -76,6 +103,12 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
+
+    "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
+
+    "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.62.2", "", { "os": "android", "cpu": "arm" }, "sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg=="],
 
