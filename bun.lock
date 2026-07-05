@@ -205,6 +205,13 @@
         "typescript": "^5.9.0",
       },
     },
+    "libraries/options": {
+      "name": "@rhombus-std/options",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
     "libraries/primitives": {
       "name": "@rhombus-std/primitives",
       "version": "0.0.0",
@@ -330,6 +337,8 @@
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
 
     "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
+
+    "@rhombus-std/options": ["@rhombus-std/options@workspace:libraries/options"],
 
     "@rhombus-std/primitives": ["@rhombus-std/primitives@workspace:libraries/primitives"],
 
