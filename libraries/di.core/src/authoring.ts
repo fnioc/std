@@ -19,60 +19,6 @@ import type { Ctor, Func } from "@rhombus-toolkit/func";
 import type { DepSlot, Token } from "./types.js";
 
 /**
- * Capitalize the first character of a string literal type, leaving the rest
- * untouched (`"request"` → `"Request"`). Used to mint a per-scope method name
- * `add${ProperCase<K>}` from a scope tag `K`. Because every scope tag is
- * guarded lowercase-first (`ValidScopes`), this map is INJECTIVE — two distinct
- * tags never collide on one minted name.
- */
-export type ProperCase<T extends string> = T extends `${infer H}${infer R}` ? `${Uppercase<H>}${R}`
-  : T;
-
-/**
- * EMPTY carrier interface the `@rhombus-std/di.transformer` augments with the AUTHORED
- * single-arg call signatures for a per-scope `add${ProperCase<K>}` method
- * (`addRequest(C)` / `addRequest(fn)`). Like the other authoring forms, those
- * signatures are PURE TYPINGS contributed only when the transformer is in the
- * program — without it, a per-scope method exposes just the runtime two-arg
- * `(token, ctor) => void` shape. `S` is the full scope union, `K` the specific
- * scope this method tags with.
- */
-export interface ScopeAddAuthoring<S extends string, K extends S> {}
-
-/**
- * The per-scope registration methods minted from the scope union `S`. For each
- * tag `K`, a method named `add${ProperCase<K>}` whose runtime shape is
- * `(token, ctor) => void` (≡ `add(token, ctor).as(K)`), intersected with the
- * transformer-contributed `ScopeAddAuthoring<S, K>` authored single-arg forms.
- * The scope is baked into the name, so there is no `.as()` continuation — the
- * methods return `void`.
- */
-export type ScopeAddMethods<S extends string> = {
-  [K in S as `add${ProperCase<K>}`]:
-    & ((token: Token, ctor: Ctor) => void)
-    & ScopeAddAuthoring<S, K>;
-};
-
-/**
- * The scope-union guard. A `ServiceManifest<S>` is only well-formed when every member
- * of `S` can mint a usable, non-colliding `add${ProperCase<K>}` method. `S`
- * resolves to itself when valid, else to `never` — which makes
- * `new ServiceManifest<S>()` a compile error at the construction site.
- *
- * Two rules, both checked NON-distributively (`[S] extends [...]`) so a union is
- * judged as a whole rather than member-by-member:
- *   - lowercase-first: every member must satisfy `K extends Uncapitalize<K>`.
- *     This makes `ProperCase` injective (no two tags collapse onto one method
- *     name) and keeps the transformer's uncapitalize-first scope recovery exact.
- *   - no collision: a member may not be `""` | `"factory"` | `"value"`, which
- *     would mint `add` / `addFactory` / `addValue` — the existing methods.
- */
-export type ValidScopes<S extends string> = [S] extends [Uncapitalize<S>]
-  ? [S & ("" | "factory" | "value")] extends [never] ? S
-  : never
-  : never;
-
-/**
  * The continuation returned by a class `ServiceManifest.add`. Carries the just-added
  * registration so `.as()` can attach its lifetime in place. An `.add()` with no
  * trailing `.as()` leaves the registration scopeless ⇒ transient.
@@ -94,24 +40,6 @@ export interface AddBuilder<Scopes extends string> {
    */
   as(scope: Scopes): void;
 }
-
-/**
- * A construction-site guard parameter that carries the `ValidScopes` verdict.
- * When `S` is a valid scope union, `ValidScopes<S>` resolves to `S` (not
- * `never`), so the guard is an EMPTY rest tuple — `new ServiceManifest<S>()` takes no
- * args. When `S` is invalid, `ValidScopes<S>` collapses to `never`, and the
- * guard becomes a REQUIRED arg whose name spells out the error, so the no-arg
- * `new ServiceManifest<S>()` fails to type-check at the construction site.
- *
- * This expresses the same intent as a self-referential `S extends ValidScopes<S>`
- * constraint, which TypeScript rejects as circular (TS2313) and which silently
- * stops validating — the guard-param form is the working equivalent.
- */
-export type ScopeGuard<S extends string> = [ValidScopes<S>] extends [never] ? [
-    error:
-      "invalid ServiceManifest scope tag: every member must be lowercase-first and not \"\" / \"factory\" / \"value\"",
-  ]
-  : [];
 
 /**
  * The AUTHORING INTERFACE for the registration collection — the base surface a
@@ -155,18 +83,19 @@ export interface ServiceManifestBase<
 }
 
 /**
- * The full public authoring TYPE: the base collection interface intersected with
- * the per-scope `add${ProperCase<K>}` methods minted from `S`. A type alias (not
- * an interface) because an interface cannot extend a generic MAPPED type, and
- * `ScopeAddMethods` is one.
+ * The full public authoring TYPE — currently identical to `ServiceManifestBase`,
+ * kept as its own name for the surface a lib author's setup function is typed
+ * against (the pre-#3 shape intersected this with the per-scope
+ * `add${ProperCase<K>}` methods minted from `S`; `add(C).as("scope")` is the
+ * only registration form now).
  */
-export type ServiceManifest<
+export interface ServiceManifest<
   Scopes extends string = "singleton",
   Provider = unknown,
-> = ServiceManifestBase<Scopes, Provider> & ScopeAddMethods<Scopes>;
+> extends ServiceManifestBase<Scopes, Provider> {}
 
 // The static / constructor side of the public `ServiceManifest` — the `new
-// <S>(...guard) => ServiceManifest<S>` signature — is a RUNTIME concern (it
-// describes constructing a concrete class), not an authoring contract. It
-// lives in `@rhombus-std/di` as `ServiceManifestCtor`, alongside the
-// `ServiceManifestClass` it constructs.
+// <S>() => ServiceManifest<S>` signature — is a RUNTIME concern (it describes
+// constructing a concrete class), not an authoring contract. It lives in
+// `@rhombus-std/di` as `ServiceManifestCtor`, alongside the `ServiceManifestClass`
+// it constructs.

@@ -93,13 +93,7 @@ services.add<IClock>(SystemClock).as<"singleton">();
 services.add<IGreeter>(Greeter).as<"singleton">();
 services.add<IMetricsBackend>(InMemoryMetrics).as<"singleton">();
 
-// Per-scope authoring: `addRequest<I>(C)` lowers to `add("token", C).as("request")`
-// — the scope tag rides on the METHOD NAME (`add${ProperCase<K>}`, one minted
-// per declared scope tag) instead of a trailing `.as<"request">()` continuation.
-// Same runtime effect as `add<IRequestId>(RequestId).as<"request">()`; purely
-// an authoring-style choice, and (per the file header) available ONLY with the
-// transformer in the program.
-services.addRequest<IRequestId>(RequestId);
+services.add<IRequestId>(RequestId).as<"request">();
 
 // Inline-union demo: UnionConsumer takes `ILogger | IMetricsBackend`. The
 // transformer emits a union slot; ILogger is declared first so it wins.
@@ -413,7 +407,7 @@ const lines = [
   `  operation id distinct across sibling frames: ${op1a.value !== op2a.value} (value ${op2a.value})`,
   `  same registration, no open "operation" frame here => transient: ${opTransientA !== opTransientB}`,
   `  class registration proof — resolved instance really is a Greeter: ${greeterA instanceof Greeter}`,
-  `  per-scope addRequest(...) authoring still isolates correctly: ${id1a === id1b && id1a.value !== id2.value}`,
+  `  request-scoped registration isolates correctly: ${id1a === id1b && id1a.value !== id2.value}`,
   "tokenless addFactory<I>(fn) [HEADLINE]:",
   `  welcome banner built via factory: ${welcomeBanner.text}`,
   "addValue<I>(v) — a pre-built instance, no construction step:",

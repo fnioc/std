@@ -38,9 +38,8 @@ export type {
 
 declare module "@rhombus-std/di" {
   // The authoring forms merge onto the IMPLEMENTATION class `ServiceManifestClass`
-  // (the public `ServiceManifest` is now a type alias `ServiceManifestClass<S> &
-  // ScopeAddMethods<S>`, which an interface cannot merge into). The alias picks
-  // these up through its `ServiceManifestClass<S>` arm.
+  // — the public `ServiceManifest` is a type alias for it, so the alias picks
+  // these up automatically.
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
     /**
      * Type-driven class authoring — lowers to `add("token", C)`. The ctor is
@@ -86,25 +85,6 @@ declare module "@rhombus-std/di" {
      * post-transform.
      */
     addValue<I>(value: I): void;
-  }
-
-  // The AUTHORED single-arg per-scope forms. `ScopeAddMethods<S>` mints each
-  // `add${ProperCase<K>}` as `((token, ctor) => void) & ScopeAddAuthoring<S, K>`;
-  // augmenting the empty carrier here adds the token-free authoring overloads, so
-  // `addRequest(C)` / `addRequest(fn)` type-check ONLY with the transformer in the
-  // program. Each lowers to its two-arg runtime form + the baked-in scope — there
-  // is no `.as()` continuation, so both return `void`.
-  interface ScopeAddAuthoring<S extends string, K extends S> {
-    /**
-     * Authored class form — `addRequest(C)` lowers to `add("token", C).as("request")`.
-     * Mirrors `add<I>(ctor)`, with the scope baked into the method name.
-     */
-    <I>(ctor: Ctor<any[], I>): void;
-    /**
-     * Authored factory form — `addRequest(fn)` lowers to
-     * `addFactory("token", fn).as("request")`. Mirrors `add<I>(factory)`.
-     */
-    <I>(factory: Func<any[], I>): void;
   }
 
   interface AddBuilder<Scopes extends string> {

@@ -20,11 +20,6 @@
 //     transformer-only utility); here it is simply hand-written as the tuple
 //     union `[a, b] | [a]`, exactly like every other signature in this file is
 //     hand-fed instead of derived.
-// One with-transformer capability has NO explicit-API counterpart and is
-// intentionally absent here: the per-scope `addRequest<I>(C)` authoring method
-// is pure sugar the transformer mints from a declared scope tag; plugin-less,
-// a `request`-scoped registration just uses the ordinary `.as("request")`
-// continuation (see `REQUEST_ID` below) — exactly what `addRequest` lowers to.
 
 import { closeToken, type Resolver, ServiceManifest, typeArg, union } from "@rhombus-std/di";
 
