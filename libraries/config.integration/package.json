@@ -1,0 +1,20 @@
+{
+  "name": "@rhombus-std/config.integration",
+  "private": true,
+  "version": "0.0.0",
+  "description": "End-to-end integration tests against the BUILT DIST of @rhombus-std/config + the three provider packages. Proves the ConfigurationBuilder add* augmentation survives bundling -- the one place a sideEffects/tree-shaking or rollup-plugin-dts regression would surface. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/**/*.test.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/config.commandline": "workspace:*",
+    "@rhombus-std/config.env": "workspace:*",
+    "@rhombus-std/config.json": "workspace:*",
+    "@types/node": "^24.13.2"
+  }
+}
