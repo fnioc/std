@@ -1,3 +1,7 @@
+> ⚠️ **SUPERSEDED (see [`../decisions.md`](../decisions.md) §4).** This documented the original decision *not* to port Microsoft.Extensions.Options. That decision has been **reversed**: we are defining our own `@rhombus-std/options` family. The analysis below is retained for its accurate breakdown of what MEO does, but its conclusion ("we are not porting MEO") no longer holds — the load-bearing reason it missed is that DI deals in *services, not DTOs*, and (per the corrected resolution semantics) the port does not give per-scope config freshness for free.
+
+---
+
 > Imported from `fnioc/config` during the `@rhombus-std` consolidation; package names and `packages/*` paths updated to the monorepo layout, and the live-reload issue reference updated to its transferred number (#6).
 
 ---
