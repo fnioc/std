@@ -1,6 +1,6 @@
 import { AsyncDisposalRequiredError, ServiceManifest } from "@rhombus-std/di";
 import { describe, expect, test } from "bun:test";
-import { defineDeps } from "../../di/test/metadata-shim.js";
+import { defineDeps } from "../../../libraries/di/test/metadata-shim.js";
 
 // Coverage 6 (disposal — sync), 7 (disposal — async), 8 (async-as-values).
 //

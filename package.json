@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "libraries/*",
-    "examples/*"
+    "examples/*",
+    "tests/*"
   ],
   "scripts": {
     "build": "bun --filter '*' build",

@@ -4,7 +4,7 @@
 //
 // The `defineDeps`/`forCtor` authoring sugar and the `ServiceManifestClass`
 // prototype patch live in `./metadata-shim.js` — shared verbatim with
-// `@rhombus-std/di.integration`'s tests, which hand-feed fixtures the same way.
+// `@rhombus-std/di.tests.integration`'s tests, which hand-feed fixtures the same way.
 
 import type { Token } from "@rhombus-std/di.core";
 

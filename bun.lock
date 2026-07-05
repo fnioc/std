@@ -120,18 +120,6 @@
         "@rhombus-std/config": "workspace:^",
       },
     },
-    "libraries/config.integration": {
-      "name": "@rhombus-std/config.integration",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/config.commandline": "workspace:*",
-        "@rhombus-std/config.core": "workspace:*",
-        "@rhombus-std/config.env": "workspace:*",
-        "@rhombus-std/config.json": "workspace:*",
-        "@types/node": "^24.13.2",
-      },
-    },
     "libraries/config.json": {
       "name": "@rhombus-std/config.json",
       "version": "0.0.0",
@@ -175,16 +163,6 @@
         "@rhombus-toolkit/func": "3.5.3",
       },
     },
-    "libraries/di.integration": {
-      "name": "@rhombus-std/di.integration",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "ts-patch": "^3.3.0",
-      },
-    },
     "libraries/di.transformer": {
       "name": "@rhombus-std/di.transformer",
       "version": "10.1.0",
@@ -225,6 +203,28 @@
         "rollup": "^4.61.0",
         "rollup-plugin-dts": "^6.4.1",
         "typescript": "^5.9.0",
+      },
+    },
+    "tests/config.tests.integration": {
+      "name": "@rhombus-std/config.tests.integration",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.commandline": "workspace:*",
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/config.env": "workspace:*",
+        "@rhombus-std/config.json": "workspace:*",
+        "@types/node": "^24.13.2",
+      },
+    },
+    "tests/di.tests.integration": {
+      "name": "@rhombus-std/di.tests.integration",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
       },
     },
   },
@@ -301,9 +301,9 @@
 
     "@rhombus-std/config.examples.with-transformer": ["@rhombus-std/config.examples.with-transformer@workspace:examples/config.examples.with-transformer"],
 
-    "@rhombus-std/config.integration": ["@rhombus-std/config.integration@workspace:libraries/config.integration"],
-
     "@rhombus-std/config.json": ["@rhombus-std/config.json@workspace:libraries/config.json"],
+
+    "@rhombus-std/config.tests.integration": ["@rhombus-std/config.tests.integration@workspace:tests/config.tests.integration"],
 
     "@rhombus-std/config.transformer": ["@rhombus-std/config.transformer@workspace:libraries/config.transformer"],
 
@@ -319,7 +319,7 @@
 
     "@rhombus-std/di.examples.without-transformer": ["@rhombus-std/di.examples.without-transformer@workspace:examples/di.examples.without-transformer"],
 
-    "@rhombus-std/di.integration": ["@rhombus-std/di.integration@workspace:libraries/di.integration"],
+    "@rhombus-std/di.tests.integration": ["@rhombus-std/di.tests.integration@workspace:tests/di.tests.integration"],
 
     "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
 

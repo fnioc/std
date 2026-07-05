@@ -42,7 +42,7 @@ Consumers program against **interfaces**, mirroring MEDI where you hold
 - **`di.core` is now a published dependency of `di`** (no longer inlined), required
   so the augmentation attaches to one shared `@rhombus-std/di.core` module identity —
   and correct per MEDI, where Abstractions is a published package the impl depends on.
-- Transformer-active typecheck configs (`di.integration` lint, the with-transformer
+- Transformer-active typecheck configs (`di.tests.integration` lint, the with-transformer
   example) consume di's **built `.d.ts`**, not source — matches real npm usage
   (consumers never compile di's source) and is what makes interface-first + core-only
   augmentation co-exist.

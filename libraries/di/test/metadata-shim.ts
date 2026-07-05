@@ -1,5 +1,5 @@
 // Test-only ergonomic for hand-feeding dep signatures without the transformer.
-// Shared across `@rhombus-std/di` and `@rhombus-std/di.integration` tests — both suites author
+// Shared across `@rhombus-std/di` and `@rhombus-std/di.tests.integration` tests — both suites author
 // fixtures by hand (no transformer) and need the exact same
 // `defineDeps`/`forCtor` sugar over the engine's inline third-argument form.
 //
