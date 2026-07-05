@@ -92,6 +92,33 @@
         "typescript": ">=5.2",
       },
     },
+    "libraries/hosting": {
+      "name": "@rhombus-std/hosting",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "rollup": "^4.61.0",
+        "rollup-plugin-dts": "^6.4.1",
+        "typescript": "^5.9.0",
+      },
+    },
+    "libraries/hosting.core": {
+      "name": "@rhombus-std/hosting.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "rollup": "^4.61.0",
+        "rollup-plugin-dts": "^6.4.1",
+        "typescript": "^5.9.0",
+      },
+    },
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
@@ -169,6 +196,10 @@
     "@rhombus-std/di.integration": ["@rhombus-std/di.integration@workspace:libraries/di.integration"],
 
     "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
+
+    "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
+
+    "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
 
     "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 
