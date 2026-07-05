@@ -11,6 +11,12 @@ decision, why, and status (issue/PR where relevant).
 Replicate ME's package + dependency structure **exactly** — package-for-package,
 edge-for-edge — and only **collapse** a distinction later, after the fact, once it's shown
 unjustified in a TS / no-reflection / no-shared-framework context. **Do not pre-collapse.**
+
+**Strict applies to the dependency graph** (package boundaries + edges) — that is non-negotiable.
+The **API surface *within* a package may deviate** where our scope system or TS/BUN justifies it
+(e.g. §4.2 collapses IOptions+IOptionsSnapshot). Mirror faithfully on the first pass — **including
+where it feels un-idiomatic in TS/BUN** — and collapse only after the fact.
+
 Authoritative graph: [`reference/ms-extensions-dependencies.md`](reference/ms-extensions-dependencies.md).
 
 Consequences already visible:
@@ -21,7 +27,17 @@ Consequences already visible:
   Options(+ConfigurationExtensions), Configuration(+Abstractions/Binder/providers),
   Logging(+Abstractions/…), Diagnostics(+Abstractions), FileProviders(+…), Caching(+…),
   Hosting(+Abstractions), Http. Build incrementally; the structure is the target.
-- This **revises §4.2**: mirror MEO's three Options accessors first; collapse only if unjustified.
+- **Extension methods → side-effect augmentations (first-pass directive).** Wherever ME defines
+  an extension method (`AddOptions<T>` in `OptionsServiceCollectionExtensions`, `AddJsonFile` in a
+  `*ConfigurationBuilderExtensions`, `AddConsole` in a `*LoggingBuilderExtensions`, …), create a
+  **side-effect declaration-merging augmentation** in the **same mirrored package**, targeting our
+  **mirror of the same type** it extends — **fluent, not free functions**. Config providers already
+  do this (`declare module` on the `configuration-builder` subpath). For Options: `addOptions` /
+  `configure` augment the DI builder from `@rhombus-std/options` (mirrors `OptionsServiceCollectionExtensions`
+  in MEO); the config-source `configure(IConfiguration)` augments from `options.augmentations`
+  (mirrors `OptionsConfigurationServiceCollectionExtensions`). This settles the earlier
+  core-vs-satellite / fluent-vs-function question.
+- Options accessor collapse (IOptions+IOptionsSnapshot → one `Options<T>`) is scope-justified — see §4.2.
 
 ---
 
@@ -92,11 +108,14 @@ Reasons to build it, premise-independent:
   (section → `Options<T>` binding). Mirrors `Options.ConfigurationExtensions`, and it is
   the *extensions* package — not core — that references the config abstractions.
 
-### 4.2 Accessor model — mirror MEO first, collapse later (see §0)
+### 4.2 Accessor model — collapse IOptions+IOptionsSnapshot (scope-justified); keep the monitor
 
-> Per §0 we now mirror MEO's `IOptions` / `IOptionsSnapshot` / `IOptionsMonitor` split
-> **exactly**; the collapse below is a **candidate to revisit after the fact**, not the
-> initial shape.
+> **Adopted** (per the strict-graph / free-API rule in §0): the singleton-vs-scoped accessor
+> split is a fixed-lifetime .NET-DI artifact; our open-ended scopes + registration-time lifetime
+> + ancestor-walk (§3) erase it, so `IOptions` + `IOptionsSnapshot` collapse to **one `Options<T>`**
+> (lifetime chosen at registration). The **reactive `IOptionsMonitor` is orthogonal**
+> (change-notification, not lifetime) and stays a distinct capability, tied to `IChangeToken` / #6.
+> Package boundaries + deps remain exact ME (§4.1).
 
 - **One** `Options<T>` type. `IOptions` vs `IOptionsSnapshot` is not two types — it is the
   **registration lifetime** (ancestor-walk, §3).
