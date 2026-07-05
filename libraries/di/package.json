@@ -1,0 +1,56 @@
+{
+  "name": "@rhombus-std/di",
+  "version": "10.1.0",
+  "description": "The ioc runtime engine: DiBuilder, scopes, resolution, captive-dependency protection, factories, and native disposal.",
+  "keywords": [
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "scope",
+    "container"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/di"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
+    "test": "bun test",
+    "lint": "eslint ."
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-toolkit/func": "3.5.3"
+  }
+}

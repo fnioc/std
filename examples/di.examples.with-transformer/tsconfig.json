@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    // rootDir is the examples/ parent so the shared source (imported relatively
+    // from ../../di.examples.shared/src) compiles in alongside this example's own
+    // src — plugin-less source inlining, no bundler. Emit lands at
+    // dist/di.examples.with-transformer/src/main.js + dist/di.examples.shared/src/index.js,
+    // and the relative import between them is preserved, so `node` runs it standalone.
+    "rootDir": "..",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    // The @rhombus-std/di.transformer ts-patch plugin. Active under `tspc` (the build);
+    // plain `tsc` (the lint task) ignores it and type-checks the authored form.
+    // The plugin's `declare module "@rhombus-std/di"` augmentation (the type-driven
+    // authoring forms `add<I>(C)`, `.as<"x">()`, tokenless `resolve<I>()`) is
+    // pulled into the program by the side-effect `import "@rhombus-std/di.transformer"`
+    // at the top of src/main.ts.
+    "plugins": [{ "transform": "@rhombus-std/di.transformer", "import": "transform" }]
+  },
+  "include": ["src/**/*"]
+}

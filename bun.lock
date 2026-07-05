@@ -44,6 +44,42 @@
         "typescript": "^5.9.0",
       },
     },
+    "examples/di.examples.abstractions-lib": {
+      "name": "@rhombus-std/di.examples.abstractions-lib",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+      },
+    },
+    "examples/di.examples.shared": {
+      "name": "@rhombus-std/di.examples.shared",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+      },
+    },
+    "examples/di.examples.with-transformer": {
+      "name": "@rhombus-std/di.examples.with-transformer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+    },
+    "examples/di.examples.without-transformer": {
+      "name": "@rhombus-std/di.examples.without-transformer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.0",
+      },
+    },
     "libraries/config": {
       "name": "@rhombus-std/config",
       "version": "0.0.0",
@@ -120,6 +156,74 @@
       "peerDependencies": {
         "@rhombus-std/config": "workspace:^",
         "typescript": ">=5.2",
+      },
+    },
+    "libraries/di": {
+      "name": "@rhombus-std/di",
+      "version": "10.1.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+    },
+    "libraries/di.core": {
+      "name": "@rhombus-std/di.core",
+      "version": "10.1.0",
+      "devDependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+    },
+    "libraries/di.integration": {
+      "name": "@rhombus-std/di.integration",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+    },
+    "libraries/di.transformer": {
+      "name": "@rhombus-std/di.transformer",
+      "version": "10.1.0",
+      "dependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di": "workspace:^",
+        "typescript": ">=5.2",
+      },
+    },
+    "libraries/hosting": {
+      "name": "@rhombus-std/hosting",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "rollup": "^4.61.0",
+        "rollup-plugin-dts": "^6.4.1",
+        "typescript": "^5.9.0",
+      },
+    },
+    "libraries/hosting.core": {
+      "name": "@rhombus-std/hosting.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "rollup": "^4.61.0",
+        "rollup-plugin-dts": "^6.4.1",
+        "typescript": "^5.9.0",
       },
     },
   },
@@ -201,6 +305,28 @@
     "@rhombus-std/config.json": ["@rhombus-std/config.json@workspace:libraries/config.json"],
 
     "@rhombus-std/config.transformer": ["@rhombus-std/config.transformer@workspace:libraries/config.transformer"],
+
+    "@rhombus-std/di": ["@rhombus-std/di@workspace:libraries/di"],
+
+    "@rhombus-std/di.core": ["@rhombus-std/di.core@workspace:libraries/di.core"],
+
+    "@rhombus-std/di.examples.abstractions-lib": ["@rhombus-std/di.examples.abstractions-lib@workspace:examples/di.examples.abstractions-lib"],
+
+    "@rhombus-std/di.examples.shared": ["@rhombus-std/di.examples.shared@workspace:examples/di.examples.shared"],
+
+    "@rhombus-std/di.examples.with-transformer": ["@rhombus-std/di.examples.with-transformer@workspace:examples/di.examples.with-transformer"],
+
+    "@rhombus-std/di.examples.without-transformer": ["@rhombus-std/di.examples.without-transformer@workspace:examples/di.examples.without-transformer"],
+
+    "@rhombus-std/di.integration": ["@rhombus-std/di.integration@workspace:libraries/di.integration"],
+
+    "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
+
+    "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
+
+    "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
+
+    "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 
     "@rhombus-toolkit/proxy-base": ["@rhombus-toolkit/proxy-base@1.0.0", "", {}, "sha512-vwwhCwLeru/oUza+oKXUzMFW79/NsgtjNC+2TiZRVZZai260K6s1EnOIptSXCuOY+B4j8qf4PYmYC8WS2d7BMA=="],
 
@@ -468,11 +594,7 @@
 
     "@typescript-eslint/eslint-plugin/ignore": ["ignore@7.0.5", "", {}, "sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg=="],
 
-    "bun-types/@types/node": ["@types/node@26.1.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-O0A1G3xPGy4w7AgQdAQYUlQ+BKk2Oovw8eRpofyp5KdBZULnbe+WqaOVNrm705SHphCiG4XHsACrSmPu1f+Kgw=="],
-
     "global-prefix/which": ["which@4.0.0", "", { "dependencies": { "isexe": "^3.1.1" }, "bin": { "node-which": "bin/which.js" } }, "sha512-GlaYyEb07DPxYCKhKzplCWBJtvxZcZMrL+4UkrTSJHHPyZU4mYYTv3qaOe77H7EODLSSopAUFAc6W8U4yqvscg=="],
-
-    "bun-types/@types/node/undici-types": ["undici-types@8.3.0", "", {}, "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="],
 
     "global-prefix/which/isexe": ["isexe@3.1.5", "", {}, "sha512-6B3tLtFqtQS4ekarvLVMZ+X+VlvQekbe4taUkf/rhVO3d/h0M2rfARm/pXLcPEsjjMsFgrFgSrhQIxcSVrBz8w=="],
   }
