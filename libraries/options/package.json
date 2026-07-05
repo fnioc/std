@@ -1,0 +1,52 @@
+{
+  "name": "@rhombus-std/options",
+  "version": "0.0.0",
+  "description": "The collapsed Options<T> accessor ported from Microsoft.Extensions.Options: IOptions/IOptionsSnapshot/IOptionsMonitor.CurrentValue collapse into one value, with change-notification as an optional subscribe capability backed by @rhombus-std/primitives.",
+  "keywords": [
+    "options",
+    "configuration",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/options"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "test": "bun test",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "dependencies": {
+    "@rhombus-std/primitives": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
