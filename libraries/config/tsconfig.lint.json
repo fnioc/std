@@ -1,0 +1,8 @@
+{
+  "//": "Lint-time typecheck config: identical to tsconfig.json but WIDENED to include test/**/*. `bun test` never type-checks anything (bun runs TS directly), and the base tsconfig.json used by `build` only compiles src/**/*. So the load-bearing @ts-expect-error assertions in test/schema.test.ts -- which prove SchemaFor<T> rejects a drifting schema literal at compile time -- are only actually re-checked by this package's `lint` script running `tsc -p tsconfig.lint.json`. If SchemaFor<T> ever silently loosens, or this config regresses back to src-only, one of those @ts-expect-error directives stops matching a real error and tsc fails with 'Unused @ts-expect-error directive'. rootDir widens to '.' since test/ lives outside src/.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

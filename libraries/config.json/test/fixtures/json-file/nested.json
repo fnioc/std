@@ -1,0 +1,10 @@
+{
+  "Server": {
+    "Port": 8080,
+    "Host": "localhost",
+    "UseTls": true,
+    "Tags": ["a", "b"],
+    "Nullable": null
+  },
+  "TopLevel": "value"
+}

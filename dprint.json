@@ -12,6 +12,7 @@
     "**/node_modules",
     "**/dist",
     "**/*.wasm",
-    "bun.lock"
+    "bun.lock",
+    "libraries/config.json/test/fixtures/json-file/invalid.json"
   ]
 }

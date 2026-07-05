@@ -1,0 +1,51 @@
+{
+  "name": "@rhombus-std/config.transformer",
+  "version": "0.0.0",
+  "description": "The @rhombus-std/config ts-patch transformer: rewrites .withType<T>() on a ConfigurationBuilder into a generated .withSchema({...}) runtime schema literal at compile time.",
+  "keywords": [
+    "configuration",
+    "config",
+    "ioc",
+    "typescript",
+    "ts-patch",
+    "transformer",
+    "compiler"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/config.transformer"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "test": "bun test",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "peerDependencies": {
+    "@rhombus-std/config": "workspace:^",
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
+    "ts-patch": "^3.3.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
