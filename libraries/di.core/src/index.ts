@@ -17,8 +17,9 @@
  *   - `OverloadedParameters` / `OverloadedConstructorParameters` — overload-faithful
  *     parameter-tuple unions (every overload, not just the last)
  *   - the authoring surface: `ServiceManifest`, `ServiceManifestBase`,
- *     `ServiceManifestCtor`, `AddBuilder`, `ScopeAddMethods`, `ScopeAddAuthoring`,
- *     `ProperCase`, `ValidScopes`, `ScopeGuard`
+ *     `AddBuilder`, `ScopeAddMethods`, `ScopeAddAuthoring`, `ProperCase`,
+ *     `ValidScopes`, `ScopeGuard` — `ServiceManifestCtor` (the runtime
+ *     construct signature) lives in `@rhombus-std/di` instead.
  */
 
 export type {
@@ -48,6 +49,5 @@ export type {
   ScopeGuard,
   ServiceManifest,
   ServiceManifestBase,
-  ServiceManifestCtor,
   ValidScopes,
 } from "./authoring.js";

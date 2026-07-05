@@ -165,12 +165,8 @@ export type ServiceManifest<
   Provider = unknown,
 > = ServiceManifestBase<Scopes, Provider> & ScopeAddMethods<Scopes>;
 
-/**
- * The static / constructor side of the public `ServiceManifest`. The value
- * export in `@rhombus-std/di` carries the `ValidScopes` guard on its type parameter:
- * `new ServiceManifest<S>()` only type-checks when `S` is a valid scope union
- * (lowercase-first, no collision with `add`/`addFactory`/`addValue`).
- */
-export interface ServiceManifestCtor {
-  new<S extends string = "singleton">(...guard: ScopeGuard<S>): ServiceManifest<S>;
-}
+// The static / constructor side of the public `ServiceManifest` — the `new
+// <S>(...guard) => ServiceManifest<S>` signature — is a RUNTIME concern (it
+// describes constructing a concrete class), not an authoring contract. It
+// lives in `@rhombus-std/di` as `ServiceManifestCtor`, alongside the
+// `ServiceManifestClass` it constructs.
