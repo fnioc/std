@@ -135,9 +135,9 @@ function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
 /** True when `call` is a tokenless `*.resolve<I>()` (1 type arg, 0 value args). */
 function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) return false;
-  if (callee.name.text !== "resolve") return false;
-  if (!call.typeArguments || call.typeArguments.length !== 1) return false;
+  if (!ts.isPropertyAccessExpression(callee)) {return false;}
+  if (callee.name.text !== "resolve") {return false;}
+  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
   return !call.arguments.length;
 }
 
@@ -262,15 +262,15 @@ function rewriteNameof(node: ts.Node, ctx: LowerContext): ts.Node {
  * be the transformer's `nameof`.
  */
 function isNameofCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!call.typeArguments || call.typeArguments.length !== 1) return false;
+  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
   const callee = call.expression;
   const id = ts.isIdentifier(callee)
     ? callee
     : ts.isPropertyAccessExpression(callee)
     ? callee.name
     : undefined;
-  if (!id) return false;
-  if (id.text === NAMEOF_NAME) return true;
+  if (!id) {return false;}
+  if (id.text === NAMEOF_NAME) {return true;}
 
   // Aliased import: resolve through the alias and check the real exported name.
   const symbol = checker.getSymbolAtLocation(callee);
@@ -283,7 +283,7 @@ function isNameofCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean
 /** Best-effort project root: the program's common source directory. */
 function computeProjectRoot(program: ts.Program): string {
   const opts = program.getCompilerOptions();
-  if (opts.rootDir) return opts.rootDir.replace(/\\/g, "/");
+  if (opts.rootDir) {return opts.rootDir.replace(/\\/g, "/");}
   // `getCommonSourceDirectory` exists at runtime but is not in the public
   // typings; fall back to the current directory when unavailable.
   const withCommon = program as ts.Program & {

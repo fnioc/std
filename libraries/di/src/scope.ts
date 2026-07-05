@@ -465,7 +465,7 @@ export class ServiceProvider<S extends string = string>
   ): Scope | undefined {
     let node = vantage;
     while (node !== undefined) {
-      if (node.name === scopeName) return node;
+      if (node.name === scopeName) {return node;}
       node = node.parent;
     }
     return undefined;
@@ -869,7 +869,7 @@ export class ServiceProvider<S extends string = string>
     for (const sig of orderByArityDesc(signatures)) {
       let satisfiable = true;
       for (const slot of sig) {
-        if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) continue;
+        if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) {continue;}
         if (isTypeArgRef(slot)) {
           // A raw TypeArgRef is an unclosed template slot — never satisfiable
           // (only substitution turns it into a LiteralRef).
@@ -882,16 +882,16 @@ export class ServiceProvider<S extends string = string>
           // exactly what to register.
           if (!this.#isResolvableSlot(slot, async)) {
             satisfiable = false;
-            for (const token of unionTokenMembers(slot)) unsatisfiable.add(token);
+            for (const token of unionTokenMembers(slot)) {unsatisfiable.add(token);}
           }
           continue;
         }
         if (!this.#isResolvable(slot, async)) {
           satisfiable = false;
-          if (typeof slot === "string") unsatisfiable.add(slot);
+          if (typeof slot === "string") {unsatisfiable.add(slot);}
         }
       }
-      if (satisfiable) return sig;
+      if (satisfiable) {return sig;}
     }
 
     throw new NoSatisfiableSignatureError(token, targetName, [...unsatisfiable]);
@@ -934,8 +934,8 @@ export class ServiceProvider<S extends string = string>
    *     `Promise<T>` fallback.
    */
   #isResolvableSlot(slot: DepSlot, async: boolean): boolean {
-    if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) return true;
-    if (isTypeArgRef(slot)) return false;
+    if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) {return true;}
+    if (isTypeArgRef(slot)) {return false;}
     if (isUnionSlot(slot)) {
       return slot.union.some((member) => this.#isResolvableSlot(member, async));
     }
@@ -1029,7 +1029,7 @@ export class ServiceProvider<S extends string = string>
    * must use `disposeAsync()`. Idempotent: a second call is a no-op.
    */
   public dispose(): void {
-    if (this.#disposed) return;
+    if (this.#disposed) {return;}
 
     const owned = this.#frame?.owned ?? [];
 
@@ -1059,7 +1059,7 @@ export class ServiceProvider<S extends string = string>
    * `Symbol.asyncDispose` and `Symbol.dispose`. Idempotent.
    */
   public async disposeAsync(): Promise<void> {
-    if (this.#disposed) return;
+    if (this.#disposed) {return;}
     this.#disposed = true;
 
     const owned = this.#frame?.owned ?? [];
