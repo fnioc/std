@@ -1,0 +1,115 @@
+// Behavior tests for ChangeToken.onChange -- the re-subscription loop is the
+// load-bearing part: a fired token must produce a fresh registration, and
+// state must flow through untouched.
+
+import { describe, expect, test } from "bun:test";
+import type { IChangeToken } from "../src/change-token";
+import { ChangeToken } from "../src/on-change";
+
+// A minimal, mutable IChangeToken stub -- fires every registered callback
+// once, then sets hasChanged, matching the "hasChanged MUST be set before
+// the callback is invoked" contract.
+class TestChangeToken implements IChangeToken {
+  hasChanged = false;
+  readonly activeChangeCallbacks = true;
+
+  #callbacks: (() => void)[] = [];
+
+  registerChangeCallback(callback: (state: unknown) => void, state?: unknown): Disposable {
+    if (this.hasChanged) {
+      callback(state);
+      return { [Symbol.dispose]() {} };
+    }
+
+    const invoke = () => callback(state);
+    this.#callbacks.push(invoke);
+    return {
+      [Symbol.dispose]: () => {
+        const i = this.#callbacks.indexOf(invoke);
+        if (i !== -1) {
+          this.#callbacks.splice(i, 1);
+        }
+      },
+    };
+  }
+
+  fire(): void {
+    this.hasChanged = true;
+    const callbacks = this.#callbacks;
+    this.#callbacks = [];
+    for (const callback of callbacks) {
+      callback();
+    }
+  }
+}
+
+describe("ChangeToken.onChange", () => {
+  test("fires the consumer on token change and re-subscribes for the next change", () => {
+    const tokens: TestChangeToken[] = [];
+    const produceToken = () => {
+      const token = new TestChangeToken();
+      tokens.push(token);
+      return token;
+    };
+
+    let fireCount = 0;
+    const disposable = ChangeToken.onChange(produceToken, () => {
+      fireCount++;
+    });
+
+    expect(tokens).toHaveLength(1);
+
+    tokens[0]!.fire();
+    expect(fireCount).toBe(1);
+    expect(tokens).toHaveLength(2); // re-subscribed against a fresh token
+
+    tokens[1]!.fire();
+    expect(fireCount).toBe(2);
+    expect(tokens).toHaveLength(3);
+
+    disposable[Symbol.dispose]();
+  });
+
+  test("passes state through to the consumer", () => {
+    // produceToken must hand back a FRESH token on each call (mirroring real
+    // usage) -- reusing an already-fired token here would re-fire
+    // synchronously forever, since registerChangeCallback on a changed token
+    // invokes immediately (see the IChangeToken contract).
+    let produced: TestChangeToken | undefined;
+    const produceToken = () => {
+      produced = new TestChangeToken();
+      return produced;
+    };
+    let seen: string | undefined;
+
+    ChangeToken.onChange(produceToken, (state) => {
+      seen = state;
+    }, "hello");
+
+    produced!.fire();
+    expect(seen).toBe("hello");
+  });
+
+  test("disposing before any change unregisters the callback", () => {
+    const token = new TestChangeToken();
+    let calls = 0;
+
+    const disposable = ChangeToken.onChange(() => token, () => {
+      calls++;
+    });
+    disposable[Symbol.dispose]();
+    token.fire();
+
+    expect(calls).toBe(0);
+  });
+
+  test("a producer that returns nothing simply skips registration", () => {
+    let calls = 0;
+    const disposable = ChangeToken.onChange(() => undefined, () => {
+      calls++;
+    });
+
+    expect(calls).toBe(0);
+    disposable[Symbol.dispose]();
+  });
+});
