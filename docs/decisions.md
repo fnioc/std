@@ -6,6 +6,25 @@ decision, why, and status (issue/PR where relevant).
 
 ---
 
+## 0. Mirror the Microsoft.Extensions dependency structure exactly, then collapse — governing
+
+Replicate ME's package + dependency structure **exactly** — package-for-package,
+edge-for-edge — and only **collapse** a distinction later, after the fact, once it's shown
+unjustified in a TS / no-reflection / no-shared-framework context. **Do not pre-collapse.**
+Authoritative graph: [`reference/ms-extensions-dependencies.md`](reference/ms-extensions-dependencies.md).
+
+Consequences already visible:
+- **`@rhombus-std/primitives` is required** — the universal leaf (`IChangeToken`,
+  `StringValues`). The live-reload / change-token mechanism (#6) belongs there, not in
+  config/options.
+- Target family set mirrors ME: Primitives, DependencyInjection(+Abstractions),
+  Options(+ConfigurationExtensions), Configuration(+Abstractions/Binder/providers),
+  Logging(+Abstractions/…), Diagnostics(+Abstractions), FileProviders(+…), Caching(+…),
+  Hosting(+Abstractions), Http. Build incrementally; the structure is the target.
+- This **revises §4.2**: mirror MEO's three Options accessors first; collapse only if unjustified.
+
+---
+
 ## 1. DI is interface-first (MEDI parity) — #5, #2 · PR #27 (merged)
 
 Consumers program against **interfaces**, mirroring MEDI where you hold
@@ -73,7 +92,11 @@ Reasons to build it, premise-independent:
   (section → `Options<T>` binding). Mirrors `Options.ConfigurationExtensions`, and it is
   the *extensions* package — not core — that references the config abstractions.
 
-### 4.2 Collapsed model (simpler than MEO, because our scope + source models are richer)
+### 4.2 Accessor model — mirror MEO first, collapse later (see §0)
+
+> Per §0 we now mirror MEO's `IOptions` / `IOptionsSnapshot` / `IOptionsMonitor` split
+> **exactly**; the collapse below is a **candidate to revisit after the fact**, not the
+> initial shape.
 
 - **One** `Options<T>` type. `IOptions` vs `IOptionsSnapshot` is not two types — it is the
   **registration lifetime** (ancestor-walk, §3).
