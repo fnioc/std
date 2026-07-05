@@ -24,7 +24,10 @@ import type { DepSlot, Token } from "./types.js";
  * trailing `.as()` leaves the registration scopeless ⇒ transient.
  *
  * `Scopes` is threaded so `.as()` only accepts a declared scope name —
- * compile-time guard at the registration site.
+ * compile-time guard at the registration site. The authored type-arg form
+ * `.as<"scope">()` is DECLARATION-MERGED onto this interface by the
+ * `@rhombus-std/di.transformer` augmentation — a pure typing that surfaces only
+ * when the transformer is in the program.
  */
 export interface AddBuilder<Scopes extends string> {
   /**
@@ -46,6 +49,14 @@ export interface AddBuilder<Scopes extends string> {
  * lib author types a setup function against, and the interface `@rhombus-std/di`'s
  * `ServiceManifestClass` implements. It names the three runtime registration
  * methods (`add` / `addFactory` / `addValue`) plus `build`.
+ *
+ * It is also the interface-first public surface a di consumer holds: di's public
+ * `ServiceManifest` type is `ServiceManifestBase<S, ServiceProvider<S>>` (not the
+ * impl class), so the type-driven authoring forms (`add<I>(C)`, `addFactory<I>(fn)`,
+ * `addValue<I>(v)`) the `@rhombus-std/di.transformer` DECLARATION-MERGES onto this
+ * interface surface on a consumer's `services.add<I>(...)`. An interface picks up
+ * those merged overloads; the impl class would not — the same reason the provider
+ * surface is an interface.
  *
  * `Provider` is the type `build()` returns. A core-only lib author never calls
  * `build()` (the application does), so it defaults to `unknown`; `@rhombus-std/di`

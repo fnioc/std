@@ -27,7 +27,10 @@ export type { ServiceManifestCtor } from "./builder.js";
 // import, exactly as before the split.
 export type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 
-export { Scope, ServiceProvider } from "./scope.js";
+// The concrete container impl. Consumers hold the `ServiceProvider` INTERFACE
+// (re-exported from types.js below); the class is exported for white-box use
+// (tests, advanced wiring) — never as the consumer-facing provider type.
+export { Scope, ServiceProviderClass } from "./scope.js";
 
 export type {
   ClassRegistration,
@@ -41,6 +44,9 @@ export type {
   // Backwards-compat alias.
   ResolveScope,
   ScopeFactory,
+  // The public provider surface — the abstractions interface (di.core), not the
+  // impl class. What `build()` / `createScope()` return.
+  ServiceProvider,
   ValueRegistration,
 } from "./types.js";
 

@@ -8,8 +8,9 @@
 //   uniform tags, and a `ServiceProvider` with no frame (the one `build()`
 //   returns) resolves everything transiently until a scope is opened.
 //
-//   `ServiceProvider` — the public container surface. Implements `Resolver`
-//   (resolve + resolveFactory) and `ScopeFactory` (createScope), plus native
+//   `ServiceProviderClass` — the concrete container impl behind the public
+//   `ServiceProvider` interface (di.core). Implements `Resolver` (resolve +
+//   resolveFactory) and `ScopeFactory` (createScope), plus native
 //   `Disposable`/`AsyncDisposable`. Holds a sealed registration map (shared
 //   across the tree) and an optional Scope frame.
 //
@@ -44,6 +45,7 @@ import type {
   Registration,
   Resolver,
   ScopeFactory,
+  ServiceProvider,
 } from "./types.js";
 
 /** True when a value implements the native synchronous `Disposable`. */
@@ -177,8 +179,13 @@ export class Scope {
 }
 
 /**
- * The public container surface. Implements `Resolver` (resolve + resolveFactory)
- * and `ScopeFactory` (createScope), plus native `Disposable`/`AsyncDisposable`.
+ * The concrete container IMPLEMENTATION — the internal impl behind the public
+ * `ServiceProvider` interface (`@rhombus-std/di.core`), mirroring MEDI's concrete
+ * `ServiceProvider` vs. its `IServiceProvider` abstraction. Implements
+ * `Resolver` (resolve + resolveFactory) and `ScopeFactory` (createScope), plus
+ * native `Disposable`/`AsyncDisposable` — all composed by the `ServiceProvider`
+ * interface it satisfies. Consumers hold the interface (what `build()` /
+ * `createScope()` return), never this class.
  *
  * `S` is the user-declared scope-name union. The provider `ServiceManifest.build()`
  * returns is FRAMELESS — there is no root scope. With no frame open, every
@@ -187,8 +194,8 @@ export class Scope {
  * it is just a tag you typically open once at the top via
  * `createScope("singleton")`.
  */
-export class ServiceProvider<S extends string = string>
-  implements Resolver, ScopeFactory<S>, Disposable, AsyncDisposable
+export class ServiceProviderClass<S extends string = string>
+  implements ServiceProvider<S>
 {
   #disposed = false;
 
@@ -261,7 +268,7 @@ export class ServiceProvider<S extends string = string>
    * view's `createScope`.
    */
   #childScope(name: string, parentFrame: Scope | undefined): ServiceProvider<S> {
-    return new ServiceProvider<S>(
+    return new ServiceProviderClass<S>(
       this.#registrations,
       this.#openRegistrations,
       this.#closedMemo,
@@ -364,7 +371,7 @@ export class ServiceProvider<S extends string = string>
       return undefined;
     }
 
-    const match = ServiceProvider.#matchOpen(
+    const match = ServiceProviderClass.#matchOpen(
       this.#openRegistrations.get(parsed.base),
       parsed,
     );
@@ -425,7 +432,7 @@ export class ServiceProvider<S extends string = string>
       if (open.pattern.length !== parsed.args.length) {
         continue;
       }
-      const args = ServiceProvider.#bindPattern(open.pattern, parsed.args);
+      const args = ServiceProviderClass.#bindPattern(open.pattern, parsed.args);
       if (args !== undefined) {
         return { open, args };
       }
@@ -533,7 +540,7 @@ export class ServiceProvider<S extends string = string>
     // resolving a shorter-lived dep whose frame is not an ancestor gets a fresh
     // transient, never a captured cached instance.
     const owner = registration.scope
-      ? ServiceProvider.#findOwner(vantage, registration.scope)
+      ? ServiceProviderClass.#findOwner(vantage, registration.scope)
       : undefined;
 
     if (owner?.cache.has(token)) {

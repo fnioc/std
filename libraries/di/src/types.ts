@@ -8,6 +8,15 @@ export type { Union };
 
 export type { Ctor };
 
+// The consumer-facing ABSTRACTION interfaces — the resolution + scope seams, the
+// public provider surface, the deprecated `ResolveScope`, and the `Lifetime` tag
+// — now live in the pure-types `@rhombus-std/di.core` package (the MEDI.Abstractions
+// analog). di re-exports them so the whole surface stays reachable through one
+// `@rhombus-std/di` import, exactly as before the split. The concrete
+// `ServiceProviderClass` that implements the `ServiceProvider` interface is di's
+// own runtime (see `scope.ts`).
+export type { Lifetime, ResolveScope, Resolver, ScopeFactory, ServiceProvider } from "@rhombus-std/di.core";
+
 /**
  * A registration-level factory function. Its parameters are filled by the
  * engine at resolve time, the same way a class constructor's are: a factory
@@ -102,70 +111,3 @@ export interface OpenRegistration {
   readonly signatures?: readonly (readonly DepSlot[])[];
 }
 
-/**
- * The named lifetime tag for a registration. `"singleton"` and `"transient"`
- * are the built-in names; `U` is the user-declared scope-name union (defaults
- * to `"scoped"`). Transient is represented by the ABSENCE of a lifetime tag
- * (`undefined` on the registration), not by the string `"transient"`.
- */
-export type Lifetime<U extends string = "scoped"> = "singleton" | "transient" | U;
-
-/**
- * The minimal resolution surface — resolve tokens and get factories. Injected
- * into factory parameters typed `Resolver` (and for the plugin-less escape
- * hatch as the sole argument of a record-less factory).
- *
- * `resolve` has two published shapes (the tokenless authoring form
- * `resolve<T>()` is a PURE TYPING contributed by the `@rhombus-std/di.transformer`
- * augmentation, not part of di's published surface):
- *   - `resolve<T>(token)`   — explicit token, typed return.
- *   - `resolve(token)`      — explicit token, `unknown` return (dynamic).
- */
-export interface Resolver {
-  resolve<T>(token: Token): T;
-  resolve(token: Token): unknown;
-  /**
-   * Resolves asynchronously — the only path that may satisfy `T` via a
-   * `Promise<T>` registration. Always returns a Promise; a lookup miss whose
-   * honest `Promise<T>` registration exists is awaited and delivers `T`.
-   */
-  resolveAsync<T>(token: Token): Promise<T>;
-  resolveAsync(token: Token): Promise<unknown>;
-  /**
-   * Returns a FACTORY for `type` rather than an instance. When `params` is
-   * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must
-   * resolve from the container. When `params` is present, it is the complete
-   * authored-order list of caller-supplied parameter tokens; the returned factory
-   * has shape `(...params) => T`. The authored `resolve<(a: A) => T>()` lowers
-   * to `resolveFactory("pkg:T", ["pkg:A"])`.
-   */
-  resolveFactory(type: Token, params?: readonly Token[]): unknown;
-}
-
-/**
- * The scope-creation surface. Injected into factory parameters typed
- * `ScopeFactory`, and implemented by `ServiceProvider`.
- */
-export interface ScopeFactory<S extends string = string> {
-  createScope(
-    ...args: "scoped" extends S ? [name?: S] : [name: S]
-  ): ServiceProvider<S>;
-}
-
-/**
- * @deprecated Use `Resolver` instead. Kept for backwards compatibility.
- *
- * The resolution surface a factory receives — either as an injected `ScopeRef`
- * parameter, or (plugin-less escape hatch) as the sole argument of a
- * record-less factory.
- */
-export interface ResolveScope extends Resolver {
-  createScope(name: string): ServiceProvider;
-}
-
-// Forward declaration for the ScopeFactory generic — the concrete class is
-// declared in scope.ts. TypeScript resolves cross-file interface references at
-// the module level, so this avoids a circular import while keeping the
-// interface definition here.
-import type { ServiceProvider } from "./scope.js";
-export type { ServiceProvider };

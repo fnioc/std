@@ -4,7 +4,7 @@ import {
   OpenTokenRegistrationError,
   OpenTokenResolutionError,
   ServiceManifest,
-  ServiceProvider,
+  ServiceProviderClass,
   typeArg,
   union,
   UnregisteredTokenError,
@@ -219,7 +219,7 @@ describe("memoization", () => {
 
   test("repeat resolves reuse the identical synthesized Registration object", () => {
     const memo = new CountingMap();
-    const sp = new ServiceProvider(
+    const sp = new ServiceProviderClass(
       new Map(),
       openTable({
         template: G.RepoTemplate,
@@ -243,7 +243,7 @@ describe("memoization", () => {
 
   test("the memo is shared across scope frames of one provider tree", () => {
     const memo = new CountingMap();
-    const sp = new ServiceProvider(
+    const sp = new ServiceProviderClass(
       new Map(),
       openTable({
         template: G.RepoTemplate,
