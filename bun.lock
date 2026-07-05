@@ -15,6 +15,83 @@
         "typescript-eslint": "^8.60.1",
       },
     },
+    "examples/di.examples.abstractions-lib": {
+      "name": "@rhombus-std/di.examples.abstractions-lib",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+      },
+    },
+    "examples/di.examples.shared": {
+      "name": "@rhombus-std/di.examples.shared",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+      },
+    },
+    "examples/di.examples.with-transformer": {
+      "name": "@rhombus-std/di.examples.with-transformer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+    },
+    "examples/di.examples.without-transformer": {
+      "name": "@rhombus-std/di.examples.without-transformer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.0",
+      },
+    },
+    "libraries/di": {
+      "name": "@rhombus-std/di",
+      "version": "10.1.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+    },
+    "libraries/di.core": {
+      "name": "@rhombus-std/di.core",
+      "version": "10.1.0",
+      "devDependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+    },
+    "libraries/di.integration": {
+      "name": "@rhombus-std/di.integration",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+    },
+    "libraries/di.transformer": {
+      "name": "@rhombus-std/di.transformer",
+      "version": "10.1.0",
+      "dependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di": "workspace:^",
+        "typescript": ">=5.2",
+      },
+    },
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
@@ -76,6 +153,24 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@rhombus-std/di": ["@rhombus-std/di@workspace:libraries/di"],
+
+    "@rhombus-std/di.core": ["@rhombus-std/di.core@workspace:libraries/di.core"],
+
+    "@rhombus-std/di.examples.abstractions-lib": ["@rhombus-std/di.examples.abstractions-lib@workspace:examples/di.examples.abstractions-lib"],
+
+    "@rhombus-std/di.examples.shared": ["@rhombus-std/di.examples.shared@workspace:examples/di.examples.shared"],
+
+    "@rhombus-std/di.examples.with-transformer": ["@rhombus-std/di.examples.with-transformer@workspace:examples/di.examples.with-transformer"],
+
+    "@rhombus-std/di.examples.without-transformer": ["@rhombus-std/di.examples.without-transformer@workspace:examples/di.examples.without-transformer"],
+
+    "@rhombus-std/di.integration": ["@rhombus-std/di.integration@workspace:libraries/di.integration"],
+
+    "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
+
+    "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.62.2", "", { "os": "android", "cpu": "arm" }, "sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg=="],
 
