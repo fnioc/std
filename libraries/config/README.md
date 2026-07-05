@@ -1,72 +1,253 @@
 # @rhombus-std/config
 
-Layered, provider-based configuration for TypeScript: build a configuration
-tree out of multiple sources, resolve keys with last-source-wins precedence
-and case-insensitive matching, and bind the result to a typed schema at
-compile time.
+**Configuration that knows its own shape.**
 
-This package is the engine — `ConfigurationBuilder`/`ConfigurationRoot`/
-`ConfigurationSection`, the abstract `ConfigurationProvider` base, the
-`IConfiguration*` abstractions (re-exported from `@rhombus-std/config.core`),
-`ConfigurationKeyComparer`, the bundled Memory provider, and `bindConfig`. It
-has no file/env/CLI sources of its own beyond Memory — install
-`@rhombus-std/config.json`, `@rhombus-std/config.env`, and/or `@rhombus-std/config.commandline` alongside
-it for those.
-
-## Install
-
-```sh
-npm install @rhombus-std/config
-```
-
-## Basic usage
+Declare a TypeScript interface once. Get a fully-typed, fully-coerced config
+object back — merged from JSON files, environment variables, and CLI flags —
+with zero hand-written schema and zero reflection.
 
 ```ts
 import { ConfigurationBuilder } from "@rhombus-std/config";
-
-const config = new ConfigurationBuilder()
-  .addInMemoryCollection({ "Server:Port": "8080" })
-  .build();
-
-config.get("Server:Port"); // "8080"
-config.getSection("Server").get("Port"); // "8080"
-```
-
-More idiomatically, install a provider package and use its `add*` sugar
-instead of constructing sources by hand:
-
-```ts
+import "@rhombus-std/config/with-type-augment";
 import "@rhombus-std/config.json";
 import "@rhombus-std/config.env";
-import { bindConfig, ConfigurationBuilder } from "@rhombus-std/config";
+import "@rhombus-std/config.commandline";
 
 interface AppConfig {
-  Server: { Port: number; Host: string };
+  Server: { Host: string; Port: number; Ssl?: boolean };
+  Database: { Primary: { Host: string; PoolSize: number } };
 }
 
 const config = new ConfigurationBuilder()
   .addJsonFile("appsettings.json")
+  .addJsonFile("appsettings.Development.json", { optional: true })
   .addEnvironmentVariables({ prefix: "APP_" })
+  .addCommandLine(process.argv.slice(2))
+  .withType<AppConfig>() // ← generates the schema from your interface. that's it.
   .build();
 
-const app = bindConfig<AppConfig>(config);
+config.Server.Port; // number — typed AND coerced from the string "8080"
+config.Database.Primary.Host; // string
 ```
 
-Sources are checked **last-registered first**: `addEnvironmentVariables()`
-here overrides anything `addJsonFile()` loaded for the same key.
+No `z.object({...})` to keep in sync. No class wall of decorators. No codegen
+step to remember to run. `AppConfig` is both the type you already wanted and
+the schema `@rhombus-std/config` validates against — `.withType<AppConfig>()`
+is compiled away into a `.withSchema({...})` literal by
+`@rhombus-std/config.transformer`, a ts-patch plugin, so there's nothing left
+to run at build time beyond `tspc` itself.
 
-## Providers need a side-effect import
+## Features
 
-Every `add*` method (`addJsonFile`, `addEnvironmentVariables`,
-`addCommandLine`) is bolted onto `ConfigurationBuilder` by its own provider
-package via TypeScript declaration merging plus a runtime prototype patch.
-If your code only calls `.addJsonFile()` and never names another symbol from
-`@rhombus-std/config.json`, you still need to import the package for its side effect:
+- **Your interface is the schema.** `.withType<AppConfig>()` derives
+  validation and coercion straight from a TypeScript interface — no
+  decorators, no reflect-metadata, no hand-written schema object.
+- **Layered sources, last one wins.** In-memory defaults → JSON files (with
+  optional overlays) → environment variables (prefixed, `__`-nested) → CLI
+  flags. Deterministic precedence, every time.
+- **Three tiers, nobody's forced.** Full transformer, a hand-written schema,
+  or ad-hoc coercion helpers — pick per project, or mix per key.
+- **One type per accessor.** No `string | number | undefined` unions to
+  narrow. `getSection()` never returns null.
+- **Honest by design.** Config is strings under the hood. You get numbers and
+  booleans only where you asked for them — never a silent, wrong coercion.
+- **Zero build step, by default.** The no-transformer path is pure runtime.
+  Add the transformer only when you want compile-time-derived typing.
+
+## Install
+
+```sh
+bun add @rhombus-std/config
+
+# providers — install only the sources you actually use
+bun add @rhombus-std/config.json @rhombus-std/config.env @rhombus-std/config.commandline
+
+# optional — powers .withType<T>() for schema-free full typing
+bun add @rhombus-std/config.transformer
+```
+
+Providers register their `add*` builder methods via side-effect import:
 
 ```ts
-import "@rhombus-std/config.json"; // unlocks .addJsonFile() on ConfigurationBuilder
+import "@rhombus-std/config.json";
+import "@rhombus-std/config.env";
+import "@rhombus-std/config.commandline";
 ```
 
-A bundler or tree-shaker has nothing else forcing that module to load, since
-no value is actually referenced — the import exists purely to run the
-augmentation.
+`@rhombus-std/config` ships the builder, the merge engine, and the in-memory
+source (`addInMemoryCollection`) on its own — everything else is opt-in.
+
+## Fully-typed config, zero schema code
+
+This is the whole point of the library. Write the interface you'd want
+anyway; `.withType<AppConfig>()` reads it and builds the schema for you.
+
+`appsettings.json`:
+
+```json
+{
+  "Server": { "Host": "0.0.0.0", "Port": 8080 },
+  "Database": { "Primary": { "Host": "db.internal", "PoolSize": 10 } }
+}
+```
+
+```ts
+config.Server.Ssl; // boolean | undefined — matches `Ssl?` in AppConfig
+config.Database.Primary.PoolSize; // number — coerced from 10
+```
+
+Required a key your interface says isn't optional? You find out at startup,
+not three functions deep into a request handler:
+
+```ts
+// appsettings.json is missing Database.Primary.PoolSize
+const config = new ConfigurationBuilder()
+  .addJsonFile("appsettings.json")
+  .withType<AppConfig>()
+  .build();
+// throws SchemaCoercionError at build(), naming every missing/invalid key at
+// once — not silently `undefined` at 2am
+```
+
+`.withType<T>()` only exists once you `import
+"@rhombus-std/config/with-type-augment"` — calling it without that import is
+a compile error, never a silent no-op. And it only does anything once you
+compile with `tspc` (ts-patch's patched compiler) and wire
+`@rhombus-std/config.transformer` into `tsconfig.json`'s `plugins`; under
+plain `tsc` the call reaches a throwing runtime stub instead of silently
+skipping validation:
+
+```jsonc
+{
+  "compilerOptions": {
+    "plugins": [
+      { "transform": "@rhombus-std/config.transformer", "import": "transform" },
+    ],
+  },
+}
+```
+
+The transformer supports `string` / `number` / `boolean` leaves, nested
+object types, and `foo?: T` optional fields — anything else (a non-boolean
+union, an array, a function, a library type like `Date`) is a compile error
+naming the offending field, not a silent partial schema.
+
+## Layered sources, last one wins
+
+Every `add*` call stacks a layer. Layers merge left to right — later sources
+overwrite matching keys, everything else merges through untouched.
+
+```ts
+import "@rhombus-std/config.json";
+import "@rhombus-std/config.env";
+import "@rhombus-std/config.commandline";
+
+const config = new ConfigurationBuilder()
+  .addInMemoryCollection({ "Server:Port": "3000" }) // 1. baseline defaults
+  .addJsonFile("appsettings.json") // 2. checked-in config
+  .addJsonFile("appsettings.Development.json", { optional: true }) // 2b. overlay, ok if absent
+  .addEnvironmentVariables({ prefix: "APP_" }) // 3. env vars, prefix stripped
+  .addCommandLine(process.argv.slice(2), {
+    "-p": "Server:Port",
+    "-h": "Server:Host",
+  }) // 4. short flags, highest wins
+  .build();
+```
+
+Environment variables nest with a double underscore:
+
+```sh
+APP_SERVER__PORT=8080                     # → Server:Port
+APP_DATABASE__PRIMARY__HOST=db.internal   # → Database:Primary:Host
+```
+
+And a CLI flag beats all of it:
+
+```sh
+node app.js --Server:Port=9090
+node app.js -p 9090      # same key, via the switchMappings passed to addCommandLine
+```
+
+## Three tiers, nobody's forced
+
+The transformer is the fast path — not the only path.
+
+**Tier 2 — the transformer.** Covered above: your interface generates the
+schema.
+
+**Tier 1 — hand-write the schema once.**
+
+```ts
+import { ConfigurationBuilder, OPTIONAL } from "@rhombus-std/config";
+
+const config = new ConfigurationBuilder()
+  .addJsonFile("appsettings.json")
+  .withSchema({
+    Server: { Host: "string", Port: "number", Ssl: { [OPTIONAL]: "boolean" } },
+  })
+  .build();
+
+config.Server.Port; // number — same typed, coerced tree as the transformer path
+```
+
+**Tier 0 — skip the schema, coerce ad hoc.**
+
+```ts
+const config = new ConfigurationBuilder()
+  .addJsonFile("appsettings.json")
+  .build();
+
+config.getNum("Server:Port"); // number
+config.getNum("Server:Port", 3000); // number, defaulted if the key is absent
+config.getBool("Server:Ssl"); // boolean — accepts true/1/yes/on
+config.get("Cors:Origins", (s) => s.split(",")); // any shape, via a factory function
+config.get("Server:Host"); // raw string, no coercion
+```
+
+Same builder, same sources — just a different amount of ceremony. Mix tiers
+across a single config tree if that's what the project needs.
+
+## Ergonomic, deterministic navigation
+
+```ts
+config.Server.Port; // dot access, typed
+config["Server"]["Port"]; // bracket access, identical value
+config.getSection("Server").getNum("Port"); // chainable, scoped access
+
+// getSection never returns null — an absent section is just an empty one.
+config.getSection("Does:Not:Exist").get("Key"); // undefined, not a thrown error
+```
+
+Every accessor returns exactly one type. `getNum` returns `number` — never
+`number | undefined`, never a silent `NaN`.
+
+## Honest by design
+
+Underneath, configuration is a flat map of strings — because that's what
+JSON values, env vars, and CLI args actually are. `@rhombus-std/config`
+doesn't pretend otherwise. You get a `number` or a `boolean` only at the
+exact point you ask for one: through your interface, a hand-written schema,
+or an explicit `getNum`/`getBool` call.
+
+```ts
+config.getNum("Server:Port"); // "8080"    → 8080
+config.getNum("Server:Host"); // "0.0.0.0" → throws. not numeric, not NaN, not a guess.
+```
+
+No implicit coercion, no truthy/falsy guessing, no `parseInt` landmines.
+
+## Zero required build step
+
+Skip the transformer and there's nothing to run before `build()` — every
+source is read, merged, and coerced at runtime, on every process start. Add
+`@rhombus-std/config.transformer` when (and only when) you want
+`.withType<T>()` to save you from writing `.withSchema({...})` yourself.
+
+---
+
+`@rhombus-std/config.transformer` is an optional add-on package.
+`@rhombus-std/config` doesn't depend on it, doesn't require it, and
+everything in this README except the transformer-specific sections works
+without it installed.
+
+Config should be the boring part of your app. Make it boring.
