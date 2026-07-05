@@ -86,10 +86,10 @@ services.add<IReportService>(ReportService).as<"request">();
 
 // ReportFactory holds a parameterized factory: `(log: ILogger) => IReport`.
 // The transformer sees the declared `log: ILogger` param and emits
-// `{ type: IReport-token, params: [ILogger-token] }`. At runtime the ILogger
-// slot of the IReport ctor is filled by the caller-supplied value (caller wins
-// over the registered ConsoleLogger), and a fresh IReport is built per call.
-// Request-scoped: the factory closure captures the request frame, so the
+// `{ type: IReport-token, params: [ILogger-token] }`. At runtime the DIRECT
+// ILogger slot of Report's ctor is filled by the caller-supplied value (caller
+// wins over the registered ConsoleLogger), and a fresh IReport is built per
+// call. Request-scoped: the factory closure captures the request frame, so the
 // IReport target's IUserRepo dep (request-scoped) resolves correctly.
 services.add<IReportFactory>(ReportFactory).as<"request">();
 

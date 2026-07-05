@@ -215,19 +215,24 @@ describe("factory injection e2e (transformer-emitted FactoryRef → di callable)
   });
 });
 
-// ── Coverage 4: declared factory params → caller-wins e2e ────────────────────
+// ── Coverage 4: declared factory params → caller-wins e2e, direct-slot-only ───
 //
 // ReportFactory holds `makeReport: (log: ILogger) => IReport`. The transformer
 // sees the declared `log: ILogger` param and emits
 // `{ type: IReport-token, params: [ILogger-token] }`.
 //
-// At runtime:
-//   - The ILogger ctor slot of IReport is filled by the caller-supplied value
-//     (caller wins over the registered ConsoleLogger).
+// Report has TWO paths to ILogger: a DIRECT `logger` ctor slot, and a
+// TRANSITIVE one two levels down — `repo` (IUserRepo) is `SqlUserRepo`, whose
+// own ctor also takes an `ILogger`. This sample proves caller-supplied
+// override is direct-slot-only (see the "Caller-supplied override is
+// direct-slot-only, not transitive" note in di's README):
+//   - Report's DIRECT `logger` slot receives the caller-supplied value.
+//   - SqlUserRepo's OWN ILogger slot — reached only via `repo`, never named in
+//     `params` — still resolves the registered ConsoleLogger.
 //   - Each call builds a FRESH IReport (parameterized factory bypasses the cache).
 
-describe("parameterized factory e2e — declared arg overrides registered service", () => {
-  test("caller-supplied ILogger wins over the registered ConsoleLogger; fresh instance per call", async () => {
+describe("parameterized factory e2e — declared arg overrides the DIRECT slot only", () => {
+  test("caller-supplied ILogger wins Report's direct slot; SqlUserRepo's transitive slot stays the registered default", async () => {
     const app = await project.load("sample/app.js");
     const rootScope = app.rootScope as () => {
       createScope: (n: string) => {
@@ -243,7 +248,7 @@ describe("parameterized factory e2e — declared arg overrides registered servic
     // The transformer emits the token for IReportFactory (request-scoped).
     const T_REPORT_FACTORY = "fnioc-integration-sample/src/sample/contracts:IReportFactory";
     const reportFactory = req.resolve<{
-      makeReport: (log: { lines: string[] }) => { repo: unknown };
+      makeReport: (log: { lines: string[] }) => { repo: { logger: unknown }; logger: unknown };
     }>(T_REPORT_FACTORY);
 
     // Caller-supplied custom logger — NOT the registered ConsoleLogger.
@@ -256,13 +261,15 @@ describe("parameterized factory e2e — declared arg overrides registered servic
     const r1 = reportFactory.makeReport(customLogger);
     const r2 = reportFactory.makeReport(customLogger);
 
-    // Report was built with the caller-supplied logger (verified by identity).
     const registeredLogger = root.resolve<{ lines: string[] }>(T_MAP.logger);
-    // The factory produced a valid Report (has a repo dep resolved from container).
-    expect((r1 as unknown as { repo: unknown }).repo).toBeDefined();
+    // Direct slot: Report's OWN logger is the caller-supplied value.
+    expect(r1.logger).toBe(customLogger);
+    // Transitive slot: SqlUserRepo's logger (reached via `repo`) was never
+    // named in `params` — it resolves the registered default, NOT the
+    // caller-supplied override.
+    expect(r1.repo.logger).toBe(registeredLogger);
+    expect(r1.repo.logger).not.toBe(customLogger);
     // Fresh instance per call (parameterized factory bypasses the cache).
     expect(r1).not.toBe(r2);
-    // The registered ConsoleLogger is not the caller-supplied one.
-    expect(registeredLogger).not.toBe(customLogger);
   });
 });

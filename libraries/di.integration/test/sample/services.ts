@@ -72,14 +72,18 @@ export class RequestContext implements IRequestContext {
 }
 
 /**
- * A request-scoped value object. Holds a repo dep resolved from the container.
- * Used in the `resolveFactory` integration tests via the parity test's
- * self-contained classes.
+ * A request-scoped value object. Holds a DIRECT `ILogger` slot alongside a repo
+ * dep resolved from the container — the two-slot shape the `ReportFactory`
+ * caller-override sample exercises: a caller-supplied `ILogger` binds to the
+ * `logger` slot HERE (a direct constructor slot of `Report`), but never reaches
+ * `SqlUserRepo`'s OWN `ILogger` slot two levels down (via `repo`) — the
+ * caller-supplied override is direct-slot-only, never transitive.
  */
 export class Report implements IReport {
   public static built = 0;
   public constructor(
     public readonly repo: IUserRepo,
+    public readonly logger: ILogger,
   ) {
     Report.built += 1;
   }
@@ -119,9 +123,12 @@ export class ConfigConsumer {
  *
  * The declared `log` parameter means the transformer emits `params: [ILogger token]`
  * on the FactoryRef. At runtime the engine routes the caller-supplied ILogger into
- * the IReport ctor's ILogger slot — even when ILogger is registered — and builds a
- * fresh IReport per call. This proves the declared-factory-args → caller-wins path
- * end-to-end through the real transformer and di engine.
+ * `Report`'s DIRECT `logger` ctor slot — even when ILogger is registered — and
+ * builds a fresh IReport per call. This proves the declared-factory-args →
+ * caller-wins path end-to-end through the real transformer and di engine — and,
+ * since `Report`'s OTHER slot (`repo`) reaches `ILogger` again two levels down
+ * (via `SqlUserRepo`), that the override reaches the direct slot ONLY: the
+ * repo's own logger stays the registered default.
  */
 export class ReportFactory implements IReportFactory {
   public constructor(

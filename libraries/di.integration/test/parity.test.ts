@@ -63,7 +63,7 @@ function buildHandFed(): ServiceManifest<"singleton" | "request"> {
   services.add(T.db, SqlDb).as("singleton");
   services.add(T.repo, SqlUserRepo, [[T.logger, T.db]]).as("request");
   services.add(T.ctx, RequestContext).as("request");
-  services.add(T.report, Report, [[T.repo]]).as("request");
+  services.add(T.report, Report, [[T.repo, T.logger]]).as("request");
   // ReportService's one inline factory param → FactoryRef slot, by hand:
   // a bare `() => IRequestContext`.
   services.add(T.reportService, ReportService, [[{ type: T.ctx }]]).as("request");

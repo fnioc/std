@@ -380,6 +380,23 @@ class RequestHandler {
 
 There are no Ramda-style placeholders. The factory's call arity is exactly the count of caller-supplied parameters; the caller never sees the full constructor shape.
 
+**Caller-supplied override is direct-slot-only, not transitive.** A caller-supplied
+value binds to a **direct constructor slot of the target itself** — it never
+reaches a dependency-of-a-dependency:
+
+```ts
+// UserRepo concrete: constructor(log: ILogger, db: IDb)
+// Report concrete:   constructor(repo: IUserRepo)  — no direct ILogger slot
+
+constructor(makeReport: (log: ILogger) => IReport) { ... }
+```
+
+If `Report`'s own constructor has no `ILogger` slot, a `log` param naming
+`ILogger` here has nothing to bind to — it's simply unclaimed, and `IUserRepo`
+(and, through it, `ILogger`) resolves normally from the container. Overriding a
+dependency two or more levels down the graph is a larger resolution-engine
+change, deliberately not pursued — plan for direct-slot overrides only.
+
 ### Lifetime semantics
 
 The injected factory is a closure captured at injection time, referencing the owning scope. How the target's instance is managed depends on whether the factory is parameterized:
