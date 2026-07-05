@@ -39,12 +39,11 @@
     "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {
-    "@rhombus-std/di": "workspace:^",
+    "@rhombus-std/di.core": "workspace:^",
     "typescript": ">=5.2"
   },
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di": "workspace:*",
     "ts-patch": "^3.3.0"
   },
   "publishConfig": {

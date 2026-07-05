@@ -161,8 +161,10 @@
     "libraries/di": {
       "name": "@rhombus-std/di",
       "version": "10.1.0",
+      "dependencies": {
+        "@rhombus-std/di.core": "workspace:^",
+      },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
       },
     },
@@ -190,12 +192,11 @@
         "@rhombus-toolkit/func": "3.5.3",
       },
       "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
         "ts-patch": "^3.3.0",
       },
       "peerDependencies": {
-        "@rhombus-std/di": "workspace:^",
+        "@rhombus-std/di.core": "workspace:^",
         "typescript": ">=5.2",
       },
     },
