@@ -3,6 +3,11 @@
 - **[decisions.md](decisions.md)** — running log of load-bearing design decisions &
   requirements. **Start here**, and append to it as decisions land.
 
+## reference
+- [ms-extensions-dependencies.md](reference/ms-extensions-dependencies.md) — the
+  Microsoft.Extensions.* package dependency graph (mermaid) we mirror; the authoritative
+  layering behind our package structure.
+
 Reference and design documents carried over from the pre-consolidation repos
 (`fnioc/ioc` → the **di** family, `fnioc/config` → the **config** family).
 
