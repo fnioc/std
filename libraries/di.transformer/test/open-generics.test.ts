@@ -323,7 +323,7 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     expect(output).not.toContain("defineDeps");
   });
 
-  test("per-scope authoring form threads through: addRequest(SqlRepo<$<1>>) with an explicit template token", () => {
+  test("open template registered at a non-singleton scope: add<IRepo<$<1>>>(SqlRepo<$<1>>).as<\"request\">()", () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -331,7 +331,7 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
         constructor(seed: T) {}
       }
       declare const services: any;
-      services.addRequest<IRepo<$<1>>>(SqlRepo<$<1>>);
+      services.add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"request">();
     `;
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);

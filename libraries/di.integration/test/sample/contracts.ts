@@ -71,8 +71,11 @@ export interface IConfigConsumer {
 /**
  * A service that holds a parameterized factory: `makeReport(log: ILogger) => IReport`.
  * The declared `log` param means the transformer emits `params: [ILogger token]`
- * on the FactoryRef, enabling caller-supplied override of the registered ILogger.
- * This is the integration sample for the declared-factory-args feature.
+ * on the FactoryRef, enabling caller-supplied override of `Report`'s DIRECT
+ * `logger` ctor slot. This is the integration sample for the declared-factory-args
+ * feature — and, since `Report` also has a repo dep that reaches `ILogger`
+ * transitively (via `SqlUserRepo`), for proving the override does NOT reach
+ * that transitive slot (see `Report` in services.ts).
  */
 export interface IReportFactory {
   readonly makeReport: (log: ILogger) => IReport;

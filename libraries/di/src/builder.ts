@@ -11,7 +11,7 @@
 // class-vs-factory.
 
 import type { DepSlot, Token } from "@rhombus-std/di.core";
-import type { AddBuilder, ScopeAddMethods, ScopeGuard, ServiceManifestBase } from "@rhombus-std/di.core";
+import type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { OpenTokenRegistrationError } from "./errors.js";
@@ -19,12 +19,10 @@ import { ServiceProvider } from "./scope.js";
 import { HOLE_PATTERN, isOpenToken, parseToken } from "./tokens.js";
 import type { ClassRegistration, Ctor, Factory, FactoryRegistration, OpenRegistration, Registration } from "./types.js";
 
-// The authoring TYPE-machinery — `ProperCase`, `ScopeAddAuthoring`,
-// `ScopeAddMethods`, `ValidScopes`, `AddBuilder`, `ScopeGuard`, the collection
-// interface `ServiceManifestBase`, and the `ServiceManifest`/`ServiceManifestCtor`
-// shapes — lives in the pure-types `@rhombus-std/di.core` package (the abstractions surface
-// a library author depends on). di imports it back via `import type` and its
-// runtime `ServiceManifestClass` implements the interface.
+// The authoring TYPE-machinery — `AddBuilder` and the collection interface
+// `ServiceManifestBase` — lives in the pure-types `@rhombus-std/di.core` package (the
+// abstractions surface a library author depends on). di imports it back via
+// `import type` and its runtime `ServiceManifestClass` implements the interface.
 
 /** Appends `value` to the list at `key`, creating the list on first use. */
 function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
@@ -57,10 +55,10 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  * ```
  *
  * NOTE: this is the IMPLEMENTATION class. The public `ServiceManifest` value + type
- * (exported below) wrap it so the per-scope `add${ProperCase<K>}` methods —
- * which a class declaration cannot express as mapped members — surface on the
- * type. The class stays exported so the `@rhombus-std/di.transformer` `declare module`
- * augmentation can merge its authored typings onto `interface ServiceManifestClass`.
+ * (exported below) wrap it purely so `new ServiceManifest<S>()` can carry a
+ * type parameter default. The class stays exported so the
+ * `@rhombus-std/di.transformer` `declare module` augmentation can merge its
+ * authored typings onto `interface ServiceManifestClass`.
  */
 export class ServiceManifestClass<Scopes extends string = "singleton">
   implements ServiceManifestBase<Scopes, ServiceProvider<Scopes>>
@@ -325,90 +323,23 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
 }
 
 /**
- * Install the per-scope `add${ProperCase<K>}` runtime dispatch ONCE at module
- * load, at the END of `ServiceManifestClass`'s prototype chain. A `Proxy` placed there
- * (its target is `Object.prototype`, the chain's real terminus) only ever sees a
- * `get`/`has` that MISSED the class's own prototype — so `add`, `addFactory`,
- * `addValue`, `build`, and any inherited `Object.prototype` member are untouched.
- * Only a genuinely-absent `add<Capital…>` lookup reaches the trap.
- *
- * Receiver fidelity: the `get` trap's `receiver` and the returned method's `this`
- * are the genuine `ServiceManifestClass` instance (not the proxy), so `#private` fields
- * resolve with zero gymnastics — the method just calls `this.add(...)`.
+ * The public registration-builder TYPE for di consumers — currently just the
+ * implementation class under its public name. Kept as its own alias (rather
+ * than exporting `ServiceManifestClass` itself as `ServiceManifest`) since the
+ * `@rhombus-std/di.transformer` augmentation merges its authored `add<I>()` forms
+ * onto `interface ServiceManifestClass`, and the alias is what carries those
+ * through to a consumer typing against `ServiceManifest<S>`.
  */
-const SCOPE_ADD = /^add[A-Z]/;
-
-Reflect.setPrototypeOf(
-  ServiceManifestClass.prototype,
-  new Proxy(Object.prototype, {
-    get(_target, prop, receiver) {
-      if (typeof prop === "string" && SCOPE_ADD.test(prop)) {
-        const scope = prop[3]!.toLowerCase() + prop.slice(4);
-        return function(this: ServiceManifestClass<string>, ...args: unknown[]): void {
-          // Mirror `add()`'s guard: only the `(token, ctor)` / `(token, ctor,
-          // signatures)` runtime forms execute. A single-arg authored call
-          // (`addRequest(C)`) only exists post-transform; hand-writing it
-          // without @rhombus-std/di.transformer is a misuse.
-          if (
-            (args.length !== 2 && args.length !== 3)
-            || typeof args[0] !== "string"
-          ) {
-            throw new TypeError(
-              `${prop}<I>(ctor) / ${prop}<I>(factory) require the @rhombus-std/di.transformer `
-                + `plugin. Without it, register with an explicit token: `
-                + `${prop}("my:token", MyClass).`,
-            );
-          }
-          this.add(
-            args[0],
-            args[1] as Ctor,
-            args[2] as readonly (readonly DepSlot[])[] | undefined,
-          ).as(scope);
-        };
-      }
-      return Reflect.get(Object.prototype, prop, receiver);
-    },
-    has(_target, prop) {
-      return (
-        (typeof prop === "string" && SCOPE_ADD.test(prop))
-        || Reflect.has(Object.prototype, prop)
-      );
-    },
-  }),
-);
+export type ServiceManifest<S extends string = "singleton"> = ServiceManifestClass<S>;
 
 /**
- * The public registration-builder TYPE for di consumers: the implementation
- * class intersected with the per-scope methods minted from `S`. A type alias
- * (not an interface) because an interface cannot extend a generic MAPPED type,
- * and `ScopeAddMethods` is one.
- *
- * The `ServiceManifestClass<S>` arm (not core's `ServiceManifestBase`) is
- * deliberate: it carries di's concrete `build(): ServiceProvider<S>` AND is the
- * interface the `@rhombus-std/di.transformer` augmentation merges its authored `add<I>()`
- * forms onto, so the alias picks those up through this arm. `ScopeAddMethods`
- * comes from the pure-types `@rhombus-std/di.core`. (core's own `ServiceManifest` alias is
- * the provider-agnostic LIBRARY-AUTHOR view — no di class, no transformer forms.)
- */
-export type ServiceManifest<S extends string = "singleton"> =
-  & ServiceManifestClass<S>
-  & ScopeAddMethods<S>;
-
-/**
- * The static / constructor side of the public `ServiceManifest`. Extracted as an
- * interface so the value export can carry the `ValidScopes` guard on its type
- * parameter: `new ServiceManifest<S>()` only type-checks when `S` is a valid scope
- * union (lowercase-first, no collision with `add`/`addFactory`/`addValue`). It
- * returns di's provider-bound `ServiceManifest<S>`.
+ * The static / constructor side of the public `ServiceManifest`. Extracted as
+ * an interface purely so the value export below has a name to carry —
+ * `new ServiceManifest<S>()` just constructs a `ServiceManifestClass<S>`.
  */
 export interface ServiceManifestCtor {
-  new<S extends string = "singleton">(...guard: ScopeGuard<S>): ServiceManifest<S>;
+  new<S extends string = "singleton">(): ServiceManifest<S>;
 }
 
-/**
- * The public registration-builder VALUE. It IS `ServiceManifestClass` at runtime (the
- * cast only re-types its construct signature to carry the `ValidScopes` guard
- * and the per-scope method surface). `new ServiceManifest<...>()` behaves identically;
- * the wrapper exists purely so the mapped per-scope methods type-check.
- */
-export const ServiceManifest: ServiceManifestCtor = ServiceManifestClass as unknown as ServiceManifestCtor;
+/** The public registration-builder VALUE. It IS `ServiceManifestClass`. */
+export const ServiceManifest: ServiceManifestCtor = ServiceManifestClass;

@@ -25,15 +25,7 @@ export type { ServiceManifestCtor } from "./builder.js";
 // abstractions surface a library author depends on). Re-exported here so a di
 // consumer reaches the whole authoring surface through the single @rhombus-std/di
 // import, exactly as before the split.
-export type {
-  AddBuilder,
-  ProperCase,
-  ScopeAddAuthoring,
-  ScopeAddMethods,
-  ScopeGuard,
-  ServiceManifestBase,
-  ValidScopes,
-} from "@rhombus-std/di.core";
+export type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 
 export { Scope, ServiceProvider } from "./scope.js";
 

@@ -35,7 +35,7 @@ scopes — a third custom tag, and TRANSIENT (no matching open frame):
   operation id distinct across sibling frames: true (value 2)
   same registration, no open "operation" frame here => transient: true
   class registration proof — resolved instance really is a Greeter: true
-  per-scope addRequest(...) authoring still isolates correctly: true
+  request-scoped registration isolates correctly: true
 tokenless addFactory<I>(fn) [HEADLINE]:
   welcome banner built via factory: Welcome! (as of 2026-01-01T00:00:00Z)
 addValue<I>(v) — a pre-built instance, no construction step:
