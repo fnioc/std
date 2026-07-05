@@ -7,6 +7,7 @@
 - [ms-extensions-dependencies.md](reference/ms-extensions-dependencies.md) — the
   Microsoft.Extensions.* package dependency graph (mermaid) we mirror; the authoritative
   layering behind our package structure.
+  ([lite](reference/ms-extensions-dependencies-lite.md) — same graph, provider/sink leaves dropped.)
 
 Reference and design documents carried over from the pre-consolidation repos
 (`fnioc/ioc` → the **di** family, `fnioc/config` → the **config** family).
