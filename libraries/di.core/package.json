@@ -19,6 +19,7 @@
   "exports": {
     ".": {
       "source": "./src/index.ts",
+      "built": "./dist/index.d.ts",
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     }

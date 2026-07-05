@@ -11,11 +11,11 @@
 // class-vs-factory.
 
 import type { DepSlot, Token } from "@rhombus-std/di.core";
-import type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
+import type { AddBuilder, ServiceManifestBase, ServiceProvider } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { OpenTokenRegistrationError } from "./errors.js";
-import { ServiceProvider } from "./scope.js";
+import { ServiceProviderClass } from "./scope.js";
 import { HOLE_PATTERN, isOpenToken, parseToken } from "./tokens.js";
 import type { ClassRegistration, Ctor, Factory, FactoryRegistration, OpenRegistration, Registration } from "./types.js";
 
@@ -314,7 +314,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     }
     Object.freeze(sealedOpen);
 
-    return new ServiceProvider<Scopes>(
+    return new ServiceProviderClass<Scopes>(
       sealed as ReadonlyMap<Token, Registration[]>,
       sealedOpen as ReadonlyMap<Token, readonly OpenRegistration[]>,
       new Map<Token, Registration>(),
@@ -323,14 +323,19 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
 }
 
 /**
- * The public registration-builder TYPE for di consumers — currently just the
- * implementation class under its public name. Kept as its own alias (rather
- * than exporting `ServiceManifestClass` itself as `ServiceManifest`) since the
- * `@rhombus-std/di.transformer` augmentation merges its authored `add<I>()` forms
- * onto `interface ServiceManifestClass`, and the alias is what carries those
- * through to a consumer typing against `ServiceManifest<S>`.
+ * The public registration-builder TYPE for di consumers — the `ServiceManifestBase`
+ * INTERFACE (from `@rhombus-std/di.core`), bound to the concrete provider the
+ * `build()` returns. Interface-first (not the impl class) so the
+ * `@rhombus-std/di.transformer` augmentation — which merges the authored
+ * `add<I>()` / `.as<"scope">()` forms onto core's `ScopeAddAuthoring` carrier
+ * that `ServiceManifestBase` extends — surfaces on a consumer typing against
+ * `ServiceManifest<S>`. A class would not inherit those augmented overloads; the
+ * interface does.
  */
-export type ServiceManifest<S extends string = "singleton"> = ServiceManifestClass<S>;
+export type ServiceManifest<S extends string = "singleton"> = ServiceManifestBase<
+  S,
+  ServiceProvider<S>
+>;
 
 /**
  * The static / constructor side of the public `ServiceManifest`. Extracted as

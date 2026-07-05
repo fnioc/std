@@ -1,24 +1,38 @@
-// Type-only authoring surface contributed to `@rhombus-std/di` by the transformer.
+// Type-only authoring surface contributed to `@rhombus-std/di.core` by the transformer.
 //
 // These generic, token-free forms (`add<I>(C)`, `add<I>(fn)`, `addValue<I>(v)`,
 // `.as<"scope">()`, `resolve<T>()`) NEVER execute: the @rhombus-std/di.transformer
 // rewrites every such call to its explicit-token / value-arg form before
 // runtime. They are therefore PURE TYPINGS, and they live here rather than in
-// di's published types so that the authoring surface lights up only when the
+// core's published types so that the authoring surface lights up only when the
 // transformer is in the TypeScript program. Without the transformer, these
-// forms don't exist on di's surface — which is the truth at runtime tool-free,
+// forms don't exist on the surface — which is the truth at runtime tool-free,
 // and which kills the "compiles but throws at runtime" footgun.
+//
+// The augmentation DECLARATION-MERGES onto `@rhombus-std/di.core`'s public
+// interfaces — `ServiceManifestBase` (registration forms), `AddBuilder` (the
+// `.as` form), and `Resolver` (the tokenless resolve forms). Because di's
+// consumer-facing types are those interfaces (interface-first: `ServiceManifest`
+// = `ServiceManifestBase<…>`, and the public provider is the `ServiceProvider`
+// interface that extends `Resolver`), the merged overloads surface on what a
+// consumer holds — an interface inherits a base interface's merged overloads; a
+// class would not. Declaration merging (adding overloads to the SAME interface)
+// is used rather than a separate carrier + `extends`, because the runtime forms
+// (`add(token, ctor, sig)`, `.as(scope)`, `resolve<T>(token)`) require MORE args
+// than the authored forms, and `extends` would reject the narrower authored
+// signature as incompatible — merging composes them as overloads instead. This
+// is why the transformer depends on `@rhombus-std/di.core` ALONE — it never
+// references di's runtime classes.
 //
 // This module must be reachable from @rhombus-std/di.transformer's published types entry
 // (it is `import`ed for its side effect from `./index.ts`) so that a consumer
 // referencing `@rhombus-std/di.transformer` pulls the augmentation into its program.
 
 import type { Ctor, Func } from "@rhombus-toolkit/func";
-// Side-effect type import: makes @rhombus-std/di a known module in this program so
-// the `declare module "@rhombus-std/di"` block below is treated as an augmentation
-// (extending the package's types) rather than an ambient module declaration.
-// No symbols are imported — the import exists solely to anchor the augmentation.
-import type {} from "@rhombus-std/di";
+// The `AddBuilder<Scopes>` continuation type the registration forms return. A
+// named import (not a member reference inside the augmentation block) because
+// unqualified names in a `declare module` body resolve in THIS file's scope.
+import type { AddBuilder } from "@rhombus-std/di.core";
 
 // Re-export the authoring brand types so transformer consumers can use
 // `Inject<T, "tok">`, the open-generics placeholders (`Hole<N, C>`, `$<N>`)
@@ -36,11 +50,12 @@ export type {
   Typeof,
 } from "@rhombus-std/di.core";
 
-declare module "@rhombus-std/di" {
-  // The authoring forms merge onto the IMPLEMENTATION class `ServiceManifestClass`
-  // — the public `ServiceManifest` is a type alias for it, so the alias picks
-  // these up automatically.
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+declare module "@rhombus-std/di.core" {
+  // The type-driven registration forms merge onto core's `ServiceManifestBase`
+  // interface — which the public `ServiceManifest` (`= ServiceManifestBase<…>`) a
+  // consumer holds resolves to. `Provider` is defaulted so the merge matches the
+  // interface's type-parameter list.
+  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
     /**
      * Type-driven class authoring — lowers to `add("token", C)`. The ctor is
      * typed `Ctor<any[], I>` (a plain construct signature, so an abstract class
@@ -87,6 +102,8 @@ declare module "@rhombus-std/di" {
     addValue<I>(value: I): void;
   }
 
+  // The authored lifetime form merges onto core's `AddBuilder` interface — the
+  // continuation the registration forms return.
   interface AddBuilder<Scopes extends string> {
     /**
      * The AUTHORED lifetime form — `.as<"singleton">()`. The scope name is a
@@ -97,6 +114,11 @@ declare module "@rhombus-std/di" {
     as<S extends Scopes>(): void;
   }
 
+  // The tokenless resolve forms merge onto core's `Resolver` interface — so both
+  // a factory parameter typed `Resolver` and the `ServiceProvider` interface a
+  // consumer holds (which extends `Resolver`) surface them. The public provider
+  // being an INTERFACE (not the impl class) is what makes this work: an interface
+  // inherits its base interface's merged overloads; a class would not.
   interface Resolver {
     /**
      * Tokenless authored resolve — `resolve<IFoo>()`. The transformer lowers it
@@ -110,14 +132,6 @@ declare module "@rhombus-std/di" {
      * Zero-param form `resolve<() => T>()` lowers to `resolveFactory("T-token")`.
      * Never runs post-transform.
      */
-    resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
-  }
-
-  // A class does NOT inherit interface overloads, so `sp.resolve<I>()` needs
-  // the tokenless form merged onto the `ServiceProvider` class itself, not just
-  // the structural `Resolver` it implements.
-  interface ServiceProvider<S extends string> {
-    resolve<T>(): T;
     resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
   }
 }

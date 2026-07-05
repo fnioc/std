@@ -17,8 +17,13 @@
  *   - `OverloadedParameters` / `OverloadedConstructorParameters` — overload-faithful
  *     parameter-tuple unions (every overload, not just the last)
  *   - the authoring surface: `ServiceManifest`, `ServiceManifestBase`,
- *     `AddBuilder` — `ServiceManifestCtor` (the runtime construct signature)
- *     lives in `@rhombus-std/di` instead.
+ *     `AddBuilder` — the type-driven authoring forms are declaration-merged onto
+ *     these interfaces by `@rhombus-std/di.transformer`; `ServiceManifestCtor` (the
+ *     runtime construct signature) lives in `@rhombus-std/di` instead.
+ *   - the public provider surface: `ServiceProvider` (the abstractions seam a
+ *     consumer holds, mirroring MEDI's `IServiceProvider`) plus the `Resolver`
+ *     and `ScopeFactory` seams it composes, the deprecated `ResolveScope`, and
+ *     the `Lifetime` tag. The concrete impl class lives in `@rhombus-std/di`.
  */
 
 export type {
@@ -45,3 +50,11 @@ export type {
   ServiceManifest,
   ServiceManifestBase,
 } from "./authoring.js";
+
+export type {
+  Lifetime,
+  ResolveScope,
+  Resolver,
+  ScopeFactory,
+  ServiceProvider,
+} from "./provider.js";

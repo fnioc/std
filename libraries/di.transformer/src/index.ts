@@ -10,10 +10,10 @@
 // `{ type: "<token>" }` slots) and emits the factory-signature and
 // token-derivation diagnostics (see `deps.ts` + `checks.ts`).
 
-// The type-only authoring surface this transformer contributes to `@rhombus-std/di`
+// The type-only authoring surface this transformer contributes to `@rhombus-std/di.core`
 // (`add<I>(C)`, `.as<"x">()`, `resolve<T>()`, …). Side-effect import: it carries
-// a `declare module "@rhombus-std/di"` augmentation that must enter the program of any
-// consumer that references `@rhombus-std/di.transformer`'s types.
+// a `declare module "@rhombus-std/di.core"` augmentation that must enter the program of
+// any consumer that references `@rhombus-std/di.transformer`'s types.
 import "./augment.js";
 
 // The overload-faithful parameter-tuple utilities, re-exported so a consumer can

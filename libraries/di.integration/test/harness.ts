@@ -93,13 +93,20 @@ export function compileWithTransformer(files: SampleFiles): CompiledProject {
         skipLibCheck: true,
         noEmitOnError: false,
         experimentalDecorators: false,
-        // Pull in @rhombus-std/di.transformer's `declare module "@rhombus-std/di"` augmentation
-        // so the sample's type-driven authoring forms (`add<I>(C)`, `.as<"x">()`)
-        // type-check. di's published types no longer carry these token-free
-        // forms — they exist only when the transformer is in the program, which
-        // is exactly the setup tspc compiles here. The temp project links no
-        // ambient @types, so restricting `types` to the transformer is safe.
+        // Pull in @rhombus-std/di.transformer's `declare module "@rhombus-std/di.core"`
+        // augmentation so the sample's type-driven authoring forms (`add<I>(C)`,
+        // `.as<"x">()`) type-check. di's published types no longer carry these
+        // token-free forms — they exist only when the transformer is in the
+        // program, which is exactly the setup tspc compiles here. The temp project
+        // links no ambient @types, so restricting `types` to the transformer is safe.
         types: ["@rhombus-std/di.transformer"],
+        // Resolve @rhombus-std/di + @rhombus-std/di.core to their BUILT `.d.ts` (the
+        // `built` export condition). Under the transformer augmentation, di's
+        // SOURCE cannot co-compile (the impl classes can't satisfy the interfaces
+        // once the authored 0-arg forms merge in) — a real consumer holds di's
+        // built types and augments the core interface on top. di/di.core must be
+        // built; the linked packages already need di's dist to run the output.
+        customConditions: ["built"],
         plugins: [{ transform: "@rhombus-std/di.transformer", import: "transform" }],
       },
       include: ["src/**/*"],

@@ -100,6 +100,10 @@ services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
         target: "ES2022",
         module: "ESNext",
         moduleResolution: "Bundler",
+        // ESNext.Disposable supplies the global `Disposable`/`AsyncDisposable`
+        // the `@rhombus-std/di.core` `ServiceProvider` interface extends — this
+        // temp project compiles core's source, so it needs the lib.
+        lib: ["ES2022", "ESNext.Disposable"],
         strict: true,
         outDir: "dist",
         rootDir: "src",

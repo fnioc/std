@@ -10,7 +10,7 @@
     // the declared file list" check (TS6307) fires the moment an out-of-tree
     // file is reachable, so this must be off here too.
     "composite": false,
-    // `@rhombus-std/di.transformer` is listed so its `declare module "@rhombus-std/di"`
+    // `@rhombus-std/di.transformer` is listed so its `declare module "@rhombus-std/di.core"`
     // augmentation (the type-only authoring forms `add<I>(C)`, `.as<"x">()`,
     // `resolve<T>()`) enters this program — the sample wiring authors those
     // forms and the transformer lowers them at build time, but plain `tsc` (the
@@ -22,12 +22,15 @@
     // `noUncheckedIndexedAccess` here keeps the assertions readable without
     // `!`-littering every token lookup; the production packages keep it on.
     "noUncheckedIndexedAccess": false,
-    // Resolve @rhombus-std/di to its source tree for live cross-package typechecking.
-    // Without this, tsc follows the package.json "types" field which points at
-    // the built dist — meaning a source edit in di is invisible here until dist
-    // is rebuilt. The "source" condition routes @rhombus-std/di to its src/index.ts
-    // so edits reflect immediately without a rebuild step.
-    "customConditions": ["source"]
+    // Resolve @rhombus-std/di + @rhombus-std/di.core to their BUILT `.d.ts` (the
+    // `built` export condition), NOT source. This program pulls in the transformer
+    // augmentation (see `types` above), and di's SOURCE cannot co-compile under it
+    // — the impl classes can't satisfy the interfaces once the authored 0-arg forms
+    // are merged in. A real consumer holds di's built types and augments the
+    // `@rhombus-std/di.core` interface on top; consuming built types here reproduces
+    // that. Requires di/di.core built first (the harness already needs di's dist to
+    // run the lowered output, so dist is a prerequisite regardless).
+    "customConditions": ["built"]
   },
   "include": ["test/**/*"]
 }
