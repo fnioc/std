@@ -1,5 +1,5 @@
 {
-  "name": "@rhombus-std/config.integration",
+  "name": "@rhombus-std/config.tests.integration",
   "private": true,
   "version": "0.0.0",
   "description": "End-to-end integration tests against the BUILT DIST of @rhombus-std/config + the three provider packages. Proves the ConfigurationBuilder add* augmentation survives bundling -- the one place a sideEffects/tree-shaking or rollup-plugin-dts regression would surface. Not published.",

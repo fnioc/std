@@ -1,5 +1,5 @@
 {
-  "name": "@rhombus-std/di.integration",
+  "name": "@rhombus-std/di.tests.integration",
   "private": true,
   "version": "0.0.0",
   "description": "End-to-end integration tests: transformer-compiled output running against the di engine, plus progressive-enhancement parity. Not published.",
