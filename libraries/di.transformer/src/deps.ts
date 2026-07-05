@@ -157,22 +157,22 @@ export function isTypeArgSlot(slot: Slot): slot is TypeArgSlot {
  *   - both are type-arg refs with the same hole number
  */
 export function slotsEqual(a: Slot, b: Slot): boolean {
-  if (a === b) return true;
-  if (typeof a === "string" || typeof b === "string") return false;
-  if (isScopeSlot(a) && isScopeSlot(b)) return true;
-  if (isTypeArgSlot(a) && isTypeArgSlot(b)) return a.typeArg === b.typeArg;
+  if (a === b) {return true;}
+  if (typeof a === "string" || typeof b === "string") {return false;}
+  if (isScopeSlot(a) && isScopeSlot(b)) {return true;}
+  if (isTypeArgSlot(a) && isTypeArgSlot(b)) {return a.typeArg === b.typeArg;}
   if (isFactorySlot(a) && isFactorySlot(b)) {
-    if (a.type !== b.type) return false;
+    if (a.type !== b.type) {return false;}
     const ap = a.params ?? [];
     const bp = b.params ?? [];
-    if (ap.length !== bp.length) return false;
+    if (ap.length !== bp.length) {return false;}
     return ap.every((p, i) => p === bp[i]);
   }
   if (isUnionSlot(a) && isUnionSlot(b)) {
-    if (a.union.length !== b.union.length) return false;
+    if (a.union.length !== b.union.length) {return false;}
     return a.union.every((s, i) => slotsEqual(s, b.union[i]!));
   }
-  if (isLiteralSlot(a) && isLiteralSlot(b)) return a.value === b.value;
+  if (isLiteralSlot(a) && isLiteralSlot(b)) {return a.value === b.value;}
   return false;
 }
 
@@ -223,10 +223,10 @@ export function extractFromExpression(
 ): ConstructorExtraction | undefined {
   const symbol = ctx.checker.getSymbolAtLocation(expr);
   const resolved = symbol && aliasTarget(symbol, ctx.checker);
-  if (!resolved) return undefined;
+  if (!resolved) {return undefined;}
 
   const classDecl = classDeclarationOf(resolved);
-  if (!classDecl) return undefined;
+  if (!classDecl) {return undefined;}
 
   const signatures = extractSignatureFromClass(classDecl, ctx);
   return { classSymbol: resolved, signatures };
@@ -265,7 +265,7 @@ export function extractSignatureFromClass(
   ctx: DepContext,
 ): Signature[] {
   const ctors = classDecl.members.filter(ts.isConstructorDeclaration);
-  if (!ctors.length) return [[]];
+  if (!ctors.length) {return [[]];}
 
   // Bodyless overload declarations, if any, are the caller-visible signatures.
   const declaredOverloads = ctors.filter((c) => c.body === undefined);
@@ -340,7 +340,7 @@ function expandRestParam(
       const tail = tupleElementSlots(member, rest, ctx);
       // A non-tuple union member (a mixed union) is not overload-shaped — bail so
       // the whole rest keeps its opaque slot rather than emit a partial fan-out.
-      if (tail === undefined) return undefined;
+      if (tail === undefined) {return undefined;}
       tails.push(tail);
     }
     return tails.length ? tails : undefined;
@@ -362,7 +362,7 @@ function tupleElementSlots(
   anchor: ts.ParameterDeclaration,
   ctx: DepContext,
 ): Slot[] | undefined {
-  if (!ctx.checker.isTupleType(type)) return undefined;
+  if (!ctx.checker.isTupleType(type)) {return undefined;}
   const reference = type as ts.TypeReference;
   const elementFlags = (reference.target as ts.TupleType).elementFlags ?? [];
   if (
@@ -418,14 +418,14 @@ function extractParamSlot(
   const rawType = typeOverride ?? ctx.checker.getTypeAtLocation(param);
 
   // 1. A `ResolveScope`-typed parameter is the live scope, not a token.
-  if (isResolveScopeType(rawType)) return { scope: true };
+  if (isResolveScopeType(rawType)) {return { scope: true };}
 
   // 1.5. A `Typeof<T>`-typed parameter receives the token STRING of a
   //      registration type argument: a Hole binding stays an open
   //      `{ typeArg: N }` slot; a concrete binding closes to its derived token
   //      as a literal value slot.
   const typeArgSlot = typeArgSlotFor(rawType, param, ctx);
-  if (typeArgSlot !== undefined) return typeArgSlot;
+  if (typeArgSlot !== undefined) {return typeArgSlot;}
 
   // 2. Check for the Inject<T, "tok"> brand. A brand on the WHOLE (single,
   //    non-nullish, non-union) param type wins unconditionally and short-circuits
@@ -437,7 +437,7 @@ function extractParamSlot(
   //    brand on each member first).
   if (!isOptionalParam(param, ctx, typeOverride) && !isMultiMemberUnion(rawType)) {
     const brandedToken = injectTokenFor(rawType, ctx.checker);
-    if (brandedToken !== undefined) return brandedToken;
+    if (brandedToken !== undefined) {return brandedToken;}
   }
 
   // Optional in any form (`x?`, `= default`, `x: X | undefined`/`| void`): the
@@ -449,13 +449,13 @@ function extractParamSlot(
     const members = nonNullishMemberSlots(param, ctx, typeOverride);
     // A whole-type `undefined` / `void` param has no non-nullish core — it IS the
     // undefined value, so emit the bare LiteralRef (the union would be redundant).
-    if (!members.length) return { value: undefined };
+    if (!members.length) {return { value: undefined };}
     return { union: [...members, { value: undefined }] };
   }
 
   // 3. Inline factory (syntactic: annotation is a FunctionTypeNode).
   const factory = factorySlotFor(param, ctx, typeOverride);
-  if (factory) return factory;
+  if (factory) {return factory;}
 
   // 4. Inline union (syntactic: annotation is a UnionTypeNode). A `| null` member
   //    survives (lowered to `{ value: null }` by extractParamSlotFromTypeNode);
@@ -500,11 +500,11 @@ function extractParamSlot(
   // whole-type singletons `null` (→ null). `void` / `undefined` as a whole type
   // are optional (handled above). A UNION returns undefined here.
   const singleton = singletonValue(type);
-  if (singleton) return { value: singleton.value };
+  if (singleton) {return { value: singleton.value };}
 
   const failure: DeriveFailure = {};
   const result = tokenForType(type, ctx, failure);
-  if (result !== undefined) return result.token;
+  if (result !== undefined) {return result.token;}
 
   // 6. Hard error: no derivable token and no Inject brand. An unbound type
   //    parameter gets the sharper diagnostic — the fix is an instantiation
@@ -545,16 +545,16 @@ function typeArgSlotFor(
   ctx: DepContext,
 ): Slot | undefined {
   const symbol = type.aliasSymbol ?? type.getSymbol();
-  if (symbol?.getName() !== TYPE_ARG_TOKEN_NAME) return undefined;
+  if (symbol?.getName() !== TYPE_ARG_TOKEN_NAME) {return undefined;}
   const binding = type.aliasTypeArguments?.[0];
-  if (!binding) return undefined;
+  if (!binding) {return undefined;}
 
   const hole = holeNumberFor(binding, ctx.checker);
-  if (hole !== undefined) return { typeArg: hole };
+  if (hole !== undefined) {return { typeArg: hole };}
 
   const failure: DeriveFailure = {};
   const token = deriveToken(binding, ctx, failure);
-  if (token !== undefined) return { value: token };
+  if (token !== undefined) {return { value: token };}
 
   ctx.sink.addDiagnostic(
     failure.unboundTypeParameter
@@ -589,7 +589,7 @@ function overrideMatchesSyntacticUnion(
   override: ts.Type | undefined,
   memberCount: number,
 ): boolean {
-  if (override === undefined) return true;
+  if (override === undefined) {return true;}
   return override.isUnion() && override.types.length === memberCount;
 }
 
@@ -610,7 +610,7 @@ function unionMemberOverrides(
     { length: memberCount },
     () => undefined,
   );
-  if (!override || !override.isUnion()) return none;
+  if (!override || !override.isUnion()) {return none;}
   const members = stripUndefinedAndVoid
     ? override.types.filter(
       (t) => !(t.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)),
@@ -648,7 +648,7 @@ function nonNullishMemberSlots(
   // Wide `boolean | undefined` is explicitly excluded by `literalUnionTokenForOptional`
   // and falls through here so the annotation-based path below yields `"boolean"`.
   const literalUnion = literalUnionTokenForOptional(rawType);
-  if (literalUnion !== undefined) return [literalUnion];
+  if (literalUnion !== undefined) {return [literalUnion];}
 
   const core = nonNullish(rawType);
   const typeNode = param.type;
@@ -677,16 +677,16 @@ function nonNullishMemberSlots(
   }
   // No inline union: derive the single non-nullish slot from the resolved type.
   // A whole-type `undefined` / `void` has no non-nullish core at all.
-  if (core.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) return [];
+  if (core.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {return [];}
   // The Inject brand on the (nullish-stripped) core survives — `x?:
   // Inject<T,K>` must keep its branded token, not derive structurally.
   const brandedCore = injectTokenFor(core, ctx.checker);
-  if (brandedCore !== undefined) return [brandedCore];
+  if (brandedCore !== undefined) {return [brandedCore];}
   // Likewise a `tok?: Typeof<T>` keeps its type-arg slot.
   const typeArgSlot = typeArgSlotFor(core, param, ctx);
-  if (typeArgSlot !== undefined) return [typeArgSlot];
+  if (typeArgSlot !== undefined) {return [typeArgSlot];}
   const singleton = singletonValue(core);
-  if (singleton) return [{ value: singleton.value }];
+  if (singleton) {return [{ value: singleton.value }];}
   // `nonNullish` can only collapse a union when a SINGLE non-nullish member
   // survives. When two non-nullish members survive (e.g. `false | true` from
   // `boolean | undefined`), `core` is still the original union, and
@@ -697,7 +697,7 @@ function nonNullishMemberSlots(
   if (core === rawType && typeNode && !ts.isUnionTypeNode(typeNode)) {
     const nodeType = ctx.checker.getTypeFromTypeNode(typeNode);
     const nodeResult = tokenForType(nodeType, ctx);
-    if (nodeResult !== undefined) return [nodeResult.token];
+    if (nodeResult !== undefined) {return [nodeResult.token];}
   }
   const result = tokenForType(core, ctx);
   return result !== undefined ? [result.token] : [];
@@ -717,18 +717,18 @@ function extractParamSlotFromTypeNode(
   // Check for Inject brand on the resolved type of this member.
   const memberType = memberOverride ?? ctx.checker.getTypeFromTypeNode(typeNode);
   const brandedToken = injectTokenFor(memberType, ctx.checker);
-  if (brandedToken !== undefined) return brandedToken;
+  if (brandedToken !== undefined) {return brandedToken;}
 
   // A `Typeof<T>` union member keeps its type-arg slot.
   const typeArgSlot = typeArgSlotFor(memberType, parentParam, ctx);
-  if (typeArgSlot !== undefined) return typeArgSlot;
+  if (typeArgSlot !== undefined) {return typeArgSlot;}
 
   // Nested factory: an inline function type node within a union member.
   if (ts.isFunctionTypeNode(typeNode)) {
     const signature = ctx.checker.getSignatureFromDeclaration(typeNode);
     if (signature) {
       const token = tokenForReturnType(signature, ctx);
-      if (token !== undefined) return { type: token };
+      if (token !== undefined) {return { type: token };}
     }
   }
 
@@ -748,12 +748,12 @@ function extractParamSlotFromTypeNode(
 
   // Rule 2: a SINGULAR member supplies its value directly (LiteralRef).
   const singleton = singletonValue(memberType);
-  if (singleton) return { value: singleton.value };
+  if (singleton) {return { value: singleton.value };}
 
   // Normal derivation (from the resolved member type — the instantiated
   // override when present, the node's own type otherwise).
   const token = tokenForType(memberType, ctx)?.token;
-  if (token !== undefined) return token;
+  if (token !== undefined) {return token;}
 
   // Hard error for this union member.
   ctx.sink.addDiagnostic(
@@ -789,29 +789,29 @@ function slotForType(
   ctx: DepContext,
 ): Slot {
   // 1. A `ResolveScope`-typed element is the live scope, not a token.
-  if (isResolveScopeType(type)) return { scope: true };
+  if (isResolveScopeType(type)) {return { scope: true };}
 
   // 2. A `Typeof<T>` element receives a type-arg slot (open hole) or its closed token.
   const typeArgSlot = typeArgSlotFor(type, anchor, ctx);
-  if (typeArgSlot !== undefined) return typeArgSlot;
+  if (typeArgSlot !== undefined) {return typeArgSlot;}
 
   // 3. Optional element (`B?`), or a type admitting `undefined`/`void`: the
   //    non-nullish slot(s) first, a `{ value: undefined }` fallback appended LAST.
   if (optional || typeIncludesUndefinedOrVoid(type)) {
     const members = nonNullishTypeSlots(type, anchor, ctx);
-    if (!members.length) return { value: undefined };
+    if (!members.length) {return { value: undefined };}
     return { union: [...members, { value: undefined }] };
   }
 
   // 4. Inject<T,"tok"> brand — on a single (non-multi-member-union) type only.
   if (!isMultiMemberUnion(type)) {
     const brandedToken = injectTokenFor(type, ctx.checker);
-    if (brandedToken !== undefined) return brandedToken;
+    if (brandedToken !== undefined) {return brandedToken;}
   }
 
   // 5. Inline function type → a factory ref (callable, not constructable, anonymous).
   const factory = factorySlotForType(type, ctx);
-  if (factory !== undefined) return factory;
+  if (factory !== undefined) {return factory;}
 
   // 6. Inline (anonymous) union → a UnionSlot. A named union alias, a pure-literal
   //    union (`"a" | "b"`), and the wide `boolean` all tokenize whole at step 7.
@@ -827,11 +827,11 @@ function slotForType(
 
   // 7. Rule 2 singleton (`"dev"` / `42` / `true` / `1n`) → a literal value slot.
   const singleton = singletonValue(type);
-  if (singleton) return { value: singleton.value };
+  if (singleton) {return { value: singleton.value };}
 
   // 7b. Normal token derivation.
   const result = tokenForType(type, ctx);
-  if (result !== undefined) return result.token;
+  if (result !== undefined) {return result.token;}
 
   // 8. Hard error: no derivable token and no Inject brand.
   ctx.sink.addDiagnostic(
@@ -859,7 +859,7 @@ function nonNullishTypeSlots(
   ctx: DepContext,
 ): Slot[] {
   const literalUnion = literalUnionTokenForOptional(type);
-  if (literalUnion !== undefined) return [literalUnion];
+  if (literalUnion !== undefined) {return [literalUnion];}
   if (type.isUnion()) {
     const kept = type.types.filter(
       (t) => !(t.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)),
@@ -873,7 +873,7 @@ function nonNullishTypeSlots(
     }
     return kept.map((t) => slotForType(t, false, anchor, ctx));
   }
-  if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) return [];
+  if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {return [];}
   return [slotForType(type, false, anchor, ctx)];
 }
 
@@ -889,15 +889,15 @@ function factorySlotForType(
   type: ts.Type,
   ctx: DepContext,
 ): FactorySlot | undefined {
-  if (type.getConstructSignatures().length) return undefined;
+  if (type.getConstructSignatures().length) {return undefined;}
   const callSignatures = type.getCallSignatures();
-  if (!callSignatures.length) return undefined;
-  if (!isAnonymousType(type)) return undefined;
+  if (!callSignatures.length) {return undefined;}
+  if (!isAnonymousType(type)) {return undefined;}
 
   const signature = callSignatures[0]!;
   const token = tokenForReturnType(signature, ctx);
-  if (token === undefined) return undefined;
-  if (!signature.parameters.length) return { type: token };
+  if (token === undefined) {return undefined;}
+  if (!signature.parameters.length) {return { type: token };}
 
   const params: string[] = [];
   for (const paramSymbol of signature.parameters) {
@@ -927,7 +927,7 @@ function factorySlotForType(
  * factory opt-out, mirroring `factorySlotFor`'s syntactic FunctionTypeNode gate.
  */
 function isAnonymousType(type: ts.Type): boolean {
-  if (type.aliasSymbol) return false;
+  if (type.aliasSymbol) {return false;}
   const objectFlags = (type as ts.ObjectType).objectFlags ?? 0;
   return !!(objectFlags & ts.ObjectFlags.Anonymous);
 }
@@ -976,7 +976,7 @@ function signatureToSlots(
   const params: ts.ParameterDeclaration[] = [];
   for (const paramSymbol of signature.parameters) {
     const decl = paramSymbol.valueDeclaration;
-    if (!decl || !ts.isParameter(decl) || decl.dotDotDotToken) return undefined;
+    if (!decl || !ts.isParameter(decl) || decl.dotDotDotToken) {return undefined;}
     params.push(decl);
   }
   return paramsToSignatures(params, ctx);
@@ -997,7 +997,7 @@ export function extractFactoryReferenceSignature(
 ): Signature[] | undefined {
   const type = ctx.checker.getTypeAtLocation(expr);
   // A class/constructable resolves down the class path, never here.
-  if (type.getConstructSignatures().length) return undefined;
+  if (type.getConstructSignatures().length) {return undefined;}
   return mapReferenceSignatures(type.getCallSignatures(), ctx);
 }
 
@@ -1013,11 +1013,11 @@ function mapReferenceSignatures(
   signatures: readonly ts.Signature[],
   ctx: DepContext,
 ): Signature[] | undefined {
-  if (!signatures.length) return undefined;
+  if (!signatures.length) {return undefined;}
   const results: Signature[] = [];
   for (const sig of signatures) {
     const slots = signatureToSlots(sig, ctx);
-    if (slots === undefined) return undefined;
+    if (slots === undefined) {return undefined;}
     results.push(...slots);
   }
   return results.length ? results : undefined;
@@ -1063,7 +1063,7 @@ export function extractInstantiatedSignature(
   const constructSignatures = ctx.checker
     .getTypeAtLocation(ewta)
     .getConstructSignatures();
-  if (!constructSignatures.length) return undefined;
+  if (!constructSignatures.length) {return undefined;}
 
   const results: Signature[] = [];
   for (const sig of constructSignatures) {
@@ -1105,7 +1105,7 @@ function factorySlotFor(
   typeOverride?: ts.Type,
 ): FactorySlot | undefined {
   const typeNode = param.type;
-  if (!typeNode || !ts.isFunctionTypeNode(typeNode)) return undefined;
+  if (!typeNode || !ts.isFunctionTypeNode(typeNode)) {return undefined;}
 
   // The INSTANTIATED call signature when an override is present (a generic
   // impl registered via an instantiation expression — the declaration's own
@@ -1114,13 +1114,13 @@ function factorySlotFor(
   const signature = typeOverride
     ? typeOverride.getCallSignatures()[0]
     : ctx.checker.getSignatureFromDeclaration(typeNode);
-  if (!signature) return undefined;
+  if (!signature) {return undefined;}
 
   const token = tokenForReturnType(signature, ctx);
-  if (token === undefined) return undefined;
+  if (token === undefined) {return undefined;}
 
   // Zero declared params → strict zero-arg mode; no params field.
-  if (!typeNode.parameters.length) return { type: token };
+  if (!typeNode.parameters.length) {return { type: token };}
 
   // One or more declared params → derive a token for each. A declared param
   // whose type yields no token (anonymous structure) is a hard error: the runtime
@@ -1228,7 +1228,7 @@ function isOptionalParam(
 /** True when a type is `undefined`/`void`, or a union with such a member. */
 function typeIncludesUndefinedOrVoid(type: ts.Type): boolean {
   const nullish = ts.TypeFlags.Undefined | ts.TypeFlags.Void;
-  if (type.flags & nullish) return true;
+  if (type.flags & nullish) {return true;}
   return type.isUnion() && type.types.some((t) => t.flags & nullish);
 }
 
@@ -1240,7 +1240,7 @@ function typeIncludesUndefinedOrVoid(type: ts.Type): boolean {
  * collapsing the union to that token would silently drop the other members.
  */
 function isMultiMemberUnion(type: ts.Type): boolean {
-  if (!type.isUnion()) return false;
+  if (!type.isUnion()) {return false;}
   const nullish = ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void;
   return type.types.filter((t) => !(t.flags & nullish)).length >= 2;
 }
@@ -1252,7 +1252,7 @@ function isMultiMemberUnion(type: ts.Type): boolean {
  * (a literal union renders its token; a typed union resolves by alias or holes).
  */
 function nonNullish(type: ts.Type): ts.Type {
-  if (!type.isUnion()) return type;
+  if (!type.isUnion()) {return type;}
   const kept = type.types.filter(
     (t) =>
       !(t.flags

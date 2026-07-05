@@ -107,7 +107,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
         // form never executes (the transformer rewrites it first). A no-arg call
         // at runtime would leave the registration transient — guard so it is a
         // no-op rather than appending a scopeless duplicate.
-        if (scope === undefined) return;
+        if (scope === undefined) {return;}
         appendScoped(scope);
       },
     };

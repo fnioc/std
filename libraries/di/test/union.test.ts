@@ -416,7 +416,7 @@ describe("union member composability", () => {
     try {
       services.build().resolve(T.Service);
     } catch (e) {
-      if (e instanceof NoSatisfiableSignatureError) caught = e;
+      if (e instanceof NoSatisfiableSignatureError) {caught = e;}
     }
     expect(caught).toBeDefined();
     expect(caught!.unsatisfiable).toContain(T.A);

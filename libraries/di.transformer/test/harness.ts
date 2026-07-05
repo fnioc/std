@@ -61,7 +61,7 @@ export function transform(
   const host: ts.CompilerHost = {
     getSourceFile(fileName, languageVersion) {
       const text = readVirtualOrReal(files, fileName, libFileName, libSourcePath);
-      if (text === undefined) return undefined;
+      if (text === undefined) {return undefined;}
       return ts.createSourceFile(fileName, text, languageVersion, true);
     },
     getDefaultLibFileName: () => libFileName,
@@ -83,7 +83,7 @@ export function transform(
       return readVirtualOrReal(files, fileName, libFileName, libSourcePath);
     },
     directoryExists(dirName) {
-      if (anyFileUnder(files, dirName)) return true;
+      if (anyFileUnder(files, dirName)) {return true;}
       return ts.sys.directoryExists?.(dirName) ?? false;
     },
     getDirectories(dirName) {
@@ -121,7 +121,7 @@ export function transform(
 
   for (const fileName of entry) {
     const sourceFile = program.getSourceFile(fileName);
-    if (!sourceFile) throw new Error(`entry file not in program: ${fileName}`);
+    if (!sourceFile) {throw new Error(`entry file not in program: ${fileName}`);}
     const result = ts.transform(sourceFile, [factory], compilerOptions);
     const transformed = result.transformed[0]!;
     outputs[fileName] = printer.printFile(transformed as ts.SourceFile);
@@ -170,9 +170,9 @@ export function fixture(source: string, name = "app.ts"): VirtualFiles {
 export function depsArrayFor(output: string, ctor: string): string {
   const marker = `, ${ctor}, `;
   const at = output.indexOf(marker);
-  if (at < 0) throw new Error(`no inline signature for ${ctor} in:\n${output}`);
+  if (at < 0) {throw new Error(`no inline signature for ${ctor} in:\n${output}`);}
   const start = output.indexOf("[", at + marker.length);
-  if (start < 0) throw new Error(`no signature array for ${ctor} in:\n${output}`);
+  if (start < 0) {throw new Error(`no signature array for ${ctor} in:\n${output}`);}
   let depth = 0;
   for (let i = start; i < output.length; i++) {
     const ch = output[i];
@@ -180,7 +180,7 @@ export function depsArrayFor(output: string, ctor: string): string {
       depth += 1;
     } else if (ch === "]") {
       depth -= 1;
-      if (depth === 0) return output.slice(start, i + 1);
+      if (depth === 0) {return output.slice(start, i + 1);}
     }
   }
   throw new Error(`unbalanced signature array for ${ctor} in:\n${output}`);
