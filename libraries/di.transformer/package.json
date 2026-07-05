@@ -1,0 +1,54 @@
+{
+  "name": "@rhombus-std/di.transformer",
+  "version": "10.1.0",
+  "description": "The ioc ts-patch transformer: token generation, dependency extraction, registration lowering, and the factory-signature diagnostic.",
+  "keywords": [
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "ts-patch",
+    "transformer",
+    "compiler"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/di.transformer"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
+    "test": "bun test",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@rhombus-toolkit/func": "3.5.3"
+  },
+  "peerDependencies": {
+    "@rhombus-std/di": "workspace:^",
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di": "workspace:*",
+    "ts-patch": "^3.3.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
