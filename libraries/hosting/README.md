@@ -1,6 +1,6 @@
 # @rhombus-std/hosting
 
-Skeleton for the Generic Host port (`Microsoft.Extensions.Hosting`). `IHostBuilder` is the
+Skeleton for the Generic Host port (`ME.Hosting`). `IHostBuilder` is the
 primary API surface, matching the upstream builder-first shape; `HostBuilder`/`Host` here are
 stubs -- every `HostBuilder` method throws `not implemented`.
 

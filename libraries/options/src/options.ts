@@ -3,7 +3,7 @@
 // MEO splits this into three: IOptions<T> (singleton snapshot),
 // IOptionsSnapshot<T> (scoped snapshot), and IOptionsMonitor<T> (reactive,
 // CurrentValue + OnChange). The singleton-vs-scoped split is a fixed-lifetime
-// .NET-DI artifact; this repo's open-ended scopes + registration-time
+// reference-DI artifact; this repo's open-ended scopes + registration-time
 // lifetime (§3) erase it, so lifetime becomes a registration concern, not a
 // distinct accessor type -- IOptions and IOptionsSnapshot collapse into one
 // `value` getter. The reactive capability (IOptionsMonitor.OnChange) is

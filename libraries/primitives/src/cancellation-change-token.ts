@@ -1,5 +1,5 @@
 // CancellationChangeToken -- ported from
-// Microsoft.Extensions.Primitives.CancellationChangeToken.
+// ME.Primitives.CancellationChangeToken.
 //
 // ME backs this with a CancellationToken; there is no such type in TS, so
 // this is backed by the idiomatic web-platform equivalent, `AbortSignal`,

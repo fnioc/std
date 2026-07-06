@@ -1,6 +1,6 @@
 // The PUBLIC provider surface — the interface a di consumer programs against.
 //
-// This mirrors .NET's MEDI / MEDI.Abstractions split: consumers hold the
+// This mirrors the reference runtime's MEDI / MEDI.Abstractions split: consumers hold the
 // `IServiceProvider` INTERFACE (declared in the abstractions package), while the
 // concrete `ServiceProvider` is an internal implementation detail of the
 // non-abstractions runtime package. Here the same shape applies — `di.core`

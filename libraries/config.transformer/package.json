@@ -25,6 +25,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
     }
   },
   "files": [
@@ -32,8 +37,7 @@
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "test": "bun test",
-    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {
     "@rhombus-std/config": "workspace:^",

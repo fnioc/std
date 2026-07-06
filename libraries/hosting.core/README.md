@@ -1,6 +1,6 @@
 # @rhombus-std/hosting.core
 
-Skeleton port target for .NET's `Microsoft.Extensions.Hosting.Abstractions`. Types only, no
+Skeleton port target for the reference runtime's `ME.Hosting.Abstractions`. Types only, no
 runtime logic -- a starting point for the real Generic Host port.
 
 ## What's deliberately missing
