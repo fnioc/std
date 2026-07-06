@@ -140,7 +140,7 @@ req.resolve<IUserService>("pkg:IUserService");
 // across every subsequent request.
 ```
 
-This preserves `Microsoft.Extensions.DependencyInjection`'s captive-dependency safety, via the uniform-tag transient fallback rather than a throw: the construct-relative-to-owner rule guarantees a fresh transient is the worst that happens, never a captured cached instance.
+This preserves `ME.DependencyInjection`'s captive-dependency safety, via the uniform-tag transient fallback rather than a throw: the construct-relative-to-owner rule guarantees a fresh transient is the worst that happens, never a captured cached instance.
 
 ---
 

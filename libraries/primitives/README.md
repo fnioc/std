@@ -1,6 +1,6 @@
 # @rhombus-std/primitives
 
-The change-token primitives ported from `Microsoft.Extensions.Primitives` --
+The change-token primitives ported from `ME.Primitives` --
 `IChangeToken`, `ChangeToken.onChange`, `CancellationChangeToken`. A leaf
 package: zero dependencies, the analog of ME's Primitives that everything
 reload-capable (config live-reload, options monitors, #6) builds on.
@@ -32,7 +32,7 @@ hand back a token representing the *next* change window each time it's
 called -- a `CancellationChangeToken` wrapping a stale, already-aborted
 signal will keep firing synchronously.
 
-## CancellationChangeToken vs. .NET's CancellationToken
+## CancellationChangeToken vs. the reference runtime's CancellationToken
 
 ME backs `CancellationChangeToken` with a `CancellationToken`; there's no
 equivalent in TS, so this port backs it with the idiomatic web-platform

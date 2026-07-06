@@ -1,11 +1,11 @@
-# Microsoft.Extensions.* dependency map (the structure we mirror)
+# ME.* dependency map (the structure we mirror)
 
 Source of truth for our package layering. **Governing decision:** mirror this dependency
 structure **exactly** for now, and collapse distinctions later only once they're shown to be
 unjustified in a TS/no-reflection context (see `../decisions.md` §0).
 
 Extracted from the `.csproj` `<ProjectReference>` / `<Reference>` graph in
-[`dotnet/runtime`](https://github.com/dotnet/runtime/tree/main/src/libraries) (`main`).
+the reference runtime's `src/libraries` (`main`).
 Edges are "depends on". `.Abstractions` packages are the interface/contract layer.
 
 ## Graph
@@ -108,7 +108,7 @@ graph LR
   Http --> Log & Diag & CfgAbs & DIAbs & LogAbs & Opt
 ```
 
-`*` `FileSystemGlobbing` is `Microsoft.Extensions.FileSystemGlobbing` (outside the queried set).
+`*` `FileSystemGlobbing` is `ME.FileSystemGlobbing` (outside the queried set).
 `Caching` (bare) does not exist — only `Caching.Abstractions` / `Caching.Memory`.
 
 ## Adjacency (verbatim; `(c)` = conditional — scoped to `TargetFramework != NetCoreAppCurrent`, i.e. it comes from the shared framework on the current TFM — a real dependency, not optional)

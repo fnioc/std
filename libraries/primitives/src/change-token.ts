@@ -1,4 +1,4 @@
-// IChangeToken -- ported from Microsoft.Extensions.Primitives.IChangeToken.
+// IChangeToken -- ported from ME.Primitives.IChangeToken.
 //
 // `IDisposable` maps to the built-in `Disposable` (Symbol.dispose), the
 // TS/ESNext analog -- `tsconfig.base.json` already includes lib

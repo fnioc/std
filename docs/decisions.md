@@ -6,7 +6,7 @@ decision, why, and status (issue/PR where relevant).
 
 ---
 
-## 0. Mirror the Microsoft.Extensions dependency structure exactly, then collapse — governing
+## 0. Mirror the ME dependency structure exactly, then collapse — governing
 
 Replicate ME's package + dependency structure **exactly** — package-for-package,
 edge-for-edge — and only **collapse** a distinction later, after the fact, once it's shown
@@ -17,7 +17,7 @@ The **API surface *within* a package may deviate** where our scope system or TS/
 (e.g. §4.2 collapses IOptions+IOptionsSnapshot). Mirror faithfully on the first pass — **including
 where it feels un-idiomatic in TS/BUN** — and collapse only after the fact.
 
-Authoritative graph: [`reference/ms-extensions-dependencies.md`](reference/ms-extensions-dependencies.md).
+Authoritative graph: [`reference/me-extensions-dependencies.md`](reference/me-extensions-dependencies.md).
 
 Consequences already visible:
 - **`@rhombus-std/primitives` is required** — the universal leaf (`IChangeToken`,
@@ -95,10 +95,10 @@ Reasons to build it, premise-independent:
 
 ### 4.1 Package layout (mirror MEO's, incl. the dependency layering)
 
-| .NET | ours | depends on |
+| reference | ours | depends on |
 |---|---|---|
-| `Microsoft.Extensions.Options` (MEO) | `@rhombus-std/options` — a 4th family | `@rhombus-std/di.core` (MEDI.Abstractions) |
-| `Microsoft.Extensions.Options.ConfigurationExtensions` | `@rhombus-std/options.augmentations` | `options` + `@rhombus-std/config.core` (MEC.Abstractions) + config's `bindConfig` binder |
+| `ME.Options` (MEO) | `@rhombus-std/options` — a 4th family | `@rhombus-std/di.core` (MEDI.Abstractions) |
+| `ME.Options.ConfigurationExtensions` | `@rhombus-std/options.augmentations` | `options` + `@rhombus-std/config.core` (MEC.Abstractions) + config's `bindConfig` binder |
 
 - **`options` core:** pure `Options<T>` (`{ readonly value: T; subscribe?(cb): Unsubscribable }`)
   + monitor/snapshot semantics. **Config-unaware** — knows only the DI abstractions,
@@ -111,7 +111,7 @@ Reasons to build it, premise-independent:
 ### 4.2 Accessor model — collapse IOptions+IOptionsSnapshot (scope-justified); keep the monitor
 
 > **Adopted** (per the strict-graph / free-API rule in §0): the singleton-vs-scoped accessor
-> split is a fixed-lifetime .NET-DI artifact; our open-ended scopes + registration-time lifetime
+> split is a fixed-lifetime reference-DI artifact; our open-ended scopes + registration-time lifetime
 > + ancestor-walk (§3) erase it, so `IOptions` + `IOptionsSnapshot` collapse to **one `Options<T>`**
 > (lifetime chosen at registration). The **reactive `IOptionsMonitor` is orthogonal**
 > (change-notification, not lifetime) and stays a distinct capability, tied to `IChangeToken` / #6.
@@ -156,3 +156,48 @@ Reasons to build it, premise-independent:
 - Whether to split the config-bridge into `options.configuration` now vs. later.
 - Explicit walk-through of the §2 transformer invariant with the team (pending; #27
   satisfies it for `di.transformer`).
+
+## 7. White-box test-export pattern — sibling `tests/<lib>.test` packages, `internal/*` seam — #38
+
+Each library's co-located tests move out into a sibling `tests/<lib>.test` package;
+libraries ship `src/` only (no `test/` folder alongside `src/`).
+
+- **White-box seam.** A library whose tests need to reach into `src/` (not just the
+  public surface) adds an `internal/*` subpath to its **DEV** `exports`:
+
+  ```jsonc
+  "exports": {
+    ".": { /* … */ },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  }
+  ```
+
+  `internal/` is a **virtual namespace** — there is no `internal/` folder on disk, the
+  subpath pattern maps straight onto `src/*`. A white-box test imports
+  `@rhombus-std/<lib>/internal/<module>` instead of a relative `../src/<module>` path.
+
+  Benefits:
+  - **Insulates tests from `src/` layout changes.** Moving a file under `src/` needs one
+    explicit override entry (or a nested `"./internal/foo/*"` pattern that shadows the
+    base wildcard — most-specific match wins) in the library's `package.json`; the test
+    package's imports don't change.
+  - **One greppable key to scrub** at publish time (`internal/*`), rather than hunting
+    down relative `../src` imports across every test package.
+
+- **Scrub with no new tooling.** Every package already ships a `publishConfig.exports`
+  override that exposes only `dist`. Because `exports` is **encapsulating**, simply
+  **omitting** `internal/*` from that publish override makes it non-importable by
+  consumers — even though the `src/` files still ship inside the tarball. This is
+  **pnpm-only**: `pnpm publish` (and `pnpm pack`) honor `publishConfig.exports`; other
+  package managers don't rewrite `exports` at publish time. **pnpm must be the publish
+  tool.** CI backstop: run `publint` against the packed tarball to catch any drift
+  between dev and publish `exports`.
+
+- **Black-box tests don't need `internal/*`.** A test package that only exercises a
+  library's public surface (e.g. `di`'s) depends on the library as a plain
+  `workspace:*` devDependency and imports it the normal way — no virtual subpath
+  needed.

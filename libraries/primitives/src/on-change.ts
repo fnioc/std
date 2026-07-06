@@ -1,4 +1,4 @@
-// ChangeToken.onChange -- ported from Microsoft.Extensions.Primitives.ChangeToken.
+// ChangeToken.onChange -- ported from ME.Primitives.ChangeToken.
 //
 // ME's ChangeToken static class overloads OnChange four ways (sync/async
 // consumer x with/without TState) using Interlocked-based disposal

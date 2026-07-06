@@ -1,6 +1,6 @@
-# Microsoft.Extensions.* dependency map — lite (skeleton)
+# ME.* dependency map — lite (skeleton)
 
-The same graph as [`ms-extensions-dependencies.md`](ms-extensions-dependencies.md) with the
+The same graph as [`me-extensions-dependencies.md`](me-extensions-dependencies.md) with the
 concrete **provider / sink / impl leaves** dropped — the architectural skeleton only.
 
 Omitted: Configuration.{CommandLine, EnvironmentVariables, Json, Ini, Xml, UserSecrets,

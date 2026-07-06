@@ -431,7 +431,7 @@ const reqChild = req.createScope("request");     // nested if needed
 
 Example: a `"singleton"` service depends on a `"request"` service, with a `"singleton"` frame open and a `"request"` frame nested under it. Resolution triggered from the `request` scope finds the singleton frame as the owner of the singleton service. That singleton frame owns the instance, so its deps are resolved relative to the singleton frame's chain. The singleton frame's chain has no enclosing `"request"` frame (request is a *descendant*, not an ancestor) — so the request dep resolves to a **fresh transient**, never the request's cached instance. The singleton never silently captures one request's `IDb` and holds it across all requests.
 
-This preserves `Microsoft.Extensions.DependencyInjection`'s captive-dependency safety, but via the uniform-tag transient fallback rather than a throw: the construct-relative-to-owner rule is what guarantees a longer-lived service can't cache-capture a shorter-lived one. The fresh transient is the safe outcome, not an edge case.
+This preserves `ME.DependencyInjection`'s captive-dependency safety, but via the uniform-tag transient fallback rather than a throw: the construct-relative-to-owner rule is what guarantees a longer-lived service can't cache-capture a shorter-lived one. The fresh transient is the safe outcome, not an edge case.
 
 ### Greedy overload selection
 
@@ -776,8 +776,8 @@ Lift patterns, not code.
 | Reference | What to lift |
 |---|---|
 | `@wessberg/di` + `@wessberg/di-compiler` | Closest prior art for the transformer side: compile-time, interface-driven, no decorators, no `reflect-metadata`. Study how it extracts constructor signatures and lowers registrations. Also the reference for the deferred wessberg-style `add<I, C>()`. |
-| Autofac (C#) | Scope model (`InstancePerMatchingLifetimeScope(tag)` + throw-when-no-ancestor-carries-the-tag); delegate factories (`Func<T>`, `Func<X,Y,T>`, parameter matching + duplicate-type ambiguity); greedy constructor selection. |
-| `Microsoft.Extensions.DependencyInjection` | Captive-dependency detection / scope validation (the §5.4 resolve-deps-from-owning-scope rule). |
+| Autofac | Scope model (`InstancePerMatchingLifetimeScope(tag)` + throw-when-no-ancestor-carries-the-tag); delegate factories (`Func<T>`, `Func<X,Y,T>`, parameter matching + duplicate-type ambiguity); greedy constructor selection. |
+| `ME.DependencyInjection` | Captive-dependency detection / scope validation (the §5.4 resolve-deps-from-owning-scope rule). |
 | AngularJS 1.x injector | `$inject` positional array; `annotate()` annotation strategies. |
 | Awilix (`jeffijoe/awilix`, JS) | JS-idiomatic plumbing: scope objects + parent chain, registration map, lazy resolution, disposer hooks, cycle detection with a resolution path. Take the plumbing, not its fixed lifetime enum. |
 

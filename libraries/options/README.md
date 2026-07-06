@@ -1,6 +1,6 @@
 # @rhombus-std/options
 
-The collapsed `Options<T>` accessor ported from `Microsoft.Extensions.Options`
+The collapsed `Options<T>` accessor ported from `ME.Options`
 (MEO). Depends on `@rhombus-std/primitives` for change notification.
 
 ## `Options<T>`
@@ -9,7 +9,7 @@ MEO splits accessing bound options three ways: `IOptions<T>` (singleton
 snapshot), `IOptionsSnapshot<T>` (scoped snapshot), and `IOptionsMonitor<T>`
 (reactive, `CurrentValue` + `OnChange`). Per
 [`docs/decisions.md` §4.2](../../docs/decisions.md), the singleton-vs-scoped
-split is a fixed-lifetime .NET-DI artifact that this repo's open-ended scopes
+split is a fixed-lifetime reference-DI artifact that this repo's open-ended scopes
 and registration-time lifetime erase, so `IOptions` and `IOptionsSnapshot`
 collapse into **one** `value` getter. The reactive capability is orthogonal
 to lifetime and survives as an optional `subscribe`:
