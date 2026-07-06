@@ -22,7 +22,7 @@ export default tseslint.config(
   },
   {
     // Tests: not in any tsconfig → syntactic rules only (no type info, no parsing error)
-    files: ["libraries/*/test/**/*.ts", "examples/*/test/**/*.ts"],
+    files: ["libraries/*/test/**/*.ts", "examples/*/test/**/*.ts", "tests/*.test/test/**/*.ts"],
     extends: [tseslint.configs.base],
     rules: {
       curly: ["error", "all"],

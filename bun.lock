@@ -216,6 +216,36 @@
       "name": "@rhombus-std/primitives",
       "version": "0.0.0",
     },
+    "tests/config.commandline.test": {
+      "name": "@rhombus-std/config.commandline.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config.commandline": "workspace:*",
+      },
+    },
+    "tests/config.env.test": {
+      "name": "@rhombus-std/config.env.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.env": "workspace:*",
+      },
+    },
+    "tests/config.json.test": {
+      "name": "@rhombus-std/config.json.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.json": "workspace:*",
+      },
+    },
+    "tests/config.test": {
+      "name": "@rhombus-std/config.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+      },
+    },
     "tests/config.tests.integration": {
       "name": "@rhombus-std/config.tests.integration",
       "version": "0.0.0",
@@ -228,6 +258,24 @@
         "@types/node": "^24.13.2",
       },
     },
+    "tests/config.transformer.test": {
+      "name": "@rhombus-std/config.transformer.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/config.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+    },
+    "tests/di.test": {
+      "name": "@rhombus-std/di.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+      },
+    },
     "tests/di.tests.integration": {
       "name": "@rhombus-std/di.tests.integration",
       "version": "0.0.0",
@@ -236,6 +284,44 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.transformer": "workspace:*",
         "ts-patch": "^3.3.0",
+      },
+    },
+    "tests/di.transformer.test": {
+      "name": "@rhombus-std/di.transformer.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+    },
+    "tests/hosting.core.test": {
+      "name": "@rhombus-std/hosting.core.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/hosting.core": "workspace:*",
+      },
+    },
+    "tests/hosting.test": {
+      "name": "@rhombus-std/hosting.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/hosting": "workspace:*",
+      },
+    },
+    "tests/options.test": {
+      "name": "@rhombus-std/options.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "tests/primitives.test": {
+      "name": "@rhombus-std/primitives.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
   },
@@ -304,9 +390,13 @@
 
     "@rhombus-std/config.commandline": ["@rhombus-std/config.commandline@workspace:libraries/config.commandline"],
 
+    "@rhombus-std/config.commandline.test": ["@rhombus-std/config.commandline.test@workspace:tests/config.commandline.test"],
+
     "@rhombus-std/config.core": ["@rhombus-std/config.core@workspace:libraries/config.core"],
 
     "@rhombus-std/config.env": ["@rhombus-std/config.env@workspace:libraries/config.env"],
+
+    "@rhombus-std/config.env.test": ["@rhombus-std/config.env.test@workspace:tests/config.env.test"],
 
     "@rhombus-std/config.examples.basic": ["@rhombus-std/config.examples.basic@workspace:examples/config.examples.basic"],
 
@@ -314,9 +404,15 @@
 
     "@rhombus-std/config.json": ["@rhombus-std/config.json@workspace:libraries/config.json"],
 
+    "@rhombus-std/config.json.test": ["@rhombus-std/config.json.test@workspace:tests/config.json.test"],
+
+    "@rhombus-std/config.test": ["@rhombus-std/config.test@workspace:tests/config.test"],
+
     "@rhombus-std/config.tests.integration": ["@rhombus-std/config.tests.integration@workspace:tests/config.tests.integration"],
 
     "@rhombus-std/config.transformer": ["@rhombus-std/config.transformer@workspace:libraries/config.transformer"],
+
+    "@rhombus-std/config.transformer.test": ["@rhombus-std/config.transformer.test@workspace:tests/config.transformer.test"],
 
     "@rhombus-std/di": ["@rhombus-std/di@workspace:libraries/di"],
 
@@ -330,17 +426,29 @@
 
     "@rhombus-std/di.examples.without-transformer": ["@rhombus-std/di.examples.without-transformer@workspace:examples/di.examples.without-transformer"],
 
+    "@rhombus-std/di.test": ["@rhombus-std/di.test@workspace:tests/di.test"],
+
     "@rhombus-std/di.tests.integration": ["@rhombus-std/di.tests.integration@workspace:tests/di.tests.integration"],
 
     "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
+
+    "@rhombus-std/di.transformer.test": ["@rhombus-std/di.transformer.test@workspace:tests/di.transformer.test"],
 
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
 
     "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
 
+    "@rhombus-std/hosting.core.test": ["@rhombus-std/hosting.core.test@workspace:tests/hosting.core.test"],
+
+    "@rhombus-std/hosting.test": ["@rhombus-std/hosting.test@workspace:tests/hosting.test"],
+
     "@rhombus-std/options": ["@rhombus-std/options@workspace:libraries/options"],
 
+    "@rhombus-std/options.test": ["@rhombus-std/options.test@workspace:tests/options.test"],
+
     "@rhombus-std/primitives": ["@rhombus-std/primitives@workspace:libraries/primitives"],
+
+    "@rhombus-std/primitives.test": ["@rhombus-std/primitives.test@workspace:tests/primitives.test"],
 
     "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 

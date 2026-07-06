@@ -1,8 +1,8 @@
 {
-  "//": "Lint-time typecheck config: identical to tsconfig.json but WIDENED to include test/**/*, matching config.env's rationale -- `bun test` never type-checks anything (bun runs TS directly), and tsconfig.json used by `build` only compiles src/**/*.",
+  "//": "Lint-time typecheck config: identical to tsconfig.json but WIDENED to rootDir '.'. Tests now live in the sibling tests/primitives.test package, which has its own lint via its own tsconfig.",
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": "."
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*"]
 }

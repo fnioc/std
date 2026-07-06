@@ -38,6 +38,11 @@
       "types": "./src/with-type-augment.ts",
       "import": "./dist/with-type-augment.js",
       "default": "./dist/with-type-augment.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
     }
   },
   "files": [
@@ -45,7 +50,6 @@
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "test": "bun test",
     "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
   },
   "dependencies": {

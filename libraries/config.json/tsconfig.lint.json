@@ -1,8 +1,5 @@
 {
-  "//": "Lint-time typecheck config: identical to tsconfig.json but WIDENED to include test/**/*. `bun test` never type-checks anything (bun runs TS directly), and the base tsconfig.json used by `build` only compiles src/**/*. rootDir widens to '.' since test/ lives outside src/.",
+  "//": "Lint-time typecheck config: identical to tsconfig.json -- tests now live in the sibling @rhombus-std/config.json.test package (tests/config.json.test/), which type-checks itself via its own tsconfig.json.",
   "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "."
-  },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*"]
 }

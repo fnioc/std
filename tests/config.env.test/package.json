@@ -1,0 +1,16 @@
+{
+  "name": "@rhombus-std/config.env.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/config.env. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/config.env": "workspace:*",
+    "@rhombus-std/config": "workspace:*"
+  }
+}

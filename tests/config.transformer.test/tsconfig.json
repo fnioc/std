@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Every sibling package (config/config.core/config.transformer) disables
+    // composite for its own standalone tsconfig — there are no project
+    // references between packages here. Keeping it off here matches that and
+    // sidesteps composite's "every file must be in the declared file list"
+    // check (TS6307), which the white-box `./internal/*` seam into the
+    // transformer's src would otherwise trip.
+    "composite": false,
+    // The transformer package is listed so its published types enter this
+    // program alongside `bun`. A `types` array disables automatic @types
+    // inclusion, so `bun` (used by every `bun:test` spec) is listed explicitly.
+    "types": ["bun", "@rhombus-std/config.transformer"],
+    // The e2e spec crosses a dynamic-module-load boundary (it shells out to the
+    // real `tspc` and reads the emitted output) and indexes emitted-text maps
+    // heavily. Relaxing `noUncheckedIndexedAccess` here keeps the assertions
+    // readable without `!`-littering every lookup; the production package keeps
+    // it on.
+    "noUncheckedIndexedAccess": false,
+    // Resolve @rhombus-std/config + @rhombus-std/config.core to their BUILT
+    // `.d.ts` (the `built` export condition) rather than source, matching how a
+    // real consumer holds the built types. The e2e harness already needs those
+    // packages' dist on disk to link them into its temp project, so dist is a
+    // prerequisite regardless.
+    "customConditions": ["built"]
+  },
+  "include": ["test/**/*"]
+}

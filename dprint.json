@@ -13,6 +13,6 @@
     "**/dist",
     "**/*.wasm",
     "bun.lock",
-    "libraries/config.json/test/fixtures/json-file/invalid.json"
+    "tests/config.json.test/test/fixtures/json-file/invalid.json"
   ]
 }

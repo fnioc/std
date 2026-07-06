@@ -1,0 +1,16 @@
+{
+  "name": "@rhombus-std/di.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/di. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*"
+  }
+}

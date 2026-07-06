@@ -34,7 +34,6 @@
   ],
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
-    "test": "bun test",
     "lint": "eslint ."
   },
   "publishConfig": {

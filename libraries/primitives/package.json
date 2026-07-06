@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/primitives",
   "version": "0.0.0",
-  "description": "The change-token primitives ported from Microsoft.Extensions.Primitives: IChangeToken, ChangeToken.onChange, CancellationChangeToken. A leaf package -- zero dependencies.",
+  "description": "The change-token primitives ported from ME.Primitives: IChangeToken, ChangeToken.onChange, CancellationChangeToken. A leaf package -- zero dependencies.",
   "keywords": [
     "primitives",
     "change-token",
@@ -23,6 +23,11 @@
       "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
     }
   },
   "files": [
@@ -30,7 +35,6 @@
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "test": "bun test",
     "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
   },
   "publishConfig": {

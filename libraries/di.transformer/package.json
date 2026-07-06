@@ -25,6 +25,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
     }
   },
   "files": [
@@ -32,7 +37,6 @@
   ],
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
-    "test": "bun test",
     "lint": "eslint ."
   },
   "dependencies": {
