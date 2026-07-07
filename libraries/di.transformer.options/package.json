@@ -1,0 +1,57 @@
+{
+  "name": "@rhombus-std/di.transformer.options",
+  "version": "0.0.0",
+  "description": "A @rhombus-std/di.transformer satellite: lowers the type-driven addOptions<T>() sugar to the explicit addOptions(token(Options<T>), token(T)) verb at compile time.",
+  "keywords": [
+    "options",
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "ts-patch",
+    "transformer",
+    "compiler"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/di.transformer.options"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@rhombus-std/di.core": "workspace:^",
+    "@rhombus-std/di.transformer": "workspace:^",
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.transformer": "workspace:*",
+    "ts-patch": "^3.3.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

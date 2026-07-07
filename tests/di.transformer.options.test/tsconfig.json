@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // No project references between packages here; the white-box specs reach the
+    // satellite's `./internal/*` src seam, which composite's TS6307 would reject.
+    "composite": false,
+    // A `types` array disables automatic @types inclusion, so `bun` (used by
+    // every `bun:test` spec) is listed explicitly.
+    "types": ["bun"],
+    // The harness builds and diffs emitted text and indexes token maps; relax
+    // unchecked-index so assertions read cleanly without `!`-littering.
+    "noUncheckedIndexedAccess": false,
+    // Resolve `@rhombus-std/di.transformer` + `@rhombus-std/di.core` to their BUILT
+    // `.d.ts` (the `built` condition); the satellite's own `./internal/*` seam
+    // still resolves to source `.ts`, which is what these white-box tests exercise.
+    "customConditions": ["built"]
+  },
+  "include": ["test/**/*"]
+}

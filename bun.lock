@@ -182,6 +182,20 @@
         "typescript": ">=5.2",
       },
     },
+    "libraries/di.transformer.options": {
+      "name": "@rhombus-std/di.transformer.options",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di.core": "workspace:^",
+        "@rhombus-std/di.transformer": "workspace:^",
+        "typescript": ">=5.2",
+      },
+    },
     "libraries/hosting": {
       "name": "@rhombus-std/hosting",
       "version": "0.0.0",
@@ -308,6 +322,16 @@
         "ts-patch": "^3.3.0",
       },
     },
+    "tests/di.transformer.options.test": {
+      "name": "@rhombus-std/di.transformer.options.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.transformer.options": "workspace:*",
+        "ts-patch": "^3.3.0",
+      },
+    },
     "tests/di.transformer.test": {
       "name": "@rhombus-std/di.transformer.test",
       "version": "0.0.0",
@@ -340,6 +364,21 @@
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "tests/options.augmentations.tests.integration": {
+      "name": "@rhombus-std/options.augmentations.tests.integration",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.transformer.options": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+        "ts-patch": "^3.3.0",
       },
     },
     "tests/options.test": {
@@ -465,6 +504,10 @@
 
     "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
 
+    "@rhombus-std/di.transformer.options": ["@rhombus-std/di.transformer.options@workspace:libraries/di.transformer.options"],
+
+    "@rhombus-std/di.transformer.options.test": ["@rhombus-std/di.transformer.options.test@workspace:tests/di.transformer.options.test"],
+
     "@rhombus-std/di.transformer.test": ["@rhombus-std/di.transformer.test@workspace:tests/di.transformer.test"],
 
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
@@ -480,6 +523,8 @@
     "@rhombus-std/options.augmentations": ["@rhombus-std/options.augmentations@workspace:libraries/options.augmentations"],
 
     "@rhombus-std/options.augmentations.test": ["@rhombus-std/options.augmentations.test@workspace:tests/options.augmentations.test"],
+
+    "@rhombus-std/options.augmentations.tests.integration": ["@rhombus-std/options.augmentations.tests.integration@workspace:tests/options.augmentations.tests.integration"],
 
     "@rhombus-std/options.test": ["@rhombus-std/options.test@workspace:tests/options.test"],
 
