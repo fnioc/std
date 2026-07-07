@@ -1,0 +1,4 @@
+packages:
+  - "libraries/*"
+  - "examples/*"
+  - "tests/*"
