@@ -17,7 +17,7 @@ import {
   SchemaCoercionError,
 } from "@rhombus-std/config";
 import type {
-  DeepRecord,
+  ConfigObject,
   IConfiguration,
   IConfigurationBuilder,
   IConfigurationProvider,
@@ -121,7 +121,7 @@ describe("public entry point", () => {
     type _Builder = IConfigurationBuilder;
     type _Source = IConfigurationSource;
     type _Try = ITryGetResult<string>;
-    type _Deep = DeepRecord;
+    type _Deep = ConfigObject;
     type _Indexed = IndexedSection;
     type _Obj = ObjectSchema;
     type _Opt = OptionalSchema;

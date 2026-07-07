@@ -18,22 +18,22 @@
  */
 
 export type {
-  $,
   DepRecord,
   DepSlot,
   DepTarget,
   FactoryRef,
-  Hole,
-  Inject,
   LiteralRef,
-  OverloadedConstructorParameters,
-  OverloadedParameters,
   ParsedToken,
   Token,
   TypeArgRef,
-  Typeof,
   Union,
 } from "./types.js";
+
+// The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`).
+export type { $, Hole, Inject, Typeof } from "./brands.js";
+
+// The overload-faithful `Parameters<T>` / `ConstructorParameters<T>` analogs.
+export type { OverloadedConstructorParameters, OverloadedParameters } from "./overloads.js";
 
 export type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 

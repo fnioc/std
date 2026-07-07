@@ -13,7 +13,7 @@
 // shadow the indexer).
 
 import type {
-  DeepRecord,
+  ConfigObject,
   IConfigurationProvider,
   IConfigurationRoot,
   IConfigurationSection,
@@ -165,7 +165,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
   }
 
   /** The whole tree as a nested plain string object. */
-  public toObject(): DeepRecord {
+  public toObject(): ConfigObject {
     return subtreeToObject(this);
   }
 
