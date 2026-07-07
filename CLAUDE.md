@@ -77,6 +77,10 @@ before touching):
   augmentations patch; a private inlined copy forks identity and breaks the patch (§9). config keeps
   providers external for the same reason.
 
+**Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
+changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
+Architecture section above. `decisions.md` is the full record; this file is the digest.
+
 ## Package naming
 
 `@rhombus-std/<family>[.<qualifier>]`.
@@ -106,7 +110,18 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 
 ## Build layout — source-libs, with a `built` exception
 
-Packages consume each other's raw TS `src` directly: `workspace:*` + `exports` whose
+**Src-referencing rule.** Only **d.ts-only** libs (zero runtime emit — in practice the `*.core`
+abstraction libs, but the rule keys on the property, not the name) may be _src-referenced_: expose
+the `.` export's `source`/`bun`/`types` conditions pointing at `./src/*.ts`. A lib that emits
+runtime `.js` must be _dist-referenced_ — its type-facing conditions resolve to the rolled
+`./dist/*.d.ts`, so in-repo consumers see the same sealed surface a published consumer does.
+Src-referencing a runtime lib is what forces the `built` condition (below): the consumer's
+typecheck sees raw pre-augmentation source, which the impl classes can't satisfy once a transformer
+augmentation merges in. `config.core` is the model; `di.core` ships runtime (§9) and so does
+**not** qualify despite its name. **Not yet enforced — most runtime libs are still src-referenced;
+tracked in #68.**
+
+Mechanically: packages consume each other's raw TS `src` via `workspace:*` + `exports` whose
 `source`/`bun`/`types` conditions point at `.ts`, under `moduleResolution: bundler`. The
 `import`/`default` conditions point at built `dist` — what published consumers resolve.
 
@@ -117,7 +132,8 @@ Two deviations, both because a **transformer** is in play:
   stop satisfying their interfaces once the authored 0-arg forms are merged in. Such packages set
   `customConditions: ["built"]`, so the di family resolves to its rolled `.d.ts` instead —
   reproducing how a real published consumer sees di. This is why build order matters and why
-  `bun run build` is mandatory over a flat parallel build (§1/§9).
+  `bun run build` is mandatory over a flat parallel build (§1/§9). This per-consumer opt-in is the
+  interim hatch the src-referencing rule above will retire (#68).
 - **`tspc`, not `tsc`.** Transformer-active packages build/typecheck with `tspc` (ts-patch), wired
   per-package: a `plugins: [{ transform, import }]` entry in `tsconfig.json` plus the `types` array
   bringing the augmentation into the program. `ts-patch`, `rollup`, and `rollup-plugin-dts` live at
