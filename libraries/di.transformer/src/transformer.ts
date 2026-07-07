@@ -16,6 +16,7 @@
 
 import type { Func } from "@rhombus-toolkit/func";
 import ts from "typescript";
+import { createTokenContext } from "./context.js";
 import { DiagnosticCode, error } from "./diagnostics.js";
 import type { DiagnosticSink } from "./diagnostics.js";
 import { literalExpression, type LowerContext, lowerStatement } from "./lower.js";
@@ -24,7 +25,6 @@ import {
   deriveToken,
   injectTokenFor,
   singletonValue,
-  stripExt,
   type TokenContext,
   tokenForReturnType,
   tokenForType,
@@ -40,32 +40,10 @@ export function createTransformerFactory(
   sink: DiagnosticSink,
   options: { readFile?: Func<[string], string | undefined> } = {},
 ): ts.TransformerFactory<ts.SourceFile> {
-  const checker = program.getTypeChecker();
-  const projectRoot = computeProjectRoot(program);
-
-  // Index every program source file by its extension-stripped path ("stem") so
-  // package-public detection can turn an export entry's on-disk target (a `.js`
-  // path) into the declaration file the program loaded (`.d.ts`). Declaration
-  // files outrank `.js` at the same stem — that's the module we read exports of.
-  const byStem = new Map<string, ts.SourceFile>();
-  const stemRank = (name: string): number => name.endsWith(".d.ts") ? 3 : /\.[mc]?tsx?$/.test(name) ? 2 : 1;
-  for (const sf of program.getSourceFiles()) {
-    const stem = stripExt(sf.fileName.replace(/\\/g, "/"));
-    const existing = byStem.get(stem);
-    if (!existing || stemRank(sf.fileName) >= stemRank(existing.fileName)) {
-      byStem.set(stem, sf);
-    }
-  }
-
+  const tokenContext = createTokenContext(program, options);
   return (context) => (sourceFile) =>
     transformSourceFile(sourceFile, {
-      checker,
-      projectRoot,
-      readFile: options.readFile,
-      sourceFileAtStem: (stem) => byStem.get(stem),
-      // Default-lib types (`Promise`, `Map`) tokenize by bare name — their lib
-      // path is machine-dependent and carries no identity.
-      isDefaultLib: (file) => program.isSourceFileDefaultLibrary(file),
+      ...tokenContext,
       factory: context.factory,
       sink,
     });
@@ -333,19 +311,6 @@ function isNameofCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean
     ? checker.getAliasedSymbol(symbol)
     : symbol;
   return target?.getName() === NAMEOF_NAME;
-}
-
-/** Best-effort project root: the program's common source directory. */
-function computeProjectRoot(program: ts.Program): string {
-  const opts = program.getCompilerOptions();
-  if (opts.rootDir) {return opts.rootDir.replace(/\\/g, "/");}
-  // `getCommonSourceDirectory` exists at runtime but is not in the public
-  // typings; fall back to the current directory when unavailable.
-  const withCommon = program as ts.Program & {
-    getCommonSourceDirectory?: Func<[], string>;
-  };
-  const common = withCommon.getCommonSourceDirectory?.();
-  return (common || program.getCurrentDirectory()).replace(/\\/g, "/");
 }
 
 // ── ts-patch program-transformer entry ───────────────────────────────────────

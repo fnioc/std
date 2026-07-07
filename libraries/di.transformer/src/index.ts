@@ -29,6 +29,11 @@ export type { OverloadedConstructorParameters, OverloadedParameters } from "./au
 // factory.
 export { createTransformerFactory, default as transformer, transform } from "./transformer.js";
 
+// The shared `TokenContext` builder — a satellite transformer (e.g.
+// `@rhombus-std/di.transformer.options`) imports it so its lowered tokens match
+// the ones this transformer derives for the same program.
+export { createTokenContext, type TokenContextOptions } from "./context.js";
+
 // `nameof<T>()` — the compile-time token mechanism (rewritten by the transformer).
 export { nameof } from "./nameof.js";
 
@@ -53,6 +58,7 @@ export {
 } from "./deps.js";
 export { type Diagnostic, DiagnosticCode, type DiagnosticSink, error, warning } from "./diagnostics.js";
 export {
+  baseTokenForSymbol,
   type DeriveFailure,
   deriveToken,
   holeNumberFor,
