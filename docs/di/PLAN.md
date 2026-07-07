@@ -4,7 +4,7 @@
 
 # ioc — Implementation Plan & Progress Tracker
 
-**What this document is:** The authoritative execution roadmap and living progress tracker for the `ioc` monorepo (`fnioc/ioc`, npm scope `@fnioc`). It encodes the full dependency DAG, phase-by-phase checklists, subagent decomposition, and parallelism constraints. Design ground truth lives in `PRD.md` — this document is about *execution and tracking*, not design prose.
+**What this document is:** The authoritative execution roadmap and living progress tracker for the `ioc` monorepo (`fnioc/ioc`, npm scope `@fnioc`). It encodes the full dependency DAG, phase-by-phase checklists, subagent decomposition, and parallelism constraints. Design ground truth lives in `PRD.md` — this document is about _execution and tracking_, not design prose.
 
 **How to use it:** As each task lands, tick the checkbox and update the dashboard row's Status and Notes columns. Append to the Progress Log on any significant state change. If a track gets stuck, append to `blockers.md` (see §Risks).
 
@@ -12,29 +12,29 @@
 
 ## Status Legend
 
-| Symbol | Meaning |
-|--------|---------|
-| ⬜ | Not started |
-| 🟡 | In progress |
-| ✅ | Done |
-| 🔴 | Blocked |
+| Symbol | Meaning     |
+| ------ | ----------- |
+| ⬜     | Not started |
+| 🟡     | In progress |
+| ✅     | Done        |
+| 🔴     | Blocked     |
 
 ---
 
 ## Status Dashboard
 
-| Phase / Track | Status | Notes |
-|---|---|---|
-| **Phase 0** — Scaffold (main checkout) | ✅ | Green on `main`; repo + branch protection (`verify`) + squash auto-merge configured
-| **Phase 1** — `@fnioc/core` (ABI + WeakMap + authoring surfaces) | ✅ | Merged (PR #1) — 22 tests; ABI, global WeakMap, `defineDeps`/`getDeps`, `@signature`, `forCtor` |
-| **Phase 2A** — `@fnioc/di` runtime (base; no factories) | ✅ | Merged (PR #3) — 59 tests; DiBuilder, scopes, §5.4 captive-dep rule, greedy selection, cycle detection, `useFactory`/`useValue`, native disposal, async-as-values; factory injection deferred to 2D |
-| **Phase 2B** — `@fnioc/transformer` (base; no factory detection) | ✅ | Merged (PR #4) — 28 tests + `tspc` ESM e2e; rebased onto current `main` + fixed `transformer:test` missing build-dep |
-| **Phase 2C** — Docs (README + API reference) | ✅ | Merged (PR #2) — root + 3 package advertisement READMEs |
-| **Phase 2D** — Factories (coordinated: core ABI + di + transformer) | ✅ | 2D.1 FactoryRef ABI (PR #5) · 2D.2 di injection (PR #6, +10 tests→69) · 2D.3 transformer detection + §4.5/async/overload diagnostics (PR #7, +17→45). All merged. |
-| **Phase 3** — Integration & verification | ✅ | Merged (PR #10) — e2e transformer→di, progressive-enhancement parity, factory e2e, correctness suite all landed. |
-| **Phase 4** — Packaging & publish | ✅ | All three packages (`@fnioc/core`, `@fnioc/di`, `@fnioc/transformer`) live on npm at v1.0.0 with provenance; OIDC trusted publishing; two-stage @next/@latest publish flow. |
-| **Phase 5** — Dir rename + session transfer | ✅ | Rename `ioc@rhombus-toolkit`→`ioc@fnioc` done early (mid-build recovery); session re-anchored |
-| **Standing** — `rhombus-toolkit/ts` issue filing | ⬜ | Ongoing; high bar for filing |
+| Phase / Track                                                       | Status | Notes                                                                                                                                                                                               |
+| ------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 0** — Scaffold (main checkout)                              | ✅     | Green on `main`; repo + branch protection (`verify`) + squash auto-merge configured                                                                                                                 |
+| **Phase 1** — `@fnioc/core` (ABI + WeakMap + authoring surfaces)    | ✅     | Merged (PR #1) — 22 tests; ABI, global WeakMap, `defineDeps`/`getDeps`, `@signature`, `forCtor`                                                                                                     |
+| **Phase 2A** — `@fnioc/di` runtime (base; no factories)             | ✅     | Merged (PR #3) — 59 tests; DiBuilder, scopes, §5.4 captive-dep rule, greedy selection, cycle detection, `useFactory`/`useValue`, native disposal, async-as-values; factory injection deferred to 2D |
+| **Phase 2B** — `@fnioc/transformer` (base; no factory detection)    | ✅     | Merged (PR #4) — 28 tests + `tspc` ESM e2e; rebased onto current `main` + fixed `transformer:test` missing build-dep                                                                                |
+| **Phase 2C** — Docs (README + API reference)                        | ✅     | Merged (PR #2) — root + 3 package advertisement READMEs                                                                                                                                             |
+| **Phase 2D** — Factories (coordinated: core ABI + di + transformer) | ✅     | 2D.1 FactoryRef ABI (PR #5) · 2D.2 di injection (PR #6, +10 tests→69) · 2D.3 transformer detection + §4.5/async/overload diagnostics (PR #7, +17→45). All merged.                                   |
+| **Phase 3** — Integration & verification                            | ✅     | Merged (PR #10) — e2e transformer→di, progressive-enhancement parity, factory e2e, correctness suite all landed.                                                                                    |
+| **Phase 4** — Packaging & publish                                   | ✅     | All three packages (`@fnioc/core`, `@fnioc/di`, `@fnioc/transformer`) live on npm at v1.0.0 with provenance; OIDC trusted publishing; two-stage @next/@latest publish flow.                         |
+| **Phase 5** — Dir rename + session transfer                         | ✅     | Rename `ioc@rhombus-toolkit`→`ioc@fnioc` done early (mid-build recovery); session re-anchored                                                                                                       |
+| **Standing** — `rhombus-toolkit/ts` issue filing                    | ⬜     | Ongoing; high bar for filing                                                                                                                                                                        |
 
 ---
 
@@ -130,7 +130,7 @@ Phase 5  Dir rename (ioc@rhombus-toolkit → ioc@fnioc) + session transfer
 - [ ] `hole` sentinel — exported `null` alias; wire value is `null` (JSON-friendly) [superseded: hole removed; primitives tokenize by name; unregistered = runtime miss]
 - [ ] `ABI_VERSION` — exported integer constant (`1`)
 - [ ] `DepRecord` shape — `{ abi: number, signatures: ReadonlyArray<ReadonlyArray<Token | null>> }` [superseded: `abi` field removed; shape is `{ signatures: ReadonlyArray<ReadonlyArray<DepSlot>> }`; slots are `Token | FactoryRef | ScopeRef | Union | LiteralRef`, no null]
-- [ ] Global-symbol WeakMap — `globalThis[Symbol.for(\`@fnioc/core:deps@${ABI_VERSION}\`)] ??= new WeakMap()` at module init; all reads/writes through this key. `Symbol.for` only (never unique symbol); version-suffixed.
+- [ ] Global-symbol WeakMap — `globalThis[Symbol.for(\`@fnioc/core:deps@${ABI_VERSION}\`)] ??= new WeakMap()`at module init; all reads/writes through this key.`Symbol.for` only (never unique symbol); version-suffixed.
 - [ ] `defineDeps(ctor, signatures)` — merges (appends unique) signatures into the ctor's `DepRecord`; creates the record if absent; writes through the global-symbol WeakMap
 - [ ] `@signature(...tokens)` — TC39 class decorator (NOT legacy); on apply calls `defineDeps(ctor, [[...tokens]])`; stacking = overloads
 - [ ] `forCtor(ctor).signature(...tokens)` — fluent free-function; chaining = overloads; same `signature` verb as the ABI field and the decorator
@@ -353,10 +353,12 @@ Phase 5  Dir rename (ioc@rhombus-toolkit → ioc@fnioc) + session transfer
 ## Parallelism Notes
 
 **What runs concurrently:**
+
 - Phases 2A, 2B, 2C start in the same dispatch turn after Phase 1 is merged. Three subagents, three worktrees, three independent branch names.
 - Within 2A: stages 2A.3–2A.6 can overlap after 2A.2 lands — evaluate at dispatch time. If each stage is ≥20 minutes of real work, fan out. If all four together would fit in one subagent in similar wall-clock, serialize them.
 
 **Barriers (hard synchronization points):**
+
 1. Phase 1 must be merged before dispatching 2A or 2B.
 2. Both 2A AND 2B must be merged before starting Phase 3.
 3. Phase 3 must be merged before Phase 4.
@@ -385,7 +387,7 @@ Per user prefs: whenever a branch is pushed, a PR is opened, or a workflow is tr
 
 ## Progress Log
 
-*(Append-only. Newest entries at the bottom.)*
+_(Append-only. Newest entries at the bottom.)_
 
 - **2026-05-30** — Design locked (see `ioc-locked-design.md`). PRD drafted to `PRD.md`. PLAN drafted to `PLAN.md`. Repo directory exists at `~/src/ioc@rhombus-toolkit` (empty; no git init yet). All phases at ⬜.
 - **2026-05-30** — Phase 1 (`@fnioc/core`) merged via PR #1 (22 tests). **Restructured factories into a coordinated Phase 2D** (core ABI element extension for a factory descriptor + di injection + transformer detection + the §4.5 factory-signature diagnostic), to run AFTER the base di + transformer land — factory injection couples all three packages and shouldn't be crammed into the first di PR. The ABI `signatures` element type stays `Token | null` for v1 base; 2D extends it to `Token | null | FactoryRef` (still ABI v1 — pre-release, no published consumers). Dispatched Phase 2 in parallel: di base engine, transformer base, docs.
@@ -402,11 +404,11 @@ Per user prefs: whenever a branch is pushed, a PR is opened, or a workflow is tr
 
 ### Known risk points
 
-| Risk | Phase | Mitigation |
-|---|---|---|
-| Phase 5 rename breaks Claude Code session anchor | 5 | Defer rename to the very end; use `fnc_switch_project` / `fnc_spawn_session` to re-anchor; delete old path if copy+transfer approach used |
-| ts-patch ↔ TS version incompatibility | 2B / 4 | Pin both in `mise.toml`; verify the tested pair in Phase 2B.1; re-verify in Phase 4 before first publish |
-| OIDC trusted-publisher bootstrap (first publish requires the config to exist before any publish attempt) | 4 | Set up trusted-publisher config on npmjs.com BEFORE triggering the first release-please merge; verify AUTOMERGE_PAT is set |
-| `@fnioc` scope not yet claimed — another party could claim it before Phase 4 | 4 | Claim the scope (via Bitwarden rhombulus god token) at the START of Phase 4, before any publish attempt |
-| Greedy overload selection + factory heuristic interaction (syntactic factory detection is at the transformer level, but the runtime partition is at resolve time) | 3 | Integration test explicitly covers the combined path in Phase 3 |
-| Global-symbol WeakMap shared by two copies of `core` at the same ABI — correct by design, but subtle | 1 | Explicit two-copies-share-one-map unit test in Phase 1 checklist |
+| Risk                                                                                                                                                              | Phase  | Mitigation                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 5 rename breaks Claude Code session anchor                                                                                                                  | 5      | Defer rename to the very end; use `fnc_switch_project` / `fnc_spawn_session` to re-anchor; delete old path if copy+transfer approach used |
+| ts-patch ↔ TS version incompatibility                                                                                                                             | 2B / 4 | Pin both in `mise.toml`; verify the tested pair in Phase 2B.1; re-verify in Phase 4 before first publish                                  |
+| OIDC trusted-publisher bootstrap (first publish requires the config to exist before any publish attempt)                                                          | 4      | Set up trusted-publisher config on npmjs.com BEFORE triggering the first release-please merge; verify AUTOMERGE_PAT is set                |
+| `@fnioc` scope not yet claimed — another party could claim it before Phase 4                                                                                      | 4      | Claim the scope (via Bitwarden rhombulus god token) at the START of Phase 4, before any publish attempt                                   |
+| Greedy overload selection + factory heuristic interaction (syntactic factory detection is at the transformer level, but the runtime partition is at resolve time) | 3      | Integration test explicitly covers the combined path in Phase 3                                                                           |
+| Global-symbol WeakMap shared by two copies of `core` at the same ABI — correct by design, but subtle                                                              | 1      | Explicit two-copies-share-one-map unit test in Phase 1 checklist                                                                          |

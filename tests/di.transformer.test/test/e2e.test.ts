@@ -118,7 +118,7 @@ services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
 });
 
 afterAll(() => {
-  if (projDir) rmSync(projDir, { recursive: true, force: true });
+  if (projDir) { rmSync(projDir, { recursive: true, force: true }); }
 });
 
 describe("ts-patch production e2e (ESM)", () => {

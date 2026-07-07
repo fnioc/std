@@ -5,7 +5,7 @@ Project-specific rules only. General git/commit/worktree conventions live in use
 ## No-transformer-first
 
 Every capability must be usable **smoothly and intuitively with no transformer at all** —
-by direct consumers of these libraries *and* by consumers of downstream libraries authored
+by direct consumers of these libraries _and_ by consumers of downstream libraries authored
 on top of them. Design that hand-written experience first and make it good on its own
 terms; it is the real API surface.
 
@@ -13,7 +13,7 @@ Transformers are pure ergonomics layered on afterward. A transformer must lower 
 **exactly what a no-transformer user would have written by hand** — it may delete
 boilerplate, never add a capability or change behavior. So the explicit/token forms
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
-(`add<T>()`, `addOptions<T>()`) are sugar rewritten *into* them.
+(`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
 
 ## Publishing
 

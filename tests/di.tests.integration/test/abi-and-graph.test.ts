@@ -49,7 +49,7 @@ function sigFor(wiring: string, ctor: string): string {
   // (`{ ..., Ctor, ... }`) never matches.
   const marker = `, ${ctor}, [`;
   const at = wiring.indexOf(marker);
-  if (at < 0) throw new Error(`No inline signature for ${ctor} in emitted wiring`);
+  if (at < 0) { throw new Error(`No inline signature for ${ctor} in emitted wiring`); }
   const start = at + marker.length - 1;
   let depth = 0;
   for (let i = start; i < wiring.length; i++) {
@@ -58,7 +58,7 @@ function sigFor(wiring: string, ctor: string): string {
       depth += 1;
     } else if (ch === "]") {
       depth -= 1;
-      if (depth === 0) return wiring.slice(start, i + 1);
+      if (depth === 0) { return wiring.slice(start, i + 1); }
     }
   }
   throw new Error(`Unbalanced signature for ${ctor} in emitted wiring`);
