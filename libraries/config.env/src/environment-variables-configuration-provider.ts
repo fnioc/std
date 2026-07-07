@@ -25,7 +25,6 @@ export class EnvironmentVariablesConfigurationProvider extends ConfigurationProv
     this.data.clear();
 
     const { prefix, variableNameTransformation, env } = this.#source;
-    const foldedPrefix = prefix?.toLowerCase();
 
     for (const [rawName, value] of Object.entries(env)) {
       if (value === undefined) {
@@ -34,16 +33,19 @@ export class EnvironmentVariablesConfigurationProvider extends ConfigurationProv
 
       const transformedName = variableNameTransformation(rawName);
 
-      if (foldedPrefix === undefined) {
+      // Narrow `prefix` via an early continue rather than a separate
+      // `foldedPrefix === undefined` check + a `prefix!` assertion below --
+      // the same `undefined` check does both jobs.
+      if (prefix === undefined) {
         this.set(transformedName, value);
         continue;
       }
 
-      if (!transformedName.toLowerCase().startsWith(foldedPrefix)) {
+      if (!transformedName.toLowerCase().startsWith(prefix.toLowerCase())) {
         continue;
       }
 
-      this.set(transformedName.slice(prefix!.length), value);
+      this.set(transformedName.slice(prefix.length), value);
     }
   }
 }
