@@ -478,3 +478,48 @@ where one applies; cohesion where it doesn't):
   runtime schema DSL + its `Infer` type-level image); no reference-source equivalent
   (reference config binding is reflection-based, not a schema DSL), and too cohesive to
   split further.
+
+## 14. `options.augmentations` — the config → Options bridge, realized — #40
+
+Realizes §4.1's `options.augmentations` (MEO's `Options.ConfigurationExtensions` analog). Two
+fluent methods augment `di.core`'s registration builder (declaration merge onto
+`ServiceManifestBase` — the interface a consumer holds — AND onto `ServiceManifestClass` so the
+class still satisfies its own `implements`, plus a `ServiceManifestClass.prototype` patch — the §9
+mechanism, with config.json's `addJsonFile` as the in-repo template). The double interface-merge is
+what a NEW method name needs: di.transformer only adds OVERLOADS of existing methods, so it merges
+onto the interface alone; a brand-new name would leave the implementing class short without the
+class-side merge. The bridge code lives ONLY here; di and config stay mutually unaware (§4.3).
+
+- **`addOptions<T>(token, makeBase)`** registers the `Options<T>` ASSEMBLY at `token` — a factory
+  (its `Resolver` injected via `RESOLVER_TOKEN`) that, at resolve time, pulls every pipeline step
+  and change-token source for `token` out of the container as collections (§12's `Array<slot>`
+  aggregation — the steps "travel through the container"), runs the §4.5 `OptionsFactory`, and
+  returns the value. It returns the `.as(scope)` continuation, so lifetime is chosen at the
+  registration site (§4.2: explicit registration, no fixed lifetimes). Slot tokens are derived
+  deterministically from the options token (`…/configure/<token>`, `…/change-token-source/<token>`,
+  …) so the appending side and the reading side agree without shared state.
+
+- **`configure(token, section)`** mirrors ME's `Configure<TOptions>(IConfiguration)`: it appends a
+  config-bind **configure step** (ME's `NamedConfigureFromConfigurationOptions`) AND a **change-token
+  source** returning `section.getReloadToken()` (ME's `ConfigurationChangeTokenSource`). When any
+  source is present the assembly delivers a REACTIVE `Options<T>` (`Options.watch`) whose `value`
+  re-runs the pipeline per read and whose `subscribe` fires on every reload (#6); with none it is a
+  static `Options.of` snapshot.
+
+Design-forced departures from the reference:
+
+- **Structural bind, not reflective.** ME's step calls `ConfigurationBinder.Bind(config, options)`,
+  a reflective property populate. TS has no reflective binder, so the bind DEEP-MERGES the section's
+  key/value subtree onto the value. All config leaves are strings (config carries no type
+  information), so richer coercion is a schema / data-annotations concern deferred to a later
+  satellite (§4.4). Deep (not a top-level assign) so two `configure` calls compose rather than
+  clobber overlapping nested keys.
+
+- **`CompositeChangeToken` is local.** `Options.watch` takes one producer, but a value may watch
+  several sources (two `configure` calls). The sources compose through a minimal composite token
+  kept internal to this package — primitives ships the change-token trio (#35) but not the
+  composite; porting it into primitives is YAGNI until a second consumer needs it.
+
+- **Split into `addOptions` + `configure`, not one call.** ME's `Configure` calls `AddOptions`
+  internally at a fixed lifetime. Here lifetime is not fixed (§4.2), so registering the assembly
+  (with its chosen scope) and adding a config source are distinct steps.

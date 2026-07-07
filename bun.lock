@@ -216,6 +216,21 @@
         "@rhombus-std/primitives": "workspace:*",
       },
     },
+    "libraries/options.augmentations": {
+      "name": "@rhombus-std/options.augmentations",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di.core": "workspace:^",
+      },
+    },
     "libraries/primitives": {
       "name": "@rhombus-std/primitives",
       "version": "0.0.0",
@@ -224,6 +239,7 @@
       "name": "@rhombus-std/config.commandline.test",
       "version": "0.0.0",
       "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.commandline": "workspace:*",
       },
     },
@@ -313,6 +329,17 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/hosting": "workspace:*",
+      },
+    },
+    "tests/options.augmentations.test": {
+      "name": "@rhombus-std/options.augmentations.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/options.test": {
@@ -449,6 +476,10 @@
     "@rhombus-std/hosting.test": ["@rhombus-std/hosting.test@workspace:tests/hosting.test"],
 
     "@rhombus-std/options": ["@rhombus-std/options@workspace:libraries/options"],
+
+    "@rhombus-std/options.augmentations": ["@rhombus-std/options.augmentations@workspace:libraries/options.augmentations"],
+
+    "@rhombus-std/options.augmentations.test": ["@rhombus-std/options.augmentations.test@workspace:tests/options.augmentations.test"],
 
     "@rhombus-std/options.test": ["@rhombus-std/options.test@workspace:tests/options.test"],
 

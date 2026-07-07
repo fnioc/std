@@ -1,0 +1,67 @@
+{
+  "name": "@rhombus-std/options.augmentations",
+  "version": "0.0.0",
+  "description": "The config -> Options bridge for @rhombus-std/options: the addOptions/configure authoring augmentation that binds a configuration section into an Options<T> and wires it reactive via the section's reload token.",
+  "keywords": [
+    "options",
+    "configuration",
+    "config",
+    "ioc",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/options.augmentations"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": true,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "dependencies": {
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "@rhombus-std/di.core": "workspace:^"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
