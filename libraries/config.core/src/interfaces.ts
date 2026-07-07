@@ -1,5 +1,8 @@
 // The configuration abstraction types: the IConfiguration* interface family and
-// the ITryGetResult tuple type. Pure types -- zero runtime, zero imports.
+// the ITryGetResult tuple type. Pure types -- zero runtime; the one import is
+// `IChangeToken`, itself a type-only (zero-runtime) primitive.
+
+import type { IChangeToken } from "@rhombus-std/primitives";
 
 /**
  * A node's subtree as a nested plain string object. A node that has children
@@ -73,6 +76,13 @@ export interface IConfiguration {
 
   /** This node's subtree as a nested plain string object. */
   toObject(): DeepRecord;
+
+  /**
+   * A token that fires when this configuration is reloaded -- the root
+   * composes its providers' tokens into its own; a section delegates to its
+   * root.
+   */
+  getReloadToken(): IChangeToken;
 }
 /// <summary>
 /// Represents a type used to build application configuration.
@@ -161,7 +171,7 @@ export interface IConfigurationProvider {
   /// Attempts to get an <see cref="IChangeToken"/> for change tracking.
   /// </summary>
   /// <returns>An <see cref="IChangeToken"/> token if this provider supports change tracking, <see langword="null"/> otherwise.</returns>
-  // getReloadToken(): IChangeToken;
+  getReloadToken(): IChangeToken;
 
   /// <summary>
   /// Loads configuration values from the source represented by this <see cref="IConfigurationProvider"/>.

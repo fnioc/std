@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.core",
   "version": "0.0.0",
-  "description": "Types-only configuration abstractions: the IConfiguration* interfaces and ITryGetResult. Zero runtime, zero dependencies.",
+  "description": "Types-only configuration abstractions: the IConfiguration* interfaces and ITryGetResult. Zero runtime; depends on @rhombus-std/primitives for the IChangeToken type only.",
   "keywords": [
     "configuration",
     "config",
@@ -31,6 +31,9 @@
   "scripts": {
     "build": "bun build.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/primitives": "workspace:*"
   },
   "publishConfig": {
     "access": "public",
