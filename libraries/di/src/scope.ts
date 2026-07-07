@@ -326,6 +326,35 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
+   * Non-throwing resolve — the resolved instance, or `undefined` when `token` is
+   * UNREGISTERED (the reference DI's nullable `GetService` against `resolve`'s
+   * throwing `GetRequiredService`). Only an unregistered token softens to
+   * `undefined`; a registered token whose construction fails for another reason
+   * (missing dependency, cycle, async-only) throws exactly as `resolve` would —
+   * the registration probe (`#lookup`) is what distinguishes "not a service"
+   * from "a service that failed to build".
+   */
+  public tryResolve<T>(token: Token): T | undefined;
+  public tryResolve(token: Token): unknown;
+  public tryResolve<T>(token?: Token): T | undefined {
+    if (token === undefined) {
+      throw new TypeError(
+        "tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at "
+          + "runtime). Without it, resolve with an explicit token: "
+          + "tryResolve<T>(\"my:token\").",
+      );
+    }
+    if (this.#lookup(token) === undefined) {
+      return undefined;
+    }
+    const result = this.#resolve<T>(token, this.#frame, [], false);
+    if (isPending(result)) {
+      throw new AsyncResolutionRequiredError(token);
+    }
+    return result;
+  }
+
+  /**
    * Returns a FACTORY for `type` rather than an instance. When `params` is
    * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must
    * resolve from the container (an unresolvable slot throws). When `params` is
@@ -693,6 +722,19 @@ export class ServiceProviderClass<S extends string = string>
           );
         }
         return settle(sp.#resolve<U>(depToken, owningFrame, stack, true)) as Promise<U>;
+      },
+      tryResolve: <U>(depToken?: Token): U | undefined => {
+        if (depToken === undefined) {
+          throw new TypeError(
+            "tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token "
+              + "at runtime).",
+          );
+        }
+        if (sp.#lookup(depToken) === undefined) {
+          return undefined;
+        }
+        // Sync mode never yields a Pending — the spine throws on a cached one.
+        return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
       },
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),

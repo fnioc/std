@@ -113,18 +113,19 @@ function lowerStatements(
 }
 
 /**
- * Rewrite every tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` call (one
- * type argument, NO value argument) within `node` to its string-token form,
- * anywhere in the tree — resolution calls are not confined to top-level
- * statements. Both method names are lowered identically: a function-typed type
- * arg (`resolve<(a: A) => T>()`) is a FACTORY request and lowers to
- * `*.resolveFactory("<token-for-return-type>")` (there is no async factory
- * primitive at runtime, so `resolveAsync<(a: A) => T>()` collapses to the same
- * sync `resolveFactory` call — awaiting a non-Promise value is a no-op); any
- * other type arg lowers to `*.resolve("<token-for-I>")` / `*.resolveAsync("<token-for-I>")`,
- * preserving whichever method name the call started with. The explicit
- * `resolve<T>(token)` / `resolveAsync<T>(token)` forms carry a value argument
- * and are left untouched.
+ * Rewrite every tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` /
+ * `*.tryResolve<I>()` call (one type argument, NO value argument) within `node`
+ * to its string-token form, anywhere in the tree — resolution calls are not
+ * confined to top-level statements. All three method names are lowered
+ * identically: a function-typed type arg (`resolve<(a: A) => T>()`) is a FACTORY
+ * request and lowers to `*.resolveFactory("<token-for-return-type>")` (there is
+ * no async factory primitive at runtime, so `resolveAsync<(a: A) => T>()`
+ * collapses to the same sync `resolveFactory` call — awaiting a non-Promise value
+ * is a no-op); any other type arg lowers to `*.resolve("<token-for-I>")` /
+ * `*.resolveAsync("<token-for-I>")` / `*.tryResolve("<token-for-I>")`, preserving
+ * whichever method name the call started with. The explicit
+ * `resolve<T>(token)` / `resolveAsync<T>(token)` / `tryResolve<T>(token)` forms
+ * carry a value argument and are left untouched.
  */
 function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   const visit = (n: ts.Node): ts.Node => {
@@ -137,14 +138,21 @@ function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   return visit(node);
 }
 
+/** The tokenless resolution methods the rewrite recognizes and lowers. */
+const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
+  "resolve",
+  "resolveAsync",
+  "tryResolve",
+]);
+
 /**
- * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()`
- * (1 type arg, 0 value args).
+ * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` /
+ * `*.tryResolve<I>()` (1 type arg, 0 value args).
  */
 function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {return false;}
-  if (callee.name.text !== "resolve" && callee.name.text !== "resolveAsync") {return false;}
+  if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) {return false;}
   if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
   return !call.arguments.length;
 }
