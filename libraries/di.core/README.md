@@ -1,19 +1,27 @@
 # @rhombus-std/di.core
 
-> **Private, unpublished package.** `@rhombus-std/di.core` is never published to npm. Its
-> source is **inlined** into `@rhombus-std/di` and `@rhombus-std/di.transformer` at their build
-> time — they ship self-contained JS and `.d.ts` with zero `@rhombus-std/di.core`
-> references. Install `@rhombus-std/di` (and, for the compile-time plugin,
-> `@rhombus-std/di.transformer`); you never depend on `@rhombus-std/di.core` directly. The runtime
-> authoring surfaces below are re-exported from `@rhombus-std/di`.
+> **Published abstractions package.** `@rhombus-std/di.core` is the abstractions
+> substrate `@rhombus-std/di` depends on and re-exports — mirroring the reference
+> DI split where the abstractions package ships the concrete registration
+> collection and the runtime package supplies the provider. `@rhombus-std/di`
+> keeps it **external** (not inlined) so there is one shared `@rhombus-std/di.core`
+> module identity: the `ServiceManifestClass` `di` patches `build()` onto, and the
+> class cross-package augmentations patch, are the same object. An app installs
+> `@rhombus-std/di` (and `@rhombus-std/di.transformer` for the compile-time plugin)
+> and reaches the authoring surface through di's re-exports; a **library** author
+> depends on `@rhombus-std/di.core` directly to author registrations without the
+> resolution engine.
 
-The substrate for `ioc`. It exports nothing that touches resolution or
-compilation — only the immutable dependency-signature types (`DepSlot` and its
-variants), the open-generic token grammar, and the plain data-constructor
-helpers (`union`, `typeArg`) a hand-authored signature is built from. There is
-no metadata store here, or anywhere else: a constructor/factory's dependency
-signature rides on the registration itself — see
-[`@rhombus-std/di`](../di/README.md) for where it's read.
+The substrate for `ioc`. It ships the immutable dependency-signature data format
+(`DepSlot` and its variants), the open-generic token grammar with its
+guard/constructor helpers (`union`, `typeArg`), the registration ABI, and — the
+runtime footprint — the concrete registration builder `ServiceManifestClass`
+(`add` / `addFactory` / `addValue`; `build()` is a `@rhombus-std/di` extension)
+plus the registration-time errors (`DiError`, `OpenTokenRegistrationError`). The
+resolution engine (`ServiceProviderClass`) and resolution-time errors live in
+[`@rhombus-std/di`](../di/README.md). There is no metadata store here, or anywhere
+else: a constructor/factory's dependency signature rides on the registration
+itself.
 
 ---
 
