@@ -28,6 +28,7 @@ import type { IConfiguration } from "@rhombus-std/config.core";
 // resolve in THIS file's scope.
 import type { AddBuilder, Token } from "@rhombus-std/di.core";
 import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import { Options } from "@rhombus-std/options";
 
 import { assembleOptions } from "./assemble-options.js";
 import { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
@@ -44,6 +45,20 @@ import { changeTokenSourceToken, configureStepToken } from "./option-tokens.js";
 // requires identical parameters).
 declare module "@rhombus-std/di.core" {
   interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+    /**
+     * Registers an `Options<T>` at `token` that WRAPS the `T` resolved from
+     * `tToken`. The explicit, complete, transformer-free verb (#34): internally
+     * just `addFactory(token, (t) => Options.of(t), [[tToken]])`, so di gains no
+     * new primitive. The type-driven `addOptions<T>()` sugar
+     * (`@rhombus-std/di.transformer.options`) lowers to exactly this call,
+     * deriving `token` = `token(Options<T>)` and `tToken` = `token(T)`.
+     *
+     * Distinct from the pipeline overload below by its second argument's type: a
+     * `Token` (string) here, a `() => T` base factory there. Returns the
+     * `.as(scope)` continuation so the lifetime is chosen at the registration
+     * site.
+     */
+    addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
     /**
      * Registers the `Options<T>` assembly for `token`: resolving `token`
      * assembles the value from all configure/post-configure/validate steps and
@@ -63,6 +78,7 @@ declare module "@rhombus-std/di.core" {
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
+    addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
     addOptions<T>(token: Token, makeBase: () => T): AddBuilder<Scopes>;
     configure(token: Token, section: IConfiguration): this;
   }
@@ -71,13 +87,21 @@ declare module "@rhombus-std/di.core" {
 ServiceManifestClass.prototype.addOptions = function addOptions<T>(
   this: ServiceManifestClass<string>,
   token: Token,
-  makeBase: () => T,
+  source: Token | (() => T),
 ): AddBuilder<string> {
-  return this.addFactory(
-    token,
-    (resolver) => assembleOptions(resolver, token, makeBase),
-    [[RESOLVER_TOKEN]],
-  );
+  // Two verbs share the name, disambiguated by the second argument (§15):
+  //   - a `Token` (string)      → wrap the already-bound `T` resolved from it
+  //     (#34): `addFactory(token, (t) => Options.of(t), [[tToken]])`.
+  //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
+  //     (#40) over the steps/sources registered for `token`.
+  if (typeof source === "function") {
+    return this.addFactory(
+      token,
+      (resolver) => assembleOptions(resolver, token, source),
+      [[RESOLVER_TOKEN]],
+    );
+  }
+  return this.addFactory(token, (t: T) => Options.of(t), [[source]]);
 };
 
 ServiceManifestClass.prototype.configure = function configure(
