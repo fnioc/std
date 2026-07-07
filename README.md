@@ -12,8 +12,11 @@ Flat, not nested by family:
 
 - `libraries/<name-without-scope>` — one directory per published package, e.g.
   `libraries/core`, `libraries/config-json`.
-- `examples/<family>.examples.<name>` — runnable examples, namespaced by
-  family to avoid collisions across the consolidated repos.
+- `examples/examples.<kind>.<name>` — the interop-matrix example set: two
+  dependency libraries (`examples.lib.with-transformer` / `.without-transformer`),
+  two composition-root apps (`examples.app.with-transformer` / `.without-transformer`)
+  running one integrated scenario each, and the type-only `examples.contracts`
+  they share. Each dialect both produces and consumes the other.
 
 Packages are bun workspaces and consume each other's raw TypeScript source
 directly (no build step between them) via `workspace:*` dependencies and

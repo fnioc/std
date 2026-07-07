@@ -1,0 +1,12 @@
+=== @rhombus-std interop — without transformer ===
+async banner (resolveAsync): == @rhombus-std interop demo ==
+greetings aggregated from both libraries (2):
+  lib.with-transformer: Good day, Ada.!
+  lib.without-transformer: Hey Ada!
+server options (live): Host=0.0.0.0 Port=8080 MaxConnections=100
+greeting policy excitement (static wrap): "!"
+health check present: true (ok)
+live reload (config → reactive Options):
+  MaxConnections before reload: 100
+  reload fired: MaxConnections is now 250
+  MaxConnections after reload: 250

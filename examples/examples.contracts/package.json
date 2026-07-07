@@ -1,0 +1,16 @@
+{
+  "name": "@rhombus-std/examples.contracts",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Type-only shared contracts for the example interop matrix: the IGreeting collection element, ServerOptions, IHealthCheck, and IBanner. No runtime code — every reference erases.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit -p tsconfig.json"
+  }
+}

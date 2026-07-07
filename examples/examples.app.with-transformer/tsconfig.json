@@ -1,0 +1,22 @@
+{
+  "//": "Built with tspc: BOTH the @rhombus-std/di.transformer plugin and its options satellite lower the tokenless registration/resolution forms in src/main.ts. The two transformers' declare-module augmentations enter the program via `types` so the authored forms type-check under both tspc (build) and tspc --noEmit (lint). customConditions:[built] resolves the di family + the with-transformer example library to their built d.ts (the augmented core class cannot co-compile with di source). module:ESNext keeps relative + bare specifiers verbatim so node ESM resolves dist at runtime; the DOM lib supplies console + AbortSignal (the latter reached transitively through options → primitives).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["ES2022", "ESNext.Disposable", "DOM"],
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "composite": false,
+    "types": ["@rhombus-std/di.transformer", "@rhombus-std/di.transformer.options"],
+    "customConditions": ["built"],
+    "plugins": [
+      { "transform": "@rhombus-std/di.transformer", "import": "transform" },
+      { "transform": "@rhombus-std/di.transformer.options", "import": "transform" }
+    ]
+  },
+  "include": ["src/**/*"]
+}
