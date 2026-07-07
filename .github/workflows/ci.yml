@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      alpha_version:
+        description: "Alpha version to publish (0.0.0-alphaN)"
+        required: true
+        default: "0.0.0-alpha3"
+
+jobs:
+  publish-alpha-verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install pnpm (required for workspace:* rewrite + publishConfig.exports swap)
+        run: npm install -g pnpm@10.34.4
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: bun scripts/build-all.ts
+
+      - name: Publish alpha verification round
+        env:
+          ALPHA_VERSION: ${{ inputs.alpha_version }}
+        run: |
+          set -euo pipefail
+          ORDER=(primitives config.core options di.core config config.env config.json config.commandline options.augmentations di di.transformer config.transformer di.transformer.options)
+          for pkg in "${ORDER[@]}"; do
+            (
+              cd "libraries/$pkg"
+              pnpm pkg set version="$ALPHA_VERSION"
+              pnpm publish --tag alpha --provenance --no-git-checks
+            )
+          done
