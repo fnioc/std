@@ -1,0 +1,60 @@
+{
+  "name": "@rhombus-std/logging.core",
+  "version": "0.0.0",
+  "description": "Logging abstractions ported from ME.Logging.Abstractions: ILogger/ILoggerFactory/ILoggerProvider/ILoggingBuilder + LogLevel/EventId, plus the real-runtime logInformation/logError/... convenience wrappers. Depends on @rhombus-std/di.core for the ServiceManifest type only.",
+  "keywords": [
+    "logging",
+    "abstractions",
+    "ioc",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/logging.core"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "dependencies": {
+    "@rhombus-std/di.core": "workspace:*"
+  },
+  "devDependencies": {
+    "@rhombus-toolkit/func": "3.5.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
