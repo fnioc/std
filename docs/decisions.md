@@ -535,7 +535,7 @@ token. Two halves land here, and one deliberate naming deviation is recorded so 
 The primary, complete form is the explicit token verb `options.augmentations` adds:
 
 ```ts
-addOptions(token, tToken)   // register Options<T> wrapping the T resolved from tToken
+addOptions(token, tToken); // register Options<T> wrapping the T resolved from tToken
 ```
 
 which internally is just `addFactory(token, (t) => Options.of(t), [[tToken]])` — so **di gains no
@@ -548,7 +548,7 @@ new primitive.** It coexists as an OVERLOAD with §14's config-pipeline
 
 `addOptions<T>` wraps an **already-bound `T`**; it binds **no config.** MEO's Options core carries no
 Configuration dependency — config binding is a separate package (`Options.ConfigurationExtensions`),
-here §14's `configure(token, section)`. So the wrap verb has nothing to *bind*; it only fills in the
+here §14's `configure(token, section)`. So the wrap verb has nothing to _bind_; it only fills in the
 element token. Anything connecting config → Options belongs to §14's bridge, not here.
 
 ### The sugar `addOptions<T>()` lowers to the explicit verb
@@ -569,7 +569,7 @@ would leave the sugar's `tToken` unresolvable against the token `add<T>()` regis
 
 ### Naming deviation: `di.transformer.options`, NOT `options.transformer`
 
-The transformer is pure token-lowering — di's *kind* of transform (type → token) — it emits di
+The transformer is pure token-lowering — di's _kind_ of transform (type → token) — it emits di
 registrations, and it has **zero value without di.** So it lives as a `di.transformer` **satellite**
 (`di.transformer.options`) that IMPORTS di.transformer's token derivation, deliberately deviating
 from the `<family>.transformer` convention. The asymmetry is the point: `config.transformer` stays
@@ -577,3 +577,52 @@ its OWN standalone package **because** its schema-derivation is usable with no d
 (di-independent), whereas an options lowering that emits no di registrations would be nothing. The
 §2 invariant still holds — the satellite imports di.transformer's compile-time machinery, never the
 `@rhombus-std/di` runtime.
+
+## 16. The example set — a four-package interop matrix — #30
+
+The six per-family example projects (`di.examples.*`, `config.examples.*`) are replaced by ONE
+integrated example set: four packages plus a type-only contracts package, exercising the whole v0
+surface in concert rather than in per-family islands.
+
+- **`examples.contracts`** — PURE TYPES (`IGreeting`, `ServerOptions`, `GreetingPolicy`,
+  `IHealthCheck`, `IBanner`, `IServerReport`). No runtime code, so every `import type` erases and no
+  package carries a runtime dependency on it. Both dialects derive/hand-write tokens from these
+  package-public types, so the token a manual author writes is exactly the one the transformer
+  derives — the agreement the interop turns on.
+- **`examples.lib.with-transformer`** — a dependency library authored in the tokenless dialect and
+  shipped as its BUILD. Its `exports` resolve to `dist` under EVERY condition (`bun`/`types`
+  included): its `makeServerReport` factory resolves the container tokenlessly (`resolve<IGreeting[]>()`,
+  `resolve<Options<ServerOptions>>()`, `tryResolve`/`isService`), and `tspc` lowers those calls during
+  the build. Raw source is meaningless — a `source`/`bun` → `src` entry would silently bypass the
+  lowering and the un-tokened `resolve()` calls would throw. Consumers get lowered JS + a clean d.ts
+  and never run the transformer.
+- **`examples.lib.without-transformer`** — the same producer role in the MANUAL dialect (explicit
+  tokens + plain-data signatures via `addCasualServices(services)`). It gets a build for consistency
+  and real consumption, but ordinary source-libs conditions are fine — nothing needs lowering.
+- **`examples.app.{with,without}-transformer`** — two composition roots running the IDENTICAL
+  scenario (bar a header line), one tokenless (tspc, both di transformers) and one manual (plain tsc).
+  Each wires config → a reactive `Options<ServerOptions>` through the full configure/post-configure/
+  validate pipeline, registers BOTH libraries into one container, resolves the `IGreeting` collection
+  aggregating both, reaches an async banner with `resolveAsync`, delivers a config-independent policy
+  through `addOptions<T>()`, and fires a live options update on config reload. The `expected.txt`
+  output-diff e2e runs in the root gate.
+
+### Registration lowering is top-level-only — so libraries register differently by dialect
+
+`di.transformer` lowers `add`/`addValue`/`addFactory` registration calls ONLY at a module's TOP-LEVEL
+statements (resolution calls — `resolve`/`resolveAsync`/`tryResolve`/`isService` — lower anywhere,
+including nested in a factory body). A composition root IS top-level, so the tokenless apps register
+tokenlessly there. A reusable library registration FUNCTION, however, has its `add<I>()` calls inside
+a function body, where they would NOT lower. Consequently:
+
+- the **manual** library exposes a real `addCasualServices(services)` registration function — its
+  explicit forms need no lowering and compose freely into a callable;
+- the **tokenless** library instead exports impl classes + a tokenless-authored _factory_
+  (`makeServerReport`, whose `resolve<T>()` calls DO lower in-body), and the app performs the
+  top-level registration. Its build is still load-bearing precisely because of those in-body resolves.
+
+This asymmetry is a faithful property of the transformer's design (the PRD's "library author compiles
+once and publishes lowered JS" is the top-level self-registration / published-factory shape), not a
+workaround — and it is what the interop matrix demonstrates: each dialect both produces services the
+other consumes, and the built tokenless library's lowered factory resolves correctly inside the
+manual app because their tokens agree.
