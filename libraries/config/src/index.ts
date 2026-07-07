@@ -2,8 +2,8 @@
 //
 // Exports the abstractions (IConfiguration* interfaces + the configPath
 // helpers), the engine classes (ConfigurationBuilder / ConfigurationRoot /
-// ConfigurationSection / the abstract ConfigurationProvider base /
-// ConfigurationKeyComparer), the bundled Memory provider + its
+// ConfigurationSection / the abstract ConfigurationProvider base) +
+// compareConfigurationKeys, the bundled Memory provider + its
 // addInMemoryCollection augmentation, and the runtime schema surface
 // (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
 // (@rhombus-std/config.json/-env/-commandline) peer-depend on this package, extend
@@ -17,11 +17,11 @@
 export type * from "@rhombus-std/config.core";
 
 // The runtime `configPath` helper namespace stays in this package.
-export * from "./abstractions";
+export * as configPath from "./abstractions/configuration-path";
 
 // Engine.
 export { ConfigurationBuilder } from "./configuration-builder";
-export { ConfigurationKeyComparer } from "./configuration-key-comparer";
+export { compareConfigurationKeys } from "./configuration-key-comparer";
 export { ConfigurationProvider } from "./configuration-provider";
 export { ConfigurationRoot } from "./configuration-root";
 export { ConfigurationSection } from "./configuration-section";

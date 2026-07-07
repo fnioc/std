@@ -23,6 +23,7 @@ import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
 import { ConfigurationSection, subtreeToObject } from "./configuration-section";
+import { foldKey } from "./fold-key";
 
 export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements IConfigurationRoot {
   readonly #providers: IConfigurationProvider[];
@@ -71,7 +72,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
    */
   #rawGet(key: string): string | undefined {
     for (let i = this.#providers.length - 1; i >= 0; i--) {
-      const result = (this.#providers[i] as IConfigurationProvider).tryGet(key);
+      const result = this.#providers[i]!.tryGet(key);
       if (result[0]) {
         return result[1];
       }
@@ -168,7 +169,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
     const seen = new Set<string>();
     const distinct: string[] = [];
     for (const key of keys) {
-      const folded = key.toLowerCase();
+      const folded = foldKey(key);
       if (!seen.has(folded)) {
         seen.add(folded);
         distinct.push(key);

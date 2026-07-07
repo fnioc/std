@@ -23,8 +23,8 @@ export function combine(...args: [pathSegments: Iterable<string>] | [...pathSegm
 }
 
 /** Extracts the last path segment from `path`. */
-export function getSectionKey(path?: string) {
-  if (!path?.trim()) {
+export function getSectionKey(path: string): string {
+  if (!path.trim()) {
     return path;
   }
 
@@ -36,8 +36,8 @@ export function getSectionKey(path?: string) {
  * Extracts the parent path for `path` -- the original minus its last segment,
  * or `null` if `path` is already a top-level node.
  */
-export function getParentPath(path?: string) {
-  if (!path?.trim()) {
+export function getParentPath(path: string): string | null {
+  if (!path.trim()) {
     return null;
   }
 

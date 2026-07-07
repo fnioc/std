@@ -87,7 +87,7 @@ export interface IConfigurationBuilder {
   /// <summary>
   /// Gets the sources used to obtain configuration values
   /// </summary>
-  get sources(): Set<IConfigurationSource>;
+  get sources(): readonly IConfigurationSource[];
 
   /// <summary>
   /// Adds a new configuration source.

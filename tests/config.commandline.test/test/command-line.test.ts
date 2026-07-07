@@ -7,6 +7,7 @@
 // source/provider construction), plus new tests for the construction-time
 // switchMappings validation and the "/switch" -> "--switch" rewrite.
 
+import { ConfigurationBuilder } from "@rhombus-std/config";
 import { CommandLineConfigurationSource } from "@rhombus-std/config.commandline/internal/command-line-configuration-source";
 import { describe, expect, test } from "bun:test";
 
@@ -20,7 +21,7 @@ function load(
   switchMappings?: Record<string, string>,
 ): Record<string, string> {
   const source = new CommandLineConfigurationSource(args, { switchMappings });
-  const provider = source.build({} as never);
+  const provider = source.build(new ConfigurationBuilder());
   provider.load();
 
   const result: Record<string, string> = {};

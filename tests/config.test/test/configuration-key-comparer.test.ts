@@ -1,15 +1,15 @@
-// ConfigurationKeyComparer -- the segment-by-segment, numeric-aware ordering
+// compareConfigurationKeys -- the segment-by-segment, numeric-aware ordering
 // that gives config keys (especially array indices) a natural sort. This
 // behavior is NEW relative to the pre-rewrite single-Map ConfigurationRoot,
 // which had no comparer at all and enumerated keys in insertion order.
 
-import { ConfigurationKeyComparer } from "@rhombus-std/config";
+import { compareConfigurationKeys } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 
-const cmp = ConfigurationKeyComparer.compare;
+const cmp = compareConfigurationKeys;
 const sign = (n: number): number => (n < 0 ? -1 : n > 0 ? 1 : 0);
 
-describe("ConfigurationKeyComparer.compare", () => {
+describe("compareConfigurationKeys", () => {
   test("both-integer segments compare NUMERICALLY, not lexicographically", () => {
     // The whole point: a lexicographic sort gives 0,1,10,2,...,9 -- numeric
     // ordering gives 0,1,2,...,9,10. This is what a purely string-keyed Map
