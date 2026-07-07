@@ -140,6 +140,46 @@ Reasons to build it, premise-independent:
   1:1 fidelity with `Options.ConfigurationExtensions`), `options.data-annotations`
   (validation).
 
+### 4.5 Pipeline — build the full `OptionsFactory` shape (adopted, #41)
+
+> **Adopted** (per §0's mirror-first rule): build the full MEO setup/validate pipeline in
+> `@rhombus-std/options`. On `create<T>()`: make base → run configure steps → run
+> post-configure steps → run validate checks → return. All slots do meaningful TS work and
+> share one run-a-list mechanism, so the full shape is cheap.
+
+**Supersedes** the "**Validation / post-configure = at bind time**" bullet of §4.2: config-bind
+is a _pipeline participant_, not a replacement for the pipeline. In reference DI, config-bind
+is itself a configure step (`NamedConfigureFromConfigurationOptions : IConfigureOptions`,
+verified in source), so `bindConfig` is _one_ configure source among several — code defaults,
+overrides, config bind — not a collapse of the whole configure/validate chain. §4.2's
+collapse of the _accessor_ (`Options<T>`) is untouched; only its pipeline bullet is reversed.
+
+Shape (one public type per kebab-case file, mirroring MEO's one-type-per-file layout):
+
+- **`ConfigureOptions<T>`** — `configure(options)`. Composes the value from its sources; runs
+  in registration order. The config-bind-as-a-configure-step wiring is #40's job, in
+  `options.augmentations` — `options` core stays config-unaware (§4.1/§4.3).
+- **`PostConfigureOptions<T>`** — `postConfigure(options)`. A guaranteed-last pass, after every
+  configure step: the library/framework gets the final word before validation.
+- **`ValidateOptions<T>`** → **`ValidateOptionsResult`** (`succeeded` / `skipped` / `failed`,
+  with failure messages). Semantic rules beyond a binder's structural checks.
+- **`OptionsFactory<T>`** — holds the step lists and runs the pipeline in `create()`. The base
+  instance is injected as a `makeBase` function (TS has no reflective `Activator` analog).
+- **`OptionsValidationError`** — aggregates the failures from every validate step into the one
+  thrown error (`message` = failures joined by `"; "`).
+
+Departures from the reference, both design-forced:
+
+- **No name parameter on any step, and no name on `create()`.** Named options are distinct
+  registrations here (§4.2), so a factory serves exactly one registration — there is no
+  `IConfigureNamedOptions` branch to mirror.
+- **No `OptionsCache<T>`.** Instance caching is a registration-lifetime concern in this design
+  (§3): the container decides how long a resolved `Options<T>` lives, so a separate per-factory
+  cache type has no place here.
+
+YAGNI cut (per the #41 signoff): build the slots + factory; ship **no** concrete configurers or
+validators until a consumer asks for one.
+
 ## 5. MEDI.Abstractions parity backlog (filed)
 
 - **#22** [High] expose the registration surface as an interface (`IServiceCollection` parity).

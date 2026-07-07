@@ -11,9 +11,9 @@
 // source backing this Options<T> is reload-capable.
 //
 // NOT built here (see README): named options (MEO's `.Get(name)` -- §4.2
-// treats named options as distinct registrations instead) and the
-// configure/validate/OptionsFactory pipeline (deferred, unresolved tension
-// with §0's mirror-first rule).
+// treats named options as distinct registrations instead). The
+// configure/validate/OptionsFactory pipeline IS now built -- in its own
+// files (`options-factory.ts` and the step interfaces), adopted per §4.5.
 
 import type { ChangeTokenProducer } from "@rhombus-std/primitives";
 import { ChangeToken } from "@rhombus-std/primitives";
