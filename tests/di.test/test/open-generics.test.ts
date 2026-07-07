@@ -3,6 +3,7 @@ import {
   NoSatisfiableSignatureError,
   OpenTokenRegistrationError,
   OpenTokenResolutionError,
+  RESOLVER_TOKEN,
   ServiceManifest,
   ServiceProviderClass,
   typeArg,
@@ -130,7 +131,7 @@ describe("open-table matching", () => {
 });
 
 describe("substitution across slot kinds", () => {
-  test("ScopeRef, LiteralRef, TypeArgRef, hole token, and Union-with-hole all close", () => {
+  test("provider token, LiteralRef, TypeArgRef, hole token, and Union-with-hole all close", () => {
     class KitchenSink {
       public constructor(
         public readonly sp: Resolver,
@@ -143,7 +144,7 @@ describe("substitution across slot kinds", () => {
     const services = new ServiceManifest();
     services.addValue(T.A, "A!");
     services.add("app/IKitchen<$1>", KitchenSink, [[
-      { scope: true },
+      RESOLVER_TOKEN,
       { value: 42 },
       typeArg(1),
       "$1",

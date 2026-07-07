@@ -42,15 +42,17 @@ export interface FactoryRef {
 
 ---
 
-## `ScopeRef`
+## `RESOLVER_TOKEN` / the provider as a resolvable type
 
-Marks a constructor parameter to receive the live resolution scope.
+The provider is an intrinsically resolvable type — no dedicated slot kind. A parameter typed `Resolver` derives the ordinary token `RESOLVER_TOKEN`, and the engine resolves it to the nearest open scope's provider VIEW rather than a registration, so "I want the provider" is plain DI. A plugin-less author hand-feeds the exported constant in a signature:
 
 ```ts
-export interface ScopeRef {
-  readonly scope: true;
-}
+import { RESOLVER_TOKEN } from "@rhombus-std/di.core";
+
+services.addFactory("app/IReport", (sp) => buildReport(sp), [[RESOLVER_TOKEN]]);
 ```
+
+`isProviderToken(token)` is the runtime predicate the engine uses. (This retires the former `{ scope: true }` `ScopeRef` slot marker — the provider token subsumes it.)
 
 ---
 
@@ -180,15 +182,13 @@ One positional slot in a constructor signature:
 export type DepSlot =
   | Token
   | FactoryRef
-  | ScopeRef
   | Union
   | LiteralRef
   | TypeArgRef;
 ```
 
-- `Token` — a container-resolved dep (registered) or a caller-supplied param (unregistered); the live registration map determines which at resolve time.
+- `Token` — a container-resolved dep (registered) or a caller-supplied param (unregistered); the live registration map determines which at resolve time. The intrinsic provider token (`RESOLVER_TOKEN`) resolves to the live provider view.
 - `FactoryRef` — a factory-injected parameter.
-- `ScopeRef` — the live resolution scope.
 - `Union` — member-level alternatives; first resolvable wins.
 - `LiteralRef` — a singular literal or nullish-singleton value, injected directly, no container lookup, always satisfiable.
 - `TypeArgRef` — the token string of an open registration's `N`th type argument; substituted to a `LiteralRef` at close time (see `TypeArgRef` above).
@@ -232,9 +232,10 @@ statically extract a signature from, rewriting the type-driven `add<IFoo>(Foo)`
 to `add("pkg:IFoo", Foo, [[...]])` — there is no separate prelude call and
 nothing hoisted; the signature travels with the registration itself. Hand
 authoring (no transformer) means writing the array yourself, using the slot
-builders above (`union`, `typeArg`) plus plain token strings, `FactoryRef` /
-`ScopeRef` / `LiteralRef` object literals, and the token-grammar helpers below
-for open generics. Omitting the third argument leaves the registration
+builders above (`union`, `typeArg`) plus plain token strings (including
+`RESOLVER_TOKEN` for the provider), `FactoryRef` / `LiteralRef` object literals,
+and the token-grammar helpers below for open generics. Omitting the third
+argument leaves the registration
 signature-less — fine for a zero-arg constructor, but resolution throws
 `MissingMetadataError` for any constructor with parameters.
 
@@ -308,7 +309,7 @@ export function substituteSignatures(
 ): readonly (readonly DepSlot[])[];
 ```
 
-Substitutes `args` through every slot of every signature — the whole-record counterpart to `substituteToken`, used to close an open registration's carried dep signatures at resolve time. Per slot: a string token → `substituteToken`; a `FactoryRef` → its `type` and each `params` token substituted; a `Union` → members substituted recursively; a `TypeArgRef` → a `LiteralRef` carrying `args[typeArg - 1]`; `LiteralRef`/`ScopeRef` pass through unchanged.
+Substitutes `args` through every slot of every signature — the whole-record counterpart to `substituteToken`, used to close an open registration's carried dep signatures at resolve time. Per slot: a string token → `substituteToken`; a `FactoryRef` → its `type` and each `params` token substituted; a `Union` → members substituted recursively; a `TypeArgRef` → a `LiteralRef` carrying `args[typeArg - 1]`; a `LiteralRef` passes through unchanged.
 
 ### `typeArg(n)` and `isTypeArgRef`
 
@@ -317,7 +318,7 @@ export function typeArg(n: number): TypeArgRef;
 export function isTypeArgRef(slot: DepSlot): slot is TypeArgRef;
 ```
 
-`typeArg(n)` is the manual-authoring counterpart to `Typeof<T>` — build a `{ typeArg: n }` slot by hand when writing an open registration's signature array directly (no transformer). `isTypeArgRef` is the type guard, alongside `isFactoryRef` / `isScopeRef` / `isUnionSlot` / `isLiteralRef`.
+`typeArg(n)` is the manual-authoring counterpart to `Typeof<T>` — build a `{ typeArg: n }` slot by hand when writing an open registration's signature array directly (no transformer). `isTypeArgRef` is the type guard, alongside `isFactoryRef` / `isUnionSlot` / `isLiteralRef`.
 
 ---
 
@@ -333,7 +334,8 @@ export function isTypeArgRef(slot: DepSlot): slot is TypeArgRef;
 | ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
 | `Token`                | Type alias | `string` — the DI key type.                                                                                        |
 | `FactoryRef`           | Interface  | `{ type: Token; params?: readonly Token[] }` — factory-injected parameter slot.                                    |
-| `ScopeRef`             | Interface  | `{ scope: true }` — live resolution scope slot.                                                                    |
+| `RESOLVER_TOKEN`       | Const      | The intrinsic provider token — resolves to the live provider view (a `Resolver`-typed param derives it).           |
+| `isProviderToken`      | Function   | `(token) => boolean` — true for the intrinsic provider token(s).                                                   |
 | `Union`                | Interface  | `{ union: readonly DepSlot[] }` — member-level alternatives.                                                       |
 | `union`                | Function   | Construct a `Union` slot from variadic `DepSlot` args.                                                             |
 | `LiteralRef`           | Interface  | `{ value }` — a singular literal / nullish-singleton slot, injected directly.                                      |
@@ -342,11 +344,10 @@ export function isTypeArgRef(slot: DepSlot): slot is TypeArgRef;
 | `Hole`                 | Type alias | `Hole<N, C>` — compile-time skolem for the `N`th type argument of an open template, optionally constrained to `C`. |
 | `$`                    | Type alias | `$<N>` — unbounded unconstrained sugar for `Hole<N>`.                                                              |
 | `Typeof`               | Type alias | Phantom brand — a ctor param receiving the token string of type argument `T` (`typeof(T)` analog).                 |
-| `DepSlot`              | Type alias | `Token \| FactoryRef \| ScopeRef \| Union \| LiteralRef \| TypeArgRef` — one positional slot in a signature.       |
+| `DepSlot`              | Type alias | `Token \| FactoryRef \| Union \| LiteralRef \| TypeArgRef` — one positional slot in a signature.                   |
 | `DepTarget`            | Type alias | `Ctor \| Func<never[], unknown>` — a ctor or factory function a signature describes.                               |
 | `DepRecord`            | Interface  | `{ signatures }` — per-registration signature-array shape.                                                         |
 | `isFactoryRef`         | Function   | Type guard for `FactoryRef` slots.                                                                                 |
-| `isScopeRef`           | Function   | Type guard for `ScopeRef` slots.                                                                                   |
 | `isUnionSlot`          | Function   | Type guard for `Union` slots.                                                                                      |
 | `isLiteralRef`         | Function   | Type guard for `LiteralRef` slots.                                                                                 |
 | `closeToken`           | Function   | Render the canonical closed-generic token `base<a,b>`.                                                             |

@@ -14,9 +14,11 @@
 import type { Token } from "./types.js";
 
 /**
- * The minimal resolution surface — resolve tokens and get factories. Injected
- * into factory parameters typed `Resolver` (and for the plugin-less escape
- * hatch as the sole argument of a record-less factory).
+ * The minimal resolution surface — resolve tokens and get factories. A factory
+ * (or ctor) parameter typed `Resolver` is injected with the live provider view:
+ * the type derives the intrinsic provider token (`RESOLVER_TOKEN`), which the
+ * engine resolves to the view relative to the resolving frame — "I want the
+ * provider" is plain DI, no dedicated slot kind.
  *
  * `resolve` has two published shapes here; the tokenless authoring form
  * `resolve<T>()` (and the factory form `resolve<F>()`) is a PURE TYPING the
@@ -129,9 +131,9 @@ export interface ServiceProvider<S extends string = string>
 /**
  * @deprecated Use `Resolver` instead. Kept for backwards compatibility.
  *
- * The resolution surface a factory receives — either as an injected `ScopeRef`
- * parameter, or (plugin-less escape hatch) as the sole argument of a
- * record-less factory.
+ * The resolution surface a factory receives when it declares a provider-typed
+ * parameter. Like `Resolver`, its token is intrinsic — the engine fills the
+ * parameter with the live provider view — with `createScope` added.
  */
 export interface ResolveScope extends Resolver {
   createScope(name: string): ServiceProvider;

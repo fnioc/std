@@ -360,3 +360,36 @@ Two rules fall out, both held to and audited across `di` + `di.core`:
   hosting code holds — mirroring the reference's separate `IServiceScopeFactory`.
   `ServiceProvider<S>` composes both (`Resolver` + `ScopeFactory<S>` + disposal), so the
   application holds the full surface while an injected dependency sees only `Resolver`.
+
+## 11. One producer record; the provider is an intrinsic resolvable type — #49
+
+Two coupled simplifications to the resolution core.
+
+- **One producer shape.** The three registration kinds (`class` / `value` / `factory`)
+  collapse to a single record `{ produce, signatures, scope, name, arity }` built at
+  registration time: a ctor wraps to `(...a) => new Ctor(...a)`, a value to `() => value`, a
+  factory is its own producer. The resolver spine calls `produce(...args)` uniformly — the
+  `.kind` switch in `#instantiate` / `#buildPartitioned` and the `value` early-return in
+  `#resolve` all disappear. `name` and `arity` are carried EXPLICITLY because the ctor wrapper
+  reports `""` / `0` for its own `.name` / `.length`: the missing-metadata signal keys off the
+  stored `arity` (a rest-param wrapper zeroes `.length`), and diagnostics off `name`. A value
+  folds onto the transient path (scope `undefined`), preserving async-as-values — a value that
+  IS a `Promise` is returned raw, never awaited. This is an internal simplification (the
+  reference DI keeps three descriptor kinds but realizes them uniformly), not ME-dictated.
+
+- **The provider is an intrinsic resolvable type; `ScopeRef` is retired.** A factory (or ctor)
+  that wants the live provider declares a `Resolver`-typed parameter. The transformer emits its
+  token like any other param (normal derivation → `RESOLVER_TOKEN`, the package-qualified
+  `Resolver` token), and the engine intercepts that token in `#resolve` / `#isResolvable` /
+  `isService`, handing back the live provider VIEW (the scope-generic-free `Resolver` surface,
+  per §10) relative to the resolving frame. "I want the provider" is plain DI. This subsumes
+  and RETIRES the `ScopeRef` slot marker (`{ scope: true }`) — a dedicated slot kind is no
+  longer needed once the provider resolves like any other token. The deprecated `ResolveScope`
+  token is also recognized, so an existing `ResolveScope`-typed param keeps working.
+
+  Fallout: the signature-less-factory escape hatch (auto-supplying the provider as the sole
+  argument) is removed — with the kinds collapsed there is no way to tell a provider-less
+  factory from a zero-arg ctor, and auto-supplying an undeclared argument was always nonsense.
+  A signature-less factory now runs with no injected args. **Breaking:** the registration ABI
+  is one `Registration` record (`ClassRegistration` / `FactoryRegistration` /
+  `ValueRegistration` removed), and `ScopeRef` / `isScopeRef` are gone.

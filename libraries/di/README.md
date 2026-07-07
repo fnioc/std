@@ -74,10 +74,14 @@ There is no global, ctor-keyed metadata store — this array **is** the sole sig
 Two more registration surfaces alongside `add` — recommended for test doubles, third-party instances, and plugin-less consumers.
 
 ```ts
-// Signature-less factory: receives the live Resolver, resolves its own deps.
+import { RESOLVER_TOKEN } from "@rhombus-std/di";
+
+// Factory that wants the live Resolver: declare it as a provider-typed param
+// (its slot is the intrinsic RESOLVER_TOKEN), resolve its own deps by hand.
 services.addFactory(
   "pkg:IDb",
   (sp) => new PostgresDb(sp.resolve<IConfig>("pkg:IConfig")),
+  [[RESOLVER_TOKEN]],
 )
   .as("singleton");
 
@@ -91,7 +95,7 @@ services.addFactory("pkg:IDb", (config) => new PostgresDb(config), [[
 services.addValue("pkg:ICache", new NullCache());
 ```
 
-`addFactory` returns the `.as(scope?)` continuation, exactly like `add` — `.as("singleton")` caches the result in the nearest enclosing open `"singleton"` frame; no `.as()` call runs the factory fresh on every resolve (transient). A signature-less factory (no third argument) is called with the live `Resolver` as its sole argument and resolves its own deps by hand — the plugin-less escape hatch. `addValue` takes no lifetime — the value is always the same reference, and it returns `void`, not a builder.
+`addFactory` returns the `.as(scope?)` continuation, exactly like `add` — `.as("singleton")` caches the result in the nearest enclosing open `"singleton"` frame; no `.as()` call runs the factory fresh on every resolve (transient). A factory that wants the live `Resolver` declares it as an ordinary parameter — the provider is an intrinsically resolvable type (a `Resolver`-typed param derives `RESOLVER_TOKEN`), so "I want the provider" is plain DI. A signature-less factory simply runs with no injected args — nothing is auto-supplied. `addValue` takes no lifetime — the value is always the same reference, and it returns `void`, not a builder.
 
 To override a registration for a specific context (e.g. a test double), register a later spec for the same token on the `ServiceManifest` before calling `build()`. The registration map is append-only and last-registration-wins. The map seals at `build()` — no post-build mutation is possible.
 
@@ -295,7 +299,7 @@ An async dependency is tokenized at its **true** `Promise<X>` type — never unw
 services.addFactory("Promise<pkg:IDb>", async (sp) => {
   const pool = sp.resolve<IConnectionPool>("pkg:IConnectionPool");
   return new PostgresDb(await pool.connect());
-}).as("singleton");
+}, [[RESOLVER_TOKEN]]).as("singleton");
 ```
 
 - `resolve<Promise<IDb>>("Promise<pkg:IDb>")` returns the **raw promise** — the honest, synchronous view of an async registration.

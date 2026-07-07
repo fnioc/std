@@ -149,7 +149,7 @@ export function substituteToken(template: Token, args: readonly Token[]): Token 
  *   - a `Union`          → members substituted recursively,
  *   - a `TypeArgRef`     → a `LiteralRef` carrying `args[typeArg - 1]` (the
  *                          substituted argument's token string),
- *   - a `LiteralRef` / `ScopeRef` → unchanged.
+ *   - a `LiteralRef`     → unchanged.
  */
 export function substituteSignatures(
   signatures: readonly (readonly DepSlot[])[],
@@ -176,7 +176,7 @@ function substituteSlot(slot: DepSlot, args: readonly Token[]): DepSlot {
   if (isUnionSlot(slot)) {
     return { union: slot.union.map((m) => substituteSlot(m, args)) };
   }
-  // ScopeRef / LiteralRef — nothing to substitute.
+  // LiteralRef — nothing to substitute.
   return slot;
 }
 

@@ -40,15 +40,6 @@ export interface FactorySlot {
 }
 
 /**
- * A scope slot — the transformer's in-memory mirror of the runtime `ScopeRef`.
- * Emitted as a `{ scope: true }` object literal. Produced for a parameter whose
- * type is `ResolveScope`: the engine fills it with the live resolution scope.
- */
-export interface ScopeSlot {
-  readonly scope: true;
-}
-
-/**
  * A union slot — the transformer's in-memory mirror of the runtime `Union` shape.
  * Produced when a parameter's type annotation is an inline union type node
  * (`A | B`), NOT a named type alias referencing a union. Emitted as
@@ -86,15 +77,15 @@ export interface TypeArgSlot {
 }
 
 /**
- * One positional slot: a token string, a factory ref, a scope ref, a union of
- * alternatives, a literal value, or a type-arg ref. There is no `null` / hole
- * sentinel — an unresolvable (anonymous-structure) type causes a hard compile
- * error (`UnderivableToken`).
+ * One positional slot: a token string, a factory ref, a union of alternatives, a
+ * literal value, or a type-arg ref. There is no `null` / hole sentinel — an
+ * unresolvable (anonymous-structure) type causes a hard compile error
+ * (`UnderivableToken`). A parameter typed `Resolver` derives an ordinary token
+ * string (the intrinsic provider token) — no dedicated slot kind.
  */
 export type Slot =
   | string
   | FactorySlot
-  | ScopeSlot
   | UnionSlot
   | LiteralSlot
   | TypeArgSlot;
@@ -107,14 +98,6 @@ export function isFactorySlot(slot: Slot): slot is FactorySlot {
   return (
     typeof slot === "object"
     && typeof (slot as { type?: unknown }).type === "string"
-  );
-}
-
-/** True when a slot is a scope ref (`{ scope: true }`). */
-export function isScopeSlot(slot: Slot): slot is ScopeSlot {
-  return (
-    typeof slot === "object"
-    && (slot as { scope?: unknown }).scope === true
   );
 }
 
@@ -151,7 +134,6 @@ export function isTypeArgSlot(slot: Slot): slot is TypeArgSlot {
  * Structural equality for slots. Two slots are equal when:
  *   - both are the same string token
  *   - both are factory refs with the same type and params
- *   - both are scope refs
  *   - both are union slots with element-wise equal members (recursive)
  *   - both are literal slots with strictly-equal values
  *   - both are type-arg refs with the same hole number
@@ -159,7 +141,6 @@ export function isTypeArgSlot(slot: Slot): slot is TypeArgSlot {
 export function slotsEqual(a: Slot, b: Slot): boolean {
   if (a === b) {return true;}
   if (typeof a === "string" || typeof b === "string") {return false;}
-  if (isScopeSlot(a) && isScopeSlot(b)) {return true;}
   if (isTypeArgSlot(a) && isTypeArgSlot(b)) {return a.typeArg === b.typeArg;}
   if (isFactorySlot(a) && isFactorySlot(b)) {
     if (a.type !== b.type) {return false;}
@@ -175,14 +156,6 @@ export function slotsEqual(a: Slot, b: Slot): boolean {
   if (isLiteralSlot(a) && isLiteralSlot(b)) {return a.value === b.value;}
   return false;
 }
-
-/**
- * The name of the runtime scope-contract interface. A parameter typed
- * `ResolveScope` becomes a `ScopeSlot` (the live scope is injected) rather than
- * a token. Matched by symbol name — a user interface of the same name is
- * treated as the scope contract, mirroring the `nameof` / factory heuristics.
- */
-const RESOLVE_SCOPE_NAME = "ResolveScope";
 
 /**
  * The name of the `Typeof<T>` brand alias (the `typeof(T)` analog for
@@ -379,13 +352,14 @@ function tupleElementSlots(
  * Classify a single constructor parameter into a slot.
  *
  * Priority order:
- *   1. `ResolveScope`-typed → ScopeSlot (live scope injection).
+ *   1. `Typeof<T>`-typed → a type-arg slot (hole) or its closed token.
  *   2. `Inject<T, "tok">` brand on the type → the branded token string.
  *   3. Inline function-type annotation (`() => IFoo`) → FactorySlot (PRD §7).
  *   4. Inline union type annotation (`A | B`) → UnionSlot (`| undefined` becomes
  *      the optional fallback below; `| null` survives as a real member).
  *   5a. Singular literal (`"dev"` / `42` / `true` / `1n`) → LiteralSlot (Rule 2).
- *   5b. Normal type → string token via `tokenForType`.
+ *   5b. Normal type → string token via `tokenForType`. A `Resolver`-typed param
+ *       derives the intrinsic provider token here, like any other named type.
  *   6. Anonymous structure + no brand → hard diagnostic (UnderivableToken).
  *
  * OPTIONALITY (unified on union): a param that is optional in ANY form — `x?: X`,
@@ -417,13 +391,11 @@ function extractParamSlot(
 ): Slot {
   const rawType = typeOverride ?? ctx.checker.getTypeAtLocation(param);
 
-  // 1. A `ResolveScope`-typed parameter is the live scope, not a token.
-  if (isResolveScopeType(rawType)) {return { scope: true };}
-
-  // 1.5. A `Typeof<T>`-typed parameter receives the token STRING of a
-  //      registration type argument: a Hole binding stays an open
-  //      `{ typeArg: N }` slot; a concrete binding closes to its derived token
-  //      as a literal value slot.
+  // 1. A `Typeof<T>`-typed parameter receives the token STRING of a
+  //    registration type argument: a Hole binding stays an open `{ typeArg: N }`
+  //    slot; a concrete binding closes to its derived token as a literal value
+  //    slot. (A `Resolver`-typed param is NOT special-cased — it derives the
+  //    intrinsic provider token through normal derivation at step 5.)
   const typeArgSlot = typeArgSlotFor(rawType, param, ctx);
   if (typeArgSlot !== undefined) {return typeArgSlot;}
 
@@ -788,10 +760,9 @@ function slotForType(
   anchor: ts.ParameterDeclaration,
   ctx: DepContext,
 ): Slot {
-  // 1. A `ResolveScope`-typed element is the live scope, not a token.
-  if (isResolveScopeType(type)) {return { scope: true };}
-
-  // 2. A `Typeof<T>` element receives a type-arg slot (open hole) or its closed token.
+  // 1. A `Typeof<T>` element receives a type-arg slot (open hole) or its closed
+  //    token. (A `Resolver`-typed element is not special-cased — it derives the
+  //    intrinsic provider token through normal derivation at step 7.)
   const typeArgSlot = typeArgSlotFor(type, anchor, ctx);
   if (typeArgSlot !== undefined) {return typeArgSlot;}
 
@@ -940,12 +911,6 @@ function isAnonymousType(type: ts.Type): boolean {
  */
 function isAnonymousUnion(type: ts.Type): boolean {
   return type.isUnion() && type.aliasSymbol === undefined && isMultiMemberUnion(type);
-}
-
-/** True when a param's resolved type is the `ResolveScope` contract interface. */
-function isResolveScopeType(type: ts.Type): boolean {
-  const symbol = type.aliasSymbol ?? type.getSymbol();
-  return symbol?.getName() === RESOLVE_SCOPE_NAME;
 }
 
 /**

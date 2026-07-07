@@ -21,7 +21,7 @@
 //     union `[a, b] | [a]`, exactly like every other signature in this file is
 //     hand-fed instead of derived.
 
-import { closeToken, type Resolver, ServiceManifest, typeArg, union } from "@rhombus-std/di";
+import { closeToken, type Resolver, RESOLVER_TOKEN, ServiceManifest, typeArg, union } from "@rhombus-std/di";
 
 import type {
   IAppConfig,
@@ -120,7 +120,7 @@ const ASYNC_RESOURCE = "app/IAsyncResource";
 const PERSONALIZED_GREETING = "app/IPersonalizedGreeting";
 const NAME_PARAM = "app:name";
 
-// ResolveScope (Resolver) injection into a factory — see `buildEnvironmentReport`
+// `Resolver` (provider) injection into a factory — see `buildEnvironmentReport`
 // below.
 const ENV_REPORT = "app/IEnvironmentReport";
 
@@ -259,13 +259,14 @@ services.add(ASYNC_RESOURCE, AsyncResource, [[LOGGER]]).as("session");
 // registered value) — only via `resolveFactory`'s parameterized form below.
 services.add(PERSONALIZED_GREETING, PersonalizedGreeting, [[LOGGER, NAME_PARAM]]).as("singleton");
 
-// ResolveScope (Resolver) injection into a factory: a hand-written `{ scope:
-// true }` slot — the ScopeRef literal — fills the parameter with the LIVE
-// resolution scope instead of a resolved token, so the factory body can
-// `sp.resolve(...)` imperatively. Declared LOCALLY (not in shared/contracts.ts):
-// the feature under test is the injection mechanism, not a new shared service —
-// mirrors how the with-transformer sibling declares its own local
-// `IEnvironmentReport` for the same reason.
+// `Resolver` injection into a factory: a hand-written provider-token slot
+// (`RESOLVER_TOKEN`) fills the parameter with the LIVE provider view instead of
+// a resolved token, so the factory body can `sp.resolve(...)` imperatively.
+// "I want the provider" is plain DI — the provider is an intrinsically
+// resolvable type, no dedicated slot kind. Declared LOCALLY (not in
+// shared/contracts.ts): the feature under test is the injection mechanism, not a
+// new shared service — mirrors how the with-transformer sibling declares its own
+// local `IEnvironmentReport` for the same reason.
 interface IEnvironmentReport {
   readonly text: string;
 }
@@ -274,7 +275,7 @@ function buildEnvironmentReport(sp: Resolver): IEnvironmentReport {
   const clock = sp.resolve<SystemClock>(CLOCK);
   return { text: `[${cfg.environment}@${cfg.version}] as of ${clock.now()}` };
 }
-services.addFactory(ENV_REPORT, buildEnvironmentReport, [[{ scope: true }]]).as("singleton");
+services.addFactory(ENV_REPORT, buildEnvironmentReport, [[RESOLVER_TOKEN]]).as("singleton");
 
 // HEADLINE: a type registered ONLY as `Promise<app/IRemoteConfig>` — the exact
 // closed-generic token the runtime `closeToken` produces, hand-built the same
@@ -389,7 +390,7 @@ const personalize = root.resolveFactory(PERSONALIZED_GREETING, [NAME_PARAM]) as 
 const personalizedBob = personalize("Bob");
 const personalizedCarol = personalize("Carol");
 
-// ResolveScope factory resolved — it resolved IAppConfig + IClock imperatively
+// Resolver-injected factory resolved — it resolved IAppConfig + IClock imperatively
 // from inside its own body rather than declaring them as ctor-like params.
 const envReport = root.resolve<IEnvironmentReport>(ENV_REPORT);
 
@@ -511,7 +512,7 @@ const lines = [
   `  zero-arg factory returns the SAME cached singleton: ${greeterFactory() === greeterA}`,
   `  parameterized factory builds fresh every call: ${personalizedBob !== personalizedCarol}`,
   `  ${personalizedBob.text} / ${personalizedCarol.text}`,
-  `ResolveScope (Resolver) injection — factory resolved its own deps imperatively: ${envReport.text}`,
+  `Resolver (provider) injection — factory resolved its own deps imperatively: ${envReport.text}`,
   "=== HEADLINE: async — Promise<T>-only registration + recursive resolveAsync ===",
   `  resolveAsync(REMOTE_CONFIG) directly: ${remoteConfig.endpoint}`,
   `  resolveAsync(REMOTE_CONFIG_CONSUMER) recursively resolved the bare token via the Promise<T> fallback: ${remoteConfigConsumer.describe()}`,

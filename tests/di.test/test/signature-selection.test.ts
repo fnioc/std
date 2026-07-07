@@ -2,11 +2,12 @@ import { NoSatisfiableSignatureError, ServiceManifest } from "@rhombus-std/di";
 import { describe, expect, test } from "bun:test";
 import { defineDeps, T } from "./fixtures.js";
 
-// Greedy signature selection over Token|FactoryRef|ScopeRef|Union signatures
-// from getDeps. Scan longest → shortest; first SATISFIABLE wins. A FactoryRef
-// and ScopeRef are always satisfiable (injected). A Union slot is satisfiable
-// iff at least one member is resolvable. An unregistered string token is NOT
-// satisfiable on a direct resolve. Equal-arity ties → registration order.
+// Greedy signature selection over Token|FactoryRef|Union signatures from
+// getDeps. Scan longest → shortest; first SATISFIABLE wins. A FactoryRef is
+// always satisfiable (injected), as is the intrinsic provider token. A Union
+// slot is satisfiable iff at least one member is resolvable. An unregistered
+// string token is NOT satisfiable on a direct resolve. Equal-arity ties →
+// registration order.
 // None satisfiable → throw naming the unsatisfiable tokens.
 // Optional/defaulted params are modeled as multiple overloads (longest first);
 // when the longer one can't be satisfied, selection falls to the shorter one.

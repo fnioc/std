@@ -50,7 +50,7 @@ resolveFactory — zero-arg (respects lifetime) vs parameterized (always fresh):
   zero-arg factory returns the SAME cached singleton: true
   parameterized factory builds fresh every call: true
   Welcome, Bob! / Welcome, Carol!
-ResolveScope (Resolver) injection — factory resolved its own deps imperatively: [demo@1.0.0] as of 2026-01-01T00:00:00Z
+Resolver (provider) injection — factory resolved its own deps imperatively: [demo@1.0.0] as of 2026-01-01T00:00:00Z
 === HEADLINE: async — Promise<T>-only registration + recursive resolveAsync ===
   resolveAsync<IRemoteConfig>() directly: https://api.example.test
   resolveAsync<IRemoteConfigConsumer>() recursively resolved the bare token via the Promise<T> fallback: resolved via async fallback: endpoint=https://api.example.test

@@ -76,9 +76,12 @@ export {
 // reaches the slot builders (`union`/`typeArg`), the DepSlot type guards, and the
 // token-grammar helpers from here. A core-only library author authors the same
 // slot shapes as plain data literals instead.
-export { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
+export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
 export { typeArg, union } from "@rhombus-std/di.core";
 export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from "@rhombus-std/di.core";
+// The intrinsic provider token — a `Resolver`-typed param derives it, and the
+// engine resolves it to the live provider view.
+export { isProviderToken, RESOLVER_TOKEN } from "@rhombus-std/di.core";
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole
 // surface is reachable through one @rhombus-std/di import.

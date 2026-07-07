@@ -22,7 +22,7 @@
 // resolves transiently (a fresh instance) instead.
 
 import type { DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, Union } from "@rhombus-std/di.core";
-import { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
+import { isFactoryRef, isLiteralRef, isProviderToken, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
 import { closeToken, isOpenToken, parseToken, substituteSignatures } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
 
@@ -119,7 +119,7 @@ function rawTypeArgError(slot: TypeArgRef): TypeError {
 /**
  * The string-token members of a `Union` (recursing into nested unions), used to
  * name what a fully-unsatisfiable union slot needs registered. Non-token members
- * (FactoryRef / ScopeRef / LiteralRef) contribute no token.
+ * (FactoryRef / LiteralRef) contribute no token.
  */
 function* unionTokenMembers(slot: Union): Generator<Token> {
   for (const member of slot.union) {
@@ -341,7 +341,7 @@ export class ServiceProviderClass<S extends string = string>
           + "tryResolve<T>(\"my:token\").",
       );
     }
-    if (this.#lookup(token) === undefined) {
+    if (!isProviderToken(token) && this.#lookup(token) === undefined) {
       return undefined;
     }
     const result = this.#resolve<T>(token, this.#frame, [], false);
@@ -359,7 +359,7 @@ export class ServiceProviderClass<S extends string = string>
    * registered token whose dependencies are missing still reports `true`.
    */
   public isService(token: Token): boolean {
-    return this.#lookup(token) !== undefined;
+    return isProviderToken(token) || this.#lookup(token) !== undefined;
   }
 
   /**
@@ -548,6 +548,14 @@ export class ServiceProviderClass<S extends string = string>
       throw new CircularDependencyError([...stack, token]);
     }
 
+    // The provider is an intrinsic resolvable: a `Resolver`-typed dependency
+    // (the token `RESOLVER_TOKEN`) resolves to the live provider VIEW relative to
+    // the resolving frame, never a registration. This is what makes "I want the
+    // provider" plain DI — it subsumes the retired `ScopeRef` slot.
+    if (isProviderToken(token)) {
+      return this.#makeProviderView(vantage, stack) as T;
+    }
+
     const registration = this.#lookup(token);
     if (!registration) {
       // ── The async fallback — the only mint-site of a Pending from a raw
@@ -694,9 +702,10 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * The resolution view injected for a `ScopeRef` parameter (`Resolver` or
-   * `ScopeFactory` typed param). Produces a ServiceProvider-like view that
-   * continues the active cycle `stack` and resolves relative to `owningFrame`.
+   * The provider VIEW handed back when the intrinsic provider token resolves (a
+   * `Resolver` / `ScopeFactory` typed parameter). A ServiceProvider-like view
+   * that continues the active cycle `stack` and resolves relative to
+   * `owningFrame`.
    */
   #makeProviderView(owningFrame: Scope | undefined, stack: Token[]): Resolver & ScopeFactory<S> {
     const sp = this;
@@ -727,13 +736,13 @@ export class ServiceProviderClass<S extends string = string>
               + "at runtime).",
           );
         }
-        if (sp.#lookup(depToken) === undefined) {
+        if (!isProviderToken(depToken) && sp.#lookup(depToken) === undefined) {
           return undefined;
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
         return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
       },
-      isService: (depToken: Token): boolean => sp.#lookup(depToken) !== undefined,
+      isService: (depToken: Token): boolean => isProviderToken(depToken) || sp.#lookup(depToken) !== undefined,
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
       createScope: (...args: ["scoped"?] | [S]): ServiceProvider<S> =>
@@ -890,15 +899,15 @@ export class ServiceProviderClass<S extends string = string>
    * the first SATISFIABLE one. A slot is satisfiable when it is:
    *
    *   - a `FactoryRef` — always satisfiable; injected as a callable;
-   *   - a `ScopeRef` — always satisfiable; filled with the live provider view;
    *   - a `LiteralRef` — always satisfiable; injected as its value (Rule 2);
    *   - a `Union` — satisfiable iff at least one member is resolvable; or
-   *   - a string token whose registration exists in the sealed map.
+   *   - a string token whose registration exists in the sealed map, or the
+   *     intrinsic provider token (always satisfiable — the live view).
    *
-   * An unregistered string token is not satisfiable — unless `async` and its
-   * honest `Promise<T>` registration exists (the fallback the spine will take).
-   * Equal-arity ties break by registration order. None satisfiable ⇒ throw
-   * naming the unsatisfiable tokens.
+   * An unregistered string token is not satisfiable — unless it is the provider
+   * token, or `async` and its honest `Promise<T>` registration exists (the
+   * fallback the spine will take). Equal-arity ties break by registration order.
+   * None satisfiable ⇒ throw naming the unsatisfiable tokens.
    */
   #selectSignature(
     token: Token,
@@ -910,7 +919,7 @@ export class ServiceProviderClass<S extends string = string>
     for (const sig of orderByArityDesc(signatures)) {
       let satisfiable = true;
       for (const slot of sig) {
-        if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) {continue;}
+        if (isFactoryRef(slot) || isLiteralRef(slot)) {continue;}
         if (isTypeArgRef(slot)) {
           // A raw TypeArgRef is an unclosed template slot — never satisfiable
           // (only substitution turns it into a LiteralRef).
@@ -952,14 +961,17 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * True when `slot` is a registered string token — or, in `async` mode,
-   * satisfiable via the honest `Promise<T>` fallback the spine would take. A
-   * `FactoryRef`, `ScopeRef`, or `Union` is not tested here — use
-   * `isResolvableSlot` for a full slot check.
+   * True when `slot` is a registered string token — the intrinsic provider token
+   * (always resolvable), or a registration in the sealed map, or in `async` mode
+   * the honest `Promise<T>` fallback the spine would take. A `FactoryRef` or
+   * `Union` is not tested here — use `isResolvableSlot` for a full slot check.
    */
   #isResolvable(slot: DepSlot, async: boolean): boolean {
     if (typeof slot !== "string") {
       return false;
+    }
+    if (isProviderToken(slot)) {
+      return true;
     }
     if (this.#lookup(slot)) {
       return true;
@@ -969,13 +981,13 @@ export class ServiceProviderClass<S extends string = string>
 
   /**
    * True when a slot is resolvable in ANY form:
-   *   - `FactoryRef` / `ScopeRef` / `LiteralRef` — always satisfiable (injected);
+   *   - `FactoryRef` / `LiteralRef` — always satisfiable (injected);
    *   - `Union` — satisfiable iff at least one member is resolvable (recursive);
-   *   - string token — registered in the sealed map, or (async) via the
-   *     `Promise<T>` fallback.
+   *   - string token — the intrinsic provider token, a registration in the
+   *     sealed map, or (async) the `Promise<T>` fallback.
    */
   #isResolvableSlot(slot: DepSlot, async: boolean): boolean {
-    if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) {return true;}
+    if (isFactoryRef(slot) || isLiteralRef(slot)) {return true;}
     if (isTypeArgRef(slot)) {return false;}
     if (isUnionSlot(slot)) {
       return slot.union.some((member) => this.#isResolvableSlot(member, async));
@@ -1025,14 +1037,15 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * THE slot dispatch — the single copy of the 6-way branch, shared by the
+   * THE slot dispatch — the single copy of the object-slot branch, shared by the
    * spine's arg fill, union member resolution, and `#buildPartitioned`. The
-   * token arm is the only canonical recursion re-entry into `#resolve`.
+   * token arm is the only canonical recursion re-entry into `#resolve` — the
+   * intrinsic provider token flows through it and is intercepted there (yielding
+   * the live view), so there is no dedicated scope arm.
    *
    * An if-chain over the guard predicates (not a classifier + switch): each
    * guard narrows the slot for its own arm at zero cast cost, and exhausting
-   * every object-slot guard leaves a bare string `Token` for the final arm. The
-   * order mirrors the former dispatch order exactly.
+   * every object-slot guard leaves a bare string `Token` for the final arm.
    */
   #resolveSlot<T>(
     slot: DepSlot,
@@ -1040,9 +1053,6 @@ export class ServiceProviderClass<S extends string = string>
     stack: Token[],
     async: boolean,
   ): T | Pending<T> {
-    if (isScopeRef(slot)) {
-      return this.#makeProviderView(owningFrame, stack) as T;
-    }
     if (isFactoryRef(slot)) {
       return this.#makeFactory(slot, owningFrame) as T;
     }

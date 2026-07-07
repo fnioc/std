@@ -4,7 +4,7 @@ import { depsArrayFor, fixture, transform } from "./harness.js";
 
 // Dependency extraction → defineDeps emission (PRD §8). The emitted shape is the
 // ABI `Token[][]`: an array of signatures, each a positional array of
-// tokens / FactoryRef / ScopeRef / Union / LiteralRef slots. There is no
+// tokens / FactoryRef / Union / LiteralRef slots. There is no
 // `null`/hole sentinel. Under Rule 1 EVERY named type tokenizes by its name —
 // intrinsics (`string`, `number`, `boolean`, `any`, `unknown`, `void`, …) become
 // their keyword as a token; an unregistered token simply misses at runtime, it is
@@ -160,5 +160,33 @@ describe("dependency extraction", () => {
     `;
     const { output } = transform(fixture(src));
     expect(depsArrayFor(output, "Svc")).toBe("[[\"./app:Logger\"]]");
+  });
+
+  test("a `Resolver`-typed param emits the intrinsic provider token, not a scope slot", () => {
+    // The provider is a normally-resolvable type now: a `Resolver` parameter
+    // tokenizes like any other named type (no dedicated `{ scope: true }` slot).
+    // The derived token is the one the engine recognizes as the provider.
+    const files = {
+      "/proj/node_modules/@rhombus-std/di.core/package.json": JSON.stringify({
+        name: "@rhombus-std/di.core",
+        version: "1.0.0",
+        exports: { ".": "./index.js" },
+      }),
+      "/proj/node_modules/@rhombus-std/di.core/index.d.ts":
+        "export interface Resolver { resolve<T>(token: string): T; }\n",
+      "/proj/src/app.ts": `
+        import type { Resolver } from "@rhombus-std/di.core";
+        interface IMarker {}
+        class Svc implements IMarker {
+          constructor(sp: Resolver) {}
+        }
+        declare const services: any;
+        services.add<IMarker>(Svc).as<"singleton">();
+      `,
+    };
+    const { outputs } = transform(files, { entry: ["/proj/src/app.ts"] });
+    const out = outputs["/proj/src/app.ts"]!;
+    expect(depsArrayFor(out, "Svc")).toBe("[[\"@rhombus-std/di.core:Resolver\"]]");
+    expect(out).not.toContain("scope: true");
   });
 });
