@@ -58,6 +58,13 @@ const INJECT_TOK_PROPERTY = "TOK";
 //   type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
 const HOLE_BRAND_PROPERTY = "HOLE";
 
+// The default-lib collection bases whose wrapper token keeps ONLY its element
+// type argument — the closed-generic form `Array<elem>` / `Iterable<elem>` the
+// resolution engine aggregates on. A default-lib `Array` / `Iterable` tokenizes
+// as its bare name (no `source:` prefix), so these bare strings only match the
+// intrinsic collection types, never a user-declared same-named type.
+const COLLECTION_TOKEN_BASES = new Set<string>(["Array", "Iterable"]);
+
 export interface TokenContext {
   readonly checker: ts.TypeChecker;
   /**
@@ -380,8 +387,19 @@ export function deriveToken(
   const typeArguments = genericTypeArguments(type, ctx.checker);
   if (!typeArguments) {return base;}
 
+  // Collection wrappers derive a SINGLE-element token: `Array<elem>` /
+  // `Iterable<elem>` — the convention the resolution engine aggregates on. Both
+  // `T[]` and `Array<T>` reach here as the default-lib `Array` reference (bare
+  // base `"Array"`); `Iterable<T>` is modelled by TS with extra `TReturn` /
+  // `TNext` defaults (`Iterable<T, any, any>`), so keep only the element. A
+  // user-declared `Array` / `Iterable` carries a `source:` prefix and is
+  // unaffected.
+  const effectiveArgs = COLLECTION_TOKEN_BASES.has(base)
+    ? typeArguments.slice(0, 1)
+    : typeArguments;
+
   const argTokens: string[] = [];
-  for (const arg of typeArguments) {
+  for (const arg of effectiveArgs) {
     const argToken = deriveToken(arg, ctx, failure);
     if (argToken === undefined) {return undefined;}
     argTokens.push(argToken);

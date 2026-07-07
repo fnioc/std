@@ -150,6 +150,65 @@ function orderByArityDesc(
     .map(({ sig }) => sig);
 }
 
+// ── Collection resolution ────────────────────────────────────────────────────
+
+/**
+ * The wrapper bases a collection resolution recognizes. `Array<T>` is the token
+ * the transformer derives for BOTH `T[]` and `Array<T>`; `Iterable<T>` its lazy
+ * sibling. The convention is the plain closed-generic form `base<elementToken>`
+ * — the same string a manual `add("Array<pkg:IFoo>", …)` writes.
+ */
+const ARRAY_TOKEN_BASE = "Array";
+const ITERABLE_TOKEN_BASE = "Iterable";
+
+/** A recognized collection request: its wrapper base and single element token. */
+interface CollectionRequest {
+  readonly base: typeof ARRAY_TOKEN_BASE | typeof ITERABLE_TOKEN_BASE;
+  readonly element: Token;
+}
+
+/**
+ * Recognizes a collection wrapper token — `Array<T>` (the derivation of both
+ * `T[]` and `Array<T>`) or `Iterable<T>` — and returns its base and element
+ * token, or `undefined` for any other token. An open-template element
+ * (`Array<$1>`) is NOT a collection request — it is an open-registration key —
+ * so a holey element is rejected here.
+ */
+function collectionRequest(token: Token): CollectionRequest | undefined {
+  const parsed = parseToken(token);
+  if (
+    parsed === undefined
+    || parsed.args.length !== 1
+    || (parsed.base !== ARRAY_TOKEN_BASE && parsed.base !== ITERABLE_TOKEN_BASE)
+  ) {
+    return undefined;
+  }
+  const element = parsed.args[0]!;
+  if (isOpenToken(element)) {
+    return undefined;
+  }
+  return { base: parsed.base, element };
+}
+
+/**
+ * Wraps a resolved aggregate in the requested container. `Array<T>` yields a
+ * fresh mutable array; `Iterable<T>` a re-iterable generator-backed view,
+ * distinct from an array so the requested container type is honored.
+ */
+function wrapCollection(
+  base: CollectionRequest["base"],
+  items: readonly unknown[],
+): unknown {
+  if (base === ARRAY_TOKEN_BASE) {
+    return [...items];
+  }
+  return {
+    *[Symbol.iterator](): Iterator<unknown> {
+      yield* items;
+    },
+  };
+}
+
 /**
  * A scope frame — a node in the parent-linked chain. Holds this scope's name,
  * its instance cache, an ordered list for disposal, and an optional parent.
@@ -164,8 +223,14 @@ function orderByArityDesc(
  * the `ServiceProvider` interface a frame backs, never the frame itself.
  */
 class Scope {
-  /** Instances this scope owns and caches, keyed by token. */
-  readonly cache: Map<Token, unknown> = new Map();
+  /**
+   * Instances this scope owns and caches, keyed by the REGISTRATION object (not
+   * the token). Keying on the registration is what lets the N accumulated
+   * registrations of one token cache independently — a collection resolution
+   * builds each element against its own registration's slot, while bare-T
+   * resolution and the aggregate's last element share the last registration's.
+   */
+  readonly cache: Map<Registration, unknown> = new Map();
 
   /** Owned instances in construction order — disposed in reverse. */
   readonly owned: unknown[] = [];
@@ -341,7 +406,7 @@ export class ServiceProviderClass<S extends string = string>
           + "tryResolve<T>(\"my:token\").",
       );
     }
-    if (!isProviderToken(token) && this.#lookup(token) === undefined) {
+    if (!this.#isKnown(token)) {
       return undefined;
     }
     const result = this.#resolve<T>(token, this.#frame, [], false);
@@ -359,7 +424,22 @@ export class ServiceProviderClass<S extends string = string>
    * registered token whose dependencies are missing still reports `true`.
    */
   public isService(token: Token): boolean {
-    return isProviderToken(token) || this.#lookup(token) !== undefined;
+    return this.#isKnown(token);
+  }
+
+  /**
+   * True when `token` names something resolvable: a registration (exact or
+   * open-generic-synthesizable), the intrinsic provider, or a collection wrapper
+   * (`Array<T>` / `Iterable<T>`). A collection token always probes true — its
+   * aggregate may be empty, and an empty collection is a valid resolution. The
+   * shared probe behind `isService` and `tryResolve` (public and the view).
+   */
+  #isKnown(token: Token): boolean {
+    return (
+      isProviderToken(token)
+      || this.#lookup(token) !== undefined
+      || collectionRequest(token) !== undefined
+    );
   }
 
   /**
@@ -572,6 +652,17 @@ export class ServiceProviderClass<S extends string = string>
           );
         }
       }
+      // ── Collection resolution. A missed `Array<T>` / `Iterable<T>` token is
+      // NOT an error: aggregate every registration of T (empty when T is
+      // unregistered — bare-T still throws). An as-requested wrapper binding was
+      // already handled above (an exact / open-generic `#lookup` hit short-
+      // circuits the aggregation, step 1 of the two-step lookup).
+      const collection = collectionRequest(token);
+      if (collection) {
+        return this.#resolveCollection(collection, vantage, stack, async) as
+          | T
+          | Pending<T>;
+      }
       // A holey token can never resolve — it is a template naming a FAMILY of
       // tokens. Distinguish that from a plain miss so the fix is actionable.
       if (isOpenToken(token)) {
@@ -580,23 +671,46 @@ export class ServiceProviderClass<S extends string = string>
       throw new UnregisteredTokenError(token);
     }
 
-    // A value now folds into the normal path: its producer is `() => value` with
-    // no scope, so it takes the transient branch below — no owner, no cache, and
-    // `#instantiate` returns `produce()` verbatim (a value that IS a Promise is
-    // returned raw, never awaited — §"Async as values").
-    //
-    // THE CENTRAL PRINCIPLE, as an expression: a scope tag with no matching
-    // OPEN frame yields no owner, and no owner means transient — fresh
-    // instance, no cache, no error. Untagged registrations take the same path.
-    // The construct-relative-to-owner rule still holds: a longer-lived service
-    // resolving a shorter-lived dep whose frame is not an ancestor gets a fresh
-    // transient, never a captured cached instance.
+    return this.#resolveWith<T>(token, registration, vantage, stack, async);
+  }
+
+  /**
+   * Resolves a KNOWN registration for `token`: finds its owner frame, honors the
+   * cache (single-flight included), and constructs on a miss. The cache is keyed
+   * by the REGISTRATION object, not the token — so the N accumulated
+   * registrations of one token cache independently: a collection resolution
+   * builds each element through here, while bare-T resolution and the
+   * aggregate's last element share the last registration's slot.
+   *
+   * A value folds into this path: its producer is `() => value` with no scope,
+   * so it takes the transient branch (no owner, no cache) and `#instantiate`
+   * returns `produce()` verbatim (a value that IS a Promise is returned raw,
+   * never awaited — §"Async as values").
+   *
+   * THE CENTRAL PRINCIPLE: a scope tag with no matching OPEN frame yields no
+   * owner, and no owner means transient — fresh instance, no cache, no error.
+   * Untagged registrations take the same path. The construct-relative-to-owner
+   * rule still holds: a longer-lived service resolving a shorter-lived dep whose
+   * frame is not an ancestor gets a fresh transient, never a captured cached
+   * instance.
+   */
+  #resolveWith<T>(
+    token: Token,
+    registration: Registration,
+    vantage: Scope | undefined,
+    stack: Token[],
+    async: boolean,
+  ): T | Pending<T> {
+    if (stack.includes(token)) {
+      throw new CircularDependencyError([...stack, token]);
+    }
+
     const owner = registration.scope
       ? ServiceProviderClass.#findOwner(vantage, registration.scope)
       : undefined;
 
-    if (owner?.cache.has(token)) {
-      const hit = owner.cache.get(token) as T | Pending<T>;
+    if (owner?.cache.has(registration)) {
+      const hit = owner.cache.get(registration) as T | Pending<T>;
       if (isPending(hit) && !async) {
         // A concurrent async construction is in flight; sync cannot wait.
         throw new AsyncResolutionRequiredError(token);
@@ -620,7 +734,7 @@ export class ServiceProviderClass<S extends string = string>
         // synchronously, before anything settles — overlapping resolveAsync
         // calls share one construction. `owned` keeps the Pending itself so
         // disposal sees what was actually produced.
-        owner.cache.set(token, instance);
+        owner.cache.set(registration, instance);
         owner.owned.push(instance);
         if (isPending(instance)) {
           // Self-upgrade on settle. The rejection no-op keeps this bookkeeping
@@ -629,7 +743,7 @@ export class ServiceProviderClass<S extends string = string>
           // Pending stays cached: single-flight shares outcomes, failures too.
           instance.promise.then(
             (value) => {
-              owner.cache.set(token, value);
+              owner.cache.set(registration, value);
             },
             () => {},
           );
@@ -639,6 +753,57 @@ export class ServiceProviderClass<S extends string = string>
     } finally {
       stack.pop();
     }
+  }
+
+  /**
+   * Resolves a collection request: aggregates every registration of the element
+   * token in REGISTRATION ORDER and wraps them as requested. Each element is
+   * built through `#resolveWith`, so it honors its OWN registration's
+   * lifetime/caching; the aggregate's last element is therefore the same
+   * instance bare-T resolution yields (last-wins). An unregistered element
+   * aggregates to an EMPTY collection. When any element is async (a Pending),
+   * the whole collection settles as one Pending.
+   */
+  #resolveCollection(
+    request: CollectionRequest,
+    vantage: Scope | undefined,
+    stack: Token[],
+    async: boolean,
+  ): unknown | Pending<unknown> {
+    const registrations = this.#collectionRegistrations(request.element);
+    const elements = registrations.map((registration) =>
+      this.#resolveWith<unknown>(request.element, registration, vantage, stack, async)
+    );
+
+    if (!elements.some(isPending)) {
+      return wrapCollection(request.base, elements);
+    }
+
+    return new Pending(
+      (async () => {
+        const settled: unknown[] = [];
+        for (const element of elements) {
+          settled.push(isPending(element) ? await element.promise : element);
+        }
+        return wrapCollection(request.base, settled);
+      })(),
+    );
+  }
+
+  /**
+   * The registrations to aggregate for a collection's element token, in
+   * registration order. The exact per-token list when present; otherwise the
+   * single open-generic closing `#lookup` synthesizes (so `Iterable<IRepo<X>>`
+   * enumerates the one closed `IRepo<X>` a template produces), or none — an
+   * unregistered element aggregates to EMPTY.
+   */
+  #collectionRegistrations(element: Token): readonly Registration[] {
+    const exact = this.#registrations.get(element);
+    if (exact !== undefined && exact.length) {
+      return exact;
+    }
+    const synthesized = this.#lookup(element);
+    return synthesized ? [synthesized] : [];
   }
 
   /**
@@ -736,13 +901,13 @@ export class ServiceProviderClass<S extends string = string>
               + "at runtime).",
           );
         }
-        if (!isProviderToken(depToken) && sp.#lookup(depToken) === undefined) {
+        if (!sp.#isKnown(depToken)) {
           return undefined;
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
         return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
       },
-      isService: (depToken: Token): boolean => isProviderToken(depToken) || sp.#lookup(depToken) !== undefined,
+      isService: (depToken: Token): boolean => sp.#isKnown(depToken),
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
       createScope: (...args: ["scoped"?] | [S]): ServiceProvider<S> =>

@@ -393,3 +393,35 @@ Two coupled simplifications to the resolution core.
   A signature-less factory now runs with no injected args. **Breaking:** the registration ABI
   is one `Registration` record (`ClassRegistration` / `FactoryRegistration` /
   `ValueRegistration` removed), and `ScopeRef` / `isScopeRef` are gone.
+
+## 12. Collection resolution — `Array<T>` / `Iterable<T>` over accumulated registrations — #48
+
+MEDI's `IEnumerable<T>` resolution, over the single-producer core (§11). Three coupled pieces.
+
+- **Registration accumulates; bare-T is last-wins.** Each token maps to a LIST of registrations
+  in registration order (§9's map is already `Map<Token, Registration[]>`). Re-registering a
+  token APPENDS rather than overwriting; bare-T resolution returns the LAST entry, so existing
+  callers are unaffected. A single `.add(...).as(scope)` chain remains ONE registration: `.as()`
+  REPLACES the transient base it just appended with the scoped copy in place, rather than leaving
+  a shadow entry — harmless for last-wins, but the aggregation below would otherwise double-count
+  it.
+
+- **Two-step collection lookup.** Resolving `Array<T>` (the token the transformer derives for both
+  `T[]` and `Array<T>`) or `Iterable<T>`: (1) if a binding is registered against the WRAPPER token
+  itself (`Array<pkg:IFoo>` — an as-requested escape hatch), it short-circuits and resolves
+  normally; (2) else AGGREGATE every registration of `T` in registration order, wrapped as
+  requested. The aggregate's LAST element is the bare-T (last-wins) winner — the same instance a
+  bare `resolve<T>()` returns — mirroring the reference enumerable semantics. Each element resolves
+  per its OWN registration's lifetime/caching; the scope cache is keyed by the `Registration`
+  object (not the token) so the N registrations of one token cache independently. An aggregate of an
+  UNREGISTERED `T` is EMPTY (whereas a bare unregistered `T` still throws). `isService` /
+  `tryResolve` report a collection token as always known — an empty collection is a valid result.
+
+- **The wrapper-token string convention.** The manual (plugin-less) path registers or resolves the
+  plain closed-generic form `Array<elementToken>` / `Iterable<elementToken>` — e.g.
+  `add("Array<pkg:IFoo>", …)` for an as-requested binding, or `resolve<T>("Iterable<pkg:IFoo>")`.
+  The transformer derives the same string: it recognizes `T[]`, `Array<T>`, and `Iterable<T>` in
+  tokenless calls and parameter types and emits `Array<elem>` / `Iterable<elem>` — keeping only the
+  element type argument (TypeScript models `Iterable<T>` as `Iterable<T, TReturn, TNext>`; the
+  `TReturn` / `TNext` defaults are dropped so the derived token matches the runtime's one-arg
+  convention).

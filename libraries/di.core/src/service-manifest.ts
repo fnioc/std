@@ -100,34 +100,43 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
   }
 
   /**
-   * Builds the `.as(scope?)` continuation over an `appendScoped` callback that
-   * appends a fresh scoped copy for the chosen tag. Shared by the class and open
-   * registration paths — both append a base (transient) registration first, then
-   * hand back this continuation so a trailing `.as(scope)` appends the winning
-   * scoped copy.
+   * Builds the `.as(scope?)` continuation over an `applyScope` callback that
+   * REPLACES the just-appended base with a scoped copy for the chosen tag.
+   * Shared by the class and open registration paths — both append a base
+   * (transient) registration first, then hand back this continuation so a
+   * trailing `.as(scope)` swaps that base for the scoped copy IN PLACE.
+   *
+   * Replacing (not appending) is what keeps ONE `.add(...).as(scope)` chain a
+   * SINGLE registration: a spurious transient shadow would be harmless for
+   * last-wins bare-T resolution but would pollute collection aggregation
+   * (`Array<T>` / `Iterable<T>`), which enumerates every registration of T.
    */
-  #scopedContinuation(appendScoped: (scope: Scopes) => void): AddBuilder<Scopes> {
+  #scopedContinuation(applyScope: (scope: Scopes) => void): AddBuilder<Scopes> {
     return {
       as<S extends Scopes>(scope?: S): void {
         // The lowered form always passes a value arg; the authored type-arg-only
         // form never executes (the transformer rewrites it first). A no-arg call
-        // at runtime would leave the registration transient — guard so it is a
-        // no-op rather than appending a scopeless duplicate.
+        // at runtime leaves the base (transient) registration in place — guard so
+        // it is a no-op rather than mutating the registration to a scopeless copy.
         if (scope === undefined) {return;}
-        appendScoped(scope);
+        applyScope(scope);
       },
     };
   }
 
   /**
    * Appends a scopeless producer base registration and returns the `.as(scope?)`
-   * continuation. `.as()` appends a fresh SCOPED copy so the array's last entry
-   * wins; a bare `.add(...)`/`.addFactory(...)` with no trailing `.as()` leaves
-   * the base (transient) registration in place.
+   * continuation. `.as()` REPLACES that base with a SCOPED copy in place (so the
+   * chain remains one registration); a bare `.add(...)`/`.addFactory(...)` with
+   * no trailing `.as()` leaves the base (transient) registration in place.
    */
   #appendScoped(token: Token, base: Registration): AddBuilder<Scopes> {
     this.#append(token, base);
-    return this.#scopedContinuation((scope) => this.#append(token, { ...base, scope }));
+    const list = this.#registrations.get(token)!;
+    const index = list.length - 1;
+    return this.#scopedContinuation((scope) => {
+      list[index] = { ...base, scope };
+    });
   }
 
   /**
@@ -155,7 +164,11 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
       signatures,
     };
     this.#appendOpen(parsed.base, base);
-    return this.#scopedContinuation((scope) => this.#appendOpen(parsed.base, { ...base, scope }));
+    const list = this.#openRegistrations.get(parsed.base)!;
+    const index = list.length - 1;
+    return this.#scopedContinuation((scope) => {
+      list[index] = { ...base, scope };
+    });
   }
 
   /**
