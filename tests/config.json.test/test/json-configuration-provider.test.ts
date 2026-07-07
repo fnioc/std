@@ -6,8 +6,11 @@
 // exercised here through the ConfigurationBuilder -> JsonConfigurationSource
 // -> ConfigurationRoot path.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import { JsonConfigurationSource } from "@rhombus-std/config.json/internal/json-configuration-source";
+import { ConfigurationBuilder, type IndexedSection } from "@rhombus-std/config";
+import {
+  JsonConfigurationSource,
+  type JsonConfigurationSourceOptions,
+} from "@rhombus-std/config.json/internal/json-configuration-source";
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,38 +20,39 @@ import "@rhombus-std/config.json/internal/index";
 
 const FIXTURES = "test/fixtures/json-file";
 
+/** Builds a root from a single fixture file under {@link FIXTURES}, via the
+ * ConfigurationBuilder -> JsonConfigurationSource -> ConfigurationRoot path
+ * every test in this file exercises. */
+function rootFromFixture(name: string, options?: JsonConfigurationSourceOptions): IndexedSection {
+  return new ConfigurationBuilder()
+    .add(new JsonConfigurationSource(`${FIXTURES}/${name}`, options))
+    .build();
+}
+
 describe("JsonConfigurationProvider", () => {
   test("flattens nested objects into colon-delimited keys", () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/nested.json`))
-      .build();
+    const root = rootFromFixture("nested.json");
 
     expect(root.get("Server:Host")).toBe("localhost");
     expect(root.get("TopLevel")).toBe("value");
   });
 
   test("string-converts scalar leaves (numbers and booleans)", () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/nested.json`))
-      .build();
+    const root = rootFromFixture("nested.json");
 
     expect(root.get("Server:Port")).toBe("8080");
     expect(root.get("Server:UseTls")).toBe("true");
   });
 
   test("index-flattens arrays as Key:0, Key:1, ...", () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/nested.json`))
-      .build();
+    const root = rootFromFixture("nested.json");
 
     expect(root.get("Server:Tags:0")).toBe("a");
     expect(root.get("Server:Tags:1")).toBe("b");
   });
 
   test("skips keys whose value is null", () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/nested.json`))
-      .build();
+    const root = rootFromFixture("nested.json");
 
     expect(root.get("Server:Nullable")).toBeUndefined();
     expect([...root.getSection("Server").getChildren()].some((c) => c.key === "Nullable"))
@@ -56,9 +60,7 @@ describe("JsonConfigurationProvider", () => {
   });
 
   test("recurses into arrays of objects", () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/array-of-objects.json`))
-      .build();
+    const root = rootFromFixture("array-of-objects.json");
 
     expect(root.get("Items:0:Name")).toBe("first");
     expect(root.get("Items:0:Count")).toBe("1");
@@ -67,35 +69,21 @@ describe("JsonConfigurationProvider", () => {
   });
 
   test("resolves a relative path against process.cwd()", () => {
-    expect(() =>
-      new ConfigurationBuilder()
-        .add(new JsonConfigurationSource(`${FIXTURES}/nested.json`))
-        .build()
-    ).not.toThrow();
+    expect(() => rootFromFixture("nested.json")).not.toThrow();
   });
 
   test("throws when the file does not exist and optional is not set", () => {
-    expect(() =>
-      new ConfigurationBuilder()
-        .add(new JsonConfigurationSource(`${FIXTURES}/does-not-exist.json`))
-        .build()
-    ).toThrow();
+    expect(() => rootFromFixture("does-not-exist.json")).toThrow();
   });
 
   test("returns an empty provider when the file is missing and optional is true", () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/does-not-exist.json`, { optional: true }))
-      .build();
+    const root = rootFromFixture("does-not-exist.json", { optional: true });
 
     expect([...root.getChildren()]).toEqual([]);
   });
 
   test("throws on malformed JSON even when optional is true", () => {
-    expect(() =>
-      new ConfigurationBuilder()
-        .add(new JsonConfigurationSource(`${FIXTURES}/invalid.json`, { optional: true }))
-        .build()
-    ).toThrow();
+    expect(() => rootFromFixture("invalid.json", { optional: true })).toThrow();
   });
 
   test("addJsonFile augmentation registers a JsonConfigurationSource on the builder", () => {
@@ -115,19 +103,11 @@ describe("JsonConfigurationProvider", () => {
   });
 
   test("throws when the JSON root is a scalar", () => {
-    expect(() =>
-      new ConfigurationBuilder()
-        .add(new JsonConfigurationSource(`${FIXTURES}/scalar.json`))
-        .build()
-    ).toThrow(/root must be an object or array/);
+    expect(() => rootFromFixture("scalar.json")).toThrow(/root must be an object or array/);
   });
 
   test("throws when the JSON root is null", () => {
-    expect(() =>
-      new ConfigurationBuilder()
-        .add(new JsonConfigurationSource(`${FIXTURES}/null-root.json`))
-        .build()
-    ).toThrow(/root must be an object or array/);
+    expect(() => rootFromFixture("null-root.json")).toThrow(/root must be an object or array/);
   });
 });
 
@@ -146,7 +126,7 @@ describe("JsonConfigurationProvider reload + error hardening (#17)", () => {
     writeFileSync(file, JSON.stringify({ Keep: "1", Drop: "2" }));
 
     const source = new JsonConfigurationSource(file);
-    const provider = source.build({} as never);
+    const provider = source.build(new ConfigurationBuilder());
     provider.load();
     expect(provider.tryGet("Keep")).toEqual([true, "1"]);
     expect(provider.tryGet("Drop")).toEqual([true, "2"]);
@@ -164,7 +144,7 @@ describe("JsonConfigurationProvider reload + error hardening (#17)", () => {
     const file = join(dir, "bad.json");
     writeFileSync(file, "{ not valid json");
 
-    const provider = new JsonConfigurationSource(file).build({} as never);
+    const provider = new JsonConfigurationSource(file).build(new ConfigurationBuilder());
     expect(() => provider.load()).toThrow(new RegExp(file.replace(/[.\\]/g, "\\$&")));
   });
 });
