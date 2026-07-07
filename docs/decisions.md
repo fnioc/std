@@ -425,3 +425,56 @@ MEDI's `IEnumerable<T>` resolution, over the single-producer core (§11). Three 
   element type argument (TypeScript models `Iterable<T>` as `Iterable<T, TReturn, TNext>`; the
   `TReturn` / `TNext` defaults are dropped so the derived token matches the runtime's one-arg
   convention).
+
+## 13. Per-type-file split — `config.core/interfaces.ts` + bundled-type audit — #46
+
+Mirrors MECA's one-type-per-file layout for `config.core`'s `IConfiguration*` family, and
+audits every other file flagged for bundling multiple public types against its reference
+source directory. Rename fold-in: `DeepRecord` → `ConfigObject` (leaves stay `string`).
+
+**`config.core/src/interfaces.ts` split** — all seven `IConfiguration*` interfaces get
+their own file (`configuration.ts`, `configuration-builder.ts`, `configuration-manager.ts`,
+`configuration-root.ts`, `configuration-section.ts`, `configuration-source.ts`,
+`configuration-provider.ts`), matching MECA's `IConfiguration.cs` / `IConfigurationBuilder.cs`
+/ `IConfigurationManager.cs` / `IConfigurationRoot.cs` / `IConfigurationSection.cs` /
+`IConfigurationSource.cs` / `IConfigurationProvider.cs` one-to-one — `IConfigurationManager`
+stays in config.core because MECA ships it in Abstractions, not the concrete engine.
+`ConfigObject` / `IndexedSection` / `ITryGetResult` (no MECA per-file equivalent) land in a
+shared `types.ts`. `index.ts` re-exports the full surface unchanged; every doc comment
+converts from XML-style (`/// <summary>`) to TSDoc (`/** */`) in the same pass.
+
+**Bundled-type audit verdicts** (per-file, judged against the reference source directory
+where one applies; cohesion where it doesn't):
+
+- `di/src/types.ts` — **keep.** A predecessor restructuring (di.core carries the ABI, di
+  re-exports it) already reduced this to a thin re-export barrel; it no longer bundles
+  distinct type definitions of its own.
+- `di/src/tokens.ts` — **moot.** Already relocated to `di.core/src/tokens.ts` by a
+  predecessor PR; not a bundling candidate at its current location (single-concern token
+  grammar).
+- `di/src/errors.ts`, `di.core/src/errors.ts` — **keep grouped.** The DI error taxonomy has
+  no reference-DI file-per-exception-type layout to mirror (reference DI throws generic
+  exceptions inline); the classes here share one root (`DiError`) and are small enough that
+  one file per class would fragment a single cohesive taxonomy for no reader benefit.
+- `di.core/src/tokens.ts` — **keep grouped.** The closed-generic token grammar
+  (`closeToken`/`parseToken`/`isOpenToken`/`substituteToken`/`substituteSignatures`) is
+  port-original — reference DI has no open-generic hole/token-string concept — and the
+  functions are tightly coupled around one shared grammar; cohesion favors one file.
+- `di.core/src/types.ts` (16 exports / 286L, the issue's flagged file) — **split.** No
+  reference-source file mirrors this ABI (the slot/token/hole grammar is port-original), so
+  judged on cohesion. The file's own section dividers already marked three distinct
+  concerns: split into `types.ts` (the slot/token ABI: `DepTarget`, `Token`, `FactoryRef`,
+  `Union`, `LiteralRef`, `TypeArgRef`, `DepSlot`, `DepRecord`, `ParsedToken`), `brands.ts`
+  (the transformer-facing compile-time brands: `Inject`, `Hole`, `$`, `Typeof`), and
+  `overloads.ts` (the overload-extraction utilities: `OverloadedParameters`,
+  `OverloadedConstructorParameters` and their private recursion helpers).
+- `di.transformer/src/deps.ts`, `di.transformer/src/tokens.ts` — **keep grouped.**
+  Transformer-internal extraction/derivation logic operating over `ts.Type`/AST; no
+  reference-source directory applies (port-original), and the exported functions are
+  tightly interdependent (shared context types, mutual helper calls) rather than
+  independently-reachable public API a consumer picks from piece by piece. Splitting would
+  fragment one extraction algorithm across files without a clear boundary.
+- `config/src/schema.ts` — **keep grouped.** Small (68L), single-concept module (the
+  runtime schema DSL + its `Infer` type-level image); no reference-source equivalent
+  (reference config binding is reflection-based, not a schema DSL), and too cohesive to
+  split further.
