@@ -1,7 +1,7 @@
 // Type-only authoring surface contributed to `@rhombus-std/di.core` by the transformer.
 //
 // These generic, token-free forms (`add<I>(C)`, `add<I>(fn)`, `addValue<I>(v)`,
-// `.as<"scope">()`, `resolve<T>()`) NEVER execute: the @rhombus-std/di.transformer
+// `.as<"scope">()`, `resolve<T>()`, `resolveAsync<T>()`) NEVER execute: the @rhombus-std/di.transformer
 // rewrites every such call to its explicit-token / value-arg form before
 // runtime. They are therefore PURE TYPINGS, and they live here rather than in
 // core's published types so that the authoring surface lights up only when the
@@ -133,5 +133,18 @@ declare module "@rhombus-std/di.core" {
      * Never runs post-transform.
      */
     resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
+    /**
+     * Tokenless async resolve — `resolveAsync<IFoo>()`. The transformer lowers
+     * it to an explicit-token `resolveAsync("token")` before runtime — the
+     * same rewrite `resolve<T>()` gets, keyed on `resolveAsync` instead. Parity
+     * with the sync form: the whole point of the with-transformer authoring
+     * surface is that no resolve call ever needs a hand-written token.
+     */
+    resolveAsync<T>(): Promise<T>;
+    /**
+     * Tokenless async factory resolve — lowered mirroring `resolve<F>()`'s
+     * factory form. Never runs post-transform.
+     */
+    resolveAsync<F extends (...args: any[]) => any>(): Promise<Awaited<ReturnType<F>>>;
   }
 }
