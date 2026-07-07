@@ -18,13 +18,18 @@
 // link), and `ServiceProvider` is the public container surface implementing
 // `Resolver` + `ScopeFactory` + Disposable.
 
-export { ServiceManifest, ServiceManifestClass } from "./builder.js";
-export type { ServiceManifestCtor } from "./builder.js";
+// The registration builder now lives in @rhombus-std/di.core (the abstractions
+// package ships the concrete collection). di re-exports the class, supplies the
+// constructible `ServiceManifest` value + its ctor type, and — via importing
+// ./service-manifest.js — PROTOTYPE-PATCHES the engine-constructing half of
+// `build()` onto the class as a load-time side effect.
+export { ServiceManifestClass } from "@rhombus-std/di.core";
+export { ServiceManifest } from "./service-manifest.js";
+export type { ServiceManifestCtor } from "./service-manifest.js";
 
-// The authoring TYPE-machinery lives in the pure-types @rhombus-std/di.core package (the
-// abstractions surface a library author depends on). Re-exported here so a di
-// consumer reaches the whole authoring surface through the single @rhombus-std/di
-// import, exactly as before the split.
+// The authoring TYPE-machinery lives in @rhombus-std/di.core alongside the builder.
+// Re-exported here so a di consumer reaches the whole authoring surface through
+// the single @rhombus-std/di import, exactly as before the split.
 export type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 
 // The concrete container impl. Consumers hold the `ServiceProvider` INTERFACE
@@ -64,14 +69,14 @@ export {
   UnregisteredTokenError,
 } from "./errors.js";
 
-// The slot/token RUNTIME helpers now live in di's own source (relocated from the
-// pure-types @rhombus-std/di.core). di re-exports them for one-import authoring ergonomics
-// — a di consumer reaches the slot builders (`union`/`typeArg`), the DepSlot type
-// guards, and the token-grammar helpers from here. A core-only library author
-// authors the same slot shapes as plain data literals instead.
-export { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "./guards.js";
-export { typeArg, union } from "./slots.js";
-export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from "./tokens.js";
+// The slot/token RUNTIME helpers live in @rhombus-std/di.core (its slot/token
+// ABI). di re-exports them for one-import authoring ergonomics — a di consumer
+// reaches the slot builders (`union`/`typeArg`), the DepSlot type guards, and the
+// token-grammar helpers from here. A core-only library author authors the same
+// slot shapes as plain data literals instead.
+export { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
+export { typeArg, union } from "@rhombus-std/di.core";
+export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from "@rhombus-std/di.core";
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole
 // surface is reachable through one @rhombus-std/di import.

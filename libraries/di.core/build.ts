@@ -1,36 +1,23 @@
 // Build @rhombus-std/di.core for publication.
 //
-// core is a PURE-TYPES package — it ships ZERO runtime. The only artifact is a
-// single self-contained declaration file:
+// di.core now ships RUNTIME: the slot/token helpers, the registration builder
+// (`ServiceManifestClass`), and the registration-time errors. Two outputs:
 //
-//   dist/index.d.ts — rollup-plugin-dts rolls core's public type surface into one
-//   .d.ts, inlining the type-only @rhombus-toolkit/func types so the published
-//   declaration has no external import and core carries no dependencies.
+//   1. dist/index.js   — `bun build` bundles the ESM entry. The only import is
+//      the type-only @rhombus-toolkit/func (it erases), so nothing is
+//      externalized and the bundle carries zero dependencies.
+//   2. dist/index.d.ts — rollup-plugin-dts rolls the public type surface into one
+//      declaration file, inlining the type-only @rhombus-toolkit types so the
+//      published declaration has no external import.
 //
-// There is deliberately NO dist/index.js — nothing imports core at runtime (every
-// consumer uses `import type`), so emitting one would contradict the zero-runtime
-// invariant this build asserts.
+// @rhombus-std/di keeps di.core EXTERNAL (not inlined) in its own bundle so the
+// concrete `ServiceManifestClass` has ONE runtime identity — the class di
+// prototype-patches `build()` onto, and the class cross-package augmentations
+// patch, must be the same object.
 
-import { spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { buildPackage } from "../../scripts/build-package";
 
-const PKG_ROOT = import.meta.dir;
-const DIST = join(PKG_ROOT, "dist");
-
-rmSync(DIST, { recursive: true, force: true });
-
-// Rolled-up .d.ts — func's types inlined, no external import.
-const dts = spawnSync(
-  "bun",
-  ["x", "rollup", "-c", join(PKG_ROOT, "rollup.dts.mjs")],
-  { cwd: PKG_ROOT, stdio: "inherit" },
-);
-if (dts.status !== 0) {
-  throw new Error("@rhombus-std/di.core: rollup d.ts bundling failed");
-}
-
-// Assert the zero-runtime invariant: the build must emit ONLY dist/index.d.ts.
-if (existsSync(join(DIST, "index.js"))) {
-  throw new Error("@rhombus-std/di.core: unexpected runtime artifact dist/index.js — core is types-only");
-}
+await buildPackage({
+  dir: import.meta.dir,
+  name: "@rhombus-std/di.core",
+});

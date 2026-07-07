@@ -10,19 +10,28 @@
 // statically knows the arg is a function, so the runtime never has to guess
 // class-vs-factory.
 
-import type { DepSlot, Token } from "@rhombus-std/di.core";
-import type { AddBuilder, ServiceManifestBase, ServiceProvider } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
 
+import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 import { OpenTokenRegistrationError } from "./errors.js";
-import { ServiceProviderClass } from "./scope.js";
+import type { ServiceProvider } from "./provider.js";
+import type {
+  ClassRegistration,
+  Ctor,
+  Factory,
+  FactoryRegistration,
+  OpenRegistration,
+  Registration,
+  SealedManifest,
+} from "./registrations.js";
 import { HOLE_PATTERN, isOpenToken, parseToken } from "./tokens.js";
-import type { ClassRegistration, Ctor, Factory, FactoryRegistration, OpenRegistration, Registration } from "./types.js";
+import type { DepSlot, Token } from "./types.js";
 
 // The authoring TYPE-machinery — `AddBuilder` and the collection interface
-// `ServiceManifestBase` — lives in the pure-types `@rhombus-std/di.core` package (the
-// abstractions surface a library author depends on). di imports it back via
-// `import type` and its runtime `ServiceManifestClass` implements the interface.
+// `ServiceManifestBase` — lives alongside this builder in the abstractions
+// package `@rhombus-std/di.core`. The runtime `ServiceManifestClass` implements
+// the interface; the engine-constructing half of `build()` is a
+// `@rhombus-std/di` extension (see `build()` below).
 
 /** Appends `value` to the list at `key`, creating the list on first use. */
 function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
@@ -54,11 +63,12 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  * const req = app.createScope("request");         // nested child scope
  * ```
  *
- * NOTE: this is the IMPLEMENTATION class. The public `ServiceManifest` value + type
- * (exported below) wrap it purely so `new ServiceManifest<S>()` can carry a
- * type parameter default. The class stays exported so the
- * `@rhombus-std/di.transformer` `declare module` augmentation can merge its
- * authored typings onto `interface ServiceManifestClass`.
+ * NOTE: this is the IMPLEMENTATION class. The public `ServiceManifest` TYPE
+ * (below) is the interface consumers hold; the public `ServiceManifest` VALUE
+ * (`new ServiceManifest<S>()`) lives in `@rhombus-std/di`, which also patches
+ * `build()` onto this prototype. The class is exported so cross-package fluent
+ * augmentations can prototype-patch it (their authored typings merge onto the
+ * di.core interfaces, never onto this class directly).
  */
 export class ServiceManifestClass<Scopes extends string = "singleton">
   implements ServiceManifestBase<Scopes, ServiceProvider<Scopes>>
@@ -282,11 +292,47 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
   }
 
   /**
-   * Builds the ServiceProvider with a SEALED copy of the registration map.
-   * Sealing (deep-freezing the map and each per-token list) ensures that any
-   * `.add()` call on the builder after `build()` cannot mutate what the
-   * provider and its descendants see — the container's view is fixed at
-   * construction time.
+   * Seals the collection into an immutable snapshot — the SEALING half of
+   * `build()`. Deep-freezing the maps and each per-token list ensures that any
+   * `.add()` call on the builder after sealing cannot mutate what the provider
+   * and its descendants see — the container's view is fixed at build time.
+   *
+   * This is the collection's own concern, so it lives here in di.core. The
+   * ENGINE-CONSTRUCTING half — turning this snapshot into a `ServiceProvider` —
+   * is a `@rhombus-std/di` extension (`build()` below), because it needs the
+   * runtime resolution engine di.core deliberately does not depend on.
+   */
+  public seal(): SealedManifest {
+    // Deep-copy the registrations so post-seal builder mutations can't affect
+    // the sealed map. Each per-token list is frozen independently.
+    const registrations = new Map<Token, readonly Registration[]>();
+    for (const [token, list] of this.#registrations) {
+      registrations.set(token, Object.freeze([...list]));
+    }
+    Object.freeze(registrations);
+
+    // The open table is sealed the same way. (The engine adds its own MUTABLE
+    // closed-registration memo separately — synthesized closings land there,
+    // never in these sealed maps.)
+    const openRegistrations = new Map<Token, readonly OpenRegistration[]>();
+    for (const [base, list] of this.#openRegistrations) {
+      openRegistrations.set(base, Object.freeze([...list]));
+    }
+    Object.freeze(openRegistrations);
+
+    return { registrations, openRegistrations };
+  }
+
+  /**
+   * Seals the collection and returns the built `ServiceProvider`.
+   *
+   * The IMPLEMENTATION lives in `@rhombus-std/di`, not here — mirroring the
+   * reference DI split where the collection ships in the abstractions package
+   * but the provider-building entry is a runtime-package extension. Importing
+   * `@rhombus-std/di` PROTOTYPE-PATCHES this method onto `ServiceManifestClass`
+   * at load time (`services.seal()` → `new ServiceProviderClass(...)`), exactly
+   * how a cross-package fluent-authoring augmentation patches the concrete
+   * builder. The stub below is what runs if the runtime was never imported.
    *
    * NO frame is pre-opened: the returned provider is frameless. There is no
    * root scope — resolving a tagged registration with no matching frame open
@@ -295,56 +341,28 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
    * tagged registration to cache.
    */
   public build(): ServiceProvider<Scopes> {
-    // Deep-copy the registrations so post-build builder mutations can't affect
-    // the sealed map. Each per-token list is frozen independently.
-    const sealed = new Map<Token, Registration[]>();
-    for (const [token, list] of this.#registrations) {
-      sealed.set(token, Object.freeze([...list]) as Registration[]);
-    }
-    Object.freeze(sealed);
-
-    // The open table is sealed the same way. The closed-registration memo is
-    // deliberately MUTABLE and starts empty: registrations synthesized from
-    // open matches land there (never in the sealed maps), and it is created
-    // here — not per provider — so every scope frame of this provider tree
-    // shares one memo.
-    const sealedOpen = new Map<Token, OpenRegistration[]>();
-    for (const [base, list] of this.#openRegistrations) {
-      sealedOpen.set(base, Object.freeze([...list]) as OpenRegistration[]);
-    }
-    Object.freeze(sealedOpen);
-
-    return new ServiceProviderClass<Scopes>(
-      sealed as ReadonlyMap<Token, Registration[]>,
-      sealedOpen as ReadonlyMap<Token, readonly OpenRegistration[]>,
-      new Map<Token, Registration>(),
+    throw new TypeError(
+      "ServiceManifest.build() requires the @rhombus-std/di runtime. Import "
+        + "@rhombus-std/di (which constructs the resolution engine) before "
+        + "calling build() — di.core ships only the registration collection.",
     );
   }
 }
 
 /**
- * The public registration-builder TYPE for di consumers — the `ServiceManifestBase`
- * INTERFACE (from `@rhombus-std/di.core`), bound to the concrete provider the
- * `build()` returns. Interface-first (not the impl class) so the
- * `@rhombus-std/di.transformer` augmentation — which merges the authored
- * `add<I>()` / `.as<"scope">()` forms onto core's `ScopeAddAuthoring` carrier
- * that `ServiceManifestBase` extends — surfaces on a consumer typing against
- * `ServiceManifest<S>`. A class would not inherit those augmented overloads; the
- * interface does.
+ * The public registration-builder INTERFACE a di consumer holds — the
+ * `ServiceManifestBase` interface bound to the concrete provider `build()`
+ * returns (the ME `IServiceCollection` analog). Interface-first (not the impl
+ * class) so the `@rhombus-std/di.transformer` augmentation — which merges the
+ * authored `add<I>()` / `.as<"scope">()` forms onto `ServiceManifestBase` —
+ * surfaces on a consumer typing against `ServiceManifest<S>`. A class would not
+ * inherit those augmented overloads; the interface does.
+ *
+ * The constructor side (`ServiceManifestCtor`) and the constructible
+ * `ServiceManifest` VALUE live in `@rhombus-std/di`, alongside the `build()`
+ * prototype-patch that makes `new ServiceManifest().build()` produce a provider.
  */
 export type ServiceManifest<S extends string = "singleton"> = ServiceManifestBase<
   S,
   ServiceProvider<S>
 >;
-
-/**
- * The static / constructor side of the public `ServiceManifest`. Extracted as
- * an interface purely so the value export below has a name to carry —
- * `new ServiceManifest<S>()` just constructs a `ServiceManifestClass<S>`.
- */
-export interface ServiceManifestCtor {
-  new<S extends string = "singleton">(): ServiceManifest<S>;
-}
-
-/** The public registration-builder VALUE. It IS `ServiceManifestClass`. */
-export const ServiceManifest: ServiceManifestCtor = ServiceManifestClass;

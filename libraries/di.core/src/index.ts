@@ -1,29 +1,20 @@
 /**
- * @rhombus-std/di.core — the PURE-TYPES abstractions substrate.
+ * @rhombus-std/di.core — the ioc ABSTRACTIONS substrate.
  *
- * A LIBRARY AUTHOR depends on this package (`import type`) to author
- * registrations and dependency signatures WITHOUT pulling the `@rhombus-std/di`
- * runtime. It ships ZERO runtime values — only types and the authoring type
- * machinery. The token grammar and slot constructors that used to live here
- * (`union`, `typeArg`, `parseToken`, …) are runtime and now live in `@rhombus-std/di`.
+ * A LIBRARY AUTHOR depends on this package to author registrations and
+ * dependency signatures WITHOUT pulling the `@rhombus-std/di` resolution engine.
+ * It carries the dependency-signature data format, the slot/token type surface
+ * and its grammar/guard/constructor helpers, the registration ABI, and — mirror
+ * of the reference DI split where the abstractions package ships the concrete
+ * `ServiceCollection` — the concrete registration builder `ServiceManifestClass`
+ * (collects `add`/`addFactory`/`addValue`; `build()` is a `@rhombus-std/di`
+ * extension). Cross-package fluent-authoring augmentations prototype-patch this
+ * class, and depend on di.core ALONE, never the runtime.
  *
- * Exports (all types):
- *   - `Token`          — string alias for a DI key
- *   - `DepSlot`        — one positional signature slot
- *   - `FactoryRef` / `ScopeRef` / `Union` / `LiteralRef` / `TypeArgRef` — slot kinds
- *   - `DepTarget` / `DepRecord` — dep-metadata shapes
- *   - `ParsedToken`    — the parse result shape for a closed-generic token
- *   - `Inject` / `Hole` / `$` / `Typeof` — compile-time authoring brands
- *   - `OverloadedParameters` / `OverloadedConstructorParameters` — overload-faithful
- *     parameter-tuple unions (every overload, not just the last)
- *   - the authoring surface: `ServiceManifest`, `ServiceManifestBase`,
- *     `AddBuilder` — the type-driven authoring forms are declaration-merged onto
- *     these interfaces by `@rhombus-std/di.transformer`; `ServiceManifestCtor` (the
- *     runtime construct signature) lives in `@rhombus-std/di` instead.
- *   - the public provider surface: `ServiceProvider` (the abstractions seam a
- *     consumer holds, mirroring MEDI's `IServiceProvider`) plus the `Resolver`
- *     and `ScopeFactory` seams it composes, the deprecated `ResolveScope`, and
- *     the `Lifetime` tag. The concrete impl class lives in `@rhombus-std/di`.
+ * Runtime footprint: the slot/token helpers, the registration builder, and the
+ * registration-time errors (`DiError` base, `OpenTokenRegistrationError`). The
+ * resolution engine (`ServiceProviderClass`) and resolution-time errors live in
+ * `@rhombus-std/di`.
  */
 
 export type {
@@ -45,16 +36,33 @@ export type {
   Union,
 } from "./types.js";
 
-export type {
-  AddBuilder,
-  ServiceManifest,
-  ServiceManifestBase,
-} from "./authoring.js";
+export type { AddBuilder, ServiceManifestBase } from "./authoring.js";
+
+// The concrete registration builder plus the public authoring interface it is
+// bound to. The class is a runtime value; augmentations prototype-patch it.
+export { ServiceManifestClass } from "./service-manifest.js";
+export type { ServiceManifest } from "./service-manifest.js";
 
 export type {
-  Lifetime,
-  ResolveScope,
-  Resolver,
-  ScopeFactory,
-  ServiceProvider,
-} from "./provider.js";
+  ClassRegistration,
+  Ctor,
+  Factory,
+  FactoryRegistration,
+  OpenRegistration,
+  Registration,
+  SealedManifest,
+  ValueRegistration,
+} from "./registrations.js";
+
+export type { Lifetime, Resolver, ResolveScope, ScopeFactory, ServiceProvider } from "./provider.js";
+
+// The slot/token ABI runtime helpers. A di consumer reaches these through the
+// re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
+// plain data literals.
+export { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "./guards.js";
+export { typeArg, union } from "./slots.js";
+export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from "./tokens.js";
+
+// The registration-time error taxonomy root and the open-token registration
+// error. Resolution-time errors extend `DiError` from `@rhombus-std/di`.
+export { DiError, OpenTokenRegistrationError } from "./errors.js";

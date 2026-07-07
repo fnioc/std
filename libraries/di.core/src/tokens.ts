@@ -1,6 +1,7 @@
-// The closed-generic token grammar — the runtime helpers the engine uses to
-// close open registrations. Relocated from @rhombus-std/di.core (now a pure-types
-// package): these are runtime values, so they live with the engine.
+// The closed-generic token grammar — the runtime helpers the registration
+// builder and the engine use to parse and close open registrations. Part of
+// di.core's slot/token ABI runtime (the token format is a di.core contract);
+// `@rhombus-std/di` re-exports these for one-import consumer ergonomics.
 //
 // Grammar (canonical, recursive):
 //
@@ -14,8 +15,8 @@
 // A hole is a token node that is exactly `$N` (decimal N ≥ 1); a token
 // containing a hole in any arg position is an *open template*.
 
-import type { DepSlot, ParsedToken, Token } from "@rhombus-std/di.core";
 import { isFactoryRef, isTypeArgRef, isUnionSlot } from "./guards.js";
+import type { DepSlot, ParsedToken, Token } from "./types.js";
 
 /**
  * A token node that is exactly a hole: `$N`, decimal N ≥ 1. The single source of

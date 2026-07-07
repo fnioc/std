@@ -1,9 +1,9 @@
-// Slot constructors — runtime sugar for hand-authoring signature slots. Relocated
-// from @rhombus-std/di.core (now a pure-types package). A di consumer imports these for
-// ergonomics; a core-only library author authors the same shapes as plain data
-// literals (`{ union: [...] }`, `{ typeArg: n }`).
+// Slot constructors — runtime sugar for hand-authoring signature slots. Part of
+// di.core's slot/token ABI runtime. A di consumer imports these (re-exported from
+// `@rhombus-std/di`) for ergonomics; a core-only library author authors the same
+// shapes as plain data literals (`{ union: [...] }`, `{ typeArg: n }`).
 
-import type { DepSlot, TypeArgRef, Union } from "@rhombus-std/di.core";
+import type { DepSlot, TypeArgRef, Union } from "./types.js";
 
 /**
  * Constructs a `Union` slot — a set of alternative dependency slots tried in
