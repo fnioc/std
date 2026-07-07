@@ -38,7 +38,7 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
 
   /** The last segment of this section's path -- its key within its parent. */
   public get key(): string {
-    return (this.#key ??= getSectionKey(this.#path) ?? this.#path);
+    return (this.#key ??= getSectionKey(this.#path));
   }
 
   /** The full colon-delimited path to this section within the root. */
