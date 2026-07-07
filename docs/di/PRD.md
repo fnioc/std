@@ -40,12 +40,12 @@ The transformer is the hard 80%. The engine is small because it never sees types
 
 **Scopes are uniform tags — there is no root.** `"singleton"` is literally just a tag you happen to open once at the top. You can run the container without ever opening a scope at all; with no matching frame open, resolution is transient.
 
-This is the central organizing principle of the runtime, not a footnote. A registration's lifetime tag (`.as("singleton")`, `.as("request")`, …) names a scope *frame*; the engine caches the instance in the nearest enclosing **open** frame that carries that tag. Nothing is special about any one tag:
+This is the central organizing principle of the runtime, not a footnote. A registration's lifetime tag (`.as("singleton")`, `.as("request")`, …) names a scope _frame_; the engine caches the instance in the nearest enclosing **open** frame that carries that tag. Nothing is special about any one tag:
 
 - **`build()` returns a frameless provider.** No root scope is pre-opened, and there is no instance cache at the provider level. Open a scope explicitly with `createScope(name)` when you want a tagged registration to cache — `"singleton"` included.
 - **No matching frame open ⇒ transient.** Resolving a tagged registration when no enclosing frame carries that tag yields a fresh instance, no cache, no error — exactly like an untagged registration. This holds at the provider level (no frames at all ⇒ everything transient) and inside scopes (a `"singleton"`-tagged dep resolved inside only a `"request"` frame is transient).
 - **Caching still works when the right frame is open.** Open a `"singleton"` frame and singleton-tagged registrations cache there for its lifetime; nest a `"request"` frame and request-tagged registrations cache per request. The mechanism is uniform — find the nearest enclosing frame with the matching tag.
-- **The captive-dependency safety is preserved structurally.** A longer-lived service still resolves its dependencies relative to the frame that *owns* it (the construct-relative-to-owner rule, §5.4). So a singleton never cache-captures a shorter-lived instance: when no enclosing frame carries the dependency's tag, it gets a fresh transient — never a stale cached one held forever.
+- **The captive-dependency safety is preserved structurally.** A longer-lived service still resolves its dependencies relative to the frame that _owns_ it (the construct-relative-to-owner rule, §5.4). So a singleton never cache-captures a shorter-lived instance: when no enclosing frame carries the dependency's tag, it gets a fresh transient — never a stale cached one held forever.
 
 ---
 
@@ -70,23 +70,23 @@ This is the central organizing principle of the runtime, not a footnote. A regis
 - `static $inject` as a v1 authoring surface — deferred; reintroduces prototype-bleed the global-symbol Map design prevents.
 - Wessberg-style two-type-param `add<IFoo, Foo>()` with ctor inferred from generic — deferred (TS partial type-argument inference blocker). Not the same feature as open-generic registration (a later addition, documented in the package READMEs): that closes an implementation class already named as a value argument against a placeholder-typed service token (`add<IRepository<$<1>>>(SqlRepository<$<1>>)`); this entry is about inferring the implementation class itself from the interface type parameter, with no value argument at all — still blocked on partial type-argument inference.
 - By-name dep matching — deferred.
-- A separate `@fnioc/abi` package — `@fnioc/core` *is* the ABI.
+- A separate `@fnioc/abi` package — `@fnioc/core` _is_ the ABI.
 
 ---
 
 ## 3. Glossary / Core Concepts
 
-| Term | Definition |
-|---|---|
-| **Token** | A stable `string` identifying a type. The DI key. Derived by the transformer from a TypeScript type name. Every named type tokenizes: `string` → `"string"`, `IFoo` → `"pkg:IFoo"`, `boolean` → `"boolean"`, etc. Only anonymous inline structures (object literal types, nameless non-intrinsics) are non-tokenizable and produce a compile error. |
-| **LiteralRef** | A `{ value }` slot, emitted when a constructor/factory parameter (or `resolve<T>()` type argument) is a **singular** (non-union) literal type (`"dev"`, `42`, `true`, `1n`) or a nullish singleton (`void`/`undefined` → `undefined`, `null` → `null`). At resolve time the value is injected directly — no container lookup; always satisfiable. `value` may be `undefined`, so the slot is identified by the *presence* of the `value` key. Literal unions (`"a"\|"b"`) are NOT `LiteralRef`; they derive a single sorted token and resolve through the container. |
-| **Union slot** | A `{ union: [...] }` slot — member-level alternatives tried in declaration order; the first resolvable member wins, and a member that resolves but throws at build time (a cycle, an unresolvable nested dep) falls through to the next. Satisfiable iff at least one member is. Used for inline union parameter types (`A \| B`) and as the lowering of an **optional** parameter: `x?: X` → `union(X, { value: undefined })` with the always-satisfiable `LiteralRef` fallback last. |
-| **Signature** | A positional array of `DepSlot` values parallel to a constructor's parameter list. `signature[i]` describes how to satisfy constructor parameter `i`: a `string` token resolved from the container, a `LiteralRef` injected directly, a `FactoryRef`, a `ScopeRef`, or a `Union` of alternatives. The word "signature" is used consistently in the ABI field name, the `@signature` decorator, and the `forCtor(...).signature(...)` fluent API. |
-| **DepRecord** | `{ signatures: ReadonlyArray<ReadonlyArray<DepSlot>> }` — the per-constructor metadata stored in the global-symbol Map. Multi-signature from v1 to support constructor overloads without an ABI break. |
-| **Scope** | A node in a parent-linked chain that owns and caches instances. Scope names are a user-defined string union passed to `DiBuilder<Scopes>`. |
-| **Lifetime tag** | The scope name a registration is bound to. Determines which ancestor scope caches the instance. A registration with no tag is transient. |
-| **Transient** | A registration with no lifetime tag. Fresh instance on every resolve; never cached. Conceptually an ephemeral throwaway scope — the engine just skips the cache. |
-| **store** | A plain `Map<DepTarget, DepRecord>` anchored on `globalThis` under `Symbol.for("fnioc:deps")`. Shared across all copies of `@fnioc/core` in the same process via the global symbol registry. |
+| Term             | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Token**        | A stable `string` identifying a type. The DI key. Derived by the transformer from a TypeScript type name. Every named type tokenizes: `string` → `"string"`, `IFoo` → `"pkg:IFoo"`, `boolean` → `"boolean"`, etc. Only anonymous inline structures (object literal types, nameless non-intrinsics) are non-tokenizable and produce a compile error.                                                                                                                                                                                                                  |
+| **LiteralRef**   | A `{ value }` slot, emitted when a constructor/factory parameter (or `resolve<T>()` type argument) is a **singular** (non-union) literal type (`"dev"`, `42`, `true`, `1n`) or a nullish singleton (`void`/`undefined` → `undefined`, `null` → `null`). At resolve time the value is injected directly — no container lookup; always satisfiable. `value` may be `undefined`, so the slot is identified by the _presence_ of the `value` key. Literal unions (`"a"\|"b"`) are NOT `LiteralRef`; they derive a single sorted token and resolve through the container. |
+| **Union slot**   | A `{ union: [...] }` slot — member-level alternatives tried in declaration order; the first resolvable member wins, and a member that resolves but throws at build time (a cycle, an unresolvable nested dep) falls through to the next. Satisfiable iff at least one member is. Used for inline union parameter types (`A \| B`) and as the lowering of an **optional** parameter: `x?: X` → `union(X, { value: undefined })` with the always-satisfiable `LiteralRef` fallback last.                                                                               |
+| **Signature**    | A positional array of `DepSlot` values parallel to a constructor's parameter list. `signature[i]` describes how to satisfy constructor parameter `i`: a `string` token resolved from the container, a `LiteralRef` injected directly, a `FactoryRef`, a `ScopeRef`, or a `Union` of alternatives. The word "signature" is used consistently in the ABI field name, the `@signature` decorator, and the `forCtor(...).signature(...)` fluent API.                                                                                                                     |
+| **DepRecord**    | `{ signatures: ReadonlyArray<ReadonlyArray<DepSlot>> }` — the per-constructor metadata stored in the global-symbol Map. Multi-signature from v1 to support constructor overloads without an ABI break.                                                                                                                                                                                                                                                                                                                                                               |
+| **Scope**        | A node in a parent-linked chain that owns and caches instances. Scope names are a user-defined string union passed to `DiBuilder<Scopes>`.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Lifetime tag** | The scope name a registration is bound to. Determines which ancestor scope caches the instance. A registration with no tag is transient.                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Transient**    | A registration with no lifetime tag. Fresh instance on every resolve; never cached. Conceptually an ephemeral throwaway scope — the engine just skips the cache.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **store**        | A plain `Map<DepTarget, DepRecord>` anchored on `globalThis` under `Symbol.for("fnioc:deps")`. Shared across all copies of `@fnioc/core` in the same process via the global symbol registry.                                                                                                                                                                                                                                                                                                                                                                         |
 
 ---
 
@@ -109,11 +109,11 @@ forCtor()            Factory injection
 
 ### Package contents
 
-| Package | Responsibility | Depends on |
-|---|---|---|
-| `@fnioc/core` | Immutable substrate: ABI types, global-symbol Map, `defineDeps`, `@signature`, `forCtor` | — |
-| `@fnioc/di` | Runtime engine: resolution, scoping, lifecycle, disposal, factories | `@fnioc/core` |
-| `@fnioc/transformer` | Build-time ts-patch plugin: token gen, dep extraction, lowered output emission | `@fnioc/core` (ABI/token format only) |
+| Package              | Responsibility                                                                           | Depends on                            |
+| -------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------- |
+| `@fnioc/core`        | Immutable substrate: ABI types, global-symbol Map, `defineDeps`, `@signature`, `forCtor` | —                                     |
+| `@fnioc/di`          | Runtime engine: resolution, scoping, lifecycle, disposal, factories                      | `@fnioc/core`                         |
+| `@fnioc/transformer` | Build-time ts-patch plugin: token gen, dep extraction, lowered output emission           | `@fnioc/core` (ABI/token format only) |
 
 `@fnioc/di` may re-export `@signature` and `forCtor` from `@fnioc/core` for single-import ergonomics. Authoring surfaces live in `core` because they are pure metadata writers with zero resolution dependency.
 
@@ -144,7 +144,9 @@ export interface LiteralRef {
 }
 
 /** Member-level alternatives tried in declaration order; first resolvable wins. */
-export interface Union { readonly union: ReadonlyArray<DepSlot>; }
+export interface Union {
+  readonly union: ReadonlyArray<DepSlot>;
+}
 
 /**
  * One slot in a signature:
@@ -161,7 +163,7 @@ export interface DepRecord {
 }
 ```
 
-`signatures` is an array of arrays from v1. Multiple signatures support **manual** constructor overloads (`@signature` stacking, `forCtor` chaining) and **declared** ctor overloads (one signature per bodyless declaration). Auto-extraction from an implementation constructor always emits exactly one signature — optionality is expressed *within* a signature via a `Union` slot, not by emitting extra shorter signatures.
+`signatures` is an array of arrays from v1. Multiple signatures support **manual** constructor overloads (`@signature` stacking, `forCtor` chaining) and **declared** ctor overloads (one signature per bodyless declaration). Auto-extraction from an implementation constructor always emits exactly one signature — optionality is expressed _within_ a signature via a `Union` slot, not by emitting extra shorter signatures.
 
 ### Global-symbol Map
 
@@ -171,8 +173,7 @@ The dep-metadata store is a plain `Map<DepTarget, DepRecord>` anchored on `globa
 const KEY: unique symbol = Symbol.for("fnioc:deps");
 // Using Symbol.for (never Symbol()) — the registry is global, so two bundles
 // share the same key and thus the same Map.
-const store: Map<DepTarget, DepRecord> =
-  (globalThis as any)[KEY] ??= new Map();
+const store: Map<DepTarget, DepRecord> = (globalThis as any)[KEY] ??= new Map();
 ```
 
 **Why a regular Map and not a WeakMap:** every key is a constructor or factory function pinned for the module's lifetime — class bindings, `@signature`/`forCtor` named declarations, transformer-hoisted `const` factories. No key ever becomes unreachable, so a WeakMap could never collect an entry — its weakness would be pure ceremony.
@@ -210,7 +211,7 @@ export function defineDeps(
 
 Each package is versioned independently via release-please (semver). The dep-metadata wire format (`DepRecord`) is kept backward-compatible across `core` semver minors; a breaking change to the wire format would require a coordinated update across all packages.
 
-**Dual-package hazard:** if two copies of `@fnioc/core` end up in the same bundle (e.g. a deduplication failure), the `Symbol.for("fnioc:deps")` key means they share one Map — data written through either copy is visible to both, which is the correct behavior. The residual risk is two copies at different *content* (shape mismatch) — mitigated by declaring `@fnioc/core` a peer dependency.
+**Dual-package hazard:** if two copies of `@fnioc/core` end up in the same bundle (e.g. a deduplication failure), the `Symbol.for("fnioc:deps")` key means they share one Map — data written through either copy is visible to both, which is the correct behavior. The residual risk is two copies at different _content_ (shape mismatch) — mitigated by declaring `@fnioc/core` a peer dependency.
 
 ---
 
@@ -222,7 +223,7 @@ Both surfaces live in `@fnioc/core` and call `defineDeps` internally. They exist
 
 ```typescript
 export function signature(...slots: ReadonlyArray<DepSlot>) {
-  return function (ctor: Function, _ctx: ClassDecoratorContext): void {
+  return function(ctor: Function, _ctx: ClassDecoratorContext): void {
     defineDeps(ctor, [[...slots]]);
   };
 }
@@ -267,22 +268,22 @@ The verb `signature` is used consistently: the ABI field is `signatures`, the de
 
 Every named type produces a token **`<source>:<exportName>`** — `<source>` is where a human imports the type from, `<exportName>` its module-qualified declared name (bare for a top-level type, `A.Foo` for a nested type):
 
-| Parameter type | Token emitted |
-|---|---|
-| `IFoo` (package root export) | `"pkg:IFoo"` |
+| Parameter type                                  | Token emitted          |
+| ----------------------------------------------- | ---------------------- |
+| `IFoo` (package root export)                    | `"pkg:IFoo"`           |
 | `IFoo` (package subpath export `pkg/contracts`) | `"pkg/contracts:IFoo"` |
-| `IBar` (app-internal, package `app`) | `"app/src/IBar:IBar"` |
-| `IBar` (app-internal, rootless project) | `"./src/IBar:IBar"` |
-| `string` | `"string"` |
-| `number` | `"number"` |
-| `boolean` | `"boolean"` |
-| `symbol` | `"symbol"` |
-| `bigint` | `"bigint"` |
-| `any` | `"any"` |
-| `unknown` | `"unknown"` |
-| `never` | `"never"` |
+| `IBar` (app-internal, package `app`)            | `"app/src/IBar:IBar"`  |
+| `IBar` (app-internal, rootless project)         | `"./src/IBar:IBar"`    |
+| `string`                                        | `"string"`             |
+| `number`                                        | `"number"`             |
+| `boolean`                                       | `"boolean"`            |
+| `symbol`                                        | `"symbol"`             |
+| `bigint`                                        | `"bigint"`             |
+| `any`                                           | `"any"`                |
+| `unknown`                                       | `"unknown"`            |
+| `never`                                         | `"never"`              |
 
-`void`, `undefined`, and `null` are **not** in this table — each is a *singleton* type (exactly one inhabitant), so it is supplied directly as a `LiteralRef` (next section), never tokenized. `never` (zero inhabitants — nothing to supply) is tokenized to `"never"` and simply misses at runtime. Wide `boolean` (TypeScript models it as the union `false | true`) special-cases here to the bare token `"boolean"`, not a literal union.
+`void`, `undefined`, and `null` are **not** in this table — each is a _singleton_ type (exactly one inhabitant), so it is supplied directly as a `LiteralRef` (next section), never tokenized. `never` (zero inhabitants — nothing to supply) is tokenized to `"never"` and simply misses at runtime. Wide `boolean` (TypeScript models it as the union `false | true`) special-cases here to the bare token `"boolean"`, not a literal union.
 
 An unregistered token (including the above intrinsic tokens if nothing is registered for them) causes an `UnregisteredTokenError` at resolve time. That is the expected, intended behavior — it is not a compile error. If a parameter can never be satisfied from the container, make it optional (so it lowers to a `union(..., { value: undefined })` fallback — see below) or use `addFactory` and supply it at call time.
 
@@ -292,7 +293,7 @@ An unregistered token (including the above intrinsic tokens if nothing is regist
 
 When a constructor or factory parameter's type is a **singular** (non-union) literal — `"dev"`, `42`, `true`, `1n` — the transformer emits a `LiteralRef { value }` slot instead of a token. At resolve time the value is injected directly; the container is not consulted. Always satisfiable — the value is self-supplying, so a `LiteralRef` slot never makes a signature unresolvable.
 
-The nullish singletons are also `LiteralRef`s: a whole-type `void` or `undefined` parameter supplies `undefined`; a whole-type `null` parameter supplies `null`. (`value` may itself be `undefined`, so the slot is identified by the *presence* of the `value` key — see `isLiteralRef`.) `LiteralRef.value` therefore spans `string | number | boolean | bigint | undefined | null`. Negative numbers and bigints round-trip (`-7`, `-3n`).
+The nullish singletons are also `LiteralRef`s: a whole-type `void` or `undefined` parameter supplies `undefined`; a whole-type `null` parameter supplies `null`. (`value` may itself be `undefined`, so the slot is identified by the _presence_ of the `value` key — see `isLiteralRef`.) `LiteralRef.value` therefore spans `string | number | boolean | bigint | undefined | null`. Negative numbers and bigints round-trip (`-7`, `-3n`).
 
 ```typescript
 @signature("pkg:ILogger", { value: "dev" }, "pkg:IDb")
@@ -305,21 +306,21 @@ class DevLogger {
 **`resolve<T>()` for a singular `T` lowers to the value expression itself**, not to a `resolve` call — there is no container round-trip:
 
 ```typescript
-scope.resolve<"dev">()   // lowers to:  "dev"
-scope.resolve<42>()      // lowers to:  42
-scope.resolve<1n>()      // lowers to:  1n
-scope.resolve<void>()    // lowers to:  void 0
-scope.resolve<undefined>() // lowers to: void 0
-scope.resolve<null>()    // lowers to:  null
+scope.resolve<"dev">(); // lowers to:  "dev"
+scope.resolve<42>(); // lowers to:  42
+scope.resolve<1n>(); // lowers to:  1n
+scope.resolve<void>(); // lowers to:  void 0
+scope.resolve<undefined>(); // lowers to: void 0
+scope.resolve<null>(); // lowers to:  null
 ```
 
-A **literal union** (`"a" | "b"`) is different: it derives a single sorted token whose members are JSON-quoted and joined with ` | ` (so `"a" | "b"`, and `2 | 1` → `"1 | 2"`), and resolves through the container as a normal registration — never per-member `LiteralRef`s. `resolve<"a" | "b">()` therefore stays `scope.resolve("\"a\" | \"b\"")`. `LiteralRef` applies only to singular literals and nullish singletons.
+A **literal union** (`"a" | "b"`) is different: it derives a single sorted token whose members are JSON-quoted and joined with `|` (so `"a" | "b"`, and `2 | 1` → `"1 | 2"`), and resolves through the container as a normal registration — never per-member `LiteralRef`s. `resolve<"a" | "b">()` therefore stays `scope.resolve("\"a\" | \"b\"")`. `LiteralRef` applies only to singular literals and nullish singletons.
 
 **Registration side unchanged.** `add`, `addValue`, `addFactory`, and `nameof` are not affected by `LiteralRef`. Literal-typed parameters simply never need a registration entry.
 
 ### Optional/defaulted/`T | undefined` params → union-with-fallback (one signature)
 
-Optionality is unified on the `Union` slot — there is **no overload expansion**. A parameter that is optional in *any* form, at *any* position — `x?: X`, `x: X = default`, `x: X | undefined`, `x: X | void` — lowers to a single `union(<non-nullish slots>, { value: undefined })` slot with the `LiteralRef` fallback **last**. Auto-extraction from an implementation constructor emits exactly ONE signature.
+Optionality is unified on the `Union` slot — there is **no overload expansion**. A parameter that is optional in _any_ form, at _any_ position — `x?: X`, `x: X = default`, `x: X | undefined`, `x: X | void` — lowers to a single `union(<non-nullish slots>, { value: undefined })` slot with the `LiteralRef` fallback **last**. Auto-extraction from an implementation constructor emits exactly ONE signature.
 
 At resolve time the union tries members in declaration order: the real dependency `X` wins when it is registered; otherwise the always-satisfiable `{ value: undefined }` member supplies `undefined`, and for a defaulted parameter JS treats an explicit `undefined` argument as omission, so the default initializer fires. Because the fallback is always satisfiable, an optional parameter never throws `NoSatisfiableSignatureError`.
 
@@ -330,9 +331,9 @@ constructor(a: IFoo | undefined, b: IBar)// → [ union("pkg:IFoo", { value: und
 constructor(dep?: IFoo | IBar)           // → [ union("pkg:IFoo", "pkg:IBar", { value: undefined }) ]
 ```
 
-`x: X | null` is *not* optionality — `null` is a real value, not the optionality marker — so it lowers to `union(X, { value: null })` (the `null` member is a genuine alternative). An optional pure-literal union keeps its single sorted literal token as the non-nullish part: `mode?: "a" | "b"` → `union("\"a\" | \"b\"", { value: undefined })`.
+`x: X | null` is _not_ optionality — `null` is a real value, not the optionality marker — so it lowers to `union(X, { value: null })` (the `null` member is a genuine alternative). An optional pure-literal union keeps its single sorted literal token as the non-nullish part: `mode?: "a" | "b"` → `union("\"a\" | \"b\"", { value: undefined })`.
 
-This is strictly more expressive than trailing-overload expansion: it can represent `(a: X | undefined, b: Y)` where the *interior* param is optional — overload-dropping could only drop trailing params and would lose `b`, whereas the per-param union yields `new Ctor(undefined, y)`. A genuinely required, never-registered parameter still resolves to a bare token that misses at runtime (`UnregisteredTokenError`); the fix is to register the dep, make the parameter optional, or build the class via `addFactory`.
+This is strictly more expressive than trailing-overload expansion: it can represent `(a: X | undefined, b: Y)` where the _interior_ param is optional — overload-dropping could only drop trailing params and would lose `b`, whereas the per-param union yields `new Ctor(undefined, y)`. A genuinely required, never-registered parameter still resolves to a bare token that misses at runtime (`UnregisteredTokenError`); the fix is to register the dep, make the parameter optional, or build the class via `addFactory`.
 
 ### Canonical authoring → lowered example
 
@@ -354,14 +355,16 @@ services.add<IUserRepo>(SqlUserRepo).as<"request">();
 ```typescript
 const services = new DiBuilder();
 
-const ɵreg0 = ConsoleLogger;  // hoisted — defineDeps and add share the same reference
-defineDeps(ɵreg0, [[]]);       // zero-arg class: single empty signature
+const ɵreg0 = ConsoleLogger; // hoisted — defineDeps and add share the same reference
+defineDeps(ɵreg0, [[]]); // zero-arg class: single empty signature
 services.add("pkg:ILogger", ɵreg0).as("singleton");
 
 const ɵreg1 = SqlUserRepo;
 defineDeps(ɵreg1, [
   // one signature; the optional `table` is a union slot with an undefined fallback
-  ["pkg:ILogger", "pkg:IDbConnection", { union: ["string", { value: void 0 }] }],
+  ["pkg:ILogger", "pkg:IDbConnection", {
+    union: ["string", { value: void 0 }],
+  }],
 ]);
 services.add("pkg:IUserRepo", ɵreg1).as("request");
 ```
@@ -380,14 +383,14 @@ Three registration methods on `DiBuilder`, each with a transformer-authored form
 const services = new DiBuilder<"singleton" | "request">();
 
 // Transformer-authored (type-driven):
-services.add<ILogger>(ConsoleLogger).as<"singleton">();   // class: token from ILogger
-services.add<IUserRepo>(SqlUserRepo).as<"request">();     // class: token from IUserRepo
-services.addValue<IConfig>(configInstance);               // value: token from IConfig
+services.add<ILogger>(ConsoleLogger).as<"singleton">(); // class: token from ILogger
+services.add<IUserRepo>(SqlUserRepo).as<"request">(); // class: token from IUserRepo
+services.addValue<IConfig>(configInstance); // value: token from IConfig
 
 // Explicit-token (plugin-less / lowered form):
-services.add("pkg:ILogger", ConsoleLogger).as("singleton");           // class
+services.add("pkg:ILogger", ConsoleLogger).as("singleton"); // class
 services.addFactory("pkg:IDb", (scope) => new PgDb(scope)).as("singleton"); // factory
-services.addValue("pkg:IConfig", configInstance);                     // value
+services.addValue("pkg:IConfig", configInstance); // value
 ```
 
 - `add(token, Ctor)` — class registration. The concrete is instantiated by the engine with injected deps.
@@ -412,15 +415,16 @@ const services = new DiBuilder<"singleton" | "request">();
 Scopes are uniform tags forming a parent chain. There is no root: `build()` returns a frameless provider, and `"singleton"` is just a tag you open once at the top.
 
 ```typescript
-const provider = services.build();               // frameless — no scope pre-opened
-const app  = provider.createScope("singleton");  // open the app-lifetime frame
-const req  = app.createScope("request");         // created per HTTP request (for example)
-const reqChild = req.createScope("request");     // nested if needed
+const provider = services.build(); // frameless — no scope pre-opened
+const app = provider.createScope("singleton"); // open the app-lifetime frame
+const req = app.createScope("request"); // created per HTTP request (for example)
+const reqChild = req.createScope("request"); // nested if needed
 ```
 
 **Resolution walks UP the parent chain for instance ownership:** the lifetime tag names which enclosing open frame owns and caches the instance. Walk up to the nearest enclosing frame whose name matches the registration's tag. (Registration lookup is flat — the sealed map is shared across the whole tree; scope-local registration was removed in the container redesign.)
 
 **Rules:**
+
 - Untagged (transient) → fresh instance every resolve, never cached.
 - Tagged → walk the enclosing chain for a frame with a matching name. If found: return the cached instance or construct-and-cache there. **If no enclosing frame matches the tag: resolve transiently** — a fresh instance, no cache, no error. An absent frame is just transient; that is the whole point of uniform tags.
 - Never auto-create a scope to satisfy a missing tag. A frame is opened only by an explicit `createScope(name)`; until then (and outside it) the tag's registrations are transient.
@@ -429,7 +433,7 @@ const reqChild = req.createScope("request");     // nested if needed
 
 **Resolve a service's constructor dependencies relative to the frame that will OWN that service's instance — not the frame that triggered the resolve.**
 
-Example: a `"singleton"` service depends on a `"request"` service, with a `"singleton"` frame open and a `"request"` frame nested under it. Resolution triggered from the `request` scope finds the singleton frame as the owner of the singleton service. That singleton frame owns the instance, so its deps are resolved relative to the singleton frame's chain. The singleton frame's chain has no enclosing `"request"` frame (request is a *descendant*, not an ancestor) — so the request dep resolves to a **fresh transient**, never the request's cached instance. The singleton never silently captures one request's `IDb` and holds it across all requests.
+Example: a `"singleton"` service depends on a `"request"` service, with a `"singleton"` frame open and a `"request"` frame nested under it. Resolution triggered from the `request` scope finds the singleton frame as the owner of the singleton service. That singleton frame owns the instance, so its deps are resolved relative to the singleton frame's chain. The singleton frame's chain has no enclosing `"request"` frame (request is a _descendant_, not an ancestor) — so the request dep resolves to a **fresh transient**, never the request's cached instance. The singleton never silently captures one request's `IDb` and holds it across all requests.
 
 This preserves `ME.DependencyInjection`'s captive-dependency safety, but via the uniform-tag transient fallback rather than a throw: the construct-relative-to-owner rule is what guarantees a longer-lived service can't cache-capture a shorter-lived one. The fresh transient is the safe outcome, not an edge case.
 
@@ -437,7 +441,7 @@ This preserves `ME.DependencyInjection`'s captive-dependency safety, but via the
 
 When a constructor has multiple registered signatures (declared ctor overloads, `@signature` stacking, or `forCtor` chaining), the engine selects by scanning longest → shortest and picking the first **satisfiable** signature. A slot is satisfiable when it is a `LiteralRef` (always), a `FactoryRef` (always), a `ScopeRef` (always), a `Union` with at least one resolvable member, or a string token registered in the owning scope's chain. An unregistered string token blocks the signature. Equal-arity ties break by registration order. When no signature is satisfiable, `NoSatisfiableSignatureError` carries the unsatisfiable tokens — including, for a fully-unsatisfiable `Union` slot, its string-token members — so the error names exactly what to register. The transformer's factory-signature diagnostic (see §8) warns on genuine equal-arity ambiguity.
 
-Note that auto-extraction from an implementation constructor emits a single signature (optionality lives inside it as a `Union` slot), so greedy *multi*-signature selection is exercised only by declared overloads or manual annotation; within one signature, a `Union` slot does its own first-resolvable-wins member selection.
+Note that auto-extraction from an implementation constructor emits a single signature (optionality lives inside it as a `Union` slot), so greedy _multi_-signature selection is exercised only by declared overloads or manual annotation; within one signature, a `Union` slot does its own first-resolvable-wins member selection.
 
 ### Cycle detection
 
@@ -546,8 +550,9 @@ The recommended plugin-less registration mechanism. No dep array, no decorator, 
 ```typescript
 // addFactory: a factory function called with the live scope (no defineDeps record
 // → scope-based escape hatch); or a pre-annotated factory whose deps are injected.
-services.addFactory("pkg:IFoo", (scope) =>
-  new TheirFoo(scope.resolve<IBar>("pkg:IBar")),
+services.addFactory(
+  "pkg:IFoo",
+  (scope) => new TheirFoo(scope.resolve<IBar>("pkg:IBar")),
 ).as("singleton");
 
 // addValue: an already-built instance, no lifetime (values are always immediate).
@@ -594,14 +599,14 @@ For each parameter, the transformer emits one `DepSlot`, applying these rules **
 4. **Inline function type** (`() => IFoo`) → `FactoryRef` (PRD §7), keyed on the return type's token.
 5. **Inline union type** (`A | B`, syntactically a union node, two+ members, not pure-literal, not wide `boolean`) → `Union` of per-member slots in declaration order. A `| null` member survives as `{ value: null }`; `| undefined` was already consumed by rule 3.
 6. **Singular literal** (`"dev"`, `42`, `true`, `1n`) or **nullish singleton** (`null` → `{ value: null }`) → `LiteralRef`.
-7. **Named type** — interface, class, type alias, intrinsic (`string`, `number`, `boolean`, `symbol`, `bigint`, `any`, `unknown`, `never`), or **pure-literal union** (`"a" | "b"` → single sorted ` | `-joined, JSON-quoted token) → a string token via the token-generation rules. Wide `boolean` lands here as `"boolean"`. An unregistered token causes `UnregisteredTokenError` at runtime — not a compile error.
+7. **Named type** — interface, class, type alias, intrinsic (`string`, `number`, `boolean`, `symbol`, `bigint`, `any`, `unknown`, `never`), or **pure-literal union** (`"a" | "b"` → single sorted `|`-joined, JSON-quoted token) → a string token via the token-generation rules. Wide `boolean` lands here as `"boolean"`. An unregistered token causes `UnregisteredTokenError` at runtime — not a compile error.
 8. **Anonymous inline structure** with no `Inject` brand → diagnostic `990006` (`UnderivableToken`). Hard compile error. Fix: name the type or use `Inject<T, "explicit-token">`.
 
 `Promise<X>` parameters are unwrapped first: the slot derives from `X`, not from `Promise<X>`.
 
 Finally, the transformer hoists the class reference to `const ɵregN = ClassName` and uses that identifier in both `defineDeps(ɵregN, ...)` and the registration call (so the class is evaluated once and both calls reference the same object), emitting `defineDeps(ɵregN, [[...]])` immediately before the lowered registration call.
 
-The multi-signature `signatures` array is therefore exercised by **declared ctor overloads** and **manual** `@signature`/`forCtor` overloads; auto-extraction from an implementation constructor always emits exactly one signature, with optionality expressed *inside* it via `Union` slots rather than as extra shorter signatures. This is strictly more expressive than the previous trailing-overload expansion: an interior optional parameter (`(a: X | undefined, b: Y)`) is representable as a per-param union, whereas suffix-dropping could only drop trailing params.
+The multi-signature `signatures` array is therefore exercised by **declared ctor overloads** and **manual** `@signature`/`forCtor` overloads; auto-extraction from an implementation constructor always emits exactly one signature, with optionality expressed _inside_ it via `Union` slots rather than as extra shorter signatures. This is strictly more expressive than the previous trailing-overload expansion: an interior optional parameter (`(a: X | undefined, b: Y)`) is representable as a per-param union, whereas suffix-dropping could only drop trailing params.
 
 ### Lowered output / ABI contract
 
@@ -614,7 +619,9 @@ services.add<IUserRepo>(SqlUserRepo).as<"request">();
 // Lowered (transformer emits) — the class is hoisted; ONE signature emitted
 const ɵreg0 = SqlUserRepo;
 defineDeps(ɵreg0, [
-  ["pkg:ILogger", "pkg:IDbConnection", { union: ["string", { value: void 0 }] }],
+  ["pkg:ILogger", "pkg:IDbConnection", {
+    union: ["string", { value: void 0 }],
+  }],
 ]);
 services.add("pkg:IUserRepo", ɵreg0).as("request");
 // On resolve: the union tries "string" first; if it is not registered, the
@@ -624,7 +631,7 @@ services.add("pkg:IUserRepo", ɵreg0).as("request");
 
 ### Factory-signature diagnostic (originally §4.5)
 
-The transformer validates factory signatures (and any hand-declared factory parameters in `@signature` / `forCtor`) against the target constructor's **caller-supplied** parameters. Under Rule 1 a named interface/class always tokenizes and is container-resolved, so "caller-supplied" no longer means "underivable" — it means a *primitive scalar*: a bare intrinsic keyword token (`string`/`number`/…), a singular literal (Rule 2), or an anonymous structure with no token.
+The transformer validates factory signatures (and any hand-declared factory parameters in `@signature` / `forCtor`) against the target constructor's **caller-supplied** parameters. Under Rule 1 a named interface/class always tokenizes and is container-resolved, so "caller-supplied" no longer means "underivable" — it means a _primitive scalar_: a bare intrinsic keyword token (`string`/`number`/…), a singular literal (Rule 2), or an anonymous structure with no token.
 
 The rule is: declared params must **cover** the produced constructor's primitive-scalar holes (the container cannot supply these), but **may additionally include** named-interface/class params from the constructor's slot list — those are meaningful caller-wins overrides, not mistakes. A warning fires when:
 
@@ -634,6 +641,7 @@ The rule is: declared params must **cover** the produced constructor's primitive
 This is the primary value-add of using the transformer — it provides compile-time feedback when a factory's declared call signature is mismatched against what the runtime can route.
 
 Additional diagnostics the transformer can emit where statically visible:
+
 - A consumer declaring `IDb` as a direct dep when the service is async-registered (should be `Promise<IDb>`).
 - Equal-arity overload ambiguity (two signatures of the same length for the same constructor).
 
@@ -659,12 +667,12 @@ A genuine zero-argument constructor is `new`ed directly with no dep lookup.
 
 The transformer is optional — the engine is always usable hand-fed. The relationship mirrors JSX and `createElement`:
 
-| Layer | JSX analogy | `@fnioc` |
-|---|---|---|
-| Author surface | `<Button onClick={...}>` | `services.add<IFoo>(Foo).as<"singleton">()` |
-| Compiler | TSX → `createElement` calls | transformer → `defineDeps` + string-token `.add()` |
-| Runtime | React reconciler reads `createElement` output | Engine reads DepRecords, resolves graph |
-| Plugin-less | Write `createElement` calls by hand | Write `defineDeps` + token strings by hand |
+| Layer          | JSX analogy                                   | `@fnioc`                                           |
+| -------------- | --------------------------------------------- | -------------------------------------------------- |
+| Author surface | `<Button onClick={...}>`                      | `services.add<IFoo>(Foo).as<"singleton">()`        |
+| Compiler       | TSX → `createElement` calls                   | transformer → `defineDeps` + string-token `.add()` |
+| Runtime        | React reconciler reads `createElement` output | Engine reads DepRecords, resolves graph            |
+| Plugin-less    | Write `createElement` calls by hand           | Write `defineDeps` + token strings by hand         |
 
 **Three plugin-less paths for overrides and standalone use:**
 
@@ -672,7 +680,7 @@ The transformer is optional — the engine is always usable hand-fed. The relati
 2. **`@signature` decorator** — for your own classes where you want constructor injection without the transformer. Hand-author the token array; unchecked (no transformer to verify tokens match params).
 3. **`forCtor(ctor).signature(...)`** — same as `@signature` but for classes you don't own.
 
-A library author compiles once with the transformer and publishes the lowered JS. Consumers of that library — transformer or not — get the registrations for free. Consumers without the transformer who need to register *their own* services use one of the three paths above.
+A library author compiles once with the transformer and publishes the lowered JS. Consumers of that library — transformer or not — get the registrations for free. Consumers without the transformer who need to register _their own_ services use one of the three paths above.
 
 ---
 
@@ -681,6 +689,7 @@ A library author compiles once with the transformer and publishes the lowered JS
 ### Toolchain
 
 Mirrors `fnclaude@fnclaude`:
+
 - **Bun** — runtime, package manager, test runner.
 - **Moon** (`moonrepo`) — task orchestration. Per-package `moon.yml` with `:lint`, `:test`, `:build` tasks.
 - **release-please** — per-package release PRs. Config: `separate-pull-requests: true`, `include-component-in-tag: true`.
@@ -712,8 +721,8 @@ Standard files: `bun.lock`, `bunfig.toml`, `.moon/workspace.yml`, `.moon/toolcha
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
-  }
+    "sourceMap": true,
+  },
 }
 ```
 
@@ -722,12 +731,14 @@ Standard files: `bun.lock`, `bunfig.toml`, `.moon/workspace.yml`, `.moon/toolcha
 ### CI — `ci.yml`
 
 **`verify` job:**
+
 1. Checkout with `fetch-depth: 0` and 3× retry.
 2. `mise-action` to restore pinned tool versions.
 3. `bun install --frozen-lockfile`.
 4. `moon run :lint :test :build`.
 
 **`publish` job** (gated on release-please tag):
+
 1. `release-please-action` with `AUTOMERGE_PAT` for auto-merge.
 2. OIDC trusted-publishing — **no long-lived `NPM_TOKEN`**. Provider: GitHub Actions; repo: `fnioc/ioc`; workflow: `ci.yml`. The workflow filename `ci.yml` is load-bearing — changing it breaks the trusted-publisher configuration on npmjs.com.
 3. `workspace:*` → concrete version rewrite before publish.
@@ -751,21 +762,21 @@ Prefer native over toolkit wherever a native feature has superseded it. Confirme
 
 ## 11. Explicitly Rejected — Do Not Reintroduce
 
-| Decision | Rationale |
-|---|---|
-| Legacy decorators (`experimentalDecorators`) | Hard non-starter. Also eliminates `emitDecoratorMetadata` and parameter decorators (which do not exist in TC39 decorators). |
-| `emitDecoratorMetadata` | Only works in legacy decorator mode; eliminated with the above. |
-| Parameter decorators | Do not exist in TC39 standard decorators. |
-| `reflect-metadata` | Interface-blind (`design:paramtypes` maps interfaces to `Object`); global side-effecting polyfill; redundant with the transformer doing the same job at compile time. |
-| `Symbol.metadata` as the dep store | Only auto-populated by decorators; would force the transformer to emulate its object-creation/inheritance semantics; requires a polyfill. The global-symbol Map is correct. |
-| Writing dep data onto the class as primary store (`$inject` static / symbol static) | Prototype-inheritance bleed (subclass silently inherits parent's dep array); pollutes the class surface. |
-| `static $inject` in v1 | Reintroduces prototype-bleed that the global-symbol Map design exists to prevent; `forCtor` makes it unnecessary. If ever added: read once, cache into the store keyed by the exact ctor — never walk the prototype chain. |
-| Ramda-style placeholder args exposed to factory callers | Leaks constructor arity/structure to call sites; the §4.5 diagnostic provides fail-loud safety without that exposure. |
-| Computed/branded return types for `nameof` | `string` is sufficient; the token value is plain text, not a branded or literal TS type. |
-| `toString()` / AST-parsing of ctor arg names at runtime | Fragile under minification; the transformer supplies precise data instead. |
-| `@injectable` as the decorator name | Rejected on principle by the project author — use `@signature`. |
-| A separate async resolution channel / `resolveAsync()` | Async is values through the sync channel; one channel, honest contract. |
-| A separate `@fnioc/abi` package | The ABI types and the Map/`defineDeps` that read-write them are one intrinsic unit; splitting buys no decoupling. `@fnioc/core` is the ABI. |
+| Decision                                                                            | Rationale                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Legacy decorators (`experimentalDecorators`)                                        | Hard non-starter. Also eliminates `emitDecoratorMetadata` and parameter decorators (which do not exist in TC39 decorators).                                                                                                |
+| `emitDecoratorMetadata`                                                             | Only works in legacy decorator mode; eliminated with the above.                                                                                                                                                            |
+| Parameter decorators                                                                | Do not exist in TC39 standard decorators.                                                                                                                                                                                  |
+| `reflect-metadata`                                                                  | Interface-blind (`design:paramtypes` maps interfaces to `Object`); global side-effecting polyfill; redundant with the transformer doing the same job at compile time.                                                      |
+| `Symbol.metadata` as the dep store                                                  | Only auto-populated by decorators; would force the transformer to emulate its object-creation/inheritance semantics; requires a polyfill. The global-symbol Map is correct.                                                |
+| Writing dep data onto the class as primary store (`$inject` static / symbol static) | Prototype-inheritance bleed (subclass silently inherits parent's dep array); pollutes the class surface.                                                                                                                   |
+| `static $inject` in v1                                                              | Reintroduces prototype-bleed that the global-symbol Map design exists to prevent; `forCtor` makes it unnecessary. If ever added: read once, cache into the store keyed by the exact ctor — never walk the prototype chain. |
+| Ramda-style placeholder args exposed to factory callers                             | Leaks constructor arity/structure to call sites; the §4.5 diagnostic provides fail-loud safety without that exposure.                                                                                                      |
+| Computed/branded return types for `nameof`                                          | `string` is sufficient; the token value is plain text, not a branded or literal TS type.                                                                                                                                   |
+| `toString()` / AST-parsing of ctor arg names at runtime                             | Fragile under minification; the transformer supplies precise data instead.                                                                                                                                                 |
+| `@injectable` as the decorator name                                                 | Rejected on principle by the project author — use `@signature`.                                                                                                                                                            |
+| A separate async resolution channel / `resolveAsync()`                              | Async is values through the sync channel; one channel, honest contract.                                                                                                                                                    |
+| A separate `@fnioc/abi` package                                                     | The ABI types and the Map/`defineDeps` that read-write them are one intrinsic unit; splitting buys no decoupling. `@fnioc/core` is the ABI.                                                                                |
 
 ---
 
@@ -773,13 +784,13 @@ Prefer native over toolkit wherever a native feature has superseded it. Confirme
 
 Lift patterns, not code.
 
-| Reference | What to lift |
-|---|---|
+| Reference                                | What to lift                                                                                                                                                                                                                                               |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@wessberg/di` + `@wessberg/di-compiler` | Closest prior art for the transformer side: compile-time, interface-driven, no decorators, no `reflect-metadata`. Study how it extracts constructor signatures and lowers registrations. Also the reference for the deferred wessberg-style `add<I, C>()`. |
-| Autofac | Scope model (`InstancePerMatchingLifetimeScope(tag)` + throw-when-no-ancestor-carries-the-tag); delegate factories (`Func<T>`, `Func<X,Y,T>`, parameter matching + duplicate-type ambiguity); greedy constructor selection. |
-| `ME.DependencyInjection` | Captive-dependency detection / scope validation (the §5.4 resolve-deps-from-owning-scope rule). |
-| AngularJS 1.x injector | `$inject` positional array; `annotate()` annotation strategies. |
-| Awilix (`jeffijoe/awilix`, JS) | JS-idiomatic plumbing: scope objects + parent chain, registration map, lazy resolution, disposer hooks, cycle detection with a resolution path. Take the plumbing, not its fixed lifetime enum. |
+| Autofac                                  | Scope model (`InstancePerMatchingLifetimeScope(tag)` + throw-when-no-ancestor-carries-the-tag); delegate factories (`Func<T>`, `Func<X,Y,T>`, parameter matching + duplicate-type ambiguity); greedy constructor selection.                                |
+| `ME.DependencyInjection`                 | Captive-dependency detection / scope validation (the §5.4 resolve-deps-from-owning-scope rule).                                                                                                                                                            |
+| AngularJS 1.x injector                   | `$inject` positional array; `annotate()` annotation strategies.                                                                                                                                                                                            |
+| Awilix (`jeffijoe/awilix`, JS)           | JS-idiomatic plumbing: scope objects + parent chain, registration map, lazy resolution, disposer hooks, cycle detection with a resolution path. Take the plumbing, not its fixed lifetime enum.                                                            |
 
 ---
 
@@ -787,16 +798,16 @@ Lift patterns, not code.
 
 These were the open questions from the original handoff (originally §12); each is now resolved.
 
-| Question | Resolution |
-|---|---|
-| Exact lowered-call ABI shape and versioning scheme | `DepRecord { signatures: DepSlot[][] }` in `@fnioc/core`, where `DepSlot = Token \| LiteralRef \| FactoryRef \| ScopeRef \| Union`. Store is a plain `Map<DepTarget, DepRecord>` on `globalThis[Symbol.for("fnioc:deps")]`. Semver per package via release-please; wire format kept backward-compatible across semver minors. |
-| Support `static $inject` fallback in v1? | Dropped. Reintroduces prototype-inheritance bleed the global-symbol Map design prevents. `forCtor` is the plugin-less alternative for classes you don't own. |
-| Behavior when transformer encounters already-hand-annotated class | Manual annotation is authoritative. Transformer skips emission and emits an info diagnostic. Never silent; never double-writes. |
-| Behavior for fully-dynamic registration (ctor transformer can't see) | No dep array emitted. At resolve time: if ctor has params but no DepRecord → throw with actionable guidance (`forCtor` or `useFactory`). Zero-arg ctor → `new` directly. |
-| Async resolution / async disposal | Async = values through the sync channel. Container never awaits. Async disposal retained (native `AsyncDisposable`). No `resolveAsync` channel. |
-| Global-symbol Map — v1 or deferred? | Promoted to v1. `globalThis[Symbol.for("fnioc:deps")]` with `??=` init; fixed key; plain `Map`, not `WeakMap`. |
-| Decorator name — `@injectable` or something else? | `@signature`. `@injectable` rejected on principle. |
-| Separate `@fnioc/abi` package? | No. `@fnioc/core` is the ABI. |
+| Question                                                             | Resolution                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact lowered-call ABI shape and versioning scheme                   | `DepRecord { signatures: DepSlot[][] }` in `@fnioc/core`, where `DepSlot = Token \| LiteralRef \| FactoryRef \| ScopeRef \| Union`. Store is a plain `Map<DepTarget, DepRecord>` on `globalThis[Symbol.for("fnioc:deps")]`. Semver per package via release-please; wire format kept backward-compatible across semver minors. |
+| Support `static $inject` fallback in v1?                             | Dropped. Reintroduces prototype-inheritance bleed the global-symbol Map design prevents. `forCtor` is the plugin-less alternative for classes you don't own.                                                                                                                                                                  |
+| Behavior when transformer encounters already-hand-annotated class    | Manual annotation is authoritative. Transformer skips emission and emits an info diagnostic. Never silent; never double-writes.                                                                                                                                                                                               |
+| Behavior for fully-dynamic registration (ctor transformer can't see) | No dep array emitted. At resolve time: if ctor has params but no DepRecord → throw with actionable guidance (`forCtor` or `useFactory`). Zero-arg ctor → `new` directly.                                                                                                                                                      |
+| Async resolution / async disposal                                    | Async = values through the sync channel. Container never awaits. Async disposal retained (native `AsyncDisposable`). No `resolveAsync` channel.                                                                                                                                                                               |
+| Global-symbol Map — v1 or deferred?                                  | Promoted to v1. `globalThis[Symbol.for("fnioc:deps")]` with `??=` init; fixed key; plain `Map`, not `WeakMap`.                                                                                                                                                                                                                |
+| Decorator name — `@injectable` or something else?                    | `@signature`. `@injectable` rejected on principle.                                                                                                                                                                                                                                                                            |
+| Separate `@fnioc/abi` package?                                       | No. `@fnioc/core` is the ABI.                                                                                                                                                                                                                                                                                                 |
 
 ---
 

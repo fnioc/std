@@ -160,5 +160,6 @@ Primitives                  -> (none)
 - **`Configuration.Binder` → `Configuration` (runtime), not just `.Abstractions`.** The binder is coupled to the config runtime — consistent with our `bindConfig` living in `@rhombus-std/config`.
 
 ## Notes
+
 - `(c)` conditional edges are shared-framework/TFM-scoped, not optional — treat as real dependencies.
 - Source-generator/analyzer ProjectReferences (`*.SourceGeneration`, `Logging.Generators`) are excluded — build-time only, not library deps.

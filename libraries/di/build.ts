@@ -35,7 +35,7 @@ const js = await Bun.build({
   external: ["@rhombus-std/di.core"],
 });
 if (!js.success) {
-  for (const log of js.logs) console.error(log);
+  for (const log of js.logs) { console.error(log); }
   throw new Error("@rhombus-std/di: bun build failed");
 }
 

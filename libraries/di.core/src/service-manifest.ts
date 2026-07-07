@@ -15,13 +15,7 @@ import type { Func } from "@rhombus-toolkit/func";
 import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 import { OpenTokenRegistrationError } from "./errors.js";
 import type { ServiceProvider } from "./provider.js";
-import type {
-  Ctor,
-  Factory,
-  OpenRegistration,
-  Registration,
-  SealedManifest,
-} from "./registrations.js";
+import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from "./registrations.js";
 import { HOLE_PATTERN, isOpenToken, parseToken } from "./tokens.js";
 import type { DepSlot, Token } from "./types.js";
 
@@ -118,7 +112,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
         // form never executes (the transformer rewrites it first). A no-arg call
         // at runtime leaves the base (transient) registration in place — guard so
         // it is a no-op rather than mutating the registration to a scopeless copy.
-        if (scope === undefined) {return;}
+        if (scope === undefined) { return; }
         applyScope(scope);
       },
     };

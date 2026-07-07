@@ -28,7 +28,7 @@ disposable[Symbol.dispose]();
 ```
 
 `ChangeToken.onChange` re-subscribes on every fire, so `produceToken` should
-hand back a token representing the *next* change window each time it's
+hand back a token representing the _next_ change window each time it's
 called -- a `CancellationChangeToken` wrapping a stale, already-aborted
 signal will keep firing synchronously.
 

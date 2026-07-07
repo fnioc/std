@@ -28,7 +28,7 @@ const js = await Bun.build({
   external: ["typescript"],
 });
 if (!js.success) {
-  for (const log of js.logs) console.error(log);
+  for (const log of js.logs) { console.error(log); }
   throw new Error("@rhombus-std/di.transformer: bun build failed");
 }
 

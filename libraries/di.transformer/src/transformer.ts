@@ -134,9 +134,9 @@ const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
  */
 function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) {return false;}
-  if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) {return false;}
-  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
+  if (!ts.isPropertyAccessExpression(callee)) { return false; }
+  if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) { return false; }
+  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
   return !call.arguments.length;
 }
 
@@ -148,9 +148,9 @@ function isTokenlessResolveCall(call: ts.CallExpression): boolean {
  */
 function isTokenlessIsServiceCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) {return false;}
-  if (callee.name.text !== "isService") {return false;}
-  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
+  if (!ts.isPropertyAccessExpression(callee)) { return false; }
+  if (callee.name.text !== "isService") { return false; }
+  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
   return !call.arguments.length;
 }
 
@@ -295,15 +295,15 @@ function rewriteNameof(node: ts.Node, ctx: LowerContext): ts.Node {
  * be the transformer's `nameof`.
  */
 function isNameofCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
+  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
   const callee = call.expression;
   const id = ts.isIdentifier(callee)
     ? callee
     : ts.isPropertyAccessExpression(callee)
     ? callee.name
     : undefined;
-  if (!id) {return false;}
-  if (id.text === NAMEOF_NAME) {return true;}
+  if (!id) { return false; }
+  if (id.text === NAMEOF_NAME) { return true; }
 
   // Aliased import: resolve through the alias and check the real exported name.
   const symbol = checker.getSymbolAtLocation(callee);
