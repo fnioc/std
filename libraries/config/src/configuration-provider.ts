@@ -9,7 +9,8 @@
 
 import type { IConfigurationProvider, ITryGetResult } from "@rhombus-std/config.core";
 import { KeyDelimiter } from "./abstractions/configuration-path";
-import { ConfigurationKeyComparer } from "./configuration-key-comparer";
+import { compareConfigurationKeys } from "./configuration-key-comparer";
+import { foldKey } from "./fold-key";
 
 /**
  * Returns the configuration segment of `key` starting at `prefixLength`, up
@@ -35,7 +36,7 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
 
   /** Case-insensitive lookup. */
   public tryGet(key: string): ITryGetResult<string> {
-    const hit = this.data.get(key.toLowerCase());
+    const hit = this.data.get(foldKey(key));
     return hit === undefined ? [false] : [true, hit[1]];
   }
 
@@ -44,7 +45,7 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
    * subsequent writes.
    */
   public set(key: string, value?: string): void {
-    const folded = key.toLowerCase();
+    const folded = foldKey(key);
     const existing = this.data.get(folded);
     this.data.set(folded, [existing?.[0] ?? key, value ?? ""]);
   }
@@ -55,7 +56,7 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
   /**
    * Returns the immediate descendant keys for `parentPath`, combined with the
    * `earlierKeys` returned by preceding providers, sorted by
-   * {@link ConfigurationKeyComparer}. Does NOT dedup -- the root does that.
+   * {@link compareConfigurationKeys}. Does NOT dedup -- the root does that.
    */
   public getChildKeys(earlierKeys: Iterable<string>, parentPath?: string): Iterable<string> {
     const results: string[] = [];
@@ -65,11 +66,11 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
         results.push(segment(originalKey, 0));
       }
     } else {
-      const foldedParent = parentPath.toLowerCase();
+      const foldedParent = foldKey(parentPath);
       for (const [, [originalKey]] of this.data) {
         if (
           originalKey.length > parentPath.length
-          && originalKey.toLowerCase().startsWith(foldedParent)
+          && foldKey(originalKey).startsWith(foldedParent)
           && originalKey[parentPath.length] === KeyDelimiter
         ) {
           results.push(segment(originalKey, parentPath.length + 1));
@@ -81,7 +82,7 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
       results.push(earlier);
     }
 
-    results.sort(ConfigurationKeyComparer.compare);
+    results.sort(compareConfigurationKeys);
     return results;
   }
 }

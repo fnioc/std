@@ -31,17 +31,22 @@ import { ConfigurationRoot } from "./configuration-root";
 import type { Infer, ObjectSchema, Schema } from "./schema";
 
 export class ConfigurationBuilder<T = IndexedSection> {
-  readonly #sources = new Set<IConfigurationSource>();
+  readonly #sources: IConfigurationSource[] = [];
   #schema?: Schema;
 
-  /** The registered sources, in registration (insertion) order. */
-  public get sources(): Set<IConfigurationSource> {
+  /**
+   * The registered sources, in registration order. Ordered-list semantics --
+   * the same source instance can be registered more than once (no reference
+   * dedup) -- so this is a readonly array view, not the mutable backing
+   * store; register sources through {@link add}.
+   */
+  public get sources(): readonly IConfigurationSource[] {
     return this.#sources;
   }
 
   /** Registers a configuration source. Returns `this` for chaining. */
   public add(source: IConfigurationSource): this {
-    this.#sources.add(source);
+    this.#sources.push(source);
     return this;
   }
 

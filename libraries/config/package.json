@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config",
   "version": "0.0.0",
-  "description": "Layered configuration engine: ConfigurationBuilder/Root/Section, ConfigurationKeyComparer, the Memory provider, an index-navigable Section tree, and a runtime schema (Schema/Infer/OPTIONAL) that coerces on build().",
+  "description": "Layered configuration engine: ConfigurationBuilder/Root/Section, compareConfigurationKeys, the Memory provider, an index-navigable Section tree, and a runtime schema (Schema/Infer/OPTIONAL) that coerces on build().",
   "keywords": [
     "configuration",
     "config",

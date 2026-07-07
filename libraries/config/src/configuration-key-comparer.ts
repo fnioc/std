@@ -1,4 +1,4 @@
-// ConfigurationKeyComparer -- segment-by-segment, numeric-aware ordering for
+// compareConfigurationKeys -- segment-by-segment, numeric-aware ordering for
 // configuration keys.
 //
 // Keys are split on the ':' delimiter and compared one segment at a time:
@@ -9,6 +9,7 @@
 // If every shared segment ties, the shorter (prefix) key sorts first.
 
 import { KeyDelimiter } from "./abstractions/configuration-path";
+import { foldKey } from "./fold-key";
 
 /**
  * Parses a base-10 integer, accepting optional surrounding whitespace and an
@@ -27,53 +28,45 @@ function tryParseInt(value: string): number | undefined {
 
 /** Ordinal, case-insensitive string comparison returning -1/0/1. */
 function compareOrdinalIgnoreCase(x: string, y: string): number {
-  const xu = x.toUpperCase();
-  const yu = y.toUpperCase();
-  if (xu < yu) {
+  const xf = foldKey(x);
+  const yf = foldKey(y);
+  if (xf < yf) {
     return -1;
   }
-  if (xu > yu) {
+  if (xf > yf) {
     return 1;
   }
   return 0;
 }
 
-/**
- * The configuration key comparer. Exposed as a static `compare` function
- * suitable for passing directly to `Array.prototype.sort`.
- */
-export class ConfigurationKeyComparer {
-  private constructor() {}
+/** Compares two configuration keys segment-by-segment; suitable as an `Array.prototype.sort` comparator. */
+export function compareConfigurationKeys(x: string, y: string): number {
+  const xParts = x.split(KeyDelimiter);
+  const yParts = y.split(KeyDelimiter);
 
-  /** Compares two configuration keys segment-by-segment. */
-  public static readonly compare = (x: string, y: string): number => {
-    const xParts = x.split(KeyDelimiter);
-    const yParts = y.split(KeyDelimiter);
+  const shared = Math.min(xParts.length, yParts.length);
+  for (let i = 0; i < shared; i++) {
+    const xSegment = xParts[i]!;
+    const ySegment = yParts[i]!;
 
-    const shared = Math.min(xParts.length, yParts.length);
-    for (let i = 0; i < shared; i++) {
-      const xSegment = xParts[i] as string;
-      const ySegment = yParts[i] as string;
+    const xValue = tryParseInt(xSegment);
+    const yValue = tryParseInt(ySegment);
 
-      const xValue = tryParseInt(xSegment);
-      const yValue = tryParseInt(ySegment);
-
-      let result: number;
-      if (xValue === undefined && yValue === undefined) {
-        result = compareOrdinalIgnoreCase(xSegment, ySegment);
-      } else if (xValue !== undefined && yValue !== undefined) {
-        result = xValue - yValue;
-      } else {
-        // Exactly one is numeric -- the numeric segment sorts first.
-        result = xValue !== undefined ? -1 : 1;
-      }
-
-      if (result !== 0) {
-        return result;
-      }
+    let result: number;
+    if (xValue === undefined && yValue === undefined) {
+      result = compareOrdinalIgnoreCase(xSegment, ySegment);
+    } else if (xValue !== undefined && yValue !== undefined) {
+      result = xValue - yValue;
+    } else {
+      // Exactly one is numeric -- the numeric segment sorts first.
+      result = xValue !== undefined ? -1 : 1;
     }
 
-    // Every shared segment tied -- the shorter (prefix) key sorts first.
-    return xParts.length - yParts.length;
-  };
+    if (result !== 0) {
+      return result;
+    }
+  }
+
+  // Every shared segment tied -- the shorter (prefix) key sorts first.
+  return xParts.length - yParts.length;
 }

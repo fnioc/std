@@ -5,9 +5,9 @@
 // end-to-end through the public entry point alone.
 
 import {
+  compareConfigurationKeys,
   configPath,
   ConfigurationBuilder,
-  ConfigurationKeyComparer,
   ConfigurationProvider,
   ConfigurationRoot,
   ConfigurationSection,
@@ -39,7 +39,7 @@ describe("public entry point", () => {
     expect(ConfigurationRoot).toBeDefined();
     expect(ConfigurationSection).toBeDefined();
     expect(ConfigurationProvider).toBeDefined();
-    expect(ConfigurationKeyComparer).toBeDefined();
+    expect(typeof compareConfigurationKeys).toBe("function");
     expect(MemoryConfigurationSource).toBeDefined();
     expect(MemoryConfigurationProvider).toBeDefined();
     expect(SchemaCoercionError).toBeDefined();
@@ -60,6 +60,18 @@ describe("public entry point", () => {
     const root = builder.build();
     expect(root).toBeInstanceOf(ConfigurationRoot);
     expect(root.get("A")).toBe("1");
+  });
+
+  test("sources are ordered-list semantics: registration order preserved, no reference dedup", () => {
+    const builder = new ConfigurationBuilder();
+    const a = new MemoryConfigurationSource({ initialData: { "A": "1" } });
+    const b = new MemoryConfigurationSource({ initialData: { "B": "2" } });
+
+    builder.add(a).add(b).add(a);
+
+    // The same source instance registered twice is NOT silently deduplicated
+    // (a Set would collapse this to length 2) -- sources are an ordered list.
+    expect([...builder.sources]).toEqual([a, b, a]);
   });
 
   test("addInMemoryCollection augmentation is installed on the prototype", () => {
