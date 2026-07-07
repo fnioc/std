@@ -241,3 +241,43 @@ libraries ship `src/` only (no `test/` folder alongside `src/`).
   library's public surface (e.g. `di`'s) depends on the library as a plain
   `workspace:*` devDependency and imports it the normal way — no virtual subpath
   needed.
+
+## 8. Live-reload (#6) settled — change-token model, no OS file-watching in v0
+
+Settles the §6 open item: config's reactive shape mirrors MECA's `IChangeToken` /
+`ConfigurationReloadToken` model exactly, using `primitives`' existing
+`IChangeToken` + `ChangeToken.onChange` (not an `EventTarget`/`Observable` surface —
+that's deferred, see below).
+
+- **Dependency edge:** `config.core` (and `config`) take a workspace dependency on
+  `primitives`, matching the reference graph (`reference/me-extensions-dependencies.md`)
+  where `Configuration.Abstractions` → `Primitives`. `config.core`'s `IConfiguration`
+  and `IConfigurationProvider` interfaces both gain `getReloadToken(): IChangeToken`.
+- **Mechanism:** a `ConfigurationReloadToken` (this repo's `AbortController`-backed
+  `IChangeToken`, living in `config` — not `primitives`, since it's a config-specific
+  concept in the reference too) is single-fire: `onReload()` fires it, and the owner
+  swaps in a fresh instance so the next change is observable too.
+  - Each provider owns one; `ConfigurationProvider.onReload()` (protected) fires
+    it — concrete providers call this once their `load()` has actually refreshed
+    data. The base `load()` no-op never fires it (a provider with no reload
+    capability, e.g. Memory, never does).
+  - The root owns its own token, composed from every provider's via
+    `ChangeToken.onChange` (subscribed once per provider at construction, after
+    that provider's initial `load()`), AND fires directly at the end of its own
+    `reload()`.
+  - A section has no reload state of its own — `getReloadToken()` delegates to its
+    root.
+- **Scope guard — no OS file-watching in v0.** A provider's token fires only on an
+  explicit `root.reload()` or a provider reporting its own data refresh (mirroring
+  the reference's `FileConfigurationProvider.OnReload()` call after `Load()`) —
+  nothing here polls a filesystem or wires `chokidar`/`fs.watch`. That capability
+  belongs to a future file-providers family.
+- **Immutability preserved.** Nothing here mutates an already-resolved value —
+  `Options.watch`'s `getValue` re-reads on every access and on every fire; the token
+  is purely a "something changed, re-read" signal, never a payload.
+- **Seam proven end-to-end:** `config`'s `getReloadToken()` feeds `options`'
+  `Options.watch(getValue, produceToken)` directly, with zero config-specific glue
+  in `options` — the #40 integration point.
+- **Deferred to #50:** a JS-native reactive surface (`EventTarget`/`Observable`) as
+  an alternative or additional subscription shape. The callback-based `IChangeToken`
+  model above is v0's ONLY reactive surface.
