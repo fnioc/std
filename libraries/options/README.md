@@ -56,17 +56,56 @@ must hand back a token representing the _next_ change window on each call --
 see the primitives README for why a stale, already-fired token causes
 `subscribe` to fire synchronously forever.
 
+## The `OptionsFactory` pipeline
+
+`OptionsFactory<T>` assembles a bound options value by running four stages,
+mirroring MEO's `OptionsFactory<TOptions>` (see
+[`docs/decisions.md` §4.5](../../docs/decisions.md)):
+
+```
+make base -> configure steps -> post-configure steps -> validate -> return
+```
+
+- **`ConfigureOptions<T>`** (`configure(options)`) -- composes the value from
+  its sources; steps run in registration order. Config-bind is a configure
+  step, registered by `@rhombus-std/options.augmentations`.
+- **`PostConfigureOptions<T>`** (`postConfigure(options)`) -- a guaranteed-last
+  pass, run after every configure step.
+- **`ValidateOptions<T>`** (`validate(options): ValidateOptionsResult`) --
+  semantic checks over the post-configured value.
+
+```ts
+import { OptionsFactory, ValidateOptionsResult } from "@rhombus-std/options";
+
+const factory = new OptionsFactory<{ port: number }>(
+  () => ({ port: 0 }),
+  [{ configure: (o) => (o.port = 8080) }],
+  [{ postConfigure: (o) => (o.port = o.port || 80) }],
+  [{
+    validate: (o) =>
+      o.port > 0
+        ? ValidateOptionsResult.success
+        : ValidateOptionsResult.fail("port must be positive"),
+  }],
+);
+
+factory.create(); // { port: 8080 }
+```
+
+Steps carry **no name parameter** -- named options are distinct registrations
+here (§4.2), so a factory serves one registration. The base instance is
+supplied as the `makeBase` function (TS has no reflective `Activator`
+analog). If any validate step fails, every step's failures are aggregated
+into one thrown `OptionsValidationError`.
+
+There is **no `OptionsCache<T>`**: instance caching is a registration-lifetime
+concern in this design (§3 / §4.5), not a type shipped here.
+
 ## Not built here
 
 - **Named options** (`.Get(name)`). Per §4.2, named options are distinct
   registrations (tokens/sections) in this repo, not a name-parameterized
   accessor -- so there is no `OptionsMonitor.Get(name)` analog here.
-- **The configure/validate pipeline** (`IConfigureOptions`,
-  `IPostConfigureOptions`, `IValidateOptions`, `OptionsFactory`,
-  `OptionsCache`). §4.2 routes validation through config's `bindConfig`
-  instead; that leaves an open tension with §0's mirror-MEO-first rule that
-  hasn't been resolved, so this pipeline is deferred rather than built,
-  pending a ruling.
 - **The DI-builder registration augmentation** (`addOptions`/`configure`,
   MEO's `OptionsServiceCollectionExtensions`). Blocked on
   [#36](https://github.com/fnioc/std/issues/36) -- building it would require
