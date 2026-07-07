@@ -38,4 +38,4 @@ export { SchemaCoercionError } from "./coerce";
 export { OPTIONAL } from "./schema";
 export type { Infer, ObjectSchema, OptionalSchema, Schema } from "./schema";
 
-// DeepRecord + IndexedSection flow through `export type * from "@rhombus-std/config.core"` above.
+// ConfigObject + IndexedSection flow through `export type * from "@rhombus-std/config.core"` above.

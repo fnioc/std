@@ -13,7 +13,7 @@
 // or any Object.prototype name) is UNREACHABLE via `config.X` -- reach it with
 // `config.getSection("X")` instead.
 
-import type { DeepRecord, IConfiguration, IConfigurationSection, IndexedSection } from "@rhombus-std/config.core";
+import type { ConfigObject, IConfiguration, IConfigurationSection, IndexedSection } from "@rhombus-std/config.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
 import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine, getSectionKey } from "./abstractions/configuration-path";
@@ -111,7 +111,7 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
   }
 
   /** This section's subtree as a nested plain string object. */
-  public toObject(): DeepRecord {
+  public toObject(): ConfigObject {
     return subtreeToObject(this);
   }
 
@@ -146,8 +146,8 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
  * is dropped); a pure leaf serializes as its string value. Shared by both
  * ConfigurationSection and ConfigurationRoot.
  */
-export function subtreeToObject(node: IConfiguration): DeepRecord {
-  const out: Record<string, string | DeepRecord> = {};
+export function subtreeToObject(node: IConfiguration): ConfigObject {
+  const out: Record<string, string | ConfigObject> = {};
   for (const child of node.getChildren()) {
     let hasChildren = false;
     for (const _grandchild of child.getChildren()) {

@@ -70,7 +70,7 @@ describe("getSection", () => {
 });
 
 describe("toObject", () => {
-  test("nested tree serializes to a DeepRecord; a node with value AND children is a record (value dropped)", () => {
+  test("nested tree serializes to a ConfigObject; a node with value AND children is a record (value dropped)", () => {
     const root = rootOf({
       "Server:Host": "h",
       "Server:Port": "8080",

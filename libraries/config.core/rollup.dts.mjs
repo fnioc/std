@@ -1,8 +1,9 @@
 // Rolls the public type surface of @rhombus-std/config.core into a single dist/index.d.ts.
-// The interfaces have no imports, so there is nothing to inline and the
-// published declaration carries no external import. rollup-plugin-dts drives the
-// TypeScript compiler with this package's tsconfig, so extensionless relative
-// specifiers resolve through `moduleResolution: bundler`.
+// The per-type source files cross-reference each other (relative imports), which
+// rollup-plugin-dts inlines into the one flattened declaration; the only import that
+// survives into the published output is the external `@rhombus-std/primitives` type.
+// rollup-plugin-dts drives the TypeScript compiler with this package's tsconfig, so
+// extensionless relative specifiers resolve through `moduleResolution: bundler`.
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
