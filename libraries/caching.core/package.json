@@ -1,0 +1,58 @@
+{
+  "name": "@rhombus-std/caching.core",
+  "version": "0.0.0",
+  "description": "In-memory cache abstractions ported from ME.Caching.Abstractions: IMemoryCache/ICacheEntry + CacheItemPriority/EvictionReason/PostEvictionDelegate, plus the real-runtime get/set/getOrCreate/tryGetValue convenience wrappers. Depends on @rhombus-std/primitives for the IChangeToken type only.",
+  "keywords": [
+    "caching",
+    "cache",
+    "memory-cache",
+    "abstractions",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/caching.core"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "dependencies": {
+    "@rhombus-std/primitives": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
