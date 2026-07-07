@@ -408,6 +408,30 @@ export function deriveToken(
 }
 
 /**
+ * The BASE token for a named symbol (sans generic args) — the public entry to
+ * {@link baseTokenFor}, resolving the symbol's own primary declaration for the
+ * source-file anchor. Returns `undefined` when the symbol has no anchorable
+ * declaration.
+ *
+ * Used by the `@rhombus-std/di.transformer.options` satellite to derive the
+ * `Options` wrapper's base (`@rhombus-std/options:Options`) so it can assemble
+ * the closed token `Options<T>` = `<base><` + token(T) + `>` — the same
+ * `base<arg>` composition {@link deriveToken} performs, for a wrapper the author
+ * never spelled out. Deriving (not hard-coding) the base keeps the satellite's
+ * tokens in lockstep with this transformer's own derivation.
+ */
+export function baseTokenForSymbol(
+  symbol: ts.Symbol,
+  ctx: TokenContext,
+): string | undefined {
+  const declaration = primaryDeclaration(symbol);
+  if (!declaration) {
+    return undefined;
+  }
+  return baseTokenFor(symbol, declaration.getSourceFile(), ctx);
+}
+
+/**
  * The BASE token `<source>:<exportName>` for a named symbol (sans generic args).
  * `<exportName>` is the module-qualified declared name; `<source>` is one of the
  * three tiers (package-public import specifier, app-internal `pkg/path`, or

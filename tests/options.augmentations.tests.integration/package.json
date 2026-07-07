@@ -1,0 +1,23 @@
+{
+  "name": "@rhombus-std/options.augmentations.tests.integration",
+  "private": true,
+  "version": "0.0.0",
+  "description": "End-to-end integration: addOptions<T>() sugar compiled by both transformer plugins, run against the di engine + options augmentation. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/di.transformer.options": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "ts-patch": "^3.3.0"
+  }
+}

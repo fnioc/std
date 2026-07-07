@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    // Resolve `@rhombus-std/di.core` + `@rhombus-std/di.transformer` to their BUILT
+    // `.d.ts` (the `built` condition), NOT source. This program pulls in
+    // di.transformer's `declare module "@rhombus-std/di.core"` augmentation (via the
+    // token-machinery import), under which di.core's SOURCE cannot co-compile —
+    // the impl class can't satisfy the interface once the authored 0-arg forms
+    // merge in. A real consumer holds the built types and augments on top; the
+    // built `.d.ts` is skip-lib-checked, so the augmentation never recompiles it.
+    "customConditions": ["built"]
+  },
+  "include": ["src/**/*"]
+}

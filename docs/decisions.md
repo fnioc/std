@@ -523,3 +523,57 @@ Design-forced departures from the reference:
 - **Split into `addOptions` + `configure`, not one call.** ME's `Configure` calls `AddOptions`
   internally at a fixed lifetime. Here lifetime is not fixed (§4.2), so registering the assembly
   (with its chosen scope) and adding a config source are distinct steps.
+
+## 15. `addOptions<T>` — explicit wrap verb + the `di.transformer.options` satellite — #34
+
+`addOptions<T>` registers an `Options<T>` at `token` that WRAPS the `T` resolved from another
+token. Two halves land here, and one deliberate naming deviation is recorded so it is not later
+"corrected."
+
+### The explicit verb is the complete, transformer-free form
+
+The primary, complete form is the explicit token verb `options.augmentations` adds:
+
+```ts
+addOptions(token, tToken)   // register Options<T> wrapping the T resolved from tToken
+```
+
+which internally is just `addFactory(token, (t) => Options.of(t), [[tToken]])` — so **di gains no
+new primitive.** It coexists as an OVERLOAD with §14's config-pipeline
+`addOptions<T>(token, makeBase)`, disambiguated by the second argument's TYPE at runtime: a `Token`
+(string) → the #34 wrap; a `() => T` base factory → the §4.5 assembly pipeline. Both deliver an
+`Options<T>` at `token`; they differ only in where `T` comes from.
+
+### Factoring B — options is config-independent (MEO-faithful)
+
+`addOptions<T>` wraps an **already-bound `T`**; it binds **no config.** MEO's Options core carries no
+Configuration dependency — config binding is a separate package (`Options.ConfigurationExtensions`),
+here §14's `configure(token, section)`. So the wrap verb has nothing to *bind*; it only fills in the
+element token. Anything connecting config → Options belongs to §14's bridge, not here.
+
+### The sugar `addOptions<T>()` lowers to the explicit verb
+
+The type-driven `addOptions<T>()` is pure sugar (a §2 authored form — it never runs) that lowers to
+`addOptions(token(Options<T>), token(T))`, deriving the wrapper and element tokens through
+`@rhombus-std/di.transformer`'s OWN machinery: `token(T)` is the plain element token any
+`resolve<T>()` / `add<T>()` derives, and `token(Options<T>)` is the closed-generic composition
+`<Options-base><` + `token(T)` + `>` — the identical `base<arg>` form `deriveToken` produces for a
+written `Options<T>` (§12), assembled for a wrapper the author never spelled out. The `Options` base
+is DERIVED (located in the program, run through `baseTokenForSymbol`), not hard-coded, so the two
+sides — the sugar's emitted wrapper and a consumer's `resolve<Options<T>>()` — always agree.
+
+To keep the satellite's tokens **byte-identical** to the main transformer's, di.transformer now
+exports `createTokenContext(program)` (the shared `TokenContext` builder) and `baseTokenForSymbol`;
+both the main transformer and the satellite build their context through the one factory. A mismatch
+would leave the sugar's `tToken` unresolvable against the token `add<T>()` registered `T` at.
+
+### Naming deviation: `di.transformer.options`, NOT `options.transformer`
+
+The transformer is pure token-lowering — di's *kind* of transform (type → token) — it emits di
+registrations, and it has **zero value without di.** So it lives as a `di.transformer` **satellite**
+(`di.transformer.options`) that IMPORTS di.transformer's token derivation, deliberately deviating
+from the `<family>.transformer` convention. The asymmetry is the point: `config.transformer` stays
+its OWN standalone package **because** its schema-derivation is usable with no di at all
+(di-independent), whereas an options lowering that emits no di registrations would be nothing. The
+§2 invariant still holds — the satellite imports di.transformer's compile-time machinery, never the
+`@rhombus-std/di` runtime.

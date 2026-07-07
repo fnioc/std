@@ -1,0 +1,18 @@
+{
+  "name": "@rhombus-std/di.transformer.options.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/di.transformer.options. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/di.transformer.options": "workspace:*",
+    "ts-patch": "^3.3.0"
+  }
+}
