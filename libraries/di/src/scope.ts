@@ -162,8 +162,11 @@ function orderByArityDesc(
  * tagged registration whose frame is not open resolves to a fresh instance,
  * exactly like an untagged (transient) one. Frames are opened with
  * `createScope(name)`, never auto-created.
+ *
+ * INTERNAL — never exported from the package barrel (#24). A consumer holds only
+ * the `ServiceProvider` interface a frame backs, never the frame itself.
  */
-export class Scope {
+class Scope {
   /** Instances this scope owns and caches, keyed by token. */
   readonly cache: Map<Token, unknown> = new Map();
 
