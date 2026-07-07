@@ -19,26 +19,48 @@ import type {
   IConfigurationSection,
   IndexedSection,
 } from "@rhombus-std/config.core";
+import type { IChangeToken } from "@rhombus-std/primitives";
+import { ChangeToken } from "@rhombus-std/primitives";
 import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
+import { ConfigurationReloadToken } from "./configuration-reload-token";
 import { ConfigurationSection, subtreeToObject } from "./configuration-section";
 import { foldKey } from "./fold-key";
 
 export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements IConfigurationRoot {
   readonly #providers: IConfigurationProvider[];
+  readonly #changeTokenRegistrations: Disposable[] = [];
+  #changeToken = new ConfigurationReloadToken();
 
   /**
    * Stores `providers` in registration order and eagerly loads each, forward
    * order, so the root reflects every source's data immediately after
-   * construction.
+   * construction -- then subscribes to each provider's reload token, so a
+   * provider-driven reload (not just {@link reload}) also raises the root's
+   * own token.
    */
   public constructor(providers: Iterable<IConfigurationProvider>) {
     super();
     this.#providers = [...providers];
     for (const provider of this.#providers) {
       provider.load();
+      this.#changeTokenRegistrations.push(
+        ChangeToken.onChange(() => provider.getReloadToken(), () => this.#raiseChanged()),
+      );
     }
+  }
+
+  /** A token that fires whenever this root is reloaded, by any provider or {@link reload}. */
+  public getReloadToken(): IChangeToken {
+    return this.#changeToken;
+  }
+
+  /** Fires the current root token and swaps in a fresh one. */
+  #raiseChanged(): void {
+    const previous = this.#changeToken;
+    this.#changeToken = new ConfigurationReloadToken();
+    previous.onReload();
   }
 
   /** The root sentinel: empty key. */
@@ -147,11 +169,12 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
     return subtreeToObject(this);
   }
 
-  /** Forces every provider to reload its source, forward order. */
+  /** Forces every provider to reload its source, forward order, then raises this root's token. */
   public reload(): void {
     for (const provider of this.#providers) {
       provider.load();
     }
+    this.#raiseChanged();
   }
 
   /**

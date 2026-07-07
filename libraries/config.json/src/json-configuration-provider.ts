@@ -42,6 +42,7 @@ export class JsonConfigurationProvider extends ConfigurationProvider {
     } catch (err) {
       if (isFileNotFound(err)) {
         if (this.source.optional) {
+          this.onReload();
           return;
         }
         throw new Error(
@@ -71,6 +72,12 @@ export class JsonConfigurationProvider extends ConfigurationProvider {
     }
 
     this.flatten(parsed, "");
+
+    // Only a successful load (this line) fires the reload token -- a thrown
+    // error above leaves the previous token (and this provider's prior data)
+    // in place, matching the base class's "reload only on an actual refresh"
+    // contract.
+    this.onReload();
   }
 
   private flatten(value: unknown, prefix: string): void {

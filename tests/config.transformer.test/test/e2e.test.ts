@@ -41,6 +41,7 @@ beforeAll(() => {
   link(join(REPO_ROOT, "libraries", "config.transformer"), join(nm, "@rhombus-std", "config.transformer"));
   link(join(REPO_ROOT, "libraries", "config"), join(nm, "@rhombus-std", "config"));
   link(join(REPO_ROOT, "libraries", "config.core"), join(nm, "@rhombus-std", "config.core"));
+  link(join(REPO_ROOT, "libraries", "primitives"), join(nm, "@rhombus-std", "primitives"));
 
   writeFileSync(
     join(projDir, "src", "config.ts"),
@@ -72,6 +73,15 @@ console.log(JSON.stringify(config));
         target: "ES2022",
         module: "ESNext",
         moduleResolution: "Bundler",
+        // Previously this tsconfig omitted "lib" entirely, which defaults to
+        // DOM + DOM.Iterable + the target's lib (ES2022) -- that default is
+        // what made bare `console`/`AbortController` resolve. Now that
+        // @rhombus-std/config depends on @rhombus-std/primitives (whose
+        // IChangeToken surface uses the ambient `Disposable` type),
+        // ESNext.Disposable has to be added explicitly -- so the previously
+        // implicit DOM/DOM.Iterable libs need to be spelled out too, or
+        // specifying "lib" at all silently drops them.
+        lib: ["ES2022", "DOM", "DOM.Iterable", "ESNext.Disposable"],
         strict: true,
         outDir: "dist",
         rootDir: "src",

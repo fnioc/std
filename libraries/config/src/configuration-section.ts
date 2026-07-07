@@ -14,6 +14,7 @@
 // `config.getSection("X")` instead.
 
 import type { DeepRecord, IConfiguration, IConfigurationSection, IndexedSection } from "@rhombus-std/config.core";
+import type { IChangeToken } from "@rhombus-std/primitives";
 import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine, getSectionKey } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
@@ -112,6 +113,11 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
   /** This section's subtree as a nested plain string object. */
   public toObject(): DeepRecord {
     return subtreeToObject(this);
+  }
+
+  /** Delegates to the owning root's reload token -- a section has no reload state of its own. */
+  public getReloadToken(): IChangeToken {
+    return this.#root.getReloadToken();
   }
 
   protected _getIndex(key: PropertyKey): IndexedSection {

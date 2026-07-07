@@ -78,6 +78,8 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
 
       // Bare positional arg (no leading dash) -- ignored.
     }
+
+    this.onReload();
   }
 
   /** Handles a `--Key value` / `--Key=value` token; returns the new index. */

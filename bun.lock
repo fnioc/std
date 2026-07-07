@@ -85,6 +85,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
         "@rhombus-toolkit/proxy-base": "^1.0.0",
@@ -106,6 +107,9 @@
     "libraries/config.core": {
       "name": "@rhombus-std/config.core",
       "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
+      },
     },
     "libraries/config.env": {
       "name": "@rhombus-std/config.env",
@@ -244,6 +248,8 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/config.tests.integration": {
