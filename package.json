@@ -9,7 +9,7 @@
     "tests/*"
   ],
   "scripts": {
-    "build": "bun --filter '*' build",
+    "build": "bun scripts/build-all.ts",
     "test": "bun --filter '*' test",
     "lint": "bun --filter '*' lint",
     "format": "dprint fmt",
