@@ -11,16 +11,14 @@
 // call's third argument. Inspect `dist/with-transformer/src/main.js` after
 // building to see the lowered output.
 //
-// The transformer lowers TOP-LEVEL `.add(...)` / `.resolve(...)` statements, so
-// every registration and resolve below sits at module scope or reads a
-// module-scope binding — but a tokenless `resolve<T>()` reachable from a
-// top-level statement is rewritten no matter how deeply it is NESTED (inside a
-// factory body, for instance): the rewrite recurses through the whole statement
-// subtree, only the registration methods themselves require top-level
-// placement. `resolveAsync` has no tokenless sugar at all (it isn't part of the
-// transformer's `resolve`-rewrite), so every `resolveAsync<T>()` call below is
-// given its token explicitly via `nameof<T>()` — itself rewritten to a
-// compile-time string literal wherever it appears.
+// The transformer lowers TOP-LEVEL `.add(...)` / `.resolve(...)` / `.resolveAsync(...)`
+// statements, so every registration and resolve below sits at module scope or
+// reads a module-scope binding — but a tokenless `resolve<T>()` /
+// `resolveAsync<T>()` reachable from a top-level statement is rewritten no
+// matter how deeply it is NESTED (inside a factory body, for instance): the
+// rewrite recurses through the whole statement subtree, only the registration
+// methods themselves require top-level placement. `resolveAsync<T>()` gets the
+// same tokenless sugar `resolve<T>()` does — no manual token anywhere below.
 //
 // Three demos below are the HEADLINE new capabilities this file exists to show
 // off (search for "HEADLINE" to find them):
@@ -31,7 +29,7 @@
 //     proven to resolve identically to registering the class directly.
 
 import { type $, type ResolveScope, ServiceManifest } from "@rhombus-std/di";
-import { nameof, type OverloadedConstructorParameters } from "@rhombus-std/di.transformer";
+import type { OverloadedConstructorParameters } from "@rhombus-std/di.transformer";
 
 import type {
   IAppConfig,
@@ -303,17 +301,14 @@ const personalizedCarol = personalize("Carol");
 // from inside its own body rather than declaring them as ctor-like params.
 const envReport = root.resolve<IEnvironmentReport>();
 
-// HEADLINE: async. Neither call below has tokenless sugar (`resolveAsync`
-// isn't part of the transformer's rewrite), so each is given its token
-// explicitly via `nameof<T>()` — itself rewritten to a compile-time string
-// literal. `resolveAsync<IRemoteConfig>()` finds the Promise-typed
-// registration directly; `resolveAsync<IRemoteConfigConsumer>()` never finds a
-// registration for the BARE token it depends on and instead recurses through
-// the `Promise<IRemoteConfig>` fallback, awaiting it before construction.
-const remoteConfig = await root.resolveAsync<IRemoteConfig>(nameof<IRemoteConfig>());
-const remoteConfigConsumer = await root.resolveAsync<IRemoteConfigConsumer>(
-  nameof<IRemoteConfigConsumer>(),
-);
+// HEADLINE: async. `resolveAsync<T>()` is as tokenless as `resolve<T>()` — no
+// manual token anywhere. `resolveAsync<IRemoteConfig>()` finds the
+// Promise-typed registration directly; `resolveAsync<IRemoteConfigConsumer>()`
+// never finds a registration for the BARE token it depends on and instead
+// recurses through the `Promise<IRemoteConfig>` fallback, awaiting it before
+// construction.
+const remoteConfig = await root.resolveAsync<IRemoteConfig>();
+const remoteConfigConsumer = await root.resolveAsync<IRemoteConfigConsumer>();
 
 // Disposal. `sessionA` owns only a sync-disposable — `dispose()` (sync) tears
 // it down directly. `sessionB` owns BOTH kinds, constructed sync-THEN-async —

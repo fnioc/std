@@ -354,3 +354,56 @@ describe("resolve<T>() singular-literal lowering (Rule 2)", () => {
     expect(resolveEmit(`"a" | "b"`)).toBe("scope.resolve(\"\\\"a\\\" | \\\"b\\\"\")");
   });
 });
+
+// ── resolveAsync<T>() lowering (parity with resolve<T>()) ────────────────────
+
+describe("resolveAsync<T>() tokenless lowering (parity)", () => {
+  test("bare-T: resolveAsync<IFoo>() lowers to resolveAsync(\"token\") exactly as resolve<IFoo>() would", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      const x = scope.resolveAsync<IFoo>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.resolveAsync(\"./app:IFoo\")");
+    // The lowered token is identical to the sync form's — same derivation rule.
+    const syncSrc = `
+      interface IFoo {}
+      declare const scope: any;
+      const y = scope.resolve<IFoo>();
+    `;
+    const { output: syncOutput } = transform(fixture(syncSrc));
+    expect(syncOutput).toContain("scope.resolve(\"./app:IFoo\")");
+  });
+
+  test("Promise<T>-fallback recursion case: a dependent's own resolveAsync<T>() call lowers independently of the Promise-typed registration it recurses through", () => {
+    // Mirrors the with-transformer example: IRemoteConfig is registered as a
+    // Promise<IRemoteConfig> factory; IRemoteConfigConsumer depends on the BARE
+    // IRemoteConfig token (never registered directly) and is itself resolved
+    // via a second, independent resolveAsync<T>() call. Both calls are the same
+    // tokenless rewrite rule — the recursion through the Promise<T> fallback is
+    // pure runtime behavior (no lowering-time special case).
+    const src = `
+      interface IRemoteConfig {}
+      interface IRemoteConfigConsumer {}
+      declare const root: any;
+      const remoteConfig = await root.resolveAsync<IRemoteConfig>();
+      const remoteConfigConsumer = await root.resolveAsync<IRemoteConfigConsumer>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("await root.resolveAsync(\"./app:IRemoteConfig\")");
+    expect(output).toContain("await root.resolveAsync(\"./app:IRemoteConfigConsumer\")");
+  });
+
+  test("nested resolveAsync<T>() (inside a function body) is still rewritten — not confined to top-level statements", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      async function load() {
+        return scope.resolveAsync<IFoo>();
+      }
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.resolveAsync(\"./app:IFoo\")");
+  });
+});

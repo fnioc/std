@@ -11,8 +11,8 @@
 // Per SourceFile the visitor:
 //   1. Lowers each registration statement (`add<I>(C).as<"x">()` → string form),
 //      carrying the derived dep signature inline as the call's third argument.
-//   2. Rewrites every `nameof<T>()` and tokenless `resolve<T>()` call to its
-//      string token.
+//   2. Rewrites every `nameof<T>()` and tokenless `resolve<T>()` / `resolveAsync<T>()`
+//      call to its string token.
 
 import type { Func } from "@rhombus-toolkit/func";
 import ts from "typescript";
@@ -113,13 +113,18 @@ function lowerStatements(
 }
 
 /**
- * Rewrite every tokenless `*.resolve<I>()` call (one type argument, NO value
- * argument) within `node` to its string-token form, anywhere in the tree —
- * resolution calls are not confined to top-level statements. A function-typed
- * type arg (`resolve<(a: A) => T>()`) is a FACTORY request: it lowers to
- * `*.resolveFactory("<token-for-return-type>")`; any other type arg lowers to
- * `*.resolve("<token-for-I>")`. The explicit `resolve<T>(token)` form carries a
- * value argument and is left untouched.
+ * Rewrite every tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` call (one
+ * type argument, NO value argument) within `node` to its string-token form,
+ * anywhere in the tree — resolution calls are not confined to top-level
+ * statements. Both method names are lowered identically: a function-typed type
+ * arg (`resolve<(a: A) => T>()`) is a FACTORY request and lowers to
+ * `*.resolveFactory("<token-for-return-type>")` (there is no async factory
+ * primitive at runtime, so `resolveAsync<(a: A) => T>()` collapses to the same
+ * sync `resolveFactory` call — awaiting a non-Promise value is a no-op); any
+ * other type arg lowers to `*.resolve("<token-for-I>")` / `*.resolveAsync("<token-for-I>")`,
+ * preserving whichever method name the call started with. The explicit
+ * `resolve<T>(token)` / `resolveAsync<T>(token)` forms carry a value argument
+ * and are left untouched.
  */
 function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   const visit = (n: ts.Node): ts.Node => {
@@ -132,17 +137,22 @@ function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   return visit(node);
 }
 
-/** True when `call` is a tokenless `*.resolve<I>()` (1 type arg, 0 value args). */
+/**
+ * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()`
+ * (1 type arg, 0 value args).
+ */
 function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {return false;}
-  if (callee.name.text !== "resolve") {return false;}
+  if (callee.name.text !== "resolve" && callee.name.text !== "resolveAsync") {return false;}
   if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
   return !call.arguments.length;
 }
 
 /**
  * `*.resolve<I>()` → `*.resolve("tok")` / `*.resolveFactory("tok:return", [...])`.
+ * `*.resolveAsync<I>()` → `*.resolveAsync("tok")` identically — the same rule,
+ * keyed on whichever method name the call started with (see `rewriteResolve`).
  *
  * Rule 2: a SINGULAR type arg (`resolve<"dev">()`, `resolve<42>()`,
  * `resolve<void>()`, `resolve<null>()`) supplies its value directly — the whole
@@ -165,7 +175,10 @@ function lowerResolveCall(
     }
   }
 
-  let method = "resolve";
+  // Preserve the originating method name (`resolve` / `resolveAsync`) for the
+  // bare-token form; the factory form always collapses to sync `resolveFactory`
+  // below (no async factory primitive exists at runtime).
+  let method = callee.name.text;
   let token: string | undefined;
   let paramTokens: string[] | undefined;
 
