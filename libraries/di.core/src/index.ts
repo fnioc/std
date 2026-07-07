@@ -29,7 +29,6 @@ export type {
   OverloadedConstructorParameters,
   OverloadedParameters,
   ParsedToken,
-  ScopeRef,
   Token,
   TypeArgRef,
   Typeof,
@@ -43,25 +42,20 @@ export type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 export { ServiceManifestClass } from "./service-manifest.js";
 export type { ServiceManifest } from "./service-manifest.js";
 
-export type {
-  ClassRegistration,
-  Ctor,
-  Factory,
-  FactoryRegistration,
-  OpenRegistration,
-  Registration,
-  SealedManifest,
-  ValueRegistration,
-} from "./registrations.js";
+export type { Ctor, Factory, OpenRegistration, Producer, Registration, SealedManifest } from "./registrations.js";
 
 export type { Lifetime, Resolver, ResolveScope, ScopeFactory, ServiceProvider } from "./provider.js";
 
 // The slot/token ABI runtime helpers. A di consumer reaches these through the
 // re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
 // plain data literals.
-export { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "./guards.js";
+export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from "./guards.js";
 export { typeArg, union } from "./slots.js";
 export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from "./tokens.js";
+
+// The intrinsic provider token — a `Resolver`-typed parameter derives it, and
+// the engine resolves it to the live provider view (see `provider-token.ts`).
+export { isProviderToken, RESOLVER_TOKEN } from "./provider-token.js";
 
 // The registration-time error taxonomy root and the open-token registration
 // error. Resolution-time errors extend `DiError` from `@rhombus-std/di`.

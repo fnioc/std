@@ -28,7 +28,6 @@ import {
   extractSignatureFromFunction,
   isFactorySlot,
   isLiteralSlot,
-  isScopeSlot,
   isTypeArgSlot,
   isUnionSlot,
   type Signature,
@@ -544,9 +543,9 @@ function signaturesLiteral(
 
 /**
  * Render one signature slot as its emitted literal:
- *   - a string literal for a token
+ *   - a string literal for a token (a `Resolver`-typed param emits the intrinsic
+ *     provider token string, like any other token)
  *   - `{ type: "<token>" }` (or `{ type: "<token>", params: [...] }`) for a factory ref
- *   - `{ scope: true }` for a scope ref
  *   - `{ union: [slot, slot, ...] }` for a union slot (recursive)
  *   - `{ value: <literal> }` for a literal slot (Rule 2)
  *   - `{ typeArg: N }` for a type-arg ref (an open `Typeof<Hole<N>>` param)
@@ -562,12 +561,6 @@ function slotLiteral(slot: Slot, factory: ts.NodeFactory): ts.Expression {
           factory.createNumericLiteral(slot.typeArg),
         ),
       ],
-      false,
-    );
-  }
-  if (isScopeSlot(slot)) {
-    return factory.createObjectLiteralExpression(
-      [factory.createPropertyAssignment("scope", factory.createTrue())],
       false,
     );
   }

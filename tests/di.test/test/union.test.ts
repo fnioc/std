@@ -1,5 +1,5 @@
 import { NoSatisfiableSignatureError, NoSatisfiableUnionError, ServiceManifest } from "@rhombus-std/di";
-import { union } from "@rhombus-std/di";
+import { RESOLVER_TOKEN, union } from "@rhombus-std/di";
 import type { FactoryRef } from "@rhombus-std/di.core";
 import { describe, expect, test } from "bun:test";
 import { defineDeps } from "./fixtures.js";
@@ -364,15 +364,15 @@ describe("union member composability", () => {
     expect((svc.dep as FallbackB).kind).toBe("fallback-b");
   });
 
-  test("GAP5: ScopeRef member is always resolvable and wins over later members", () => {
+  test("GAP5: the provider token member is always resolvable and wins over later members", () => {
     class FallbackB {
       public readonly kind = "fallback-b";
     }
     class Svc {
       public constructor(public readonly dep: unknown) {}
     }
-    // union({ scope: true }, T.B): ScopeRef is always resolvable → wins.
-    defineDeps(Svc, [[union({ scope: true }, T.B)]]);
+    // union(RESOLVER_TOKEN, T.B): the provider token is always resolvable → wins.
+    defineDeps(Svc, [[union(RESOLVER_TOKEN, T.B)]]);
 
     const services = new ServiceManifest<"singleton">();
     services.add(T.B, FallbackB).as("singleton");

@@ -6,12 +6,11 @@
 // so the whole surface stays reachable through one `@rhombus-std/di` import.
 
 export type {
-  ClassRegistration,
   Ctor,
   Factory,
-  FactoryRegistration,
   Lifetime,
   OpenRegistration,
+  Producer,
   Registration,
   Resolver,
   // Backwards-compat alias.
@@ -20,5 +19,4 @@ export type {
   // The public provider surface — the abstractions interface, not the impl class.
   ServiceProvider,
   Union,
-  ValueRegistration,
 } from "@rhombus-std/di.core";

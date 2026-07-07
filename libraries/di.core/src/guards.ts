@@ -4,7 +4,7 @@
 // describe. The engine (`@rhombus-std/di`) and the registration builder both
 // consume them.
 
-import type { DepSlot, FactoryRef, LiteralRef, ScopeRef, TypeArgRef, Union } from "./types.js";
+import type { DepSlot, FactoryRef, LiteralRef, TypeArgRef, Union } from "./types.js";
 
 /** True when `slot` is a `FactoryRef` (carries a `.type` token). */
 export function isFactoryRef(slot: DepSlot): slot is FactoryRef {
@@ -12,15 +12,6 @@ export function isFactoryRef(slot: DepSlot): slot is FactoryRef {
     typeof slot === "object"
     && slot !== null
     && typeof (slot as { type?: unknown }).type === "string"
-  );
-}
-
-/** True when `slot` is a `ScopeRef` (the live-scope marker `{ scope: true }`). */
-export function isScopeRef(slot: DepSlot): slot is ScopeRef {
-  return (
-    typeof slot === "object"
-    && slot !== null
-    && (slot as { scope?: unknown }).scope === true
   );
 }
 
@@ -40,8 +31,8 @@ export function isUnionSlot(slot: DepSlot): slot is Union {
  *
  * Identified by the PRESENCE of the `value` key (`"value" in slot`), never by
  * `value !== undefined` — `value` is legitimately `undefined` for the
- * `void`/`undefined` case. No other slot kind (FactoryRef `.type`, ScopeRef
- * `.scope`, Union `.union`) carries a `value` key, so this is unambiguous.
+ * `void`/`undefined` case. No other slot kind (FactoryRef `.type`, Union
+ * `.union`) carries a `value` key, so this is unambiguous.
  */
 export function isLiteralRef(slot: DepSlot): slot is LiteralRef {
   return typeof slot === "object" && slot !== null && "value" in slot;
@@ -50,8 +41,8 @@ export function isLiteralRef(slot: DepSlot): slot is LiteralRef {
 /**
  * True when `slot` is a `TypeArgRef` — an object slot carrying a numeric
  * `typeArg` key (the 1-based hole number). Key-disjoint from every other slot
- * kind (FactoryRef `.type`, ScopeRef `.scope`, Union `.union`, LiteralRef
- * `.value`), so the check is unambiguous.
+ * kind (FactoryRef `.type`, Union `.union`, LiteralRef `.value`), so the check
+ * is unambiguous.
  */
 export function isTypeArgRef(slot: DepSlot): slot is TypeArgRef {
   return (

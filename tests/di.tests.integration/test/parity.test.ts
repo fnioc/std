@@ -76,8 +76,9 @@ function buildHandFed(): ServiceManifest<"singleton" | "request"> {
   services.add(T.configConsumer, ConfigConsumer, [[T.config]]).as("singleton");
 
   // Path 1: plugin-less registrations for the async config + the named-callable.
-  // addFactory (no defineDeps record) → engine calls factory(scope); factory
-  // ignores the scope arg and returns the Promise directly.
+  // A signature-less addFactory runs the factory with NO injected args (the
+  // auto-`sp` escape hatch is gone); this factory declares none and returns the
+  // Promise directly.
   services.addFactory(T.config, () => {
     handFedConfigRuns += 1;
     return Promise.resolve({ endpoint: "https://db.example/api" });

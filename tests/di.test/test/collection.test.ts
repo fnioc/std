@@ -1,4 +1,4 @@
-import { ServiceManifest } from "@rhombus-std/di";
+import { RESOLVER_TOKEN, ServiceManifest } from "@rhombus-std/di";
 import { describe, expect, test } from "bun:test";
 import { T } from "./fixtures.js";
 
@@ -85,7 +85,10 @@ describe("the three add shapes", () => {
     }
     const services = new ServiceManifest<"singleton">();
     services.add(T.Db, Dep).as("singleton");
-    services.addFactory(T.Service, (s) => ({ dep: s.resolve<Dep>(T.Db) })).as("singleton");
+    // A factory that wants the live provider declares it as a provider-typed
+    // parameter — its token is the intrinsic `RESOLVER_TOKEN`, resolved to the
+    // live view. The auto-`sp` escape hatch is gone.
+    services.addFactory(T.Service, (s) => ({ dep: s.resolve<Dep>(T.Db) }), [[RESOLVER_TOKEN]]).as("singleton");
 
     const root = services.build().createScope("singleton");
     const a = root.resolve<{ dep: Dep }>(T.Service);

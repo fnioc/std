@@ -284,12 +284,10 @@ describe("substituteSignatures", () => {
     expect(() => substituteSignatures([[typeArg(3)]], ["a", "b"])).toThrow(RangeError);
   });
 
-  test("LiteralRef and ScopeRef pass through unchanged (same reference)", () => {
+  test("a LiteralRef passes through unchanged (same reference)", () => {
     const literal: DepSlot = { value: "$1" };
-    const scope: DepSlot = { scope: true };
-    const sigs = substituteSignatures([[literal, scope]], ["x"]);
+    const sigs = substituteSignatures([[literal]], ["x"]);
     expect(sigs[0]![0]).toBe(literal);
-    expect(sigs[0]![1]).toBe(scope);
   });
 
   test("multiple signatures are each substituted", () => {

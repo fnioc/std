@@ -22,10 +22,9 @@
 // resolves transiently (a fresh instance) instead.
 
 import type { DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, Union } from "@rhombus-std/di.core";
-import { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
+import { isFactoryRef, isLiteralRef, isProviderToken, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
 import { closeToken, isOpenToken, parseToken, substituteSignatures } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
-import { assertNever } from "./assert.js";
 
 import {
   AsyncDisposalRequiredError,
@@ -39,8 +38,6 @@ import {
   UnregisteredTokenError,
 } from "./errors.js";
 import type {
-  ClassRegistration,
-  FactoryRegistration,
   OpenRegistration,
   Registration,
   Resolver,
@@ -122,7 +119,7 @@ function rawTypeArgError(slot: TypeArgRef): TypeError {
 /**
  * The string-token members of a `Union` (recursing into nested unions), used to
  * name what a fully-unsatisfiable union slot needs registered. Non-token members
- * (FactoryRef / ScopeRef / LiteralRef) contribute no token.
+ * (FactoryRef / LiteralRef) contribute no token.
  */
 function* unionTokenMembers(slot: Union): Generator<Token> {
   for (const member of slot.union) {
@@ -344,7 +341,7 @@ export class ServiceProviderClass<S extends string = string>
           + "tryResolve<T>(\"my:token\").",
       );
     }
-    if (this.#lookup(token) === undefined) {
+    if (!isProviderToken(token) && this.#lookup(token) === undefined) {
       return undefined;
     }
     const result = this.#resolve<T>(token, this.#frame, [], false);
@@ -362,7 +359,7 @@ export class ServiceProviderClass<S extends string = string>
    * registered token whose dependencies are missing still reports `true`.
    */
   public isService(token: Token): boolean {
-    return this.#lookup(token) !== undefined;
+    return isProviderToken(token) || this.#lookup(token) !== undefined;
   }
 
   /**
@@ -387,7 +384,7 @@ export class ServiceProviderClass<S extends string = string>
    * The single lookup funnel — instance resolution, factory injection, and
    * satisfiability all come through here. On an exact miss the open-generic
    * fallback chain runs: memo hit → parse as closed-generic → open-table match
-   * → substitute → synthesize a `ClassRegistration` → memoize. Exact beats
+   * → substitute → synthesize a class `Registration` → memoize. Exact beats
    * open (this order IS the precedence rule). Never throws: a holey token
    * simply misses (so `#isResolvable` is false for it); the dedicated error is
    * raised by `#resolve`.
@@ -445,11 +442,16 @@ export class ServiceProviderClass<S extends string = string>
         throw err;
       }
     }
-    const registration: ClassRegistration = {
-      kind: "class",
-      ctor: match.open.ctor,
+    // Synthesize the closed producer record. Wrap the template ctor exactly as
+    // the builder does for an exact class, carrying `name`/`arity` off the ctor
+    // (the wrapper itself reports `""`/`0`).
+    const ctor = match.open.ctor;
+    const registration: Registration = {
+      produce: (...a: unknown[]) => new ctor(...a),
       scope: match.open.scope,
       signatures,
+      name: ctor.name,
+      arity: ctor.length,
     };
     this.#closedMemo.set(token, registration);
     return registration;
@@ -546,6 +548,14 @@ export class ServiceProviderClass<S extends string = string>
       throw new CircularDependencyError([...stack, token]);
     }
 
+    // The provider is an intrinsic resolvable: a `Resolver`-typed dependency
+    // (the token `RESOLVER_TOKEN`) resolves to the live provider VIEW relative to
+    // the resolving frame, never a registration. This is what makes "I want the
+    // provider" plain DI — it subsumes the retired `ScopeRef` slot.
+    if (isProviderToken(token)) {
+      return this.#makeProviderView(vantage, stack) as T;
+    }
+
     const registration = this.#lookup(token);
     if (!registration) {
       // ── The async fallback — the only mint-site of a Pending from a raw
@@ -570,12 +580,11 @@ export class ServiceProviderClass<S extends string = string>
       throw new UnregisteredTokenError(token);
     }
 
-    // useValue: the instance already exists; ownership/caching is moot. A raw
-    // Promise<X> registered as a value returns here as an ordinary value.
-    if (registration.kind === "value") {
-      return registration.useValue as T;
-    }
-
+    // A value now folds into the normal path: its producer is `() => value` with
+    // no scope, so it takes the transient branch below — no owner, no cache, and
+    // `#instantiate` returns `produce()` verbatim (a value that IS a Promise is
+    // returned raw, never awaited — §"Async as values").
+    //
     // THE CENTRAL PRINCIPLE, as an expression: a scope tag with no matching
     // OPEN frame yields no owner, and no owner means transient — fresh
     // instance, no cache, no error. Untagged registrations take the same path.
@@ -633,60 +642,45 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * Owns the HOW of construction: metadata precedence, the no-metadata escape
-   * hatches, greedy (async-aware) signature selection, slot fill, and the
-   * fast/slow build. Collapses the former `#construct` / `#invokeFactory`.
-   * Never touches the cache or the stack — that is the spine's job.
-   * `owningFrame` is the scope frame whose chain the dependencies are resolved
-   * against — THE critical rule.
+   * Owns the HOW of construction: the missing-metadata check, greedy
+   * (async-aware) signature selection, slot fill, and the fast/slow build. Every
+   * kind builds through one call — `registration.produce(...args)` — so there is
+   * no `class`/`value`/`factory` branch here. Never touches the cache or the
+   * stack — that is the spine's job. `owningFrame` is the scope frame whose chain
+   * the dependencies are resolved against — THE critical rule.
    */
   #instantiate<T>(
     token: Token,
-    registration: ClassRegistration | FactoryRegistration,
+    registration: Registration,
     owningFrame: Scope | undefined,
     stack: Token[],
     async: boolean,
   ): T | Pending<T> {
-    // Signatures ride solely on the registration record now — the global store
-    // is retired. Both class and factory registrations carry them.
-    const source = registration.kind === "class" ? registration.ctor : registration.factory;
+    // Signatures + the producer ride solely on the registration record — the
+    // global store is retired and the three kinds are one `produce` shape.
     const signatures = registration.signatures;
 
     if (!signatures?.length) {
-      if (registration.kind === "factory") {
-        // The plugin-less escape hatch: the live provider view is the sole
-        // argument.
-        return registration.factory(
-          this.#makeProviderView(owningFrame, stack),
-        ) as T;
+      // A signature-less producer takes no injected args. `arity` (the ctor's
+      // original `.length`, carried explicitly — the wrapper reports 0) is what
+      // distinguishes a class ctor that NEEDS args (missing metadata) from a
+      // value / zero-arg ctor / provider-less factory that legitimately runs
+      // with none.
+      if (registration.arity) {
+        throw new MissingMetadataError(token, registration.name);
       }
-      if (registration.ctor.length) {
-        throw new MissingMetadataError(token, registration.ctor.name);
-      }
-      return new registration.ctor() as T;
+      return registration.produce() as T;
     }
 
     const signature = this.#selectSignature(
       token,
-      source.name,
+      registration.name,
       signatures,
       async,
     );
     const args = signature.map((slot) => this.#resolveSlot<unknown>(slot, owningFrame, stack, async));
 
-    const build: Func<[readonly unknown[]], T> = (builtArgs) => {
-      switch (registration.kind) {
-        case "class": {
-          return new registration.ctor(...(builtArgs as never[])) as T;
-        }
-        case "factory": {
-          return registration.factory(...builtArgs) as T;
-        }
-        default: {
-          return assertNever(registration);
-        }
-      }
-    };
+    const build: Func<[readonly unknown[]], T> = (builtArgs) => registration.produce(...builtArgs) as T;
 
     // FAST path: no pending arg — build synchronously, identical to today.
     if (!args.some(isPending)) {
@@ -708,9 +702,10 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * The resolution view injected for a `ScopeRef` parameter (`Resolver` or
-   * `ScopeFactory` typed param). Produces a ServiceProvider-like view that
-   * continues the active cycle `stack` and resolves relative to `owningFrame`.
+   * The provider VIEW handed back when the intrinsic provider token resolves (a
+   * `Resolver` / `ScopeFactory` typed parameter). A ServiceProvider-like view
+   * that continues the active cycle `stack` and resolves relative to
+   * `owningFrame`.
    */
   #makeProviderView(owningFrame: Scope | undefined, stack: Token[]): Resolver & ScopeFactory<S> {
     const sp = this;
@@ -741,13 +736,13 @@ export class ServiceProviderClass<S extends string = string>
               + "at runtime).",
           );
         }
-        if (sp.#lookup(depToken) === undefined) {
+        if (!isProviderToken(depToken) && sp.#lookup(depToken) === undefined) {
           return undefined;
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
         return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
       },
-      isService: (depToken: Token): boolean => sp.#lookup(depToken) !== undefined,
+      isService: (depToken: Token): boolean => isProviderToken(depToken) || sp.#lookup(depToken) !== undefined,
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
       createScope: (...args: ["scoped"?] | [S]): ServiceProvider<S> =>
@@ -795,11 +790,12 @@ export class ServiceProviderClass<S extends string = string>
       ? ref.params
       : undefined;
 
-    // Both the value target and the strict zero-arg factory hand back the same
-    // thunk: route through the normal resolve path so the registered lifetime is
-    // respected. A value target has no construction step (its lifetime is moot —
-    // a value is itself); a zero-arg factory requires every slot to resolve.
-    if (target.kind === "value" || callerParams === undefined) {
+    // No caller params → the strict zero-arg thunk: route through the normal
+    // resolve path so the registered lifetime is respected. This subsumes the
+    // value target (its producer is `() => value`, so resolving returns the
+    // stored instance every call) and the strict zero-arg factory alike — with
+    // the kinds collapsed, no target-shape branch is needed.
+    if (callerParams === undefined) {
       return () => sp.#resolve<unknown>(ref.type, owningFrame, [], false);
     }
 
@@ -841,27 +837,22 @@ export class ServiceProviderClass<S extends string = string>
    * cache. Runs on a fresh cycle stack since the factory is invoked outside the
    * original resolve.
    *
-   * `signature` may be `undefined` when the target has no DepRecord (zero-arg
+   * `signature` may be `undefined` when the target has no signatures (zero-arg
    * ctor or record-less factory) — in that case args is empty.
    */
   #buildPartitioned<T>(
     targetToken: Token,
-    target: ClassRegistration | FactoryRegistration,
+    target: Registration,
     signature: readonly DepSlot[] | undefined,
     callerParams: readonly Token[],
     callArgs: readonly unknown[],
     owningFrame: Scope | undefined,
   ): T {
     const stack: Token[] = [];
-    const providerView = this.#makeProviderView(owningFrame, stack);
 
     if (signature === undefined || !signature.length) {
-      // No metadata: zero-arg ctor or record-less factory. Build directly.
-      return (
-        target.kind === "class"
-          ? new target.ctor()
-          : target.factory(providerView)
-      ) as T;
+      // No signatures: zero-arg ctor or record-less factory. Produce directly.
+      return target.produce() as T;
     }
 
     // Build the remaining callerParams pool — we consume each token once
@@ -892,8 +883,7 @@ export class ServiceProviderClass<S extends string = string>
 
         // Not claimed by callerParams. Must resolve from the container.
         if (!this.#isResolvable(slot, false)) {
-          const targetName = target.kind === "class" ? target.ctor.name : target.factory.name;
-          throw new NoSatisfiableSignatureError(targetToken, targetName, [slot]);
+          throw new NoSatisfiableSignatureError(targetToken, target.name, [slot]);
         }
         return this.#resolve<unknown>(slot, owningFrame, stack, false);
       }
@@ -901,11 +891,7 @@ export class ServiceProviderClass<S extends string = string>
       return this.#resolveSlot<unknown>(slot, owningFrame, stack, false);
     });
 
-    return (
-      target.kind === "class"
-        ? new target.ctor(...(args as never[]))
-        : target.factory(...args)
-    ) as T;
+    return target.produce(...args) as T;
   }
 
   /**
@@ -913,15 +899,15 @@ export class ServiceProviderClass<S extends string = string>
    * the first SATISFIABLE one. A slot is satisfiable when it is:
    *
    *   - a `FactoryRef` — always satisfiable; injected as a callable;
-   *   - a `ScopeRef` — always satisfiable; filled with the live provider view;
    *   - a `LiteralRef` — always satisfiable; injected as its value (Rule 2);
    *   - a `Union` — satisfiable iff at least one member is resolvable; or
-   *   - a string token whose registration exists in the sealed map.
+   *   - a string token whose registration exists in the sealed map, or the
+   *     intrinsic provider token (always satisfiable — the live view).
    *
-   * An unregistered string token is not satisfiable — unless `async` and its
-   * honest `Promise<T>` registration exists (the fallback the spine will take).
-   * Equal-arity ties break by registration order. None satisfiable ⇒ throw
-   * naming the unsatisfiable tokens.
+   * An unregistered string token is not satisfiable — unless it is the provider
+   * token, or `async` and its honest `Promise<T>` registration exists (the
+   * fallback the spine will take). Equal-arity ties break by registration order.
+   * None satisfiable ⇒ throw naming the unsatisfiable tokens.
    */
   #selectSignature(
     token: Token,
@@ -933,7 +919,7 @@ export class ServiceProviderClass<S extends string = string>
     for (const sig of orderByArityDesc(signatures)) {
       let satisfiable = true;
       for (const slot of sig) {
-        if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) {continue;}
+        if (isFactoryRef(slot) || isLiteralRef(slot)) {continue;}
         if (isTypeArgRef(slot)) {
           // A raw TypeArgRef is an unclosed template slot — never satisfiable
           // (only substitution turns it into a LiteralRef).
@@ -975,14 +961,17 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * True when `slot` is a registered string token — or, in `async` mode,
-   * satisfiable via the honest `Promise<T>` fallback the spine would take. A
-   * `FactoryRef`, `ScopeRef`, or `Union` is not tested here — use
-   * `isResolvableSlot` for a full slot check.
+   * True when `slot` is a registered string token — the intrinsic provider token
+   * (always resolvable), or a registration in the sealed map, or in `async` mode
+   * the honest `Promise<T>` fallback the spine would take. A `FactoryRef` or
+   * `Union` is not tested here — use `isResolvableSlot` for a full slot check.
    */
   #isResolvable(slot: DepSlot, async: boolean): boolean {
     if (typeof slot !== "string") {
       return false;
+    }
+    if (isProviderToken(slot)) {
+      return true;
     }
     if (this.#lookup(slot)) {
       return true;
@@ -992,13 +981,13 @@ export class ServiceProviderClass<S extends string = string>
 
   /**
    * True when a slot is resolvable in ANY form:
-   *   - `FactoryRef` / `ScopeRef` / `LiteralRef` — always satisfiable (injected);
+   *   - `FactoryRef` / `LiteralRef` — always satisfiable (injected);
    *   - `Union` — satisfiable iff at least one member is resolvable (recursive);
-   *   - string token — registered in the sealed map, or (async) via the
-   *     `Promise<T>` fallback.
+   *   - string token — the intrinsic provider token, a registration in the
+   *     sealed map, or (async) the `Promise<T>` fallback.
    */
   #isResolvableSlot(slot: DepSlot, async: boolean): boolean {
-    if (isFactoryRef(slot) || isScopeRef(slot) || isLiteralRef(slot)) {return true;}
+    if (isFactoryRef(slot) || isLiteralRef(slot)) {return true;}
     if (isTypeArgRef(slot)) {return false;}
     if (isUnionSlot(slot)) {
       return slot.union.some((member) => this.#isResolvableSlot(member, async));
@@ -1048,14 +1037,15 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * THE slot dispatch — the single copy of the 6-way branch, shared by the
+   * THE slot dispatch — the single copy of the object-slot branch, shared by the
    * spine's arg fill, union member resolution, and `#buildPartitioned`. The
-   * token arm is the only canonical recursion re-entry into `#resolve`.
+   * token arm is the only canonical recursion re-entry into `#resolve` — the
+   * intrinsic provider token flows through it and is intercepted there (yielding
+   * the live view), so there is no dedicated scope arm.
    *
    * An if-chain over the guard predicates (not a classifier + switch): each
    * guard narrows the slot for its own arm at zero cast cost, and exhausting
-   * every object-slot guard leaves a bare string `Token` for the final arm. The
-   * order mirrors the former dispatch order exactly.
+   * every object-slot guard leaves a bare string `Token` for the final arm.
    */
   #resolveSlot<T>(
     slot: DepSlot,
@@ -1063,9 +1053,6 @@ export class ServiceProviderClass<S extends string = string>
     stack: Token[],
     async: boolean,
   ): T | Pending<T> {
-    if (isScopeRef(slot)) {
-      return this.#makeProviderView(owningFrame, stack) as T;
-    }
     if (isFactoryRef(slot)) {
       return this.#makeFactory(slot, owningFrame) as T;
     }

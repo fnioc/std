@@ -1,4 +1,4 @@
-import { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot, typeArg, union } from "@rhombus-std/di";
+import { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot, typeArg, union } from "@rhombus-std/di";
 import type { DepSlot } from "@rhombus-std/di.core";
 import { describe, expect, test } from "bun:test";
 
@@ -19,7 +19,6 @@ describe("slot type guards", () => {
   const cases: { slot: DepSlot; kind: string }[] = [
     { slot: "pkg:IFoo", kind: "token" },
     { slot: { type: "pkg:IFoo" }, kind: "factory" },
-    { slot: { scope: true }, kind: "scope" },
     { slot: { union: ["pkg:A", "pkg:B"] }, kind: "union" },
     { slot: { value: 42 }, kind: "literal" },
     { slot: { value: undefined }, kind: "literal" },
@@ -29,7 +28,6 @@ describe("slot type guards", () => {
   test("each guard matches exactly its own slot kind", () => {
     for (const { slot, kind } of cases) {
       expect(isFactoryRef(slot)).toBe(kind === "factory");
-      expect(isScopeRef(slot)).toBe(kind === "scope");
       expect(isUnionSlot(slot)).toBe(kind === "union");
       expect(isLiteralRef(slot)).toBe(kind === "literal");
       expect(isTypeArgRef(slot)).toBe(kind === "typearg");

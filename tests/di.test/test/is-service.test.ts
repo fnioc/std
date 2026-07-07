@@ -1,4 +1,4 @@
-import { ServiceManifest } from "@rhombus-std/di";
+import { RESOLVER_TOKEN, ServiceManifest } from "@rhombus-std/di";
 import { expect, test } from "bun:test";
 import { defineDeps, G, OneDep, T, ZeroArg } from "./fixtures.js";
 
@@ -35,4 +35,16 @@ test("isService closes an open-generic template — true for a resolvable closin
   expect(provider.isService(G.RepoOfA)).toBe(true);
   // A different base with no registration stays false.
   expect(provider.isService(T.Repo)).toBe(false);
+});
+
+test("the intrinsic provider token is an implicit service — isService and resolve", () => {
+  // The provider resolves as an intrinsic type: no registration needed. resolve
+  // returns the live view (which carries the resolution surface), and isService
+  // reports true even though nothing was registered for the token.
+  const provider = new ServiceManifest<"singleton">().build();
+
+  expect(provider.isService(RESOLVER_TOKEN)).toBe(true);
+  const view = provider.resolve<{ resolve: unknown; createScope: unknown }>(RESOLVER_TOKEN);
+  expect(typeof view.resolve).toBe("function");
+  expect(typeof view.createScope).toBe("function");
 });

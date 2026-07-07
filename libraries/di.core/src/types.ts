@@ -31,18 +31,6 @@ export interface FactoryRef {
 }
 
 /**
- * Marks a parameter to be injected with the live resolution scope itself,
- * rather than a resolved token. Emitted for a factory parameter whose type is
- * `ResolveScope` — the engine fills the slot with the scope the factory is
- * resolved into, so the factory body can `scope.resolve(...)` / `createScope`
- * dynamically. Only meaningful on registration-level factory functions (a class
- * ctor never receives the scope); on a ctor it would simply never match.
- */
-export interface ScopeRef {
-  readonly scope: true;
-}
-
-/**
  * A set of alternative dependency slots tried in declaration order (first
  * resolvable member wins). If no member is resolvable, resolution throws.
  * Each member is itself a `DepSlot` — nesting is allowed.
@@ -85,22 +73,22 @@ export interface TypeArgRef {
 
 /**
  * One positional slot in a constructor / factory signature:
- *   - a `Token` string  — a container-resolved dependency,
+ *   - a `Token` string  — a container-resolved dependency (a plain `Resolver`
+ *     token resolves to the live provider view — see `RESOLVER_TOKEN`),
  *   - a `FactoryRef`    — a factory-injected parameter (see `FactoryRef`),
- *   - a `ScopeRef`      — the live resolution scope (see `ScopeRef`),
  *   - a `Union`         — member-level alternatives tried in order,
  *   - a `LiteralRef`    — a singular literal supplying its value directly, or
  *   - a `TypeArgRef`    — the token string of a type argument (see `TypeArgRef`).
  */
-export type DepSlot = Token | FactoryRef | ScopeRef | Union | LiteralRef | TypeArgRef;
+export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
 
 /**
  * Per-constructor dependency metadata carried on a registration.
  *
  * `signatures` is an array of arrays: each element is one constructor signature
  * (for overload support). `signatures[i][j]` is the `DepSlot` — a token, a
- * `FactoryRef`, a `ScopeRef`, a `Union`, or a `LiteralRef` — for constructor
- * parameter `j` of overload `i`.
+ * `FactoryRef`, a `Union`, or a `LiteralRef` — for constructor parameter `j` of
+ * overload `i`.
  */
 export interface DepRecord {
   readonly signatures: readonly (readonly DepSlot[])[];

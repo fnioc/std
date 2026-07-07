@@ -11,11 +11,10 @@ export type { Ctor };
 
 /**
  * A registration-level factory function. Its parameters are filled by the
- * engine at resolve time, the same way a class constructor's are: a factory
- * WITH registration-carried signatures has each parameter resolved by its slot
- * (token → resolved instance, `ScopeRef` → the live provider, hole →
- * caller-supplied); a factory WITHOUT signatures is the plugin-less escape hatch
- * and is called with the live provider as its single argument (`(sp) => …`).
+ * engine at resolve time, the same way a class constructor's are: each parameter
+ * is resolved by its slot (token → resolved instance, provider token → the live
+ * provider view, hole → caller-supplied). A factory with no signatures runs with
+ * no injected args — it declares the deps it wants, nothing is auto-supplied.
  *
  * May be async — it can return a `Promise<T>`. The container never awaits; the
  * Promise flows through the sync resolution channel as a value (§"Async as
@@ -23,55 +22,56 @@ export type { Ctor };
  */
 export type Factory = Func<any[], unknown>;
 
-/** A class registration: a token bound to a concrete constructor. */
-export interface ClassRegistration {
-  readonly kind: "class";
-  readonly ctor: Ctor;
+/**
+ * Builds an instance from its resolved positional args. The single normalized
+ * form the three authoring kinds collapse into at registration time:
+ *   - class   → `(...a) => new Ctor(...a)`
+ *   - value   → `() => value`
+ *   - factory → the factory function itself
+ */
+export type Producer = Func<any[], unknown>;
+
+/**
+ * A single normalized registration — ONE "producer" shape for all three
+ * authoring kinds (class / value / factory). The builder wraps each into a
+ * `produce` closure at registration time (see `Producer`); the engine dispatches
+ * on this one shape, calling `produce(...args)` uniformly rather than switching
+ * on a `kind` discriminant.
+ */
+export interface Registration {
+  /** Builds the instance from the resolved positional args (see `Producer`). */
+  readonly produce: Producer;
   /**
-   * The lifetime — the scope name that owns and caches the instance.
-   * `undefined` means transient (never cached; a fresh instance per resolve).
+   * The lifetime — the scope name that owns and caches the instance. `undefined`
+   * means transient (never cached; produced fresh per resolve). A value is
+   * always transient: a value IS its instance, so ownership/caching is moot and
+   * a value that is itself a `Promise` is returned raw, never awaited.
    */
   readonly scope: string | undefined;
   /**
-   * Registration-carried dep signatures — the sole signature channel now that
-   * the global metadata store is retired. Emitted inline by the transformer
-   * (`add(token, ctor, [[...]])`) and hand-fed by the plugin-less caller. A
-   * signature-less class with a nonzero-arg ctor throws `MissingMetadataError`;
-   * a zero-arg ctor builds via `new Ctor()`.
+   * Registration-carried dep signatures — the positional slots that feed
+   * `produce`, and the sole signature channel now that the global metadata store
+   * is retired. Emitted inline by the transformer (`add`/`addFactory` third arg)
+   * and hand-fed by a plugin-less caller. Absent or empty means `produce` takes
+   * no injected args (a zero-arg ctor, a value, or a signature-less factory).
    */
   readonly signatures?: readonly (readonly DepSlot[])[];
-}
-
-/** A factory-function registration — its params are injected like a ctor's. */
-export interface FactoryRegistration {
-  readonly kind: "factory";
-  readonly factory: Factory;
   /**
-   * The lifetime — the scope name that owns and caches the result. `undefined`
-   * means transient (the factory runs on every resolve). Attached via `.as()`,
-   * exactly like a class registration.
+   * The producer's diagnostic name — the ctor / factory name, carried EXPLICITLY
+   * because a wrapper closure (`(...a) => new Ctor(...a)`) reports `""` for its
+   * own `.name`. Empty string for a value. Feeds the `MissingMetadataError` /
+   * `NoSatisfiableSignatureError` diagnostics.
    */
-  readonly scope: string | undefined;
+  readonly name: string;
   /**
-   * Registration-carried dep signatures for the factory's call parameters.
-   * Emitted inline by the transformer (`addFactory(token, fn, [[...]])`); a
-   * record-less factory (the plugin-less escape hatch) carries none and is
-   * called with the live provider as its sole argument.
+   * The original constructor arity (`Ctor.length`), carried EXPLICITLY because a
+   * rest-param wrapper reports `0` for its own `.length`. Drives the
+   * missing-metadata signal: a signature-less producer whose `arity` is nonzero
+   * (a class ctor that needs args) throws `MissingMetadataError`. `0` for a value
+   * or a factory — a signature-less factory simply runs with no injected args.
    */
-  readonly signatures?: readonly (readonly DepSlot[])[];
+  readonly arity: number;
 }
-
-/** A value registration — an already-built instance, no lifetime. */
-export interface ValueRegistration {
-  readonly kind: "value";
-  readonly useValue: unknown;
-}
-
-/** Any registration the engine can resolve. */
-export type Registration =
-  | ClassRegistration
-  | FactoryRegistration
-  | ValueRegistration;
 
 /**
  * An OPEN registration — a class bound to an open template token whose type
@@ -79,7 +79,8 @@ export type Registration =
  * resolving a closed token that misses the exact map matches against these
  * (base + arity + repeated-hole equality, last registered wins), substitutes
  * the closing's arg tokens through the carried signatures, and synthesizes an
- * ordinary `ClassRegistration` memoized per closed token.
+ * ordinary class `Registration` (a ctor-wrapping producer) memoized per closed
+ * token.
  */
 export interface OpenRegistration {
   /** The full template token as registered (`pkg:IRepo<$1>`). */

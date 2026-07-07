@@ -28,7 +28,7 @@
 //     `OverloadedConstructorParameters<typeof C>` + `Reflect.construct` wrapper,
 //     proven to resolve identically to registering the class directly.
 
-import { type $, type ResolveScope, ServiceManifest } from "@rhombus-std/di";
+import { type $, type Resolver, ServiceManifest } from "@rhombus-std/di";
 import type { OverloadedConstructorParameters } from "@rhombus-std/di.transformer";
 
 import type {
@@ -173,7 +173,7 @@ services.add<IAsyncResource>(AsyncResource).as<"session">();
 // caller-supplied instead of requiring it registered.
 services.add<IPersonalizedGreeting>(PersonalizedGreeting).as<"singleton">();
 
-// ResolveScope (Resolver) injection into a factory. Declared LOCALLY (not in
+// `Resolver` (provider) injection into a factory. Declared LOCALLY (not in
 // shared/contracts.ts): the feature under test is the INJECTION MECHANISM, not
 // a new shared service — `IEnvironmentReport` exists only to give it a return
 // type, mirroring how without-transformer declares its own local `Reporter`
@@ -183,15 +183,14 @@ interface IEnvironmentReport {
 }
 
 // A factory can decline fixed positional deps entirely and instead ask for the
-// LIVE resolution scope: a parameter typed `ResolveScope` receives it and can
-// `resolve()` (or `createScope()`) imperatively. `ResolveScope` — not the
-// newer `Resolver` — is the name that matters here: the transformer's
-// structural detection keys off this EXACT type (`isResolveScopeType`), even
-// though it is the deprecated alias; the injected value is a full `Resolver`
-// either way. The nested `resolve<T>()` calls below are tokenless too — per
-// the file header, the transformer's resolve-rewrite isn't confined to
-// top-level statements, only the registration methods are.
-function buildEnvironmentReport(sp: ResolveScope): IEnvironmentReport {
+// LIVE provider: a parameter typed `Resolver` receives it and can `resolve()`
+// imperatively. The provider is an intrinsically resolvable type — the
+// transformer emits the `Resolver` token like any other param, and the engine
+// resolves it to the live view; there is no dedicated slot kind. The nested
+// `resolve<T>()` calls below are tokenless too — per the file header, the
+// transformer's resolve-rewrite isn't confined to top-level statements, only the
+// registration methods are.
+function buildEnvironmentReport(sp: Resolver): IEnvironmentReport {
   const cfg = sp.resolve<IAppConfig>();
   const clock = sp.resolve<IClock>();
   return { text: `[${cfg.environment}@${cfg.version}] as of ${clock.now()}` };
@@ -297,7 +296,7 @@ const personalize = root.resolve<(name: string) => IPersonalizedGreeting>();
 const personalizedBob = personalize("Bob");
 const personalizedCarol = personalize("Carol");
 
-// ResolveScope factory resolved — it resolved IAppConfig + IClock imperatively
+// Resolver-injected factory resolved — it resolved IAppConfig + IClock imperatively
 // from inside its own body rather than declaring them as ctor-like params.
 const envReport = root.resolve<IEnvironmentReport>();
 
@@ -425,7 +424,7 @@ const lines = [
   `  zero-arg factory returns the SAME cached singleton: ${greeterFactory() === greeterA}`,
   `  parameterized factory builds fresh every call: ${personalizedBob !== personalizedCarol}`,
   `  ${personalizedBob.text} / ${personalizedCarol.text}`,
-  `ResolveScope (Resolver) injection — factory resolved its own deps imperatively: ${envReport.text}`,
+  `Resolver (provider) injection — factory resolved its own deps imperatively: ${envReport.text}`,
   "=== HEADLINE: async — Promise<T>-only registration + recursive resolveAsync ===",
   `  resolveAsync<IRemoteConfig>() directly: ${remoteConfig.endpoint}`,
   `  resolveAsync<IRemoteConfigConsumer>() recursively resolved the bare token via the Promise<T> fallback: ${remoteConfigConsumer.describe()}`,

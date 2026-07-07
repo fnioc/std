@@ -23,7 +23,7 @@ describe("LiteralRef core guard", () => {
     expect(isLiteralRef({ value: null })).toBe(true);
     expect(isLiteralRef("pkg:IFoo")).toBe(false);
     expect(isLiteralRef({ type: "pkg:IFoo" })).toBe(false);
-    expect(isLiteralRef({ scope: true })).toBe(false);
+    expect(isLiteralRef({ typeArg: 1 })).toBe(false);
     expect(isLiteralRef({ union: [] })).toBe(false);
   });
 });
