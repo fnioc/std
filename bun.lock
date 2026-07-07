@@ -15,68 +15,67 @@
         "typescript-eslint": "^8.60.1",
       },
     },
-    "examples/config.examples.basic": {
-      "name": "@rhombus-std/config.examples.basic",
+    "examples/examples.app.with-transformer": {
+      "name": "@rhombus-std/examples.app.with-transformer",
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/config.commandline": "workspace:*",
-        "@rhombus-std/config.core": "workspace:*",
-        "@rhombus-std/config.env": "workspace:*",
-        "@rhombus-std/config.json": "workspace:*",
-      },
-      "devDependencies": {
-        "@types/node": "^24.13.2",
-        "typescript": "^5.9.0",
-      },
-    },
-    "examples/config.examples.with-transformer": {
-      "name": "@rhombus-std/config.examples.with-transformer",
-      "version": "0.0.0",
-      "dependencies": {
-        "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/config.core": "workspace:*",
-      },
-      "devDependencies": {
-        "@rhombus-std/config.transformer": "workspace:*",
-        "@types/node": "^24.13.2",
-        "ts-patch": "^3.3.0",
-        "typescript": "^5.9.0",
-      },
-    },
-    "examples/di.examples.abstractions-lib": {
-      "name": "@rhombus-std/di.examples.abstractions-lib",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
-      },
-    },
-    "examples/di.examples.shared": {
-      "name": "@rhombus-std/di.examples.shared",
-      "version": "0.0.0",
-      "devDependencies": {
         "@rhombus-std/di": "workspace:*",
-      },
-    },
-    "examples/di.examples.with-transformer": {
-      "name": "@rhombus-std/di.examples.with-transformer",
-      "version": "0.0.0",
-      "dependencies": {
-        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/examples.lib.with-transformer": "workspace:*",
+        "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
       },
       "devDependencies": {
         "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.transformer.options": "workspace:*",
+        "@rhombus-std/examples.contracts": "workspace:*",
         "ts-patch": "^3.3.0",
         "typescript": "^5.9.0",
       },
     },
-    "examples/di.examples.without-transformer": {
-      "name": "@rhombus-std/di.examples.without-transformer",
+    "examples/examples.app.without-transformer": {
+      "name": "@rhombus-std/examples.app.without-transformer",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/examples.lib.with-transformer": "workspace:*",
+        "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
       },
       "devDependencies": {
+        "@rhombus-std/examples.contracts": "workspace:*",
+        "typescript": "^5.9.0",
+      },
+    },
+    "examples/examples.contracts": {
+      "name": "@rhombus-std/examples.contracts",
+      "version": "0.0.0",
+    },
+    "examples/examples.lib.with-transformer": {
+      "name": "@rhombus-std/examples.lib.with-transformer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/examples.contracts": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+    },
+    "examples/examples.lib.without-transformer": {
+      "name": "@rhombus-std/examples.lib.without-transformer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/examples.contracts": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
         "typescript": "^5.9.0",
       },
     },
@@ -470,10 +469,6 @@
 
     "@rhombus-std/config.env.test": ["@rhombus-std/config.env.test@workspace:tests/config.env.test"],
 
-    "@rhombus-std/config.examples.basic": ["@rhombus-std/config.examples.basic@workspace:examples/config.examples.basic"],
-
-    "@rhombus-std/config.examples.with-transformer": ["@rhombus-std/config.examples.with-transformer@workspace:examples/config.examples.with-transformer"],
-
     "@rhombus-std/config.json": ["@rhombus-std/config.json@workspace:libraries/config.json"],
 
     "@rhombus-std/config.json.test": ["@rhombus-std/config.json.test@workspace:tests/config.json.test"],
@@ -490,14 +485,6 @@
 
     "@rhombus-std/di.core": ["@rhombus-std/di.core@workspace:libraries/di.core"],
 
-    "@rhombus-std/di.examples.abstractions-lib": ["@rhombus-std/di.examples.abstractions-lib@workspace:examples/di.examples.abstractions-lib"],
-
-    "@rhombus-std/di.examples.shared": ["@rhombus-std/di.examples.shared@workspace:examples/di.examples.shared"],
-
-    "@rhombus-std/di.examples.with-transformer": ["@rhombus-std/di.examples.with-transformer@workspace:examples/di.examples.with-transformer"],
-
-    "@rhombus-std/di.examples.without-transformer": ["@rhombus-std/di.examples.without-transformer@workspace:examples/di.examples.without-transformer"],
-
     "@rhombus-std/di.test": ["@rhombus-std/di.test@workspace:tests/di.test"],
 
     "@rhombus-std/di.tests.integration": ["@rhombus-std/di.tests.integration@workspace:tests/di.tests.integration"],
@@ -509,6 +496,16 @@
     "@rhombus-std/di.transformer.options.test": ["@rhombus-std/di.transformer.options.test@workspace:tests/di.transformer.options.test"],
 
     "@rhombus-std/di.transformer.test": ["@rhombus-std/di.transformer.test@workspace:tests/di.transformer.test"],
+
+    "@rhombus-std/examples.app.with-transformer": ["@rhombus-std/examples.app.with-transformer@workspace:examples/examples.app.with-transformer"],
+
+    "@rhombus-std/examples.app.without-transformer": ["@rhombus-std/examples.app.without-transformer@workspace:examples/examples.app.without-transformer"],
+
+    "@rhombus-std/examples.contracts": ["@rhombus-std/examples.contracts@workspace:examples/examples.contracts"],
+
+    "@rhombus-std/examples.lib.with-transformer": ["@rhombus-std/examples.lib.with-transformer@workspace:examples/examples.lib.with-transformer"],
+
+    "@rhombus-std/examples.lib.without-transformer": ["@rhombus-std/examples.lib.without-transformer@workspace:examples/examples.lib.without-transformer"],
 
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
 

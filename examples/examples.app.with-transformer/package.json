@@ -1,0 +1,29 @@
+{
+  "name": "@rhombus-std/examples.app.with-transformer",
+  "private": true,
+  "version": "0.0.0",
+  "description": "The with-transformer composition root: one integrated scenario (config → reactive options pipeline, di across both example libraries, collection aggregation, async resolution, live reload) authored in the tokenless dialect and built with tspc.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "bun x tspc -p tsconfig.json",
+    "start": "bun run build && node dist/main.js",
+    "test": "bun run build && node dist/main.js > /tmp/rhombus-std-app-with-transformer.out && diff -u expected.txt /tmp/rhombus-std-app-with-transformer.out",
+    "lint": "bun x tspc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/examples.lib.with-transformer": "workspace:*",
+    "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/di.transformer.options": "workspace:*",
+    "@rhombus-std/examples.contracts": "workspace:*",
+    "ts-patch": "^3.3.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,5 +1,0 @@
-=== @rhombus-std/config -- basic ===
-server: {"Host":"10.0.0.5","Port":8080,"Ssl":true}
-database primary: {"Host":"db-primary.internal","Database":"app","PoolSize":10}
-database replica: {"Host":"db-replica.internal","Database":"app","PoolSize":5}
-raw Server:Host=10.0.0.5, getNum(Server:Port)=8080

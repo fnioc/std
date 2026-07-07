@@ -1,0 +1,33 @@
+{
+  "name": "@rhombus-std/examples.lib.without-transformer",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Example dependency library authored in the manual di dialect (explicit tokens + plain-data signatures). Gets a real build for consistency and genuine consumption; ordinary source-libs conditions are fine.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc -p tsconfig.json",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/examples.contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@rhombus-std/di": "workspace:*",
+    "typescript": "^5.9.0"
+  }
+}

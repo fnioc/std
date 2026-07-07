@@ -1,0 +1,15 @@
+{
+  "//": "Plain tsc emit src -> dist. Nothing here needs the transformer, so the raw source is already runnable; the build exists for consistency and so a consuming app's dist can `import` this package at runtime. module:ESNext keeps relative .js specifiers verbatim; moduleResolution:Bundler maps the type-only @rhombus-std imports back to source at compile time (they erase from the emit).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "composite": false
+  },
+  "include": ["src/**/*"]
+}

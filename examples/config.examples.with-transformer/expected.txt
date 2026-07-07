@@ -1,3 +1,0 @@
-=== @rhombus-std/config.transformer — with-transformer ===
-server: {"Host":"0.0.0.0","Port":8080,"Ssl":true}
-database primary: {"Host":"db.internal","PoolSize":20}

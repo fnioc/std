@@ -1,0 +1,26 @@
+{
+  "name": "@rhombus-std/examples.app.without-transformer",
+  "private": true,
+  "version": "0.0.0",
+  "description": "The without-transformer composition root: the same integrated scenario as the with-transformer app, wired by hand with explicit tokens and plain tsc.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "bun x tsc -p tsconfig.json",
+    "start": "bun run build && node dist/main.js",
+    "test": "bun run build && node dist/main.js > /tmp/rhombus-std-app-without-transformer.out && diff -u expected.txt /tmp/rhombus-std-app-without-transformer.out",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/examples.lib.with-transformer": "workspace:*",
+    "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*"
+  },
+  "devDependencies": {
+    "@rhombus-std/examples.contracts": "workspace:*",
+    "typescript": "^5.9.0"
+  }
+}
