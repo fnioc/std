@@ -25,7 +25,6 @@ import type { DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, U
 import { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
 import { closeToken, isOpenToken, parseToken, substituteSignatures } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
-import { assertNever } from "./assert.js";
 
 import {
   AsyncDisposalRequiredError,
@@ -39,8 +38,6 @@ import {
   UnregisteredTokenError,
 } from "./errors.js";
 import type {
-  ClassRegistration,
-  FactoryRegistration,
   OpenRegistration,
   Registration,
   Resolver,
@@ -387,7 +384,7 @@ export class ServiceProviderClass<S extends string = string>
    * The single lookup funnel — instance resolution, factory injection, and
    * satisfiability all come through here. On an exact miss the open-generic
    * fallback chain runs: memo hit → parse as closed-generic → open-table match
-   * → substitute → synthesize a `ClassRegistration` → memoize. Exact beats
+   * → substitute → synthesize a class `Registration` → memoize. Exact beats
    * open (this order IS the precedence rule). Never throws: a holey token
    * simply misses (so `#isResolvable` is false for it); the dedicated error is
    * raised by `#resolve`.
@@ -445,11 +442,16 @@ export class ServiceProviderClass<S extends string = string>
         throw err;
       }
     }
-    const registration: ClassRegistration = {
-      kind: "class",
-      ctor: match.open.ctor,
+    // Synthesize the closed producer record. Wrap the template ctor exactly as
+    // the builder does for an exact class, carrying `name`/`arity` off the ctor
+    // (the wrapper itself reports `""`/`0`).
+    const ctor = match.open.ctor;
+    const registration: Registration = {
+      produce: (...a: unknown[]) => new ctor(...a),
       scope: match.open.scope,
       signatures,
+      name: ctor.name,
+      arity: ctor.length,
     };
     this.#closedMemo.set(token, registration);
     return registration;
@@ -570,12 +572,11 @@ export class ServiceProviderClass<S extends string = string>
       throw new UnregisteredTokenError(token);
     }
 
-    // useValue: the instance already exists; ownership/caching is moot. A raw
-    // Promise<X> registered as a value returns here as an ordinary value.
-    if (registration.kind === "value") {
-      return registration.useValue as T;
-    }
-
+    // A value now folds into the normal path: its producer is `() => value` with
+    // no scope, so it takes the transient branch below — no owner, no cache, and
+    // `#instantiate` returns `produce()` verbatim (a value that IS a Promise is
+    // returned raw, never awaited — §"Async as values").
+    //
     // THE CENTRAL PRINCIPLE, as an expression: a scope tag with no matching
     // OPEN frame yields no owner, and no owner means transient — fresh
     // instance, no cache, no error. Untagged registrations take the same path.
@@ -633,60 +634,45 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
-   * Owns the HOW of construction: metadata precedence, the no-metadata escape
-   * hatches, greedy (async-aware) signature selection, slot fill, and the
-   * fast/slow build. Collapses the former `#construct` / `#invokeFactory`.
-   * Never touches the cache or the stack — that is the spine's job.
-   * `owningFrame` is the scope frame whose chain the dependencies are resolved
-   * against — THE critical rule.
+   * Owns the HOW of construction: the missing-metadata check, greedy
+   * (async-aware) signature selection, slot fill, and the fast/slow build. Every
+   * kind builds through one call — `registration.produce(...args)` — so there is
+   * no `class`/`value`/`factory` branch here. Never touches the cache or the
+   * stack — that is the spine's job. `owningFrame` is the scope frame whose chain
+   * the dependencies are resolved against — THE critical rule.
    */
   #instantiate<T>(
     token: Token,
-    registration: ClassRegistration | FactoryRegistration,
+    registration: Registration,
     owningFrame: Scope | undefined,
     stack: Token[],
     async: boolean,
   ): T | Pending<T> {
-    // Signatures ride solely on the registration record now — the global store
-    // is retired. Both class and factory registrations carry them.
-    const source = registration.kind === "class" ? registration.ctor : registration.factory;
+    // Signatures + the producer ride solely on the registration record — the
+    // global store is retired and the three kinds are one `produce` shape.
     const signatures = registration.signatures;
 
     if (!signatures?.length) {
-      if (registration.kind === "factory") {
-        // The plugin-less escape hatch: the live provider view is the sole
-        // argument.
-        return registration.factory(
-          this.#makeProviderView(owningFrame, stack),
-        ) as T;
+      // A signature-less producer takes no injected args. `arity` (the ctor's
+      // original `.length`, carried explicitly — the wrapper reports 0) is what
+      // distinguishes a class ctor that NEEDS args (missing metadata) from a
+      // value / zero-arg ctor / provider-less factory that legitimately runs
+      // with none.
+      if (registration.arity) {
+        throw new MissingMetadataError(token, registration.name);
       }
-      if (registration.ctor.length) {
-        throw new MissingMetadataError(token, registration.ctor.name);
-      }
-      return new registration.ctor() as T;
+      return registration.produce() as T;
     }
 
     const signature = this.#selectSignature(
       token,
-      source.name,
+      registration.name,
       signatures,
       async,
     );
     const args = signature.map((slot) => this.#resolveSlot<unknown>(slot, owningFrame, stack, async));
 
-    const build: Func<[readonly unknown[]], T> = (builtArgs) => {
-      switch (registration.kind) {
-        case "class": {
-          return new registration.ctor(...(builtArgs as never[])) as T;
-        }
-        case "factory": {
-          return registration.factory(...builtArgs) as T;
-        }
-        default: {
-          return assertNever(registration);
-        }
-      }
-    };
+    const build: Func<[readonly unknown[]], T> = (builtArgs) => registration.produce(...builtArgs) as T;
 
     // FAST path: no pending arg — build synchronously, identical to today.
     if (!args.some(isPending)) {
@@ -795,11 +781,12 @@ export class ServiceProviderClass<S extends string = string>
       ? ref.params
       : undefined;
 
-    // Both the value target and the strict zero-arg factory hand back the same
-    // thunk: route through the normal resolve path so the registered lifetime is
-    // respected. A value target has no construction step (its lifetime is moot —
-    // a value is itself); a zero-arg factory requires every slot to resolve.
-    if (target.kind === "value" || callerParams === undefined) {
+    // No caller params → the strict zero-arg thunk: route through the normal
+    // resolve path so the registered lifetime is respected. This subsumes the
+    // value target (its producer is `() => value`, so resolving returns the
+    // stored instance every call) and the strict zero-arg factory alike — with
+    // the kinds collapsed, no target-shape branch is needed.
+    if (callerParams === undefined) {
       return () => sp.#resolve<unknown>(ref.type, owningFrame, [], false);
     }
 
@@ -841,27 +828,22 @@ export class ServiceProviderClass<S extends string = string>
    * cache. Runs on a fresh cycle stack since the factory is invoked outside the
    * original resolve.
    *
-   * `signature` may be `undefined` when the target has no DepRecord (zero-arg
+   * `signature` may be `undefined` when the target has no signatures (zero-arg
    * ctor or record-less factory) — in that case args is empty.
    */
   #buildPartitioned<T>(
     targetToken: Token,
-    target: ClassRegistration | FactoryRegistration,
+    target: Registration,
     signature: readonly DepSlot[] | undefined,
     callerParams: readonly Token[],
     callArgs: readonly unknown[],
     owningFrame: Scope | undefined,
   ): T {
     const stack: Token[] = [];
-    const providerView = this.#makeProviderView(owningFrame, stack);
 
     if (signature === undefined || !signature.length) {
-      // No metadata: zero-arg ctor or record-less factory. Build directly.
-      return (
-        target.kind === "class"
-          ? new target.ctor()
-          : target.factory(providerView)
-      ) as T;
+      // No signatures: zero-arg ctor or record-less factory. Produce directly.
+      return target.produce() as T;
     }
 
     // Build the remaining callerParams pool — we consume each token once
@@ -892,8 +874,7 @@ export class ServiceProviderClass<S extends string = string>
 
         // Not claimed by callerParams. Must resolve from the container.
         if (!this.#isResolvable(slot, false)) {
-          const targetName = target.kind === "class" ? target.ctor.name : target.factory.name;
-          throw new NoSatisfiableSignatureError(targetToken, targetName, [slot]);
+          throw new NoSatisfiableSignatureError(targetToken, target.name, [slot]);
         }
         return this.#resolve<unknown>(slot, owningFrame, stack, false);
       }
@@ -901,11 +882,7 @@ export class ServiceProviderClass<S extends string = string>
       return this.#resolveSlot<unknown>(slot, owningFrame, stack, false);
     });
 
-    return (
-      target.kind === "class"
-        ? new target.ctor(...(args as never[]))
-        : target.factory(...args)
-    ) as T;
+    return target.produce(...args) as T;
   }
 
   /**

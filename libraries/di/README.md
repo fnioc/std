@@ -173,7 +173,7 @@ Resolving a token the exact-match map has no entry for falls through, in order:
 2. **Parse.** A non-generic token that misses here is simply unregistered.
 3. **Open-table match** — search open registrations for the same base + arity (respecting repeated-hole equality), most-recently-registered first.
 4. **Substitute** — the open registration's carried dep signatures are substituted with the closing's concrete type args (`TypeArgRef` slots become `LiteralRef`s carrying the substituted token).
-5. **Synthesize** a `ClassRegistration` for the closed token — inherits the ctor and scope tag, carries the substituted signatures — and memoize it.
+5. **Synthesize** a class `Registration` for the closed token — a ctor-wrapping producer that inherits the ctor and scope tag and carries the substituted signatures — and memoize it.
 
 **Exact beats open.** An exact registration for a closed token — one you registered directly, e.g. `services.add<IRepository<User>>(SpecialUserRepo)` alongside the open `IRepository<$<1>>` registration — is checked _before_ the memo and the open-table fallback, so it always wins.
 

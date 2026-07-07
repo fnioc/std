@@ -4,7 +4,9 @@ import { T } from "./fixtures.js";
 
 // The override paths: addFactory / addValue (plugin-less mechanism). Plus
 // async-as-values: a addFactory may be async; the container never awaits and a
-// singleton-tagged async factory caches the Promise (factory runs once).
+// singleton-tagged async factory caches the Promise (factory runs once). A
+// factory that wants the live provider declares it as a parameter (a scope slot)
+// — the auto-`sp` escape hatch is gone.
 
 class Bar {
   public readonly kind = "bar";
@@ -37,7 +39,7 @@ describe("useFactory", () => {
     }
     const services = new ServiceManifest<"singleton">();
     services.add(T.B, Bar).as("singleton");
-    services.addFactory(T.A, (c) => new Foo(c.resolve<Bar>(T.B)));
+    services.addFactory(T.A, (c) => new Foo(c.resolve<Bar>(T.B)), [[{ scope: true }]]);
 
     const root = services.build();
     const foo = root.resolve<Foo>(T.A);

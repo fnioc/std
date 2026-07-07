@@ -42,12 +42,11 @@ export type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 export { ServiceProviderClass } from "./scope.js";
 
 export type {
-  ClassRegistration,
   Ctor,
   Factory,
-  FactoryRegistration,
   Lifetime,
   OpenRegistration,
+  Producer,
   Registration,
   Resolver,
   // Backwards-compat alias.
@@ -56,7 +55,6 @@ export type {
   // The public provider surface — the abstractions interface (di.core), not the
   // impl class. What `build()` / `createScope()` return.
   ServiceProvider,
-  ValueRegistration,
 } from "./types.js";
 
 export {

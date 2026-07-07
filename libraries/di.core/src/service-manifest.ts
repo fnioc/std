@@ -16,10 +16,8 @@ import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 import { OpenTokenRegistrationError } from "./errors.js";
 import type { ServiceProvider } from "./provider.js";
 import type {
-  ClassRegistration,
   Ctor,
   Factory,
-  FactoryRegistration,
   OpenRegistration,
   Registration,
   SealedManifest,
@@ -122,15 +120,12 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
   }
 
   /**
-   * Appends a scopeless `class`/`factory` base registration and returns the
-   * `.as(scope?)` continuation. `.as()` appends a fresh SCOPED copy so the
-   * array's last entry wins; a bare `.add(...)`/`.addFactory(...)` with no
-   * trailing `.as()` leaves the base (transient) registration in place.
+   * Appends a scopeless producer base registration and returns the `.as(scope?)`
+   * continuation. `.as()` appends a fresh SCOPED copy so the array's last entry
+   * wins; a bare `.add(...)`/`.addFactory(...)` with no trailing `.as()` leaves
+   * the base (transient) registration in place.
    */
-  #appendScoped(
-    token: Token,
-    base: ClassRegistration | FactoryRegistration,
-  ): AddBuilder<Scopes> {
+  #appendScoped(token: Token, base: Registration): AddBuilder<Scopes> {
     this.#append(token, base);
     return this.#scopedContinuation((scope) => this.#append(token, { ...base, scope }));
   }
@@ -207,11 +202,17 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     if (isOpenToken(token)) {
       return this.#appendOpenScoped(token, ctor as Ctor, signatures);
     }
+    // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
+    // carried EXPLICITLY: the `(...a) => new Ctor(...a)` wrapper reports `""` for
+    // `.name` and `0` for `.length`, so the missing-metadata signal and ctor-name
+    // diagnostics would silently regress if read off the wrapper.
+    const construct = ctor as Ctor;
     return this.#appendScoped(token, {
-      kind: "class",
-      ctor: ctor as Ctor,
+      produce: (...a: unknown[]) => new construct(...a),
       scope: undefined,
       signatures,
+      name: construct.name,
+      arity: construct.length,
     });
   }
 
@@ -220,13 +221,13 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
    * runtime form the transformer emits for an authored `add<I>(fn)` /
    * `addFactory<I>(fn)`, and what a plugin-less caller writes directly.
    *
-   * Parameter injection follows the metadata rule (see `ServiceProvider`): a
-   * factory WITH registration-carried signatures (the optional third arg, emitted
-   * inline by the transformer) has each parameter injected by its slot; a
-   * signature-less factory (the plugin-less escape hatch) is called with the live
-   * provider — type it `(sp: Resolver) => T` and `sp.resolve(...)` its own deps.
-   * Returns the `.as(scope?)` continuation so a factory caches at a named scope
-   * exactly like a class.
+   * Parameter injection follows the metadata rule (see `ServiceProvider`): each
+   * parameter is injected by its slot from the registration-carried signatures
+   * (the optional third arg, emitted inline by the transformer). A factory that
+   * wants the live provider declares it as an ordinary parameter (a provider-typed
+   * slot); a signature-less factory simply runs with no injected args — nothing is
+   * auto-supplied. Returns the `.as(scope?)` continuation so a factory caches at a
+   * named scope exactly like a class.
    *
    * The implementation signature admits the single-arg authoring form
    * (`addFactory<I>(fn)`) so the `@rhombus-std/di.transformer` overload merges onto it —
@@ -258,11 +259,15 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     if (isOpenToken(token)) {
       throw new OpenTokenRegistrationError(token, "addFactory");
     }
+    // The factory IS the producer. `arity` is 0 so a signature-less factory runs
+    // with no injected args (it never trips the missing-metadata signal — only a
+    // ctor needing args does).
     return this.#appendScoped(token, {
-      kind: "factory",
-      factory,
+      produce: factory,
       scope: undefined,
       signatures,
+      name: factory.name,
+      arity: 0,
     });
   }
 
@@ -288,7 +293,16 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     if (isOpenToken(token)) {
       throw new OpenTokenRegistrationError(token, "addValue");
     }
-    this.#append(token, { kind: "value", useValue: value });
+    // The value collapses to a producer that returns it verbatim. `scope` stays
+    // `undefined` (a value is always transient — no ownership/caching), so a
+    // value that is itself a `Promise` is returned raw through the normal path,
+    // never awaited (§"Async as values").
+    this.#append(token, {
+      produce: () => value,
+      scope: undefined,
+      name: "",
+      arity: 0,
+    });
   }
 
   /**

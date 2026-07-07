@@ -85,7 +85,9 @@ describe("the three add shapes", () => {
     }
     const services = new ServiceManifest<"singleton">();
     services.add(T.Db, Dep).as("singleton");
-    services.addFactory(T.Service, (s) => ({ dep: s.resolve<Dep>(T.Db) })).as("singleton");
+    // A factory that wants the live provider declares it as a parameter (a scope
+    // slot) — the auto-`sp` escape hatch is gone.
+    services.addFactory(T.Service, (s) => ({ dep: s.resolve<Dep>(T.Db) }), [[{ scope: true }]]).as("singleton");
 
     const root = services.build().createScope("singleton");
     const a = root.resolve<{ dep: Dep }>(T.Service);

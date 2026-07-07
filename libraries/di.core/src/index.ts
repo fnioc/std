@@ -43,16 +43,7 @@ export type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 export { ServiceManifestClass } from "./service-manifest.js";
 export type { ServiceManifest } from "./service-manifest.js";
 
-export type {
-  ClassRegistration,
-  Ctor,
-  Factory,
-  FactoryRegistration,
-  OpenRegistration,
-  Registration,
-  SealedManifest,
-  ValueRegistration,
-} from "./registrations.js";
+export type { Ctor, Factory, OpenRegistration, Producer, Registration, SealedManifest } from "./registrations.js";
 
 export type { Lifetime, Resolver, ResolveScope, ScopeFactory, ServiceProvider } from "./provider.js";
 
