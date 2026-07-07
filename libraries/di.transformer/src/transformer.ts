@@ -130,8 +130,13 @@ function lowerStatements(
 function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   const visit = (n: ts.Node): ts.Node => {
     const visited = ts.visitEachChild(n, visit, undefined);
-    if (ts.isCallExpression(visited) && isTokenlessResolveCall(visited)) {
-      return lowerResolveCall(visited, ctx);
+    if (ts.isCallExpression(visited)) {
+      if (isTokenlessResolveCall(visited)) {
+        return lowerResolveCall(visited, ctx);
+      }
+      if (isTokenlessIsServiceCall(visited)) {
+        return lowerIsServiceCall(visited, ctx);
+      }
     }
     return visited;
   };
@@ -155,6 +160,35 @@ function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) {return false;}
   if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
   return !call.arguments.length;
+}
+
+/**
+ * True when `call` is a tokenless `*.isService<I>()` predicate (1 type arg, 0
+ * value args). Distinct from the resolve family: it lowers to `isService("tok")`
+ * with NO Rule-2 singleton path and NO factory form — a predicate always wants
+ * the derived token, never the type's value.
+ */
+function isTokenlessIsServiceCall(call: ts.CallExpression): boolean {
+  const callee = call.expression;
+  if (!ts.isPropertyAccessExpression(callee)) {return false;}
+  if (callee.name.text !== "isService") {return false;}
+  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
+  return !call.arguments.length;
+}
+
+/**
+ * `*.isService<I>()` → `*.isService("<token-for-I>")`. The token is always
+ * derived (the predicate has no value semantics), so — unlike `lowerResolveCall`
+ * — there is no singleton-literal or factory branch. The explicit
+ * `isService<T>(token)` form carries a value argument and is left untouched.
+ */
+function lowerIsServiceCall(call: ts.CallExpression, ctx: LowerContext): ts.Expression {
+  const typeArg = call.typeArguments![0]!;
+  const token = deriveToken(ctx.checker.getTypeFromTypeNode(typeArg), ctx);
+  const tokenLiteral = token === undefined
+    ? ctx.factory.createNull()
+    : ctx.factory.createStringLiteral(token);
+  return ctx.factory.updateCallExpression(call, call.expression, undefined, [tokenLiteral]);
 }
 
 /**

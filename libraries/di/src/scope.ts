@@ -355,6 +355,17 @@ export class ServiceProviderClass<S extends string = string>
   }
 
   /**
+   * Token-based registration predicate — `true` when `token` has a registration
+   * (exact, or synthesizable from an open-generic template), `false` otherwise.
+   * The reference DI's `IServiceProviderIsService.IsService`; being token-based it
+   * also covers the keyed case. A pure probe: it does NOT construct, so a
+   * registered token whose dependencies are missing still reports `true`.
+   */
+  public isService(token: Token): boolean {
+    return this.#lookup(token) !== undefined;
+  }
+
+  /**
    * Returns a FACTORY for `type` rather than an instance. When `params` is
    * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must
    * resolve from the container (an unresolvable slot throws). When `params` is
@@ -736,6 +747,7 @@ export class ServiceProviderClass<S extends string = string>
         // Sync mode never yields a Pending — the spine throws on a cached one.
         return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
       },
+      isService: (depToken: Token): boolean => sp.#lookup(depToken) !== undefined,
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
       createScope: (...args: ["scoped"?] | [S]): ServiceProvider<S> =>

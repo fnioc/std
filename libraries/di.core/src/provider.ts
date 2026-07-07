@@ -61,6 +61,18 @@ export interface Resolver {
   tryResolve<T>(token: Token): T | undefined;
   tryResolve(token: Token): unknown;
   /**
+   * A token-based registration predicate — `true` when `token` would resolve
+   * (a registration exists, directly or via an open-generic closing), `false`
+   * otherwise. Mirrors the reference DI's `IServiceProviderIsService.IsService`
+   * (#23); being token-based, it also covers the keyed case in one method. Does
+   * NOT attempt construction — a registered token whose dependencies are missing
+   * still reports `true` (it IS a service; building it is a separate concern).
+   *
+   * The tokenless authoring form `isService<T>()` is the pure typing the
+   * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
+   */
+  isService(token: Token): boolean;
+  /**
    * Returns a FACTORY for `type` rather than an instance. When `params` is
    * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must
    * resolve from the container. When `params` is present, it is the complete
