@@ -8,8 +8,10 @@
 // load() is a no-op by default -- concrete providers override it.
 
 import type { IConfigurationProvider, ITryGetResult } from "@rhombus-std/config.core";
+import type { IChangeToken } from "@rhombus-std/primitives";
 import { KeyDelimiter } from "./abstractions/configuration-path";
 import { compareConfigurationKeys } from "./configuration-key-comparer";
+import { ConfigurationReloadToken } from "./configuration-reload-token";
 import { foldKey } from "./fold-key";
 
 /**
@@ -33,6 +35,25 @@ function segment(key: string, prefixLength: number): string {
 export abstract class ConfigurationProvider implements IConfigurationProvider {
   /** lowercased-key -> [original-cased key, value]. */
   protected readonly data = new Map<string, [key: string, value: string]>();
+
+  #reloadToken = new ConfigurationReloadToken();
+
+  /** The current reload token; fires when {@link onReload} runs. */
+  public getReloadToken(): IChangeToken {
+    return this.#reloadToken;
+  }
+
+  /**
+   * Fires the current reload token and swaps in a fresh one, so a later
+   * change is observable too. Concrete providers call this from {@link load}
+   * once their data has actually been refreshed from the source -- the base
+   * {@link load} no-op never calls it.
+   */
+  protected onReload(): void {
+    const previous = this.#reloadToken;
+    this.#reloadToken = new ConfigurationReloadToken();
+    previous.onReload();
+  }
 
   /** Case-insensitive lookup. */
   public tryGet(key: string): ITryGetResult<string> {

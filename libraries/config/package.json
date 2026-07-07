@@ -54,7 +54,8 @@
     "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
   },
   "dependencies": {
-    "@rhombus-std/config.core": "workspace:*"
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
     "@rhombus-toolkit/proxy-base": "^1.0.0"

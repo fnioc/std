@@ -47,5 +47,7 @@ export class EnvironmentVariablesConfigurationProvider extends ConfigurationProv
 
       this.set(transformedName.slice(prefix.length), value);
     }
+
+    this.onReload();
   }
 }

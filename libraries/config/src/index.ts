@@ -23,6 +23,7 @@ export * as configPath from "./abstractions/configuration-path";
 export { ConfigurationBuilder } from "./configuration-builder";
 export { compareConfigurationKeys } from "./configuration-key-comparer";
 export { ConfigurationProvider } from "./configuration-provider";
+export { ConfigurationReloadToken } from "./configuration-reload-token";
 export { ConfigurationRoot } from "./configuration-root";
 export { ConfigurationSection } from "./configuration-section";
 

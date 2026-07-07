@@ -10,6 +10,8 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@rhombus-std/config": "workspace:*"
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   }
 }
