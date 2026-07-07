@@ -35,7 +35,11 @@ export type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 // The concrete container impl. Consumers hold the `ServiceProvider` INTERFACE
 // (re-exported from types.js below); the class is exported for white-box use
 // (tests, advanced wiring) — never as the consumer-facing provider type.
-export { Scope, ServiceProviderClass } from "./scope.js";
+//
+// The internal `Scope` frame (cache + disposal + parent link) is deliberately NOT
+// exported: it is a pure implementation type, not public surface. A consumer sees
+// only the `ServiceProvider` interface a scope frame backs (#24).
+export { ServiceProviderClass } from "./scope.js";
 
 export type {
   ClassRegistration,

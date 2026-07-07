@@ -407,3 +407,85 @@ describe("resolveAsync<T>() tokenless lowering (parity)", () => {
     expect(output).toContain("scope.resolveAsync(\"./app:IFoo\")");
   });
 });
+
+// ── tryResolve<T>() lowering (parity with resolve<T>()) ──────────────────────
+
+describe("tryResolve<T>() tokenless lowering (parity)", () => {
+  test("bare-T: tryResolve<IFoo>() lowers to tryResolve(\"token\") exactly as resolve<IFoo>() would", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      const x = scope.tryResolve<IFoo>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.tryResolve(\"./app:IFoo\")");
+    // Same token derivation as the throwing form — only the method name differs.
+    const syncSrc = `
+      interface IFoo {}
+      declare const scope: any;
+      const y = scope.resolve<IFoo>();
+    `;
+    const { output: syncOutput } = transform(fixture(syncSrc));
+    expect(syncOutput).toContain("scope.resolve(\"./app:IFoo\")");
+  });
+
+  test("nested tryResolve<T>() (inside a function body) is still rewritten", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      function probe() {
+        return scope.tryResolve<IFoo>();
+      }
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.tryResolve(\"./app:IFoo\")");
+  });
+
+  test("explicit tryResolve<T>(token) with a value arg is left untouched", () => {
+    // A value argument means it is NOT the tokenless form — the type argument is
+    // preserved verbatim, exactly as the explicit resolve<T>(token) form is.
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      const x = scope.tryResolve<IFoo>("./app:IFoo");
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.tryResolve<IFoo>(\"./app:IFoo\")");
+  });
+});
+
+// ── isService<T>() lowering (token-based predicate) ──────────────────────────
+
+describe("isService<T>() tokenless lowering", () => {
+  test("bare-T: isService<IFoo>() lowers to isService(\"token\")", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      const ok = scope.isService<IFoo>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.isService(\"./app:IFoo\")");
+  });
+
+  test("nested isService<T>() (inside a function body) is still rewritten", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      function probe() {
+        return scope.isService<IFoo>();
+      }
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.isService(\"./app:IFoo\")");
+  });
+
+  test("explicit isService<T>(token) with a value arg is left untouched", () => {
+    const src = `
+      interface IFoo {}
+      declare const scope: any;
+      const ok = scope.isService<IFoo>("./app:IFoo");
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("scope.isService<IFoo>(\"./app:IFoo\")");
+  });
+});

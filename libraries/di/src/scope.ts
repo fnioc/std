@@ -162,8 +162,11 @@ function orderByArityDesc(
  * tagged registration whose frame is not open resolves to a fresh instance,
  * exactly like an untagged (transient) one. Frames are opened with
  * `createScope(name)`, never auto-created.
+ *
+ * INTERNAL — never exported from the package barrel (#24). A consumer holds only
+ * the `ServiceProvider` interface a frame backs, never the frame itself.
  */
-export class Scope {
+class Scope {
   /** Instances this scope owns and caches, keyed by token. */
   readonly cache: Map<Token, unknown> = new Map();
 
@@ -320,6 +323,46 @@ export class ServiceProviderClass<S extends string = string>
       );
     }
     return settle(this.#resolve<T>(token, this.#frame, [], true)) as Promise<T>;
+  }
+
+  /**
+   * Non-throwing resolve — the resolved instance, or `undefined` when `token` is
+   * UNREGISTERED (the reference DI's nullable `GetService` against `resolve`'s
+   * throwing `GetRequiredService`). Only an unregistered token softens to
+   * `undefined`; a registered token whose construction fails for another reason
+   * (missing dependency, cycle, async-only) throws exactly as `resolve` would —
+   * the registration probe (`#lookup`) is what distinguishes "not a service"
+   * from "a service that failed to build".
+   */
+  public tryResolve<T>(token: Token): T | undefined;
+  public tryResolve(token: Token): unknown;
+  public tryResolve<T>(token?: Token): T | undefined {
+    if (token === undefined) {
+      throw new TypeError(
+        "tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at "
+          + "runtime). Without it, resolve with an explicit token: "
+          + "tryResolve<T>(\"my:token\").",
+      );
+    }
+    if (this.#lookup(token) === undefined) {
+      return undefined;
+    }
+    const result = this.#resolve<T>(token, this.#frame, [], false);
+    if (isPending(result)) {
+      throw new AsyncResolutionRequiredError(token);
+    }
+    return result;
+  }
+
+  /**
+   * Token-based registration predicate — `true` when `token` has a registration
+   * (exact, or synthesizable from an open-generic template), `false` otherwise.
+   * The reference DI's `IServiceProviderIsService.IsService`; being token-based it
+   * also covers the keyed case. A pure probe: it does NOT construct, so a
+   * registered token whose dependencies are missing still reports `true`.
+   */
+  public isService(token: Token): boolean {
+    return this.#lookup(token) !== undefined;
   }
 
   /**
@@ -691,6 +734,20 @@ export class ServiceProviderClass<S extends string = string>
         }
         return settle(sp.#resolve<U>(depToken, owningFrame, stack, true)) as Promise<U>;
       },
+      tryResolve: <U>(depToken?: Token): U | undefined => {
+        if (depToken === undefined) {
+          throw new TypeError(
+            "tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token "
+              + "at runtime).",
+          );
+        }
+        if (sp.#lookup(depToken) === undefined) {
+          return undefined;
+        }
+        // Sync mode never yields a Pending — the spine throws on a cached one.
+        return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
+      },
+      isService: (depToken: Token): boolean => sp.#lookup(depToken) !== undefined,
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
       createScope: (...args: ["scoped"?] | [S]): ServiceProvider<S> =>

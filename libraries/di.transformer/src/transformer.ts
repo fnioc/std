@@ -113,40 +113,82 @@ function lowerStatements(
 }
 
 /**
- * Rewrite every tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` call (one
- * type argument, NO value argument) within `node` to its string-token form,
- * anywhere in the tree — resolution calls are not confined to top-level
- * statements. Both method names are lowered identically: a function-typed type
- * arg (`resolve<(a: A) => T>()`) is a FACTORY request and lowers to
- * `*.resolveFactory("<token-for-return-type>")` (there is no async factory
- * primitive at runtime, so `resolveAsync<(a: A) => T>()` collapses to the same
- * sync `resolveFactory` call — awaiting a non-Promise value is a no-op); any
- * other type arg lowers to `*.resolve("<token-for-I>")` / `*.resolveAsync("<token-for-I>")`,
- * preserving whichever method name the call started with. The explicit
- * `resolve<T>(token)` / `resolveAsync<T>(token)` forms carry a value argument
- * and are left untouched.
+ * Rewrite every tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` /
+ * `*.tryResolve<I>()` call (one type argument, NO value argument) within `node`
+ * to its string-token form, anywhere in the tree — resolution calls are not
+ * confined to top-level statements. All three method names are lowered
+ * identically: a function-typed type arg (`resolve<(a: A) => T>()`) is a FACTORY
+ * request and lowers to `*.resolveFactory("<token-for-return-type>")` (there is
+ * no async factory primitive at runtime, so `resolveAsync<(a: A) => T>()`
+ * collapses to the same sync `resolveFactory` call — awaiting a non-Promise value
+ * is a no-op); any other type arg lowers to `*.resolve("<token-for-I>")` /
+ * `*.resolveAsync("<token-for-I>")` / `*.tryResolve("<token-for-I>")`, preserving
+ * whichever method name the call started with. The explicit
+ * `resolve<T>(token)` / `resolveAsync<T>(token)` / `tryResolve<T>(token)` forms
+ * carry a value argument and are left untouched.
  */
 function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   const visit = (n: ts.Node): ts.Node => {
     const visited = ts.visitEachChild(n, visit, undefined);
-    if (ts.isCallExpression(visited) && isTokenlessResolveCall(visited)) {
-      return lowerResolveCall(visited, ctx);
+    if (ts.isCallExpression(visited)) {
+      if (isTokenlessResolveCall(visited)) {
+        return lowerResolveCall(visited, ctx);
+      }
+      if (isTokenlessIsServiceCall(visited)) {
+        return lowerIsServiceCall(visited, ctx);
+      }
     }
     return visited;
   };
   return visit(node);
 }
 
+/** The tokenless resolution methods the rewrite recognizes and lowers. */
+const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
+  "resolve",
+  "resolveAsync",
+  "tryResolve",
+]);
+
 /**
- * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()`
- * (1 type arg, 0 value args).
+ * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` /
+ * `*.tryResolve<I>()` (1 type arg, 0 value args).
  */
 function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {return false;}
-  if (callee.name.text !== "resolve" && callee.name.text !== "resolveAsync") {return false;}
+  if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) {return false;}
   if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
   return !call.arguments.length;
+}
+
+/**
+ * True when `call` is a tokenless `*.isService<I>()` predicate (1 type arg, 0
+ * value args). Distinct from the resolve family: it lowers to `isService("tok")`
+ * with NO Rule-2 singleton path and NO factory form — a predicate always wants
+ * the derived token, never the type's value.
+ */
+function isTokenlessIsServiceCall(call: ts.CallExpression): boolean {
+  const callee = call.expression;
+  if (!ts.isPropertyAccessExpression(callee)) {return false;}
+  if (callee.name.text !== "isService") {return false;}
+  if (!call.typeArguments || call.typeArguments.length !== 1) {return false;}
+  return !call.arguments.length;
+}
+
+/**
+ * `*.isService<I>()` → `*.isService("<token-for-I>")`. The token is always
+ * derived (the predicate has no value semantics), so — unlike `lowerResolveCall`
+ * — there is no singleton-literal or factory branch. The explicit
+ * `isService<T>(token)` form carries a value argument and is left untouched.
+ */
+function lowerIsServiceCall(call: ts.CallExpression, ctx: LowerContext): ts.Expression {
+  const typeArg = call.typeArguments![0]!;
+  const token = deriveToken(ctx.checker.getTypeFromTypeNode(typeArg), ctx);
+  const tokenLiteral = token === undefined
+    ? ctx.factory.createNull()
+    : ctx.factory.createStringLiteral(token);
+  return ctx.factory.updateCallExpression(call, call.expression, undefined, [tokenLiteral]);
 }
 
 /**

@@ -146,5 +146,19 @@ declare module "@rhombus-std/di.core" {
      * factory form. Never runs post-transform.
      */
     resolveAsync<F extends (...args: any[]) => any>(): Promise<Awaited<ReturnType<F>>>;
+    /**
+     * Tokenless non-throwing resolve — `tryResolve<IFoo>()`. Returns the instance
+     * or `undefined` when unregistered. The transformer lowers it to an
+     * explicit-token `tryResolve("token")` before runtime — the same rewrite
+     * `resolve<T>()` gets, keyed on `tryResolve`. Never runs post-transform.
+     */
+    tryResolve<T>(): T | undefined;
+    /**
+     * Tokenless registration predicate — `isService<IFoo>()`. `true` when `IFoo`
+     * would resolve. The transformer lowers it to an explicit-token
+     * `isService("token")` before runtime (the token is always derived — no
+     * singleton or factory form). Never runs post-transform.
+     */
+    isService<T>(): boolean;
   }
 }

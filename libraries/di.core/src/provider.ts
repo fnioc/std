@@ -42,6 +42,37 @@ export interface Resolver {
   resolveAsync<T>(token: Token): Promise<T>;
   resolveAsync(token: Token): Promise<unknown>;
   /**
+   * Non-throwing resolve — returns the resolved instance, or `undefined` when
+   * `token` is UNREGISTERED. Mirrors the reference DI's nullable `GetService<T>`
+   * against `resolve`'s throwing `GetRequiredService` (#25). A bare nullable, not
+   * a tuple: a resolved service is always a truthy instance, so `undefined`
+   * unambiguously means "not registered".
+   *
+   * Only an unregistered TOKEN yields `undefined`. A registered token whose
+   * construction fails for another reason (a missing dependency, a cycle, an
+   * async-only construction) throws exactly as `resolve` would — `tryResolve`
+   * softens the "is it registered?" miss, nothing else.
+   *
+   * The tokenless authoring form `tryResolve<T>()` is the pure typing the
+   * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
+   *   - `tryResolve<T>(token)` — explicit token, typed nullable return.
+   *   - `tryResolve(token)`    — explicit token, `unknown` return (dynamic).
+   */
+  tryResolve<T>(token: Token): T | undefined;
+  tryResolve(token: Token): unknown;
+  /**
+   * A token-based registration predicate — `true` when `token` would resolve
+   * (a registration exists, directly or via an open-generic closing), `false`
+   * otherwise. Mirrors the reference DI's `IServiceProviderIsService.IsService`
+   * (#23); being token-based, it also covers the keyed case in one method. Does
+   * NOT attempt construction — a registered token whose dependencies are missing
+   * still reports `true` (it IS a service; building it is a separate concern).
+   *
+   * The tokenless authoring form `isService<T>()` is the pure typing the
+   * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
+   */
+  isService(token: Token): boolean;
+  /**
    * Returns a FACTORY for `type` rather than an instance. When `params` is
    * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must
    * resolve from the container. When `params` is present, it is the complete

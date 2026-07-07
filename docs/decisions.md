@@ -290,6 +290,7 @@ that's deferred, see below).
 - **Deferred to #50:** a JS-native reactive surface (`EventTarget`/`Observable`) as
   an alternative or additional subscription shape. The callback-based `IChangeToken`
   model above is v0's ONLY reactive surface.
+
 ## 9. The registration builder lives in `di.core`; `build()` is a `di` extension — #36, #22
 
 Mirrors the reference DI split where the **abstractions** package ships the concrete
@@ -328,3 +329,34 @@ than the reference, which ships a concrete collection in its abstractions).
   implements it. All public signatures accept/return the interface; the class stays
   exported so augmentations can patch its prototype. The constructible `ServiceManifest`
   **value** + its ctor type live in `di` (alongside the `build()` patch).
+
+## 10. Scope is the provider (deliberate MEDI divergence); public surface is interface-only; the injectable provider is scope-generic-free — #24
+
+The reference DI models a scope as a **two-object** pattern: `IServiceScope : IDisposable`
+owns an `IServiceProvider`, and an `IServiceScopeFactory.CreateScope()` mints the pair. We
+**collapse that**: our scoped provider **is** the disposal boundary. `createScope(name)`
+returns a fresh `ServiceProvider` wired to a new scope frame (cache + dispose-list, parented
+to the current frame); registrations are shared tree-wide, only the frame is new. No
+separate `IServiceScope` wrapper exists. We mirror the reference's scope **semantics** (a
+disposable boundary that bounds, caches, and cleans up, opened by `createScope`), not its
+two-object **shape** — consistent with our other deliberate collapses (uniform scope tags,
+the `Options<T>` accessor collapse §4.2).
+
+Two rules fall out, both held to and audited across `di` + `di.core`:
+
+- **The public surface is interface-only — no concrete class ever leaks to a consumer.**
+  `build()`, `createScope()`, the resolve/tryResolve returns, and the scope factory are all
+  typed as the `di.core` interfaces (`ServiceProvider`, `Resolver`, `ScopeFactory`), never
+  the concrete `ServiceProviderClass` / `ServiceManifestClass`. The internal `Scope` frame
+  (a pure cache + disposal + parent node) is **no longer exported** from `di`'s barrel — it
+  is an implementation type, and it never appears in any public signature (all references to
+  it are `#`-private on the impl class).
+- **The consumer-injectable provider is scope-generic-free.** The surface a consumer injects
+  (especially via hosting) is the **non-generic `Resolver`** — `resolve` / `resolveAsync` /
+  `resolveFactory` / `tryResolve` / `isService`, all scope-agnostic — the `IServiceProvider`
+  analog. Injected code cannot name the scope-tag union `S` (it has no idea which tags the
+  application declared), so the resolution surface must not carry it. The `<S>` generic lives
+  **only** on `ScopeFactory<S>` (`createScope`), the scope-**opening** surface that setup /
+  hosting code holds — mirroring the reference's separate `IServiceScopeFactory`.
+  `ServiceProvider<S>` composes both (`Resolver` + `ScopeFactory<S>` + disposal), so the
+  application holds the full surface while an injected dependency sees only `Resolver`.
