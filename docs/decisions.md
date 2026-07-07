@@ -13,13 +13,14 @@ edge-for-edge — and only **collapse** a distinction later, after the fact, onc
 unjustified in a TS / no-reflection / no-shared-framework context. **Do not pre-collapse.**
 
 **Strict applies to the dependency graph** (package boundaries + edges) — that is non-negotiable.
-The **API surface *within* a package may deviate** where our scope system or TS/BUN justifies it
+The **API surface _within_ a package may deviate** where our scope system or TS/BUN justifies it
 (e.g. §4.2 collapses IOptions+IOptionsSnapshot). Mirror faithfully on the first pass — **including
 where it feels un-idiomatic in TS/BUN** — and collapse only after the fact.
 
 Authoritative graph: [`reference/me-extensions-dependencies.md`](reference/me-extensions-dependencies.md).
 
 Consequences already visible:
+
 - **`@rhombus-std/primitives` is required** — the universal leaf (`IChangeToken`,
   `StringValues`). The live-reload / change-token mechanism (#6) belongs there, not in
   config/options.
@@ -42,6 +43,13 @@ Consequences already visible:
 ---
 
 ## 1. DI is interface-first (MEDI parity) — #5, #2 · PR #27 (merged)
+
+> **Superseded in part by §9.** §1 (and the package descriptions) framed `di.core`
+> as a **types-only** abstractions substrate. §9 reverses that: `di.core` now ships
+> the concrete registration builder `ServiceManifestClass` at runtime, mirroring the
+> reference DI Abstractions package that carries the concrete `ServiceCollection`.
+> The interface-first rule below is unchanged — public signatures still use the
+> `ServiceManifest` / `ServiceProvider` interfaces.
 
 Consumers program against **interfaces**, mirroring MEDI where you hold
 `IServiceProvider`, never the concrete `ServiceProvider`.
@@ -95,27 +103,28 @@ Reasons to build it, premise-independent:
 
 ### 4.1 Package layout (mirror MEO's, incl. the dependency layering)
 
-| reference | ours | depends on |
-|---|---|---|
-| `ME.Options` (MEO) | `@rhombus-std/options` — a 4th family | `@rhombus-std/di.core` (MEDI.Abstractions) |
-| `ME.Options.ConfigurationExtensions` | `@rhombus-std/options.augmentations` | `options` + `@rhombus-std/config.core` (MEC.Abstractions) + config's `bindConfig` binder |
+| reference                            | ours                                  | depends on                                                                               |
+| ------------------------------------ | ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `ME.Options` (MEO)                   | `@rhombus-std/options` — a 4th family | `@rhombus-std/di.core` (MEDI.Abstractions)                                               |
+| `ME.Options.ConfigurationExtensions` | `@rhombus-std/options.augmentations`  | `options` + `@rhombus-std/config.core` (MEC.Abstractions) + config's `bindConfig` binder |
 
 - **`options` core:** pure `Options<T>` (`{ readonly value: T; subscribe?(cb): Unsubscribable }`)
-  + monitor/snapshot semantics. **Config-unaware** — knows only the DI abstractions,
-  exactly like MEO → MEDI.Abstractions.
+  - monitor/snapshot semantics. **Config-unaware** — knows only the DI abstractions,
+    exactly like MEO → MEDI.Abstractions.
 - **`options.augmentations`:** ALL the side-effect `declare module` augments live here —
   augments `di.core` (adds `addOptions<T>()` to the authoring surface) **and** config
   (section → `Options<T>` binding). Mirrors `Options.ConfigurationExtensions`, and it is
-  the *extensions* package — not core — that references the config abstractions.
+  the _extensions_ package — not core — that references the config abstractions.
 
 ### 4.2 Accessor model — collapse IOptions+IOptionsSnapshot (scope-justified); keep the monitor
 
 > **Adopted** (per the strict-graph / free-API rule in §0): the singleton-vs-scoped accessor
 > split is a fixed-lifetime reference-DI artifact; our open-ended scopes + registration-time lifetime
-> + ancestor-walk (§3) erase it, so `IOptions` + `IOptionsSnapshot` collapse to **one `Options<T>`**
-> (lifetime chosen at registration). The **reactive `IOptionsMonitor` is orthogonal**
-> (change-notification, not lifetime) and stays a distinct capability, tied to `IChangeToken` / #6.
-> Package boundaries + deps remain exact ME (§4.1).
+>
+> - ancestor-walk (§3) erase it, so `IOptions` + `IOptionsSnapshot` collapse to **one `Options<T>`**
+>   (lifetime chosen at registration). The **reactive `IOptionsMonitor` is orthogonal**
+>   (change-notification, not lifetime) and stays a distinct capability, tied to `IChangeToken` / #6.
+>   Package boundaries + deps remain exact ME (§4.1).
 
 - **One** `Options<T>` type. `IOptions` vs `IOptionsSnapshot` is not two types — it is the
   **registration lifetime** (ancestor-walk, §3).
@@ -189,7 +198,7 @@ validators until a consumer asks for one.
 
 ## 6. Open / not yet decided
 
-- **Live-reload / monitoring (#6)** sub-decisions — *leaning*: type-driven opt-in;
+- **Live-reload / monitoring (#6)** sub-decisions — _leaning_: type-driven opt-in;
   dependency-free structural observable (no rxjs); lazy / source-emits (C2) over a
   background file-watch (C1). **Not finalized.** Surfaces as the `Options<T>.subscribe?`
   capability (§4.2).
@@ -281,3 +290,41 @@ that's deferred, see below).
 - **Deferred to #50:** a JS-native reactive surface (`EventTarget`/`Observable`) as
   an alternative or additional subscription shape. The callback-based `IChangeToken`
   model above is v0's ONLY reactive surface.
+## 9. The registration builder lives in `di.core`; `build()` is a `di` extension — #36, #22
+
+Mirrors the reference DI split where the **abstractions** package ships the concrete
+registration collection (`ServiceCollection`) and the **runtime** package supplies the
+provider-building entry as an extension — not a method on the collection. This
+supersedes §1's "`di.core` is types-only" framing (the original rule was _stricter_
+than the reference, which ships a concrete collection in its abstractions).
+
+- **The concrete builder `ServiceManifestClass` moves into `di.core`.** It collects
+  registrations (`add` / `addFactory` / `addValue`) and seals them (`seal()` → an
+  immutable `SealedManifest` snapshot). `di.core` therefore ships **runtime** now (the
+  builder, the slot/token helpers, and the registration-time errors `DiError` +
+  `OpenTokenRegistrationError`). The resolution engine (`ServiceProviderClass`, scopes)
+  and the resolution-time errors stay in `di`.
+- **`build()` is split.** The **sealing** half is the collection's own concern
+  (`di.core`). The **engine-constructing** half — turning the sealed snapshot into a
+  `ServiceProvider` — is a `di` extension: importing `@rhombus-std/di`
+  **prototype-patches** `build()` onto `ServiceManifestClass` at load time
+  (`this.seal()` → `new ServiceProviderClass(...)`). `di.core`'s own `build()` is a stub
+  that throws "requires the `@rhombus-std/di` runtime". This is the same prototype-patch
+  mechanism a cross-package fluent-authoring augmentation uses (see §0); `di` uses it for
+  its own `build()`.
+- **Runtime identity is load-bearing.** `di` keeps `@rhombus-std/di.core` **external** in
+  its JS bundle (not inlined), so the `ServiceManifestClass` `di` patches and the one
+  cross-package augmentations patch are the **same object**. A private inlined copy would
+  fork the identity and break the patch — the same reason config keeps providers external
+  (§0) and the reason di.core stays external in the rolled `.d.ts` (§1).
+- **Authoring guidance flips to augmentations.** `di.core`'s `authoring.ts` now documents
+  the preferred cross-package fluent shape as an **extension-method augmentation**
+  (`declare module` onto the interface + prototype-patch the class), matching the §0
+  directive and how `config` adds `addJsonFile` to `ConfigurationBuilder`. A plain free
+  function still works for callers who prefer it.
+- **Registration surface is an interface (#22).** `ServiceManifest` is the public
+  authoring **interface** (`di.core`), bound to the concrete provider `build()` returns;
+  `ServiceManifestClass` (the ME `IServiceCollection`-vs-`ServiceCollection` analog)
+  implements it. All public signatures accept/return the interface; the class stays
+  exported so augmentations can patch its prototype. The constructible `ServiceManifest`
+  **value** + its ctor type live in `di` (alongside the `build()` patch).

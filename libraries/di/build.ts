@@ -1,17 +1,19 @@
 // Build @rhombus-std/di for publication.
 //
-// Two outputs. @rhombus-std/di.core is now a PURE-TYPES package — di's runtime (the slot
-// builders, DepSlot guards, and token grammar) lives in di's OWN source, so the
-// JS bundle carries no @rhombus-std/di.core code at all; only core's TYPES are referenced,
-// and they are inlined into the rolled-up .d.ts so the published artifacts have
-// no @rhombus-std/di.core import.
+// Two outputs. @rhombus-std/di.core now ships RUNTIME (the slot/token helpers,
+// the registration builder, the registration errors). It is kept EXTERNAL from
+// di's JS bundle — NOT inlined — so the concrete `ServiceManifestClass` has ONE
+// runtime identity: di prototype-patches `build()` onto that class and
+// cross-package augmentations patch it too, so a private inlined copy would fork
+// the identity and break both. (Same reason di.core stays external in the .d.ts.)
 //
-//   1. dist/index.js   — `bun build` bundles the ESM entry. di imports only TYPES
-//      from @rhombus-std/di.core (they erase); `assertNever` is a local 2-liner;
-//      @rhombus-toolkit/func is type-only and erases. Nothing is externalized.
-//   2. dist/index.d.ts — rollup-plugin-dts rolls the public type surface into one
-//      declaration file, inlining @rhombus-std/di.core's (and the type-only
-//      @rhombus-toolkit) types so the published d.ts has no external import.
+//   1. dist/index.js   — `bun build` bundles the ESM entry with @rhombus-std/di.core
+//      external (re-imported at runtime); `assertNever` is a local 2-liner;
+//      @rhombus-toolkit/func is type-only and erases.
+//   2. dist/index.d.ts — rollup-plugin-dts rolls di's own public types into one
+//      declaration file, re-exporting @rhombus-std/di.core's types FROM di.core
+//      (external, for the augmentation module identity); the type-only
+//      @rhombus-toolkit types stay inlined.
 
 import { spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
@@ -23,14 +25,14 @@ const ENTRY = join(PKG_ROOT, "src", "index.ts");
 
 rmSync(DIST, { recursive: true, force: true });
 
-// 1. JS bundle — core inlined, ESM, node target.
+// 1. JS bundle — @rhombus-std/di.core EXTERNAL (shared runtime identity), ESM,
+//    node target. The only local runtime helper (`assertNever`) is inlined.
 const js = await Bun.build({
   entrypoints: [ENTRY],
   outdir: DIST,
   target: "node",
   format: "esm",
-  // No external: @rhombus-std/di.core must be bundled; the only runtime helper
-  // (`assertNever`) is a local 2-liner (func is type-only and erases).
+  external: ["@rhombus-std/di.core"],
 });
 if (!js.success) {
   for (const log of js.logs) console.error(log);

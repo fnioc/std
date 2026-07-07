@@ -5,15 +5,15 @@
 // written for a human reading a stack trace at the moment a graph fails to
 // resolve.
 
+import { DiError } from "@rhombus-std/di.core";
 import type { DepSlot, Token } from "@rhombus-std/di.core";
 
-/** Base class for every error the container raises. */
-export class DiError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = new.target.name;
-  }
-}
+// The error-taxonomy root `DiError` and the registration-time
+// `OpenTokenRegistrationError` live in `@rhombus-std/di.core` (raised by the
+// registration builder there). di re-exports them so the whole taxonomy stays
+// reachable through one `@rhombus-std/di` import; the resolution-time errors
+// below extend the shared `DiError` root.
+export { DiError, OpenTokenRegistrationError } from "@rhombus-std/di.core";
 
 /**
  * A token was requested but no registration exists for it anywhere in the
@@ -140,29 +140,6 @@ export class OpenTokenResolutionError extends DiError {
         + `($N). Close the template first — resolve a concrete closing like `
         + `"base<arg>" (see closeToken / substituteToken), not the template `
         + `itself.`,
-    );
-  }
-}
-
-/**
- * An open template token was passed to a registration method that cannot
- * accept one: `addValue`/`addFactory` (open registrations are class-only), or
- * `add` with a template whose type arguments are not ALL holes (v1 forbids
- * mixing concrete args and holes in the service token).
- */
-export class OpenTokenRegistrationError extends DiError {
-  public constructor(
-    public readonly token: Token,
-    public readonly method: "add" | "addFactory" | "addValue",
-  ) {
-    super(
-      method === "add"
-        ? `Cannot register open template "${token}": every type argument of `
-          + `an open service token must be a hole ($N). Make every argument `
-          + `a hole, or close the token fully.`
-        : `Cannot register open template "${token}" with ${method}(): open `
-          + `registrations are class-only. Register a class with `
-          + `add("${token}", MyClass), or close the token first.`,
     );
   }
 }

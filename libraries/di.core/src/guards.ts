@@ -1,8 +1,10 @@
 // DepSlot type guards — the runtime discriminators the resolver uses to tell
-// slot kinds apart. Relocated from @rhombus-std/di.core (now a pure-types package): the
-// guards are runtime values, so they belong with the engine that runs them.
+// slot kinds apart. Part of di.core's slot/token ABI runtime: the guards
+// discriminate `DepSlot` (a di.core type), so they belong with the ABI they
+// describe. The engine (`@rhombus-std/di`) and the registration builder both
+// consume them.
 
-import type { DepSlot, FactoryRef, LiteralRef, ScopeRef, TypeArgRef, Union } from "@rhombus-std/di.core";
+import type { DepSlot, FactoryRef, LiteralRef, ScopeRef, TypeArgRef, Union } from "./types.js";
 
 /** True when `slot` is a `FactoryRef` (carries a `.type` token). */
 export function isFactoryRef(slot: DepSlot): slot is FactoryRef {

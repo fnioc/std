@@ -1,19 +1,27 @@
-// The type-level authoring surface a LIBRARY AUTHOR depends on to type a
-// registration setup function WITHOUT pulling the `@rhombus-std/di` runtime. Every
-// export here is pure type-level machinery — it erases completely.
+// The type-level authoring surface a LIBRARY AUTHOR programs against to
+// contribute registrations WITHOUT pulling the `@rhombus-std/di` runtime. The
+// interface machinery here erases completely; the concrete `ServiceManifestClass`
+// that implements it ships alongside (runtime) in this same package.
 //
-// A lib author writes a free function that contributes registrations to a
-// caller-owned manifest:
+// PREFERRED authoring shape — an EXTENSION-METHOD augmentation (the §0
+// directive: ME extension methods become fluent side-effect augmentations). A
+// cross-package fluent author `declare module`s the method onto the interface
+// below AND prototype-patches the concrete `ServiceManifestClass` at import
+// time, so a caller writes `services.addMyThing(...)` fluently:
 //
-//   import type { ServiceManifest } from "@rhombus-std/di.core";
-//   export function addMyServices(sc: ServiceManifest<"singleton">): void {
-//     sc.add("pkg:IThing", Thing, [["pkg:IDep"]]).as("singleton");
+//   // my-augmentation.ts (side-effect module, "sideEffects": true)
+//   import { ServiceManifestClass } from "@rhombus-std/di.core";
+//   declare module "@rhombus-std/di.core" {
+//     interface ServiceManifestBase<Scopes extends string> {
+//       addMyThing(): this;
+//     }
 //   }
+//   ServiceManifestClass.prototype.addMyThing = function () { … return this; };
 //
-// The application supplies a real `@rhombus-std/di` `ServiceManifest` value; its class
-// structurally satisfies the `ServiceManifestBase` interface below. Slots are
-// authored as plain data literals typed by `DepSlot` — no runtime helper import
-// is needed.
+// This mirrors how `@rhombus-std/config` adds `addJsonFile` to
+// `ConfigurationBuilder`, and depends on di.core ALONE — never the di runtime.
+// A plain free function (`addMyThing(services)`) still works for callers who
+// prefer it; slots are authored as plain `DepSlot` data literals either way.
 
 import type { Ctor, Func } from "@rhombus-toolkit/func";
 import type { DepSlot, Token } from "./types.js";
@@ -46,9 +54,9 @@ export interface AddBuilder<Scopes extends string> {
 
 /**
  * The AUTHORING INTERFACE for the registration collection — the base surface a
- * lib author types a setup function against, and the interface `@rhombus-std/di`'s
- * `ServiceManifestClass` implements. It names the three runtime registration
- * methods (`add` / `addFactory` / `addValue`) plus `build`.
+ * lib author types a setup function against, and the interface the concrete
+ * `ServiceManifestClass` (in this same package) implements. It names the three
+ * runtime registration methods (`add` / `addFactory` / `addValue`) plus `build`.
  *
  * It is also the interface-first public surface a di consumer holds: di's public
  * `ServiceManifest` type is `ServiceManifestBase<S, ServiceProvider<S>>` (not the
@@ -93,20 +101,9 @@ export interface ServiceManifestBase<
   build(): Provider;
 }
 
-/**
- * The full public authoring TYPE — currently identical to `ServiceManifestBase`,
- * kept as its own name for the surface a lib author's setup function is typed
- * against (the pre-#3 shape intersected this with the per-scope
- * `add${ProperCase<K>}` methods minted from `S`; `add(C).as("scope")` is the
- * only registration form now).
- */
-export interface ServiceManifest<
-  Scopes extends string = "singleton",
-  Provider = unknown,
-> extends ServiceManifestBase<Scopes, Provider> {}
-
-// The static / constructor side of the public `ServiceManifest` — the `new
-// <S>() => ServiceManifest<S>` signature — is a RUNTIME concern (it describes
-// constructing a concrete class), not an authoring contract. It lives in
-// `@rhombus-std/di` as `ServiceManifestCtor`, alongside the `ServiceManifestClass`
-// it constructs.
+// The public authoring INTERFACE `ServiceManifest<S>` — `ServiceManifestBase`
+// bound to the concrete `ServiceProvider<S>` that `build()` returns — is defined
+// in `./service-manifest.ts` alongside the `ServiceManifestClass` that implements
+// it. The static / constructor side (`ServiceManifestCtor`) and the constructible
+// `ServiceManifest` VALUE are a RUNTIME concern and live in `@rhombus-std/di`,
+// which also patches `build()` onto the concrete class's prototype.

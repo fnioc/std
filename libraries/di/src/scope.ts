@@ -22,10 +22,10 @@
 // resolves transiently (a fresh instance) instead.
 
 import type { DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, Union } from "@rhombus-std/di.core";
+import { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
+import { closeToken, isOpenToken, parseToken, substituteSignatures } from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
 import { assertNever } from "./assert.js";
-import { isFactoryRef, isLiteralRef, isScopeRef, isTypeArgRef, isUnionSlot } from "./guards.js";
-import { closeToken, isOpenToken, parseToken, substituteSignatures } from "./tokens.js";
 
 import {
   AsyncDisposalRequiredError,

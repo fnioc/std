@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.core",
   "version": "10.1.0",
-  "description": "The pure-types ioc abstractions substrate: the dependency-signature data format, the slot/token type surface, and the authoring type machinery a library author depends on to author registrations without the di runtime. Types only — zero runtime, zero dependencies.",
+  "description": "The ioc abstractions substrate: the dependency-signature data format, the slot/token surface + helpers, and the concrete registration builder (ServiceManifest) a library author depends on to author registrations without the di resolution engine. Zero dependencies.",
   "keywords": [
     "dependency-injection",
     "di",
@@ -15,13 +15,16 @@
     "directory": "libraries/di.core"
   },
   "type": "module",
+  "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
+      "bun": "./src/index.ts",
       "built": "./dist/index.d.ts",
       "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
@@ -34,11 +37,13 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
+    "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.d.ts"
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
       }
     }
   },
