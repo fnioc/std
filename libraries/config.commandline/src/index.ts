@@ -1,19 +1,21 @@
 // Public entry point for @rhombus-std/config.commandline.
 //
 // Importing this module installs the `addCommandLine` sugar method onto
-// `ConfigurationBuilder` via the extension-method-mimicking augmentation
-// pattern (TS declaration merging + a runtime prototype assignment). A
+// `ConfigurationBuilder` AND `ConfigurationManager` via the
+// extension-method-mimicking augmentation pattern (TS declaration merging +
+// a runtime prototype assignment) -- the reference extension method targets
+// IConfigurationBuilder, which ConfigurationManager implements too. A
 // consumer who never names a runtime symbol from this package (only wants
 // the sugar) needs a bare side-effect import: `import
 // "@rhombus-std/config.commandline";`.
 //
 // `@rhombus-std/config` is a peerDependency, kept external in this package's
-// bundle (see build.ts/rollup.dts.mjs) -- so the `ConfigurationBuilder` this
-// module patches is the SAME class instance the consumer's own
-// `@rhombus-std/config` import resolves to, not a private inlined copy.
+// bundle (see build.ts/rollup.dts.mjs) -- so the classes this module patches
+// are the SAME class instances the consumer's own `@rhombus-std/config`
+// import resolves to, not a private inlined copy.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import type { IndexedSection } from "@rhombus-std/config.core";
+import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
+import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
 import { applyAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { CommandLineConfigurationSourceOptions } from "./command-line-configuration-source";
@@ -44,20 +46,42 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
+// Same declare-merge-onto-the-declaring-module reasoning as above -- see the
+// "configuration-manager-subpath" note in @rhombus-std/config's package.json.
+declare module "@rhombus-std/config/configuration-manager" {
+  interface ConfigurationManager {
+    /**
+     * Registers a command-line configuration source over `args` (typically
+     * `process.argv.slice(2)`), optionally with `switchMappings` for
+     * short-switch (`-x`) support. See {@link CommandLineConfigurationSource}
+     * for construction-time validation and {@link CommandLineConfigurationProvider}
+     * for the parse behavior.
+     */
+    addCommandLine(
+      args: readonly string[],
+      switchMappings?: CommandLineConfigurationSourceOptions["switchMappings"],
+    ): this;
+  }
+}
+
 // One named object literal mirroring the reference `CommandLineConfigurationExtensions`
-// static class (docs §28), installed as a prototype method AND exported so the
-// member is the standalone form.
+// static class (docs §28), installed as a prototype method on BOTH classes
+// AND exported so the member is the standalone form. `TBuilder` is bounded by
+// "has an add() that returns itself" rather than pinned to
+// ConfigurationBuilder<T> -- see @rhombus-std/config's memory/index.ts for
+// the full rationale.
 export const CommandLineConfigurationExtensions = {
-  addCommandLine<T>(
-    builder: ConfigurationBuilder<T>,
+  addCommandLine<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+    builder: TBuilder,
     args: readonly string[],
     switchMappings?: CommandLineConfigurationSourceOptions["switchMappings"],
-  ): ConfigurationBuilder<T> {
+  ): TBuilder {
     return builder.add(new CommandLineConfigurationSource(args, { switchMappings }));
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
 applyAugmentations(ConfigurationBuilder, CommandLineConfigurationExtensions);
+applyAugmentations(ConfigurationManager, CommandLineConfigurationExtensions);
 
 export { CommandLineConfigurationProvider } from "./command-line-configuration-provider";
 export { CommandLineConfigurationSource } from "./command-line-configuration-source";

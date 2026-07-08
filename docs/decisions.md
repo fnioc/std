@@ -1209,3 +1209,122 @@ already matched — ME's is `AddFilter` on both receivers.)
 **Still standalone-only, permanently:** `tryGetValue` (`IMemoryCache`) — a method form would clash
 with `IMemoryCache`'s own `tryGetValue` member and, at runtime, overwrite the implementation the
 augmentation wraps (unchanged from §22).
+
+## 30. `colonAndDotVariableNameTransformation` — a second env variable-name transform
+
+The default env transform only ever produces `:` delimiters. ME ships a second stock
+transform beside the default one for names that also want a `.` delimiter; the port had no
+equivalent.
+
+- **`colonAndDotVariableNameTransformation`** (`config.env/environment-variables-configuration-source.ts`)
+  replaces every `___` with `.`, then every remaining `__` with `:`. The `___` pass MUST run
+  first — reversing the order would consume two of every three underscores in a `___` run as a
+  `:`, leaving a stray `_` where a `.` belonged. Both passes are ordinary non-overlapping
+  left-to-right `replaceAll` scans; a run of underscores is always consumed greedily from the
+  left, so a run of four is one triple plus a literal trailing underscore (`._`), never two
+  colons — verified equivalent to ME's own character-by-character scan for any run length, not
+  just the common cases.
+- Exported alongside `defaultVariableNameTransformation` from the package barrel; usable
+  directly as a source's `variableNameTransformation` option, no wiring needed.
+- **Housekeeping folded in here:** this pass also scrubbed three comments in `config.core`/`config`
+  that named the reference runtime directly instead of using the repo's ME shorthand (naming-taboo
+  hygiene, no behavior change).
+
+## 31. Env prefix is normalized through `variableNameTransformation` before matching
+
+`EnvironmentVariablesConfigurationProvider` matched `source.prefix` against already-transformed
+variable names but never ran the prefix itself through the same transform. ME transforms the
+prefix once (in its constructor); a caller porting an ME-style prefix spelled in the raw,
+pre-transform form (e.g. `Logging__`) silently matched nothing here — an empty config with no
+error.
+
+- **Fix:** `load()` now computes `variableNameTransformation(prefix)` once per call and matches
+  against that, instead of the raw `prefix` field (`config.env/environment-variables-configuration-provider.ts`).
+  Recomputed per `load()`, not cached at construction, because the source's `prefix` and
+  `variableNameTransformation` fields are both mutable (§9-adjacent — matches this file's existing
+  "the source is live, not frozen" test coverage).
+  Computing it once per `load()`, before the per-variable loop, keeps the change O(1) extra work
+  rather than O(variables).
+- **Strict superset, not a breaking change:** the transformation is idempotent on an
+  already-delimited prefix (there is nothing left in `Logging:` for the transform to touch), so
+  both `Logging__` and `Logging:` now match identically.
+
+## 32. `ConfigurationManager` seeds a default memory source in its constructor
+
+A fresh `ConfigurationManager` had zero sources, so `set()` before any `add()` threw "no
+configuration sources are registered". ME's constructor seeds one empty memory source for
+exactly this reason — there is nowhere to write before a real source exists otherwise.
+
+- **Fix:** the constructor now calls `this.add(new MemoryConfigurationSource())`
+  (`config/configuration-manager.ts`) — through the NORMAL `add()` path, so the seeded source
+  shows up in `sources` and `providers` like any other, mirroring how ME seeds it through its own
+  `Sources.Add`. It is the first (lowest-precedence) source registered, so it never shadows
+  anything added afterward, and — being empty — it contributes zero keys to any read.
+- No consumer (including `hosting`'s two `ConfigurationManager` construction sites) inspects
+  `sources.length` or otherwise distinguishes a zero- from a one-seeded-source manager, so this
+  is a pure behavior gain with no observed regression surface.
+
+## 33. Friendly provider labels — `ConfigurationProvider#toString`
+
+`getDebugView` (§21) rendered every provider as `String(provider)`, which — since no provider
+overrode `toString` — was always the default `[object Object]` tag. §21 flagged this as
+"acceptable until a provider identity is designed." ME renders the provider's type name (and its
+file provider adds path + optional flag); this closes that gap.
+
+- **`ConfigurationProvider#toString`** (`config/configuration-provider.ts`) defaults to
+  `this.constructor.name` (e.g. `MemoryConfigurationProvider`). Relies on unminified `dist` output,
+  true today (`scripts/build-package.ts` does not minify); a hardcoded per-class override is the
+  documented fallback if minification ever lands.
+- **`JsonConfigurationProvider` overrides it** to add path and required/optional flag —
+  `JsonConfigurationProvider for '<path>' (Required|Optional)` — matching the reference file
+  provider's own label format exactly.
+- Supersedes §21's "getDebugView provider labels are `String(provider)`" bullet: that gap is now
+  closed for the base case, with per-provider refinement available to any future provider that
+  wants one (env/commandline/memory keep the base class-name default — no consumer asked for more).
+
+## 34. Bare `key=value` argv tokens are honored
+
+ME's argv parser accepts a bare (no leading dash) `Key=Value` token as config, split at the
+first `=`; the port silently dropped every bare token as a positional — a real format gap that
+also sat oddly next to this source's otherwise fail-loud stance on malformed input.
+
+- **Fix:** a bare token containing `=` is now split at the FIRST `=` into key/value and honored;
+  a bare token with no `=` remains a positional and stays silently ignored, consistent with the
+  existing post-`--` ignore (`config.commandline/command-line-configuration-provider.ts`).
+- **Pre-existing behavior, now explicitly pinned as a regression baseline before this change
+  landed:** the suite already had test coverage for the four deliberate parser behaviors this
+  sits next to and that are NOT documented anywhere else — `--` end-of-options termination,
+  valueless-boolean-flag inference (`--Verbose --Port 8080`), the negative-number value heuristic
+  (`--Offset -5`), and `/switch`-to-`--switch` normalization scoped to switch position only. All
+  four stayed green, untouched, through this change.
+
+## 35. Provider augmentations install onto `ConfigurationManager`, not just `ConfigurationBuilder`
+
+Every `add*` augmentation (`addInMemoryCollection`, `addJsonFile`, `addEnvironmentVariables`,
+`addCommandLine`) installed only onto `ConfigurationBuilder`'s prototype. ME's extension methods
+target `IConfigurationBuilder`, and `ConfigurationManager` implements that same shape — so
+`manager.addJsonFile(...)` (the natural `builder.configuration.addJsonFile(...)` idiom inside a
+hosting-style builder) was structurally impossible here, a reachability gap with no ME
+counterpart.
+
+- **New `"./configuration-manager"` export subpath** on `@rhombus-std/config`
+  (`libraries/config/package.json`), mirroring the existing `"./configuration-builder"` subpath
+  and for the identical reason: a provider package must `declare module` onto the class's
+  DECLARING module, never the barrel, or a second augmenter produces a phantom-duplicate class
+  type (§28's install rule). `ConfigurationManager` has no generic parameter, so there is no
+  TS2428 arity concern the way there is for `ConfigurationBuilder<T>`.
+- **Each augmentation's receiver type is widened from `ConfigurationBuilder<T>` to a generic
+  bound** — `<TBuilder extends { add(source: IConfigurationSource): TBuilder }>` — rather than
+  the receiver being pinned to the concrete builder class. Both `ConfigurationBuilder<T>` and
+  `ConfigurationManager` satisfy that shape, so ONE object literal satisfies `AugmentationSet` for
+  both classes via two separate `applyAugmentations` calls, while still preserving each
+  receiver's own concrete return type through the fluent chain (`ConfigurationBuilder<T>` keeps
+  `T`; `ConfigurationManager` stays `ConfigurationManager`) — confirmed by a standalone
+  compilation check before landing, not just by the widened type happening to compile once.
+  Routing the receiver through the interface type instead (the alternative that needs no generic)
+  was rejected: `IConfigurationBuilder.add()`'s `this`-return collapses to the interface itself at
+  that call site, which would have lost `ConfigurationBuilder<T>`'s type-preserving chain — the
+  exact typed-build ergonomics the generic `ConfigurationBuilder<T>` design exists to keep.
+- Landed per provider package: `config` (memory), `config.json`, `config.env`,
+  `config.commandline` — each gets its own `declare module ".../configuration-manager"` block and
+  a second `applyAugmentations(ConfigurationManager, ...)` call, following §28's pattern exactly.

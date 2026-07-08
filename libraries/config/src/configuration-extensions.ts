@@ -4,9 +4,10 @@
 // docs/decisions.md). Presented as free functions rather than extension
 // methods, mirroring the existing `compareConfigurationKeys` shape.
 //
-// The generic `Add<TSource>(configureSource)` factory-add from the same .NET
-// file is intentionally not ported (candidate intentional deviation -- no
-// consumer, and the `new TSource()` pattern has no faithful TS analog).
+// The generic `Add<TSource>(configureSource)` factory-add from the same
+// reference-runtime file is intentionally not ported (candidate intentional
+// deviation -- no consumer, and the `new TSource()` pattern has no faithful
+// TS analog).
 
 import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config.core";
 import { ConfigurationSection } from "./configuration-section";

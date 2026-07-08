@@ -20,6 +20,7 @@
   "types": "./src/index.ts",
   "sideEffects": true,
   "//configuration-builder-subpath": "Every provider package augments ConfigurationBuilder via `declare module \"@rhombus-std/config/configuration-builder\"`, NOT the barrel (\"@rhombus-std/config\") -- TS's declaration merging for a class re-exported through another module (`export { ConfigurationBuilder } from \"./configuration-builder\"` in ./src/index.ts) does not merge back onto the class as seen through the declaring module's own specifier. Augmenting the barrel directly works for exactly one augmenter, but the moment a SECOND package (or core's own addInMemoryCollection) also augments the class, TS sees two non-interchangeable 'ConfigurationBuilder' phantom types and errors on `return this` inside the prototype-assignment function -- reproduced and confirmed during config-json's build. In dev/source mode this subpath resolves to the real, separate ./src/configuration-builder.ts file (distinct from the ./src/index.ts barrel, which is what avoids the phantom-duplicate above); in the publishConfig below it collapses onto the SAME dist/index.d.ts as '.' (rollup-plugin-dts rolls everything into one file at publish time, so there's no separate compiled artifact for this subpath to point at, and none is needed -- a single flat file has no re-export chain to trip over). A provider's rolled-up dist/index.d.ts keeps `declare module \"@rhombus-std/config/configuration-builder\"` verbatim (respectExternal: true), so this subpath must exist in the PUBLISHED package.json too, not just here.",
+  "//configuration-manager-subpath": "Same rationale as configuration-builder-subpath above, substituting ConfigurationManager for ConfigurationBuilder: every provider package now ALSO installs its augmentation onto ConfigurationManager (declare module + a second applyAugmentations call, see docs/decisions.md), so it must declare-merge onto `@rhombus-std/config/configuration-manager`, not the barrel, or the same phantom-duplicate-type error reappears. `./src/configuration-manager.ts` has no generic type parameter, so there's no TS2428 arity concern the way there is for ConfigurationBuilder<T>.",
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -32,6 +33,11 @@
       "source": "./src/configuration-builder.ts",
       "bun": "./src/configuration-builder.ts",
       "types": "./src/configuration-builder.ts"
+    },
+    "./configuration-manager": {
+      "source": "./src/configuration-manager.ts",
+      "bun": "./src/configuration-manager.ts",
+      "types": "./src/configuration-manager.ts"
     },
     "./with-type-augment": {
       "source": "./src/with-type-augment.ts",
@@ -72,6 +78,11 @@
         "default": "./dist/index.js"
       },
       "./configuration-builder": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./configuration-manager": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "default": "./dist/index.js"

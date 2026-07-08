@@ -6,11 +6,14 @@
 // pure with respect to it: no `process.env` mutation, no shared afterEach
 // cleanup dance, and reloading with a different map fully replaces the data.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
+import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 import "@rhombus-std/config.env/internal/index";
 import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/environment-variables-configuration-provider";
-import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env/internal/environment-variables-configuration-source";
+import {
+  colonAndDotVariableNameTransformation,
+  EnvironmentVariablesConfigurationSource,
+} from "@rhombus-std/config.env/internal/environment-variables-configuration-source";
 
 type EnvMap = Record<string, string | undefined>;
 
@@ -71,6 +74,42 @@ describe("EnvironmentVariablesConfigurationProvider transform-before-filter orde
   });
 });
 
+describe("colonAndDotVariableNameTransformation", () => {
+  test("triple underscore becomes a dot, double underscore becomes a colon", () => {
+    expect(colonAndDotVariableNameTransformation("A___B__C")).toBe("A.B:C");
+  });
+
+  test("a run of four underscores is one triple plus a literal trailing underscore", () => {
+    expect(colonAndDotVariableNameTransformation("A____B")).toBe("A._B");
+  });
+
+  test("usable directly as a source's variableNameTransformation", () => {
+    const provider = providerOf(
+      { "App___Server__Port": "8080" },
+      { variableNameTransformation: colonAndDotVariableNameTransformation },
+    );
+    expect(provider.tryGet("App.Server:Port")).toEqual([true, "8080"]);
+  });
+});
+
+describe("EnvironmentVariablesConfigurationProvider prefix normalized through the transform", () => {
+  test("a raw double-underscore prefix now matches -- it's transformed like every variable name", () => {
+    const provider = providerOf(
+      { "Logging__LogLevel__Default": "Info" },
+      { prefix: "Logging__" },
+    );
+    expect(provider.tryGet("LogLevel:Default")).toEqual([true, "Info"]);
+  });
+
+  test("an existing colon-form prefix keeps matching unchanged (the transform is idempotent on it)", () => {
+    const provider = providerOf(
+      { "Logging__LogLevel__Default": "Info" },
+      { prefix: "Logging:" },
+    );
+    expect(provider.tryGet("LogLevel:Default")).toEqual([true, "Info"]);
+  });
+});
+
 describe("EnvironmentVariablesConfigurationProvider purity w.r.t. the injected map", () => {
   test("reload with a different map reflects the new map and drops old keys", () => {
     const source = new EnvironmentVariablesConfigurationSource({ prefix: "APP_", env: { "APP_A": "1" } });
@@ -93,5 +132,12 @@ describe("addEnvironmentVariables augmentation", () => {
       .build();
 
     expect(config.get("Foo")).toBe("via-builder");
+  });
+
+  test("installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const manager = new ConfigurationManager()
+      .addEnvironmentVariables({ prefix: "APP_", env: { "APP_Foo": "via-manager" } });
+
+    expect(manager.get("Foo")).toBe("via-manager");
   });
 });

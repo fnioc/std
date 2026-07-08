@@ -87,8 +87,13 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `OptionsFactory` pipeline (§4). Depends **`di.core` only; config-unaware.** `options.augmentations`
   is the **one place di and config meet** — the config→`Options<T>` bridge (§14).
 - **`config`** — `config.core` (types-only `IConfiguration*`) ← `config` (builder/root/section
-  engine + reload tokens, §8) ← providers `config.json` / `config.env` / `config.commandline`
-  (each a `declare module` augmentation adding e.g. `addJsonFile` to `ConfigurationBuilder`).
+  engine + reload tokens, §8; `ConfigurationManager` seeds a default memory source so `set()`
+  works before any `add()`, §32; `ConfigurationProvider#toString` gives `getDebugView` a friendly
+  provider label, §33) ← providers `config.json` / `config.env` / `config.commandline` (each a
+  `declare module` augmentation adding e.g. `addJsonFile` to BOTH `ConfigurationBuilder` and
+  `ConfigurationManager`, §35). `config.env` also exports
+  `colonAndDotVariableNameTransformation` and normalizes its prefix through the transform before
+  matching (§30/§31); `config.commandline` honors bare `key=value` argv tokens (§34).
   `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
 - **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
   `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/

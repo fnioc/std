@@ -25,6 +25,11 @@ export class JsonConfigurationProvider extends ConfigurationProvider {
     this.source = source;
   }
 
+  /** Includes the file path and required/optional flag, matching the reference file provider's label. */
+  public override toString(): string {
+    return `${this.constructor.name} for '${this.source.path}' (${this.source.optional ? "Optional" : "Required"})`;
+  }
+
   public override load(): void {
     // Drop any previously-loaded keys so a reload reflects the file's CURRENT
     // contents -- a key removed from the file must disappear, not linger.

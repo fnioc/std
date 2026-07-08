@@ -19,6 +19,17 @@ describe("ConfigurationManager", () => {
     expect(manager.build()).toBe(manager);
   });
 
+  test("starts with one seeded memory source, so set() succeeds before any add()", () => {
+    // The constructor seeds an empty MemoryConfigurationSource via the normal
+    // add() path (mirroring the reference constructor) -- without it, set()
+    // throws "no configuration sources are registered".
+    const manager = new ConfigurationManager();
+    expect(manager.sources.length).toBe(1);
+
+    manager.set("a", "b");
+    expect(manager.get("a")).toBe("b");
+  });
+
   test("add(source) exposes the new values immediately, with no separate build phase", () => {
     const manager = new ConfigurationManager();
     manager.add(source({ "Server:Port": "8080" }));
@@ -71,5 +82,12 @@ describe("ConfigurationManager", () => {
 
     manager.set("Server:Port", "9090");
     expect(manager.get("Server:Port")).toBe("9090");
+  });
+});
+
+describe("ConfigurationManager provider augmentations", () => {
+  test("addInMemoryCollection installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const manager = new ConfigurationManager().addInMemoryCollection({ "Server:Port": "8080" });
+    expect(manager.get("Server:Port")).toBe("8080");
   });
 });

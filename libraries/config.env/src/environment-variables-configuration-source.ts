@@ -8,8 +8,14 @@
 // prefix like "Foo:Bar:" only becomes visible on a raw variable such as
 // `Foo__Bar__Baz` AFTER the `__` -> `:` transform runs, so the transform must
 // happen before prefix-matching, not after (see the provider for where this
-// is actually applied). There's no connection-string special-casing here --
-// this provider only handles the generic name-transform/prefix-filter path.
+// is actually applied); the provider runs the configured prefix through the
+// same transformation before matching, so a caller-supplied prefix may be
+// spelled in either raw (`Foo__Bar__`) or already-transformed (`Foo:Bar:`)
+// form. There's no connection-string special-casing here -- this provider
+// only handles the generic name-transform/prefix-filter path.
+//
+// `colonAndDotVariableNameTransformation` below is a drop-in alternative to
+// the default transform, for names that also want a `.` delimiter.
 
 import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
 import { EnvironmentVariablesConfigurationProvider } from "./environment-variables-configuration-provider";
@@ -39,6 +45,20 @@ export interface EnvironmentVariablesConfigurationSourceOptions {
 /** Default {@link EnvironmentVariablesConfigurationSourceOptions.variableNameTransformation}: `__` -> `:`. */
 export function defaultVariableNameTransformation(name: string): string {
   return name.replaceAll("__", ":");
+}
+
+/**
+ * An alternate {@link EnvironmentVariablesConfigurationSourceOptions.variableNameTransformation}:
+ * replaces every `___` with `.`, then every remaining `__` with `:`. The
+ * `___` pass MUST run first -- reversing the order would consume two of
+ * every three underscores in a `___` run as a `:`, leaving a stray `_` where
+ * a `.` belonged (`A___B` would misparse as `A:_B` instead of `A.B`). Both
+ * passes are simple non-overlapping left-to-right scans, so a run of
+ * underscores is always consumed greedily from the left -- a run of four
+ * is one triple plus a literal underscore (`._`), not two colons.
+ */
+export function colonAndDotVariableNameTransformation(name: string): string {
+  return name.replaceAll("___", ".").replaceAll("__", ":");
 }
 
 /**
