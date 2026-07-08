@@ -1,0 +1,71 @@
+{
+  "name": "@rhombus-std/diagnostics",
+  "version": "0.0.0",
+  "description": "Diagnostics implementation ported from ME.Diagnostics: concrete MetricsBuilder/TracingBuilder, config-binding of MetricsOptions/TracingOptions, and the addMetrics/addTracing service-registration augmentation. The metrics/tracing listener runtime is intentionally not implemented.",
+  "keywords": [
+    "diagnostics",
+    "metrics",
+    "tracing",
+    "telemetry",
+    "ioc",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/diagnostics"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": true,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "dependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/diagnostics.core": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3"
+  },
+  "peerDependencies": {
+    "@rhombus-std/di.core": "workspace:^"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
