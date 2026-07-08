@@ -1,0 +1,61 @@
+// ConfigurationManager -- the mutable, build-as-you-add configuration object.
+// Verifies that it IS its own root (build() returns itself), that add() exposes
+// values immediately with no separate build phase, last-source-wins on read,
+// the stable reload token that survives a rebuild triggered by a later add(),
+// and write-through via set(). Black-box through @rhombus-std/config.
+
+import { ConfigurationManager, MemoryConfigurationSource } from "@rhombus-std/config";
+import { ChangeToken } from "@rhombus-std/primitives";
+import { describe, expect, test } from "bun:test";
+
+/** A MemoryConfigurationSource seeded with `data`. */
+function source(data: Record<string, string>): MemoryConfigurationSource {
+  return new MemoryConfigurationSource({ initialData: data });
+}
+
+describe("ConfigurationManager", () => {
+  test("build() returns the manager itself -- it IS the live root", () => {
+    const manager = new ConfigurationManager();
+    expect(manager.build()).toBe(manager);
+  });
+
+  test("add(source) exposes the new values immediately, with no separate build phase", () => {
+    const manager = new ConfigurationManager();
+    manager.add(source({ "Server:Port": "8080" }));
+
+    expect(manager.get("Server:Port")).toBe("8080");
+  });
+
+  test("last-source-wins on read across two sources", () => {
+    const manager = new ConfigurationManager();
+    manager.add(source({ "Server:Port": "8080", "Server:Host": "localhost" }));
+    manager.add(source({ "Server:Port": "9090" }));
+
+    // The later source overrides Port; Host, defined only earlier, still resolves.
+    expect(manager.get("Server:Port")).toBe("9090");
+    expect(manager.get("Server:Host")).toBe("localhost");
+  });
+
+  test("a reload callback registered BEFORE a later add() still fires (stable token across rebuilds)", () => {
+    const manager = new ConfigurationManager();
+    manager.add(source({ "A": "1" }));
+
+    let fired = 0;
+    // onChange re-subscribes to whatever getReloadToken() currently returns; the
+    // manager's token is stable across rebuilds, so the add() below is observed.
+    using _registration = ChangeToken.onChange(() => manager.getReloadToken(), () => {
+      fired++;
+    });
+
+    manager.add(source({ "B": "2" }));
+    expect(fired).toBe(1);
+  });
+
+  test("set() writes through to the current providers", () => {
+    const manager = new ConfigurationManager();
+    manager.add(source({ "Server:Port": "8080" }));
+
+    manager.set("Server:Port", "9090");
+    expect(manager.get("Server:Port")).toBe("9090");
+  });
+});

@@ -28,6 +28,7 @@ export { type ConfigurationDebugViewContext, getDebugView } from "./configuratio
 // Engine.
 export { ConfigurationBuilder } from "./configuration-builder";
 export { compareConfigurationKeys } from "./configuration-key-comparer";
+export { ConfigurationManager } from "./configuration-manager";
 export { ConfigurationProvider } from "./configuration-provider";
 export { ConfigurationReloadToken } from "./configuration-reload-token";
 export { ConfigurationRoot } from "./configuration-root";
