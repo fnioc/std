@@ -935,3 +935,100 @@ free-function-only decision that §14/§18-era code stated in-line at `add-confi
   deliberately standalone-only in perpetuity: `IMemoryCache` already declares a `tryGetValue`
   member, so a method merge would both clash and, at runtime, overwrite the real implementation the
   extension wraps.
+
+## 23. `hosting` brought to full reference parity — the whole Generic Host, NO stubs inside hosting — #44
+
+Where §17–§20 scaffolded a family's abstractions and left a real chunk of the runtime deferred,
+`hosting` lands **complete**: every reference Generic Host type has a working port, and nothing
+inside the `hosting`/`hosting.core` packages themselves throws "not implemented."
+
+`hosting.core` ships full abstraction parity: `IHost`, `IHostedService`, `IHostedLifecycleService`,
+`BackgroundService`, `IHostApplicationLifetime`, `IHostLifetime`, `IHostBuilder`,
+`HostBuilderContext`, `IHostEnvironment`, `IHostApplicationBuilder`, `Environments`, `HostDefaults`,
+`HostAbortedException`, the host/environment extension helpers (`run`/`runAsync`/`stopWithTimeout`/
+`waitForShutdownAsync`/`startHost`, `isDevelopment`/`isEnvironment`/`isProduction`/`isStaging`), and
+the `addHostedService` augmentation. `hosting` ships the full runtime: the classic `HostBuilder` and
+the modern `HostApplicationBuilder`, the static `Host` factory, the internal host lifecycle,
+`ApplicationLifetime`, `ConsoleLifetime`, `HostingEnvironment`, `HostOptions`, and
+`HostingHostBuilderExtensions` (`configureDefaults`, `useConsoleLifetime`, `useContentRoot`,
+`useEnvironment`, …). The example apps were reworked to the canonical Generic Host shape:
+`Host.createApplicationBuilder()` → register the interop-matrix libraries plus one hosted worker
+implementing `IHostedLifecycleService` that logs its ordered lifecycle callbacks (`starting` →
+`start` → `started` → `applicationStarted` → `stopping` → `applicationStopping` → `stop` →
+`stopped` → `applicationStopped`, 9 steps) through an injected `ILogger` → `runAsync`; the worker
+calls `stopApplication()` on itself once its scenario finishes, so both apps terminate
+deterministically with no reliance on signals.
+
+**Graph edges match the reference exactly (§0).** `hosting.core` → `config.core` + `di.core` +
+`diagnostics.core` + `fileproviders.core` + `logging.core` — the reference's
+`Hosting.Abstractions → {Configuration,DependencyInjection,Diagnostics,FileProviders,Logging}.Abstractions`
+pin, edge-for-edge. `hosting` → the concrete `config`/`di`/`diagnostics`/`logging` packages +
+`options` + `options.augmentations` + a **new** `logging.console` package.
+
+**No-stubs-in-hosting rule (direct instruction).** A type the host needed but that had no existing
+home was added to its **home package**, never faked inside `hosting`:
+
+- **`ConfigurationManager`** lives in `config` — the config-completion PR (#79) landed it there as
+  its permanent, reference-faithful home. `hosting` consumes `config`'s `ConfigurationManager`
+  (`new ConfigurationManager()` in each builder). This branch briefly carried a local copy while #79
+  was in flight; that bridge was dropped when the branch rebased onto #79.
+- **A minimal, genuinely working console sink** landed in a **new `logging.console` package**
+  (`ConsoleLogger` + `ConsoleLoggerProvider`, writing the simple console format to stdout against
+  `logging.core`'s `ILogger`/`ILoggerProvider`) — mirroring the reference's own `Logging.Console`
+  package and realizing the `Hosting → Logging.Console` edge faithfully instead of inventing
+  something hosting-local.
+
+Every other gap a consumer might hit is a scaffold **elsewhere** that already throws
+not-implemented and is tracked by its own filed issue (§18's `setMinimumLevel`/`clearProviders`,
+§20's physical file provider, …) — `hosting` composes those packages honestly rather than papering
+over the gap itself.
+
+**Deferred / worked around (each tracked):**
+
+- **`contentRootFileProvider` is a `NullFileProvider`.** The physical, disk-backed file provider is
+  deferred at its source (§20/#77); `hosting` takes the same `NullFileProvider` default the
+  reference environment would otherwise wrap a real physical provider around.
+- **Only the console logging provider is registered by `configureDefaults`.** The reference also
+  wires Debug/EventSource/(Windows) EventLog providers; those sink packages aren't ported yet
+  (§18/#75), so `configureDefaults` registers `ConsoleLoggerProvider` alone.
+- **`useServiceProviderFactory` and `configureContainer` are a no-op single-container shape.** This
+  repo has one container type (`ServiceManifest`), so there's no `IServiceProviderFactory<TBuilder>`
+  analog in `di.core` to swap in — `useServiceProviderFactory` is accepted and ignored, and
+  `configureContainer`'s delegate runs against the one real `ServiceManifest` rather than a
+  pluggable builder type.
+- **`useDefaultServiceProvider` ignores `ServiceProviderOptions`.** `validateScopes`/
+  `validateOnBuild` have no scope-validation surface to bind to in `di`/`di.core` yet; the option
+  shape is accepted (for call-site compatibility) and no-ops.
+
+**Runtime-identity reaffirmation (ties to §9).** `hosting.core` now emits real runtime —
+`BackgroundService`, the `Environments`/`HostDefaults` const objects, and the `addHostedService`
+prototype patch — not just types. It must therefore be **dist-referenced**, not src-referenced (the
+Build-layout rule in `CLAUDE.md`), and its `Bun.build` keeps every `@rhombus-std/*`/
+`@rhombus-toolkit/*` dependency **external**, matching `di.core`'s own build. Inlining would fork
+`di.core`'s `ServiceManifestClass` identity: `hosting.core`'s `addHostedService` patch would land on
+a private copy no consumer's container ever resolves against, exactly the failure mode §9 already
+warned about for `di`. `hosting.core` is therefore a **runtime core** (like `di.core`), not a
+d.ts-only src-referenced lib.
+
+**DI-surface divergences, worked around deliberately:**
+
+- **`IHost.services` is `di.core`'s non-generic `Resolver`**, not a `getService`-style surface — the
+  host consumer resolves but never opens a new scope off the root handle (§10's scope-generic-free
+  rule for injected code).
+- **Resolving every hosted service uses the `Array<token>` collection convention (§12)**, not a
+  `getServices<T>()`-shaped call — every `addHostedService` registration lands on one shared
+  `HOSTED_SERVICE_TOKEN`, and the host resolves `Array<HOSTED_SERVICE_TOKEN>` to get the ordered
+  set. Same trick for logging providers and `HostOptions` configure delegates.
+- **`build()` is frameless (§9's `di` divergence carried through), so the host opens the singleton
+  scope itself** before running hosted-service lifecycle — nothing is pre-opened by `ServiceManifest`
+  itself.
+- **Async-only methods drop the `Async` suffix.** JS has no synchronous variant worth keeping
+  alongside an async one, so `IHost.start`/`.stop`, `IHostedService.start`/`.stop`, etc. are simply
+  async — there is no parallel sync overload to disambiguate from.
+- **Extension methods over a plain interface are named functions; only `addHostedService` is a true
+  augmentation.** `IHostBuilder`/`IHostEnvironment` are interfaces `hosting`/`hosting.core` own
+  outright, so their reference extension methods (`configureDefaults`, `useContentRoot`,
+  `isDevelopment`, …) are plain functions taking the interface first — no augmentation needed
+  (§17's placement rule, generalized). `addHostedService` is the one exception: it extends
+  `di.core`'s `ServiceManifestClass`, which `hosting` doesn't own, so it uses the `addJsonFile`/
+  `addOptions` augmentation idiom (§14) — `declare module` + prototype patch.

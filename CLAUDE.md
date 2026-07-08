@@ -85,9 +85,16 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   engine + reload tokens, §8) ← providers `config.json` / `config.env` / `config.commandline`
   (each a `declare module` augmentation adding e.g. `addJsonFile` to `ConfigurationBuilder`).
   `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
-- **`hosting`** (`hosting.core`, `hosting`) — skeletons, pending. `hosting.core` no longer
-  carries its own `ILogger`/`ILoggerFactory`/`LogLevel` stand-ins; it re-exports them from
-  `logging.core` and depends on it directly, now that the real logging family exists.
+- **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
+  `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/
+  `HostBuilderContext`/`IHostEnvironment`/`IHostApplicationBuilder` + the `addHostedService`
+  augmentation; ← `config.core` + `di.core` + `diagnostics.core` + `fileproviders.core` +
+  `logging.core`) ← `hosting` (the Generic Host runtime — classic `HostBuilder` and modern
+  `HostApplicationBuilder`, the static `Host` factory, `HostOptions`, `ConsoleLifetime`,
+  `HostingEnvironment`; ← the concrete `config`/`di`/`diagnostics`/`logging` packages +
+  `options` + `options.augmentations` + the new `logging.console` console sink). Full
+  reference parity, no stubs inside hosting itself (§21); the physical file provider and the
+  non-console logging sinks it composes stay deferred at their own families (§18, §20).
 - **`diagnostics`** — `diagnostics.core` (the `IMetricsBuilder`/`ITracingBuilder` abstractions,
   the rule/options data model, `METRICS_*`/`TRACING_*` tokens; ← `di.core` + `options`) ←
   `diagnostics` (concrete `MetricsBuilder`/`TracingBuilder`, config-binding pipeline wired
@@ -159,7 +166,8 @@ Architecture section above. `decisions.md` is the full record; this file is the 
   - `.augmentations` — a side-effect declaration-merging extension package.
   - `.transformer` — an authoring-time transformer for a family.
   - Config providers keep their own name instead of a generic qualifier:
-    `config.json`, `config.env`, `config.commandline`.
+    `config.json`, `config.env`, `config.commandline`. Concrete providers in other families
+    follow the same pattern — `logging.console` is the console sink for `logging`.
 
 ## No-transformer-first
 
