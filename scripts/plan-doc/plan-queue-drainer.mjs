@@ -11,18 +11,32 @@
 // plan-doc GitHub Action): a JSON array of {number, title, labels} for issues
 // that are ready to code right now. We poll it and reconcile.
 //
-// Dedup model -- two structures:
+// Dedup model -- three structures:
 //
 //   - `active`: Map<number, ChildProcess>. Issues with a currently-running
 //     worker. Populated on spawn, pruned in the child's `exit` handler. Because
 //     it holds real process handles, "is #N being worked?" is a fact, not a
 //     guess.
-//   - `handled`: Set<number>. Issues whose worker exited SUCCESSFULLY (code 0)
-//     but which are still present in ready.json because the removal hasn't
-//     propagated yet (merge -> issue event -> plan-doc rebuild -> branch push
-//     has lag). Prevents relaunching a just-completed issue during that lag.
+//   - `handled`: Set<number>. Issues whose worker exited with a `success`
+//     result but which are still present in ready.json because the removal
+//     hasn't propagated yet (merge -> issue event -> plan-doc rebuild -> branch
+//     push has lag). Prevents relaunching a just-completed issue during that lag.
+//   - `quarantined`: Set<number>. Issues whose worker ended in ANY error
+//     outcome (turn cap hit, execution error, crash). In-memory only and never
+//     relaunched for the rest of this drainer session -- restarting the drainer
+//     clears it. This is the human-in-the-loop recovery: a stuck issue waits for
+//     a human to notice and restart rather than looping all night. There is
+//     deliberately NO auto-retry.
 //
-//   Spawn iff `!active.has(n) && !handled.has(n)`, subject to MAX_CONCURRENT.
+//   Spawn iff `!active.has(n) && !handled.has(n) && !quarantined.has(n)`,
+//   subject to MAX_CONCURRENT and the optional launch-time label filter.
+//
+// Outcome handling: worker processes exit 0 even when they hit a limit, so the
+// exit code is NOT authoritative. We parse the `--output-format json` result and
+// branch on its `subtype`: `success` -> handled; `error_max_turns` /
+// `error_during_execution` / any other `error_*` -> quarantine. A non-zero exit,
+// empty output, or unparseable JSON is treated as a crash -> quarantine, with the
+// raw output logged for diagnosis.
 //
 // Shutdown caveat: workers are attached child processes, so stopping the
 // drainer (Ctrl-C / SIGINT) terminates any in-flight workers. A clean stop is
@@ -42,21 +56,39 @@ const POLL_MS = 60_000;
 // Each worker is a full opus session; the cap guards against runaway token
 // spend when the queue is large. Overridable via DRAIN_MAX.
 const MAX_CONCURRENT = Number(process.env.DRAIN_MAX) || 4;
+// Per-worker turn cap -- the runaway backstop. `claude -p --max-turns N` is a
+// real (if undocumented) flag; when a run hits it the process still exits 0 and
+// the result carries `subtype: "error_max_turns"`, which quarantines the issue.
+// Overridable via DRAIN_MAX_TURNS.
+const MAX_TURNS = Number(process.env.DRAIN_MAX_TURNS) || 200;
+
+// Optional launch-time label filter: a comma-separated list forwarded as the
+// first positional arg (`drain v0` / `drain v0,v1`). When set, an issue is
+// eligible only if its `labels` intersect this set (any-match). Empty => no
+// filter, every ready issue is eligible.
+const LABEL_FILTER = new Set(
+  (process.argv[2] ?? "")
+    .split(",")
+    .map((label) => label.trim())
+    .filter((label) => label.length > 0),
+);
 
 /** issue number -> its running worker process. Pruned on child exit. */
 const active = new Map();
 /** issue numbers whose worker succeeded; held until the queue line clears. */
 const handled = new Set();
+/** issue numbers whose worker errored; never relaunched this session. */
+const quarantined = new Set();
 
 function log(msg) {
   console.log(`[${new Date().toISOString()}] ${msg}`);
 }
 
 /**
- * Read the queue off the bot/plan-doc branch and return the set of issue
- * numbers. On ANY error (branch missing, file missing, git error, parse error)
- * return an empty set -- an empty/missing queue is the normal idle state, and
- * the drainer must never crash or exit over it.
+ * Read the queue off the bot/plan-doc branch and return the eligible issue
+ * numbers, applying the label filter. On ANY error (branch missing, file
+ * missing, git error, parse error) return an empty set -- an empty/missing queue
+ * is the normal idle state, and the drainer must never crash or exit over it.
  */
 async function readQueue() {
   try {
@@ -67,7 +99,14 @@ async function readQueue() {
       { cwd: REPO_ROOT, maxBuffer: 16 * 1024 * 1024 },
     );
     const parsed = JSON.parse(stdout);
-    return new Set(parsed.map((entry) => entry.number));
+    const eligible = parsed.filter((entry) => {
+      if (LABEL_FILTER.size === 0) {
+        return true;
+      }
+      const labels = Array.isArray(entry.labels) ? entry.labels : [];
+      return labels.some((label) => LABEL_FILTER.has(label));
+    });
+    return new Set(eligible.map((entry) => entry.number));
   } catch {
     return new Set();
   }
@@ -88,16 +127,17 @@ function spawnWorker(n) {
       "bypassPermissions",
       "--output-format",
       "json",
+      "--max-turns",
+      String(MAX_TURNS),
     ],
     { cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"] },
   );
 
   active.set(n, child);
-  log(`spawn worker for #${n} (pid ${child.pid}); ${active.size} active`);
+  log(`spawn worker for #${n} (pid ${child.pid}, max-turns ${MAX_TURNS}); ${active.size} active`);
 
-  // Capture worker output so a crash surfaces in the drainer's log rather than
-  // vanishing. The exit code is what drives active/handled; stdout is logged
-  // only on a non-zero exit for diagnosis.
+  // Capture worker output. The JSON result on stdout drives the outcome; stderr
+  // is kept for crash diagnosis.
   let stdout = "";
   let stderr = "";
   child.stdout.on("data", (chunk) => {
@@ -109,26 +149,66 @@ function spawnWorker(n) {
 
   child.on("exit", (code) => {
     active.delete(n);
-    if (code === 0) {
-      // Success: hold the issue in `handled` until its line clears from the
-      // queue, so the propagation lag doesn't relaunch a completed worker.
-      handled.add(n);
-      log(`worker for #${n} done (exit 0); awaiting removal from queue`);
-    } else {
-      // Crash/error: do NOT add to handled -- it stays eligible and retries
-      // next cycle.
-      log(`worker for #${n} FAILED (exit ${code}); will retry next cycle`);
-      const tail = (stderr || stdout).trim().slice(-2000);
-      if (tail) {
-        log(`  #${n} output tail: ${tail}`);
-      }
-    }
+    settleWorker(n, code, stdout, stderr);
   });
 
   child.on("error", (err) => {
     active.delete(n);
-    log(`worker for #${n} failed to start: ${err.message}; will retry next cycle`);
+    quarantined.add(n);
+    log(`worker for #${n} failed to start: ${err.message}; QUARANTINED (no relaunch this session)`);
   });
+}
+
+/**
+ * Decide a finished worker's outcome from its JSON result, not its exit code
+ * (runs that hit a limit still exit 0). `success` -> handled; any error subtype
+ * or a crash (non-zero exit / empty / unparseable output) -> quarantine.
+ */
+function settleWorker(n, code, stdout, stderr) {
+  let result = null;
+  try {
+    const trimmed = stdout.trim();
+    if (trimmed) {
+      result = JSON.parse(trimmed);
+    }
+  } catch {
+    result = null;
+  }
+
+  const cost = result && typeof result.total_cost_usd === "number"
+    ? `$${result.total_cost_usd.toFixed(4)}`
+    : "n/a";
+
+  // Crash: non-zero exit, or output we couldn't parse into a result object.
+  if (code !== 0 || result === null || typeof result !== "object") {
+    quarantined.add(n);
+    log(
+      `worker for #${n} CRASHED (exit ${code}, unparseable/empty result; cost ${cost}); QUARANTINED (no relaunch this session)`,
+    );
+    const tail = (stderr || stdout).trim().slice(-2000);
+    if (tail) {
+      log(`  #${n} output tail: ${tail}`);
+    }
+    return;
+  }
+
+  const subtype = typeof result.subtype === "string" ? result.subtype : "(missing subtype)";
+
+  if (subtype === "success") {
+    // Success: hold the issue in `handled` until its line clears from the queue,
+    // so the propagation lag doesn't relaunch a completed worker.
+    handled.add(n);
+    log(`worker for #${n} done (success; cost ${cost}); awaiting removal from queue`);
+    return;
+  }
+
+  // Any recognized error_* subtype, or an unrecognized shape: quarantine. Log
+  // the raw result on an unexpected subtype so a new CLI shape is diagnosable.
+  quarantined.add(n);
+  log(`worker for #${n} ERRORED (subtype ${subtype}; cost ${cost}); QUARANTINED (no relaunch this session)`);
+  if (!subtype.startsWith("error")) {
+    log(`  #${n} unrecognized result shape: ${JSON.stringify(result).slice(-2000)}`);
+  }
 }
 
 async function cycle() {
@@ -148,7 +228,7 @@ async function cycle() {
   }
 
   for (const n of queue) {
-    if (active.has(n) || handled.has(n)) {
+    if (active.has(n) || handled.has(n) || quarantined.has(n)) {
       continue;
     }
     if (active.size >= MAX_CONCURRENT) {
@@ -169,10 +249,11 @@ process.on("SIGINT", () => {
   process.exit(0);
 });
 
+const filterBanner = LABEL_FILTER.size > 0 ? [...LABEL_FILTER].join(",") : "none";
 log(
   `plan-queue-drainer watching origin/bot/plan-doc:ready.json every ${POLL_MS / 1000}s, `
-    + `max ${MAX_CONCURRENT} concurrent workers. Ctrl-C to stop `
-    + `(terminates in-flight workers -- clean stop is Ctrl-C when nothing is active).`,
+    + `max ${MAX_CONCURRENT} concurrent workers, ${MAX_TURNS} turns/worker | label filter: ${filterBanner}. `
+    + `Ctrl-C to stop (terminates in-flight workers -- clean stop is Ctrl-C when nothing is active).`,
 );
 
 await cycle();
