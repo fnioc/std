@@ -1,0 +1,15 @@
+// NullLifetime -- ported from the reference hosting runtime's `NullLifetime`.
+// A minimal {@link IHostLifetime} that does nothing.
+
+import type { IHostLifetime } from "@rhombus-std/hosting.core";
+
+/** A minimalistic {@link IHostLifetime} that does nothing. */
+export class NullLifetime implements IHostLifetime {
+  public waitForStart(_cancellationToken: AbortSignal): Promise<void> {
+    return Promise.resolve();
+  }
+
+  public stop(_cancellationToken: AbortSignal): Promise<void> {
+    return Promise.resolve();
+  }
+}
