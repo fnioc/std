@@ -5,10 +5,7 @@ import {
   HostDefaults,
   HOSTED_SERVICE_TOKEN,
   hostedServiceCollectionToken,
-  isDevelopment,
-  isEnvironment,
-  isProduction,
-  isStaging,
+  HostEnvironmentEnvExtensions,
 } from "@rhombus-std/hosting.core/internal/index";
 // Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
 import "@rhombus-std/hosting.core/internal/index";
@@ -32,10 +29,12 @@ test("environment predicates compare case-insensitively", () => {
     contentRootPath: "/",
     contentRootFileProvider: new NullFileProvider(),
   };
-  expect(isEnvironment(env, "Development")).toBe(true);
-  expect(isDevelopment(env)).toBe(true);
-  expect(isProduction(env)).toBe(false);
-  expect(isStaging(env)).toBe(false);
+  // hosting.core ships only the standalone member form (no concrete class here to
+  // patch); the fluent method form is installed downstream in @rhombus-std/hosting.
+  expect(HostEnvironmentEnvExtensions.isEnvironment(env, "Development")).toBe(true);
+  expect(HostEnvironmentEnvExtensions.isDevelopment(env)).toBe(true);
+  expect(HostEnvironmentEnvExtensions.isProduction(env)).toBe(false);
+  expect(HostEnvironmentEnvExtensions.isStaging(env)).toBe(false);
 });
 
 test("BackgroundService.start kicks execute without awaiting; stop aborts the stopping signal", async () => {

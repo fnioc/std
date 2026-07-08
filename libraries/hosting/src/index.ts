@@ -3,16 +3,24 @@
 // Ships the two builders (`HostBuilder`, `HostApplicationBuilder`) + their
 // settings, the static `Host` factory facade, the host runtime objects
 // (`HostOptions`, the console lifetime + its options, the background-service
-// exception behavior), and the `IHostBuilder` helper functions
-// (`configureDefaults`, `useConsoleLifetime`, ...). Re-exports the
-// @rhombus-std/hosting.core public surface so a consumer reaches the whole
-// hosting API through the single @rhombus-std/hosting import (this also installs
-// hosting.core's `addHostedService` augmentation as a side effect).
+// exception behavior), and the `IHostBuilder` augmentation set
+// (`HostingHostBuilderExtensions`). Re-exports the @rhombus-std/hosting.core
+// public surface so a consumer reaches the whole hosting API through the single
+// @rhombus-std/hosting import.
+//
+// IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it installs the fluent method forms
+// of the host / host-builder / host-environment augmentations onto their
+// concrete classes (see ./host-augmentations), on top of hosting.core's
+// `addHostedService` install.
 
-// The hosting ABSTRACTIONS surface (contracts, tokens, host-lifetime helpers,
-// environment predicates, BackgroundService, Environments, HostDefaults) +
-// the `addHostedService` side-effect augmentation.
+// The hosting ABSTRACTIONS surface (contracts, tokens, host-lifetime + builder
+// augmentation sets, environment predicates, BackgroundService, Environments,
+// HostDefaults) + the `addHostedService` side-effect augmentation.
 export * from "@rhombus-std/hosting.core";
+
+// Side-effect: install the IHost / IHostBuilder / IHostEnvironment method forms
+// onto the concrete Host / HostBuilder / HostingEnvironment classes.
+import "./host-augmentations";
 
 // The builders + factory facade.
 export { Host } from "./host";
@@ -28,19 +36,8 @@ export { HostOptions } from "./host-options";
 export { MetricsBuilder } from "./metrics-builder";
 export { NullLifetime } from "./null-lifetime";
 
-// IHostBuilder helper functions (reference HostingHostBuilderExtensions).
-export {
-  configureDefaults,
-  configureHostOptions,
-  configureLogging,
-  configureMetrics,
-  runConsoleAsync,
-  type ServiceProviderOptions,
-  useConsoleLifetime,
-  useContentRoot,
-  useDefaultServiceProvider,
-  useEnvironment,
-} from "./builder-extensions";
+// The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).
+export { HostingHostBuilderExtensions, type ServiceProviderOptions } from "./builder-extensions";
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from "./default-configuration";

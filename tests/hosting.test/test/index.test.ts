@@ -5,8 +5,6 @@ import {
   HOST_APPLICATION_LIFETIME_TOKEN,
   HOST_ENVIRONMENT_TOKEN,
   HostBuilder,
-  isDevelopment,
-  isProduction,
 } from "@rhombus-std/hosting/internal/index";
 import type {
   IHostApplicationLifetime,
@@ -205,8 +203,9 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
   const environment = host.services.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN);
 
   expect(environment.environmentName).toBe("Development");
-  expect(isDevelopment(environment)).toBe(true);
-  expect(isProduction(environment)).toBe(false);
+  // The fluent method form is installed onto HostingEnvironment by @rhombus-std/hosting.
+  expect(environment.isDevelopment()).toBe(true);
+  expect(environment.isProduction()).toBe(false);
 
   await host.start();
   await host.stop();
