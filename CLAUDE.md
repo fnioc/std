@@ -48,6 +48,12 @@ API surface _within_ a package may deviate where TS/bun justifies it, but the gr
 first and a distinction is collapsed only after it's shown unjustified (§0). Naming below in
 [Package naming](#package-naming).
 
+**The `ME.*` mirror is a means, not the goal.** Faithfulness is a disposable starting discipline:
+the plan is to complete the port faithfully, _then_ refactor away from `ME.*` shapes. So "it mirrors
+`ME.*`" is a weak design tiebreaker — where an `ME.*` shape conflicts with what's most correct or
+idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during the faithful pass only
+where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
+
 - **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
   `ChangeToken.onChange`) that underpins live-reload (§8).
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
