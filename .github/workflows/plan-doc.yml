@@ -36,13 +36,13 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install tooling dependencies
-        run: npm install --prefix scripts/plan-doc
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.204
 
       - name: Build plan docs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: node scripts/plan-doc/build-plan-doc.mjs
 

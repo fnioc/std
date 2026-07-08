@@ -18,11 +18,15 @@
 //     leaving every other node untouched. A single issue mutating never
 //     re-derives the whole graph.
 //
-// CI-only tooling: standalone Node ESM with its own package.json, deliberately
-// NOT part of the bun workspace (it carries @anthropic-ai/sdk, which the rest
-// of the repo does not).
+// CI-only tooling: standalone Node ESM, deliberately NOT part of the bun
+// workspace. It has no npm dependencies -- it shells out to `git`, `gh`, and
+// the `claude` CLI only.
+//
+// Model calls go through `claude -p` (not the SDK / raw Messages API) so the
+// builder authenticates with a Claude Code OAuth token (CLAUDE_CODE_OAUTH_TOKEN,
+// the same subscription auth the drainer workers use). The raw API 429s that
+// token; `claude -p` accepts it.
 
-import Anthropic from "@anthropic-ai/sdk";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -77,7 +81,13 @@ const NODES_SCHEMA = {
   additionalProperties: false,
 };
 
-const client = new Anthropic();
+// A compact, human-readable rendering of NODES_SCHEMA to embed in prompts. The
+// `claude` CLI can't enforce a response schema (no `output_config.format`), so
+// the shape has to travel in the prompt text and be parsed defensively.
+const SCHEMA_HINT = JSON.stringify(NODES_SCHEMA);
+
+const JSON_ONLY_INSTRUCTION =
+  `Respond with ONLY valid minified JSON matching this exact schema -- no prose, no explanation, no markdown code fences:\n${SCHEMA_HINT}`;
 
 /** Runs `gh` and returns its parsed JSON stdout. */
 function gh(args) {
@@ -90,30 +100,60 @@ function attachLabels(node, issue) {
   return node;
 }
 
-async function deriveNodes(promptContent) {
-  // `output_config.format` constrains the response to JSON matching NODES_SCHEMA,
-  // so we read the text block and parse it ourselves rather than lean on the
-  // SDK's `messages.parse()` helper (which only exists in newer SDK releases and
-  // shifted shape across them -- see the pinned version in package.json).
-  const response = await client.messages.create({
-    model: "claude-opus-4-8",
-    max_tokens: 8000,
-    output_config: { effort: "high", format: { type: "json_schema", schema: NODES_SCHEMA } },
-    messages: [{ role: "user", content: promptContent }],
-  });
-  const text = response.content.find((b) => b.type === "text")?.text;
-  if (!text) {
-    throw new Error(`no text block in model response (stop_reason: ${response.stop_reason})`);
+/**
+ * Extracts the model's JSON payload from a `claude -p` text result. The CLI has
+ * no structured-output enforcement, so the result may arrive wrapped in prose or
+ * a markdown fence -- strip any ```json/``` fence, then take the substring from
+ * the first `{` to the last `}` before parsing.
+ */
+function extractJson(result) {
+  const unfenced = result.replace(/```(?:json)?/gi, "").trim();
+  const start = unfenced.indexOf("{");
+  const end = unfenced.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`no JSON object found in model result: ${result.slice(0, 500)}`);
   }
-  return JSON.parse(text).nodes;
+  const slice = unfenced.slice(start, end + 1);
+  try {
+    return JSON.parse(slice);
+  } catch (err) {
+    throw new Error(`failed to parse model JSON (${err.message}): ${slice.slice(0, 500)}`);
+  }
+}
+
+/**
+ * Derives nodes by driving the `claude` CLI (`claude -p`), authenticated by
+ * CLAUDE_CODE_OAUTH_TOKEN in the environment. No tools are needed for pure
+ * generation; bypassPermissions avoids any interactive prompt. --max-turns is
+ * deliberately unset -- a low cap could truncate a large generation.
+ *
+ * The prompt is fed on stdin, not as an argv element: the bootstrap prompt
+ * embeds the whole issue set and blows past ARG_MAX as a command argument
+ * (spawn E2BIG). `claude -p` reads the prompt from stdin when none is given.
+ */
+function deriveNodes(promptContent) {
+  const stdout = execFileSync(
+    "claude",
+    ["-p", "--output-format", "json", "--permission-mode", "bypassPermissions"],
+    { input: promptContent, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 300000 },
+  );
+  const run = JSON.parse(stdout);
+  if (run.is_error || run.subtype !== "success") {
+    throw new Error(
+      `claude -p failed (subtype: ${run.subtype}, is_error: ${run.is_error}): ${
+        run.result ?? run.error ?? "(no error text)"
+      }`,
+    );
+  }
+  return extractJson(run.result).nodes;
 }
 
 /** First-run backfill: fetch every issue and derive the whole graph once. */
 async function bootstrap() {
   const issues = gh(["issue", "list", "--state", "all", "--limit", "500", "--json", ISSUE_FIELDS]);
   const issueByNumber = new Map(issues.map((i) => [i.number, i]));
-  const nodes = await deriveNodes(
-    `Given these GitHub issues, extract a blocker dependency graph and flag pairs likely to conflict on merge (same files/subsystem implied by the descriptions). Issues:\n\n${
+  const nodes = deriveNodes(
+    `Given these GitHub issues, extract a blocker dependency graph and flag pairs likely to conflict on merge (same files/subsystem implied by the descriptions). ${JSON_ONLY_INSTRUCTION}\n\nIssues:\n\n${
       JSON.stringify(issues, null, 2)
     }`,
   );
@@ -130,10 +170,10 @@ async function bootstrap() {
  */
 async function incremental(graph, issueNumber) {
   const issue = gh(["issue", "view", String(issueNumber), "--json", ISSUE_FIELDS]);
-  const returned = await deriveNodes(
+  const returned = deriveNodes(
     `You maintain a persisted blocker dependency graph for a repo's issues. Here is the current graph:\n\n${
       JSON.stringify(graph, null, 2)
-    }\n\nOne issue just changed. Return ONLY the upserted node(s): the recomputed node for this issue (its blocked_by / conflict_risk_with / conflict_reason derived from its current body and labels against the graph above), plus minimal placeholder nodes for any issue numbers it references that are not already in the graph -- placeholders are {number, title: "(not yet indexed)", status: "unknown", blocked_by: [], conflict_risk_with: []}. Do not return any other existing nodes. The changed issue:\n\n${
+    }\n\nOne issue just changed. Return ONLY the upserted node(s): the recomputed node for this issue (its blocked_by / conflict_risk_with / conflict_reason derived from its current body and labels against the graph above), plus minimal placeholder nodes for any issue numbers it references that are not already in the graph -- placeholders are {number, title: "(not yet indexed)", status: "unknown", blocked_by: [], conflict_risk_with: []}. Do not return any other existing nodes. ${JSON_ONLY_INSTRUCTION}\n\nThe changed issue:\n\n${
       JSON.stringify(issue, null, 2)
     }`,
   );
