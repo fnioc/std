@@ -1,9 +1,10 @@
 // IHostBuilder helpers -- ported from the reference hosting runtime's
-// `HostingHostBuilderExtensions`. `IHostBuilder` is an interface the hosting
-// family owns (hosting.core) with no concrete class here to prototype-patch, so
-// per the repo convention these surface as plain functions taking the builder
-// first (mirroring hosting.core's own `startHost` / the logging builder
-// extensions), not fluent augmentations.
+// `HostingHostBuilderExtensions` static extension class. Authored as one named
+// object literal per ME class (docs §28), `satisfies AugmentationSet<IHostBuilder>`.
+// The `IHostBuilder` receiver interface is owned by hosting.core; the fluent
+// method-form install (and the `declare module` merge) live in this package's
+// `./host-augmentations` against the concrete `HostBuilder`. The members here are
+// the standalone call surface.
 //
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
@@ -18,10 +19,11 @@ import type {
   IHostBuilder,
   IHostEnvironment,
 } from "@rhombus-std/hosting.core";
-import { HostDefaults, runAsync } from "@rhombus-std/hosting.core";
+import { HostDefaults, HostingAbstractionsHostExtensions } from "@rhombus-std/hosting.core";
 import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConsoleLifetime } from "./console-lifetime";
 import { ConsoleLifetimeOptions } from "./console-lifetime-options";
@@ -54,7 +56,7 @@ export interface ServiceProviderOptions {
  * content root = cwd, host config from prefixed env vars + args, app config from
  * `appsettings(.{env}).json` + env vars + args, and the console logging provider.
  */
-export function configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
+function configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
   hostBuilder.configureHostConfiguration((configBuilder) => applyDefaultHostConfiguration(configBuilder, args));
   hostBuilder.configureAppConfiguration((context, configBuilder) =>
     applyDefaultAppConfiguration(configBuilder, context.hostingEnvironment, args)
@@ -64,7 +66,7 @@ export function configureDefaults(hostBuilder: IHostBuilder, args?: readonly str
 }
 
 /** Specifies the environment. Call after {@link configureDefaults} to avoid being overwritten. */
-export function useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
+function useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
   return hostBuilder.configureHostConfiguration((configBuilder) => {
     configBuilder.add(
       new MemoryConfigurationSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
@@ -73,7 +75,7 @@ export function useEnvironment(hostBuilder: IHostBuilder, environment: string): 
 }
 
 /** Specifies the content root directory. Call after {@link configureDefaults} to avoid being overwritten. */
-export function useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
+function useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
   return hostBuilder.configureHostConfiguration((configBuilder) => {
     configBuilder.add(
       new MemoryConfigurationSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
@@ -82,7 +84,7 @@ export function useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): 
 }
 
 /** Adds a delegate for configuring the {@link HostOptions} of the host. Additive across calls. */
-export function configureHostOptions(
+function configureHostOptions(
   hostBuilder: IHostBuilder,
   configureOptions: Func<[HostBuilderContext, HostOptions], void>,
 ): IHostBuilder {
@@ -95,7 +97,7 @@ export function configureHostOptions(
 }
 
 /** Adds a delegate for configuring the {@link ILoggingBuilder}. Additive across calls. */
-export function configureLogging(
+function configureLogging(
   hostBuilder: IHostBuilder,
   configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>,
 ): IHostBuilder {
@@ -105,7 +107,7 @@ export function configureLogging(
 }
 
 /** Adds a delegate for configuring the {@link IMetricsBuilder}. Additive across calls. */
-export function configureMetrics(
+function configureMetrics(
   hostBuilder: IHostBuilder,
   configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>,
 ): IHostBuilder {
@@ -120,7 +122,7 @@ export function configureMetrics(
  * {@link ServiceProviderOptions} and the result is ignored -- see
  * scaffoldedIncomplete.
  */
-export function useDefaultServiceProvider(
+function useDefaultServiceProvider(
   hostBuilder: IHostBuilder,
   configure: Func<[ServiceProviderOptions], void>,
 ): IHostBuilder {
@@ -133,7 +135,7 @@ export function useDefaultServiceProvider(
  * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
  * default {@link import("./null-lifetime").NullLifetime}).
  */
-export function useConsoleLifetime(
+function useConsoleLifetime(
   hostBuilder: IHostBuilder,
   configureOptions?: Func<[ConsoleLifetimeOptions], void>,
 ): IHostBuilder {
@@ -159,9 +161,26 @@ export function useConsoleLifetime(
  * Enables console support, builds and starts the host, and waits for Ctrl+C /
  * SIGTERM to shut down.
  */
-export function runConsoleAsync(
+function runConsoleAsync(
   hostBuilder: IHostBuilder,
   cancellationToken?: AbortSignal,
 ): Promise<void> {
-  return runAsync(useConsoleLifetime(hostBuilder).build(), cancellationToken);
+  return HostingAbstractionsHostExtensions.runAsync(useConsoleLifetime(hostBuilder).build(), cancellationToken);
 }
+
+/**
+ * The `HostingHostBuilderExtensions` augmentation set for {@link IHostBuilder}
+ * (docs §28). Installed as instance methods onto the concrete `HostBuilder` via
+ * `./host-augmentations`; the members here are the standalone call surface.
+ */
+export const HostingHostBuilderExtensions = {
+  configureDefaults,
+  useEnvironment,
+  useContentRoot,
+  configureHostOptions,
+  configureLogging,
+  configureMetrics,
+  useDefaultServiceProvider,
+  useConsoleLifetime,
+  runConsoleAsync,
+} satisfies AugmentationSet<IHostBuilder>;

@@ -15,6 +15,8 @@ import { ServiceManifestClass } from "@rhombus-std/di.core";
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot` must be importable here.
 import type { AddBuilder, DepSlot } from "@rhombus-std/di.core";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Ctor } from "@rhombus-toolkit/func";
 import { HOSTED_SERVICE_TOKEN } from "./tokens";
 
@@ -40,12 +42,19 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-ServiceManifestClass.prototype.addHostedService = function addHostedService(
-  this: ServiceManifestClass<string>,
-  ctor: Ctor,
-  signatures?: readonly (readonly DepSlot[])[],
-): ServiceManifestClass<string> {
-  const builder: AddBuilder<string> = this.add(HOSTED_SERVICE_TOKEN, ctor, signatures);
-  builder.as("singleton");
-  return this;
-};
+// One named object literal mirroring the reference `ServiceCollectionHostedServiceExtensions`
+// static class (docs §28), installed as a prototype method (the primary path) via
+// applyAugmentations AND exported so the member is the standalone form.
+export const ServiceCollectionHostedServiceExtensions = {
+  addHostedService(
+    manifest: ServiceManifestClass<string>,
+    ctor: Ctor,
+    signatures?: readonly (readonly DepSlot[])[],
+  ): ServiceManifestClass<string> {
+    const builder: AddBuilder<string> = manifest.add(HOSTED_SERVICE_TOKEN, ctor, signatures);
+    builder.as("singleton");
+    return manifest;
+  },
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
+
+applyAugmentations(ServiceManifestClass, ServiceCollectionHostedServiceExtensions);
