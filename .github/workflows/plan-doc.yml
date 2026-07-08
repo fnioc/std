@@ -1,0 +1,57 @@
+name: Plan doc
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened, labeled, unlabeled]
+  issue_comment:
+    types: [created, edited, deleted]
+
+# Rapid-fire issue events collapse to a single up-to-date run: a newer event
+# cancels the in-flight one. This is the only debounce -- no other locking.
+concurrency:
+  group: plan-doc-update
+  cancel-in-progress: true
+
+permissions:
+  issues: read
+  contents: write
+
+jobs:
+  build-plan-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Switch to bot/plan-doc branch
+        run: |
+          git fetch origin bot/plan-doc:bot/plan-doc || true
+          git checkout bot/plan-doc 2>/dev/null || git checkout -b bot/plan-doc
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Fetch issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue list --state all --limit 500 --json number,title,body,state,labels,url > issues.json
+
+      - name: Install tooling dependencies
+        run: npm install --prefix scripts/plan-doc
+
+      - name: Build plan docs
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/plan-doc/build-plan-doc.mjs
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name plan-doc-bot
+          git config user.email actions@users.noreply.github.com
+          git add issues.json GRAPH.md READY.md
+          git diff --cached --quiet || {
+            git commit -m "chore(plan-doc): refresh implementation plan"
+            git push origin bot/plan-doc
+          }
