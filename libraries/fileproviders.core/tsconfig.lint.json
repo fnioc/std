@@ -1,0 +1,8 @@
+{
+  "//": "Lint-time typecheck config: identical to tsconfig.json but without the src-only rootDir, so a future tests/fileproviders.core.test package would type-check alongside src.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src/**/*"]
+}

@@ -1,0 +1,8 @@
+{
+  "//": "Lint-time typecheck config: identical to tsconfig.json but without the src-only rootDir.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src/**/*"]
+}

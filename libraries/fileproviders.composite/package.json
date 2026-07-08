@@ -1,0 +1,58 @@
+{
+  "name": "@rhombus-std/fileproviders.composite",
+  "version": "0.0.0",
+  "description": "Composite file provider ported from ME.FileProviders.Composite: CompositeFileProvider/CompositeDirectoryContents fold multiple IFileProvider instances into one, trying each in registration order. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
+  "keywords": [
+    "fileproviders",
+    "filesystem",
+    "composite",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/fileproviders.composite"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+  },
+  "dependencies": {
+    "@rhombus-std/fileproviders.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}

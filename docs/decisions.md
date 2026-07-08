@@ -626,3 +626,204 @@ once and publishes lowered JS" is the top-level self-registration / published-fa
 workaround — and it is what the interop matrix demonstrates: each dialect both produces services the
 other consumes, and the built tokenless library's lowered factory resolves correctly inside the
 manual app because their tokens agree.
+
+## 17. `diagnostics` family scaffolded — abstractions + config-reactive builders, listener runtime deferred — #74
+
+`diagnostics.core` ships `IMetricsBuilder`/`ITracingBuilder`, the `InstrumentRule`/`TracingRule`
+rule model (eager single-wildcard validation), the `MeterScope`/`ActivitySourceScopes` flag enums,
+and `MetricsOptions`/`TracingOptions` — mirroring the reference `ME.Diagnostics.Abstractions`
+edge-for-edge (`di.core` + `options`, no `config` dependency at this layer). `diagnostics` supplies
+concrete `MetricsBuilder`/`TracingBuilder`, the config-binding pipeline (`MetricsConfigureOptions`/
+`TracingConfigureOptions` parsing the `EnabledMetrics`/`EnabledGlobalMetrics`/`EnabledLocalMetrics`
++ listener-scoped + `Default`-synonym schema against a shared tree-walker), and `addMetrics`/
+`addTracing`.
+
+**Extension-method placement.** `enableMetrics`/`disableMetrics`/`enableMetricsRule`/
+`addMetricsListener`/etc. are plain functions over `IMetricsBuilder` living in `diagnostics.core`
+— the family owns that interface, so no augmentation is needed (matches §14's "explicit form is
+primary" convention, generalized: augmentation is for extending an interface owned by ANOTHER
+package). `addMetrics`/`addTracing`, by contrast, extend `di.core`'s `ServiceManifestClass`, which
+`diagnostics` does not own — those use the exact `declare module` + prototype-patch idiom `config.json`
+established for `addJsonFile` (§14), with the same `"sideEffects": true` package.json shape.
+
+**ME-graph fidelity.** `diagnostics.core` → `di.core` + `options`; `diagnostics` → `diagnostics.core`
++ `config` + `options` + `options.augmentations` + `primitives`, with `di.core` as a peer dependency
+patched by the augmentation (the §9 peer-dep idiom `options.augmentations` established). The
+assembled `Options<MetricsOptions>`/`Options<TracingOptions>` is wired through
+`ConfigurationChangeTokenSource` so it is reload-reactive when a config source is present, and a
+static `Options.of` snapshot otherwise — the same `addOptions`/`configure` split §14 designed.
+
+**Explicit deferrals:**
+
+- **Metrics/tracing listener + subscription runtime — no consumer, no analog.** The reference's
+  `Meter`/`Instrument`/`MeasurementCallback`/`Activity`/`ActivitySource` types have nothing this
+  repo can port against yet. `IMetricsListener` is reduced to its rule-matching `name`;
+  `ActivityListenerBuilder`'s `Sample`/`SampleUsingParentId`/`ActivityStarted`/`ActivityStopped`/
+  `ExceptionRecorder` delegate params collapse to `unknown`. `addMetrics`/`addTracing` register no
+  `DefaultMeterFactory`/`MetricsSubscriptionManager`/`DefaultActivitySourceFactory`/
+  `MetricListenerConfigurationFactory` startup wiring, since there is no listener to activate.
+  Revisit when a diagnostics runtime (or an OpenTelemetry-style bridge) is on the table.
+- **Console/debug metrics listener family** (`ConsoleMetrics`, `DebugConsoleMetricListener`,
+  `AddConsole`) — depends on the deferred listener runtime above.
+- **`ME.Http.Diagnostics`, `ME.Diagnostics.ResourceMonitoring`, `ME.Diagnostics.ExceptionSummarization`
+  — not built.** YAGNI: no concrete consumer.
+- **`CompositeChangeToken` duplication.** `diagnostics` needs the same composite-token merge
+  `options.augmentations` already built locally for §14's multi-`configure` case. `options.augmentations`'
+  copy already anticipated a "second consumer" promotion into `primitives`; `diagnostics` is now
+  that second consumer — promoting one `CompositeChangeToken` into `primitives` and deleting both
+  local copies is an open follow-up, not done this pass.
+- **`addMetrics`/`addTracing` are not idempotent** — `di.core` has no `TryAdd`/has surface, so a
+  second call re-registers the identical assembly factory (benign under last-wins bare-token
+  resolution, but pollutes `Array<token>` collection aggregation, §12). Mirrors the same gap in
+  `options.augmentations`' `addOptions`; guard both together if a `TryAdd` primitive lands on
+  `ServiceManifestBase`.
+
+## 18. `logging` family scaffolded — composite `Logger`/`LoggerFactory` + config-bound filter rules, sinks deferred — #75
+
+`logging.core` ships `ILogger`/`ILoggerFactory`/`ILoggerProvider` (extends `Disposable`)/
+`ILoggingBuilder` (typed against `di.core`'s `ServiceManifest`), `LogLevel` (`Trace=0`..`None=6`,
+reused verbatim from `hosting.core`'s prior stand-in — see the graph note below),
+`EventId`/`EventIdLike`, `FormattedLogValues` + a single-pass `{hole}`/`{{ }}` `formatMessage`
+renderer, and the `log`/`logTrace`/`logDebug`/`logInformation`/`logWarning`/`logError`/
+`logCritical` convenience wrappers — mirroring `ME.Logging.Abstractions` → `di.core` only (the pin
+in `docs/reference/me-extensions-dependencies.md`). `logging` supplies the concrete `Logger`
+(composite fan-out over a live-by-reference sink array), `LoggerFactory` (per-category caching,
+back-filling existing composites when a provider is added), `NullLogger`/`NullLoggerFactory`/
+`NullLoggerProvider`, `LoggerFilterOptions`/`LoggerFilterRule`, and `addLogging`. `logging.configuration`
+adds config-tree → `LoggerFilterOptions` binding (`bindLoggerFilterOptions`/`parseLogLevel`: global
+`LogLevel` + per-provider `<provider>:LogLevel`, `Default` mapping to the undefined category) and
+`addConfiguration`.
+
+**Extension-method placement.** The `log*` wrappers are plain functions over `ILogger`/
+`ILoggingBuilder` in `logging.core` — family-owned interface, no augmentation. `addLogging` extends
+`di.core`'s `ServiceManifestClass`, which `logging` doesn't own, so it uses the `addJsonFile`
+augmentation idiom (§14) — `declare module` + prototype patch, `"sideEffects": true`. Uses `add`
+(append, last-wins) rather than a `TryAdd`-style guard, since `di.core` has no add-if-absent surface.
+
+**ME-graph fidelity.** `logging.core` → `di.core`; `logging` → `logging.core` (`di.core` as peer,
+patched by `addLogging`); `logging.configuration` → `logging` + `logging.core` + `config` +
+`config.core` + `di.core` + `options` — edge-for-edge with the reference.
+
+**`hosting.core`'s logging stand-in retired.** `hosting.core` previously carried its own local
+`ILogger`/`ILoggerFactory`/`LogLevel` as placeholders (there was no logging family to depend on
+yet). The integration pass deleted `hosting.core/src/logging/logger.ts` and `logger-factory.ts`,
+re-exported the real types from `logging.core` in `hosting.core/src/index.ts`, and added
+`@rhombus-std/logging.core` to `hosting.core`'s dependencies — realizing the
+`Logging.Abstractions → DependencyInjection.Abstractions` pin now that a real `logging.core`
+exists to depend on, rather than leaving a permanent fork.
+
+**Explicit deferrals:**
+
+- **No concrete sinks this pass.** `ME.Logging.Console`, `.Debug`, `.EventLog`, `.EventSource`,
+  `.TraceSource` are all excluded per direct instruction (issue #75). `ILoggerProvider`/
+  `ILoggerFactory` ship so a consumer can supply their own provider; what a provider set should
+  look like here is still an open design question, likely an adaptation rather than a straight
+  port.
+- **`setMinimumLevel` stubbed (throws).** The reference registers an `IConfigureOptions<LoggerFilterOptions>`
+  via `IServiceCollection.Configure` — an options-DI-builder surface `options` deliberately defers
+  — plus it needs the (also deferred) filter-consumption layer below.
+- **`clearProviders` stubbed (throws).** `di.core` registrations are append-only/last-wins with no
+  remove-all surface, so `RemoveAll<ILoggerProvider>()` has no mechanical port.
+- **`LoggerFactory.create(configure)` static stubbed (throws).** The reference builds a full DI
+  container and resolves `ILoggerFactory` from it; that needs the `di` RUNTIME, but the graph edge
+  is `logging → di.core` only. Instance construction and `manifest.addLogging(...)` work for real.
+- **`addLogging` omits** the reference's `AddOptions()` call, the open `ILogger<TCategory> →
+  Logger<TCategory>` registration (needs runtime type-name reflection TS lacks), and the default
+  `IConfigureOptions<LoggerFilterOptions>` (needs the deferred options-DI integration).
+- **Filter-rule SELECTION is not applied.** The composite `Logger` does not apply per-
+  `(provider, category)` `LoggerFilterRule` selection — each sink's own `isEnabled` gates it
+  (correct for a no-filter setup). `LoggerFilterOptions`/`Rule` are real data holders; their
+  consumption is deferred with the options-monitor DI integration. Cross-sink `AggregateException`
+  aggregation is also omitted — a throwing sink propagates.
+- **`addFilter` ports only the two unambiguous overloads** (`(category, level)` rule, and raw
+  `(provider, category, level) => bool` filter); the wider provider-scoped `<T>`/per-category
+  function-filter overload matrix is deferred sugar adding no new capability.
+- **`logging.configuration`'s `addConfiguration` binds EAGERLY**, at call time, and registers a
+  resolvable value — real behavior minus reload reactivity. The reference registers a LAZY
+  `IConfigureOptions<LoggerFilterOptions>` + an `IOptionsChangeTokenSource` (needs the deferred
+  options-monitor DI integration). The no-arg `AddConfiguration()` overload and the
+  `ILoggerProviderConfigurationFactory`/`LoggerProviderConfigurationExtensions` provider-oriented
+  services are deferred alongside the provider work (issue #75).
+- **`FormattedLogValues` renders strings only** — full structured name/value key extraction (for a
+  structured sink) is deferred, exposed via the raw `message`/`args` fields until then.
+- **`LoggerExtensions` EventId-carrying overloads dropped** — a bare integer event id vs. a message
+  string is ambiguous at runtime with no overload dispatch; callers needing an explicit event id
+  call `logger.log(level, EventId.from(n), ...)` directly.
+
+## 19. `caching` family scaffolded — real `MemoryCache` runtime, statistics/linked-entries deferred — #76
+
+`caching.core` ships `IMemoryCache`/`ICacheEntry`, `CacheItemPriority`/`EvictionReason`,
+`PostEvictionCallbackRegistration`/`PostEvictionDelegate`, and the `CacheExtensions`/
+`CacheEntryExtensions` convenience functions (`get`/`tryGetValue`/`set`/`getOrCreate`/
+`getOrCreateAsync`/`setPriority`/`addExpirationToken`/`setAbsoluteExpiration`/
+`setSlidingExpiration`/`registerPostEvictionCallback` — the family owns `ICacheEntry`/
+`IMemoryCache`, so these are plain functions, no augmentation) — mirroring `ME.Caching.Abstractions`
+→ `primitives`. `caching.memory` ships a genuinely working `MemoryCache`: a `Map`-backed store,
+absolute + sliding + change-token expiration (enforced lazily on access and by an inline
+frequency-gated scan — no background thread in a single-threaded runtime), size-limit accounting
+with priority-then-LRU compaction run synchronously on an overflowing insert, and eviction
+callbacks fired on remove/replace/expire/capacity. Verified end-to-end with a standalone smoke test
+(14/14 assertions) and a path-mapped `tsc` check against real sibling sources (own-package types
+clean); the workspace-root install/build/typecheck is the integration pass, not this smoke check.
+
+**Extension-method placement.** `caching.memory` adds `setEntryOptions`/`setWithOptions`/
+`getOrCreateWithOptions`/`getOrCreateAsyncWithOptions` — the `MemoryCacheEntryOptions`-consuming
+overloads of the `caching.core` extension functions — because `MemoryCacheEntryOptions` itself
+lives in `caching.memory`, diverging from the reference (where it sits in `ME.Caching.Abstractions`
+alongside the rest). Revisiting whether `MemoryCacheEntryOptions` should move to `caching.core` to
+keep the extension surface unified is an open follow-up. `addMemoryCache` extends `di.core`'s
+`ServiceManifestClass`, which `caching` doesn't own, so it uses the `addJsonFile` augmentation
+idiom (§14), with `caching.memory`'s `package.json` carrying `"sideEffects": true`.
+
+**ME-graph fidelity.** `caching.core` → `primitives`; `caching.memory` → `caching.core` +
+`logging.core` + `options` + `primitives`, with `di.core` as a peer dependency patched by
+`addMemoryCache` — edge-for-edge, including the `logging.core` edge the reference's
+`MemoryCache(ILogger, ...)` constructor implies (see `docs/reference/me-extensions-dependencies.md`).
+
+**Explicit deferrals:**
+
+- **`addMemoryCache` is not idempotent and does no DI-pipeline wiring.** `di.core` has no `TryAdd`,
+  so a second call re-registers (whereas the reference keeps the first registration via `TryAdd`).
+  No `IOptions` pipeline and no `ILoggerFactory` injection are wired — the setup callback runs
+  EAGERLY at registration time and `MemoryCache` is built with a private null-logger fallback
+  (`logging.core` does not yet export a `NullLogger`/`NullLoggerFactory` — provider work is issue
+  #75 scope; swap in the real one once it exists).
+- **Statistics/metrics surface not ported** — `GetCurrentStatistics`, `MemoryCacheStatistics`, the
+  observable-counter metrics, and `MemoryCacheOptions.TrackStatistics`/`Name`. No consumer.
+- **Linked-entry tracking not ported** — the `AsyncLocal` parent/child propagation and
+  `MemoryCacheOptions.TrackLinkedCacheEntries` (kept as a field, always `false`); `CacheEntry`
+  commit is unconditional.
+- **Background scheduling replaced with synchronous inline equivalents** — single-threaded JS has
+  no analog for the reference's Task-scheduled expiration scan or background-thread overcapacity
+  compaction; behavior is preserved via inline, frequency-gated checks triggered by subsequent
+  operations, with no independent periodic timer.
+- **Span-key `TryGetValue` overloads and `GetCurrentStatistics`** on `IMemoryCache` not ported —
+  perf/diagnostic surface, no consumer.
+- **`MemoryCacheOptions.CompactOnMemoryPressure` dropped entirely** — the reference marks it
+  `Obsolete(error: true)`.
+
+## 20. `fileproviders` family scaffolded — composite provider real, physical provider and glob matching held — #77
+
+`fileproviders.core` ships `IFileProvider`/`IFileInfo`/`IDirectoryContents`, `NotFoundFileInfo`/
+`NotFoundDirectoryContents`, `NullChangeToken`, and `NullFileProvider` — mirroring
+`ME.FileProviders.Abstractions` → `Primitives`, realized as `fileproviders.core` → `primitives`.
+`fileproviders.composite` ships `CompositeFileProvider`/`CompositeDirectoryContents`, fanning a
+request out across 0..N inner providers — the 0- and 1-provider cases are fully functional —
+→ `fileproviders.core` + `primitives`.
+
+**Explicit deferrals (both held for the same reason: no design yet, not YAGNI-forever):**
+
+- **No disk-backed provider.** `ME.FileProviders.Physical` is deliberately deferred — not even a
+  stub package was created. What a physical (or non-disk) file provider means for this repo is an
+  open design question to resolve separately.
+- **`ME.FileSystemGlobbing` not ported.** Upstream it is pulled in only by `ME.FileProviders.Physical`;
+  since Physical is deferred it has no consumer yet (YAGNI). Port it only if/when a disk-backed
+  provider that needs glob matching is designed.
+- **`CompositeFileProvider.watch` over 2+ change-emitting providers is a hosting-style stub
+  (throws).** Merging N inner `IChangeToken`s needs a `CompositeChangeToken` — upstream that type
+  lives in `ME.Primitives`, and `primitives` does not port it yet (no consumer needed it until
+  now). Where it should live — promoted into `primitives` as its natural home, vs. a private local
+  port in `fileproviders.composite` — is a `primitives`-family design call, out of scope for this
+  pass and tracked against issue #77. (§17's `diagnostics` section above independently hit the same
+  gap via `options.augmentations`' local `CompositeChangeToken` copy — three packages now want this
+  one primitive.)

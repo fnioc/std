@@ -79,6 +79,29 @@
         "typescript": "^5.9.0",
       },
     },
+    "libraries/caching.core": {
+      "name": "@rhombus-std/caching.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "libraries/caching.memory": {
+      "name": "@rhombus-std/caching.memory",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/caching.core": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di.core": "workspace:^",
+      },
+    },
     "libraries/config": {
       "name": "@rhombus-std/config",
       "version": "0.0.0",
@@ -195,6 +218,48 @@
         "typescript": ">=5.2",
       },
     },
+    "libraries/diagnostics": {
+      "name": "@rhombus-std/diagnostics",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/diagnostics.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di.core": "workspace:^",
+      },
+    },
+    "libraries/diagnostics.core": {
+      "name": "@rhombus-std/diagnostics.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+    },
+    "libraries/fileproviders.composite": {
+      "name": "@rhombus-std/fileproviders.composite",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "libraries/fileproviders.core": {
+      "name": "@rhombus-std/fileproviders.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
     "libraries/hosting": {
       "name": "@rhombus-std/hosting",
       "version": "0.0.0",
@@ -213,6 +278,7 @@
       "name": "@rhombus-std/hosting.core",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
@@ -220,6 +286,42 @@
         "rollup": "^4.61.0",
         "rollup-plugin-dts": "^6.4.1",
         "typescript": "^5.9.0",
+      },
+    },
+    "libraries/logging": {
+      "name": "@rhombus-std/logging",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/logging.core": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+      "peerDependencies": {
+        "@rhombus-std/di.core": "workspace:^",
+      },
+    },
+    "libraries/logging.configuration": {
+      "name": "@rhombus-std/logging.configuration",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+      },
+    },
+    "libraries/logging.core": {
+      "name": "@rhombus-std/logging.core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
       },
     },
     "libraries/options": {
@@ -457,6 +559,10 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
+    "@rhombus-std/caching.core": ["@rhombus-std/caching.core@workspace:libraries/caching.core"],
+
+    "@rhombus-std/caching.memory": ["@rhombus-std/caching.memory@workspace:libraries/caching.memory"],
+
     "@rhombus-std/config": ["@rhombus-std/config@workspace:libraries/config"],
 
     "@rhombus-std/config.commandline": ["@rhombus-std/config.commandline@workspace:libraries/config.commandline"],
@@ -497,6 +603,10 @@
 
     "@rhombus-std/di.transformer.test": ["@rhombus-std/di.transformer.test@workspace:tests/di.transformer.test"],
 
+    "@rhombus-std/diagnostics": ["@rhombus-std/diagnostics@workspace:libraries/diagnostics"],
+
+    "@rhombus-std/diagnostics.core": ["@rhombus-std/diagnostics.core@workspace:libraries/diagnostics.core"],
+
     "@rhombus-std/examples.app.with-transformer": ["@rhombus-std/examples.app.with-transformer@workspace:examples/examples.app.with-transformer"],
 
     "@rhombus-std/examples.app.without-transformer": ["@rhombus-std/examples.app.without-transformer@workspace:examples/examples.app.without-transformer"],
@@ -507,6 +617,10 @@
 
     "@rhombus-std/examples.lib.without-transformer": ["@rhombus-std/examples.lib.without-transformer@workspace:examples/examples.lib.without-transformer"],
 
+    "@rhombus-std/fileproviders.composite": ["@rhombus-std/fileproviders.composite@workspace:libraries/fileproviders.composite"],
+
+    "@rhombus-std/fileproviders.core": ["@rhombus-std/fileproviders.core@workspace:libraries/fileproviders.core"],
+
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
 
     "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
@@ -514,6 +628,12 @@
     "@rhombus-std/hosting.core.test": ["@rhombus-std/hosting.core.test@workspace:tests/hosting.core.test"],
 
     "@rhombus-std/hosting.test": ["@rhombus-std/hosting.test@workspace:tests/hosting.test"],
+
+    "@rhombus-std/logging": ["@rhombus-std/logging@workspace:libraries/logging"],
+
+    "@rhombus-std/logging.configuration": ["@rhombus-std/logging.configuration@workspace:libraries/logging.configuration"],
+
+    "@rhombus-std/logging.core": ["@rhombus-std/logging.core@workspace:libraries/logging.core"],
 
     "@rhombus-std/options": ["@rhombus-std/options@workspace:libraries/options"],
 

@@ -63,7 +63,46 @@ first and a distinction is collapsed only after it's shown unjustified (§0). Na
   engine + reload tokens, §8) ← providers `config.json` / `config.env` / `config.commandline`
   (each a `declare module` augmentation adding e.g. `addJsonFile` to `ConfigurationBuilder`).
   `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
-- **`hosting`** (`hosting.core`, `hosting`) — skeletons, pending.
+- **`hosting`** (`hosting.core`, `hosting`) — skeletons, pending. `hosting.core` no longer
+  carries its own `ILogger`/`ILoggerFactory`/`LogLevel` stand-ins; it re-exports them from
+  `logging.core` and depends on it directly, now that the real logging family exists.
+- **`diagnostics`** — `diagnostics.core` (the `IMetricsBuilder`/`ITracingBuilder` abstractions,
+  the rule/options data model, `METRICS_*`/`TRACING_*` tokens; ← `di.core` + `options`) ←
+  `diagnostics` (concrete `MetricsBuilder`/`TracingBuilder`, config-binding pipeline wired
+  through `ConfigurationChangeTokenSource` for reload-reactive `Options<T>`, and the
+  `addMetrics`/`addTracing` declaration-merging augmentations onto `di.core`'s
+  `ServiceManifestClass`; ← `diagnostics.core` + `config` + `options` + `options.augmentations`
+  + `primitives`, `di.core` as peer). The metrics/tracing **listener runtime** (no `Meter`/
+  `Instrument`/`Activity`/`ActivitySource` analog) is intentionally not ported — `IMetricsListener`
+  collapses to its rule-matching `name`, `ActivityListenerBuilder`'s delegate params collapse to
+  `unknown`, and `addMetrics`/`addTracing` register no listener-activation wiring. Console/debug
+  listener packages, `ME.Http.Diagnostics`, `ME.Diagnostics.ResourceMonitoring`, and
+  `ME.Diagnostics.ExceptionSummarization` are all out of scope (no consumer, YAGNI).
+- **`logging`** — `logging.core` (`ILogger`/`ILoggerFactory`/`ILoggerProvider`/`ILoggingBuilder`,
+  `LogLevel`, `EventId`, `FormattedLogValues` + the `log*` convenience wrappers; ← `di.core`) ←
+  `logging` (`Logger`/`LoggerFactory` composite fan-out, `NullLogger*`, `LoggerFilterOptions`,
+  the `addLogging` augmentation onto `di.core`'s `ServiceManifestClass`; ← `logging.core`,
+  `di.core` as peer) ← `logging.configuration` (config-tree → `LoggerFilterOptions` binding,
+  `addConfiguration`; ← `logging` + `logging.core` + `config` + `config.core` + `di.core` +
+  `options`). No concrete sinks (console/debug/event-log/trace-source providers) are ported this
+  pass — deferred pending a provider design (issue #75). `setMinimumLevel`, `clearProviders`, and
+  `LoggerFactory.create` are hosting-style stubs pending the options-DI-builder and `di` runtime
+  integrations they need.
+- **`caching`** — `caching.core` (`IMemoryCache`/`ICacheEntry` abstractions + the
+  `CacheExtensions`/`CacheEntryExtensions` convenience functions, owned outright so no
+  augmentation is needed; ← `primitives`) ← `caching.memory` (a genuinely working `MemoryCache`:
+  absolute/sliding/change-token expiration, size-limited priority-then-LRU compaction, eviction
+  callbacks; ← `caching.core` + `logging.core` + `options` + `primitives`, `di.core` as peer via
+  the `addMemoryCache` augmentation). Statistics/metrics, linked-entry tracking, and the
+  options-pipeline/`ILoggerFactory`-DI wiring for `addMemoryCache` are deferred — no consumer yet.
+- **`fileproviders`** — `fileproviders.core` (`IFileProvider`/`IFileInfo`/`IDirectoryContents`,
+  `NullFileProvider`; ← `primitives`) ← `fileproviders.composite` (`CompositeFileProvider`
+  fan-out over 0/1/N inner providers; ← `fileproviders.core` + `primitives`). A disk-backed
+  provider (`ME.FileProviders.Physical`) and `ME.FileSystemGlobbing` (only ever a `Physical`
+  dependency upstream) are deliberately deferred — what a physical provider means here is an open
+  design question, not yet scoped. `CompositeFileProvider.watch` over 2+ change-emitting
+  providers is a stub pending a `CompositeChangeToken` primitive (tracked against issue #77; the
+  0- and 1-provider cases are fully functional).
 
 Cross-cutting invariants (each spans several packages — confirm against `docs/decisions.md`
 before touching):
@@ -87,7 +126,7 @@ Architecture section above. `decisions.md` is the full record; this file is the 
 
 - **Families** (mirror the reference `ME.*` graph — see
   `docs/reference/me-extensions-dependencies.md`): `primitives`, `di`, `options`,
-  `config`, `hosting`.
+  `config`, `hosting`, `diagnostics`, `logging`, `caching`, `fileproviders`.
 - **Qualifiers:**
   - `.core` — the abstractions/contracts layer for a family.
   - `.augmentations` — a side-effect declaration-merging extension package.
