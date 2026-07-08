@@ -1,8 +1,8 @@
 // Public entry point for @rhombus-std/diagnostics -- the ME.Diagnostics (impl)
 // analog.
 //
-// Ships the concrete MetricsBuilder/TracingBuilder, the config-binding extension
-// functions (addMetricsConfiguration/addTracingConfiguration), the config-bind
+// Ships the concrete MetricsBuilder/TracingBuilder, the config-binding
+// augmentation sets (Metrics/TracingBuilderConfigurationExtensions), the config-bind
 // ConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
 // registration builder AND the metrics/tracing builder extensions as instance
@@ -42,7 +42,8 @@ import {
   TRACING_OPTIONS_TOKEN,
   TracingOptions,
 } from "@rhombus-std/diagnostics.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
@@ -86,10 +87,12 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-// Authored once as receiver-first functions, installed as prototype methods (the
-// primary path) via applyExtensions AND exported standalone (the fallback /
-// testing surface) -- the dual-export convention (docs §22).
-export const diagnosticsExtensions = defineExtensions<ServiceManifestClass<string>>()({
+// One named object literal per ME static class (docs §28): `addMetrics` mirrors
+// `MetricsServiceExtensions`, `addTracing` mirrors `TracingServiceExtensions` --
+// two ME classes over the same ServiceManifest receiver, so two literals.
+// Installed as prototype methods (the primary path) via applyAugmentations AND
+// exported so the member is the standalone form.
+export const MetricsServiceExtensions = {
   addMetrics(
     manifest: ServiceManifestClass<string>,
     configure?: Func<[IMetricsBuilder], void>,
@@ -116,6 +119,9 @@ export const diagnosticsExtensions = defineExtensions<ServiceManifestClass<strin
     }
     return manifest;
   },
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
+
+export const TracingServiceExtensions = {
   addTracing(
     manifest: ServiceManifestClass<string>,
     configure?: Func<[ITracingBuilder], void>,
@@ -136,23 +142,23 @@ export const diagnosticsExtensions = defineExtensions<ServiceManifestClass<strin
     }
     return manifest;
   },
-});
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyExtensions(ServiceManifestClass, diagnosticsExtensions);
+applyAugmentations(ServiceManifestClass, MetricsServiceExtensions);
+applyAugmentations(ServiceManifestClass, TracingServiceExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).
 export { MetricsBuilder } from "./metrics-builder";
 export { TracingBuilder } from "./tracing-builder";
 
-// The config-binding extension functions. Their receiver is the family's OWN
-// builder interface, so the standalone free-function is the authored form; the
-// dual-export convention (docs §22) additionally installs them as instance
-// methods on MetricsBuilder/TracingBuilder via ./builder-augmentations, so both
-// `addMetricsConfiguration(builder, cfg)` and `builder.addMetricsConfiguration(cfg)`
-// work. Both forms stay available; the method form is the primary path.
-export { addMetricsConfiguration } from "./metrics-builder-configuration-extensions";
-export { addTracingConfiguration } from "./tracing-builder-configuration-extensions";
+// The config-binding augmentation sets. Their receiver is the family's OWN
+// builder interface; the dual-export convention (docs §28) installs them as
+// instance methods on MetricsBuilder/TracingBuilder via ./builder-augmentations,
+// so both `MetricsBuilderConfigurationExtensions.addMetricsConfiguration(builder, cfg)`
+// and `builder.addMetricsConfiguration(cfg)` work. The method form is primary.
+export { MetricsBuilderConfigurationExtensions } from "./metrics-builder-configuration-extensions";
+export { TracingBuilderConfigurationExtensions } from "./tracing-builder-configuration-extensions";
 
 // The config-bind ConfigureOptions steps (the reference's internal
 // Metrics/TracingConfigureOptions), exposed so a plugin-less consumer can bind a

@@ -24,7 +24,8 @@
 import type { IConfiguration } from "@rhombus-std/config.core";
 import { LoggerFilterOptions, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import { bindLoggerFilterOptions } from "./filter-options-binding";
 import { LoggingConfiguration } from "./logging-configuration";
 
@@ -39,7 +40,7 @@ export const LOGGING_CONFIGURATION_TOKEN = "@rhombus-std/logging.configuration:L
  * bound options + the raw {@link LoggingConfiguration} on the builder. Returns
  * the builder for chaining.
  */
-export function addConfiguration(builder: ILoggingBuilder, configuration: IConfiguration): ILoggingBuilder {
+function addConfiguration(builder: ILoggingBuilder, configuration: IConfiguration): ILoggingBuilder {
   const options = new LoggerFilterOptions();
   bindLoggerFilterOptions(configuration, options);
   builder.services.addValue(LOGGER_FILTER_OPTIONS_TOKEN, options);
@@ -47,7 +48,15 @@ export function addConfiguration(builder: ILoggingBuilder, configuration: IConfi
   return builder;
 }
 
-// The method form (docs §22): merge onto the owning ILoggingBuilder interface so a
+/**
+ * The `LoggingBuilderExtensions` augmentation set for {@link ILoggingBuilder}
+ * (docs §28) -- mirrors ME.Logging.Configuration's `LoggingBuilderExtensions`.
+ */
+export const LoggingBuilderExtensions = {
+  addConfiguration,
+} satisfies AugmentationSet<ILoggingBuilder>;
+
+// The method form (docs §28): merge onto the owning ILoggingBuilder interface so a
 // consumer holding it sees the method, then install onto the concrete LoggingBuilder
 // (whose implements-check was fixed in @rhombus-std/logging's own compilation, so no
 // class-side merge is needed here).
@@ -69,4 +78,4 @@ declare module "@rhombus-std/logging/internal/logging-builder" {
   }
 }
 
-applyExtensions<ILoggingBuilder>(LoggingBuilder, defineExtensions<ILoggingBuilder>()({ addConfiguration }));
+applyAugmentations(LoggingBuilder, LoggingBuilderExtensions);

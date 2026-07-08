@@ -29,7 +29,8 @@ import type { IConfiguration } from "@rhombus-std/config.core";
 import type { AddBuilder, Token } from "@rhombus-std/di.core";
 import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
 import { Options } from "@rhombus-std/options";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 
 import { assembleOptions } from "./assemble-options.js";
 import { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
@@ -85,12 +86,15 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-// Dual-export (docs §22): authored once as receiver-first functions, installed
-// as prototype methods (the primary path) via applyExtensions AND exported
-// standalone (the fallback / testing surface). The overloads/generics live on
-// the declare-module merge above (the method signature's source of truth); the
-// free-function impl carries the disambiguating union.
-export const optionsExtensions = defineExtensions<ServiceManifestClass<string>>()({
+// One named object literal per ME static class (docs §28): `addOptions` mirrors
+// `OptionsServiceCollectionExtensions`, `configure` mirrors
+// `OptionsConfigurationServiceCollectionExtensions` -- two ME classes over the
+// same receiver, so two literals. Installed as prototype methods (the primary
+// path) via applyAugmentations AND exported so the member is the standalone
+// form. The overloads/generics live on the declare-module merge above (the
+// method signature's source of truth); the member impl carries the
+// disambiguating union.
+export const OptionsServiceCollectionExtensions = {
   addOptions<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
@@ -110,6 +114,9 @@ export const optionsExtensions = defineExtensions<ServiceManifestClass<string>>(
     }
     return manifest.addFactory(token, (t: T) => Options.of(t), [[source]]);
   },
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
+
+export const OptionsConfigurationServiceCollectionExtensions = {
   configure(
     manifest: ServiceManifestClass<string>,
     token: Token,
@@ -119,9 +126,10 @@ export const optionsExtensions = defineExtensions<ServiceManifestClass<string>>(
     manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(section));
     return manifest;
   },
-});
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyExtensions(ServiceManifestClass, optionsExtensions);
+applyAugmentations(ServiceManifestClass, OptionsServiceCollectionExtensions);
+applyAugmentations(ServiceManifestClass, OptionsConfigurationServiceCollectionExtensions);
 
 export { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
 export { ConfigurationConfigureOptions } from "./configuration-configure-options.js";

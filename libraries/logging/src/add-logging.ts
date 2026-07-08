@@ -23,7 +23,8 @@
 import { ServiceManifestClass } from "@rhombus-std/di.core";
 import type { ServiceManifest } from "@rhombus-std/di.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFactory } from "./logger-factory";
 import { LoggingBuilder } from "./logging-builder";
@@ -50,10 +51,10 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-// Dual-export (docs §22): authored once as a receiver-first function, installed
-// as a prototype method (the primary path) via applyExtensions AND exported
-// standalone (the fallback / testing surface).
-export const loggingExtensions = defineExtensions<ServiceManifestClass<string>>()({
+// One named object literal mirroring the reference `LoggingServiceCollectionExtensions`
+// static class (docs §28), installed as a prototype method (the primary path)
+// via applyAugmentations AND exported so the member is the standalone form.
+export const LoggingServiceCollectionExtensions = {
   addLogging(
     manifest: ServiceManifestClass<string>,
     configure?: Func<[ILoggingBuilder], void>,
@@ -68,6 +69,6 @@ export const loggingExtensions = defineExtensions<ServiceManifestClass<string>>(
     configure?.(new LoggingBuilder(manifest as unknown as ServiceManifest));
     return manifest;
   },
-});
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyExtensions(ServiceManifestClass, loggingExtensions);
+applyAugmentations(ServiceManifestClass, LoggingServiceCollectionExtensions);

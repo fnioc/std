@@ -10,7 +10,8 @@
 // barrel.
 
 import type { IndexedSection } from "@rhombus-std/config.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import { ConfigurationBuilder } from "../configuration-builder";
 import { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
 
@@ -27,12 +28,13 @@ declare module "../configuration-builder" {
   }
 }
 
-// Dual-export (docs §22): a receiver-first function installed as a prototype
-// method AND exported standalone.
-export const inMemoryConfigExtensions = defineExtensions<ConfigurationBuilder>()({
-  addInMemoryCollection(builder: ConfigurationBuilder, initialData?: ConfigurationData): ConfigurationBuilder {
+// One named object literal mirroring the reference `MemoryConfigurationBuilderExtensions`
+// static class (docs §28), installed as a prototype method AND exported so the
+// member is the standalone form.
+export const MemoryConfigurationBuilderExtensions = {
+  addInMemoryCollection<T>(builder: ConfigurationBuilder<T>, initialData?: ConfigurationData): ConfigurationBuilder<T> {
     return builder.add(new MemoryConfigurationSource({ initialData }));
   },
-});
+} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyExtensions(ConfigurationBuilder, inMemoryConfigExtensions);
+applyAugmentations(ConfigurationBuilder, MemoryConfigurationBuilderExtensions);

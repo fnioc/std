@@ -11,6 +11,7 @@
 // ported (no listener runtime consumes it -- see the package tbd notes).
 
 import type { ConfigureOptions } from "@rhombus-std/options";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { ActivityListenerBuilder } from "./activity-listener-builder";
@@ -25,7 +26,7 @@ import { TracingRule } from "./tracing-rule";
  * Mirrors `TracingBuilderExtensions.AddListener(ITracingBuilder, string, Action<ActivityListenerBuilder>)`.
  * @throws {@link Error} if `name` is empty.
  */
-export function addTracingListener(
+function addTracingListener(
   builder: ITracingBuilder,
   name: string,
   configure: Func<[ActivityListenerBuilder], void>,
@@ -43,7 +44,7 @@ export function addTracingListener(
  * Appends an ENABLE {@link TracingRule} directly to a {@link TracingOptions}.
  * Mirrors `TracingOptions.EnableTracing(...)`.
  */
-export function enableTracingRule(
+function enableTracingRule(
   options: TracingOptions,
   sourceName?: string,
   operationName?: string,
@@ -58,7 +59,7 @@ export function enableTracingRule(
  * Appends a DISABLE {@link TracingRule} directly to a {@link TracingOptions}.
  * Mirrors `TracingOptions.DisableTracing(...)`.
  */
-export function disableTracingRule(
+function disableTracingRule(
   options: TracingOptions,
   sourceName?: string,
   operationName?: string,
@@ -84,7 +85,7 @@ function configureTracing(builder: ITracingBuilder, apply: (options: TracingOpti
  * Enables activities via a deferred rule. Mirrors
  * `TracingBuilderExtensions.EnableTracing(ITracingBuilder, ...)`.
  */
-export function enableTracing(
+function enableTracing(
   builder: ITracingBuilder,
   sourceName?: string,
   operationName?: string,
@@ -100,7 +101,7 @@ export function enableTracing(
  * Disables activities via a deferred rule. Mirrors
  * `TracingBuilderExtensions.DisableTracing(ITracingBuilder, ...)`.
  */
-export function disableTracing(
+function disableTracing(
   builder: ITracingBuilder,
   sourceName?: string,
   operationName?: string,
@@ -111,3 +112,24 @@ export function disableTracing(
     disableTracingRule(options, sourceName, operationName, listenerName, scopes);
   });
 }
+
+/**
+ * The `TracingBuilderExtensions` augmentation set for {@link ITracingBuilder}
+ * (docs §28) -- the builder-targeted listener/rule methods. Installed onto the
+ * concrete builder downstream in `@rhombus-std/diagnostics`.
+ */
+export const TracingBuilderExtensions = {
+  addTracingListener,
+  enableTracing,
+  disableTracing,
+} satisfies AugmentationSet<ITracingBuilder>;
+
+/**
+ * The `TracingOptions`-targeted rule mutators (docs §28). Standalone-only: an
+ * options-bag receiver given NO prototype install; the member IS the standalone
+ * call surface.
+ */
+export const TracingOptionsExtensions = {
+  enableTracingRule,
+  disableTracingRule,
+} satisfies AugmentationSet<TracingOptions>;

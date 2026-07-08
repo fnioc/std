@@ -3,9 +3,14 @@
 // binds LoggerFilterOptions from an IConfiguration.
 //
 // Not a sink — providers are out of scope this pass (issue #75). This ships the
-// real config-binding logic (`bindLoggerFilterOptions`, `addConfiguration`) plus
-// the `LoggingConfiguration` holder.
+// real config-binding logic (`bindLoggerFilterOptions`, the
+// `LoggingBuilderExtensions` augmentation set) plus the `LoggingConfiguration`
+// holder.
 
-export { addConfiguration, LOGGER_FILTER_OPTIONS_TOKEN, LOGGING_CONFIGURATION_TOKEN } from "./add-configuration";
+export {
+  LOGGER_FILTER_OPTIONS_TOKEN,
+  LOGGING_CONFIGURATION_TOKEN,
+  LoggingBuilderExtensions,
+} from "./add-configuration";
 export { bindLoggerFilterOptions, parseLogLevel } from "./filter-options-binding";
 export { LoggingConfiguration } from "./logging-configuration";

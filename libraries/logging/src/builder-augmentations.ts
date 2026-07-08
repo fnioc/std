@@ -1,17 +1,17 @@
-// Reverse-direction dual-export (docs §22) for the ILoggingBuilder extensions.
+// Reverse-direction dual-export (docs §28) for the ILoggingBuilder augmentations.
 // Their receiver is logging.core's own ILoggingBuilder and the concrete
 // LoggingBuilder lives here, so both the declaration merge (onto the interface AND
 // the concrete class, so the class still satisfies `implements ILoggingBuilder`
 // once the names are on it) and the runtime install live in this package. The
-// standalone free-function form ships from ./builder-extensions.
+// `LoggingBuilderExtensions` object literal ships from ./builder-extensions.
 //
 // setMinimumLevel/clearProviders are deferred throwing stubs (issue #75); giving
 // them the method form keeps the surface symmetric -- the method throws exactly as
-// the free function does.
+// the standalone member does.
 
-import type { ILoggerProvider, ILoggingBuilder, LogLevel } from "@rhombus-std/logging.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
-import { addProvider, clearProviders, setMinimumLevel } from "./builder-extensions";
+import type { ILoggerProvider, LogLevel } from "@rhombus-std/logging.core";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import { LoggingBuilderExtensions } from "./builder-extensions";
 import { LoggingBuilder } from "./logging-builder";
 
 declare module "@rhombus-std/logging.core" {
@@ -30,7 +30,4 @@ declare module "./logging-builder" {
   }
 }
 
-applyExtensions<ILoggingBuilder>(
-  LoggingBuilder,
-  defineExtensions<ILoggingBuilder>()({ addProvider, setMinimumLevel, clearProviders }),
-);
+applyAugmentations(LoggingBuilder, LoggingBuilderExtensions);

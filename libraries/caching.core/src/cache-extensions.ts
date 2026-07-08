@@ -1,10 +1,9 @@
 // The IMemoryCache convenience wrappers, ported from ME.Caching.Abstractions'
-// static `CacheExtensions` class.
-//
-// Per this repo's "explicit form is primary" convention, extension methods
-// against an interface THIS family owns (`IMemoryCache`) are plain exported
-// functions taking the cache as the first parameter -- no augmentation. They
-// build only on the three core members (`tryGetValue`/`createEntry`/`remove`).
+// static `CacheExtensions` class -- authored as the named `CacheExtensions`
+// object literal (docs §28), one member per reference static method,
+// receiver-first. The members build only on the three core `IMemoryCache`
+// members (`tryGetValue`/`createEntry`/`remove`). `tryGetValue` is a member of
+// the literal but is NOT prototype-installed (see cache-augmentations.ts).
 //
 // Collapsing the reference overloads:
 //   - `Get` and `Get<TItem>` collapse into one generic `get<T>` (TS cannot
@@ -20,7 +19,7 @@
 // @rhombus-std/caching.memory, where that options TYPE is defined -- see the
 // README note on the abstractions/memory split.
 
-import type { IChangeToken } from "@rhombus-std/primitives";
+import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
 import type { ICacheEntry } from "./cache-entry";
 import type { IMemoryCache } from "./memory-cache";
 
@@ -36,7 +35,7 @@ function isChangeToken(value: unknown): value is IChangeToken {
  * type parameter is an unchecked cast of the stored value (mirrors the
  * reference `Get<TItem>`, which likewise does not runtime-verify the type).
  */
-export function get<T = unknown>(cache: IMemoryCache, key: unknown): T | undefined {
+function get<T = unknown>(cache: IMemoryCache, key: unknown): T | undefined {
   const result = cache.tryGetValue(key);
   return result[0] ? (result[1] as T | undefined) : undefined;
 }
@@ -45,7 +44,7 @@ export function get<T = unknown>(cache: IMemoryCache, key: unknown): T | undefin
  * Tries to get the value associated with `key`. Returns `[true, value]` on a
  * hit (value cast to `T`), `[false]` on a miss.
  */
-export function tryGetValue<T = unknown>(
+function tryGetValue<T = unknown>(
   cache: IMemoryCache,
   key: unknown,
 ): [found: false] | [found: true, value: T | undefined] {
@@ -54,14 +53,14 @@ export function tryGetValue<T = unknown>(
 }
 
 /** Associates `value` with `key`. */
-export function set<T>(cache: IMemoryCache, key: unknown, value: T): T;
+function set<T>(cache: IMemoryCache, key: unknown, value: T): T;
 /** Associates `value` with `key`, expiring at the absolute `Date`. */
-export function set<T>(cache: IMemoryCache, key: unknown, value: T, absoluteExpiration: Date): T;
+function set<T>(cache: IMemoryCache, key: unknown, value: T, absoluteExpiration: Date): T;
 /** Associates `value` with `key`, expiring `relativeToNowMs` milliseconds from now. */
-export function set<T>(cache: IMemoryCache, key: unknown, value: T, relativeToNowMs: number): T;
+function set<T>(cache: IMemoryCache, key: unknown, value: T, relativeToNowMs: number): T;
 /** Associates `value` with `key`, expiring when `expirationToken` fires. */
-export function set<T>(cache: IMemoryCache, key: unknown, value: T, expirationToken: IChangeToken): T;
-export function set<T>(
+function set<T>(cache: IMemoryCache, key: unknown, value: T, expirationToken: IChangeToken): T;
+function set<T>(
   cache: IMemoryCache,
   key: unknown,
   value: T,
@@ -85,7 +84,7 @@ export function set<T>(
  * one, stores it, and returns it. `factory` receives the fresh
  * {@link ICacheEntry} so it can set expiration/size before the value commits.
  */
-export function getOrCreate<T>(
+function getOrCreate<T>(
   cache: IMemoryCache,
   key: unknown,
   factory: (entry: ICacheEntry) => T,
@@ -104,7 +103,7 @@ export function getOrCreate<T>(
 /**
  * Async {@link getOrCreate}: awaits `factory` when the key is absent.
  */
-export async function getOrCreateAsync<T>(
+async function getOrCreateAsync<T>(
   cache: IMemoryCache,
   key: unknown,
   factory: (entry: ICacheEntry) => Promise<T>,
@@ -119,3 +118,12 @@ export async function getOrCreateAsync<T>(
   entry[Symbol.dispose]();
   return value;
 }
+
+/** The `CacheExtensions` augmentation set for {@link IMemoryCache} (docs §28). */
+export const CacheExtensions = {
+  get,
+  tryGetValue,
+  set,
+  getOrCreate,
+  getOrCreateAsync,
+} satisfies AugmentationSet<IMemoryCache>;

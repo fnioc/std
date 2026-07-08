@@ -12,7 +12,8 @@
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IndexedSection } from "@rhombus-std/config.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import { JsonConfigurationSource } from "./json-configuration-source";
 import type { JsonConfigurationSourceOptions } from "./json-configuration-source";
 
@@ -32,20 +33,21 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
-// Authored once as a receiver-first function, then installed as a prototype
-// method (the primary path) via applyExtensions AND exported standalone (the
-// fallback / testing surface) -- the dual-export convention (docs §22).
-export const jsonConfigExtensions = defineExtensions<ConfigurationBuilder>()({
-  addJsonFile(
-    builder: ConfigurationBuilder,
+// One named object literal mirroring the reference `JsonConfigurationExtensions`
+// static class (docs §28): its members are the class's static methods,
+// receiver-first. Installed as prototype methods (the primary path) via
+// applyAugmentations AND exported so the member is the standalone form.
+export const JsonConfigurationExtensions = {
+  addJsonFile<T>(
+    builder: ConfigurationBuilder<T>,
     path: string,
     opts?: JsonConfigurationSourceOptions,
-  ): ConfigurationBuilder {
+  ): ConfigurationBuilder<T> {
     return builder.add(new JsonConfigurationSource(path, opts));
   },
-});
+} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyExtensions(ConfigurationBuilder, jsonConfigExtensions);
+applyAugmentations(ConfigurationBuilder, JsonConfigurationExtensions);
 
 export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";

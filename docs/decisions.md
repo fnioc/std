@@ -881,12 +881,13 @@ The helpers are free functions (mirroring `compareConfigurationKeys`, not extens
 
 ## 22. Dual-export every extension — standalone function AND prototype method — #96
 
-> **Superseded by §28 (#115).** The `ExtensionSet`/`defineExtensions`/`applyExtensions`,
-> one-free-function-per-method shape documented below is still what the code implements as of this
-> writing — #115 tracks migrating it to §28's object-literal-per-ME-class form. The cross-package
+> **Superseded by §28 (#115), now landed.** The `ExtensionSet`/`defineExtensions`/`applyExtensions`,
+> one-free-function-per-method shape documented below is retained for history — #115 migrated the
+> code to §28's object-literal-per-ME-class form (`AugmentationSet`/`applyAugmentations`, named
+> consts, `primitives/src/augmentations.ts`). The cross-package
 > `.core`-interface/downstream-concrete install rule and the deferrals list at the end of this
 > section are unaffected and still hold; only the authoring shape and the `primitives` symbol names
-> change.
+> changed.
 
 Every "extension method" in the workspace is now available in BOTH forms: a standalone
 receiver-first free function AND a prototype/instance method. The method form (`builder.addX(...)`)
@@ -1127,10 +1128,9 @@ seams while keeping ONE bundled surface consumers program against.
 
 ## 28. Augmentations: one named object literal per ME static class, `applyAugmentations`, `defineExtensions` dropped — supersedes §22 — #115
 
-This entry is a **decision-record update, not a code change** — the workspace still ships the §22
-shape (`ExtensionSet`/`defineExtensions`/`applyExtensions`, one free function per method,
-`primitives/src/extensions.ts`) as of this writing. The migration to the rule below is tracked in
-#115; nothing here claims the rename has landed.
+This shape landed in #115, replacing the §22 form (`ExtensionSet`/`defineExtensions`/
+`applyExtensions`, one free function per method, `primitives/src/extensions.ts`). Every augmentation
+site now follows the rule below.
 
 - **Authoring form.** Every augmentation is now a single _named exported object literal_ that
   mirrors exactly ONE reference-stack ("ME") static extension class, checked with `satisfies

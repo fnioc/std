@@ -10,14 +10,7 @@
 export { InstrumentRule } from "./instrument-rule";
 export { METER_SCOPE_ALL, MeterScope } from "./meter-scope";
 export type { IMetricsBuilder } from "./metrics-builder";
-export {
-  addMetricsListener,
-  addMetricsListenerType,
-  disableMetrics,
-  disableMetricsRule,
-  enableMetrics,
-  enableMetricsRule,
-} from "./metrics-builder-extensions";
+export { MetricsBuilderExtensions, MetricsOptionsExtensions } from "./metrics-builder-extensions";
 export type { IMetricsListener, IObservableInstrumentsSource } from "./metrics-listener";
 export { MetricsOptions } from "./metrics-options";
 
@@ -25,13 +18,7 @@ export { MetricsOptions } from "./metrics-options";
 export { ActivityListenerBuilder } from "./activity-listener-builder";
 export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./activity-source-scopes";
 export type { ITracingBuilder } from "./tracing-builder";
-export {
-  addTracingListener,
-  disableTracing,
-  disableTracingRule,
-  enableTracing,
-  enableTracingRule,
-} from "./tracing-builder-extensions";
+export { TracingBuilderExtensions, TracingOptionsExtensions } from "./tracing-builder-extensions";
 export { TracingOptions } from "./tracing-options";
 export { TracingRule } from "./tracing-rule";
 

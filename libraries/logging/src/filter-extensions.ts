@@ -2,9 +2,11 @@
 // the `LoggerFilterOptions`-targeting overloads of ME.Logging's
 // `FilterLoggingBuilderExtensions.AddFilter`.
 //
-// These operate directly on the options object (a plain exported function taking
-// it as the first param — the repo's "explicit form is primary" convention) and
-// are fully mechanical, so they are implemented for real. The reference exposes
+// The receiver is the value-object `LoggerFilterOptions`, so per docs §28 this
+// is authored as the named `LoggerFilterOptionsExtensions` object literal but
+// given NO prototype install (patching a plain options bag is the boundary call
+// deferred at §22/§28; whether it also gets a method form is #105's open
+// decision). The member IS the standalone call surface. The reference exposes
 // a wider overload matrix (provider-scoped `<T>` variants, per-category function
 // filters); this ports the two unambiguous shapes — a `(category, level)` rule
 // and a raw `(provider, category, level) => bool` filter. The remaining overloads
@@ -15,21 +17,22 @@
 // the options-monitor DI integration (see ./logger.ts). This builds the rule set.
 
 import type { LogLevel } from "@rhombus-std/logging.core";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
 
 /** Adds a `(category, level)` filter rule. */
-export function addFilter(
+function addFilter(
   options: LoggerFilterOptions,
   category: string | undefined,
   level: LogLevel,
 ): LoggerFilterOptions;
 /** Adds a raw `(providerName, categoryName, level) => boolean` filter rule. */
-export function addFilter(
+function addFilter(
   options: LoggerFilterOptions,
   filter: Func<[string | undefined, string | undefined, LogLevel], boolean>,
 ): LoggerFilterOptions;
-export function addFilter(
+function addFilter(
   options: LoggerFilterOptions,
   categoryOrFilter: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>,
   level?: LogLevel,
@@ -41,3 +44,14 @@ export function addFilter(
   }
   return options;
 }
+
+/**
+ * The `LoggerFilterOptions`-targeted `addFilter` (docs §28). Standalone-only: an
+ * options-bag receiver given NO prototype install; the member IS the standalone
+ * call surface. Named `LoggerFilterOptionsExtensions` because the ME class name
+ * `FilterLoggingBuilderExtensions` is claimed by the ILoggingBuilder-receiver
+ * overloads and ME provides no distinct name for the value-object side.
+ */
+export const LoggerFilterOptionsExtensions = {
+  addFilter,
+} satisfies AugmentationSet<LoggerFilterOptions>;

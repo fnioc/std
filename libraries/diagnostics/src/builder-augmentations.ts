@@ -1,9 +1,9 @@
-// Reverse-direction dual-export (docs §22) for the metrics/tracing builder
-// extensions. Their receiver interfaces (IMetricsBuilder/ITracingBuilder) live in
-// diagnostics.core and their standalone free-function form already ships there
-// (and, for the config-binding pair, here) -- this module ADDS the instance-method
-// form so `builder.addMetricsListener(...)` reads as fluently as the standalone
-// `addMetricsListener(builder, ...)`.
+// Reverse-direction dual-export (docs §28) for the metrics/tracing builder
+// augmentations. Their receiver interfaces (IMetricsBuilder/ITracingBuilder) live
+// in diagnostics.core and their object-literal form ships there (the
+// `Metrics/TracingBuilderExtensions` sets; and, for the config-binding pair, here)
+// -- this module ADDS the instance-method form so `builder.addMetricsListener(...)`
+// reads as fluently as the standalone `MetricsBuilderExtensions.addMetricsListener(builder, ...)`.
 //
 // Per the cross-package rule: the interface lives in diagnostics.core but the only
 // concrete receiver classes (MetricsBuilder/TracingBuilder) live here, so BOTH the
@@ -13,30 +13,16 @@
 
 import type { IConfiguration } from "@rhombus-std/config";
 import type { Ctor, DepSlot } from "@rhombus-std/di.core";
-import type {
-  ActivitySourceScopes,
-  IMetricsBuilder,
-  IMetricsListener,
-  ITracingBuilder,
-  MeterScope,
-} from "@rhombus-std/diagnostics.core";
+import type { ActivitySourceScopes, IMetricsListener, MeterScope } from "@rhombus-std/diagnostics.core";
 import { ActivityListenerBuilder } from "@rhombus-std/diagnostics.core";
-import {
-  addMetricsListener,
-  addMetricsListenerType,
-  addTracingListener,
-  disableMetrics,
-  disableTracing,
-  enableMetrics,
-  enableTracing,
-} from "@rhombus-std/diagnostics.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { MetricsBuilderExtensions, TracingBuilderExtensions } from "@rhombus-std/diagnostics.core";
+import { applyAugmentations } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { MetricsBuilder } from "./metrics-builder";
-import { addMetricsConfiguration } from "./metrics-builder-configuration-extensions";
+import { MetricsBuilderConfigurationExtensions } from "./metrics-builder-configuration-extensions";
 import { TracingBuilder } from "./tracing-builder";
-import { addTracingConfiguration } from "./tracing-builder-configuration-extensions";
+import { TracingBuilderConfigurationExtensions } from "./tracing-builder-configuration-extensions";
 
 // Merge the method form onto the OWNING interface (so a consumer holding
 // IMetricsBuilder sees it) AND onto the concrete class (so it still SATISFIES the
@@ -98,20 +84,11 @@ declare module "./tracing-builder" {
   }
 }
 
-const metricsBuilderExtensions = defineExtensions<IMetricsBuilder>()({
-  addMetricsListener,
-  addMetricsListenerType,
-  enableMetrics,
-  disableMetrics,
-  addMetricsConfiguration,
-});
-
-const tracingBuilderExtensions = defineExtensions<ITracingBuilder>()({
-  addTracingListener,
-  enableTracing,
-  disableTracing,
-  addTracingConfiguration,
-});
-
-applyExtensions<IMetricsBuilder>(MetricsBuilder, metricsBuilderExtensions);
-applyExtensions<ITracingBuilder>(TracingBuilder, tracingBuilderExtensions);
+// Two ME classes per builder (docs §28): the listener/rule methods
+// (`*BuilderExtensions`) and the config-binding method
+// (`*BuilderConfigurationExtensions`), each its own literal, installed onto the
+// same concrete builder.
+applyAugmentations(MetricsBuilder, MetricsBuilderExtensions);
+applyAugmentations(MetricsBuilder, MetricsBuilderConfigurationExtensions);
+applyAugmentations(TracingBuilder, TracingBuilderExtensions);
+applyAugmentations(TracingBuilder, TracingBuilderConfigurationExtensions);
