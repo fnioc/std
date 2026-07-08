@@ -1162,6 +1162,41 @@ site now follows the rule below.
   the rename.
 - **Type:** `AugmentationSet<R> = Record<string, (receiver: R, ...args: any[]) => unknown>`.
 - Everything else §22 settled is unchanged and still governs: the cross-package
-  `.core`-interface/downstream-concrete install rule, the runtime-identity requirement on the
-  patched `Ctor` (§9-style external-bundling), and the listed deferrals. Only the authoring shape
-  and the `primitives` symbol/file names move.
+  `.core`-interface/downstream-concrete install rule and the runtime-identity requirement on the
+  patched `Ctor` (§9-style external-bundling). Only the authoring shape and the `primitives`
+  symbol/file names move. The §22 _deferrals_ list is superseded by the repo-wide completion below.
+
+### Repo-wide completion — landed in #115
+
+#120 established the rule and converted the initial batch; #115 finished applying it to every
+remaining augmentation. Two families beyond that first batch, plus a value-object decision:
+
+- **hosting / hosting.core (supersedes #109).** Every previously-standalone `export function` is now
+  an object literal per its ME static class, with the method form installed:
+  `HostingAbstractionsHostExtensions` (IHost: `run`/`runAsync`/`waitForShutdownAsync`/
+  `stopWithTimeout`), `HostingAbstractionsHostBuilderExtensions` (IHostBuilder: `startHost`),
+  `HostEnvironmentEnvExtensions` (IHostEnvironment: `isEnvironment`/`isDevelopment`/`isStaging`/
+  `isProduction`), `ServiceCollectionHostedServiceExtensions` (`addHostedService`, moved off its
+  hand-rolled prototype assignment onto `applyAugmentations`), and the runtime
+  `HostingHostBuilderExtensions` (IHostBuilder: `configureDefaults`/`useEnvironment`/…). The IHost/
+  IHostBuilder/IHostEnvironment receiver interfaces live in `hosting.core` but their only concrete
+  classes (`Host`/`HostBuilder`/`HostingEnvironment`) live in `hosting`, so per the cross-package
+  rule the `declare module` merge AND the `applyAugmentations` install both live downstream in
+  `hosting` (`./host-augmentations`), against the `internal/*` concretes — keeping them external (§9).
+- **options value-object augmentations get the method form (supersedes #105).** Deciding axis:
+  match the ME public API. ME exposes these as extension methods whose `this` receiver IS the value
+  object (`metricsOptions.EnableMetrics(…)`, `loggerFilterOptions.AddFilter(…)`), so they are
+  prototype-patched onto the concrete value objects — `LoggerFilterOptionsExtensions` onto
+  `LoggerFilterOptions` (logging), `MetricsOptionsExtensions` onto `MetricsOptions` and
+  `TracingOptionsExtensions` onto `TracingOptions` (both diagnostics.core, which now sets
+  `"sideEffects": true`). Each installs where its concrete class lives. The members are **renamed to
+  match ME** — the `Rule` suffix (`enableMetricsRule`/`disableMetricsRule`/`enableTracingRule`/
+  `disableTracingRule`), which only existed to dodge the old floating-function name collision #120
+  removed, is dropped to `enableMetrics`/`disableMetrics`/`enableTracing`/`disableTracing`; the
+  private helpers keep the descriptive `…Rule` names and back both the builder's deferred forms and
+  these direct member forms. `addFilter` already matched ME.
+- **Sole remaining standalone-only augmentation: `tryGetValue` (IMemoryCache).** It stays
+  standalone-only in perpetuity — a method form would clash with `IMemoryCache`'s own `tryGetValue`
+  member and, at runtime, overwrite the real implementation the augmentation wraps.
+- **Excluded, same as #120:** `config`'s `withType` (transformer-coupled `.prototype.withType`
+  stub) is not an ME extension-method augmentation and stays as-is.
