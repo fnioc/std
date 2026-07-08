@@ -627,7 +627,7 @@ workaround — and it is what the interop matrix demonstrates: each dialect both
 other consumes, and the built tokenless library's lowered factory resolves correctly inside the
 manual app because their tokens agree.
 
-## 17. `diagnostics` family scaffolded — abstractions + config-reactive builders, listener runtime deferred — #75
+## 17. `diagnostics` family scaffolded — abstractions + config-reactive builders, listener runtime deferred — #74
 
 `diagnostics.core` ships `IMetricsBuilder`/`ITracingBuilder`, the `InstrumentRule`/`TracingRule`
 rule model (eager single-wildcard validation), the `MeterScope`/`ActivitySourceScopes` flag enums,
@@ -750,7 +750,7 @@ exists to depend on, rather than leaving a permanent fork.
   string is ambiguous at runtime with no overload dispatch; callers needing an explicit event id
   call `logger.log(level, EventId.from(n), ...)` directly.
 
-## 19. `caching` family scaffolded — real `MemoryCache` runtime, statistics/linked-entries deferred — #75
+## 19. `caching` family scaffolded — real `MemoryCache` runtime, statistics/linked-entries deferred — #76
 
 `caching.core` ships `IMemoryCache`/`ICacheEntry`, `CacheItemPriority`/`EvictionReason`,
 `PostEvictionCallbackRegistration`/`PostEvictionDelegate`, and the `CacheExtensions`/
@@ -802,7 +802,7 @@ idiom (§14), with `caching.memory`'s `package.json` carrying `"sideEffects": tr
 - **`MemoryCacheOptions.CompactOnMemoryPressure` dropped entirely** — the reference marks it
   `Obsolete(error: true)`.
 
-## 20. `fileproviders` family scaffolded — composite provider real, physical provider and glob matching held — #75, #77
+## 20. `fileproviders` family scaffolded — composite provider real, physical provider and glob matching held — #77
 
 `fileproviders.core` ships `IFileProvider`/`IFileInfo`/`IDirectoryContents`, `NotFoundFileInfo`/
 `NotFoundDirectoryContents`, `NullChangeToken`, and `NullFileProvider` — mirroring
