@@ -84,3 +84,10 @@ describe("ConfigurationManager", () => {
     expect(manager.get("Server:Port")).toBe("9090");
   });
 });
+
+describe("ConfigurationManager provider augmentations", () => {
+  test("addInMemoryCollection installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const manager = new ConfigurationManager().addInMemoryCollection({ "Server:Port": "8080" });
+    expect(manager.get("Server:Port")).toBe("8080");
+  });
+});
