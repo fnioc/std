@@ -28,7 +28,7 @@ import { ConfigurationReloadToken } from "./configuration-reload-token";
 import { ConfigurationSection, subtreeToObject } from "./configuration-section";
 import { foldKey } from "./fold-key";
 
-export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements IConfigurationRoot {
+export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements IConfigurationRoot, Disposable {
   readonly #providers: IConfigurationProvider[];
   readonly #changeTokenRegistrations: Disposable[] = [];
   #changeToken = new ConfigurationReloadToken();
@@ -175,6 +175,22 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
       provider.load();
     }
     this.#raiseChanged();
+  }
+
+  /**
+   * Unsubscribes every per-provider reload-token registration set up in the
+   * constructor -- otherwise those callbacks keep the root (and each provider's
+   * token) alive for the process lifetime -- then disposes any provider that is
+   * itself disposable. Mirrors MEC's `ConfigurationRoot.Dispose`. Safe to call
+   * more than once: each registration's own dispose is idempotent.
+   */
+  public [Symbol.dispose](): void {
+    for (const registration of this.#changeTokenRegistrations) {
+      registration[Symbol.dispose]();
+    }
+    for (const provider of this.#providers) {
+      (provider as Partial<Disposable>)[Symbol.dispose]?.();
+    }
   }
 
   /**

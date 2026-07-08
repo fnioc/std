@@ -38,3 +38,33 @@ describe("compareConfigurationKeys", () => {
     expect(sign(cmp("Server:Port", "Server"))).toBe(1);
   });
 });
+
+describe("compareConfigurationKeys delimiter-run collapsing (MEC parity)", () => {
+  // MEC's span-walk (SkipAheadOnDelimiter) collapses runs of ':' rather than
+  // producing empty segments the way a naive split(':') would -- so these keys
+  // compare EQUAL, where the old split-based comparer ordered them apart.
+  test("a doubled delimiter collapses -- \"a::b\" ties \"a:b\"", () => {
+    expect(sign(cmp("a::b", "a:b"))).toBe(0);
+  });
+
+  test("a trailing delimiter is ignored -- \"a:\" ties \"a\"", () => {
+    expect(sign(cmp("a:", "a"))).toBe(0);
+  });
+
+  test("a leading delimiter is ignored -- \":a\" ties \"a\"", () => {
+    expect(sign(cmp(":a", "a"))).toBe(0);
+  });
+
+  test("leading, doubled, and trailing runs all collapse together", () => {
+    expect(sign(cmp(":a::b:", "a:b"))).toBe(0);
+  });
+
+  test("segments still compare across collapsed runs -- numeric ordering survives", () => {
+    // "a::10" collapses to segments [a, 10]; ordering vs [a, 2] stays numeric.
+    expect(sign(cmp("a::10", "a:2"))).toBe(1);
+  });
+
+  test("a collapsed key still sorts as the shorter prefix", () => {
+    expect(sign(cmp("Server:", "Server:Port"))).toBe(-1);
+  });
+});
