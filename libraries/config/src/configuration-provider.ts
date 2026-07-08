@@ -75,6 +75,19 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
   public load(): void {}
 
   /**
+   * A friendly label for this provider, shown by {@link getDebugView}.
+   * Defaults to the concrete class name (e.g. "JsonConfigurationProvider") --
+   * relies on unminified dist output, true today (see
+   * `scripts/build-package.ts`); if minification ever lands, a hardcoded
+   * per-class override is the fallback. A subclass whose bare class name
+   * isn't informative enough (e.g. one that wants to show its file path)
+   * overrides this directly.
+   */
+  public toString(): string {
+    return this.constructor.name;
+  }
+
+  /**
    * Returns the immediate descendant keys for `parentPath`, combined with the
    * `earlierKeys` returned by preceding providers, sorted by
    * {@link compareConfigurationKeys}. Does NOT dedup -- the root does that.

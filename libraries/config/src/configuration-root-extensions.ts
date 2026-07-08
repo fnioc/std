@@ -43,10 +43,10 @@ function getValueAndProvider(
  * with no directly-defined value is rendered `key:`. `processValue` may
  * transform a leaf's rendered value, e.g. to hide secrets.
  *
- * The provider label is `String(provider)`; the port's providers do not
- * override `toString`, so this is currently their default `[object Object]`
- * tag rather than a friendly name -- acceptable until a provider identity is
- * designed.
+ * The provider label is `String(provider)` -- the base `ConfigurationProvider`
+ * renders the concrete class name by default (e.g. "JsonConfigurationProvider"),
+ * and a provider may override `toString` further to add its own detail (the
+ * JSON provider adds its path and optional flag).
  */
 export function getDebugView(
   root: IConfigurationRoot,

@@ -7,6 +7,7 @@
 // -> ConfigurationRoot path.
 
 import { ConfigurationBuilder, type IndexedSection } from "@rhombus-std/config";
+import { JsonConfigurationProvider } from "@rhombus-std/config.json/internal/json-configuration-provider";
 import {
   JsonConfigurationSource,
   type JsonConfigurationSourceOptions,
@@ -108,6 +109,20 @@ describe("JsonConfigurationProvider", () => {
 
   test("throws when the JSON root is null", () => {
     expect(() => rootFromFixture("null-root.json")).toThrow(/root must be an object or array/);
+  });
+});
+
+describe("JsonConfigurationProvider#toString", () => {
+  test("includes the path and 'Required' when optional is not set", () => {
+    const provider = new JsonConfigurationProvider(new JsonConfigurationSource(`${FIXTURES}/nested.json`));
+    expect(provider.toString()).toBe(`JsonConfigurationProvider for '${FIXTURES}/nested.json' (Required)`);
+  });
+
+  test("says 'Optional' when the source is optional", () => {
+    const provider = new JsonConfigurationProvider(
+      new JsonConfigurationSource(`${FIXTURES}/does-not-exist.json`, { optional: true }),
+    );
+    expect(provider.toString()).toBe(`JsonConfigurationProvider for '${FIXTURES}/does-not-exist.json' (Optional)`);
   });
 });
 

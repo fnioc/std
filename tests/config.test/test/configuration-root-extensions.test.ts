@@ -26,9 +26,10 @@ describe("getDebugView", () => {
 
     // Intermediate section node -- has children, no own value.
     expect(lines).toContain("Server:");
-    // Leaves are indented two spaces under their parent and name their provider.
-    expect(lines).toContain("  Host=localhost ([object Object])");
-    expect(lines).toContain("  Port=8080 ([object Object])");
+    // Leaves are indented two spaces under their parent and name their
+    // provider with its friendly (constructor-name) label.
+    expect(lines).toContain("  Host=localhost (MemoryConfigurationProvider)");
+    expect(lines).toContain("  Port=8080 (MemoryConfigurationProvider)");
     // Trailing newline after the final line.
     expect(view.endsWith("\n")).toBe(true);
   });
@@ -40,7 +41,7 @@ describe("getDebugView", () => {
       return context.path === "ConnectionStrings:Default" ? "***" : (context.value ?? "");
     });
 
-    expect(view).toContain("  Default=*** ([object Object])");
+    expect(view).toContain("  Default=*** (MemoryConfigurationProvider)");
     expect(view).not.toContain("secret-value");
 
     // The callback receives path/key/value/provider for each leaf.
@@ -60,7 +61,7 @@ describe("getDebugView", () => {
       .build() as unknown as IConfigurationRoot;
 
     const view = getDebugView(root);
-    expect(view).toContain("  Port=9090 ([object Object])");
+    expect(view).toContain("  Port=9090 (MemoryConfigurationProvider)");
     expect(view).not.toContain("8080");
   });
 
