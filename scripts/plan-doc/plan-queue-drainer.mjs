@@ -29,7 +29,9 @@
 //     deliberately NO auto-retry.
 //
 //   Spawn iff `!active.has(n) && !handled.has(n) && !quarantined.has(n)`,
-//   subject to MAX_CONCURRENT and the optional launch-time label filter.
+//   subject to the optional launch-time label filter. There is deliberately no
+//   concurrency ceiling -- the drainer fans out a worker for every eligible
+//   ready issue; the per-worker `--max-turns` cap is the runaway guard.
 //
 // Outcome handling: worker processes exit 0 even when they hit a limit, so the
 // exit code is NOT authoritative. We parse the `--output-format json` result and
@@ -53,9 +55,6 @@ const execFileAsync = promisify(execFile);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const POLL_MS = 60_000;
-// Each worker is a full opus session; the cap guards against runaway token
-// spend when the queue is large. Overridable via DRAIN_MAX.
-const MAX_CONCURRENT = Number(process.env.DRAIN_MAX) || 4;
 // Per-worker turn cap -- the runaway backstop. `claude -p --max-turns N` is a
 // real (if undocumented) flag; when a run hits it the process still exits 0 and
 // the result carries `subtype: "error_max_turns"`, which quarantines the issue.
@@ -231,10 +230,6 @@ async function cycle() {
     if (active.has(n) || handled.has(n) || quarantined.has(n)) {
       continue;
     }
-    if (active.size >= MAX_CONCURRENT) {
-      log(`concurrency cap ${MAX_CONCURRENT} reached; deferring #${n} to a later cycle`);
-      break;
-    }
     spawnWorker(n);
   }
 }
@@ -252,7 +247,7 @@ process.on("SIGINT", () => {
 const filterBanner = LABEL_FILTER.size > 0 ? [...LABEL_FILTER].join(",") : "none";
 log(
   `plan-queue-drainer watching origin/bot/plan-doc:ready.json every ${POLL_MS / 1000}s, `
-    + `max ${MAX_CONCURRENT} concurrent workers, ${MAX_TURNS} turns/worker | label filter: ${filterBanner}. `
+    + `unbounded fan-out, ${MAX_TURNS} turns/worker | label filter: ${filterBanner}. `
     + `Ctrl-C to stop (terminates in-flight workers -- clean stop is Ctrl-C when nothing is active).`,
 );
 

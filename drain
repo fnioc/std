@@ -2,10 +2,9 @@
 # Launch the plan-queue drainer: watch ready.json on bot/plan-doc and keep one
 # Claude worker running per ready issue. See scripts/plan-doc/plan-queue-drainer.mjs.
 #
-#   ./drain            # default: up to 4 concurrent workers, all ready issues
+#   ./drain            # all ready issues, unbounded fan-out (one worker each)
 #   ./drain v0         # only ready issues labelled v0
 #   ./drain v0,v1      # only ready issues labelled v0 OR v1 (any-match)
-#   DRAIN_MAX=8 ./drain
 #   DRAIN_MAX_TURNS=300 ./drain   # per-worker turn cap (default 200)
 #
 # Ctrl-C stops it; in-flight workers are terminated, so stop when nothing is active
