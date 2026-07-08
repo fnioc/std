@@ -43,6 +43,9 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Format
+        run: bun run format:check
+
   publish-alpha-verify:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
