@@ -2,7 +2,7 @@
   "name": "@rhombus-std/extensions.test",
   "private": true,
   "version": "0.0.0",
-  "description": "Cross-package tests for the dual-export extension convention (docs decisions.md §17): every extension available both as a standalone function and a method. Not published.",
+  "description": "Cross-package tests for the dual-export extension convention (docs decisions.md §22): every extension available both as a standalone function and a method. Not published.",
   "license": "MIT",
   "type": "module",
   "scripts": {

@@ -43,7 +43,7 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
-// Dual-export (docs §17): a receiver-first function installed as a prototype
+// Dual-export (docs §22): a receiver-first function installed as a prototype
 // method AND exported standalone.
 export const commandLineConfigExtensions = defineExtensions<ConfigurationBuilder>()({
   addCommandLine(

@@ -1,4 +1,4 @@
-// Reverse-direction dual-export (docs §17) for the metrics/tracing builder
+// Reverse-direction dual-export (docs §22) for the metrics/tracing builder
 // extensions. Their receiver interfaces (IMetricsBuilder/ITracingBuilder) live in
 // diagnostics.core and their standalone free-function form already ships there
 // (and, for the config-binding pair, here) -- this module ADDS the instance-method
@@ -11,8 +11,8 @@
 // class live in this downstream package -- a diagnostics.core-only consumer never
 // gets a method type with no runtime behind it.
 
-import type { Ctor, DepSlot } from "@rhombus-std/di.core";
 import type { IConfiguration } from "@rhombus-std/config";
+import type { Ctor, DepSlot } from "@rhombus-std/di.core";
 import type {
   ActivitySourceScopes,
   IMetricsBuilder,

@@ -4,7 +4,7 @@
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface; IConfiguration is
 // a parameter type only (from @rhombus-std/config.core). Per the dual-export
-// convention (docs §17) this ships BOTH forms: the receiver-first free function
+// convention (docs §22) this ships BOTH forms: the receiver-first free function
 // below is the authored/standalone form, and it is ALSO installed as an instance
 // method (`builder.addConfiguration(cfg)`) onto the concrete LoggingBuilder. The
 // interface lives in logging.core but the only concrete receiver (LoggingBuilder)
@@ -47,7 +47,7 @@ export function addConfiguration(builder: ILoggingBuilder, configuration: IConfi
   return builder;
 }
 
-// The method form (docs §17): merge onto the owning ILoggingBuilder interface so a
+// The method form (docs §22): merge onto the owning ILoggingBuilder interface so a
 // consumer holding it sees the method, then install onto the concrete LoggingBuilder
 // (whose implements-check was fixed in @rhombus-std/logging's own compilation, so no
 // class-side merge is needed here).

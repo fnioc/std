@@ -1,4 +1,4 @@
-// Reverse-direction dual-export (docs §17) for the cache convenience wrappers.
+// Reverse-direction dual-export (docs §22) for the cache convenience wrappers.
 // The IMemoryCache/ICacheEntry receiver interfaces live in caching.core and their
 // standalone free-function form ships there (CacheExtensions/CacheEntryExtensions)
 // and here (the MemoryCacheEntryOptions-typed overloads). Per the cross-package

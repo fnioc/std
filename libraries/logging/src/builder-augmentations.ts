@@ -1,4 +1,4 @@
-// Reverse-direction dual-export (docs §17) for the ILoggingBuilder extensions.
+// Reverse-direction dual-export (docs §22) for the ILoggingBuilder extensions.
 // Their receiver is logging.core's own ILoggingBuilder and the concrete
 // LoggingBuilder lives here, so both the declaration merge (onto the interface AND
 // the concrete class, so the class still satisfies `implements ILoggingBuilder`

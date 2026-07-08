@@ -7,7 +7,7 @@
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
 // registration builder AND the metrics/tracing builder extensions as instance
 // methods on the family's own builders (both via the dual-export convention,
-// docs §17: every extension available as a standalone function AND a method).
+// docs §22: every extension available as a standalone function AND a method).
 //
 // `addMetrics`/`addTracing` target di.core's ServiceManifestClass -- a class this
 // package does NOT own -- so per §0 they are extension-method augmentations: TS
@@ -32,7 +32,6 @@
 // `declare module` body resolve in THIS file's scope.
 import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
 import type { IMetricsBuilder, ITracingBuilder } from "@rhombus-std/diagnostics.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import {
   METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
   METRICS_CONFIGURE_TOKEN,
@@ -43,6 +42,7 @@ import {
   TRACING_OPTIONS_TOKEN,
   TracingOptions,
 } from "@rhombus-std/diagnostics.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
@@ -88,7 +88,7 @@ declare module "@rhombus-std/di.core" {
 
 // Authored once as receiver-first functions, installed as prototype methods (the
 // primary path) via applyExtensions AND exported standalone (the fallback /
-// testing surface) -- the dual-export convention (docs §17).
+// testing surface) -- the dual-export convention (docs §22).
 export const diagnosticsExtensions = defineExtensions<ServiceManifestClass<string>>()({
   addMetrics(
     manifest: ServiceManifestClass<string>,
@@ -147,7 +147,7 @@ export { TracingBuilder } from "./tracing-builder";
 
 // The config-binding extension functions. Their receiver is the family's OWN
 // builder interface, so the standalone free-function is the authored form; the
-// dual-export convention (docs §17) additionally installs them as instance
+// dual-export convention (docs §22) additionally installs them as instance
 // methods on MetricsBuilder/TracingBuilder via ./builder-augmentations, so both
 // `addMetricsConfiguration(builder, cfg)` and `builder.addMetricsConfiguration(cfg)`
 // work. Both forms stay available; the method form is the primary path.

@@ -53,7 +53,7 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-// Dual-export (docs §17): authored once as a receiver-first function, installed
+// Dual-export (docs §22): authored once as a receiver-first function, installed
 // as a prototype method (the primary path) via applyExtensions AND exported
 // standalone (the fallback / testing surface).
 export const memoryCacheManifestExtensions = defineExtensions<ServiceManifestClass<string>>()({

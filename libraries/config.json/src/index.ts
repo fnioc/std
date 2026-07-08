@@ -34,7 +34,7 @@ declare module "@rhombus-std/config/configuration-builder" {
 
 // Authored once as a receiver-first function, then installed as a prototype
 // method (the primary path) via applyExtensions AND exported standalone (the
-// fallback / testing surface) -- the dual-export convention (docs §17).
+// fallback / testing surface) -- the dual-export convention (docs §22).
 export const jsonConfigExtensions = defineExtensions<ConfigurationBuilder>()({
   addJsonFile(
     builder: ConfigurationBuilder,

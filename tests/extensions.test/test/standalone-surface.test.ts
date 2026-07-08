@@ -1,14 +1,14 @@
 // Snapshot the exported STANDALONE extension surface -- the member-name set of
-// each dual-export object literal added by the foreign-class sites (docs §17),
+// each dual-export object literal added by the foreign-class sites (docs §22),
 // mirroring #95's token-snapshot approach. A member added or removed here is a
 // deliberate, version-bump-gated change, so this test must be updated in the same
 // commit that changes the surface.
 
+import { memoryCacheManifestExtensions } from "@rhombus-std/caching.memory";
+import { inMemoryConfigExtensions } from "@rhombus-std/config";
 import { commandLineConfigExtensions } from "@rhombus-std/config.commandline";
 import { envConfigExtensions } from "@rhombus-std/config.env";
-import { inMemoryConfigExtensions } from "@rhombus-std/config";
 import { jsonConfigExtensions } from "@rhombus-std/config.json";
-import { memoryCacheManifestExtensions } from "@rhombus-std/caching.memory";
 import { diagnosticsExtensions } from "@rhombus-std/diagnostics";
 import { loggingExtensions } from "@rhombus-std/logging";
 import { optionsExtensions } from "@rhombus-std/options.augmentations";

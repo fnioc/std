@@ -1,5 +1,5 @@
 // Behaviour-equivalence tests across BOTH directions of the dual-export
-// convention (docs decisions.md §17): the standalone receiver-first function and
+// convention (docs decisions.md §22): the standalone receiver-first function and
 // the prototype/instance method must produce identical results.
 //
 //   - foreign-class direction (a class owned by another package): config's

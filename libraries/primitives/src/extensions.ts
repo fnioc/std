@@ -1,4 +1,4 @@
-// The dual-export extension-method infrastructure (docs/decisions.md §17).
+// The dual-export extension-method infrastructure (docs/decisions.md §22).
 //
 // Every "extension method" in the workspace is authored ONCE as a receiver-first
 // free function and then made available in BOTH forms: the standalone function

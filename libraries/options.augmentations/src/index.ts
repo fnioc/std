@@ -85,7 +85,7 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-// Dual-export (docs §17): authored once as receiver-first functions, installed
+// Dual-export (docs §22): authored once as receiver-first functions, installed
 // as prototype methods (the primary path) via applyExtensions AND exported
 // standalone (the fallback / testing surface). The overloads/generics live on
 // the declare-module merge above (the method signature's source of truth); the
