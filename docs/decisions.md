@@ -1092,3 +1092,28 @@ The `di.core` barrel re-exported two types with no reference analog and no cross
 `Producer` and `ParsedToken` stay exported (both have cross-package references). `di`'s re-export
 barrels (`types.ts` / `index.ts`) never surfaced `DepTarget` or `SealedManifest`, so no `di`-side
 change was needed.
+
+## 27. Extract `RequiredResolver` + `ServiceQuery` capability interfaces from `Resolver`
+
+`Resolver` was one flat interface bundling every resolution method. The reference DI splits two of
+those out as named capability abstractions — `ISupportRequiredService` (the throwing
+`GetRequiredService`) and `IServiceProviderIsService` (the `IsService` query). We now name the same
+seams while keeping ONE bundled surface consumers program against.
+
+- **Two new di.core interfaces** (`provider.ts`): `RequiredResolver { resolve<T>(token): T;
+  resolve(token): unknown }` (the `ISupportRequiredService` analog) and `ServiceQuery {
+  isService(token): boolean }` (the `IServiceProviderIsService` analog). `Resolver` now `extends
+  RequiredResolver, ServiceQuery` and drops the inherited `resolve` / `isService` declarations from
+  its own body — `resolveAsync`, `tryResolve`, `resolveFactory` stay on `Resolver`. Both new
+  interfaces are exported from the di.core barrel and re-exported from `di`.
+- **The transformer's tokenless overloads are RE-TARGETED** (`di.transformer/src/augment.ts`): the
+  `declare module` merge now adds `resolve<T>()` / `resolve<F>()` onto `RequiredResolver`,
+  `isService<T>()` onto `ServiceQuery`, and keeps `resolveAsync` / `tryResolve` on `Resolver`. Each
+  tokenless overload MUST merge onto the same interface that declares its explicit-token form — an
+  overload merged onto a DERIVED interface does not combine with a base interface's declaration of
+  the same method into one overload set. `Resolver` (and `ServiceProvider`, which extends it) then
+  inherits the full merged set.
+- **Zero runtime change.** `ServiceProviderClass` still implements the composed `Resolver`, and the
+  `#makeProviderView` object literal is untouched. Verified green across every package typecheck, the
+  `di.transformer` suite (181 tests), the `di.tests.integration` e2e (53 tests), and both
+  `examples.app` output-diff runs — overload resolution and transformer lowering are unaffected.

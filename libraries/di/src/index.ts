@@ -48,6 +48,8 @@ export type {
   OpenRegistration,
   Producer,
   Registration,
+  // The named reference capability analogs Resolver composes.
+  RequiredResolver,
   Resolver,
   // Backwards-compat alias.
   ResolveScope,
@@ -57,6 +59,7 @@ export type {
   ServiceProvider,
   // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
   ServiceProviderFactory,
+  ServiceQuery,
 } from "./types.js";
 
 export {

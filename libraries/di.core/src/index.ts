@@ -34,7 +34,15 @@ export type { ServiceManifest } from "./service-manifest.js";
 
 export type { Ctor, Factory, OpenRegistration, Producer, Registration } from "./registrations.js";
 
-export type { Lifetime, Resolver, ResolveScope, ScopeFactory, ServiceProvider } from "./provider.js";
+export type {
+  Lifetime,
+  RequiredResolver,
+  Resolver,
+  ResolveScope,
+  ScopeFactory,
+  ServiceProvider,
+  ServiceQuery,
+} from "./provider.js";
 
 // The pluggable provider-factory seam (the reference `IServiceProviderFactory`
 // analog). A single-container no-op here, but named so hosting shares one type.
