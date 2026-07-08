@@ -22,7 +22,8 @@
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
 import type { AddBuilder } from "@rhombus-std/di.core";
 import { ServiceManifestClass } from "@rhombus-std/di.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 // Side-effect: installs the IMemoryCache/ICacheEntry convenience wrappers as
 // instance methods onto MemoryCache/CacheEntry -- the reverse-direction half of
 // the dual-export convention. Their standalone free-function form ships from
@@ -53,10 +54,10 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-// Dual-export (docs §22): authored once as a receiver-first function, installed
-// as a prototype method (the primary path) via applyExtensions AND exported
-// standalone (the fallback / testing surface).
-export const memoryCacheManifestExtensions = defineExtensions<ServiceManifestClass<string>>()({
+// One named object literal mirroring the reference `MemoryCacheServiceCollectionExtensions`
+// static class (docs §28), installed as a prototype method (the primary path)
+// via applyAugmentations AND exported so the member is the standalone form.
+export const MemoryCacheServiceCollectionExtensions = {
   addMemoryCache(
     manifest: ServiceManifestClass<string>,
     setup?: (options: MemoryCacheOptions) => void,
@@ -72,16 +73,11 @@ export const memoryCacheManifestExtensions = defineExtensions<ServiceManifestCla
     builder.as("singleton");
     return manifest;
   },
-});
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyExtensions(ServiceManifestClass, memoryCacheManifestExtensions);
+applyAugmentations(ServiceManifestClass, MemoryCacheServiceCollectionExtensions);
 
-export {
-  getOrCreateAsyncWithOptions,
-  getOrCreateWithOptions,
-  setEntryOptions,
-  setWithOptions,
-} from "./entry-options-extensions";
+export { MemoryCacheEntryExtensions, MemoryCacheExtensions } from "./entry-options-extensions";
 export { MemoryCache } from "./memory-cache";
 export { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 export { MemoryCacheOptions } from "./memory-cache-options";

@@ -19,7 +19,7 @@ import { JsonConfigurationSource } from "@rhombus-std/config.json";
 import { ServiceManifest } from "@rhombus-std/di";
 import { HostDefaults } from "@rhombus-std/hosting.core";
 import type { IHostEnvironment } from "@rhombus-std/hosting.core";
-import { addProvider, LoggingBuilder } from "@rhombus-std/logging";
+import { LoggingBuilder, LoggingBuilderExtensions } from "@rhombus-std/logging";
 import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
 
 /**
@@ -79,5 +79,5 @@ export function applyDefaultAppConfiguration(
  * console provider is registered (see scaffoldedIncomplete for the missing sinks).
  */
 export function addDefaultServices(services: ServiceManifest): void {
-  addProvider(new LoggingBuilder(services), new ConsoleLoggerProvider());
+  LoggingBuilderExtensions.addProvider(new LoggingBuilder(services), new ConsoleLoggerProvider());
 }

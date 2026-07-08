@@ -16,6 +16,7 @@
 
 import type { Ctor, DepSlot, Token } from "@rhombus-std/di.core";
 import type { ConfigureOptions } from "@rhombus-std/options";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 
 import { InstrumentRule } from "./instrument-rule";
 import { METER_SCOPE_ALL, MeterScope } from "./meter-scope";
@@ -28,7 +29,7 @@ import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "./tokens";
  * Registers an already-built {@link IMetricsListener} instance. Mirrors
  * `MetricsBuilderExtensions.AddListener(IMetricsBuilder, IMetricsListener)`.
  */
-export function addMetricsListener(builder: IMetricsBuilder, listener: IMetricsListener): IMetricsBuilder {
+function addMetricsListener(builder: IMetricsBuilder, listener: IMetricsListener): IMetricsBuilder {
   builder.services.addValue(METRICS_LISTENER_TOKEN, listener);
   return builder;
 }
@@ -40,7 +41,7 @@ export function addMetricsListener(builder: IMetricsBuilder, listener: IMetricsL
  * positional dependency slots (as a plugin-less author supplies them, or as the
  * di.transformer would emit).
  */
-export function addMetricsListenerType(
+function addMetricsListenerType(
   builder: IMetricsBuilder,
   ctor: Ctor,
   signatures?: readonly (readonly DepSlot[])[],
@@ -54,7 +55,7 @@ export function addMetricsListenerType(
  * Mirrors `MetricsOptions.EnableMetrics(...)`. `undefined` name arguments match
  * anything.
  */
-export function enableMetricsRule(
+function enableMetricsRule(
   options: MetricsOptions,
   meterName?: string,
   instrumentName?: string,
@@ -69,7 +70,7 @@ export function enableMetricsRule(
  * Appends a DISABLE {@link InstrumentRule} directly to a {@link MetricsOptions}.
  * Mirrors `MetricsOptions.DisableMetrics(...)`.
  */
-export function disableMetricsRule(
+function disableMetricsRule(
   options: MetricsOptions,
   meterName?: string,
   instrumentName?: string,
@@ -97,7 +98,7 @@ function configureMetrics(builder: IMetricsBuilder, apply: (options: MetricsOpti
  * appends an ENABLE {@link InstrumentRule} to the bound {@link MetricsOptions}.
  * Mirrors `MetricsBuilderExtensions.EnableMetrics(IMetricsBuilder, ...)`.
  */
-export function enableMetrics(
+function enableMetrics(
   builder: IMetricsBuilder,
   meterName?: string,
   instrumentName?: string,
@@ -113,7 +114,7 @@ export function enableMetrics(
  * Disables instruments via a deferred rule. Mirrors
  * `MetricsBuilderExtensions.DisableMetrics(IMetricsBuilder, ...)`.
  */
-export function disableMetrics(
+function disableMetrics(
   builder: IMetricsBuilder,
   meterName?: string,
   instrumentName?: string,
@@ -124,3 +125,25 @@ export function disableMetrics(
     disableMetricsRule(options, meterName, instrumentName, listenerName, scopes);
   });
 }
+
+/**
+ * The `MetricsBuilderExtensions` augmentation set for {@link IMetricsBuilder}
+ * (docs §28) -- the builder-targeted listener/rule methods. Installed onto the
+ * concrete builder downstream in `@rhombus-std/diagnostics`.
+ */
+export const MetricsBuilderExtensions = {
+  addMetricsListener,
+  addMetricsListenerType,
+  enableMetrics,
+  disableMetrics,
+} satisfies AugmentationSet<IMetricsBuilder>;
+
+/**
+ * The `MetricsOptions`-targeted rule mutators (docs §28). Standalone-only: this
+ * is an options-bag receiver, given NO prototype install (the boundary call
+ * deferred at §22/§28); the member IS the standalone call surface.
+ */
+export const MetricsOptionsExtensions = {
+  enableMetricsRule,
+  disableMetricsRule,
+} satisfies AugmentationSet<MetricsOptions>;

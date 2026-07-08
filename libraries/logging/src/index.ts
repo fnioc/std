@@ -8,14 +8,14 @@
 
 // Side-effect + standalone surface: patches ServiceManifestClass.prototype.addLogging,
 // merges the method onto the di.core ServiceManifestBase interface, and exports the
-// standalone `loggingExtensions` set (docs §22).
-export { loggingExtensions } from "./add-logging";
-// Side-effect: installs the ILoggingBuilder extensions (addProvider/... ) as
+// `LoggingServiceCollectionExtensions` set (docs §28).
+export { LoggingServiceCollectionExtensions } from "./add-logging";
+// Side-effect: installs the ILoggingBuilder augmentations (addProvider/... ) as
 // instance methods onto LoggingBuilder -- the reverse-direction dual-export half.
 import "./builder-augmentations";
 
-export { addProvider, clearProviders, setMinimumLevel } from "./builder-extensions";
-export { addFilter } from "./filter-extensions";
+export { LoggingBuilderExtensions } from "./builder-extensions";
+export { LoggerFilterOptionsExtensions } from "./filter-extensions";
 export { Logger } from "./logger";
 export { LoggerFactory } from "./logger-factory";
 export { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";

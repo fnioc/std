@@ -2,17 +2,24 @@
 // ME.Caching.Abstractions' CacheEntryExtensions / CacheExtensions, but they
 // reference MemoryCacheEntryOptions, which this family places in
 // caching.memory (see the README note on the split) -- so the options-typed
-// overloads live here rather than in caching.core.
+// overloads live here rather than in caching.core. Authored as named object
+// literals (docs §28); the caching.core `CacheExtensions`/`CacheEntryExtensions`
+// names are taken by their host package, so the IMemoryCache-receiver literal
+// is `MemoryCacheExtensions` and the ICacheEntry-receiver literal
+// `MemoryCacheEntryExtensions` (both real reference class names, and the
+// `Memory` prefix marks that they carry the MemoryCacheEntryOptions-typed forms
+// that live in this package).
 
 import type { ICacheEntry, IMemoryCache } from "@rhombus-std/caching.core";
-import { addExpirationToken } from "@rhombus-std/caching.core";
+import { CacheEntryExtensions } from "@rhombus-std/caching.core";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 
 /**
  * Applies every value of `options` to `entry` (the `SetOptions` port). Throws
  * if `options` carries a post-eviction registration with no callback.
  */
-export function setEntryOptions(entry: ICacheEntry, options: MemoryCacheEntryOptions): ICacheEntry {
+function setEntryOptions(entry: ICacheEntry, options: MemoryCacheEntryOptions): ICacheEntry {
   entry.absoluteExpiration = options.absoluteExpiration;
   entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
   entry.slidingExpiration = options.slidingExpiration;
@@ -22,7 +29,7 @@ export function setEntryOptions(entry: ICacheEntry, options: MemoryCacheEntryOpt
   const expirationTokens = options.expirationTokensDirect;
   if (expirationTokens !== undefined) {
     for (const token of expirationTokens) {
-      addExpirationToken(entry, token);
+      CacheEntryExtensions.addExpirationToken(entry, token);
     }
   }
 
@@ -43,7 +50,7 @@ export function setEntryOptions(entry: ICacheEntry, options: MemoryCacheEntryOpt
 }
 
 /** Sets `value` at `key`, applying `options` to the entry (the `Set(options)` port). */
-export function setWithOptions<T>(
+function setWithOptions<T>(
   cache: IMemoryCache,
   key: unknown,
   value: T,
@@ -62,7 +69,7 @@ export function setWithOptions<T>(
  * {@link getOrCreate} with `createOptions` applied to the fresh entry before
  * the factory runs (the `GetOrCreate(createOptions)` port).
  */
-export function getOrCreateWithOptions<T>(
+function getOrCreateWithOptions<T>(
   cache: IMemoryCache,
   key: unknown,
   factory: (entry: ICacheEntry) => T,
@@ -83,7 +90,7 @@ export function getOrCreateWithOptions<T>(
 }
 
 /** Async {@link getOrCreateWithOptions}. */
-export async function getOrCreateAsyncWithOptions<T>(
+async function getOrCreateAsyncWithOptions<T>(
   cache: IMemoryCache,
   key: unknown,
   factory: (entry: ICacheEntry) => Promise<T>,
@@ -102,3 +109,15 @@ export async function getOrCreateAsyncWithOptions<T>(
   entry[Symbol.dispose]();
   return value;
 }
+
+/** The IMemoryCache options-typed wrappers (the `Set`/`GetOrCreate(options)` ports; docs §28). */
+export const MemoryCacheExtensions = {
+  setWithOptions,
+  getOrCreateWithOptions,
+  getOrCreateAsyncWithOptions,
+} satisfies AugmentationSet<IMemoryCache>;
+
+/** The ICacheEntry options-typed wrapper (the `SetOptions` port; docs §28). */
+export const MemoryCacheEntryExtensions = {
+  setEntryOptions,
+} satisfies AugmentationSet<ICacheEntry>;

@@ -12,29 +12,12 @@
 // would both clash with that declaration and, at runtime, overwrite the real
 // implementation. Its standalone free function stays the only form.
 
-import type { CacheItemPriority, ICacheEntry, IMemoryCache, PostEvictionDelegate } from "@rhombus-std/caching.core";
-import {
-  addExpirationToken,
-  get,
-  getOrCreate,
-  getOrCreateAsync,
-  registerPostEvictionCallback,
-  set,
-  setAbsoluteExpiration,
-  setPriority,
-  setSize,
-  setSlidingExpiration,
-  setValue,
-} from "@rhombus-std/caching.core";
+import type { CacheItemPriority, ICacheEntry, PostEvictionDelegate } from "@rhombus-std/caching.core";
+import { CacheEntryExtensions, CacheExtensions } from "@rhombus-std/caching.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
 import { CacheEntry } from "./cache-entry";
-import {
-  getOrCreateAsyncWithOptions,
-  getOrCreateWithOptions,
-  setEntryOptions,
-  setWithOptions,
-} from "./entry-options-extensions";
+import { MemoryCacheEntryExtensions, MemoryCacheExtensions } from "./entry-options-extensions";
 import { MemoryCache } from "./memory-cache";
 import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 
@@ -114,26 +97,14 @@ declare module "./cache-entry" {
   }
 }
 
-const memoryCacheExtensions = defineExtensions<IMemoryCache>()({
-  get,
-  set,
-  getOrCreate,
-  getOrCreateAsync,
-  setWithOptions,
-  getOrCreateWithOptions,
-  getOrCreateAsyncWithOptions,
-});
+// `tryGetValue` is a member of `CacheExtensions` (its standalone surface) but is
+// deliberately NOT prototype-installed: `IMemoryCache` already declares a
+// `tryGetValue` member, so a method merge would both clash with that declaration
+// and, at runtime, overwrite the real implementation the wrapper builds on. Omit
+// it via a rest destructure (TS exempts the rest-sibling from unused checks).
+const { tryGetValue, ...cacheInstanceMethods } = CacheExtensions;
 
-const cacheEntryExtensions = defineExtensions<ICacheEntry>()({
-  setPriority,
-  addExpirationToken,
-  setAbsoluteExpiration,
-  setSlidingExpiration,
-  registerPostEvictionCallback,
-  setValue,
-  setSize,
-  setEntryOptions,
-});
-
-applyExtensions<IMemoryCache>(MemoryCache, memoryCacheExtensions);
-applyExtensions<ICacheEntry>(CacheEntry, cacheEntryExtensions);
+applyAugmentations(MemoryCache, cacheInstanceMethods);
+applyAugmentations(MemoryCache, MemoryCacheExtensions);
+applyAugmentations(CacheEntry, CacheEntryExtensions);
+applyAugmentations(CacheEntry, MemoryCacheEntryExtensions);

@@ -8,7 +8,8 @@
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IndexedSection } from "@rhombus-std/config.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import {
   EnvironmentVariablesConfigurationSource,
   type EnvironmentVariablesConfigurationSourceOptions,
@@ -26,18 +27,19 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
-// Dual-export (docs §22): a receiver-first function installed as a prototype
-// method AND exported standalone.
-export const envConfigExtensions = defineExtensions<ConfigurationBuilder>()({
-  addEnvironmentVariables(
-    builder: ConfigurationBuilder,
+// One named object literal mirroring the reference `EnvironmentVariablesExtensions`
+// static class (docs §28), installed as a prototype method AND exported so the
+// member is the standalone form.
+export const EnvironmentVariablesExtensions = {
+  addEnvironmentVariables<T>(
+    builder: ConfigurationBuilder<T>,
     options?: EnvironmentVariablesConfigurationSourceOptions,
-  ): ConfigurationBuilder {
+  ): ConfigurationBuilder<T> {
     return builder.add(new EnvironmentVariablesConfigurationSource(options));
   },
-});
+} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyExtensions(ConfigurationBuilder, envConfigExtensions);
+applyAugmentations(ConfigurationBuilder, EnvironmentVariablesExtensions);
 
 export { EnvironmentVariablesConfigurationProvider } from "./environment-variables-configuration-provider";
 export {

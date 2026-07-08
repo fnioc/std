@@ -43,6 +43,7 @@
   "dependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.5.3"
   },
   "publishConfig": {

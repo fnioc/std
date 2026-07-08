@@ -18,13 +18,5 @@ export type { PostEvictionDelegate } from "./post-eviction-delegate";
 export type { ICacheEntry } from "./cache-entry";
 export type { CacheTryGetResult, IMemoryCache } from "./memory-cache";
 
-export {
-  addExpirationToken,
-  registerPostEvictionCallback,
-  setAbsoluteExpiration,
-  setPriority,
-  setSize,
-  setSlidingExpiration,
-  setValue,
-} from "./cache-entry-extensions";
-export { get, getOrCreate, getOrCreateAsync, set, tryGetValue } from "./cache-extensions";
+export { CacheEntryExtensions } from "./cache-entry-extensions";
+export { CacheExtensions } from "./cache-extensions";

@@ -72,9 +72,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ChangeToken.onChange`) that underpins live-reload (§8), **and** the augmentation installer infra:
   one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`,
   installed onto a constructor's prototype via `applyAugmentations` (§28, superseding §22's
-  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape — the rename/removal is the code
-  migration tracked in #115, not yet landed). It lives here (not `di.core`) because di ⊥ config
-  forces the shared home onto the zero-dep leaf.
+  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape — landed in #115). It lives here (not
+  `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9) ← `di` (the resolution engine:
   scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
@@ -157,8 +156,8 @@ before touching):
   member (`JsonConfigurationExtensions.addJsonFile(builder, …)`) IS the functional call surface.
   Installed onto a constructor's prototype via `primitives`' `applyAugmentations`; `defineExtensions`
   is dropped, `satisfies` alone validates (§28). This decision supersedes §22's dual-export
-  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape and the extension→augmentation rename —
-  the code hasn't moved yet; migration is tracked in #115. When the receiver interface is in a
+  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape and carries the extension→augmentation
+  rename — landed in #115. When the receiver interface is in a
   `.core` package but the concrete class is downstream, the declare-merge + install live downstream.
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or

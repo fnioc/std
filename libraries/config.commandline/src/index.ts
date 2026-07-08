@@ -14,7 +14,8 @@
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IndexedSection } from "@rhombus-std/config.core";
-import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+import { applyAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { CommandLineConfigurationSourceOptions } from "./command-line-configuration-source";
 import { CommandLineConfigurationSource } from "./command-line-configuration-source";
 
@@ -43,19 +44,20 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
-// Dual-export (docs §22): a receiver-first function installed as a prototype
-// method AND exported standalone.
-export const commandLineConfigExtensions = defineExtensions<ConfigurationBuilder>()({
-  addCommandLine(
-    builder: ConfigurationBuilder,
+// One named object literal mirroring the reference `CommandLineConfigurationExtensions`
+// static class (docs §28), installed as a prototype method AND exported so the
+// member is the standalone form.
+export const CommandLineConfigurationExtensions = {
+  addCommandLine<T>(
+    builder: ConfigurationBuilder<T>,
     args: readonly string[],
     switchMappings?: CommandLineConfigurationSourceOptions["switchMappings"],
-  ): ConfigurationBuilder {
+  ): ConfigurationBuilder<T> {
     return builder.add(new CommandLineConfigurationSource(args, { switchMappings }));
   },
-});
+} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyExtensions(ConfigurationBuilder, commandLineConfigExtensions);
+applyAugmentations(ConfigurationBuilder, CommandLineConfigurationExtensions);
 
 export { CommandLineConfigurationProvider } from "./command-line-configuration-provider";
 export { CommandLineConfigurationSource } from "./command-line-configuration-source";
