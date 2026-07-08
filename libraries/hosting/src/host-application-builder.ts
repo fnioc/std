@@ -12,12 +12,12 @@
 
 import { ConfigurationManager, MemoryConfigurationSource } from "@rhombus-std/config";
 import type { IConfigurationManager } from "@rhombus-std/config.core";
+import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { ServiceManifest } from "@rhombus-std/di";
 import type { Resolver } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import type { HostBuilderContext, IHost, IHostApplicationBuilder, IHostEnvironment } from "@rhombus-std/hosting.core";
 import { HostDefaults } from "@rhombus-std/hosting.core";
-import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { Action } from "@rhombus-toolkit/func";
@@ -28,14 +28,14 @@ import {
   HOST_ENVIRONMENT_VARIABLE_PREFIX,
   setDefaultContentRoot,
 } from "./default-configuration";
+import { HostApplicationBuilderSettings } from "./host-application-builder-settings";
 import {
   createFrameworkServices,
   createHostingEnvironment,
+  type FrameworkServices,
   populateFrameworkServices,
   resolveHost,
-  type FrameworkServices,
 } from "./host-composition";
-import { HostApplicationBuilderSettings } from "./host-application-builder-settings";
 import { MetricsBuilder } from "./metrics-builder";
 
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */
@@ -58,7 +58,9 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     this.#framework = createFrameworkServices();
 
     if (!resolved.disableDefaults) {
-      if (resolved.contentRootPath === undefined && this.#configuration.get(HostDefaults.contentRootKey) === undefined) {
+      if (
+        resolved.contentRootPath === undefined && this.#configuration.get(HostDefaults.contentRootKey) === undefined
+      ) {
         setDefaultContentRoot(this.#configuration);
       }
       this.#configuration.add(

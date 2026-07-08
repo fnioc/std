@@ -1,6 +1,6 @@
 import type { IConfigurationManager } from "@rhombus-std/config.core";
-import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import type { Resolver, ServiceManifest } from "@rhombus-std/di.core";
+import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { Action } from "@rhombus-toolkit/func";
 import type { IHostEnvironment } from "./host-environment";

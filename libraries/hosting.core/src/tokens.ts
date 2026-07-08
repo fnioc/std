@@ -14,8 +14,7 @@ import type { Token } from "@rhombus-std/di.core";
 export const HOSTED_SERVICE_TOKEN: Token = "@rhombus-std/hosting.core/IHostedService";
 
 /** The token the host's {@link IHostApplicationLifetime} is registered under. */
-export const HOST_APPLICATION_LIFETIME_TOKEN: Token =
-  "@rhombus-std/hosting.core/IHostApplicationLifetime";
+export const HOST_APPLICATION_LIFETIME_TOKEN: Token = "@rhombus-std/hosting.core/IHostApplicationLifetime";
 
 /**
  * The collection wrapper token the engine recognizes to aggregate every

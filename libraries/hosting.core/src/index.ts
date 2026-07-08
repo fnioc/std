@@ -14,40 +14,31 @@
 
 // Core contracts.
 export type { IHost } from "./host";
-export type { IHostedService } from "./hosted-service";
-export type { IHostedLifecycleService } from "./hosted-lifecycle-service";
-export type { IHostApplicationLifetime } from "./host-application-lifetime";
-export type { IHostLifetime } from "./host-lifetime";
-export type { IHostEnvironment } from "./host-environment";
-export type { HostBuilderContext } from "./host-builder-context";
-export type { IHostBuilder } from "./host-builder";
 export type { IHostApplicationBuilder } from "./host-application-builder";
+export type { IHostApplicationLifetime } from "./host-application-lifetime";
+export type { IHostBuilder } from "./host-builder";
+export type { HostBuilderContext } from "./host-builder-context";
+export type { IHostEnvironment } from "./host-environment";
+export type { IHostLifetime } from "./host-lifetime";
+export type { IHostedLifecycleService } from "./hosted-lifecycle-service";
+export type { IHostedService } from "./hosted-service";
 
 // Concrete values the reference ships in the abstractions package.
 export { BackgroundService } from "./background-service";
-export { HostAbortedException } from "./host-aborted-exception";
 export { Environments } from "./environments";
+export { HostAbortedException } from "./host-aborted-exception";
 export { HostDefaults } from "./host-defaults";
 
 // The shared DI-slot token ABI (registration + resolution travel through these).
-export {
-  HOST_APPLICATION_LIFETIME_TOKEN,
-  HOSTED_SERVICE_TOKEN,
-  hostedServiceCollectionToken,
-} from "./tokens";
+export { HOST_APPLICATION_LIFETIME_TOKEN, HOSTED_SERVICE_TOKEN, hostedServiceCollectionToken } from "./tokens";
 
 // Host lifetime helpers (reference HostingAbstractionsHost*Extensions as named
 // functions; see the module headers and diNotes for why not fluent methods).
-export { run, runAsync, stopWithTimeout, waitForShutdownAsync } from "./host-extensions";
 export { startHost } from "./host-builder-extensions";
+export { run, runAsync, stopWithTimeout, waitForShutdownAsync } from "./host-extensions";
 
 // Environment predicates (reference HostEnvironmentEnvExtensions).
-export {
-  isDevelopment,
-  isEnvironment,
-  isProduction,
-  isStaging,
-} from "./host-environment-extensions";
+export { isDevelopment, isEnvironment, isProduction, isStaging } from "./host-environment-extensions";
 
 // Side-effect: install `addHostedService` onto di.core's ServiceManifest.
 import "./hosted-service-registration";

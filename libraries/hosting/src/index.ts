@@ -16,17 +16,17 @@ export * from "@rhombus-std/hosting.core";
 
 // The builders + factory facade.
 export { Host } from "./host";
-export { HostBuilder } from "./host-builder";
 export { HostApplicationBuilder } from "./host-application-builder";
 export { HostApplicationBuilderSettings } from "./host-application-builder-settings";
+export { HostBuilder } from "./host-builder";
 
 // Host runtime objects.
-export { HostOptions } from "./host-options";
 export { BackgroundServiceExceptionBehavior } from "./background-service-exception-behavior";
 export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from "./console-lifetime";
 export { ConsoleLifetimeOptions } from "./console-lifetime-options";
-export { NullLifetime } from "./null-lifetime";
+export { HostOptions } from "./host-options";
 export { MetricsBuilder } from "./metrics-builder";
+export { NullLifetime } from "./null-lifetime";
 
 // IHostBuilder helper functions (reference HostingHostBuilderExtensions).
 export {

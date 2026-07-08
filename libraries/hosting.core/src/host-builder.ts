@@ -1,8 +1,8 @@
 import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import type { Resolver, ServiceManifest } from "@rhombus-std/di.core";
 import type { Action } from "@rhombus-toolkit/func";
-import type { HostBuilderContext } from "./host-builder-context";
 import type { IHost } from "./host";
+import type { HostBuilderContext } from "./host-builder-context";
 
 /**
  * A program initialization abstraction. The primary API surface for assembling

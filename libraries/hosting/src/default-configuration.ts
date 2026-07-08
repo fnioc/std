@@ -12,15 +12,15 @@
 // still installs that sugar for user code as a side effect.)
 
 import { MemoryConfigurationSource } from "@rhombus-std/config";
-import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { CommandLineConfigurationSource } from "@rhombus-std/config.commandline";
+import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { JsonConfigurationSource } from "@rhombus-std/config.json";
 import { ServiceManifest } from "@rhombus-std/di";
 import { HostDefaults } from "@rhombus-std/hosting.core";
 import type { IHostEnvironment } from "@rhombus-std/hosting.core";
-import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
 import { addProvider, LoggingBuilder } from "@rhombus-std/logging";
+import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
 
 /**
  * The environment-variable prefix the host configuration is seeded from. The

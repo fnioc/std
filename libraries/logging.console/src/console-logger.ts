@@ -13,9 +13,9 @@
 // i.e. `<level>: <category>[<eventId>]`, then the message on its own
 // padded line (padding = the width of `<level>: `).
 
-import type { Func } from "@rhombus-toolkit/func";
 import type { EventId, ILogger } from "@rhombus-std/logging.core";
 import { LogLevel } from "@rhombus-std/logging.core";
+import type { Func } from "@rhombus-toolkit/func";
 
 /**
  * The four-character level names of the reference simple console format.

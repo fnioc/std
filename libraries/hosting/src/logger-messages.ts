@@ -6,7 +6,7 @@
 // reference. A disabled sink never pays the formatting cost -- `write` guards on
 // `isEnabled` first, exactly as the reference helpers do.
 
-import { EventId, FormattedLogValues, formatLogValues, LogLevel } from "@rhombus-std/logging.core";
+import { EventId, formatLogValues, FormattedLogValues, LogLevel } from "@rhombus-std/logging.core";
 import type { ILogger } from "@rhombus-std/logging.core";
 
 /** The stable event ids the host runtime emits under. Mirrors the reference `LoggerEventIds`. */

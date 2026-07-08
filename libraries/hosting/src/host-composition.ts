@@ -21,17 +21,18 @@
 //     off the built container and folded into the owned factory, so the host's
 //     own loggers -- and any composite logger already handed out -- light up.
 
+import type { IConfiguration } from "@rhombus-std/config.core";
+import type { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProvider } from "@rhombus-std/di.core";
 import type { IHost, IHostLifetime } from "@rhombus-std/hosting.core";
 import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
-import { isAbsolute, resolve as resolvePath } from "node:path";
-import type { IConfiguration } from "@rhombus-std/config.core";
 import { Environments, HostDefaults } from "@rhombus-std/hosting.core";
-import { LoggerFactory, LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN } from "@rhombus-std/logging";
+import type { HostBuilderContext } from "@rhombus-std/hosting.core";
+import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from "@rhombus-std/logging";
 import type { ILoggerProvider } from "@rhombus-std/logging.core";
-import type { ServiceManifest } from "@rhombus-std/di";
-import { ApplicationLifetime } from "./application-lifetime";
 import type { Func } from "@rhombus-toolkit/func";
+import { isAbsolute, resolve as resolvePath } from "node:path";
+import { ApplicationLifetime } from "./application-lifetime";
 import {
   CONFIGURATION_TOKEN,
   HOST_BUILDER_CONTEXT_TOKEN,
@@ -40,11 +41,10 @@ import {
   HOST_OPTIONS_CONFIGURE_TOKEN,
   HOST_OPTIONS_TOKEN,
 } from "./framework-tokens";
-import type { HostBuilderContext } from "@rhombus-std/hosting.core";
-import { HostingEnvironment } from "./hosting-environment";
 import { HostOptions } from "./host-options";
-import { NullLifetime } from "./null-lifetime";
+import { HostingEnvironment } from "./hosting-environment";
 import { Host } from "./internal-host";
+import { NullLifetime } from "./null-lifetime";
 
 /** The category the internal host writes its lifecycle log messages under. */
 export const HOST_LOGGER_CATEGORY = "Rhombus.Hosting.Host";

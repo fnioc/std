@@ -19,7 +19,8 @@ import type {
   IHostEnvironment,
 } from "@rhombus-std/hosting.core";
 import { HostDefaults, runAsync } from "@rhombus-std/hosting.core";
-import { LoggingBuilder, LOGGER_FACTORY_TOKEN } from "@rhombus-std/logging";
+import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
+import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConsoleLifetime } from "./console-lifetime";
@@ -35,7 +36,6 @@ import {
   HOST_LIFETIME_TOKEN,
   HOST_OPTIONS_CONFIGURE_TOKEN,
 } from "./framework-tokens";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
 import type { HostOptions } from "./host-options";
 import { MetricsBuilder } from "./metrics-builder";
 
