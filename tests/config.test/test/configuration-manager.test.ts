@@ -36,7 +36,21 @@ describe("ConfigurationManager", () => {
     expect(manager.get("Server:Host")).toBe("localhost");
   });
 
-  test("a reload callback registered BEFORE a later add() still fires (stable token across rebuilds)", () => {
+  test("set() survives a later add() -- existing providers are never rebuilt/reloaded", () => {
+    // Regression (#80): add() must append only the new provider, not rebuild
+    // the whole list. A rebuild would construct fresh provider instances and
+    // silently discard the set() below, since set() state lives in the provider.
+    const manager = new ConfigurationManager();
+    manager.add(source({ "A": "1" }));
+    manager.set("A", "mutated");
+
+    manager.add(source({ "B": "2" }));
+
+    expect(manager.get("A")).toBe("mutated");
+    expect(manager.get("B")).toBe("2");
+  });
+
+  test("a reload callback registered BEFORE a later add() still fires (stable token across adds)", () => {
     const manager = new ConfigurationManager();
     manager.add(source({ "A": "1" }));
 

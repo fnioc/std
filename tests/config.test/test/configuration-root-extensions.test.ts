@@ -51,6 +51,19 @@ describe("getDebugView", () => {
     expect(connection!.provider).toBeDefined();
   });
 
+  test("with two providers, the rendered value comes from the last (winning) provider", () => {
+    // Both providers define Server:Port; getValueAndProvider scans providers in
+    // reverse, so the debug view attributes the value to the last registration.
+    const root = new ConfigurationBuilder()
+      .addInMemoryCollection({ "Server:Port": "8080" })
+      .addInMemoryCollection({ "Server:Port": "9090" })
+      .build() as unknown as IConfigurationRoot;
+
+    const view = getDebugView(root);
+    expect(view).toContain("  Port=9090 ([object Object])");
+    expect(view).not.toContain("8080");
+  });
+
   test("an empty root renders as the empty string", () => {
     const root = new ConfigurationBuilder().build() as unknown as IConfigurationRoot;
     expect(getDebugView(root)).toBe("");

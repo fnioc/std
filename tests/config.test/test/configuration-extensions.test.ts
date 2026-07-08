@@ -42,6 +42,13 @@ describe("exists", () => {
     expect(exists(server)).toBe(true);
   });
 
+  test("true for a section whose value is the empty string (present, not absent)", () => {
+    const root = rootOf({ "Flag": "" });
+    // "" is a real value -- exists tests `value !== undefined`, not truthiness.
+    expect(root.getSection("Flag").value).toBe("");
+    expect(exists(root.getSection("Flag"))).toBe(true);
+  });
+
   test("false for an empty section (no value, no children)", () => {
     const root = rootOf({ "Server:Port": "8080" });
     expect(exists(root.getSection("Nope"))).toBe(false);
@@ -103,6 +110,22 @@ describe("asEnumerable", () => {
     // "Server" prefix (plus its delimiter) is trimmed; the now-empty root key
     // is omitted.
     expect(keys).toEqual(["Host", "Port"]);
+  });
+
+  test("makePathsRelative=true from a section drops the section's OWN value (empty key)", () => {
+    // A section that carries both a direct value and children. In relative mode
+    // the enumeration root would map to an empty key, so its own value is
+    // omitted; only its descendants are yielded, relative.
+    const root = rootOf({
+      "Server": "self-value",
+      "Server:Host": "localhost",
+    }) as IConfigurationRoot;
+    const server = root.getSection("Server");
+    expect(server.value).toBe("self-value");
+
+    const pairs = new Map(asEnumerable(server, true));
+    expect(pairs.has("")).toBe(false); // the section's own (empty-key) value is dropped
+    expect(pairs.get("Host")).toBe("localhost");
   });
 
   test("makePathsRelative=true from a root is a no-op on paths (root is not a section)", () => {

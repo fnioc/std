@@ -864,12 +864,17 @@ The helpers are free functions (mirroring `compareConfigurationKeys`, not extens
   safe — neither is used at module-eval time). The `diagnostics` package's independent copy is a
   separate cross-package consolidation, out of scope here.
 - **`ConfigurationManager`** — the concrete `IConfigurationManager`, a mutable build-as-you-add
-  object that is simultaneously an `IConfigurationBuilder` and an `IConfigurationRoot`. `add()`
-  rebuilds the whole provider list from the registered sources (no copy-on-write
-  `ReferenceCountedProviders` optimization — single-threaded, no concurrent-reader story to
-  preserve) and every `IConfiguration` method delegates to the current root, so there is no
-  separate build-then-read phase. It owns a **stable** reload token re-subscribed to the current
-  root on every rebuild, so a subscriber registered before a later `add()` still fires — the
+  object that is simultaneously an `IConfigurationBuilder` and an `IConfigurationRoot`. It holds
+  **one persistent `ConfigurationRoot`**; every `IConfiguration` method delegates to it, so there
+  is no separate build-then-read phase. `add()` is **incremental**: it builds+loads ONLY the new
+  source's provider and appends it to the persistent root (via `ConfigurationRoot.adoptProvider`,
+  the documented intra-package composition seam mirroring the reference `AddSource`) — the existing
+  providers are never rebuilt or reloaded. This is a **correctness** requirement, not just
+  efficiency (#80): a provider's `set()` state lives in the provider instance, so the earlier
+  whole-list rebuild silently discarded any prior `manager.set()` on the next `add()`. The
+  reference's copy-on-write `ReferenceCountedProviders` manager is not ported — no concurrent-reader
+  story in a single-threaded runtime. It owns a **stable** reload token subscribed once to the
+  root's (self-swapping) token, so a subscriber registered before a later `add()` still fires — the
   reference gets this free by implementing `IConfigurationRoot` on a never-swapped identity. Lives
   in `config` beside `ConfigurationBuilder`/`-Root`, mirroring the reference layout (Configuration
   package, not Hosting).
