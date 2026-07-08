@@ -94,12 +94,12 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   through `ConfigurationChangeTokenSource` for reload-reactive `Options<T>`, and the
   `addMetrics`/`addTracing` declaration-merging augmentations onto `di.core`'s
   `ServiceManifestClass`; ← `diagnostics.core` + `config` + `options` + `options.augmentations`
-  + `primitives`, `di.core` as peer). The metrics/tracing **listener runtime** (no `Meter`/
-  `Instrument`/`Activity`/`ActivitySource` analog) is intentionally not ported — `IMetricsListener`
-  collapses to its rule-matching `name`, `ActivityListenerBuilder`'s delegate params collapse to
-  `unknown`, and `addMetrics`/`addTracing` register no listener-activation wiring. Console/debug
-  listener packages, `ME.Http.Diagnostics`, `ME.Diagnostics.ResourceMonitoring`, and
-  `ME.Diagnostics.ExceptionSummarization` are all out of scope (no consumer, YAGNI).
+  - `primitives`, `di.core` as peer). The metrics/tracing **listener runtime** (no `Meter`/
+    `Instrument`/`Activity`/`ActivitySource` analog) is intentionally not ported — `IMetricsListener`
+    collapses to its rule-matching `name`, `ActivityListenerBuilder`'s delegate params collapse to
+    `unknown`, and `addMetrics`/`addTracing` register no listener-activation wiring. Console/debug
+    listener packages, `ME.Http.Diagnostics`, `ME.Diagnostics.ResourceMonitoring`, and
+    `ME.Diagnostics.ExceptionSummarization` are all out of scope (no consumer, YAGNI).
 - **`logging`** — `logging.core` (`ILogger`/`ILoggerFactory`/`ILoggerProvider`/`ILoggingBuilder`,
   `LogLevel`, `EventId`, `FormattedLogValues` + the `log*` convenience wrappers; ← `di.core`) ←
   `logging` (`Logger`/`LoggerFactory` composite fan-out, `NullLogger*`, `LoggerFilterOptions`,
