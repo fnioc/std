@@ -1,21 +1,20 @@
-// MetricsBuilderExtensions -- ported from MED.Metrics's
-// `MetricsBuilderExtensions.{Listeners,Rules}` static extension classes.
+// Ported from MED.Metrics's `MetricsBuilderExtensions.{Listeners,Rules}` static
+// extension classes. Authored as object literals per ME class (docs §28),
+// `satisfies AugmentationSet<R>`.
 //
-// These target the family's OWN interface (IMetricsBuilder), so per this repo's
-// "explicit form is primary" convention they are plain exported functions taking
-// the builder as the first parameter -- no declaration-merging augmentation
-// needed (that idiom is reserved for patching a class from ANOTHER package, e.g.
-// di.core's ServiceManifestClass, which @rhombus-std/diagnostics does for
-// addMetrics/addTracing). Each returns the builder for chaining.
-//
-// The reference splits EnableMetrics/DisableMetrics into a builder-targeted
-// overload (registers a `Configure(MetricsOptions)` step) and a
-// MetricsOptions-targeted overload (mutates the options directly). Both are
-// ported: the builder-targeted `enableMetrics`/`disableMetrics`, and the
-// options-targeted `enableMetricsRule`/`disableMetricsRule`.
+// The IMetricsBuilder-receiver methods ship as `MetricsBuilderExtensions`; the
+// builder interface is owned by this family, but the concrete `MetricsBuilder`
+// lives downstream in @rhombus-std/diagnostics, so that package installs the
+// method form (cross-package rule). The reference splits EnableMetrics/
+// DisableMetrics into a builder-targeted overload (registers a
+// `Configure(MetricsOptions)` step) and a MetricsOptions-targeted overload
+// (mutates the options directly); both are ported. The value-object receiver
+// methods ship as `MetricsOptionsExtensions` and, since the concrete
+// `MetricsOptions` is owned here, are installed onto it here.
 
 import type { Ctor, DepSlot, Token } from "@rhombus-std/di.core";
 import type { ConfigureOptions } from "@rhombus-std/options";
+import { applyAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 
 import { InstrumentRule } from "./instrument-rule";
@@ -138,12 +137,29 @@ export const MetricsBuilderExtensions = {
   disableMetrics,
 } satisfies AugmentationSet<IMetricsBuilder>;
 
+// The value-object method form (docs §28). Merge onto the concrete
+// `MetricsOptions` (its own package owns the class, so the install lives here) so
+// `metricsOptions.enableMetrics(...)` reads as fluently as the standalone
+// `MetricsOptionsExtensions.enableMetrics(options, ...)`.
+declare module "./metrics-options" {
+  interface MetricsOptions {
+    enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
+    disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
+  }
+}
+
 /**
- * The `MetricsOptions`-targeted rule mutators (docs §28). Standalone-only: this
- * is an options-bag receiver, given NO prototype install (the boundary call
- * deferred at §22/§28); the member IS the standalone call surface.
+ * The `MetricsOptions`-targeted rule mutators (docs §28). ME names these
+ * value-object receiver methods `EnableMetrics`/`DisableMetrics` (the same names
+ * as the builder overloads, distinguished only by receiver), so the members drop
+ * the `Rule` suffix; the private `enableMetricsRule`/`disableMetricsRule` helpers
+ * back both the builder's deferred forms and these direct member forms. Installed
+ * as prototype methods onto the concrete `MetricsOptions` (the primary path) AND
+ * exported so the members are the standalone form.
  */
 export const MetricsOptionsExtensions = {
-  enableMetricsRule,
-  disableMetricsRule,
+  enableMetrics: enableMetricsRule,
+  disableMetrics: disableMetricsRule,
 } satisfies AugmentationSet<MetricsOptions>;
+
+applyAugmentations(MetricsOptions, MetricsOptionsExtensions);

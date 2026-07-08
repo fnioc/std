@@ -17,6 +17,7 @@
     "directory": "libraries/diagnostics.core"
   },
   "type": "module",
+  "sideEffects": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

@@ -2,21 +2,23 @@
 // the `LoggerFilterOptions`-targeting overloads of ME.Logging's
 // `FilterLoggingBuilderExtensions.AddFilter`.
 //
-// The receiver is the value-object `LoggerFilterOptions`, so per docs §28 this
-// is authored as the named `LoggerFilterOptionsExtensions` object literal but
-// given NO prototype install (patching a plain options bag is the boundary call
-// deferred at §22/§28; whether it also gets a method form is #105's open
-// decision). The member IS the standalone call surface. The reference exposes
-// a wider overload matrix (provider-scoped `<T>` variants, per-category function
-// filters); this ports the two unambiguous shapes — a `(category, level)` rule
-// and a raw `(provider, category, level) => bool` filter. The remaining overloads
-// are a deferred refinement (noted in the README); they add no capability, only
-// argument-shape sugar over the same `rules.push(new LoggerFilterRule(...))`.
+// The receiver is the value-object `LoggerFilterOptions`, authored as the named
+// `LoggerFilterOptionsExtensions` object literal (docs §28) and — per #115's
+// decision to match ME, whose `AddFilter` receiver IS the value object — given
+// the method form too: the concrete `LoggerFilterOptions` prototype is patched
+// here (its owning package). The members are the standalone call surface. The
+// reference exposes a wider overload matrix (provider-scoped `<T>` variants,
+// per-category function filters); this ports the two unambiguous shapes — a
+// `(category, level)` rule and a raw `(provider, category, level) => bool`
+// filter. The remaining overloads are a deferred refinement (noted in the
+// README); they add no capability, only argument-shape sugar over the same
+// `rules.push(new LoggerFilterRule(...))`.
 //
 // NOTE: rules are not yet CONSUMED — the filter-selection layer is deferred with
 // the options-monitor DI integration (see ./logger.ts). This builds the rule set.
 
 import type { LogLevel } from "@rhombus-std/logging.core";
+import { applyAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
@@ -45,13 +47,26 @@ function addFilter(
   return options;
 }
 
+// The value-object method form (docs §28). Merge the overloads onto the concrete
+// `LoggerFilterOptions` so `options.addFilter(...)` reads as fluently as the
+// standalone `LoggerFilterOptionsExtensions.addFilter(options, ...)`.
+declare module "./logger-filter-options" {
+  interface LoggerFilterOptions {
+    addFilter(category: string | undefined, level: LogLevel): this;
+    addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
+  }
+}
+
 /**
- * The `LoggerFilterOptions`-targeted `addFilter` (docs §28). Standalone-only: an
- * options-bag receiver given NO prototype install; the member IS the standalone
- * call surface. Named `LoggerFilterOptionsExtensions` because the ME class name
+ * The `LoggerFilterOptions`-targeted `addFilter` (docs §28). Installed as a
+ * prototype method onto the concrete `LoggerFilterOptions` (the primary path) AND
+ * exported so the member is the standalone call surface. Named
+ * `LoggerFilterOptionsExtensions` because the ME class name
  * `FilterLoggingBuilderExtensions` is claimed by the ILoggingBuilder-receiver
  * overloads and ME provides no distinct name for the value-object side.
  */
 export const LoggerFilterOptionsExtensions = {
   addFilter,
 } satisfies AugmentationSet<LoggerFilterOptions>;
+
+applyAugmentations(LoggerFilterOptions, LoggerFilterOptionsExtensions);
