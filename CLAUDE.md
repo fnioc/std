@@ -11,6 +11,20 @@ invariant below is numbered and justified there (cited as "§N"). Read it for th
 changing a boundary, and append to it when a decision lands. The root `README.md` is
 scaffolding-era and stale — ignore it.
 
+## Issue coding gate
+
+Before writing any code for a GitHub issue, it must carry **both** `signoff` **and** `claude-ready`.
+Both labels already exist — **never create new ones.**
+
+- **`signoff`** — the owner's explicit go-ahead. Apply it yourself when the owner tells you to
+  proceed ("do it", "go ahead", "code this", "ship it", or any equivalent). It records that the
+  work was cleared.
+- **`claude-ready`** — your own honest judgement that the issue can be implemented to completion
+  with **zero** further owner interaction. Add it when that's true; remove it when it isn't.
+
+Maintain `claude-ready` **silently**: whenever you look at an issue, add or remove it to match
+"could I finish this unattended right now?" — don't narrate the change or ask about it, just adjust.
+
 ## Commands
 
 Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` pins bun + Node 24.
