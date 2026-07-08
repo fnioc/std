@@ -19,6 +19,9 @@ permissions:
 jobs:
   build-plan-doc:
     runs-on: ubuntu-latest
+    # Hard ceiling so a hung API call or network stall can't sit consuming
+    # runner time (and, if mid-request, an open-ended bill) indefinitely.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
