@@ -2,3 +2,9 @@
 bun = "latest"
 node = "24"
 pnpm = "10.34.4"
+
+# Points git at .githooks/ on directory entry so the pre-commit format check is
+# auto-installed. Idempotent, and silently skipped when mise isn't active — non-mise
+# users just run `git config core.hooksPath .githooks` once by hand.
+[hooks]
+enter = "git config core.hooksPath .githooks"

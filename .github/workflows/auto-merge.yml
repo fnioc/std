@@ -1,0 +1,30 @@
+name: auto-merge
+
+# Registers auto-merge intent on non-draft PRs. Branch protection (the required
+# "CI / verify" status check) gates the actual merge — this job only tells GitHub
+# to squash-merge once those gates go green.
+#
+# Uses the default GITHUB_TOKEN deliberately: there's no publish-on-merge workflow
+# yet, so we don't need the merge's push event to retrigger a downstream workflow.
+# If/when an npm-publish-on-merge workflow is added, switch this to a PAT — pushes
+# made with GITHUB_TOKEN don't retrigger other workflows, so the publish job would
+# never fire otherwise.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr merge --auto --squash --repo "$GITHUB_REPOSITORY" "$PR_NUMBER"
