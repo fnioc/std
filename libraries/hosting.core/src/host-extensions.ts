@@ -1,10 +1,15 @@
-// Host lifetime helpers -- ported from the reference's HostingAbstractionsHost
-// extension methods. IHost is a plain interface with no concrete class in this
-// abstractions package to prototype-patch, so these surface as named functions
-// (the augmentation escape hatch; see diNotes) rather than fluent methods. The
-// synchronous reference wrappers (Start/Run/WaitForShutdown that block a thread)
-// collapse into their async forms -- JS cannot block a thread.
+// Host lifetime helpers -- ported from the reference's
+// `HostingAbstractionsHostExtensions` static extension class. Authored as one
+// named object literal per ME class (docs §28), `satisfies AugmentationSet<IHost>`.
+// IHost is a plain interface with no concrete class in THIS abstractions package
+// to prototype-patch, so the method-form install (and the `declare module` merge)
+// live downstream in `@rhombus-std/hosting` against the concrete `Host`, per the
+// cross-package rule -- here we only ship the literal (its members are the
+// standalone call surface). The synchronous reference wrappers (Start/Run/
+// WaitForShutdown that block a thread) collapse into their async forms -- JS
+// cannot block a thread.
 
+import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { IHost } from "./host";
 import type { IHostApplicationLifetime } from "./host-application-lifetime";
 import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
@@ -24,7 +29,7 @@ function whenAborted(signal: AbortSignal): Promise<void> {
  * `applicationStopping` (or via `cancellationToken`, which requests a stop),
  * then gracefully stops the host.
  */
-export async function waitForShutdownAsync(
+async function waitForShutdownAsync(
   host: IHost,
   cancellationToken?: AbortSignal,
 ): Promise<void> {
@@ -57,7 +62,7 @@ export async function waitForShutdownAsync(
  * host (async disposal preferred when available). Completes only once shutdown
  * is triggered.
  */
-export async function runAsync(host: IHost, cancellationToken?: AbortSignal): Promise<void> {
+async function runAsync(host: IHost, cancellationToken?: AbortSignal): Promise<void> {
   try {
     await host.start(cancellationToken);
     await waitForShutdownAsync(host, cancellationToken);
@@ -77,7 +82,7 @@ export async function runAsync(host: IHost, cancellationToken?: AbortSignal): Pr
  * calling thread until shutdown; JS cannot, so `run` returns the same promise
  * `runAsync` does.
  */
-export function run(host: IHost, cancellationToken?: AbortSignal): Promise<void> {
+function run(host: IHost, cancellationToken?: AbortSignal): Promise<void> {
   return runAsync(host, cancellationToken);
 }
 
@@ -85,7 +90,7 @@ export function run(host: IHost, cancellationToken?: AbortSignal): Promise<void>
  * Attempts to gracefully stop the host, escalating to a non-graceful stop once
  * `timeoutMs` elapses.
  */
-export async function stopWithTimeout(host: IHost, timeoutMs: number): Promise<void> {
+async function stopWithTimeout(host: IHost, timeoutMs: number): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -94,3 +99,15 @@ export async function stopWithTimeout(host: IHost, timeoutMs: number): Promise<v
     clearTimeout(timer);
   }
 }
+
+/**
+ * The `HostingAbstractionsHostExtensions` augmentation set for {@link IHost}
+ * (docs §28). Installed as instance methods onto the concrete `Host` downstream
+ * in `@rhombus-std/hosting`; the members here are the standalone call surface.
+ */
+export const HostingAbstractionsHostExtensions = {
+  run,
+  runAsync,
+  waitForShutdownAsync,
+  stopWithTimeout,
+} satisfies AugmentationSet<IHost>;

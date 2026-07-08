@@ -3,7 +3,7 @@
 // pre-configured defaults already applied.
 
 import type { IHostBuilder } from "@rhombus-std/hosting.core";
-import { configureDefaults } from "./builder-extensions";
+import { HostingHostBuilderExtensions } from "./builder-extensions";
 import { HostApplicationBuilder } from "./host-application-builder";
 import { HostApplicationBuilderSettings } from "./host-application-builder-settings";
 import { HostBuilder } from "./host-builder";
@@ -12,7 +12,7 @@ import { HostBuilder } from "./host-builder";
 export const Host = {
   /** A classic {@link HostBuilder} with the pre-configured defaults applied. */
   createDefaultBuilder(args?: readonly string[]): IHostBuilder {
-    return configureDefaults(new HostBuilder(), args);
+    return HostingHostBuilderExtensions.configureDefaults(new HostBuilder(), args);
   },
 
   /**

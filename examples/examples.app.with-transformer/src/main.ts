@@ -42,7 +42,7 @@ import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { ConfigurationRoot } from "@rhombus-std/config";
 import { RESOLVER_TOKEN } from "@rhombus-std/di";
 import type { Resolver } from "@rhombus-std/di";
-import { Host, HOST_APPLICATION_LIFETIME_TOKEN, runAsync } from "@rhombus-std/hosting";
+import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting";
 import type { IHostApplicationLifetime, IHostedLifecycleService } from "@rhombus-std/hosting";
 import { LOGGER_FACTORY_TOKEN } from "@rhombus-std/logging";
 import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
@@ -241,4 +241,4 @@ services.addHostedService(InteropWorker, [
 // ── run the scenario ──────────────────────────────────────────────────────────
 
 const host = builder.build();
-await runAsync(host);
+await host.runAsync();
