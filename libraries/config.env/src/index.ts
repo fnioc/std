@@ -8,6 +8,7 @@
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IndexedSection } from "@rhombus-std/config.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import {
   EnvironmentVariablesConfigurationSource,
   type EnvironmentVariablesConfigurationSourceOptions,
@@ -25,12 +26,18 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
-ConfigurationBuilder.prototype.addEnvironmentVariables = function(
-  this: ConfigurationBuilder,
-  options?: EnvironmentVariablesConfigurationSourceOptions,
-): ConfigurationBuilder {
-  return this.add(new EnvironmentVariablesConfigurationSource(options));
-};
+// Dual-export (docs §17): a receiver-first function installed as a prototype
+// method AND exported standalone.
+export const envConfigExtensions = defineExtensions<ConfigurationBuilder>()({
+  addEnvironmentVariables(
+    builder: ConfigurationBuilder,
+    options?: EnvironmentVariablesConfigurationSourceOptions,
+  ): ConfigurationBuilder {
+    return builder.add(new EnvironmentVariablesConfigurationSource(options));
+  },
+});
+
+applyExtensions(ConfigurationBuilder, envConfigExtensions);
 
 export { EnvironmentVariablesConfigurationProvider } from "./environment-variables-configuration-provider";
 export {

@@ -23,6 +23,7 @@
 import { ServiceManifestClass } from "@rhombus-std/di.core";
 import type { ServiceManifest } from "@rhombus-std/di.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFactory } from "./logger-factory";
 import { LoggingBuilder } from "./logging-builder";
@@ -49,17 +50,24 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-ServiceManifestClass.prototype.addLogging = function addLogging(
-  this: ServiceManifestClass<string>,
-  configure?: Func<[ILoggingBuilder], void>,
-): ServiceManifestClass<string> {
-  this.add(LOGGER_FACTORY_TOKEN, LoggerFactory).as("singleton");
-  // `this` is widened to ServiceManifestClass<string> for the prototype patch
-  // (see the declare-module note above), whereas ILoggingBuilder.services is the
-  // singleton-default `ServiceManifest` — matching ME, whose logging services
-  // are singleton-only. Narrow the scope phantom here: LoggingBuilder merely
-  // stores the manifest and never calls the scope-sensitive `build()`, so the
-  // phantom is inert.
-  configure?.(new LoggingBuilder(this as unknown as ServiceManifest));
-  return this;
-};
+// Dual-export (docs §17): authored once as a receiver-first function, installed
+// as a prototype method (the primary path) via applyExtensions AND exported
+// standalone (the fallback / testing surface).
+export const loggingExtensions = defineExtensions<ServiceManifestClass<string>>()({
+  addLogging(
+    manifest: ServiceManifestClass<string>,
+    configure?: Func<[ILoggingBuilder], void>,
+  ): ServiceManifestClass<string> {
+    manifest.add(LOGGER_FACTORY_TOKEN, LoggerFactory).as("singleton");
+    // `manifest` is the widened ServiceManifestClass<string> (see the
+    // declare-module note above), whereas ILoggingBuilder.services is the
+    // singleton-default `ServiceManifest` — matching ME, whose logging services
+    // are singleton-only. Narrow the scope phantom here: LoggingBuilder merely
+    // stores the manifest and never calls the scope-sensitive `build()`, so the
+    // phantom is inert.
+    configure?.(new LoggingBuilder(manifest as unknown as ServiceManifest));
+    return manifest;
+  },
+});
+
+applyExtensions(ServiceManifestClass, loggingExtensions);

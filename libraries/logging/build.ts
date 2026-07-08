@@ -11,5 +11,5 @@ import { buildPackage } from "../../scripts/build-package";
 await buildPackage({
   dir: import.meta.dir,
   name: "@rhombus-std/logging",
-  external: ["@rhombus-std/di.core", "@rhombus-std/logging.core"],
+  external: ["@rhombus-std/di.core", "@rhombus-std/logging.core", "@rhombus-std/primitives"],
 });

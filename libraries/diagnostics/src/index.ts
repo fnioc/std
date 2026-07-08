@@ -31,6 +31,7 @@
 // `declare module` body resolve in THIS file's scope.
 import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
 import type { IMetricsBuilder, ITracingBuilder } from "@rhombus-std/diagnostics.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import {
   METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
   METRICS_CONFIGURE_TOKEN,
@@ -80,53 +81,59 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-ServiceManifestClass.prototype.addMetrics = function addMetrics(
-  this: ServiceManifestClass<string>,
-  configure?: Func<[IMetricsBuilder], void>,
-): ServiceManifestClass<string> {
-  // Register the resolvable `Options<MetricsOptions>` assembly at singleton
-  // scope. Calling addMetrics twice re-registers the (identical) factory --
-  // last-wins bare-token resolution keeps that correct; the reference guards it
-  // with TryAdd, a `has`/`try*` surface di.core does not expose (options.augmentations'
-  // addOptions has the same benign behavior). The factory takes the live
-  // provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
-  this.addFactory(
-    METRICS_OPTIONS_TOKEN,
-    (resolver) =>
-      assembleDiagnosticsOptions(
-        resolver,
-        METRICS_CONFIGURE_TOKEN,
-        METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-        () => new MetricsOptions(),
-      ),
-    [[RESOLVER_TOKEN]],
-  ).as("singleton");
-  if (configure) {
-    configure(new MetricsBuilder(this));
-  }
-  return this;
-};
+// Authored once as receiver-first functions, installed as prototype methods (the
+// primary path) via applyExtensions AND exported standalone (the fallback /
+// testing surface) -- the dual-export convention (docs §17).
+export const diagnosticsExtensions = defineExtensions<ServiceManifestClass<string>>()({
+  addMetrics(
+    manifest: ServiceManifestClass<string>,
+    configure?: Func<[IMetricsBuilder], void>,
+  ): ServiceManifestClass<string> {
+    // Register the resolvable `Options<MetricsOptions>` assembly at singleton
+    // scope. Calling addMetrics twice re-registers the (identical) factory --
+    // last-wins bare-token resolution keeps that correct; the reference guards it
+    // with TryAdd, a `has`/`try*` surface di.core does not expose (options.augmentations'
+    // addOptions has the same benign behavior). The factory takes the live
+    // provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
+    manifest.addFactory(
+      METRICS_OPTIONS_TOKEN,
+      (resolver) =>
+        assembleDiagnosticsOptions(
+          resolver,
+          METRICS_CONFIGURE_TOKEN,
+          METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+          () => new MetricsOptions(),
+        ),
+      [[RESOLVER_TOKEN]],
+    ).as("singleton");
+    if (configure) {
+      configure(new MetricsBuilder(manifest));
+    }
+    return manifest;
+  },
+  addTracing(
+    manifest: ServiceManifestClass<string>,
+    configure?: Func<[ITracingBuilder], void>,
+  ): ServiceManifestClass<string> {
+    manifest.addFactory(
+      TRACING_OPTIONS_TOKEN,
+      (resolver) =>
+        assembleDiagnosticsOptions(
+          resolver,
+          TRACING_CONFIGURE_TOKEN,
+          TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
+          () => new TracingOptions(),
+        ),
+      [[RESOLVER_TOKEN]],
+    ).as("singleton");
+    if (configure) {
+      configure(new TracingBuilder(manifest));
+    }
+    return manifest;
+  },
+});
 
-ServiceManifestClass.prototype.addTracing = function addTracing(
-  this: ServiceManifestClass<string>,
-  configure?: Func<[ITracingBuilder], void>,
-): ServiceManifestClass<string> {
-  this.addFactory(
-    TRACING_OPTIONS_TOKEN,
-    (resolver) =>
-      assembleDiagnosticsOptions(
-        resolver,
-        TRACING_CONFIGURE_TOKEN,
-        TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
-        () => new TracingOptions(),
-      ),
-    [[RESOLVER_TOKEN]],
-  ).as("singleton");
-  if (configure) {
-    configure(new TracingBuilder(this));
-  }
-  return this;
-};
+applyExtensions(ServiceManifestClass, diagnosticsExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).

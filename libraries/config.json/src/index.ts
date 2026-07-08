@@ -12,6 +12,7 @@
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IndexedSection } from "@rhombus-std/config.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import { JsonConfigurationSource } from "./json-configuration-source";
 import type { JsonConfigurationSourceOptions } from "./json-configuration-source";
 
@@ -31,13 +32,20 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
-ConfigurationBuilder.prototype.addJsonFile = function(
-  this: ConfigurationBuilder,
-  path: string,
-  opts?: JsonConfigurationSourceOptions,
-): ConfigurationBuilder {
-  return this.add(new JsonConfigurationSource(path, opts));
-};
+// Authored once as a receiver-first function, then installed as a prototype
+// method (the primary path) via applyExtensions AND exported standalone (the
+// fallback / testing surface) -- the dual-export convention (docs §17).
+export const jsonConfigExtensions = defineExtensions<ConfigurationBuilder>()({
+  addJsonFile(
+    builder: ConfigurationBuilder,
+    path: string,
+    opts?: JsonConfigurationSourceOptions,
+  ): ConfigurationBuilder {
+    return builder.add(new JsonConfigurationSource(path, opts));
+  },
+});
+
+applyExtensions(ConfigurationBuilder, jsonConfigExtensions);
 
 export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";

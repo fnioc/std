@@ -10,6 +10,7 @@
 // barrel.
 
 import type { IndexedSection } from "@rhombus-std/config.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import { ConfigurationBuilder } from "../configuration-builder";
 import { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
 
@@ -26,9 +27,12 @@ declare module "../configuration-builder" {
   }
 }
 
-ConfigurationBuilder.prototype.addInMemoryCollection = function(
-  this: ConfigurationBuilder,
-  initialData?: ConfigurationData,
-): ConfigurationBuilder {
-  return this.add(new MemoryConfigurationSource({ initialData }));
-};
+// Dual-export (docs §17): a receiver-first function installed as a prototype
+// method AND exported standalone.
+export const inMemoryConfigExtensions = defineExtensions<ConfigurationBuilder>()({
+  addInMemoryCollection(builder: ConfigurationBuilder, initialData?: ConfigurationData): ConfigurationBuilder {
+    return builder.add(new MemoryConfigurationSource({ initialData }));
+  },
+});
+
+applyExtensions(ConfigurationBuilder, inMemoryConfigExtensions);
