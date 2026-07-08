@@ -40,12 +40,15 @@ import type { IChangeToken } from "@rhombus-std/primitives";
 import { ChangeToken } from "@rhombus-std/primitives";
 import { ConfigurationReloadToken } from "./configuration-reload-token";
 import { ConfigurationRoot } from "./configuration-root";
+import { MemoryConfigurationSource } from "./memory/memory-configuration-source";
 
 /**
  * A mutable configuration object: both an {@link IConfigurationBuilder} and
  * an {@link IConfiguration}. As sources are added, it immediately rebuilds
  * and re-presents its current view -- there is no separate "build then read"
- * phase the way there is with {@link ConfigurationBuilder}.
+ * phase the way there is with {@link ConfigurationBuilder}. Starts with one
+ * empty in-memory source already registered (see the constructor), so
+ * {@link set} works immediately, before any other source is ever added.
  */
 export class ConfigurationManager implements IConfigurationManager, IConfigurationRoot {
   readonly #sources: IConfigurationSource[] = [];
@@ -56,10 +59,16 @@ export class ConfigurationManager implements IConfigurationManager, IConfigurati
    * Subscribes the manager's stable token to the persistent root's token. The
    * root swaps its own token on every raise, so `ChangeToken.onChange`
    * re-subscribes automatically -- the manager therefore observes every raise
-   * from any provider appended later via {@link add}.
+   * from any provider appended later via {@link add}. Then seeds one empty
+   * {@link MemoryConfigurationSource} through THAT SAME {@link add} path --
+   * mirroring the reference constructor, which starts with one memory source
+   * so there's somewhere to write before a real source exists. It's the
+   * first (lowest-precedence) source registered, so it never shadows
+   * anything added afterward.
    */
   public constructor() {
     ChangeToken.onChange(() => this.#root.getReloadToken(), () => this.#raiseChanged());
+    this.add(new MemoryConfigurationSource());
   }
 
   /** The registered sources, in registration order. */
