@@ -69,9 +69,12 @@ idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during th
 where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
 
 - **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
-  `ChangeToken.onChange`) that underpins live-reload (§8), **and** the dual-export extension
-  installer infra — `ExtensionSet`/`defineExtensions`/`applyExtensions` (§22). It lives here (not
-  `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
+  `ChangeToken.onChange`) that underpins live-reload (§8), **and** the augmentation installer infra:
+  one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`,
+  installed onto a constructor's prototype via `applyAugmentations` (§28, superseding §22's
+  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape — the rename/removal is the code
+  migration tracked in #115, not yet landed). It lives here (not `di.core`) because di ⊥ config
+  forces the shared home onto the zero-dep leaf.
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9) ← `di` (the resolution engine:
   scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
@@ -147,11 +150,16 @@ before touching):
   `ServiceManifestClass` it prototype-patches `build()` onto is the same object that cross-package
   augmentations patch; a private inlined copy forks identity and breaks the patch (§9). config keeps
   providers external for the same reason.
-- **Dual-export extensions** — every extension method ships BOTH a standalone receiver-first
-  function AND a prototype/instance method, installed via `primitives`' `applyExtensions` +
-  `defineExtensions` (§22). The method form is primary; the standalone form is a fallback/testing
-  surface. When the receiver interface is in a `.core` package but the concrete class is downstream,
-  the declare-merge + install live downstream.
+- **Augmentations, one object literal per ME static class** — every augmentation is a single named
+  exported const mirroring exactly one reference-stack static extension class (e.g.
+  `JsonConfigurationExtensions`), `satisfies AugmentationSet<R>`, with camelCased receiver-first
+  members; there are no floating standalone `addX(receiver, …)` functions — the object-literal
+  member (`JsonConfigurationExtensions.addJsonFile(builder, …)`) IS the functional call surface.
+  Installed onto a constructor's prototype via `primitives`' `applyAugmentations`; `defineExtensions`
+  is dropped, `satisfies` alone validates (§28). This decision supersedes §22's dual-export
+  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape and the extension→augmentation rename —
+  the code hasn't moved yet; migration is tracked in #115. When the receiver interface is in a
+  `.core` package but the concrete class is downstream, the declare-merge + install live downstream.
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
