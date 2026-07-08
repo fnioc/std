@@ -1075,3 +1075,20 @@ by hand had to cast the result. The reference container's factory-building API h
 - **No transformer change.** The transformer emits `resolveFactory("tok", […])`, which still binds to
   the `unknown` fallback — the typed form is a hand-authoring convenience only. Verified green against
   the `di.transformer` suite and the integration e2e.
+
+## 26. Drop gratuitous non-reference types from the `di.core` barrel
+
+The `di.core` barrel re-exported two types with no reference analog and no cross-package consumer:
+
+- **`DepTarget`** (`Ctor | Func<never[], unknown>`) — an internal helper naming "a class or factory a
+  dep signature can be extracted from." Grep-verified zero external references. Removed from the
+  barrel; the type stays DEFINED in `types.ts` for internal use, just no longer publicly exported.
+- **`SealedManifest`** — the immutable snapshot `ServiceManifestClass.seal()` returns. Removed from
+  the barrel too. `seal()` stays public, and `rollup-plugin-dts` keeps the rolled `.d.ts` sound by
+  INLINING `SealedManifest` as a local (non-exported) declaration that `seal()` still references — no
+  tsc error, no rollup breakage. It is now internal-but-structurally-reachable through `seal()`'s
+  return type, not a named public export.
+
+`Producer` and `ParsedToken` stay exported (both have cross-package references). `di`'s re-export
+barrels (`types.ts` / `index.ts`) never surfaced `DepTarget` or `SealedManifest`, so no `di`-side
+change was needed.

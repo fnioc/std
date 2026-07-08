@@ -17,17 +17,7 @@
  * `@rhombus-std/di`.
  */
 
-export type {
-  DepRecord,
-  DepSlot,
-  DepTarget,
-  FactoryRef,
-  LiteralRef,
-  ParsedToken,
-  Token,
-  TypeArgRef,
-  Union,
-} from "./types.js";
+export type { DepRecord, DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, Union } from "./types.js";
 
 // The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`).
 export type { $, Hole, Inject, Typeof } from "./brands.js";
@@ -42,7 +32,7 @@ export type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 export { ServiceManifestClass } from "./service-manifest.js";
 export type { ServiceManifest } from "./service-manifest.js";
 
-export type { Ctor, Factory, OpenRegistration, Producer, Registration, SealedManifest } from "./registrations.js";
+export type { Ctor, Factory, OpenRegistration, Producer, Registration } from "./registrations.js";
 
 export type { Lifetime, Resolver, ResolveScope, ScopeFactory, ServiceProvider } from "./provider.js";
 
