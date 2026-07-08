@@ -1,17 +1,20 @@
 // Public entry point for @rhombus-std/config.json.
 //
 // Exports JsonConfigurationSource/JsonConfigurationProvider and installs the
-// `addJsonFile` sugar onto `@rhombus-std/config`'s ConfigurationBuilder via the
-// extension-method-mimicking augmentation pattern (TS declaration merging +
-// a runtime prototype assignment).
+// `addJsonFile` sugar onto `@rhombus-std/config`'s ConfigurationBuilder AND
+// ConfigurationManager via the extension-method-mimicking augmentation
+// pattern (TS declaration merging + a runtime prototype assignment) -- the
+// reference extension method targets IConfigurationBuilder, which
+// ConfigurationManager implements too, so `manager.addJsonFile(...)` works
+// the same way `builder.addJsonFile(...)` does.
 //
 // A consumer who never names a runtime symbol from this package (only wants
 // the sugar) needs a bare side-effect import: `import "@rhombus-std/config.json";`.
 // This package must NOT set `"sideEffects": false` in package.json (would
 // let a bundler tree-shake the augmentation away).
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import type { IndexedSection } from "@rhombus-std/config.core";
+import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
+import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
 import { applyAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { JsonConfigurationSource } from "./json-configuration-source";
@@ -33,21 +36,38 @@ declare module "@rhombus-std/config/configuration-builder" {
   }
 }
 
+// Same "declare-merge onto the declaring module, not the barrel" reasoning as
+// above -- see the "configuration-manager-subpath" note in
+// @rhombus-std/config's package.json. ConfigurationManager has no generic
+// type parameter, so there's no TS2428 arity concern here.
+declare module "@rhombus-std/config/configuration-manager" {
+  interface ConfigurationManager {
+    /** Registers a {@link JsonConfigurationSource} reading `path` (resolved against `process.cwd()`). */
+    addJsonFile(path: string, opts?: JsonConfigurationSourceOptions): this;
+  }
+}
+
 // One named object literal mirroring the reference `JsonConfigurationExtensions`
 // static class (docs §28): its members are the class's static methods,
-// receiver-first. Installed as prototype methods (the primary path) via
-// applyAugmentations AND exported so the member is the standalone form.
+// receiver-first. Installed as prototype methods on BOTH classes (the
+// primary path) via applyAugmentations AND exported so the member is the
+// standalone form. `TBuilder` is bounded by "has an add() that returns
+// itself" rather than pinned to ConfigurationBuilder<T> -- see
+// @rhombus-std/config's memory/index.ts for the full rationale -- so this one
+// object literal satisfies `AugmentationSet` for both classes while
+// preserving each receiver's own concrete return type.
 export const JsonConfigurationExtensions = {
-  addJsonFile<T>(
-    builder: ConfigurationBuilder<T>,
+  addJsonFile<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+    builder: TBuilder,
     path: string,
     opts?: JsonConfigurationSourceOptions,
-  ): ConfigurationBuilder<T> {
+  ): TBuilder {
     return builder.add(new JsonConfigurationSource(path, opts));
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
 applyAugmentations(ConfigurationBuilder, JsonConfigurationExtensions);
+applyAugmentations(ConfigurationManager, JsonConfigurationExtensions);
 
 export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";

@@ -6,7 +6,7 @@
 // exercised here through the ConfigurationBuilder -> JsonConfigurationSource
 // -> ConfigurationRoot path.
 
-import { ConfigurationBuilder, type IndexedSection } from "@rhombus-std/config";
+import { ConfigurationBuilder, ConfigurationManager, type IndexedSection } from "@rhombus-std/config";
 import { JsonConfigurationProvider } from "@rhombus-std/config.json/internal/json-configuration-provider";
 import {
   JsonConfigurationSource,
@@ -93,6 +93,11 @@ describe("JsonConfigurationProvider", () => {
       .build();
 
     expect(root.get("Server:Host")).toBe("localhost");
+  });
+
+  test("addJsonFile installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const manager = new ConfigurationManager().addJsonFile(`${FIXTURES}/nested.json`);
+    expect(manager.get("Server:Host")).toBe("localhost");
   });
 
   test("addJsonFile honors the optional flag for a missing file", () => {
