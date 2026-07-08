@@ -92,6 +92,24 @@ describe("colonAndDotVariableNameTransformation", () => {
   });
 });
 
+describe("EnvironmentVariablesConfigurationProvider prefix normalized through the transform", () => {
+  test("a raw double-underscore prefix now matches -- it's transformed like every variable name", () => {
+    const provider = providerOf(
+      { "Logging__LogLevel__Default": "Info" },
+      { prefix: "Logging__" },
+    );
+    expect(provider.tryGet("LogLevel:Default")).toEqual([true, "Info"]);
+  });
+
+  test("an existing colon-form prefix keeps matching unchanged (the transform is idempotent on it)", () => {
+    const provider = providerOf(
+      { "Logging__LogLevel__Default": "Info" },
+      { prefix: "Logging:" },
+    );
+    expect(provider.tryGet("LogLevel:Default")).toEqual([true, "Info"]);
+  });
+});
+
 describe("EnvironmentVariablesConfigurationProvider purity w.r.t. the injected map", () => {
   test("reload with a different map reflects the new map and drops old keys", () => {
     const source = new EnvironmentVariablesConfigurationSource({ prefix: "APP_", env: { "APP_A": "1" } });
