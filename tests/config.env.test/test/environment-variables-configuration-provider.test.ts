@@ -6,7 +6,7 @@
 // pure with respect to it: no `process.env` mutation, no shared afterEach
 // cleanup dance, and reloading with a different map fully replaces the data.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
+import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 import "@rhombus-std/config.env/internal/index";
 import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/environment-variables-configuration-provider";
@@ -132,5 +132,12 @@ describe("addEnvironmentVariables augmentation", () => {
       .build();
 
     expect(config.get("Foo")).toBe("via-builder");
+  });
+
+  test("installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const manager = new ConfigurationManager()
+      .addEnvironmentVariables({ prefix: "APP_", env: { "APP_Foo": "via-manager" } });
+
+    expect(manager.get("Foo")).toBe("via-manager");
   });
 });
