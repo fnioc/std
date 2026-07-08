@@ -3,11 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "CI-only tooling: rebuilds PLAN.md (blocker graph + ready-to-code list) from repo issues. Not part of the bun workspace.",
+  "description": "CI-only tooling: rebuilds the blocker graph + ready-to-code list from repo issues. No npm deps -- shells out to git, gh, and the claude CLI. Not part of the bun workspace.",
   "scripts": {
     "build": "node build-plan-doc.mjs"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0"
   }
 }
