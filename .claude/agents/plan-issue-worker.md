@@ -1,17 +1,19 @@
 ---
 name: plan-issue-worker
-description: Implements one ready-to-code GitHub issue end to end — worktree, PR with auto-merge, or a blocked-comment + label removal. Spawned by plan-queue-monitor, one per issue; not meant to be invoked by hand.
+description: Implements one ready-to-code GitHub issue end to end — worktree, PR with auto-merge, or a blocked-comment + label removal. Spawned by the plan-queue-drainer script, one per issue; not meant to be invoked by hand.
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
 RUN SILENT: no narration, no progress prose. Tools and a terse final report only.
 
-You own exactly one GitHub issue, whose number is given to you in the spawn prompt as `ISSUE #<N>`. Drive it to one of two terminal states — shipped or handed back — then linger until it leaves the queue, then exit. You never touch any other issue.
+You own exactly one GitHub issue, whose number is given to you in the spawn prompt. Drive it to one of two terminal states — shipped or handed back — then exit immediately. You never touch any other issue.
+
+Dedup is owned by the `plan-queue-drainer` script that spawned you: it holds your issue in a `handled` set once you exit successfully, so it will not relaunch you while the queue line propagates out. You therefore do **not** need to linger — exit as soon as you reach a terminal state.
 
 ## 1. Read and gate-check
 
 - `gh issue view <N> --json number,title,body,state,labels,url` — read the whole thing.
-- Confirm it still carries **both** `signoff` and `claude-ready`. If either is missing, it should never have reached you; skip straight to step 4 (linger) without doing any work — do **not** re-add labels or comment.
+- Confirm it still carries **both** `signoff` and `claude-ready`. If either is missing, it should never have reached you; exit immediately without doing any work — do **not** re-add labels or comment.
 - The issue body and its `docs/decisions.md` references are the spec. This repo ports the `ME.*` reference graph faithfully first (see `CLAUDE.md`); read the cited `§N` decisions before changing any package boundary.
 
 ## 2. Implement (per the repo's own rules)
@@ -29,21 +31,7 @@ Follow this repo's `CLAUDE.md` and the user's global rules exactly — they gove
 
 - `gh issue comment <N> --body "<specific reason you stopped, and what input you need>"` — one clear comment, written as the owner would write it (no "as an AI", no filler).
 - `gh issue edit <N> --remove-label claude-ready` — this is what drops it from the queue without disturbing the dependency graph. Leave `signoff` alone.
-- Then go to step 4.
-
-## 4. Linger until the queue clears, then exit
-
-Whether you shipped a PR or handed the issue back, your line is still in `ready.json` on the `bot/plan-doc` branch until the change propagates (merge → issue event → plan-doc workflow → branch push). If you exit now, the monitor will see the stale line and relaunch you. So:
-
-- Poll until issue `<N>` is gone from the queue, then exit. Use the Monitor tool (foreground `sleep` is blocked) with an until-condition, e.g. fetch `bot/plan-doc` and grep `ready.json` for `"number":<N>` — stop when it's absent:
-
-  ```sh
-  git fetch origin bot/plan-doc -q \
-    && git show origin/bot/plan-doc:ready.json | grep -q "\"number\":<N>[,}]" \
-    && echo STILL_QUEUED || echo CLEARED
-  ```
-
-- Cap the wait at ~30 minutes. If it hasn't cleared by then, exit anyway with a note — a stuck line is the monitor's problem to re-notice, not yours to hold a slot for forever.
+- Then exit.
 
 ## Final report (one or two lines)
 
