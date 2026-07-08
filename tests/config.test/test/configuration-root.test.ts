@@ -5,9 +5,51 @@
 // (possibly empty) section, and getChildren dedup + numeric ordering at the
 // root.
 
-import { ConfigurationBuilder, type IConfigurationProvider, type IConfigurationRoot } from "@rhombus-std/config";
+import {
+  ConfigurationBuilder,
+  ConfigurationReloadToken,
+  ConfigurationRoot,
+  type IConfigurationProvider,
+  type IConfigurationRoot,
+  type ITryGetResult,
+} from "@rhombus-std/config";
+import { ChangeToken, type IChangeToken } from "@rhombus-std/primitives";
 import { describe, expect, test } from "bun:test";
 import { rootOf } from "./support";
+
+/**
+ * A minimal provider whose reload token is swappable on demand, and which
+ * records whether it was disposed. Mirrors the real
+ * ConfigurationProvider.onReload swap-on-fire discipline so
+ * ChangeToken.onChange re-registration behaves as in production.
+ */
+class SwappableProvider implements IConfigurationProvider {
+  #token = new ConfigurationReloadToken();
+  public disposed = 0;
+
+  public tryGet(_key: string): ITryGetResult<string> {
+    return [false];
+  }
+  public set(_key: string, _value?: string): void {}
+  public getReloadToken(): IChangeToken {
+    return this.#token;
+  }
+  public load(): void {}
+  public getChildKeys(earlierKeys: Iterable<string>, _parentPath?: string): Iterable<string> {
+    return earlierKeys;
+  }
+
+  /** Fires the current reload token and swaps in a fresh one, like a real source-driven reload. */
+  public triggerReload(): void {
+    const previous = this.#token;
+    this.#token = new ConfigurationReloadToken();
+    previous.onReload();
+  }
+
+  public [Symbol.dispose](): void {
+    this.disposed++;
+  }
+}
 
 /** Builds a root over N in-memory providers, one per data record (registration order). */
 function rootOfLayers(...layers: Record<string, string>[]): IConfigurationRoot {
@@ -105,5 +147,56 @@ describe("ConfigurationRoot.getChildren (root-level dedup + ordering)", () => {
 
     const indices = [...root.getSection("items").getChildren()].map((section) => section.key);
     expect(indices).toEqual(["0", "1", "2", "10"]);
+  });
+});
+
+describe("ConfigurationRoot[Symbol.dispose] (releases registrations + disposable providers)", () => {
+  test("a provider-driven reload stops raising the root token after dispose", () => {
+    const provider = new SwappableProvider();
+    const root = new ConfigurationRoot([provider]);
+
+    let raised = 0;
+    using _sub = ChangeToken.onChange(() => root.getReloadToken(), () => raised++);
+
+    // Baseline: while subscribed, a source-driven reload propagates to the root.
+    provider.triggerReload();
+    expect(raised).toBe(1);
+
+    root[Symbol.dispose]();
+
+    // After dispose the per-provider registration is gone, so further
+    // provider reloads no longer reach the root's token.
+    provider.triggerReload();
+    expect(raised).toBe(1);
+  });
+
+  test("dispose disposes each provider that is itself disposable", () => {
+    const provider = new SwappableProvider();
+    const root = new ConfigurationRoot([provider]);
+
+    root[Symbol.dispose]();
+
+    expect(provider.disposed).toBe(1);
+  });
+
+  test("dispose tolerates providers with no Symbol.dispose", () => {
+    const plain: IConfigurationProvider = {
+      tryGet: () => [false],
+      set: () => {},
+      getReloadToken: () => new ConfigurationReloadToken(),
+      load: () => {},
+      getChildKeys: (earlierKeys) => earlierKeys,
+    };
+    const root = new ConfigurationRoot([plain]);
+
+    expect(() => root[Symbol.dispose]()).not.toThrow();
+  });
+
+  test("dispose is safe to call more than once", () => {
+    const provider = new SwappableProvider();
+    const root = new ConfigurationRoot([provider]);
+
+    root[Symbol.dispose]();
+    expect(() => root[Symbol.dispose]()).not.toThrow();
   });
 });
