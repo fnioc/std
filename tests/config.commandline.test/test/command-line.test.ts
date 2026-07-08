@@ -148,6 +148,27 @@ describe("CommandLineConfigurationProvider -- positional args", () => {
   });
 });
 
+describe("CommandLineConfigurationProvider -- bare key=value tokens", () => {
+  test("a bare token with '=' is honored as a key/value pair", () => {
+    expect(load(["Key=Value"])).toEqual({ Key: "Value" });
+  });
+
+  test("splits at the FIRST '=' only", () => {
+    expect(load(["Key=a=b"])).toEqual({ Key: "a=b" });
+  });
+
+  test("a bare token with no '=' is still ignored as a positional", () => {
+    expect(load(["serve"])).toEqual({});
+  });
+
+  test("combines with switches and other ignored positionals", () => {
+    expect(load(["deploy", "Key=Value", "--Env", "prod"])).toEqual({
+      Key: "Value",
+      Env: "prod",
+    });
+  });
+});
+
 describe("CommandLineConfigurationProvider -- mixed", () => {
   test("combines long form, mapped short form, and ignored positionals", () => {
     expect(

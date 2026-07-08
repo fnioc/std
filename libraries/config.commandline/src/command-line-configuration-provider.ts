@@ -17,6 +17,11 @@
 // in switch position (the top of each main-loop iteration) -- never to a
 // token consumed as another switch's *value*, so `--Path /usr/bin` is
 // untouched.
+//
+// A bare token (no leading dash) containing "=" is honored as a config
+// key/value pair too, split at the FIRST "=" -- matching the reference
+// parser's acceptance of a bare `Key=Value` token. A bare token with no "="
+// remains a positional and is silently ignored, same as anything after "--".
 
 import { ConfigurationProvider } from "@rhombus-std/config";
 
@@ -76,7 +81,13 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
         continue;
       }
 
-      // Bare positional arg (no leading dash) -- ignored.
+      // Bare token (no leading dash): a "key=value" pair is honored, split
+      // at the FIRST "="; anything else is a positional arg and stays
+      // ignored (see the module doc comment).
+      const eqIndex = token.indexOf("=");
+      if (eqIndex !== -1) {
+        this.set(token.slice(0, eqIndex), token.slice(eqIndex + 1));
+      }
     }
 
     this.onReload();
