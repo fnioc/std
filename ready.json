@@ -1,1 +1,1 @@
-[{"number":115,"title":"Refactor dual-export augmentation infra: named `satisfies AugmentationSet<R>` consts, rename extension→augmentation","labels":["documentation","enhancement","claude-ready","signoff","v0"]}]
+[{"number":105,"title":"extensions: finish reverse-direction symmetry for options-bag receivers (deferred from #96)","labels":["enhancement","claude-ready","signoff","v0","logging","diagnostics"]}]
