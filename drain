@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Launch the plan-queue drainer: watch ready.json on bot/plan-doc and keep one
+# Claude worker running per ready issue. See scripts/plan-doc/plan-queue-drainer.mjs.
+#
+#   ./drain            # default: up to 4 concurrent workers
+#   DRAIN_MAX=8 ./drain
+#
+# Ctrl-C stops it; in-flight workers are terminated, so stop when nothing is active
+# for a clean exit. Runnable from anywhere -- it resolves the repo root from its own path.
+set -euo pipefail
+cd "$(dirname "$0")"
+exec node scripts/plan-doc/plan-queue-drainer.mjs "$@"
