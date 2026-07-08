@@ -55,6 +55,8 @@ export type {
   // The public provider surface — the abstractions interface (di.core), not the
   // impl class. What `build()` / `createScope()` return.
   ServiceProvider,
+  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
+  ServiceProviderFactory,
 } from "./types.js";
 
 export {

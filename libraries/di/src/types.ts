@@ -18,5 +18,7 @@ export type {
   ScopeFactory,
   // The public provider surface — the abstractions interface, not the impl class.
   ServiceProvider,
+  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
+  ServiceProviderFactory,
   Union,
 } from "@rhombus-std/di.core";

@@ -14,7 +14,7 @@ import { ConfigurationManager, MemoryConfigurationSource } from "@rhombus-std/co
 import type { IConfigurationManager } from "@rhombus-std/config.core";
 import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { ServiceManifest } from "@rhombus-std/di";
-import type { Resolver } from "@rhombus-std/di.core";
+import type { ServiceProviderFactory } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import type { HostBuilderContext, IHost, IHostApplicationBuilder, IHostEnvironment } from "@rhombus-std/hosting.core";
 import { HostDefaults } from "@rhombus-std/hosting.core";
@@ -141,10 +141,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * default `ServiceManifest` build path is always used. See diNotes.
    */
   public configureContainer<TContainerBuilder>(
-    _factory: {
-      createBuilder(services: ServiceManifest): TContainerBuilder;
-      createServiceProvider(containerBuilder: TContainerBuilder): Resolver;
-    },
+    _factory: ServiceProviderFactory<TContainerBuilder>,
     _configure?: Action<[TContainerBuilder]>,
   ): void {}
 

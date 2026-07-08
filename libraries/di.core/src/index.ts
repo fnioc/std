@@ -46,6 +46,10 @@ export type { Ctor, Factory, OpenRegistration, Producer, Registration, SealedMan
 
 export type { Lifetime, Resolver, ResolveScope, ScopeFactory, ServiceProvider } from "./provider.js";
 
+// The pluggable provider-factory seam (the reference `IServiceProviderFactory`
+// analog). A single-container no-op here, but named so hosting shares one type.
+export type { ServiceProviderFactory } from "./service-provider-factory.js";
+
 // The slot/token ABI runtime helpers. A di consumer reaches these through the
 // re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
 // plain data literals.

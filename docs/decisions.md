@@ -1032,3 +1032,28 @@ d.ts-only src-referenced lib.
   (§17's placement rule, generalized). `addHostedService` is the one exception: it extends
   `di.core`'s `ServiceManifestClass`, which `hosting` doesn't own, so it uses the `addJsonFile`/
   `addOptions` augmentation idiom (§14) — `declare module` + prototype patch.
+
+## 24. `ServiceProviderFactory` promoted into `di.core` — one provider-factory abstraction
+
+The reference `IServiceProviderFactory<TContainerBuilder>` had no named home in `di.core`, so the
+hosting builders each hand-rolled the same structural shape — a private `interface
+ServiceProviderFactory` in `hosting`'s `HostBuilder`, plus three more inlined anonymously in
+`HostApplicationBuilder.configureContainer`, `IHostBuilder.useServiceProviderFactory`, and
+`IHostApplicationBuilder.configureContainer` (one of which carried a comment apologizing that
+"di.core does not ship" the type). Four copies of one contract, free to drift.
+
+- **The abstraction now lives in `di.core`** as a types-only `interface
+  ServiceProviderFactory<TContainerBuilder>` (`service-provider-factory.ts`, one type per file per
+  §13/§46), shape `{ createBuilder(services: ServiceManifest): TContainerBuilder;
+  createServiceProvider(containerBuilder: TContainerBuilder): Resolver }` over the existing
+  `ServiceManifest` / `Resolver` di.core types. Exported from the `di.core` barrel and re-exported
+  from `di` alongside the rest of the provider surface.
+- **All four hand-rolled copies are replaced** by the shared type, and the "di.core does not ship"
+  apology comment is retired. ZERO behavior change — the single-container hosting model still
+  accepts the factory and ignores it (§23's no-op `useServiceProviderFactory` / `configureContainer`).
+- **`DefaultServiceProviderFactory` is deliberately NOT ported** — no consumer, and with one
+  container type there is nothing for a default factory to build.
+
+Refines §23's "no `IServiceProviderFactory<TBuilder>` analog in `di.core` to swap in" bullet: the
+named analog now exists as a shared abstraction; only the runtime behavior (accept-and-ignore)
+stays a no-op, unchanged.
