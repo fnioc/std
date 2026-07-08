@@ -1328,3 +1328,39 @@ counterpart.
 - Landed per provider package: `config` (memory), `config.json`, `config.env`,
   `config.commandline` — each gets its own `declare module ".../configuration-manager"` block and
   a second `applyAugmentations(ConfigurationManager, ...)` call, following §28's pattern exactly.
+
+## 36. Repo-wide §28 completion: hosting converted, audit disposition — closes #115
+
+#120 established §28 and converted the first batch (config providers, diagnostics/logging builders,
+caching, options.augmentations, logging.configuration); #121 gave the options value objects the
+method form (§29). #115 finishes the repo-wide application: hosting was the last family still on the
+pre-§28 free-function shape, and a full audit confirms no other augmentation site remains.
+
+- **hosting / hosting.core (supersedes #109).** Every previously-standalone `export function` is now
+  an object literal per its ME static class, with the method form installed:
+  `HostingAbstractionsHostExtensions` (IHost: `run`/`runAsync`/`waitForShutdownAsync`/
+  `stopWithTimeout`), `HostingAbstractionsHostBuilderExtensions` (IHostBuilder: `startHost`),
+  `HostEnvironmentEnvExtensions` (IHostEnvironment: `isEnvironment`/`isDevelopment`/`isStaging`/
+  `isProduction`), `ServiceCollectionHostedServiceExtensions` (`addHostedService`, moved off its
+  hand-rolled `.prototype` assignment onto `applyAugmentations`), and the runtime
+  `HostingHostBuilderExtensions` (IHostBuilder: `configureDefaults`/`useEnvironment`/`useContentRoot`/
+  `configureHostOptions`/`configureLogging`/`configureMetrics`/`useDefaultServiceProvider`/
+  `useConsoleLifetime`/`runConsoleAsync`). The IHost/IHostBuilder/IHostEnvironment receiver
+  interfaces live in `hosting.core`, but their only concrete classes (`Host`/`HostBuilder`/
+  `HostingEnvironment`) live in `hosting`, so per the cross-package rule the `declare module` merge
+  AND the `applyAugmentations` install both live downstream in `hosting` (`./host-augmentations`),
+  against the `internal/*` concretes — keeping them external (§9). `hosting.core` gains a
+  `@rhombus-std/primitives` dependency for `AugmentationSet`/`applyAugmentations`. The examples now
+  call the fluent `host.runAsync()` in place of the old free `runAsync(host)`.
+- **Audit disposition — no other stragglers.** A repo-wide `export function` sweep confirms every
+  remaining top-level receiver-first export is _not_ a dual-export augmentation. Deliberately-excluded
+  (unchanged from §28): `config`'s transformer-coupled `withType`. Left as free-functions-only by an
+  earlier documented design decision (a receiver-first port of an ME extension class that this repo
+  chose NOT to dual-export): `logging.core`'s `LoggerExtensions` `log*` wrappers, and `config`'s
+  `ConfigurationExtensions`/`ConfigurationRootExtensions` (`getConnectionString`/`exists`/
+  `getRequiredSection`/`asEnumerable`/`getDebugView`). These carry no prototype-method form on any
+  concrete class — `ILogger`/`IConfiguration` have several impls and no single downstream concrete
+  to patch, and `logTrace`/… rely on two-overload public signatures that an object-literal member
+  would flatten — so §28 (which governs how dual-export augmentations are _authored_, not which ports
+  become augmentations) does not reach them. Everything else the sweep surfaced is an ordinary
+  helper, token factory, or transformer internal.
