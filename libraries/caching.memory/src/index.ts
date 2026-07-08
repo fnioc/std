@@ -23,6 +23,11 @@
 import type { AddBuilder } from "@rhombus-std/di.core";
 import { ServiceManifestClass } from "@rhombus-std/di.core";
 import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+// Side-effect: installs the IMemoryCache/ICacheEntry convenience wrappers as
+// instance methods onto MemoryCache/CacheEntry -- the reverse-direction half of
+// the dual-export convention. Their standalone free-function form ships from
+// caching.core and ./entry-options-extensions.
+import "./cache-augmentations";
 import { MemoryCache } from "./memory-cache";
 import { MemoryCacheOptions } from "./memory-cache-options";
 import { MEMORY_CACHE_TOKEN } from "./memory-cache-token";

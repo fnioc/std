@@ -9,6 +9,9 @@
 // Side-effect: patches ServiceManifestClass.prototype.addLogging + merges the
 // method onto the di.core ServiceManifestBase interface.
 import "./add-logging";
+// Side-effect: installs the ILoggingBuilder extensions (addProvider/... ) as
+// instance methods onto LoggingBuilder -- the reverse-direction dual-export half.
+import "./builder-augmentations";
 
 export { addProvider, clearProviders, setMinimumLevel } from "./builder-extensions";
 export { addFilter } from "./filter-extensions";

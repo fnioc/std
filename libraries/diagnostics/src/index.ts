@@ -2,11 +2,12 @@
 // analog.
 //
 // Ships the concrete MetricsBuilder/TracingBuilder, the config-binding extension
-// functions (addMetricsConfiguration/addTracingConfiguration, targeting the
-// family's OWN builder interfaces so they are plain functions), the config-bind
+// functions (addMetricsConfiguration/addTracingConfiguration), the config-bind
 // ConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
-// registration builder.
+// registration builder AND the metrics/tracing builder extensions as instance
+// methods on the family's own builders (both via the dual-export convention,
+// docs §17: every extension available as a standalone function AND a method).
 //
 // `addMetrics`/`addTracing` target di.core's ServiceManifestClass -- a class this
 // package does NOT own -- so per §0 they are extension-method augmentations: TS
@@ -45,6 +46,10 @@ import {
 import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
+// Side-effect: installs the metrics/tracing builder extensions as instance
+// methods onto MetricsBuilder/TracingBuilder (the reverse-direction half of the
+// dual-export convention). Their standalone free-function form ships separately.
+import "./builder-augmentations";
 import { MetricsBuilder } from "./metrics-builder";
 import { TracingBuilder } from "./tracing-builder";
 
@@ -140,8 +145,12 @@ applyExtensions(ServiceManifestClass, diagnosticsExtensions);
 export { MetricsBuilder } from "./metrics-builder";
 export { TracingBuilder } from "./tracing-builder";
 
-// The config-binding extension functions -- target the family's OWN builder
-// interfaces, so plain functions (not augmentations).
+// The config-binding extension functions. Their receiver is the family's OWN
+// builder interface, so the standalone free-function is the authored form; the
+// dual-export convention (docs §17) additionally installs them as instance
+// methods on MetricsBuilder/TracingBuilder via ./builder-augmentations, so both
+// `addMetricsConfiguration(builder, cfg)` and `builder.addMetricsConfiguration(cfg)`
+// work. Both forms stay available; the method form is the primary path.
 export { addMetricsConfiguration } from "./metrics-builder-configuration-extensions";
 export { addTracingConfiguration } from "./tracing-builder-configuration-extensions";
 
