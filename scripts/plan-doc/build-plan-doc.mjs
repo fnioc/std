@@ -1,9 +1,10 @@
 // Maintains the repo's implementation plan from issue activity, incrementally.
 //
 // graph.json is the persisted source of truth: an array of nodes, one per
-// issue, carrying the derived blocker/conflict structure. GRAPH.md and READY.md
-// are always fully re-rendered deterministically from graph.json (pure JSON ->
-// markdown, no model call in the render path).
+// issue, carrying the derived blocker/conflict structure. ready.json is the
+// derived "ready to code" slice, recomputed deterministically from graph.json
+// each run (no model call in that path). Both are compact JSON consumed by an
+// automated monitor, not rendered markdown for a human.
 //
 // Two flows, chosen by whether graph.json already exists:
 //
@@ -45,8 +46,8 @@ const EXCLUDED_LABELS = new Set([
 // One node's derived structure. status "unknown" is the placeholder state for a
 // referenced-but-not-yet-indexed issue; it is filled in properly once that
 // issue's own event fires. `labels` is attached by the script from the fetched
-// gh data (not the model) so READY.md's EXCLUDED_LABELS filter and label
-// display keep working on the incremental path without re-fetching every issue.
+// gh data (not the model) so ready.json's EXCLUDED_LABELS filter and label
+// output keep working on the incremental path without re-fetching every issue.
 const NODE_PROPERTIES = {
   number: { type: "integer" },
   title: { type: "string" },
@@ -138,25 +139,15 @@ async function incremental(graph, issueNumber) {
   return { nodes: [...byNumber.values()] };
 }
 
-function renderGraph({ nodes }) {
-  const lines = ["# Dependency graph\n", "```mermaid", "graph TD"];
-  for (const n of nodes) {
-    for (const b of n.blocked_by) {
-      lines.push(`  ${b} --> ${n.number}`);
-    }
-  }
-  lines.push("```\n", "## Merge conflict risks\n");
-  for (const n of nodes) {
-    if (n.conflict_risk_with.length) {
-      lines.push(`- #${n.number} vs ${n.conflict_risk_with.map((x) => `#${x}`).join(", ")} — ${n.conflict_reason}`);
-    }
-  }
-  return lines.join("\n");
-}
-
-function renderReady({ nodes }) {
+/**
+ * The "ready to code" slice: open issues with no unresolved blocker (a blocker
+ * is unresolved while its own node is still open) and no excluded label. Output
+ * is consumed by an automated monitor, not a human, so it's a JSON array of
+ * {number, title, labels} -- not rendered markdown.
+ */
+function computeReady({ nodes }) {
   const byNumber = new Map(nodes.map((n) => [n.number, n]));
-  const lines = ["# Ready to code\n"];
+  const ready = [];
   for (const n of nodes) {
     if (n.status !== "open") {
       continue;
@@ -169,15 +160,16 @@ function renderReady({ nodes }) {
     if (labels.some((l) => EXCLUDED_LABELS.has(l))) {
       continue;
     }
-    lines.push(`- #${n.number} — ${n.title}${labels.length ? ` (${labels.join(", ")})` : ""}`);
+    ready.push({ number: n.number, title: n.title, labels });
   }
-  return lines.join("\n");
+  return ready;
 }
 
 const graph = existsSync(GRAPH_FILE)
   ? await incremental(JSON.parse(readFileSync(GRAPH_FILE, "utf8")), process.env.ISSUE_NUMBER)
   : { nodes: await bootstrap() };
 
-writeFileSync(GRAPH_FILE, `${JSON.stringify(graph, null, 2)}\n`);
-writeFileSync("GRAPH.md", renderGraph(graph));
-writeFileSync("READY.md", renderReady(graph));
+// Compact JSON -- both files are read by Claude, not skimmed by a human, so the
+// pretty-print whitespace isn't worth its tokens.
+writeFileSync(GRAPH_FILE, JSON.stringify(graph));
+writeFileSync("ready.json", JSON.stringify(computeReady(graph)));

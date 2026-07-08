@@ -47,7 +47,7 @@ jobs:
         run: |
           git config user.name plan-doc-bot
           git config user.email actions@users.noreply.github.com
-          git add graph.json GRAPH.md READY.md
+          git add graph.json ready.json
           git diff --cached --quiet || {
             git commit -m "chore(plan-doc): refresh implementation plan"
             git push origin bot/plan-doc
