@@ -1,0 +1,112 @@
+# Lockstep publish pipeline (semantic-release driven).
+#
+# This workflow is FULLY DEFINED BUT INERT: both jobs are gated behind the
+# `PUBLISHING_ENABLED` repository variable, which does not exist yet. Until it is
+# set to the string "true" (Settings -> Secrets and variables -> Actions ->
+# Variables), neither job can run even though their triggers are otherwise live.
+# This is intentional -- the release story is wired up but publishing is not yet
+# switched on.
+#
+# EXTERNAL SETUP still required before OIDC publishing can actually succeed: each
+# publishable @rhombus-std package needs an npm "Trusted Publisher" configured on
+# npmjs.com pointing at this repo and the `publish-next` workflow. That is a
+# per-package human step this code cannot perform.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Continuous prerelease: every push to main runs semantic-release, which (via
+  # the exec plugin's publishCmd) fans the lockstep version out over every
+  # publishable library on the `next` dist-tag and cuts one shared prerelease.
+  publish-next:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PUBLISHING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install pnpm (required for workspace:* rewrite + publishConfig.exports swap)
+        run: npm install -g pnpm@10.34.4
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build all packages
+        run: bun scripts/build-all.ts
+
+      - name: Release (semantic-release -> publish-libraries fan-out)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun run release
+
+  # Manual promotion: move the current `next` prerelease to `latest`. Gated on the
+  # `production` environment (a manual-approval gate that also does not exist yet;
+  # until created the job simply stays pending).
+  promote:
+    if: github.event_name == 'workflow_dispatch' && vars.PUBLISHING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install pnpm (required for workspace:* rewrite + publishConfig.exports swap)
+        run: npm install -g pnpm@10.34.4
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Promote next -> latest across the lockstep set
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Versions are lockstep, so any publishable package resolves the shared
+          # `next` version -- read it from the first one the discovery lists.
+          FIRST=$(bun scripts/publish-libraries.ts --list | head -n1)
+          VERSION=$(npm view "$FIRST" dist-tags.next)
+          if [ -z "$VERSION" ]; then
+            echo "::error::no @next version published for $FIRST -- nothing to promote"
+            exit 1
+          fi
+          echo "Promoting $VERSION to latest"
+          while read -r pkg; do
+            npm dist-tag add "$pkg@$VERSION" latest
+          done < <(bun scripts/publish-libraries.ts --list)
+          # Single shared git tag/release for the lockstep set (not per-package).
+          gh release edit "v$VERSION" --prerelease=false --latest
