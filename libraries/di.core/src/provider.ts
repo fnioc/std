@@ -81,7 +81,16 @@ export interface Resolver {
    * authored-order list of caller-supplied parameter tokens; the returned factory
    * has shape `(...params) => T`. The authored `resolve<(a: A) => T>()` lowers
    * to `resolveFactory("pkg:T", ["pkg:A"])`.
+   *
+   * `F` is the factory's own function type — the reference `ObjectFactory` return
+   * analog. A hand-written caller passes it (`resolveFactory<(a: A) => T>(…)`) to
+   * get a typed callable back instead of `unknown`; the runtime is identical, so
+   * the type parameter is compile-time only. The bare `unknown` fallback is the
+   * dynamic form. Overload order mirrors `resolve<T>` / `resolve`.
+   *   - `resolveFactory<F>(type, params?)` — typed factory return.
+   *   - `resolveFactory(type, params?)`    — `unknown` return (dynamic).
    */
+  resolveFactory<F>(type: Token, params?: readonly Token[]): F;
   resolveFactory(type: Token, params?: readonly Token[]): unknown;
 }
 

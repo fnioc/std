@@ -1057,3 +1057,21 @@ ServiceProviderFactory` in `hosting`'s `HostBuilder`, plus three more inlined an
 Refines §23's "no `IServiceProviderFactory<TBuilder>` analog in `di.core` to swap in" bullet: the
 named analog now exists as a shared abstraction; only the runtime behavior (accept-and-ignore)
 stays a no-op, unchanged.
+
+## 25. Typed `resolveFactory<F>` overload — the reference `ObjectFactory` return analog
+
+`Resolver.resolveFactory` returned bare `unknown`, so a no-transformer caller resolving a factory
+by hand had to cast the result. The reference container's factory-building API hands back a typed
+`ObjectFactory` delegate; we now mirror that return typing.
+
+- A typed overload `resolveFactory<F>(type: Token, params?: readonly Token[]): F` is added BEFORE the
+  existing `unknown` fallback on `Resolver` (`di.core/src/provider.ts`) — typed-first / dynamic-last,
+  mirroring the `resolve<T>` / `resolve` overload ordering. `F` is the factory's own function type,
+  supplied by the caller (`resolveFactory<(a: A) => T>(…)`).
+- The impl (`ServiceProviderClass.resolveFactory`, `di/src/scope.ts`) gains the matching overload
+  signatures; the runtime body is UNCHANGED — it still returns the built callable as `unknown`, so the
+  typed overload is purely compile-time. The `#makeProviderView` view's `resolveFactory` stays covered
+  by the view's existing `as Resolver & ScopeFactory<S>` cast.
+- **No transformer change.** The transformer emits `resolveFactory("tok", […])`, which still binds to
+  the `unknown` fallback — the typed form is a hand-authoring convenience only. Verified green against
+  the `di.transformer` suite and the integration e2e.
