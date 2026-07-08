@@ -6,6 +6,12 @@
 // options model plus the DI-registration wiring, which is self-consistent and
 // useful on its own. See the package README/tbd for what is intentionally skipped.
 
+// Side-effect: installs the MetricsOptions/TracingOptions value-object augmentations
+// (enableMetrics/disableMetrics/enableTracing/disableTracing) as instance methods onto
+// the concrete option classes -- the reverse-direction half of their dual-export
+// (docs §28). Package keeps `"sideEffects": true` so a bundler cannot drop it.
+import "./options-augmentations";
+
 // Metrics.
 export { InstrumentRule } from "./instrument-rule";
 export { METER_SCOPE_ALL, MeterScope } from "./meter-scope";

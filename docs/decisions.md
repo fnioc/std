@@ -934,15 +934,15 @@ free-function-only decision that §14/§18-era code stated in-line at `add-confi
   patched class (`ServiceManifestClass`, `ConfigurationBuilder`, and the downstream concretes)
   external in their bundles (§9), so the prototype patched is the one the consumer resolves.
 
-- **Deferrals (issue #96, tracked as follow-up).** Extensions whose receiver is a concrete
-  _options-bag_ class rather than a builder/cache interface are NOT yet given the method form —
-  their standalone free-function form is unaffected. Namely: `addFilter` (LoggerFilterOptions), and
-  the options-targeted rule mutators `enableMetricsRule`/`disableMetricsRule` (MetricsOptions) and
-  `enableTracingRule`/`disableTracingRule` (TracingOptions). Prototype-patching a plain value object
-  is a distinct boundary call from patching a builder, deferred rather than rushed. `tryGetValue` is
-  deliberately standalone-only in perpetuity: `IMemoryCache` already declares a `tryGetValue`
-  member, so a method merge would both clash and, at runtime, overwrite the real implementation the
-  extension wraps.
+- **Deferrals (issue #96, tracked as follow-up).** _Resolved in §29 (#105)._ Extensions whose
+  receiver is a concrete _options-bag_ class rather than a builder/cache interface were initially NOT
+  given the method form — `addFilter` (LoggerFilterOptions), and the options-targeted rule mutators
+  `enableMetricsRule`/`disableMetricsRule` (MetricsOptions) and
+  `enableTracingRule`/`disableTracingRule` (TracingOptions). §29 lands the method form and renames the
+  rule mutators to `enableMetrics`/`disableMetrics`/`enableTracing`/`disableTracing` (dropping the
+  `Rule` suffix) to match ME. `tryGetValue` is deliberately standalone-only in perpetuity:
+  `IMemoryCache` already declares a `tryGetValue` member, so a method merge would both clash and, at
+  runtime, overwrite the real implementation the extension wraps.
 
 ## 23. `hosting` brought to full reference parity — the whole Generic Host, NO stubs inside hosting — #44
 
@@ -1165,3 +1165,47 @@ site now follows the rule below.
   `.core`-interface/downstream-concrete install rule, the runtime-identity requirement on the
   patched `Ctor` (§9-style external-bundling), and the listed deferrals. Only the authoring shape
   and the `primitives` symbol/file names move.
+- **One ME static class can span multiple receivers.** ME's `FilterLoggingBuilderExtensions`,
+  `MetricsBuilderExtensions`, and `TracingBuilderExtensions` each carry overloads on TWO receivers —
+  the builder interface AND a value object (`LoggerFilterOptions` / `MetricsOptions` /
+  `TracingOptions`) — under the same method name, distinguished only by `this`. Since one object
+  literal binds one receiver type (`satisfies AugmentationSet<R>`), such a class becomes TWO
+  literals: the builder-receiver one keeps the ME class name (`MetricsBuilderExtensions`), the
+  value-object one is named after its receiver (`MetricsOptionsExtensions`,
+  `LoggerFilterOptionsExtensions`) because the ME class name is already taken. The members still
+  match ME method-for-method; only the grouping const differs (resolved in §29).
+
+## 29. Options-bag receivers get the method form — closes the §22/§28 deferral — #105
+
+§22's deferral list held back the method (prototype-installed) form for the augmentation members
+whose receiver is a plain **value object** rather than a builder/manifest interface: `addFilter`
+(`LoggerFilterOptions`), and the rule mutators on `MetricsOptions`/`TracingOptions`. Their standalone
+object-literal form already shipped; only the instance-method half was pending, so nothing was
+broken — the surface was just asymmetric for these three receivers.
+
+**Resolution — give them the method form.** Deciding axis: match the ME public API, which settles it
+cleanly. ME ships **each of these as a public extension method whose `this` receiver IS the value
+object** (`AddFilter(this LoggerFilterOptions, …)` in `FilterLoggingBuilderExtensions`;
+`EnableMetrics`/`DisableMetrics(this MetricsOptions, …)` in `MetricsBuilderExtensions`;
+`EnableTracing`/`DisableTracing(this TracingOptions, …)` in `TracingBuilderExtensions`), each sitting
+beside the builder overload of the same name. So this was never a philosophical "should we patch a
+bare options bag" call — ME's surface answers yes. Each value-object literal is prototype-installed
+onto its concrete class exactly like every other dual-export augmentation, via the cross-package rule
+(§28): the install lives wherever the concrete class does — **in `diagnostics.core`** for
+`MetricsOptions`/`TracingOptions` (both class and literal are in-package;
+`diagnostics.core/src/options-augmentations.ts`) and **in `logging`** for `LoggerFilterOptions`
+(`logging/src/filter-augmentations.ts`). `diagnostics.core` gains `"sideEffects": true` for the new
+install import, matching `logging`/`diagnostics`.
+
+**Rename: drop the `Rule` suffix.** ME names the value-object overloads identically to the builder
+overloads — `EnableMetrics`/`DisableMetrics`/`EnableTracing`/`DisableTracing` — distinguished only by
+receiver. The repo's `enableMetricsRule`/`disableMetricsRule`/`enableTracingRule`/`disableTracingRule`
+carried a `Rule` suffix that existed only to avoid a top-level `export function` name-collision with
+the builder-receiver overloads. §28 removes floating free functions, so the two overloads are now
+members of two different object literals and no longer collide → renamed to
+`enableMetrics`/`disableMetrics`/`enableTracing`/`disableTracing`, matching ME exactly. (`addFilter`
+already matched — ME's is `AddFilter` on both receivers.)
+
+**Still standalone-only, permanently:** `tryGetValue` (`IMemoryCache`) — a method form would clash
+with `IMemoryCache`'s own `tryGetValue` member and, at runtime, overwrite the implementation the
+augmentation wraps (unchanged from §22).

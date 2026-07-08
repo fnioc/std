@@ -13,6 +13,10 @@ export { LoggingServiceCollectionExtensions } from "./add-logging";
 // Side-effect: installs the ILoggingBuilder augmentations (addProvider/... ) as
 // instance methods onto LoggingBuilder -- the reverse-direction dual-export half.
 import "./builder-augmentations";
+// Side-effect: installs the LoggerFilterOptions augmentation (addFilter) as an
+// instance method onto the concrete value object -- the reverse-direction half of
+// its dual-export (#105).
+import "./filter-augmentations";
 
 export { LoggingBuilderExtensions } from "./builder-extensions";
 export { LoggerFilterOptionsExtensions } from "./filter-extensions";

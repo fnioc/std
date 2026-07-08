@@ -10,7 +10,8 @@ import { CommandLineConfigurationExtensions } from "@rhombus-std/config.commandl
 import { EnvironmentVariablesExtensions } from "@rhombus-std/config.env";
 import { JsonConfigurationExtensions } from "@rhombus-std/config.json";
 import { MetricsServiceExtensions, TracingServiceExtensions } from "@rhombus-std/diagnostics";
-import { LoggingServiceCollectionExtensions } from "@rhombus-std/logging";
+import { MetricsOptionsExtensions, TracingOptionsExtensions } from "@rhombus-std/diagnostics.core";
+import { LoggerFilterOptionsExtensions, LoggingServiceCollectionExtensions } from "@rhombus-std/logging";
 import {
   OptionsConfigurationServiceCollectionExtensions,
   OptionsServiceCollectionExtensions,
@@ -36,6 +37,12 @@ describe("standalone augmentation surface (member-name snapshots)", () => {
     expect(keys(OptionsConfigurationServiceCollectionExtensions)).toEqual(["configure"]);
   });
 
+  test("value-object augmentations (§29/#105)", () => {
+    expect(keys(LoggerFilterOptionsExtensions)).toEqual(["addFilter"]);
+    expect(keys(MetricsOptionsExtensions)).toEqual(["disableMetrics", "enableMetrics"]);
+    expect(keys(TracingOptionsExtensions)).toEqual(["disableTracing", "enableTracing"]);
+  });
+
   test("every member is a receiver-first function", () => {
     for (
       const set of [
@@ -49,6 +56,9 @@ describe("standalone augmentation surface (member-name snapshots)", () => {
         MemoryCacheServiceCollectionExtensions,
         OptionsServiceCollectionExtensions,
         OptionsConfigurationServiceCollectionExtensions,
+        LoggerFilterOptionsExtensions,
+        MetricsOptionsExtensions,
+        TracingOptionsExtensions,
       ]
     ) {
       for (const name of Object.keys(set)) {
