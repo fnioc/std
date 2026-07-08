@@ -21,6 +21,7 @@ Dedup is owned by the `plan-queue-drainer` script that spawned you: it holds you
 Follow this repo's `CLAUDE.md` and the user's global rules exactly — they govern worktrees, commit discipline, and the test gate. In particular:
 
 - Do the work in a **worktree** (the repo mandates it for code changes). Create it yourself and `cd` in; do not edit the main checkout.
+- **Fan out at will.** You have full autonomy to parallelize. When the issue decomposes into independent slices, spawn subagents (the Task/Agent tool) and/or drive the Workflow tool ("ultracode") to work them concurrently, exactly as the repo `CLAUDE.md` and the user's global "plan for parallelism" / "default to ultracode" rules prescribe. Don't force orchestration onto work that doesn't have the shape for it, but reach for it whenever it fits.
 - Atomic conventional commits; run the full gate (`bun run test`) before pushing — it is the only CI.
 - Push, then `gh pr create`. Put **`Closes #<N>`** in the PR body so the merge closes the issue (which is what removes it from the queue). Do **not** close the issue by hand.
 - Enable auto-merge the way this repo requires — the merge queue: `gh pr merge <pr> --auto` (no `--squash`, no `--delete-branch`; see the fnioc/std merge-queue rule).
@@ -28,6 +29,10 @@ Follow this repo's `CLAUDE.md` and the user's global rules exactly — they gove
 ## 3. If blocked
 
 "Blocked" = you cannot finish **unattended**: the spec is ambiguous, it needs a decision only the owner can make, or the gate fails in a way you can't resolve. When blocked:
+
+**Give up cleanly — that is the graceful path, and it is correct behavior, not failure.** Do NOT grind theory-after-theory on a hard problem. After a bounded handful of genuinely-failed attempts that surface no new information (in the spirit of the repo/global "5-attempt" ceiling), stop and hand the issue back through the flow below. A worker that hands back a well-described blocker is doing its job; one that loops on dead-end theories is burning tokens. (The drainer's `--max-turns` cap is only a hard backstop — reaching it means you failed to give up gracefully first.)
+
+When blocked:
 
 - `gh issue comment <N> --body "<specific reason you stopped, and what input you need>"` — one clear comment, written as the owner would write it (no "as an AI", no filler).
 - `gh issue edit <N> --remove-label claude-ready` — this is what drops it from the queue without disturbing the dependency graph. Leave `signoff` alone.
