@@ -881,6 +881,13 @@ The helpers are free functions (mirroring `compareConfigurationKeys`, not extens
 
 ## 22. Dual-export every extension — standalone function AND prototype method — #96
 
+> **Superseded by §28 (#115).** The `ExtensionSet`/`defineExtensions`/`applyExtensions`,
+> one-free-function-per-method shape documented below is still what the code implements as of this
+> writing — #115 tracks migrating it to §28's object-literal-per-ME-class form. The cross-package
+> `.core`-interface/downstream-concrete install rule and the deferrals list at the end of this
+> section are unaffected and still hold; only the authoring shape and the `primitives` symbol names
+> change.
+
 Every "extension method" in the workspace is now available in BOTH forms: a standalone
 receiver-first free function AND a prototype/instance method. The method form (`builder.addX(...)`)
 stays the primary path; the standalone form (`addX(builder, ...)`) is a fallback / testing surface
@@ -1117,3 +1124,44 @@ seams while keeping ONE bundled surface consumers program against.
   `#makeProviderView` object literal is untouched. Verified green across every package typecheck, the
   `di.transformer` suite (181 tests), the `di.tests.integration` e2e (53 tests), and both
   `examples.app` output-diff runs — overload resolution and transformer lowering are unaffected.
+
+## 28. Augmentations: one named object literal per ME static class, `applyAugmentations`, `defineExtensions` dropped — supersedes §22 — #115
+
+This entry is a **decision-record update, not a code change** — the workspace still ships the §22
+shape (`ExtensionSet`/`defineExtensions`/`applyExtensions`, one free function per method,
+`primitives/src/extensions.ts`) as of this writing. The migration to the rule below is tracked in
+#115; nothing here claims the rename has landed.
+
+- **Authoring form.** Every augmentation is now a single _named exported object literal_ that
+  mirrors exactly ONE reference-stack ("ME") static extension class, checked with `satisfies
+  AugmentationSet<R>` (the type lives in `primitives`, alongside its predecessor). The const's name
+  IS that ME static class's name — `JsonConfigurationExtensions`, `ConfigurationExtensions`, etc. —
+  and its members are that class's static methods, camelCased and receiver-first (receiver = the
+  extended type, as the first parameter). Group by ME static class, not merely by receiver type or
+  package: one receiver can be augmented by several ME classes, each its own object literal.
+- **No floating free functions.** Top-level standalone `export function addX(receiver, …)` exports
+  are gone. The standalone/functional call surface IS the object-literal member —
+  `JsonConfigurationExtensions.addJsonFile(builder, …)`, reached by importing the const. Accepted
+  trade-off: per-method tree-shaking of the standalone form is lost, since importing the const pulls
+  in every member of that ME class's group — acceptable, because that surface is a fallback and the
+  prototype method stays primary.
+- **Installer: `applyAugmentations`.** `applyAugmentations<R extends new (...args: any[]) => any>
+  (Ctor: R, augmentations: AugmentationSet<InstanceType<R>>)` mounts each member onto
+  `Ctor.prototype` as a `this`-forwarding, return-preserving method — constructor-constrained, with
+  the receiver type derived via `InstanceType<R>`, no casts.
+- **`defineExtensions` is removed.** `satisfies AugmentationSet<R>` alone does the validation the
+  curried identity function used to carry. Same accepted gap as before: `satisfies` lets a member
+  declare zero args (still fine — a body that never touches its receiver is a self-evident mistake),
+  and each member's receiver param is annotated explicitly rather than inferred.
+- **Terminology: "augmentation," not "extension," in every term WE coined.** `AugmentationSet`
+  (was `ExtensionSet`), `applyAugmentations` (was `applyExtensions`), the file
+  `primitives/src/augmentations.ts` (was `extensions.ts`), the `.augmentations` package qualifier
+  (unchanged — it already used the word), and all our own prose. **Exception:** the exported
+  grouping const keeps its ME-mirror name verbatim even though that name contains the word
+  "Extensions" (`JsonConfigurationExtensions`) — it's an ME proper noun, deliberately exempt from
+  the rename.
+- **Type:** `AugmentationSet<R> = Record<string, (receiver: R, ...args: any[]) => unknown>`.
+- Everything else §22 settled is unchanged and still governs: the cross-package
+  `.core`-interface/downstream-concrete install rule, the runtime-identity requirement on the
+  patched `Ctor` (§9-style external-bundling), and the listed deferrals. Only the authoring shape
+  and the `primitives` symbol/file names move.
