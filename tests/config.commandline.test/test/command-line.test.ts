@@ -7,9 +7,11 @@
 // source/provider construction), plus new tests for the construction-time
 // switchMappings validation and the "/switch" -> "--switch" rewrite.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
+import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
 import { CommandLineConfigurationSource } from "@rhombus-std/config.commandline/internal/command-line-configuration-source";
 import { describe, expect, test } from "bun:test";
+// Side-effect import: installs `addCommandLine` onto ConfigurationBuilder/ConfigurationManager.
+import "@rhombus-std/config.commandline/internal/index";
 
 /** Builds a provider from `args`/`switchMappings`, loads it, and returns the
  * flattened key -> value map it produced (via getChildKeys + tryGet, since
@@ -232,5 +234,17 @@ describe("CommandLineConfigurationProvider -- '/switch' rewrite", () => {
       Verbose: "true",
       Port: "8080",
     });
+  });
+});
+
+describe("addCommandLine augmentation", () => {
+  test("registers a CommandLineConfigurationSource on the builder", () => {
+    const config = new ConfigurationBuilder().addCommandLine(["--Key", "value"]).build();
+    expect(config.get("Key")).toBe("value");
+  });
+
+  test("installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const manager = new ConfigurationManager().addCommandLine(["--Key", "value"], { "-k": "Key" });
+    expect(manager.get("Key")).toBe("value");
   });
 });
