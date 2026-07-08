@@ -91,13 +91,21 @@ function attachLabels(node, issue) {
 }
 
 async function deriveNodes(promptContent) {
-  const response = await client.messages.parse({
+  // `output_config.format` constrains the response to JSON matching NODES_SCHEMA,
+  // so we read the text block and parse it ourselves rather than lean on the
+  // SDK's `messages.parse()` helper (which only exists in newer SDK releases and
+  // shifted shape across them -- see the pinned version in package.json).
+  const response = await client.messages.create({
     model: "claude-opus-4-8",
     max_tokens: 8000,
     output_config: { effort: "high", format: { type: "json_schema", schema: NODES_SCHEMA } },
     messages: [{ role: "user", content: promptContent }],
   });
-  return response.parsed_output.nodes;
+  const text = response.content.find((b) => b.type === "text")?.text;
+  if (!text) {
+    throw new Error(`no text block in model response (stop_reason: ${response.stop_reason})`);
+  }
+  return JSON.parse(text).nodes;
 }
 
 /** First-run backfill: fetch every issue and derive the whole graph once. */
