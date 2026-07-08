@@ -1,3 +1,9 @@
+dbug: Rhombus.Hosting.Host[1]
+      Hosting starting
+info: Rhombus.Examples.InteropWorker[0]
+      starting
+info: Rhombus.Examples.InteropWorker[0]
+      start
 === @rhombus-std interop — with transformer ===
 async banner (resolveAsync): == @rhombus-std interop demo ==
 greetings aggregated from both libraries (2):
@@ -10,3 +16,17 @@ live reload (config → reactive Options):
   MaxConnections before reload: 100
   reload fired: MaxConnections is now 250
   MaxConnections after reload: 250
+info: Rhombus.Examples.InteropWorker[0]
+      started
+dbug: Rhombus.Hosting.Host[2]
+      Hosting started
+dbug: Rhombus.Hosting.Host[3]
+      Hosting stopping
+info: Rhombus.Examples.InteropWorker[0]
+      stopping
+info: Rhombus.Examples.InteropWorker[0]
+      stop
+info: Rhombus.Examples.InteropWorker[0]
+      stopped
+dbug: Rhombus.Hosting.Host[4]
+      Hosting stopped

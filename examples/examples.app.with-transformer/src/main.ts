@@ -2,9 +2,14 @@
 // tokenless dialect with the @rhombus-std/di.transformer + di.transformer.options
 // plugins. Registration lowering is confined to a module's top level, which is
 // exactly here (the app's composition root), so every `add`/`addValue`/
-// `addOptions` below is authored tokenlessly and lowered during the build. There
-// are ZERO hand-written token strings and no manual name-reflection anywhere in
-// this file — the guard test in di.transformer.test enforces both.
+// `addOptions` in the CONTAINER SETUP below is authored tokenlessly and lowered
+// during the build. The ONE exception is the hosted-worker wiring at the very
+// bottom: there is no `@rhombus-std/di.transformer` plugin for the hosting
+// family yet, so `addHostedService(...)` and the small `ConfigurationRoot` value
+// it needs are registered with EXPLICIT, hand-written tokens — the guard test in
+// di.transformer.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
+// `tryResolve<T>()` CALL to stay tokenless (see below), which the hosted worker
+// still honors.
 //
 // The scenario, everything in concert:
 //   - config sources feed a reactive Options<ServerOptions> through the full
@@ -20,10 +25,28 @@
 //   - the async banner is reached with resolveAsync (#45);
 //   - a config reload fires a live options update through the subscription
 //     (#6/#40).
+//
+// BOOTS VIA THE GENERIC HOST (@rhombus-std/hosting): the container above is
+// registered onto the host's own `ServiceManifest`, and the scenario itself runs
+// inside a hosted worker (`InteropWorker`) that implements
+// `IHostedLifecycleService` and logs its ordered lifecycle callbacks through an
+// injected `ILogger` — mirroring the canonical worker+lifecycle sample in
+// tests/hosting.test/test/index.test.ts. Its `resolve<T>()` / `resolveAsync<T>()`
+// calls stay tokenless (the transformer lowers them, same as the library's own
+// factory); only its CONSTRUCTOR SIGNATURE (an `addHostedService` concept the
+// transformer does not cover) names explicit tokens. The worker calls
+// `IHostApplicationLifetime.stopApplication()` once its work is done, so
+// `runAsync` returns deterministically with no reliance on Ctrl+C / signals.
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
 import type { ConfigurationRoot } from "@rhombus-std/config";
-import { ServiceManifest } from "@rhombus-std/di";
+import { RESOLVER_TOKEN } from "@rhombus-std/di";
+import type { Resolver } from "@rhombus-std/di";
+import { Host, HOST_APPLICATION_LIFETIME_TOKEN, runAsync } from "@rhombus-std/hosting";
+import type { IHostApplicationLifetime, IHostedLifecycleService } from "@rhombus-std/hosting";
+import { LOGGER_FACTORY_TOKEN } from "@rhombus-std/logging";
+import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
+import { logInformation } from "@rhombus-std/logging.core";
 import type { ConfigureOptions, PostConfigureOptions, ValidateOptions } from "@rhombus-std/options";
 import { Options, OptionsFactory, ValidateOptionsResult } from "@rhombus-std/options";
 // Brings the config-bind configure step + the runtime `addOptions` verb the
@@ -34,6 +57,12 @@ import { ConfigurationConfigureOptions } from "@rhombus-std/options.augmentation
 import type { GreetingPolicy, IBanner, IGreeting, IServerReport, ServerOptions } from "@rhombus-std/examples.contracts";
 import { fetchBanner, FormalGreeting, makeServerReport } from "@rhombus-std/examples.lib.with-transformer";
 import { addCasualServices } from "@rhombus-std/examples.lib.without-transformer";
+
+// The ONE hand-written token in this file — see the header note. It has no
+// transformer-derived counterpart to match; it exists purely to thread the
+// manually-built `ConfigurationRoot` into the hosted worker's explicit-token
+// `addHostedService` signature below.
+const CONFIG_TOKEN = "@rhombus-std/config:ConfigurationRoot";
 
 // ── config ───────────────────────────────────────────────────────────────────
 
@@ -84,11 +113,101 @@ function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
   return Options.watch(build, () => config.getReloadToken());
 }
 
-// ── container (all registrations tokenless, at module top level) ──────────────
+// ── the hosted worker ───────────────────────────────────────────────────────
+
+/**
+ * Runs the interop scenario once the host has started, then requests a
+ * graceful shutdown so `runAsync` returns deterministically. Implements
+ * `IHostedLifecycleService` and logs each ordered callback
+ * (starting → start → started, then stopping → stop → stopped) through an
+ * injected `ILogger` — mirroring the canonical worker+lifecycle sample. Its
+ * `resolve`/`resolveAsync` calls stay TOKENLESS (transformer-lowered); only its
+ * constructor signature (below, at `addHostedService`) names explicit tokens.
+ */
+class InteropWorker implements IHostedLifecycleService {
+  readonly #resolver: Resolver;
+  readonly #lifetime: IHostApplicationLifetime;
+  readonly #logger: ILogger;
+  readonly #config: ConfigurationRoot;
+
+  public constructor(
+    resolver: Resolver,
+    lifetime: IHostApplicationLifetime,
+    loggerFactory: ILoggerFactory,
+    config: ConfigurationRoot,
+  ) {
+    this.#resolver = resolver;
+    this.#lifetime = lifetime;
+    this.#logger = loggerFactory.createLogger("Rhombus.Examples.InteropWorker");
+    this.#config = config;
+  }
+
+  public starting(): Promise<void> {
+    logInformation(this.#logger, "starting");
+    return Promise.resolve();
+  }
+
+  public async start(): Promise<void> {
+    logInformation(this.#logger, "start");
+
+    const report = this.#resolver.resolve<IServerReport>();
+    const banner = await this.#resolver.resolveAsync<IBanner>();
+
+    const optionsView = this.#resolver.resolve<Options<ServerOptions>>();
+    const updates: string[] = [];
+    const subscription = optionsView.subscribe!((next: ServerOptions) => {
+      updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);
+    });
+    const before = optionsView.value.MaxConnections;
+    this.#config.set("Server:MaxConnections", "250");
+    this.#config.reload();
+    const after = optionsView.value.MaxConnections;
+    subscription[Symbol.dispose]();
+
+    const lines = [
+      "=== @rhombus-std interop — with transformer ===",
+      `async banner (resolveAsync): ${banner.text}`,
+      ...report.lines,
+      "live reload (config → reactive Options):",
+      `  MaxConnections before reload: ${before}`,
+      ...updates,
+      `  MaxConnections after reload: ${after}`,
+    ];
+
+    for (const line of lines) {
+      console.log(line);
+    }
+  }
+
+  public started(): Promise<void> {
+    logInformation(this.#logger, "started");
+    this.#lifetime.stopApplication();
+    return Promise.resolve();
+  }
+
+  public stopping(): Promise<void> {
+    logInformation(this.#logger, "stopping");
+    return Promise.resolve();
+  }
+
+  public stop(): Promise<void> {
+    logInformation(this.#logger, "stop");
+    return Promise.resolve();
+  }
+
+  public stopped(): Promise<void> {
+    logInformation(this.#logger, "stopped");
+    return Promise.resolve();
+  }
+}
+
+// ── host + container (registrations tokenless, at module top level) ───────────
 
 const config = buildConfig();
+const serverOptions = makeServerOptions(config);
 
-const services = new ServiceManifest<"singleton">();
+const builder = Host.createApplicationBuilder();
+const services = builder.services;
 
 // The with-transformer library's greeting, plus the without-transformer
 // library's greeting + health check via its manual registration function. Both
@@ -103,7 +222,6 @@ services.addFactory<IServerReport>(makeServerReport).as<"singleton">();
 
 // The reactive server options — registered as a value so every consumer shares
 // the one live instance.
-const serverOptions = makeServerOptions(config);
 services.addValue<Options<ServerOptions>>(serverOptions);
 
 // A config-independent policy, delivered as a static Options<GreetingPolicy>
@@ -113,35 +231,14 @@ services.addValue<Options<ServerOptions>>(serverOptions);
 services.addValue<GreetingPolicy>({ excitement: "!" });
 services.addOptions<GreetingPolicy>().as("singleton");
 
-const root = services.build().createScope("singleton");
+// The live config root + the hosted worker — the file's one explicit-token
+// island (see the header note): no hosting transformer exists yet.
+services.addValue(CONFIG_TOKEN, config);
+services.addHostedService(InteropWorker, [
+  [RESOLVER_TOKEN, HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, CONFIG_TOKEN],
+]);
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 
-const report = root.resolve<IServerReport>();
-const banner = await root.resolveAsync<IBanner>();
-
-// Subscribe to the live options, then drive a config reload.
-const optionsView = root.resolve<Options<ServerOptions>>();
-const updates: string[] = [];
-const subscription = optionsView.subscribe!((next: ServerOptions) => {
-  updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);
-});
-const before = optionsView.value.MaxConnections;
-config.set("Server:MaxConnections", "250");
-config.reload();
-const after = optionsView.value.MaxConnections;
-subscription[Symbol.dispose]();
-
-const lines = [
-  "=== @rhombus-std interop — with transformer ===",
-  `async banner (resolveAsync): ${banner.text}`,
-  ...report.lines,
-  "live reload (config → reactive Options):",
-  `  MaxConnections before reload: ${before}`,
-  ...updates,
-  `  MaxConnections after reload: ${after}`,
-];
-
-for (const line of lines) {
-  console.log(line);
-}
+const host = builder.build();
+await runAsync(host);

@@ -1,5 +1,5 @@
 {
-  "//": "Built with tspc: BOTH the @rhombus-std/di.transformer plugin and its options satellite lower the tokenless registration/resolution forms in src/main.ts. The two transformers' declare-module augmentations enter the program via `types` so the authored forms type-check under both tspc (build) and tspc --noEmit (lint). customConditions:[built] resolves the di family + the with-transformer example library to their built d.ts (the augmented core class cannot co-compile with di source). module:ESNext keeps relative + bare specifiers verbatim so node ESM resolves dist at runtime; the DOM lib supplies console + AbortSignal (the latter reached transitively through options → primitives).",
+  "//": "Built with tspc: BOTH the @rhombus-std/di.transformer plugin and its options satellite lower the tokenless registration/resolution forms in src/main.ts. The two transformers' declare-module augmentations enter the program via `types` so the authored forms type-check under both tspc (build) and tspc --noEmit (lint). An explicit `types` array opts OUT of TypeScript's automatic ambient-@types discovery, so @types/bun is listed too -- the Generic Host's source (process.cwd()/process.stdout, node:path) now reaches into this program via @rhombus-std/hosting, and without it plain `process`/`node:*` go unresolved (the without-transformer app never hits this because it leaves `types` unset and gets the repo-root @types/bun for free). customConditions:[built] resolves the di family + the with-transformer example library to their built d.ts (the augmented core class cannot co-compile with di source). module:ESNext keeps relative + bare specifiers verbatim so node ESM resolves dist at runtime; the DOM lib supplies console + AbortSignal (the latter reached transitively through options → primitives).",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "ESNext",
@@ -11,7 +11,7 @@
     "declarationMap": false,
     "sourceMap": false,
     "composite": false,
-    "types": ["@rhombus-std/di.transformer", "@rhombus-std/di.transformer.options"],
+    "types": ["@rhombus-std/di.transformer", "@rhombus-std/di.transformer.options", "@types/bun"],
     "customConditions": ["built"],
     "plugins": [
       { "transform": "@rhombus-std/di.transformer", "import": "transform" },
