@@ -5,8 +5,10 @@ name: auto-merge
 # required `verify` check on the merge group and squash-merges when green. The queue
 # owns the merge method, so no strategy flag is passed.
 #
-# GITHUB_TOKEN is fine here: the queue (not this token) performs the merge, so the
-# post-merge push to main triggers downstream workflows normally.
+# Uses a PAT (secrets.AUTOMERGE_PAT), NOT the default GITHUB_TOKEN: GitHub deliberately
+# won't fire a GITHUB_TOKEN-armed "merge when ready" — it arms, then never enqueues — so
+# a real user token is required for the enqueue to actually happen. The queue performs
+# the squash-merge once the merge-group `verify` is green.
 
 on:
   pull_request:
@@ -23,6 +25,6 @@ jobs:
     steps:
       - name: Enqueue (merge when ready)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.AUTOMERGE_PAT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: gh pr merge --auto --repo "$GITHUB_REPOSITORY" "$PR_NUMBER"
