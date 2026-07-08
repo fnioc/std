@@ -29,6 +29,14 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 const GRAPH_FILE = "graph.json";
 const ISSUE_FIELDS = "number,title,body,state,labels,url";
 
+// An issue reaches the ready list only if it carries BOTH of these -- the
+// repo's coding gate (CLAUDE.md): `signoff` (owner's go-ahead) and
+// `claude-ready` (finishable unattended). Removing `claude-ready` is therefore
+// how a worker takes a blocked issue back off the list without touching the
+// graph. This is the one whitelist requirement; scope/version labels stay
+// governed by the blacklist below.
+const REQUIRED_LABELS = ["signoff", "claude-ready"];
+
 // Issues carrying any of these labels are never "ready to code" candidates,
 // regardless of what other labels (v0, v1, v2, ...) exist alongside them.
 // Blacklist, not whitelist -- new version/scope labels show up automatically.
@@ -141,9 +149,10 @@ async function incremental(graph, issueNumber) {
 
 /**
  * The "ready to code" slice: open issues with no unresolved blocker (a blocker
- * is unresolved while its own node is still open) and no excluded label. Output
- * is consumed by an automated monitor, not a human, so it's a JSON array of
- * {number, title, labels} -- not rendered markdown.
+ * is unresolved while its own node is still open), carrying both REQUIRED_LABELS
+ * and no excluded label. Output is consumed by an automated monitor, not a
+ * human, so it's a JSON array of {number, title, labels} -- not rendered
+ * markdown.
  */
 function computeReady({ nodes }) {
   const byNumber = new Map(nodes.map((n) => [n.number, n]));
@@ -157,6 +166,9 @@ function computeReady({ nodes }) {
       continue;
     }
     const labels = n.labels ?? [];
+    if (!REQUIRED_LABELS.every((r) => labels.includes(r))) {
+      continue;
+    }
     if (labels.some((l) => EXCLUDED_LABELS.has(l))) {
       continue;
     }
