@@ -8,7 +8,8 @@ import type { IConfigurationProvider, IConfigurationRoot, IConfigurationSection 
 /**
  * Data about the current item of the configuration, handed to the
  * `processValue` callback of {@link getDebugView}. Mirrors the fields of
- * .NET's `ConfigurationDebugViewContext` struct as a runtime-free type.
+ * the reference runtime's `ConfigurationDebugViewContext` struct as a
+ * runtime-free type.
  */
 export type ConfigurationDebugViewContext = {
   /** The path of the current item. */

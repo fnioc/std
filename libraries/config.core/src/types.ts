@@ -1,4 +1,4 @@
-// The TS-only helper types with no per-file dotnet/ME equivalent: the plain
+// The TS-only helper types with no per-file ME equivalent: the plain
 // object codomain of `toObject()`, the index-navigable section shape, and the
 // try-get tuple that replaces ME's `bool TryGet(out string?)` out-param
 // pattern. Grouped here (rather than split further) because none of these has
