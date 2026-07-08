@@ -1,18 +1,23 @@
-// MetricsBuilderExtensions -- ported from MED.Metrics's
+// MetricsBuilderExtensions / MetricsOptionsExtensions -- ported from MED.Metrics's
 // `MetricsBuilderExtensions.{Listeners,Rules}` static extension classes.
 //
-// These target the family's OWN interface (IMetricsBuilder), so per this repo's
-// "explicit form is primary" convention they are plain exported functions taking
-// the builder as the first parameter -- no declaration-merging augmentation
-// needed (that idiom is reserved for patching a class from ANOTHER package, e.g.
-// di.core's ServiceManifestClass, which @rhombus-std/diagnostics does for
-// addMetrics/addTracing). Each returns the builder for chaining.
+// The builder-targeted members target the family's OWN interface (IMetricsBuilder);
+// the options-targeted members target the concrete value object MetricsOptions.
+// Both groups are dual-export augmentations (docs §28): a named object literal
+// installed onto the receiver's prototype AND reachable as `Set.member(receiver, …)`.
+// The IMetricsBuilder literal is installed downstream in @rhombus-std/diagnostics
+// (the concrete MetricsBuilder lives there); the MetricsOptions literal is installed
+// in-package (the concrete class lives here) via ./options-augmentations.
 //
-// The reference splits EnableMetrics/DisableMetrics into a builder-targeted
-// overload (registers a `Configure(MetricsOptions)` step) and a
-// MetricsOptions-targeted overload (mutates the options directly). Both are
-// ported: the builder-targeted `enableMetrics`/`disableMetrics`, and the
-// options-targeted `enableMetricsRule`/`disableMetricsRule`.
+// The reference splits EnableMetrics/DisableMetrics into a builder-targeted overload
+// (registers a `Configure(MetricsOptions)` step) and a MetricsOptions-targeted
+// overload (mutates the options directly). Both are ported and, per ME, share the
+// SAME name distinguished only by receiver: `enableMetrics`/`disableMetrics` on the
+// builder (in `MetricsBuilderExtensions`) and on the options (in
+// `MetricsOptionsExtensions`). #115's object-literal-per-ME-class shape lets the two
+// overloads live as members of two different literals, so the names no longer collide
+// -- the former `*Rule` suffix, added only to avoid a top-level free-function clash,
+// is dropped (#105).
 
 import type { Ctor, DepSlot, Token } from "@rhombus-std/di.core";
 import type { ConfigureOptions } from "@rhombus-std/options";
@@ -51,35 +56,42 @@ function addMetricsListenerType(
 }
 
 /**
- * Appends an ENABLE {@link InstrumentRule} directly to a {@link MetricsOptions}.
- * Mirrors `MetricsOptions.EnableMetrics(...)`. `undefined` name arguments match
- * anything.
+ * The `MetricsOptions`-targeted rule mutators (docs §28) -- the value-object
+ * overloads of `MetricsBuilderExtensions.{Enable,Disable}Metrics`, which ME names
+ * identically to their builder counterparts, distinguished only by `this` receiver.
+ * Installed onto `MetricsOptions.prototype` in ./options-augmentations. `undefined`
+ * name arguments match anything.
  */
-function enableMetricsRule(
-  options: MetricsOptions,
-  meterName?: string,
-  instrumentName?: string,
-  listenerName?: string,
-  scopes: MeterScope = METER_SCOPE_ALL,
-): MetricsOptions {
-  options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, true));
-  return options;
-}
-
-/**
- * Appends a DISABLE {@link InstrumentRule} directly to a {@link MetricsOptions}.
- * Mirrors `MetricsOptions.DisableMetrics(...)`.
- */
-function disableMetricsRule(
-  options: MetricsOptions,
-  meterName?: string,
-  instrumentName?: string,
-  listenerName?: string,
-  scopes: MeterScope = METER_SCOPE_ALL,
-): MetricsOptions {
-  options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, false));
-  return options;
-}
+export const MetricsOptionsExtensions = {
+  /**
+   * Appends an ENABLE {@link InstrumentRule} directly to a {@link MetricsOptions}.
+   * Mirrors `MetricsOptions.EnableMetrics(...)`.
+   */
+  enableMetrics(
+    options: MetricsOptions,
+    meterName?: string,
+    instrumentName?: string,
+    listenerName?: string,
+    scopes: MeterScope = METER_SCOPE_ALL,
+  ): MetricsOptions {
+    options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, true));
+    return options;
+  },
+  /**
+   * Appends a DISABLE {@link InstrumentRule} directly to a {@link MetricsOptions}.
+   * Mirrors `MetricsOptions.DisableMetrics(...)`.
+   */
+  disableMetrics(
+    options: MetricsOptions,
+    meterName?: string,
+    instrumentName?: string,
+    listenerName?: string,
+    scopes: MeterScope = METER_SCOPE_ALL,
+  ): MetricsOptions {
+    options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, false));
+    return options;
+  },
+} satisfies AugmentationSet<MetricsOptions>;
 
 /** Registers a `ConfigureOptions<MetricsOptions>` step at `token` that runs `apply`. */
 function configureMetrics(builder: IMetricsBuilder, apply: (options: MetricsOptions) => void): IMetricsBuilder {
@@ -106,7 +118,7 @@ function enableMetrics(
   scopes: MeterScope = METER_SCOPE_ALL,
 ): IMetricsBuilder {
   return configureMetrics(builder, (options) => {
-    enableMetricsRule(options, meterName, instrumentName, listenerName, scopes);
+    MetricsOptionsExtensions.enableMetrics(options, meterName, instrumentName, listenerName, scopes);
   });
 }
 
@@ -122,7 +134,7 @@ function disableMetrics(
   scopes: MeterScope = METER_SCOPE_ALL,
 ): IMetricsBuilder {
   return configureMetrics(builder, (options) => {
-    disableMetricsRule(options, meterName, instrumentName, listenerName, scopes);
+    MetricsOptionsExtensions.disableMetrics(options, meterName, instrumentName, listenerName, scopes);
   });
 }
 
@@ -137,13 +149,3 @@ export const MetricsBuilderExtensions = {
   enableMetrics,
   disableMetrics,
 } satisfies AugmentationSet<IMetricsBuilder>;
-
-/**
- * The `MetricsOptions`-targeted rule mutators (docs §28). Standalone-only: this
- * is an options-bag receiver, given NO prototype install (the boundary call
- * deferred at §22/§28); the member IS the standalone call surface.
- */
-export const MetricsOptionsExtensions = {
-  enableMetricsRule,
-  disableMetricsRule,
-} satisfies AugmentationSet<MetricsOptions>;

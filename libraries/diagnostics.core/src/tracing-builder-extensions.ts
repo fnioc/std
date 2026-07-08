@@ -1,14 +1,26 @@
-// TracingBuilderExtensions -- ported from MED.Tracing's
+// TracingBuilderExtensions / TracingOptionsExtensions -- ported from MED.Tracing's
 // `TracingBuilderExtensions.{Listeners,Rules}`.
 //
-// Family-own-interface extension methods => plain exported functions taking the
-// ITracingBuilder first. The reference AddListener registers a factory that
-// lazily builds+configures an ActivityListenerBuilder when the tracing
-// infrastructure first resolves; with no tracing infrastructure here the builder
-// is constructed and configured eagerly and registered as a value -- the
-// resulting registration is identical for any consumer that enumerates the
-// listener builders. The IServiceProvider-receiving AddListener overload is not
-// ported (no listener runtime consumes it -- see the package tbd notes).
+// The builder-targeted members target the family's OWN interface (ITracingBuilder);
+// the options-targeted members target the concrete value object TracingOptions. Both
+// groups are dual-export augmentations (docs §28): a named object literal installed
+// onto the receiver's prototype AND reachable as `Set.member(receiver, …)`. The
+// ITracingBuilder literal is installed downstream in @rhombus-std/diagnostics (the
+// concrete TracingBuilder lives there); the TracingOptions literal is installed
+// in-package (the concrete class lives here) via ./options-augmentations.
+//
+// The reference AddListener registers a factory that lazily builds+configures an
+// ActivityListenerBuilder when the tracing infrastructure first resolves; with no
+// tracing infrastructure here the builder is constructed and configured eagerly and
+// registered as a value -- the resulting registration is identical for any consumer
+// that enumerates the listener builders. The IServiceProvider-receiving AddListener
+// overload is not ported (no listener runtime consumes it -- see the package tbd notes).
+//
+// EnableTracing/DisableTracing, like their metrics counterparts, split into a
+// builder-targeted and a TracingOptions-targeted overload that ME names identically,
+// distinguished only by receiver. Both are ported as `enableTracing`/`disableTracing`
+// members of the two literals; the former `*Rule` suffix (a free-function-clash
+// workaround) is dropped now that #115 gives each its own literal (#105).
 
 import type { ConfigureOptions } from "@rhombus-std/options";
 import type { AugmentationSet } from "@rhombus-std/primitives";
@@ -41,34 +53,41 @@ function addTracingListener(
 }
 
 /**
- * Appends an ENABLE {@link TracingRule} directly to a {@link TracingOptions}.
- * Mirrors `TracingOptions.EnableTracing(...)`.
+ * The `TracingOptions`-targeted rule mutators (docs §28) -- the value-object overloads
+ * of `TracingBuilderExtensions.{Enable,Disable}Tracing`, which ME names identically to
+ * their builder counterparts, distinguished only by `this` receiver. Installed onto
+ * `TracingOptions.prototype` in ./options-augmentations.
  */
-function enableTracingRule(
-  options: TracingOptions,
-  sourceName?: string,
-  operationName?: string,
-  listenerName?: string,
-  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
-): TracingOptions {
-  options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, true));
-  return options;
-}
-
-/**
- * Appends a DISABLE {@link TracingRule} directly to a {@link TracingOptions}.
- * Mirrors `TracingOptions.DisableTracing(...)`.
- */
-function disableTracingRule(
-  options: TracingOptions,
-  sourceName?: string,
-  operationName?: string,
-  listenerName?: string,
-  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
-): TracingOptions {
-  options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, false));
-  return options;
-}
+export const TracingOptionsExtensions = {
+  /**
+   * Appends an ENABLE {@link TracingRule} directly to a {@link TracingOptions}.
+   * Mirrors `TracingOptions.EnableTracing(...)`.
+   */
+  enableTracing(
+    options: TracingOptions,
+    sourceName?: string,
+    operationName?: string,
+    listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
+  ): TracingOptions {
+    options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, true));
+    return options;
+  },
+  /**
+   * Appends a DISABLE {@link TracingRule} directly to a {@link TracingOptions}.
+   * Mirrors `TracingOptions.DisableTracing(...)`.
+   */
+  disableTracing(
+    options: TracingOptions,
+    sourceName?: string,
+    operationName?: string,
+    listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
+  ): TracingOptions {
+    options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, false));
+    return options;
+  },
+} satisfies AugmentationSet<TracingOptions>;
 
 /** Registers a `ConfigureOptions<TracingOptions>` step that runs `apply`. */
 function configureTracing(builder: ITracingBuilder, apply: (options: TracingOptions) => void): ITracingBuilder {
@@ -93,7 +112,7 @@ function enableTracing(
   scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
 ): ITracingBuilder {
   return configureTracing(builder, (options) => {
-    enableTracingRule(options, sourceName, operationName, listenerName, scopes);
+    TracingOptionsExtensions.enableTracing(options, sourceName, operationName, listenerName, scopes);
   });
 }
 
@@ -109,7 +128,7 @@ function disableTracing(
   scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
 ): ITracingBuilder {
   return configureTracing(builder, (options) => {
-    disableTracingRule(options, sourceName, operationName, listenerName, scopes);
+    TracingOptionsExtensions.disableTracing(options, sourceName, operationName, listenerName, scopes);
   });
 }
 
@@ -123,13 +142,3 @@ export const TracingBuilderExtensions = {
   enableTracing,
   disableTracing,
 } satisfies AugmentationSet<ITracingBuilder>;
-
-/**
- * The `TracingOptions`-targeted rule mutators (docs §28). Standalone-only: an
- * options-bag receiver given NO prototype install; the member IS the standalone
- * call surface.
- */
-export const TracingOptionsExtensions = {
-  enableTracingRule,
-  disableTracingRule,
-} satisfies AugmentationSet<TracingOptions>;

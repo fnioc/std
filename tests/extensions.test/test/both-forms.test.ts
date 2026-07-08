@@ -8,14 +8,26 @@
 //     downstream concrete class): caching's get/set/setPriority on
 //     MemoryCache/ICacheEntry, and diagnostics' addMetricsListener on the
 //     .core-interface / downstream-concrete MetricsBuilder.
+//   - reverse direction, value-object receiver (§29/#105): addFilter on
+//     LoggerFilterOptions, and enableMetrics/enableTracing on
+//     MetricsOptions/TracingOptions -- installed onto the concrete option class.
 
 import { CacheEntryExtensions, CacheExtensions, CacheItemPriority } from "@rhombus-std/caching.core";
 import { MemoryCache, MemoryCacheOptions } from "@rhombus-std/caching.memory";
 import { ConfigurationBuilder, MemoryConfigurationBuilderExtensions } from "@rhombus-std/config";
 import type { ServiceManifestBase } from "@rhombus-std/di.core";
 import { MetricsBuilder } from "@rhombus-std/diagnostics";
-import { METRICS_LISTENER_TOKEN, MetricsBuilderExtensions } from "@rhombus-std/diagnostics.core";
+import {
+  METRICS_LISTENER_TOKEN,
+  MetricsBuilderExtensions,
+  MetricsOptions,
+  MetricsOptionsExtensions,
+  TracingOptions,
+  TracingOptionsExtensions,
+} from "@rhombus-std/diagnostics.core";
 import type { IMetricsListener } from "@rhombus-std/diagnostics.core";
+import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from "@rhombus-std/logging";
+import { LogLevel } from "@rhombus-std/logging.core";
 import { describe, expect, test } from "bun:test";
 
 describe("foreign-class direction — addInMemoryCollection", () => {
@@ -79,5 +91,55 @@ describe("reverse direction — MetricsBuilder (.core interface, downstream conc
       [METRICS_LISTENER_TOKEN, listener],
       [METRICS_LISTENER_TOKEN, listener],
     ]);
+  });
+});
+
+describe("reverse direction, value-object receiver — LoggerFilterOptions.addFilter (§29/#105)", () => {
+  test("addFilter method form equals the object-literal member form", () => {
+    const viaMethod = new LoggerFilterOptions();
+    viaMethod.addFilter("Cat", LogLevel.Warning); // method form
+
+    const viaMember = new LoggerFilterOptions();
+    LoggerFilterOptionsExtensions.addFilter(viaMember, "Cat", LogLevel.Warning); // standalone member form
+
+    expect(viaMethod.rules.length).toBe(1);
+    expect(viaMethod.rules[0]).toEqual(viaMember.rules[0]);
+    // chaining survives the prototype install.
+    expect(viaMethod.addFilter("Other", LogLevel.Error)).toBe(viaMethod);
+    expect(viaMethod.rules.length).toBe(2);
+  });
+});
+
+describe("reverse direction, value-object receiver — MetricsOptions (§29/#105)", () => {
+  test("enableMetrics/disableMetrics method form equals the object-literal member form", () => {
+    const viaMethod = new MetricsOptions();
+    viaMethod.enableMetrics("meter"); // method form
+    viaMethod.disableMetrics("meter", "instrument");
+
+    const viaMember = new MetricsOptions();
+    MetricsOptionsExtensions.enableMetrics(viaMember, "meter"); // standalone member form
+    MetricsOptionsExtensions.disableMetrics(viaMember, "meter", "instrument");
+
+    expect(viaMethod.rules).toEqual(viaMember.rules);
+    expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);
+    // chaining survives.
+    expect(viaMethod.enableMetrics("m2")).toBe(viaMethod);
+  });
+});
+
+describe("reverse direction, value-object receiver — TracingOptions (§29/#105)", () => {
+  test("enableTracing/disableTracing method form equals the object-literal member form", () => {
+    const viaMethod = new TracingOptions();
+    viaMethod.enableTracing("source"); // method form
+    viaMethod.disableTracing("source", "operation");
+
+    const viaMember = new TracingOptions();
+    TracingOptionsExtensions.enableTracing(viaMember, "source"); // standalone member form
+    TracingOptionsExtensions.disableTracing(viaMember, "source", "operation");
+
+    expect(viaMethod.rules).toEqual(viaMember.rules);
+    expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);
+    // chaining survives.
+    expect(viaMethod.enableTracing("s2")).toBe(viaMethod);
   });
 });
