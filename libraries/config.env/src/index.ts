@@ -43,6 +43,7 @@ applyAugmentations(ConfigurationBuilder, EnvironmentVariablesExtensions);
 
 export { EnvironmentVariablesConfigurationProvider } from "./environment-variables-configuration-provider";
 export {
+  colonAndDotVariableNameTransformation,
   defaultVariableNameTransformation,
   EnvironmentVariablesConfigurationSource,
 } from "./environment-variables-configuration-source";

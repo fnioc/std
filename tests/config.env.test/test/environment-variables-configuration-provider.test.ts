@@ -10,7 +10,10 @@ import { ConfigurationBuilder } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 import "@rhombus-std/config.env/internal/index";
 import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/environment-variables-configuration-provider";
-import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env/internal/environment-variables-configuration-source";
+import {
+  colonAndDotVariableNameTransformation,
+  EnvironmentVariablesConfigurationSource,
+} from "@rhombus-std/config.env/internal/environment-variables-configuration-source";
 
 type EnvMap = Record<string, string | undefined>;
 
@@ -68,6 +71,24 @@ describe("EnvironmentVariablesConfigurationProvider transform-before-filter orde
       { prefix: "CUSTOM:APP:", variableNameTransformation: (name) => name.replaceAll("-", ":") },
     );
     expect(provider.tryGet("foo")).toEqual([true, "custom"]);
+  });
+});
+
+describe("colonAndDotVariableNameTransformation", () => {
+  test("triple underscore becomes a dot, double underscore becomes a colon", () => {
+    expect(colonAndDotVariableNameTransformation("A___B__C")).toBe("A.B:C");
+  });
+
+  test("a run of four underscores is one triple plus a literal trailing underscore", () => {
+    expect(colonAndDotVariableNameTransformation("A____B")).toBe("A._B");
+  });
+
+  test("usable directly as a source's variableNameTransformation", () => {
+    const provider = providerOf(
+      { "App___Server__Port": "8080" },
+      { variableNameTransformation: colonAndDotVariableNameTransformation },
+    );
+    expect(provider.tryGet("App.Server:Port")).toEqual([true, "8080"]);
   });
 });
 
