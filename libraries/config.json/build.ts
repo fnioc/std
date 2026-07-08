@@ -9,5 +9,5 @@ import { buildPackage } from "../../scripts/build-package";
 await buildPackage({
   dir: import.meta.dir,
   name: "@rhombus-std/config.json",
-  external: ["@rhombus-std/config", "@rhombus-std/config.core"],
+  external: ["@rhombus-std/config", "@rhombus-std/config.core", "@rhombus-std/primitives"],
 });

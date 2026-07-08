@@ -6,5 +6,7 @@
 
 export { CancellationChangeToken } from "./cancellation-change-token.js";
 export type { IChangeToken } from "./change-token.js";
+export { applyExtensions, defineExtensions } from "./extensions.js";
+export type { ExtensionSet } from "./extensions.js";
 export { ChangeToken } from "./on-change.js";
 export type { ChangeTokenProducer } from "./on-change.js";

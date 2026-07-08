@@ -69,7 +69,9 @@ idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during th
 where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
 
 - **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
-  `ChangeToken.onChange`) that underpins live-reload (§8).
+  `ChangeToken.onChange`) that underpins live-reload (§8), **and** the dual-export extension
+  installer infra — `ExtensionSet`/`defineExtensions`/`applyExtensions` (§22). It lives here (not
+  `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9) ← `di` (the resolution engine:
   scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
@@ -135,6 +137,11 @@ before touching):
   `ServiceManifestClass` it prototype-patches `build()` onto is the same object that cross-package
   augmentations patch; a private inlined copy forks identity and breaks the patch (§9). config keeps
   providers external for the same reason.
+- **Dual-export extensions** — every extension method ships BOTH a standalone receiver-first
+  function AND a prototype/instance method, installed via `primitives`' `applyExtensions` +
+  `defineExtensions` (§22). The method form is primary; the standalone form is a fallback/testing
+  surface. When the receiver interface is in a `.core` package but the concrete class is downstream,
+  the declare-merge + install live downstream.
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the

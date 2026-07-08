@@ -16,5 +16,6 @@ await buildPackage({
     "@rhombus-std/logging",
     "@rhombus-std/logging.core",
     "@rhombus-std/options",
+    "@rhombus-std/primitives",
   ],
 });

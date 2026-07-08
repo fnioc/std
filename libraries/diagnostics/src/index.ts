@@ -2,11 +2,12 @@
 // analog.
 //
 // Ships the concrete MetricsBuilder/TracingBuilder, the config-binding extension
-// functions (addMetricsConfiguration/addTracingConfiguration, targeting the
-// family's OWN builder interfaces so they are plain functions), the config-bind
+// functions (addMetricsConfiguration/addTracingConfiguration), the config-bind
 // ConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
-// registration builder.
+// registration builder AND the metrics/tracing builder extensions as instance
+// methods on the family's own builders (both via the dual-export convention,
+// docs §22: every extension available as a standalone function AND a method).
 //
 // `addMetrics`/`addTracing` target di.core's ServiceManifestClass -- a class this
 // package does NOT own -- so per §0 they are extension-method augmentations: TS
@@ -41,9 +42,14 @@ import {
   TRACING_OPTIONS_TOKEN,
   TracingOptions,
 } from "@rhombus-std/diagnostics.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
+// Side-effect: installs the metrics/tracing builder extensions as instance
+// methods onto MetricsBuilder/TracingBuilder (the reverse-direction half of the
+// dual-export convention). Their standalone free-function form ships separately.
+import "./builder-augmentations";
 import { MetricsBuilder } from "./metrics-builder";
 import { TracingBuilder } from "./tracing-builder";
 
@@ -80,61 +86,71 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-ServiceManifestClass.prototype.addMetrics = function addMetrics(
-  this: ServiceManifestClass<string>,
-  configure?: Func<[IMetricsBuilder], void>,
-): ServiceManifestClass<string> {
-  // Register the resolvable `Options<MetricsOptions>` assembly at singleton
-  // scope. Calling addMetrics twice re-registers the (identical) factory --
-  // last-wins bare-token resolution keeps that correct; the reference guards it
-  // with TryAdd, a `has`/`try*` surface di.core does not expose (options.augmentations'
-  // addOptions has the same benign behavior). The factory takes the live
-  // provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
-  this.addFactory(
-    METRICS_OPTIONS_TOKEN,
-    (resolver) =>
-      assembleDiagnosticsOptions(
-        resolver,
-        METRICS_CONFIGURE_TOKEN,
-        METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-        () => new MetricsOptions(),
-      ),
-    [[RESOLVER_TOKEN]],
-  ).as("singleton");
-  if (configure) {
-    configure(new MetricsBuilder(this));
-  }
-  return this;
-};
+// Authored once as receiver-first functions, installed as prototype methods (the
+// primary path) via applyExtensions AND exported standalone (the fallback /
+// testing surface) -- the dual-export convention (docs §22).
+export const diagnosticsExtensions = defineExtensions<ServiceManifestClass<string>>()({
+  addMetrics(
+    manifest: ServiceManifestClass<string>,
+    configure?: Func<[IMetricsBuilder], void>,
+  ): ServiceManifestClass<string> {
+    // Register the resolvable `Options<MetricsOptions>` assembly at singleton
+    // scope. Calling addMetrics twice re-registers the (identical) factory --
+    // last-wins bare-token resolution keeps that correct; the reference guards it
+    // with TryAdd, a `has`/`try*` surface di.core does not expose (options.augmentations'
+    // addOptions has the same benign behavior). The factory takes the live
+    // provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
+    manifest.addFactory(
+      METRICS_OPTIONS_TOKEN,
+      (resolver) =>
+        assembleDiagnosticsOptions(
+          resolver,
+          METRICS_CONFIGURE_TOKEN,
+          METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+          () => new MetricsOptions(),
+        ),
+      [[RESOLVER_TOKEN]],
+    ).as("singleton");
+    if (configure) {
+      configure(new MetricsBuilder(manifest));
+    }
+    return manifest;
+  },
+  addTracing(
+    manifest: ServiceManifestClass<string>,
+    configure?: Func<[ITracingBuilder], void>,
+  ): ServiceManifestClass<string> {
+    manifest.addFactory(
+      TRACING_OPTIONS_TOKEN,
+      (resolver) =>
+        assembleDiagnosticsOptions(
+          resolver,
+          TRACING_CONFIGURE_TOKEN,
+          TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
+          () => new TracingOptions(),
+        ),
+      [[RESOLVER_TOKEN]],
+    ).as("singleton");
+    if (configure) {
+      configure(new TracingBuilder(manifest));
+    }
+    return manifest;
+  },
+});
 
-ServiceManifestClass.prototype.addTracing = function addTracing(
-  this: ServiceManifestClass<string>,
-  configure?: Func<[ITracingBuilder], void>,
-): ServiceManifestClass<string> {
-  this.addFactory(
-    TRACING_OPTIONS_TOKEN,
-    (resolver) =>
-      assembleDiagnosticsOptions(
-        resolver,
-        TRACING_CONFIGURE_TOKEN,
-        TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
-        () => new TracingOptions(),
-      ),
-    [[RESOLVER_TOKEN]],
-  ).as("singleton");
-  if (configure) {
-    configure(new TracingBuilder(this));
-  }
-  return this;
-};
+applyExtensions(ServiceManifestClass, diagnosticsExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).
 export { MetricsBuilder } from "./metrics-builder";
 export { TracingBuilder } from "./tracing-builder";
 
-// The config-binding extension functions -- target the family's OWN builder
-// interfaces, so plain functions (not augmentations).
+// The config-binding extension functions. Their receiver is the family's OWN
+// builder interface, so the standalone free-function is the authored form; the
+// dual-export convention (docs §22) additionally installs them as instance
+// methods on MetricsBuilder/TracingBuilder via ./builder-augmentations, so both
+// `addMetricsConfiguration(builder, cfg)` and `builder.addMetricsConfiguration(cfg)`
+// work. Both forms stay available; the method form is the primary path.
 export { addMetricsConfiguration } from "./metrics-builder-configuration-extensions";
 export { addTracingConfiguration } from "./tracing-builder-configuration-extensions";
 

@@ -1,0 +1,26 @@
+{
+  "name": "@rhombus-std/extensions.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Cross-package tests for the dual-export extension convention (docs decisions.md §22): every extension available both as a standalone function and a method. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/caching.core": "workspace:*",
+    "@rhombus-std/caching.memory": "workspace:*",
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.commandline": "workspace:*",
+    "@rhombus-std/config.env": "workspace:*",
+    "@rhombus-std/config.json": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/diagnostics": "workspace:*",
+    "@rhombus-std/diagnostics.core": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
+  }
+}

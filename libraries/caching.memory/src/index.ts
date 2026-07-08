@@ -22,6 +22,12 @@
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
 import type { AddBuilder } from "@rhombus-std/di.core";
 import { ServiceManifestClass } from "@rhombus-std/di.core";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
+// Side-effect: installs the IMemoryCache/ICacheEntry convenience wrappers as
+// instance methods onto MemoryCache/CacheEntry -- the reverse-direction half of
+// the dual-export convention. Their standalone free-function form ships from
+// caching.core and ./entry-options-extensions.
+import "./cache-augmentations";
 import { MemoryCache } from "./memory-cache";
 import { MemoryCacheOptions } from "./memory-cache-options";
 import { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
@@ -47,21 +53,28 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-ServiceManifestClass.prototype.addMemoryCache = function addMemoryCache(
-  this: ServiceManifestClass<string>,
-  setup?: (options: MemoryCacheOptions) => void,
-): ServiceManifestClass<string> {
-  const options = new MemoryCacheOptions();
-  if (setup !== undefined) {
-    setup(options);
-  }
-  // Eager build: the factory closes over the already-configured options and
-  // takes no injected args. Registered `.as("singleton")` so the cache caches
-  // once the singleton frame is open (the reference registers Singleton).
-  const builder: AddBuilder<string> = this.addFactory(MEMORY_CACHE_TOKEN, () => new MemoryCache(options));
-  builder.as("singleton");
-  return this;
-};
+// Dual-export (docs §22): authored once as a receiver-first function, installed
+// as a prototype method (the primary path) via applyExtensions AND exported
+// standalone (the fallback / testing surface).
+export const memoryCacheManifestExtensions = defineExtensions<ServiceManifestClass<string>>()({
+  addMemoryCache(
+    manifest: ServiceManifestClass<string>,
+    setup?: (options: MemoryCacheOptions) => void,
+  ): ServiceManifestClass<string> {
+    const options = new MemoryCacheOptions();
+    if (setup !== undefined) {
+      setup(options);
+    }
+    // Eager build: the factory closes over the already-configured options and
+    // takes no injected args. Registered `.as("singleton")` so the cache caches
+    // once the singleton frame is open (the reference registers Singleton).
+    const builder: AddBuilder<string> = manifest.addFactory(MEMORY_CACHE_TOKEN, () => new MemoryCache(options));
+    builder.as("singleton");
+    return manifest;
+  },
+});
+
+applyExtensions(ServiceManifestClass, memoryCacheManifestExtensions);
 
 export {
   getOrCreateAsyncWithOptions,

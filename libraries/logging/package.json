@@ -39,7 +39,8 @@
     "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
   },
   "dependencies": {
-    "@rhombus-std/logging.core": "workspace:*"
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^"

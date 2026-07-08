@@ -6,9 +6,13 @@
 // sugar writes a bare `import "@rhombus-std/logging";`. This package MUST keep
 // `"sideEffects": true` so a bundler cannot tree-shake the augmentation away.
 
-// Side-effect: patches ServiceManifestClass.prototype.addLogging + merges the
-// method onto the di.core ServiceManifestBase interface.
-import "./add-logging";
+// Side-effect + standalone surface: patches ServiceManifestClass.prototype.addLogging,
+// merges the method onto the di.core ServiceManifestBase interface, and exports the
+// standalone `loggingExtensions` set (docs §22).
+export { loggingExtensions } from "./add-logging";
+// Side-effect: installs the ILoggingBuilder extensions (addProvider/... ) as
+// instance methods onto LoggingBuilder -- the reverse-direction dual-export half.
+import "./builder-augmentations";
 
 export { addProvider, clearProviders, setMinimumLevel } from "./builder-extensions";
 export { addFilter } from "./filter-extensions";

@@ -29,6 +29,7 @@ import type { IConfiguration } from "@rhombus-std/config.core";
 import type { AddBuilder, Token } from "@rhombus-std/di.core";
 import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
 import { Options } from "@rhombus-std/options";
+import { applyExtensions, defineExtensions } from "@rhombus-std/primitives";
 
 import { assembleOptions } from "./assemble-options.js";
 import { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
@@ -84,35 +85,43 @@ declare module "@rhombus-std/di.core" {
   }
 }
 
-ServiceManifestClass.prototype.addOptions = function addOptions<T>(
-  this: ServiceManifestClass<string>,
-  token: Token,
-  source: Token | (() => T),
-): AddBuilder<string> {
-  // Two verbs share the name, disambiguated by the second argument (§15):
-  //   - a `Token` (string)      → wrap the already-bound `T` resolved from it
-  //     (#34): `addFactory(token, (t) => Options.of(t), [[tToken]])`.
-  //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
-  //     (#40) over the steps/sources registered for `token`.
-  if (typeof source === "function") {
-    return this.addFactory(
-      token,
-      (resolver) => assembleOptions(resolver, token, source),
-      [[RESOLVER_TOKEN]],
-    );
-  }
-  return this.addFactory(token, (t: T) => Options.of(t), [[source]]);
-};
+// Dual-export (docs §22): authored once as receiver-first functions, installed
+// as prototype methods (the primary path) via applyExtensions AND exported
+// standalone (the fallback / testing surface). The overloads/generics live on
+// the declare-module merge above (the method signature's source of truth); the
+// free-function impl carries the disambiguating union.
+export const optionsExtensions = defineExtensions<ServiceManifestClass<string>>()({
+  addOptions<T>(
+    manifest: ServiceManifestClass<string>,
+    token: Token,
+    source: Token | (() => T),
+  ): AddBuilder<string> {
+    // Two verbs share the name, disambiguated by the second argument (§15):
+    //   - a `Token` (string)      → wrap the already-bound `T` resolved from it
+    //     (#34): `addFactory(token, (t) => Options.of(t), [[tToken]])`.
+    //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
+    //     (#40) over the steps/sources registered for `token`.
+    if (typeof source === "function") {
+      return manifest.addFactory(
+        token,
+        (resolver) => assembleOptions(resolver, token, source),
+        [[RESOLVER_TOKEN]],
+      );
+    }
+    return manifest.addFactory(token, (t: T) => Options.of(t), [[source]]);
+  },
+  configure(
+    manifest: ServiceManifestClass<string>,
+    token: Token,
+    section: IConfiguration,
+  ): ServiceManifestClass<string> {
+    manifest.addValue(configureStepToken(token), new ConfigurationConfigureOptions(section));
+    manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(section));
+    return manifest;
+  },
+});
 
-ServiceManifestClass.prototype.configure = function configure(
-  this: ServiceManifestClass<string>,
-  token: Token,
-  section: IConfiguration,
-): ServiceManifestClass<string> {
-  this.addValue(configureStepToken(token), new ConfigurationConfigureOptions(section));
-  this.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(section));
-  return this;
-};
+applyExtensions(ServiceManifestClass, optionsExtensions);
 
 export { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
 export { ConfigurationConfigureOptions } from "./configuration-configure-options.js";

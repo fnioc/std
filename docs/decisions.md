@@ -878,3 +878,60 @@ The helpers are free functions (mirroring `compareConfigurationKeys`, not extens
   reference gets this free by implementing `IConfigurationRoot` on a never-swapped identity. Lives
   in `config` beside `ConfigurationBuilder`/`-Root`, mirroring the reference layout (Configuration
   package, not Hosting).
+
+## 22. Dual-export every extension — standalone function AND prototype method — #96
+
+Every "extension method" in the workspace is now available in BOTH forms: a standalone
+receiver-first free function AND a prototype/instance method. The method form (`builder.addX(...)`)
+stays the primary path; the standalone form (`addX(builder, ...)`) is a fallback / testing surface
+— importable, tree-shakeable, callable without triggering the global prototype-patch side effect.
+This collapses the two prior ad-hoc conventions (foreign-class targets were prototype-patch-only;
+package-owned-interface targets were free-function-only) into one, and **reverses** the
+free-function-only decision that §14/§18-era code stated in-line at `add-configuration.ts` and
+`diagnostics/src/index.ts`.
+
+- **Chosen shape: author one receiver-first function, install a forwarding thunk (issue #96
+  option B, over A).** A single free function per method plus one install line. The `declare module`
+  merge supplies the no-receiver method signature; the free function supplies the receiver-first
+  signature. Option A (a `this`-typed method literal spread onto the prototype) was rejected: its
+  standalone form is `obj.method.call(inst, …)` — a `.call` ritual where a direct `obj.method(inst)`
+  silently misbinds `this`, and a rarely-exercised fallback is the worst place to hide a silent
+  footgun. B's `addX(receiver, …)` has no such failure mode and matches the reference model (an
+  extension method compiles to a static method with the receiver as its first parameter).
+
+- **Shared infra lives in `primitives`.** `ExtensionSet<R>` (an object literal of receiver-first
+  functions), `defineExtensions<R>()` (a curried identity validator that pins the receiver type —
+  `satisfies` can't carry a strict receiver-_present_ check, since assignability lets a 0-arg member
+  through; the 0-arg omission is intentionally unguarded, a self-evident mistake), and
+  `applyExtensions(Ctor, set)` (a dumb installer mounting each function as a `this`-forwarding,
+  return-preserving method — no validation, only lib authors call it). It sits in `primitives`, the
+  universal zero-dependency leaf, because **di ⊥ config (§4.3) disqualifies `di.core`**: the
+  config-provider packages would then need a config→di edge just to reach the installer. primitives
+  is the only package every family already depends on.
+
+- **Cross-package rule (`.core` interface / downstream concrete).** When the receiver interface
+  lives in a `.core` package but the only concrete receiver class lives downstream, BOTH the
+  declaration merge onto the interface AND the runtime install onto the concrete class live in the
+  **downstream** package that owns the class — so a `.core`-only consumer never gets a method type
+  with no runtime behind it. Applied: `diagnostics` owns the install for the metrics/tracing builder
+  extensions (interfaces in `diagnostics.core`); `caching.memory` for the IMemoryCache/ICacheEntry
+  wrappers (interfaces in `caching.core`); `logging.configuration` for `addConfiguration`
+  (interface in `logging.core`, concrete `LoggingBuilder` in `logging`). Because the concrete class
+  `implements` its interface and source-libs recompile the class, augmenting the interface also
+  requires a class-side merge onto the concrete class (via the owning package's `internal/*` subpath
+  where the class lives upstream).
+
+- **Runtime-identity note.** `applyExtensions(Ctor, …)` patches `Ctor.prototype`, so the same
+  external-identity requirement as the pre-existing hand-rolled patches holds: the packages keep the
+  patched class (`ServiceManifestClass`, `ConfigurationBuilder`, and the downstream concretes)
+  external in their bundles (§9), so the prototype patched is the one the consumer resolves.
+
+- **Deferrals (issue #96, tracked as follow-up).** Extensions whose receiver is a concrete
+  _options-bag_ class rather than a builder/cache interface are NOT yet given the method form —
+  their standalone free-function form is unaffected. Namely: `addFilter` (LoggerFilterOptions), and
+  the options-targeted rule mutators `enableMetricsRule`/`disableMetricsRule` (MetricsOptions) and
+  `enableTracingRule`/`disableTracingRule` (TracingOptions). Prototype-patching a plain value object
+  is a distinct boundary call from patching a builder, deferred rather than rushed. `tryGetValue` is
+  deliberately standalone-only in perpetuity: `IMemoryCache` already declares a `tryGetValue`
+  member, so a method merge would both clash and, at runtime, overwrite the real implementation the
+  extension wraps.
