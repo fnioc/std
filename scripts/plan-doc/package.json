@@ -1,0 +1,13 @@
+{
+  "name": "@rhombus-std/plan-doc-tooling",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "CI-only tooling: rebuilds PLAN.md (blocker graph + ready-to-code list) from repo issues. Not part of the bun workspace.",
+  "scripts": {
+    "build": "node build-plan-doc.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0"
+  }
+}
