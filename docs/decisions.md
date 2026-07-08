@@ -830,11 +830,15 @@ request out across 0..N inner providers — the 0- and 1-provider cases are full
   gap via `options.augmentations`' local `CompositeChangeToken` copy — three packages now want this
   one primitive.)
 
-## 21. MECA convenience helpers ported into `config`, not `config.core` — #79
+## 21. Skipped MECA abstraction APIs ported into `config`, not `config.core` — #79
 
-The original config port skipped the public `Microsoft.Extensions.Configuration.Abstractions`
-convenience helpers (`ConfigurationExtensions`, `ConfigurationRootExtensions`). They are now
-ported as free functions (mirroring `compareConfigurationKeys`, not extension methods):
+The original config port skipped several public
+`Microsoft.Extensions.Configuration.Abstractions` APIs. This pass ports them: the convenience
+helpers (`ConfigurationExtensions`, `ConfigurationRootExtensions`) and the concrete
+`ConfigurationManager`. All land in `@rhombus-std/config`, not `config.core`, for the same reason
+— they are runtime values, and `config.core` ships none.
+
+The helpers are free functions (mirroring `compareConfigurationKeys`, not extension methods):
 `getConnectionString`, `exists`, `getRequiredSection`, `asEnumerable` in
 `configuration-extensions.ts`, and `getDebugView` + the `ConfigurationDebugViewContext` type in
 `configuration-root-extensions.ts`.
@@ -854,3 +858,18 @@ ported as free functions (mirroring `compareConfigurationKeys`, not extension me
 - **`Add<TSource>(configureSource)` deliberately not ported** (candidate intentional deviation).
   The generic factory-add depends on `new TSource()` with a `new()` constraint, which has no
   faithful TS analog, and there is no consumer.
+- **`exists` is now canonical.** `coerce.ts` previously carried a private `sectionExists` copy of
+  the has-a-value-or-any-child test; it now imports and calls the public `exists`, removing the
+  duplicate (the deferred-usage cycle between `coerce.ts` and `configuration-extensions.ts` is
+  safe — neither is used at module-eval time). The `diagnostics` package's independent copy is a
+  separate cross-package consolidation, out of scope here.
+- **`ConfigurationManager`** — the concrete `IConfigurationManager`, a mutable build-as-you-add
+  object that is simultaneously an `IConfigurationBuilder` and an `IConfigurationRoot`. `add()`
+  rebuilds the whole provider list from the registered sources (no copy-on-write
+  `ReferenceCountedProviders` optimization — single-threaded, no concurrent-reader story to
+  preserve) and every `IConfiguration` method delegates to the current root, so there is no
+  separate build-then-read phase. It owns a **stable** reload token re-subscribed to the current
+  root on every rebuild, so a subscriber registered before a later `add()` still fires — the
+  reference gets this free by implementing `IConfigurationRoot` on a never-swapped identity. Lives
+  in `config` beside `ConfigurationBuilder`/`-Root`, mirroring the reference layout (Configuration
+  package, not Hosting).
