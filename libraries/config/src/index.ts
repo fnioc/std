@@ -19,9 +19,16 @@ export type * from "@rhombus-std/config.core";
 // The runtime `configPath` helper namespace stays in this package.
 export * as configPath from "./abstractions/configuration-path";
 
+// Abstraction helpers. The public MECA convenience functions over the core
+// IConfiguration* interfaces -- runtime, so they live here rather than in
+// config.core (which ships zero runtime values).
+export { asEnumerable, exists, getConnectionString, getRequiredSection } from "./configuration-extensions";
+export { type ConfigurationDebugViewContext, getDebugView } from "./configuration-root-extensions";
+
 // Engine.
 export { ConfigurationBuilder } from "./configuration-builder";
 export { compareConfigurationKeys } from "./configuration-key-comparer";
+export { ConfigurationManager } from "./configuration-manager";
 export { ConfigurationProvider } from "./configuration-provider";
 export { ConfigurationReloadToken } from "./configuration-reload-token";
 export { ConfigurationRoot } from "./configuration-root";

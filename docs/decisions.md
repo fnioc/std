@@ -635,8 +635,9 @@ and `MetricsOptions`/`TracingOptions` — mirroring the reference `ME.Diagnostic
 edge-for-edge (`di.core` + `options`, no `config` dependency at this layer). `diagnostics` supplies
 concrete `MetricsBuilder`/`TracingBuilder`, the config-binding pipeline (`MetricsConfigureOptions`/
 `TracingConfigureOptions` parsing the `EnabledMetrics`/`EnabledGlobalMetrics`/`EnabledLocalMetrics`
-+ listener-scoped + `Default`-synonym schema against a shared tree-walker), and `addMetrics`/
-`addTracing`.
+
+- listener-scoped + `Default`-synonym schema against a shared tree-walker), and `addMetrics`/
+  `addTracing`.
 
 **Extension-method placement.** `enableMetrics`/`disableMetrics`/`enableMetricsRule`/
 `addMetricsListener`/etc. are plain functions over `IMetricsBuilder` living in `diagnostics.core`
@@ -647,11 +648,12 @@ package). `addMetrics`/`addTracing`, by contrast, extend `di.core`'s `ServiceMan
 established for `addJsonFile` (§14), with the same `"sideEffects": true` package.json shape.
 
 **ME-graph fidelity.** `diagnostics.core` → `di.core` + `options`; `diagnostics` → `diagnostics.core`
-+ `config` + `options` + `options.augmentations` + `primitives`, with `di.core` as a peer dependency
-patched by the augmentation (the §9 peer-dep idiom `options.augmentations` established). The
-assembled `Options<MetricsOptions>`/`Options<TracingOptions>` is wired through
-`ConfigurationChangeTokenSource` so it is reload-reactive when a config source is present, and a
-static `Options.of` snapshot otherwise — the same `addOptions`/`configure` split §14 designed.
+
+- `config` + `options` + `options.augmentations` + `primitives`, with `di.core` as a peer dependency
+  patched by the augmentation (the §9 peer-dep idiom `options.augmentations` established). The
+  assembled `Options<MetricsOptions>`/`Options<TracingOptions>` is wired through
+  `ConfigurationChangeTokenSource` so it is reload-reactive when a config source is present, and a
+  static `Options.of` snapshot otherwise — the same `addOptions`/`configure` split §14 designed.
 
 **Explicit deferrals:**
 
@@ -827,3 +829,52 @@ request out across 0..N inner providers — the 0- and 1-provider cases are full
   pass and tracked against issue #77. (§17's `diagnostics` section above independently hit the same
   gap via `options.augmentations`' local `CompositeChangeToken` copy — three packages now want this
   one primitive.)
+
+## 21. Skipped MECA abstraction APIs ported into `config`, not `config.core` — #79
+
+The original config port skipped several public
+`Microsoft.Extensions.Configuration.Abstractions` APIs. This pass ports them: the convenience
+helpers (`ConfigurationExtensions`, `ConfigurationRootExtensions`) and the concrete
+`ConfigurationManager`. All land in `@rhombus-std/config`, not `config.core`, for the same reason
+— they are runtime values, and `config.core` ships none.
+
+The helpers are free functions (mirroring `compareConfigurationKeys`, not extension methods):
+`getConnectionString`, `exists`, `getRequiredSection`, `asEnumerable` in
+`configuration-extensions.ts`, and `getDebugView` + the `ConfigurationDebugViewContext` type in
+`configuration-root-extensions.ts`.
+
+- **Placed in `@rhombus-std/config`, not `config.core`.** These are runtime functions over the
+  core interfaces, and `config.core` ships zero runtime values (§9-adjacent invariant). `config`
+  already re-exports `config.core`, so its surface stays a superset — consumers import the helpers
+  from `config` alongside the interfaces.
+- **`asEnumerable`'s section-vs-root test is `instanceof`, not path-based.** The port's
+  `ConfigurationRoot` exposes an empty `path` yet is NOT an `IConfigurationSection`, so the
+  reference's `is IConfigurationSection` check maps to `instanceof ConfigurationSection` — the
+  enumeration root is only yielded, and only contributes a `makePathsRelative` prefix, when it is a
+  genuine section. Every node reached via `getChildren()` is a section by contract.
+- **`getDebugView` provider labels are `String(provider)`.** The port's providers do not override
+  `toString`, so labels are currently the default object tag rather than a friendly name —
+  acceptable until a provider identity is designed.
+- **`Add<TSource>(configureSource)` deliberately not ported** (candidate intentional deviation).
+  The generic factory-add depends on `new TSource()` with a `new()` constraint, which has no
+  faithful TS analog, and there is no consumer.
+- **`exists` is now canonical.** `coerce.ts` previously carried a private `sectionExists` copy of
+  the has-a-value-or-any-child test; it now imports and calls the public `exists`, removing the
+  duplicate (the deferred-usage cycle between `coerce.ts` and `configuration-extensions.ts` is
+  safe — neither is used at module-eval time). The `diagnostics` package's independent copy is a
+  separate cross-package consolidation, out of scope here.
+- **`ConfigurationManager`** — the concrete `IConfigurationManager`, a mutable build-as-you-add
+  object that is simultaneously an `IConfigurationBuilder` and an `IConfigurationRoot`. It holds
+  **one persistent `ConfigurationRoot`**; every `IConfiguration` method delegates to it, so there
+  is no separate build-then-read phase. `add()` is **incremental**: it builds+loads ONLY the new
+  source's provider and appends it to the persistent root (via `ConfigurationRoot.adoptProvider`,
+  the documented intra-package composition seam mirroring the reference `AddSource`) — the existing
+  providers are never rebuilt or reloaded. This is a **correctness** requirement, not just
+  efficiency (#80): a provider's `set()` state lives in the provider instance, so the earlier
+  whole-list rebuild silently discarded any prior `manager.set()` on the next `add()`. The
+  reference's copy-on-write `ReferenceCountedProviders` manager is not ported — no concurrent-reader
+  story in a single-threaded runtime. It owns a **stable** reload token subscribed once to the
+  root's (self-swapping) token, so a subscriber registered before a later `add()` still fires — the
+  reference gets this free by implementing `IConfigurationRoot` on a never-swapped identity. Lives
+  in `config` beside `ConfigurationBuilder`/`-Root`, mirroring the reference layout (Configuration
+  package, not Hosting).

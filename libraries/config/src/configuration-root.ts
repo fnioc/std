@@ -63,6 +63,26 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
     previous.onReload();
   }
 
+  /**
+   * The {@link ConfigurationManager} incremental-composition seam: loads and
+   * appends a single already-built provider WITHOUT touching the existing ones,
+   * mirroring the reference `ConfigurationManager.AddSource`. Only the new
+   * provider is `load()`ed, so any prior `set()` state on the existing
+   * providers survives -- a whole-list rebuild would discard it. The adopted
+   * provider's reload-token registration joins `#changeTokenRegistrations`, so
+   * it is released by {@link [Symbol.dispose]} alongside the constructor's --
+   * no leak. Intended for intra-package use by ConfigurationManager, not
+   * general consumers.
+   */
+  public adoptProvider(provider: IConfigurationProvider): void {
+    provider.load();
+    this.#providers.push(provider);
+    this.#changeTokenRegistrations.push(
+      ChangeToken.onChange(() => provider.getReloadToken(), () => this.#raiseChanged()),
+    );
+    this.#raiseChanged();
+  }
+
   /** The root sentinel: empty key. */
   public get key(): string {
     return "";
@@ -178,9 +198,10 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
   }
 
   /**
-   * Unsubscribes every per-provider reload-token registration set up in the
-   * constructor -- otherwise those callbacks keep the root (and each provider's
-   * token) alive for the process lifetime -- then disposes any provider that is
+   * Unsubscribes every per-provider reload-token registration -- those set up
+   * in the constructor and any added later by {@link adoptProvider}; otherwise
+   * those callbacks keep the root (and each provider's token) alive for the
+   * process lifetime -- then disposes any provider that is
    * itself disposable. Mirrors MEC's `ConfigurationRoot.Dispose`. Safe to call
    * more than once: each registration's own dispose is idempotent.
    */

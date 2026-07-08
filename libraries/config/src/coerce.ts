@@ -7,7 +7,8 @@
 // never drift apart. The discriminated `ParseResult` lets each consumer pick
 // its own failure mode.
 
-import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config.core";
+import type { IConfiguration } from "@rhombus-std/config.core";
+import { exists } from "./configuration-extensions";
 import { OPTIONAL, type Schema } from "./schema";
 
 export type ParseResult<T> =
@@ -72,23 +73,8 @@ function isOptional(s: Schema): s is { readonly [OPTIONAL]: Schema } {
   return typeof s === "object" && s !== null && OPTIONAL in s;
 }
 
-/**
- * Whether a section actually exists -- has a value directly, or has any child
- * sections. `getSection` never returns null, so presence is decided by whether
- * anything lives at or under its path.
- */
-function sectionExists(section: IConfigurationSection): boolean {
-  if (section.value !== undefined) {
-    return true;
-  }
-  for (const _child of section.getChildren()) {
-    return true;
-  }
-  return false;
-}
-
 function present(node: IConfiguration, inner: Schema, key: string): boolean {
-  return isLeaf(inner) ? node.get(key) !== undefined : sectionExists(node.getSection(key));
+  return isLeaf(inner) ? node.get(key) !== undefined : exists(node.getSection(key));
 }
 
 function walkRequired(
@@ -129,7 +115,7 @@ function walkRequired(
   }
 
   const section = node.getSection(key);
-  if (!sectionExists(section)) {
+  if (!exists(section)) {
     issues.push(`missing required key "${fullPath}"`);
     return {};
   }
