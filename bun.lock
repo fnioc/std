@@ -25,6 +25,9 @@
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+        "@rhombus-std/hosting": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
       },
@@ -32,6 +35,7 @@
         "@rhombus-std/di.transformer": "workspace:*",
         "@rhombus-std/di.transformer.options": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
+        "@types/bun": "^1.3.0",
         "ts-patch": "^3.3.0",
         "typescript": "^5.9.0",
       },
@@ -44,6 +48,9 @@
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+        "@rhombus-std/hosting": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
       },
@@ -269,7 +276,22 @@
       "name": "@rhombus-std/hosting",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.commandline": "workspace:*",
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/config.env": "workspace:*",
+        "@rhombus-std/config.json": "workspace:*",
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/diagnostics.core": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.console": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
@@ -283,6 +305,10 @@
       "name": "@rhombus-std/hosting.core",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/diagnostics.core": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
       },
@@ -319,6 +345,16 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "libraries/logging.console": {
+      "name": "@rhombus-std/logging.console",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/logging.core": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
       },
     },
     "libraries/logging.core": {
@@ -471,6 +507,8 @@
       "name": "@rhombus-std/hosting.core.test",
       "version": "0.0.0",
       "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/hosting.core": "workspace:*",
       },
     },
@@ -478,6 +516,7 @@
       "name": "@rhombus-std/hosting.test",
       "version": "0.0.0",
       "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
       },
     },
@@ -697,6 +736,8 @@
     "@rhombus-std/logging": ["@rhombus-std/logging@workspace:libraries/logging"],
 
     "@rhombus-std/logging.configuration": ["@rhombus-std/logging.configuration@workspace:libraries/logging.configuration"],
+
+    "@rhombus-std/logging.console": ["@rhombus-std/logging.console@workspace:libraries/logging.console"],
 
     "@rhombus-std/logging.core": ["@rhombus-std/logging.core@workspace:libraries/logging.core"],
 

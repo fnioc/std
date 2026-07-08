@@ -16,6 +16,9 @@
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/examples.lib.with-transformer": "workspace:*",
     "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+    "@rhombus-std/hosting": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*"
   },

@@ -1,9 +1,40 @@
+// The static `Host` facade -- ported from the reference hosting runtime's static
+// `Host` class. Convenience factory methods that hand back a builder with the
+// pre-configured defaults already applied.
+
 import type { IHostBuilder } from "@rhombus-std/hosting.core";
+import { configureDefaults } from "./builder-extensions";
+import { HostApplicationBuilder } from "./host-application-builder";
+import { HostApplicationBuilderSettings } from "./host-application-builder-settings";
 import { HostBuilder } from "./host-builder";
 
-/** Entry point mirroring the reference runtime's static `Host` class. */
+/** Convenience factories for creating pre-configured builders. */
 export const Host = {
-  createDefaultBuilder(): IHostBuilder {
-    return new HostBuilder();
+  /** A classic {@link HostBuilder} with the pre-configured defaults applied. */
+  createDefaultBuilder(args?: readonly string[]): IHostBuilder {
+    return configureDefaults(new HostBuilder(), args);
+  },
+
+  /**
+   * A modern {@link HostApplicationBuilder} with the pre-configured defaults
+   * applied. Accepts either the command-line args or a full
+   * {@link HostApplicationBuilderSettings}.
+   */
+  createApplicationBuilder(
+    argsOrSettings?: readonly string[] | HostApplicationBuilderSettings,
+  ): HostApplicationBuilder {
+    if (argsOrSettings === undefined || Array.isArray(argsOrSettings)) {
+      const settings = new HostApplicationBuilderSettings();
+      settings.args = argsOrSettings as readonly string[] | undefined;
+      return new HostApplicationBuilder(settings);
+    }
+    return new HostApplicationBuilder(argsOrSettings as HostApplicationBuilderSettings);
+  },
+
+  /** A modern {@link HostApplicationBuilder} with NO pre-configured defaults. */
+  createEmptyApplicationBuilder(settings?: HostApplicationBuilderSettings): HostApplicationBuilder {
+    const resolved = settings ?? new HostApplicationBuilderSettings();
+    resolved.disableDefaults = true;
+    return new HostApplicationBuilder(resolved);
   },
 };

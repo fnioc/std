@@ -16,6 +16,9 @@
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/examples.lib.with-transformer": "workspace:*",
     "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+    "@rhombus-std/hosting": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*"
   },
@@ -23,6 +26,7 @@
     "@rhombus-std/di.transformer": "workspace:*",
     "@rhombus-std/di.transformer.options": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*",
+    "@types/bun": "^1.3.0",
     "ts-patch": "^3.3.0",
     "typescript": "^5.9.0"
   }

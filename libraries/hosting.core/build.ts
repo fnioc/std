@@ -4,11 +4,19 @@ import dts from "rollup-plugin-dts";
 
 await rm("dist", { recursive: true, force: true });
 
+// Every @rhombus-std/* workspace dependency (and @rhombus-toolkit/*) is kept
+// EXTERNAL from the JS bundle -- NOT inlined -- so the cross-package
+// prototype-patched classes (`ServiceManifestClass`) keep ONE runtime identity:
+// `hosted-service-registration.ts` patches di.core's `ServiceManifestClass`, and
+// a private inlined copy would install `addHostedService` on a class no
+// consumer ever touches (mirrors libraries/hosting/build.ts and
+// libraries/logging/build.ts's identical rationale).
 const result = await Bun.build({
   entrypoints: ["src/index.ts"],
   outdir: "dist",
   target: "node",
   format: "esm",
+  external: ["@rhombus-std/*", "@rhombus-toolkit/*"],
 });
 
 if (!result.success) {
@@ -23,7 +31,12 @@ await Bun.$`tsc -p tsconfig.json --emitDeclarationOnly --outDir dist/.types`;
 
 const dtsBundle = await rollup({
   input: "dist/.types/index.d.ts",
-  plugins: [dts()],
+  // Keep every workspace package external in the rolled .d.ts (re-exported FROM
+  // its declaring module, not inlined) -- same runtime/module-identity rationale
+  // as the JS bundle above, and it silences rollup's "could not resolve
+  // @rhombus-toolkit/func" resolution warning.
+  external: [/^@rhombus-std\//, /^@rhombus-toolkit\//],
+  plugins: [dts({ respectExternal: true })],
 });
 await dtsBundle.write({ file: "dist/index.d.ts", format: "es" });
 await dtsBundle.close();

@@ -1,21 +1,44 @@
 # @rhombus-std/hosting.core
 
-Skeleton port target for the reference runtime's `ME.Hosting.Abstractions`. Types only, no
-runtime logic -- a starting point for the real Generic Host port.
+The abstraction contracts for the Generic Host — the reference `Hosting.Abstractions` analog.
+Ships the host/hosted-service/lifetime/environment/builder interfaces, the concrete values the
+reference co-locates in its abstractions package, the shared DI-slot tokens, and the reference
+extension methods as named functions or a side-effect augmentation.
 
-## What's deliberately missing
+`@rhombus-std/hosting` is the runtime built on top of this — see its
+[README](../hosting/README.md) for the composed `HostBuilder`/`HostApplicationBuilder` and the
+static `Host` factory.
 
-- **`IOptions`/`IOptions<T>` are not ported.** Configuration in this monorepo made a
-  no-Options decision; anything that would have taken an `IOptions<T>` upstream takes a
-  plain value or a config accessor instead.
-- **`IFileProvider`/`ContentRootFileProvider` are omitted.** `HostBuilderContext` keeps
-  `contentRootPath` as a plain string rather than wrapping it in a file-provider abstraction.
-- **Logging (`ILogger`/`ILoggerFactory`) is a local stub**, not a real logging abstraction.
-  It exists only so `IHost`/`IHostBuilder` have something to reference; it'll be replaced
-  by `@rhombus-std/logging` once that package exists.
-- **`ServiceProvider` is a local placeholder**, not `@rhombus-std/di`'s real type --
-  `@rhombus-std/di` isn't a dependency of this package yet.
+## What it ships
 
-## Status
+- **Contracts.** `IHost`, `IHostedService`, `IHostedLifecycleService`,
+  `IHostApplicationLifetime`, `IHostLifetime`, `IHostEnvironment`, `HostBuilderContext`,
+  `IHostBuilder`, `IHostApplicationBuilder`.
+- **Concrete values.** `BackgroundService` (the abstract long-running-service base),
+  `HostAbortedException`, `Environments`, `HostDefaults` — the reference ships these directly
+  in its abstractions package, not as pure types, and so does this one.
+- **DI-slot tokens.** `HOST_APPLICATION_LIFETIME_TOKEN`, `HOSTED_SERVICE_TOKEN`,
+  `hostedServiceCollectionToken()` — the shared token ABI a host and its consumers both need.
+- **Host-lifetime helpers.** `run`/`runAsync`/`stopWithTimeout`/`waitForShutdownAsync`,
+  `startHost` — plain functions over `IHost`/`IHostBuilder` (these interfaces are owned by this
+  family, so no augmentation is needed).
+- **Environment predicates.** `isDevelopment`/`isEnvironment`/`isProduction`/`isStaging`.
+- **`addHostedService`.** A side-effect augmentation onto `@rhombus-std/di.core`'s
+  `ServiceManifestClass` — registers a hosted service under the shared collection token as a
+  singleton. Importing this package installs it.
 
-Skeleton only. Not wired to DI or config; see the monorepo root README for overall status.
+## Dependencies
+
+Mirrors the reference `Hosting.Abstractions → {Configuration,DependencyInjection,Diagnostics,
+FileProviders,Logging}.Abstractions` edge exactly: `@rhombus-std/config.core`,
+`@rhombus-std/di.core`, `@rhombus-std/diagnostics.core`, `@rhombus-std/fileproviders.core`,
+`@rhombus-std/logging.core`.
+
+## Not a types-only package
+
+Unlike `config.core`, this package emits real runtime — `BackgroundService`, the
+`Environments`/`HostDefaults` const objects, and the `addHostedService` prototype patch — so it
+is **dist-referenced**, not src-referenced, and keeps every `@rhombus-std/*` dependency external
+in its build. See `docs/decisions.md` §9 and §21 for why: inlining would fork
+`di.core`'s `ServiceManifestClass` identity and the augmentation above would patch a private
+copy no consumer's container resolves against.

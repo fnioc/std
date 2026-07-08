@@ -1,34 +1,76 @@
 {
   "name": "@rhombus-std/hosting",
   "version": "0.0.0",
+  "description": "The Generic Host runtime: HostBuilder / HostApplicationBuilder, the static Host factory, HostOptions, the console lifetime, and the composition that wires di, config, and logging together.",
+  "keywords": [
+    "hosting",
+    "generic-host",
+    "ioc",
+    "typescript",
+    "lifetime",
+    "hosted-service"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/hosting"
+  },
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "sideEffects": true,
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
     "./internal/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun run build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
   "publishConfig": {
+    "access": "public",
+    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
         "default": "./dist/index.js"
       }
     }
   },
-  "files": ["dist", "src"],
-  "scripts": {
-    "build": "bun build.ts",
-    "lint": "eslint ."
-  },
   "dependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.commandline": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/config.env": "workspace:*",
+    "@rhombus-std/config.json": "workspace:*",
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/diagnostics.core": "workspace:*",
+    "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/hosting.core": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.console": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.5.3"
   },
   "devDependencies": {
