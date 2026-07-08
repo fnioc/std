@@ -1,5 +1,5 @@
 import type { IConfigurationManager } from "@rhombus-std/config.core";
-import type { Resolver, ServiceManifest } from "@rhombus-std/di.core";
+import type { ServiceManifest, ServiceProviderFactory } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { Action } from "@rhombus-toolkit/func";
@@ -40,13 +40,11 @@ export interface IHostApplicationBuilder {
    * replace the previously stored factory and delegate.
    *
    * As on {@link IHostBuilder.useServiceProviderFactory}, the single-container
-   * model inlines the minimal factory shape rather than a named type. See diNotes.
+   * model accepts di.core's shared {@link ServiceProviderFactory} but always uses
+   * the one real container. See diNotes.
    */
   configureContainer<TContainerBuilder>(
-    factory: {
-      createBuilder(services: ServiceManifest): TContainerBuilder;
-      createServiceProvider(containerBuilder: TContainerBuilder): Resolver;
-    },
+    factory: ServiceProviderFactory<TContainerBuilder>,
     configure?: Action<[TContainerBuilder]>,
   ): void;
 }

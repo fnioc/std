@@ -11,12 +11,15 @@
 //
 // The augmentation DECLARATION-MERGES onto `@rhombus-std/di.core`'s public
 // interfaces — `ServiceManifestBase` (registration forms), `AddBuilder` (the
-// `.as` form), and `Resolver` (the tokenless resolve forms). Because di's
-// consumer-facing types are those interfaces (interface-first: `ServiceManifest`
-// = `ServiceManifestBase<…>`, and the public provider is the `ServiceProvider`
-// interface that extends `Resolver`), the merged overloads surface on what a
-// consumer holds — an interface inherits a base interface's merged overloads; a
-// class would not. Declaration merging (adding overloads to the SAME interface)
+// `.as` form), and the resolution surface `Resolver` composes: `RequiredResolver`
+// (the tokenless `resolve` forms), `ServiceQuery` (`isService`), and `Resolver`
+// itself (`resolveAsync` / `tryResolve`). Each tokenless overload merges onto the
+// interface that DECLARES its explicit-token form, so the two combine on one
+// interface. Because di's consumer-facing types are those interfaces
+// (interface-first: `ServiceManifest` = `ServiceManifestBase<…>`, and the public
+// provider is the `ServiceProvider` interface that extends `Resolver`), the merged
+// overloads surface on what a consumer holds — an interface inherits a base
+// interface's merged overloads; a class would not. Declaration merging (adding overloads to the SAME interface)
 // is used rather than a separate carrier + `extends`, because the runtime forms
 // (`add(token, ctor, sig)`, `.as(scope)`, `resolve<T>(token)`) require MORE args
 // than the authored forms, and `extends` would reject the narrower authored
@@ -114,12 +117,17 @@ declare module "@rhombus-std/di.core" {
     as<S extends Scopes>(): void;
   }
 
-  // The tokenless resolve forms merge onto core's `Resolver` interface — so both
-  // a factory parameter typed `Resolver` and the `ServiceProvider` interface a
-  // consumer holds (which extends `Resolver`) surface them. The public provider
-  // being an INTERFACE (not the impl class) is what makes this work: an interface
-  // inherits its base interface's merged overloads; a class would not.
-  interface Resolver {
+  // The tokenless resolve forms merge onto the SAME di.core interface that DECLARES
+  // each method — `resolve` onto `RequiredResolver`, `isService` onto `ServiceQuery`,
+  // and `resolveAsync`/`tryResolve` onto `Resolver` — so each authored overload
+  // combines with the explicit-token form it shadows on one interface (an overload
+  // merged onto a DERIVED interface would not combine with a base's declaration).
+  // `Resolver` composes `RequiredResolver` + `ServiceQuery`, so both a factory
+  // parameter typed `Resolver` and the `ServiceProvider` interface a consumer holds
+  // (which extends `Resolver`) inherit the full merged overload set. The public
+  // provider being an INTERFACE (not the impl class) is what makes this work: an
+  // interface inherits its base interface's merged overloads; a class would not.
+  interface RequiredResolver {
     /**
      * Tokenless authored resolve — `resolve<IFoo>()`. The transformer lowers it
      * to an explicit-token `resolve("token")` (or `resolveFactory` for a
@@ -133,6 +141,19 @@ declare module "@rhombus-std/di.core" {
      * Never runs post-transform.
      */
     resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
+  }
+
+  interface ServiceQuery {
+    /**
+     * Tokenless registration predicate — `isService<IFoo>()`. `true` when `IFoo`
+     * would resolve. The transformer lowers it to an explicit-token
+     * `isService("token")` before runtime (the token is always derived — no
+     * singleton or factory form). Never runs post-transform.
+     */
+    isService<T>(): boolean;
+  }
+
+  interface Resolver {
     /**
      * Tokenless async resolve — `resolveAsync<IFoo>()`. The transformer lowers
      * it to an explicit-token `resolveAsync("token")` before runtime — the
@@ -153,12 +174,5 @@ declare module "@rhombus-std/di.core" {
      * `resolve<T>()` gets, keyed on `tryResolve`. Never runs post-transform.
      */
     tryResolve<T>(): T | undefined;
-    /**
-     * Tokenless registration predicate — `isService<IFoo>()`. `true` when `IFoo`
-     * would resolve. The transformer lowers it to an explicit-token
-     * `isService("token")` before runtime (the token is always derived — no
-     * singleton or factory form). Never runs post-transform.
-     */
-    isService<T>(): boolean;
   }
 }

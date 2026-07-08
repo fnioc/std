@@ -48,6 +48,8 @@ export type {
   OpenRegistration,
   Producer,
   Registration,
+  // The named reference capability analogs Resolver composes.
+  RequiredResolver,
   Resolver,
   // Backwards-compat alias.
   ResolveScope,
@@ -55,6 +57,9 @@ export type {
   // The public provider surface — the abstractions interface (di.core), not the
   // impl class. What `build()` / `createScope()` return.
   ServiceProvider,
+  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
+  ServiceProviderFactory,
+  ServiceQuery,
 } from "./types.js";
 
 export {

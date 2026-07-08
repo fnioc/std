@@ -441,7 +441,13 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * present, it is the complete authored-order list of caller-supplied parameter
    * tokens; the returned factory has shape `(...params) => T`. The authored
    * `resolve<(a: A) => T>()` lowers to `resolveFactory("pkg:T", ["pkg:A"])`.
+   *
+   * The typed `<F>` overload (the reference `ObjectFactory` return analog) is
+   * compile-time only — the runtime body is unchanged and still returns the
+   * built callable as `unknown`.
    */
+  public resolveFactory<F>(type: Token, params?: readonly Token[]): F;
+  public resolveFactory(type: Token, params?: readonly Token[]): unknown;
   public resolveFactory(type: Token, params?: readonly Token[]): unknown {
     return this.#makeFactory({ type, params }, this.#frame);
   }

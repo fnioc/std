@@ -12,7 +12,7 @@
 import { ConfigurationManager, MemoryConfigurationSource } from "@rhombus-std/config";
 import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { ServiceManifest } from "@rhombus-std/di";
-import type { Resolver } from "@rhombus-std/di.core";
+import type { ServiceProviderFactory } from "@rhombus-std/di.core";
 import type { HostBuilderContext, IHost, IHostBuilder } from "@rhombus-std/hosting.core";
 import type { Action } from "@rhombus-toolkit/func";
 import {
@@ -22,17 +22,6 @@ import {
   populateFrameworkServices,
   resolveHost,
 } from "./host-composition";
-
-/**
- * The minimal single-container service-provider factory shape. This repo has one
- * container type ({@link ServiceManifest}), so the reference's
- * `IServiceProviderFactory<TContainerBuilder>` collapses to this structural
- * shape -- see diNotes and {@link IHostBuilder.useServiceProviderFactory}.
- */
-interface ServiceProviderFactory<TContainerBuilder> {
-  createBuilder(services: ServiceManifest): TContainerBuilder;
-  createServiceProvider(containerBuilder: TContainerBuilder): Resolver;
-}
 
 /** A program initialization utility -- the classic {@link IHostBuilder}. */
 export class HostBuilder implements IHostBuilder {

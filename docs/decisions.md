@@ -1032,3 +1032,88 @@ d.ts-only src-referenced lib.
   (§17's placement rule, generalized). `addHostedService` is the one exception: it extends
   `di.core`'s `ServiceManifestClass`, which `hosting` doesn't own, so it uses the `addJsonFile`/
   `addOptions` augmentation idiom (§14) — `declare module` + prototype patch.
+
+## 24. `ServiceProviderFactory` promoted into `di.core` — one provider-factory abstraction
+
+The reference `IServiceProviderFactory<TContainerBuilder>` had no named home in `di.core`, so the
+hosting builders each hand-rolled the same structural shape — a private `interface
+ServiceProviderFactory` in `hosting`'s `HostBuilder`, plus three more inlined anonymously in
+`HostApplicationBuilder.configureContainer`, `IHostBuilder.useServiceProviderFactory`, and
+`IHostApplicationBuilder.configureContainer` (one of which carried a comment apologizing that
+"di.core does not ship" the type). Four copies of one contract, free to drift.
+
+- **The abstraction now lives in `di.core`** as a types-only `interface
+  ServiceProviderFactory<TContainerBuilder>` (`service-provider-factory.ts`, one type per file per
+  §13/§46), shape `{ createBuilder(services: ServiceManifest): TContainerBuilder;
+  createServiceProvider(containerBuilder: TContainerBuilder): Resolver }` over the existing
+  `ServiceManifest` / `Resolver` di.core types. Exported from the `di.core` barrel and re-exported
+  from `di` alongside the rest of the provider surface.
+- **All four hand-rolled copies are replaced** by the shared type, and the "di.core does not ship"
+  apology comment is retired. ZERO behavior change — the single-container hosting model still
+  accepts the factory and ignores it (§23's no-op `useServiceProviderFactory` / `configureContainer`).
+- **`DefaultServiceProviderFactory` is deliberately NOT ported** — no consumer, and with one
+  container type there is nothing for a default factory to build.
+
+Refines §23's "no `IServiceProviderFactory<TBuilder>` analog in `di.core` to swap in" bullet: the
+named analog now exists as a shared abstraction; only the runtime behavior (accept-and-ignore)
+stays a no-op, unchanged.
+
+## 25. Typed `resolveFactory<F>` overload — the reference `ObjectFactory` return analog
+
+`Resolver.resolveFactory` returned bare `unknown`, so a no-transformer caller resolving a factory
+by hand had to cast the result. The reference container's factory-building API hands back a typed
+`ObjectFactory` delegate; we now mirror that return typing.
+
+- A typed overload `resolveFactory<F>(type: Token, params?: readonly Token[]): F` is added BEFORE the
+  existing `unknown` fallback on `Resolver` (`di.core/src/provider.ts`) — typed-first / dynamic-last,
+  mirroring the `resolve<T>` / `resolve` overload ordering. `F` is the factory's own function type,
+  supplied by the caller (`resolveFactory<(a: A) => T>(…)`).
+- The impl (`ServiceProviderClass.resolveFactory`, `di/src/scope.ts`) gains the matching overload
+  signatures; the runtime body is UNCHANGED — it still returns the built callable as `unknown`, so the
+  typed overload is purely compile-time. The `#makeProviderView` view's `resolveFactory` stays covered
+  by the view's existing `as Resolver & ScopeFactory<S>` cast.
+- **No transformer change.** The transformer emits `resolveFactory("tok", […])`, which still binds to
+  the `unknown` fallback — the typed form is a hand-authoring convenience only. Verified green against
+  the `di.transformer` suite and the integration e2e.
+
+## 26. Drop gratuitous non-reference types from the `di.core` barrel
+
+The `di.core` barrel re-exported two types with no reference analog and no cross-package consumer:
+
+- **`DepTarget`** (`Ctor | Func<never[], unknown>`) — an internal helper naming "a class or factory a
+  dep signature can be extracted from." Grep-verified zero external references. Removed from the
+  barrel; the type stays DEFINED in `types.ts` for internal use, just no longer publicly exported.
+- **`SealedManifest`** — the immutable snapshot `ServiceManifestClass.seal()` returns. Removed from
+  the barrel too. `seal()` stays public, and `rollup-plugin-dts` keeps the rolled `.d.ts` sound by
+  INLINING `SealedManifest` as a local (non-exported) declaration that `seal()` still references — no
+  tsc error, no rollup breakage. It is now internal-but-structurally-reachable through `seal()`'s
+  return type, not a named public export.
+
+`Producer` and `ParsedToken` stay exported (both have cross-package references). `di`'s re-export
+barrels (`types.ts` / `index.ts`) never surfaced `DepTarget` or `SealedManifest`, so no `di`-side
+change was needed.
+
+## 27. Extract `RequiredResolver` + `ServiceQuery` capability interfaces from `Resolver`
+
+`Resolver` was one flat interface bundling every resolution method. The reference DI splits two of
+those out as named capability abstractions — `ISupportRequiredService` (the throwing
+`GetRequiredService`) and `IServiceProviderIsService` (the `IsService` query). We now name the same
+seams while keeping ONE bundled surface consumers program against.
+
+- **Two new di.core interfaces** (`provider.ts`): `RequiredResolver { resolve<T>(token): T;
+  resolve(token): unknown }` (the `ISupportRequiredService` analog) and `ServiceQuery {
+  isService(token): boolean }` (the `IServiceProviderIsService` analog). `Resolver` now `extends
+  RequiredResolver, ServiceQuery` and drops the inherited `resolve` / `isService` declarations from
+  its own body — `resolveAsync`, `tryResolve`, `resolveFactory` stay on `Resolver`. Both new
+  interfaces are exported from the di.core barrel and re-exported from `di`.
+- **The transformer's tokenless overloads are RE-TARGETED** (`di.transformer/src/augment.ts`): the
+  `declare module` merge now adds `resolve<T>()` / `resolve<F>()` onto `RequiredResolver`,
+  `isService<T>()` onto `ServiceQuery`, and keeps `resolveAsync` / `tryResolve` on `Resolver`. Each
+  tokenless overload MUST merge onto the same interface that declares its explicit-token form — an
+  overload merged onto a DERIVED interface does not combine with a base interface's declaration of
+  the same method into one overload set. `Resolver` (and `ServiceProvider`, which extends it) then
+  inherits the full merged set.
+- **Zero runtime change.** `ServiceProviderClass` still implements the composed `Resolver`, and the
+  `#makeProviderView` object literal is untouched. Verified green across every package typecheck, the
+  `di.transformer` suite (181 tests), the `di.tests.integration` e2e (53 tests), and both
+  `examples.app` output-diff runs — overload resolution and transformer lowering are unaffected.

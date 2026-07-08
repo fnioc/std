@@ -77,7 +77,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
   derivation, dependency extraction, registration lowering, factory-signature diagnostic) depends
   on **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.transformer.options`
-  is a satellite lowering the `addOptions<T>()` sugar (§15).
+  is a satellite lowering the `addOptions<T>()` sugar (§15). di.core's public type surface also ships
+  `ServiceProviderFactory` — the reference `IServiceProviderFactory` analog, shared by the hosting
+  builders (§24) — and the capability interfaces `RequiredResolver` / `ServiceQuery` that `Resolver`
+  composes (the reference `ISupportRequiredService` / `IServiceProviderIsService` analogs, §27).
 - **`options`** — the collapsed `Options<T>` accessor + the configure / post-configure / validate
   `OptionsFactory` pipeline (§4). Depends **`di.core` only; config-unaware.** `options.augmentations`
   is the **one place di and config meet** — the config→`Options<T>` bridge (§14).

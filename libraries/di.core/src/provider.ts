@@ -14,28 +14,55 @@
 import type { Token } from "./types.js";
 
 /**
+ * The throwing required-resolution surface — the reference `ISupportRequiredService`
+ * analog. `resolve` throws when the token is unregistered (against `tryResolve`'s
+ * nullable miss).
+ *
+ * `resolve` has two published shapes; the tokenless authoring form `resolve<T>()`
+ * (and the factory form `resolve<F>()`) is a PURE TYPING the
+ * `@rhombus-std/di.transformer` DECLARATION-MERGES onto THIS interface (via
+ * `declare module "@rhombus-std/di.core"`), so it lights up only when the transformer
+ * is in the TypeScript program. Merging onto the interface that DECLARES `resolve`
+ * (rather than a separate carrier) is what lets a factory parameter typed `Resolver`
+ * AND the `ServiceProvider` interface a consumer holds pick up the authored form — an
+ * interface inherits a base interface's merged overloads; a class would not, which is
+ * exactly why the public provider surface is this interface, not the impl class.
+ *   - `resolve<T>(token)`   — explicit token, typed return.
+ *   - `resolve(token)`      — explicit token, `unknown` return (dynamic).
+ */
+export interface RequiredResolver {
+  resolve<T>(token: Token): T;
+  resolve(token: Token): unknown;
+}
+
+/**
+ * The registration-query surface — the reference `IServiceProviderIsService` analog.
+ * A token-based predicate: `true` when `token` would resolve (a registration exists,
+ * directly or via an open-generic closing), `false` otherwise. Being token-based, it
+ * also covers the keyed case in one method. Does NOT attempt construction — a
+ * registered token whose dependencies are missing still reports `true` (it IS a
+ * service; building it is a separate concern).
+ *
+ * The tokenless authoring form `isService<T>()` is the pure typing the
+ * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
+ */
+export interface ServiceQuery {
+  isService(token: Token): boolean;
+}
+
+/**
  * The minimal resolution surface — resolve tokens and get factories. A factory
  * (or ctor) parameter typed `Resolver` is injected with the live provider view:
  * the type derives the intrinsic provider token (`RESOLVER_TOKEN`), which the
  * engine resolves to the view relative to the resolving frame — "I want the
  * provider" is plain DI, no dedicated slot kind.
  *
- * `resolve` has two published shapes here; the tokenless authoring form
- * `resolve<T>()` (and the factory form `resolve<F>()`) is a PURE TYPING the
- * `@rhombus-std/di.transformer` DECLARATION-MERGES onto THIS interface (via
- * `declare module "@rhombus-std/di.core"`), so it lights up only when the
- * transformer is in the TypeScript program. Merging onto the interface (rather
- * than a separate carrier) is what lets both a factory parameter typed `Resolver`
- * AND the `ServiceProvider` interface a consumer holds pick up the authored form
- * — an interface inherits a base interface's merged overloads; a class would not,
- * which is exactly why the public provider surface is this interface, not the
- * impl class.
- *   - `resolve<T>(token)`   — explicit token, typed return.
- *   - `resolve(token)`      — explicit token, `unknown` return (dynamic).
+ * Composes the named reference capability analogs — `RequiredResolver`
+ * (`ISupportRequiredService`) and `ServiceQuery` (`IServiceProviderIsService`) — while
+ * staying ONE bundled surface a consumer programs against; `resolveAsync`, `tryResolve`,
+ * and `resolveFactory` are declared here directly.
  */
-export interface Resolver {
-  resolve<T>(token: Token): T;
-  resolve(token: Token): unknown;
+export interface Resolver extends RequiredResolver, ServiceQuery {
   /**
    * Resolves asynchronously — the only path that may satisfy `T` via a
    * `Promise<T>` registration. Always returns a Promise; a lookup miss whose
@@ -63,25 +90,22 @@ export interface Resolver {
   tryResolve<T>(token: Token): T | undefined;
   tryResolve(token: Token): unknown;
   /**
-   * A token-based registration predicate — `true` when `token` would resolve
-   * (a registration exists, directly or via an open-generic closing), `false`
-   * otherwise. Mirrors the reference DI's `IServiceProviderIsService.IsService`
-   * (#23); being token-based, it also covers the keyed case in one method. Does
-   * NOT attempt construction — a registered token whose dependencies are missing
-   * still reports `true` (it IS a service; building it is a separate concern).
-   *
-   * The tokenless authoring form `isService<T>()` is the pure typing the
-   * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
-   */
-  isService(token: Token): boolean;
-  /**
    * Returns a FACTORY for `type` rather than an instance. When `params` is
    * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must
    * resolve from the container. When `params` is present, it is the complete
    * authored-order list of caller-supplied parameter tokens; the returned factory
    * has shape `(...params) => T`. The authored `resolve<(a: A) => T>()` lowers
    * to `resolveFactory("pkg:T", ["pkg:A"])`.
+   *
+   * `F` is the factory's own function type — the reference `ObjectFactory` return
+   * analog. A hand-written caller passes it (`resolveFactory<(a: A) => T>(…)`) to
+   * get a typed callable back instead of `unknown`; the runtime is identical, so
+   * the type parameter is compile-time only. The bare `unknown` fallback is the
+   * dynamic form. Overload order mirrors `resolve<T>` / `resolve`.
+   *   - `resolveFactory<F>(type, params?)` — typed factory return.
+   *   - `resolveFactory(type, params?)`    — `unknown` return (dynamic).
    */
+  resolveFactory<F>(type: Token, params?: readonly Token[]): F;
   resolveFactory(type: Token, params?: readonly Token[]): unknown;
 }
 

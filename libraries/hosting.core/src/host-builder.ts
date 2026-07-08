@@ -1,5 +1,5 @@
 import type { IConfigurationBuilder } from "@rhombus-std/config.core";
-import type { Resolver, ServiceManifest } from "@rhombus-std/di.core";
+import type { ServiceManifest, ServiceProviderFactory } from "@rhombus-std/di.core";
 import type { Action } from "@rhombus-toolkit/func";
 import type { IHost } from "./host";
 import type { HostBuilderContext } from "./host-builder-context";
@@ -39,15 +39,12 @@ export interface IHostBuilder {
    * Overrides the factory used to create the service provider.
    *
    * This repo has a SINGLE container type ({@link ServiceManifest}), so the
-   * reference's `IServiceProviderFactory<TContainerBuilder>` collapses to the
-   * minimal structural shape inlined here rather than a named DI-abstractions
-   * type (which di.core does not ship). See diNotes.
+   * reference's `IServiceProviderFactory<TContainerBuilder>` — di.core's shared
+   * {@link ServiceProviderFactory} — is accepted but the default `ServiceManifest`
+   * build path is always used. See diNotes.
    */
   useServiceProviderFactory<TContainerBuilder>(
-    factory: {
-      createBuilder(services: ServiceManifest): TContainerBuilder;
-      createServiceProvider(containerBuilder: TContainerBuilder): Resolver;
-    },
+    factory: ServiceProviderFactory<TContainerBuilder>,
   ): this;
 
   /**
