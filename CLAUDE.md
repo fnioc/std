@@ -92,9 +92,12 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
 - **`config`** — `config.core` (types-only `IConfiguration*`) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigurationManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigurationProvider#toString` gives `getDebugView` a friendly
-  provider label, §33) ← providers `config.json` / `config.env` / `config.commandline` (each a
-  `declare module` augmentation adding e.g. `addJsonFile` to BOTH `ConfigurationBuilder` and
-  `ConfigurationManager`, §35). `config.env` also exports
+  provider label, §33; `ChainedConfigurationSource`/`ChainedConfigurationProvider` wrap an
+  existing `IConfiguration` as a source — implements `IConfigurationProvider` directly, no data
+  store of its own — installing `addConfiguration` on BOTH `ConfigurationBuilder` and
+  `ConfigurationManager`, §37) ← providers `config.json` / `config.env` / `config.commandline`
+  (each a `declare module` augmentation adding e.g. `addJsonFile` to BOTH `ConfigurationBuilder`
+  and `ConfigurationManager`, §35). `config.env` also exports
   `colonAndDotVariableNameTransformation` and normalizes its prefix through the transform before
   matching (§30/§31); `config.commandline` honors bare `key=value` argv tokens (§34).
   `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
@@ -105,9 +108,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `logging.core`) ← `hosting` (the Generic Host runtime — classic `HostBuilder` and modern
   `HostApplicationBuilder`, the static `Host` factory, `HostOptions`, `ConsoleLifetime`,
   `HostingEnvironment`; ← the concrete `config`/`di`/`diagnostics`/`logging` packages +
-  `options` + `options.augmentations` + the new `logging.console` console sink). Full
-  reference parity, no stubs inside hosting itself (§21); the physical file provider and the
-  non-console logging sinks it composes stay deferred at their own families (§18, §20).
+  `options` + `options.augmentations` + the new `logging.console` console sink). The host→app
+  configuration composition is a live `addConfiguration` chain, not a `flattenConfiguration`
+  snapshot (§37). Full reference parity, no stubs inside hosting itself (§23); the physical file
+  provider and the non-console logging sinks it composes stay deferred at their own families
+  (§18, §20).
 - **`diagnostics`** — `diagnostics.core` (the `IMetricsBuilder`/`ITracingBuilder` abstractions,
   the rule/options data model, `METRICS_*`/`TRACING_*` tokens; ← `di.core` + `options`) ←
   `diagnostics` (concrete `MetricsBuilder`/`TracingBuilder`, config-binding pipeline wired

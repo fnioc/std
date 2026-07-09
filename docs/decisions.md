@@ -1363,3 +1363,62 @@ pre-§28 free-function shape, and a full audit confirms no other augmentation si
   would flatten — so §28 (which governs how dual-export augmentations are _authored_, not which ports
   become augmentations) does not reach them. Everything else the sweep surfaced is an ordinary
   helper, token factory, or transformer internal.
+
+## 37. Chained configuration source — closes the `hosting` half of #126's deferral
+
+#126 closed the `ConfigurationManager` reachability gap for the `add*` provider augmentations
+(§35) but explicitly deferred `hosting` as a separate follow-up: a chained-configuration source
+didn't exist yet, so `hosting`'s host→app configuration fold was a one-shot `flattenConfiguration`
+snapshot into a `MemoryConfigurationSource`, not a live composition. This ports the reference's
+chaining building block and switches `hosting` onto it.
+
+- **`ChainedConfigurationSource`/`ChainedConfigurationProvider`** (`config/src/chained/`) — wraps an
+  already-built `IConfiguration` as a source. Bundled directly into `@rhombus-std/config` (like
+  Memory), not a separate provider package — a chained source composes the classes it lives beside,
+  not an optional add-on. `ChainedConfigurationProvider` implements `IConfigurationProvider`
+  directly rather than extending the abstract `ConfigurationProvider` base: it holds no key/value
+  store of its own, so the base's case-insensitive dictionary would go unused — every read/write/
+  reload-token/child-key call delegates straight through to the wrapped configuration instead.
+  - `tryGet` treats an empty-string value as a miss, matching the reference's `IsNullOrEmpty` check
+    on the wrapped configuration's indexer read.
+  - `load()`'s first call is a no-op (the wrapped configuration is assumed already built/loaded —
+    treating construction as a load would raise a spurious reload notification); a LATER call
+    reloads the wrapped configuration's own providers, when it is itself a root.
+  - The "is this a root" test is duck-typed (checks for a `reload` member), not
+    `instanceof ConfigurationRoot` — a chained `ConfigurationManager` is also a root by the
+    reference's own `IConfigurationRoot` contract, and `instanceof` would miss it silently
+    (regression-covered).
+  - `toString()` is added on this class specifically, defaulting to `this.constructor.name` — the
+    same fallback `ConfigurationProvider#toString` (§33) provides its subclasses — since
+    implementing the interface directly forfeits that inherited default; without it, `getDebugView`
+    would render this provider as `[object Object]`.
+- **`addConfiguration` augmentation** (`config/src/chained/index.ts`) — mirrors the reference
+  `ChainedBuilderExtensions.AddConfiguration`, collapsing its two overloads into one method with
+  `shouldDisposeConfiguration = false`. Installed on BOTH `ConfigurationBuilder` and
+  `ConfigurationManager` from the start, following §35's dual-install pattern directly — no
+  `ConfigurationBuilder`-only interim to fix later.
+- **`hosting`'s host→app configuration fold is now live, not snapshotted.** `HostBuilder.build()`'s
+  step 4 replaces `appConfigBuilder.add(new MemoryConfigurationSource({ initialData:
+  [...flattenConfiguration(hostConfiguration)] }))` with `appConfigBuilder.addConfiguration(hostConfiguration)`.
+  `flattenConfiguration` (`host-composition.ts`) is deleted along with its only call site. Observable
+  behavior is unchanged for every current host-config source (env vars, args, in-memory overrides —
+  all non-reload-capable today): flattening-then-reconstructing and delegating-to-the-live-tree
+  produce identical read and child-enumeration results for those. The difference only surfaces for a
+  future reload-capable host source, which now actually propagates into the application
+  configuration — something a snapshot could never do.
+- **`HostApplicationBuilder`'s constructor gets the M2 payoff directly.** Its two inline
+  `this.#configuration.add(new XSource(...))` calls (environment variables; the settings-override
+  memory source) were never routed through a shared `IConfigurationBuilder`-typed helper, so they
+  become `this.#configuration.addEnvironmentVariables(...)` / `.addInMemoryCollection(...)` —
+  `this.#configuration` is concretely a `ConfigurationManager` at those call sites.
+- **`default-configuration.ts`'s shared helpers stay on the raw `.add(new Source(...))` form,
+  deliberately.** `applyDefaultHostConfiguration`/`applyDefaultAppConfiguration`/
+  `addCommandLineConfig`/`setDefaultContentRoot` are reused by BOTH builders, but the classic
+  `HostBuilder`'s `configureHostConfiguration`/`configureAppConfiguration` (`IHostBuilder`, mirroring
+  the reference `Action<IConfigurationBuilder>`) hand these functions a plain
+  `IConfigurationBuilder`-typed value — a declaration-merged prototype method isn't visible through
+  an interface type, only through the concrete class it was merged onto. Narrowing these functions'
+  parameter type would break that call path; duplicating them per-builder to get sugar on the modern
+  side only was rejected (two sources of truth for zero behavior change). This is the one place the
+  M2 payoff doesn't reach, and it's a real ME-parity boundary (the delegate signature), not an
+  oversight.
