@@ -1545,3 +1545,82 @@ sees our own types, not a platform-lib requirement.
   `fetch(url, { signal })`) while platform signals stay assignable to our params. Tests and
   examples (which do carry bun/node types) are left on the platform globals unchanged — a platform
   instance is structurally assignable to our params either way.
+
+## 40. `@rhombus-std/unplugin` — the bundler-integration host, one hook over a shared Program
+
+Every transformer-consuming app has, until now, built via `tspc` (ts-patch) emitting to disk —
+fine for `examples.app.with-transformer` and the e2e harnesses, but a dead end for consumers who
+bundle with Vite/Rollup/esbuild/webpack/Bun rather than run a standalone `tsc`-shaped compile
+step. `@rhombus-std/unplugin` is the new package that lets any of those bundlers run the
+`di`/`di.transformer.options`/`config`/`nameof` transformers as a normal build plugin.
+`unplugin` (not a bespoke per-bundler shim) is the name and the dependency because it's the
+ecosystem-convention way to ship one plugin body across Vite/Rollup/esbuild/webpack/Bun — a
+`.<qualifier>` model (`.plugin`, `.bundler`) would invent a name nothing else in the JS ecosystem
+uses for this role.
+
+- **One unplugin instance, one `transform` hook, an internal registry of the four before-factories
+  — not four chained unplugins.** Every `@rhombus-std/*.transformer` package is hard type-aware
+  (cross-file checker resolution; `di`/`di.transformer.options` also scan cross-package export
+  graphs), so a transform must run against the WHOLE `ts.Program`, not a single file in isolation.
+  unplugin's per-hook contract is print-in, print-out: each `transform` hook receives source text
+  and returns source text, and the _next_ hook (or the bundler itself) reparses that text from
+  scratch. Chaining four separate unplugin instances would therefore print→reparse between every
+  transformer, detaching each intermediate file from the shared `ts.Program`'s `SourceFile` (and
+  its `TypeChecker`) the moment the first hook returns — exactly the state the transformers depend
+  on to resolve types. The fix is architectural, not incidental: `libraries/unplugin/src/registry.ts`
+  is a plain lookup table from `TransformName` to "build this transformer's `ts` before-factory
+  against `(program, sink)`", and `libraries/unplugin/src/plugin.ts`'s single `transform` hook asks
+  `ProgramService` to run every active factory in ONE `ts.transform` pass before printing once. This
+  mirrors exactly how `tspc` composes the same four plugins today via its `tsconfig` `plugins`
+  array — the unplugin host reproduces `tspc`'s single-pass composition, it doesn't invent a new
+  one.
+- **`ProgramService` (`libraries/unplugin/src/program-service.ts`) is the shared Program neither
+  unplugin nor Bun provides.** unplugin v3's Bun adapter has no `watchChange` hook and no
+  cross-plugin `enforce` ordering; Bun.build itself has no shared-compile-context concept at all —
+  a plugin only ever sees per-file `onLoad`. So the package owns a `ts.LanguageService` built from
+  the CONSUMER's own `tsconfig.json` (via `getParsedCommandLineOfConfigFile`, so `customConditions:
+  ["built"]` and the augmentation `types` array are inherited, never hand-assembled — the plugin's
+  Program must see exactly what the consumer's own typecheck sees), plus an in-memory overlay the
+  bundler feeds through `transformFile`. Transformer factories are cached per `ts.Program` identity
+  and rebuilt only when that identity changes, so a multi-file build pays for the LanguageService's
+  incremental re-typecheck, not for rebuilding every transformer factory per file.
+- **Diagnostics forwarded to the bundler's own error channel; `tspc --noEmit` stays the lint/
+  typecheck path.** The three diagnostic-emitting transformers (`di`, `di.transformer.options`,
+  `config`) raise `ts.Diagnostic`s (codes 990003, 990006–990011, `UnlowerableAddOptions`,
+  `NonObjectRoot`/`UnsupportedType`) through a shared sink; error-severity diagnostics call
+  `this.error` (present on every unplugin adapter context — Bun included — verified from the
+  installed package) so a bad `add<T>()`/`addOptions<T>()`/`.withType<T>()` call fails the bundle
+  the same way it fails `tspc` today, falling back to a thrown `Error` only if some future adapter
+  omits `this.error`; warnings go to `this.warn` (or `console.warn`). The package does NOT replace
+  `tspc --noEmit` as the authoritative typecheck — a bundler plugin's job is "make the build work,"
+  not "surface every diagnostic a full compile would," so `examples.app.with-transformer`'s `lint`
+  script is still `tspc --noEmit` against the same `tsconfig.json` the plugin consumes.
+- **Sourcemap limitation, v1.** `ProgramService.transformFile` returns `{ text }` only — no source
+  map. The bundler then maps against the already-transformed text, so stack traces/breakpoints
+  through the DI/config sugar point at the lowered form, not the authored one. Deferred rather than
+  designed around: none of the four transformers currently thread position info through their
+  `ts.transform` passes, and synthesizing a map from a full-file `ts.transform` + reprint is
+  independent work with its own design surface.
+- **`examples.app.with-transformer` migrates to `Bun.build` + the plugin; `examples.lib.with-
+  transformer` and the transformer↔engine e2e harnesses deliberately stay on `tspc`.** The app is
+  the shape a real bundler-based consumer has (an executable, no published `dist` of its own), so
+  it's the one example that should exercise the new host end-to-end — its `build.ts` now runs
+  `Bun.build` with `unplugin.bun({ tsconfig: … })` in its plugin list, and its checked-in
+  `expected.txt` output-diff passes byte-identical, unchanged. `examples.lib.with-transformer`
+  publishes a `dist` the same way every other dist-referenced library here does (§ Build layout)
+  and has no bundler-consumer shape to demonstrate; the `tests/*.tests.integration` harnesses exist
+  specifically to pin `tspc`'s own behavior and must keep exercising `tspc` directly to do that job.
+  Migrating either would trade a load-bearing test for redundant coverage of the same plugin the
+  app already exercises.
+- **The TS7/typescript-go horizon.** `ts-patch` has no committed migration path onto the
+  Go-ported `tsc` (`typescript-go`, aka "TS7") — ts-patch works by monkey-patching the JS compiler
+  host's emit pipeline, a mechanism a native binary can't be patched into the same way. This
+  package's boundary is deliberately the part of the stack designed to survive that swap: every
+  transformer's public seam is `(program: ts.Program, sink) => ts.TransformerFactory`, a shape that
+  depends only on the `ts.Program`/`ts.TransformerFactory` contract, not on ts-patch's plugin-host
+  mechanics. `typia` — a comparable heavily-type-driven transformer library in the wider ecosystem —
+  already ships this same split (a `ttsc`/ts-patch-based compile path alongside a bundler-plugin
+  path built on the same program-driven seam) precisely so the bundler-plugin consumers aren't
+  coupled to ts-patch's survival. If/when TS7 lands a supported transformer story, only the
+  `ProgramService`/registry's Program-construction plumbing needs to change; the four transformer
+  packages' public seams do not.

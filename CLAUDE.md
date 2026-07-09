@@ -161,6 +161,16 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   design question, not yet scoped. `CompositeFileProvider.watch` over 2+ change-emitting
   providers is a stub pending a `CompositeChangeToken` primitive (tracked against issue #77; the
   0- and 1-provider cases are fully functional).
+- **`unplugin`** — the bundler-integration host, not an `ME.*` mirror. One `createUnplugin`
+  instance (Vite/Rollup/esbuild/webpack/Bun) with a single `transform` hook that composes an
+  internal registry of the `di`/`di.transformer.options`/`config`/`nameof` before-factories over
+  ONE shared `ts.LanguageService`-backed `ts.Program` (`ProgramService`), running every active
+  factory in a single `ts.transform` pass — chaining separate unplugin hooks would print→reparse
+  between transformers and detach files from the shared Program the hard-type-aware transformers
+  depend on. Diagnostics route to the bundler's own error channel (`this.error`/`this.warn`);
+  `tspc --noEmit` remains the authoritative lint/typecheck path (§40). `examples.app.with-
+  transformer` builds through it via `unplugin.bun`; `examples.lib.with-transformer` and the
+  transformer↔engine e2e harnesses stay on `tspc` deliberately.
 
 Cross-cutting invariants (each spans several packages — confirm against `docs/decisions.md`
 before touching):
@@ -208,6 +218,8 @@ Architecture section above. `decisions.md` is the full record; this file is the 
   - Config providers keep their own name instead of a generic qualifier:
     `config.json`, `config.env`, `config.commandline`. Concrete providers in other families
     follow the same pattern — `logging.console` is the console sink for `logging`.
+- **`unplugin` is a standalone package, not `<family>[.<qualifier>]`.** It isn't an `ME.*` mirror
+  family — it takes the ecosystem-convention name for a cross-bundler plugin host (§40).
 
 ## No-transformer-first
 
@@ -255,7 +267,10 @@ Two deviations, both because a **transformer** is in play:
 
 Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one rolled `.d.ts`),
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM
-(`scripts/build-package.ts`).
+(`scripts/build-package.ts`). `unplugin` is dist-referenced like `di`/`config`/etc. — it ships
+runtime and bundles the four `.transformer` packages' program-driven seams behind it, keeping
+`@rhombus-std/*`/`@rhombus-toolkit/*`/`typescript`/`unplugin` external per the §9/§38 identity
+invariant.
 
 ## Publishing
 
