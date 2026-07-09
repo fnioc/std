@@ -3,13 +3,27 @@
 // mechanical (they do nothing) and need no provider infrastructure, so they are
 // implemented for real.
 
-import type { EventId, ILogger, ILoggerFactory, ILoggerProvider, LogLevel } from "@rhombus-std/logging.core";
+import type {
+  EventId,
+  ILogger,
+  ILoggerFactory,
+  ILoggerProvider,
+  LoggerExtensionMethods,
+  LogLevel,
+} from "@rhombus-std/logging.core";
+import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
 const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
+// Class-side type merge for the registry-installed `LoggerExtensions` methods
+// — see ./logger.ts; same §36 reasoning (no ILogger interface merge).
+export interface NullLogger extends LoggerExtensionMethods {}
+
 /** A minimalistic {@link ILogger} that does nothing. */
+@augment(nameof<ILogger>())
 export class NullLogger implements ILogger {
   /** The shared no-op logger instance. */
   public static readonly instance: NullLogger = new NullLogger();

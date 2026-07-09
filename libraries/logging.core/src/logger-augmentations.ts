@@ -2,9 +2,13 @@
 // static `LoggerExtensions` class (`LogTrace`/`LogDebug`/`LogInformation`/
 // `LogWarning`/`LogError`/`LogCritical` + the level-parameterized `Log`).
 //
-// Per this repo's "explicit form is primary" convention, extension methods
-// against an interface THIS family owns (`ILogger`) are plain exported
-// functions taking the logger as the first parameter — no augmentation.
+// Dual export (docs §28/§38): the receiver-first functions are exported plain
+// (the standalone surface), grouped into the `LoggerExtensions` set and
+// registered against the `ILogger` token so every concrete logger decorated
+// with `@augment(nameof<ILogger>())` gains the method form. `ILogger` itself
+// gets NO interface-side merge — it has many implementers (sinks, fakes,
+// wrappers), and a merge would force phantom members onto all of them (§36);
+// the method surface is typed per concrete class via `LoggerExtensionMethods`.
 //
 // Collapsing the reference overloads: each reference level method has four
 // overloads keyed on an optional leading `EventId` and optional `Exception`.
@@ -16,6 +20,9 @@
 // event id and a message string are ambiguous at runtime; a caller that needs
 // an explicit event id calls `logger.log(level, EventId.from(n), …)` directly.
 
+import { registerAugmentations } from "@rhombus-std/primitives";
+import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { EventId } from "./event-id";
 import { formatLogValues, FormattedLogValues } from "./formatted-log-values";
 import { LogLevel } from "./log-level";
@@ -86,3 +93,55 @@ export function log(logger: ILogger, logLevel: LogLevel, error: Error, message: 
 export function log(logger: ILogger, logLevel: LogLevel, first: string | Error, ...rest: unknown[]): void {
   emit(logger, logLevel, first, rest);
 }
+
+/**
+ * The `LoggerExtensions` augmentation set for {@link ILogger} (docs §28/§38).
+ * Registered against the `ILogger` token below and reachable standalone as
+ * `LoggerExtensions.logInformation(logger, …)`; a concrete logger class
+ * decorated with `@augment(nameof<ILogger>())` gains the members as methods.
+ */
+export const LoggerExtensions = {
+  log,
+  logTrace,
+  logDebug,
+  logInformation,
+  logWarning,
+  logError,
+  logCritical,
+} satisfies AugmentationSet<ILogger>;
+
+/**
+ * The method-form surface of {@link LoggerExtensions}. Deliberately NOT merged
+ * onto `ILogger` (§36: the interface has many implementers — sinks, fakes,
+ * wrappers — that would inherit phantom members). Each CONCRETE logger class
+ * extends this interface beside its `@augment(nameof<ILogger>())` decoration,
+ * so the method form is typed exactly where it is installed. The wrapper `log`
+ * is absent — see the exclusion at the registration below.
+ */
+export interface LoggerExtensionMethods {
+  logTrace(message: string, ...args: unknown[]): void;
+  logTrace(error: Error, message: string, ...args: unknown[]): void;
+  logDebug(message: string, ...args: unknown[]): void;
+  logDebug(error: Error, message: string, ...args: unknown[]): void;
+  logInformation(message: string, ...args: unknown[]): void;
+  logInformation(error: Error, message: string, ...args: unknown[]): void;
+  logWarning(message: string, ...args: unknown[]): void;
+  logWarning(error: Error, message: string, ...args: unknown[]): void;
+  logError(message: string, ...args: unknown[]): void;
+  logError(error: Error, message: string, ...args: unknown[]): void;
+  logCritical(message: string, ...args: unknown[]): void;
+  logCritical(error: Error, message: string, ...args: unknown[]): void;
+}
+
+// The wrapper `log` is a member of `LoggerExtensions` (its standalone surface)
+// but is deliberately NOT prototype-installed: `ILogger` already declares the
+// primitive `log(logLevel, eventId, state, error, formatter)` that every
+// wrapper here builds on, so installing the wrapper would overwrite the real
+// implementation on each decorated class — and the mounted thunk would then
+// recurse into itself. Same exclusion precedent as caching's `tryGetValue`.
+// Omit it via a rest destructure (TS exempts the rest-sibling from unused
+// checks; the binding is renamed only because the `log` function is already in
+// scope).
+const { log: _log, ...loggerInstanceMethods } = LoggerExtensions;
+
+registerAugmentations(nameof<ILogger>(), loggerInstanceMethods);
