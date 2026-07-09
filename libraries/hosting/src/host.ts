@@ -3,7 +3,7 @@
 // pre-configured defaults already applied.
 
 import type { IHostBuilder } from "@rhombus-std/hosting.core";
-import { HostingHostBuilderExtensions } from "./builder-extensions";
+import { HostingHostBuilderExtensions } from "./builder-augmentations";
 import { HostApplicationBuilder } from "./host-application-builder";
 import { HostApplicationBuilderSettings } from "./host-application-builder-settings";
 import { HostBuilder } from "./host-builder";

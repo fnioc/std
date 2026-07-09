@@ -1,18 +1,37 @@
 // Host lifetime helpers -- ported from the reference's
-// `HostingAbstractionsHostExtensions` static extension class. Authored as one
+// `HostingAbstractionsHostExtensions` static augmentation class. Authored as one
 // named object literal per ME class (docs §28), `satisfies AugmentationSet<IHost>`.
-// IHost is a plain interface with no concrete class in THIS abstractions package
-// to prototype-patch, so the method-form install (and the `declare module` merge)
-// live downstream in `@rhombus-std/hosting` against the concrete `Host`, per the
-// cross-package rule -- here we only ship the literal (its members are the
-// standalone call surface). The synchronous reference wrappers (Start/Run/
-// WaitForShutdown that block a thread) collapse into their async forms -- JS
-// cannot block a thread.
+//
+// OPEN receiver (docs §38): `IHost` is extended across packages, so this const
+// registers into the primitives augmentation registry under
+// {@link HOST_AUGMENTATION_TOKEN} (beside the interface-side `declare module`
+// merge below, per rule 0.6). The concrete `Host` class -- downstream in
+// `@rhombus-std/hosting` -- is decorated with `@augment(HOST_AUGMENTATION_TOKEN)`,
+// which pulls this bag onto its prototype; the class-side merge stays downstream
+// next to that class. The members here are also the standalone call surface.
+//
+// The synchronous reference wrappers (Start/Run/WaitForShutdown that block a
+// thread) collapse into their async forms -- JS cannot block a thread.
 
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { IHost } from "./host";
 import type { IHostApplicationLifetime } from "./host-application-lifetime";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
+import { HOST_APPLICATION_LIFETIME_TOKEN, HOST_AUGMENTATION_TOKEN } from "./tokens";
+
+// The interface-side merge for the `IHost` augmentation members lives HERE,
+// beside the const that registers them (rule 0.6): a `hosting.core`-only consumer
+// holding `IHost` sees the method form. The runtime install onto the concrete
+// `Host` (and its class-side merge so the class still SATISFIES `IHost`) live
+// downstream in `@rhombus-std/hosting`.
+declare module "./host" {
+  interface IHost {
+    run(cancellationToken?: AbortSignal): Promise<void>;
+    runAsync(cancellationToken?: AbortSignal): Promise<void>;
+    waitForShutdownAsync(cancellationToken?: AbortSignal): Promise<void>;
+    stopWithTimeout(timeoutMs: number): Promise<void>;
+  }
+}
 
 /** A promise that settles when `signal` aborts (or immediately, if already aborted). */
 function whenAborted(signal: AbortSignal): Promise<void> {
@@ -102,8 +121,9 @@ async function stopWithTimeout(host: IHost, timeoutMs: number): Promise<void> {
 
 /**
  * The `HostingAbstractionsHostExtensions` augmentation set for {@link IHost}
- * (docs §28). Installed as instance methods onto the concrete `Host` downstream
- * in `@rhombus-std/hosting`; the members here are the standalone call surface.
+ * (docs §28). Registered into the augmentation registry under
+ * {@link HOST_AUGMENTATION_TOKEN}; the concrete `Host` downstream pulls it via
+ * `@augment`. The members here are also the standalone call surface.
  */
 export const HostingAbstractionsHostExtensions = {
   run,
@@ -111,3 +131,5 @@ export const HostingAbstractionsHostExtensions = {
   waitForShutdownAsync,
   stopWithTimeout,
 } satisfies AugmentationSet<IHost>;
+
+registerAugmentations(HOST_AUGMENTATION_TOKEN, HostingAbstractionsHostExtensions);
