@@ -2,6 +2,7 @@
 // A minimal {@link IHostLifetime} that does nothing.
 
 import type { IHostLifetime } from "@rhombus-std/hosting.core";
+import type { AbortSignal } from "@rhombus-std/primitives";
 
 /** A minimalistic {@link IHostLifetime} that does nothing. */
 export class NullLifetime implements IHostLifetime {

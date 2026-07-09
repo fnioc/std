@@ -10,6 +10,7 @@
 // (ME's variant that flips it to `false` only handles a token that can never
 // be canceled, which has no analog here).
 
+import type { AbortSignal } from "./abort.js";
 import type { IChangeToken } from "./change-token.js";
 
 /**

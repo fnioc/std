@@ -13,7 +13,7 @@
 // AbortController-backed implementation.
 
 import type { IChangeToken } from "@rhombus-std/primitives";
-import { CancellationChangeToken } from "@rhombus-std/primitives";
+import { AbortController, CancellationChangeToken } from "@rhombus-std/primitives";
 
 export class ConfigurationReloadToken implements IChangeToken {
   readonly #controller = new AbortController();

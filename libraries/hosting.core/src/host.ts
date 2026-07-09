@@ -1,4 +1,5 @@
 import type { Resolver } from "@rhombus-std/di.core";
+import type { AbortSignal } from "@rhombus-std/primitives";
 
 /**
  * A program abstraction: the running application host, the root object owning

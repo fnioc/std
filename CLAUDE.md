@@ -81,7 +81,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (re)installs the token's bag on the prototype now and on every later registration. It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
   `primitives.transformer` hosts the `nameof<T>()`/token-derivation machinery extracted from
-  di.transformer (which depends on it and re-exports the old surface).
+  di.transformer (which depends on it and re-exports the old surface). It also owns structural
+  `AbortSignal`/`AbortController` typings + a typed constructor re-export (§39), so libraries never
+  need lib.dom/`@types/node`/bun-types just to name the abort API.
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9 — plus the
   `SERVICE_MANIFEST_AUGMENTATION_TOKEN` and the `ServiceCollectionDescriptorExtensions.removeAll`

@@ -9,6 +9,8 @@
 
 import type { IHostApplicationLifetime } from "@rhombus-std/hosting.core";
 import type { ILogger } from "@rhombus-std/logging.core";
+import { AbortController } from "@rhombus-std/primitives";
+import type { AbortSignal } from "@rhombus-std/primitives";
 import { applicationError, LoggerEventIds } from "./logger-messages";
 
 /** Allows consumers to perform cleanup during a graceful shutdown. */
