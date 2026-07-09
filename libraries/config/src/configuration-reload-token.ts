@@ -10,7 +10,7 @@
 //
 // Backed by this monorepo's AbortSignal-based CancellationChangeToken over a
 // private AbortController -- the structural analog of the reference's
-// CancellationTokenSource-backed implementation.
+// AbortController-backed implementation.
 
 import type { IChangeToken } from "@rhombus-std/primitives";
 import { CancellationChangeToken } from "@rhombus-std/primitives";

@@ -13,9 +13,9 @@ import { applicationError, LoggerEventIds } from "./logger-messages";
 
 /** Allows consumers to perform cleanup during a graceful shutdown. */
 export class ApplicationLifetime implements IHostApplicationLifetime {
-  readonly #startedSource = new AbortController();
-  readonly #stoppingSource = new AbortController();
-  readonly #stoppedSource = new AbortController();
+  readonly #startedController = new AbortController();
+  readonly #stoppingController = new AbortController();
+  readonly #stoppedController = new AbortController();
   readonly #logger: ILogger;
 
   public constructor(logger: ILogger) {
@@ -24,26 +24,26 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
 
   /** Signals when the application has fully started. */
   public get applicationStarted(): AbortSignal {
-    return this.#startedSource.signal;
+    return this.#startedController.signal;
   }
 
   /** Signals when the application is beginning a graceful shutdown. */
   public get applicationStopping(): AbortSignal {
-    return this.#stoppingSource.signal;
+    return this.#stoppingController.signal;
   }
 
   /** Signals when the application has completed a graceful shutdown. */
   public get applicationStopped(): AbortSignal {
-    return this.#stoppedSource.signal;
+    return this.#stoppedController.signal;
   }
 
   /** Triggers {@link applicationStopping}. The first call wins; later calls no-op. */
   public stopApplication(): void {
-    if (this.#stoppingSource.signal.aborted) {
+    if (this.#stoppingController.signal.aborted) {
       return;
     }
     try {
-      this.#stoppingSource.abort();
+      this.#stoppingController.abort();
     } catch (error) {
       applicationError(
         this.#logger,
@@ -57,7 +57,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
   /** Triggers {@link applicationStarted}. */
   public notifyStarted(): void {
     try {
-      this.#startedSource.abort();
+      this.#startedController.abort();
     } catch (error) {
       applicationError(
         this.#logger,
@@ -71,7 +71,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
   /** Triggers {@link applicationStopped}. */
   public notifyStopped(): void {
     try {
-      this.#stoppedSource.abort();
+      this.#stoppedController.abort();
     } catch (error) {
       applicationError(
         this.#logger,
