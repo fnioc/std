@@ -4,12 +4,12 @@
 //
 // OPEN receiver (docs §38): `IHostBuilder` is owned by hosting.core and extended
 // across packages, so this const registers into the augmentation registry under
-// {@link HOST_BUILDER_AUGMENTATION_TOKEN} (alongside hosting.core's
+// the `IHostBuilder` token (alongside hosting.core's
 // `HostingAbstractionsHostBuilderExtensions`, which contributes `startHost`). The
 // interface-side merge for THIS const's members lives here beside it (rule 0.6);
 // the class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
-// class itself is decorated with `@augment(HOST_BUILDER_AUGMENTATION_TOKEN)`.
+// class itself is decorated with `@augment(nameof<IHostBuilder>())`.
 //
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
@@ -25,12 +25,13 @@ import type {
   IHostEnvironment,
 } from "@rhombus-std/hosting.core";
 import { HostDefaults, HostingAbstractionsHostExtensions } from "@rhombus-std/hosting.core";
-import { HOST_APPLICATION_LIFETIME_TOKEN, HOST_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/hosting.core";
+import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConsoleLifetime } from "./console-lifetime";
 import { ConsoleLifetimeOptions } from "./console-lifetime-options";
@@ -202,7 +203,7 @@ function runConsoleAsync(
 
 /**
  * The `HostingHostBuilderExtensions` augmentation set for {@link IHostBuilder}
- * (docs §28). Registered under {@link HOST_BUILDER_AUGMENTATION_TOKEN}; the
+ * (docs §28). Registered under the `IHostBuilder` token; the
  * concrete `HostBuilder` pulls it (and hosting.core's `startHost`) via `@augment`.
  * The members here are also the standalone call surface.
  */
@@ -218,4 +219,4 @@ export const HostingHostBuilderExtensions = {
   runConsoleAsync,
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(HOST_BUILDER_AUGMENTATION_TOKEN, HostingHostBuilderExtensions);
+registerAugmentations(nameof<IHostBuilder>(), HostingHostBuilderExtensions);

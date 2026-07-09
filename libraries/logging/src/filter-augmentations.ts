@@ -20,8 +20,9 @@
 //
 // RECORDED SPLIT (no code yet): the unported `ILoggingBuilder` half of ME's
 // `FilterLoggingBuilderExtensions` must land as a SEPARATE const named
-// `FilterLoggingBuilderExtensions` targeting `LOGGING_BUILDER_AUGMENTATION_TOKEN`
-// (single-receiver split rule) — never folded into `LoggerFilterOptionsExtensions`.
+// `FilterLoggingBuilderExtensions` targeting the `ILoggingBuilder` token
+// (`nameof<ILoggingBuilder>()`; single-receiver split rule) — never folded into
+// `LoggerFilterOptionsExtensions`.
 //
 // NOTE: rules are not yet CONSUMED — the filter-selection layer is deferred with
 // the options-monitor DI integration (see ./logger.ts). This builds the rule set.

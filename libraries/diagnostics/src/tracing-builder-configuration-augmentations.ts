@@ -4,15 +4,12 @@
 // (docs §28) and installed onto the concrete builder in ./builder-augmentations.
 
 import type { IConfiguration } from "@rhombus-std/config";
-import {
-  TRACING_BUILDER_AUGMENTATION_TOKEN,
-  TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
-  TRACING_CONFIGURE_TOKEN,
-} from "@rhombus-std/diagnostics.core";
+import { TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURE_TOKEN } from "@rhombus-std/diagnostics.core";
 import type { ITracingBuilder } from "@rhombus-std/diagnostics.core";
 import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { TracingConfigureOptions } from "./tracing-configure-options";
 
@@ -49,4 +46,4 @@ declare module "@rhombus-std/diagnostics.core/internal/tracing-builder" {
   }
 }
 
-registerAugmentations(TRACING_BUILDER_AUGMENTATION_TOKEN, TracingBuilderConfigurationExtensions);
+registerAugmentations(nameof<ITracingBuilder>(), TracingBuilderConfigurationExtensions);

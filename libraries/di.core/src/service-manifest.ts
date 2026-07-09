@@ -11,9 +11,9 @@
 // class-vs-factory.
 
 import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 
-import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "./augmentation-tokens.js";
 import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 import { OpenTokenRegistrationError } from "./errors.js";
 import type { ServiceProvider } from "./provider.js";
@@ -68,11 +68,11 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  * augmentation token: every cross-package registration augmentation (`build`,
  * `addOptions`, `addLogging`, `addMetrics`, `addMemoryCache`,
  * `addHostedService`, `removeAll`, ...) registers its set against
- * `SERVICE_MANIFEST_AUGMENTATION_TOKEN`, and the decorator subscribes the class
+ * `nameof<ServiceManifest>()`, and the decorator subscribes the class
  * so each set — including those registered by DOWNSTREAM packages loaded after
  * this one — is (re)installed onto the prototype (docs/decisions.md §38).
  */
-@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)
+@augment(nameof<ServiceManifest>())
 export class ServiceManifestClass<Scopes extends string = "singleton">
   implements ServiceManifestBase<Scopes, ServiceProvider<Scopes>>
 {

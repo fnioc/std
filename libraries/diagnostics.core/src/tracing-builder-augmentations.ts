@@ -6,7 +6,7 @@
 // groups are dual-export augmentations (docs §28): a named object literal installed
 // onto the receiver's prototype AND reachable as `Set.member(receiver, …)`. ITracingBuilder
 // is an OPEN receiver whose concrete class lives downstream (@rhombus-std/diagnostics'
-// TracingBuilder), so its literal self-registers here against TRACING_BUILDER_AUGMENTATION_TOKEN
+// TracingBuilder), so its literal self-registers here against the `ITracingBuilder` token
 // (docs §38); the concrete builder is decorated `@augment(token)` and pulls the bag onto
 // its prototype. The TracingOptions literal is a CLOSED set installed in-package (the
 // concrete class lives here) via direct applyAugmentations in ./options-augmentations.
@@ -29,9 +29,10 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { ActivityListenerBuilder } from "./activity-listener-builder";
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./activity-source-scopes";
-import { TRACING_BUILDER_AUGMENTATION_TOKEN, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from "./tokens";
+import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from "./tokens";
 import type { ITracingBuilder } from "./tracing-builder";
 import { TracingOptions } from "./tracing-options";
 import { TracingRule } from "./tracing-rule";
@@ -150,7 +151,7 @@ export const TracingBuilderExtensions = {
 // interface-side declaration merge lives here beside the const (rule §38.6); the
 // class-side merge for the concrete `TracingBuilder` stays downstream next to the
 // class (@rhombus-std/diagnostics' builder-augmentations). That class is decorated
-// `@augment(TRACING_BUILDER_AUGMENTATION_TOKEN)`, so this registration reaches its
+// `@augment(the `ITracingBuilder` token)`, so this registration reaches its
 // prototype.
 declare module "./tracing-builder" {
   interface ITracingBuilder {
@@ -170,4 +171,4 @@ declare module "./tracing-builder" {
   }
 }
 
-registerAugmentations(TRACING_BUILDER_AUGMENTATION_TOKEN, TracingBuilderExtensions);
+registerAugmentations(nameof<ITracingBuilder>(), TracingBuilderExtensions);

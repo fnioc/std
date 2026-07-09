@@ -21,14 +21,15 @@
 
 // `MemoryCacheOptions` is a named import so its unqualified name resolves
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
-import type { AddBuilder, ServiceManifestClass } from "@rhombus-std/di.core";
-import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
+import type { AddBuilder, ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
-// Side-effect: installs the IMemoryCache/ICacheEntry convenience wrappers as
-// instance methods onto MemoryCache/CacheEntry (the CLOSED-set path -- direct
-// applyAugmentations, no token). Their standalone free-function form ships from
-// caching.core's CacheExtensions/CacheEntryExtensions.
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+// Brings the class-side type merges for the IMemoryCache/ICacheEntry convenience
+// wrappers into the program. The runtime install is the registry path (docs §38):
+// caching.core registers CacheExtensions/CacheEntryExtensions against the
+// `IMemoryCache`/`ICacheEntry` tokens, and the `@augment(nameof<…>())` decoration
+// beside MemoryCache/CacheEntry pulls them onto the prototypes.
 import "./cache-augmentations";
 import { MemoryCache } from "./memory-cache";
 import { MemoryCacheOptions } from "./memory-cache-options";
@@ -57,7 +58,7 @@ declare module "@rhombus-std/di.core" {
 
 // One named object literal mirroring the reference `MemoryCacheServiceCollectionExtensions`
 // static class (docs §28/§38), registered against the OPEN `ServiceManifest`
-// augmentation token so the `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)`
+// augmentation token so the `@augment(nameof<ServiceManifest>())`
 // decoration in di.core pulls `addMemoryCache` onto the `ServiceManifestClass`
 // prototype (the fluent path) AND exported so the member is the standalone form.
 export const MemoryCacheServiceCollectionExtensions = {
@@ -78,7 +79,7 @@ export const MemoryCacheServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, MemoryCacheServiceCollectionExtensions);
+registerAugmentations(nameof<ServiceManifest>(), MemoryCacheServiceCollectionExtensions);
 
 export { MemoryCache } from "./memory-cache";
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in

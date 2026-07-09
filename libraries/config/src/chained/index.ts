@@ -6,7 +6,7 @@
 // merging + a registry registration) -- ConfigurationBuilder itself carries no
 // add* sugar of its own, only augmentations, even for the in-package Chained
 // provider. `addConfiguration` targets the OPEN `IConfigurationBuilder`
-// receiver, so it registers against CONFIGURATION_BUILDER_AUGMENTATION_TOKEN
+// receiver, so it registers against nameof<IConfigurationBuilder>()
 // (docs/decisions.md §38) rather than installing directly -- both concrete
 // builders (ConfigurationBuilder and ConfigurationManager) are decorated with
 // that token, so one registration reaches both.
@@ -17,10 +17,15 @@
 // `AugmentationSet` for both classes -- see memory/index.ts for the full
 // rationale.
 
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
-import type { IConfiguration, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
+import type {
+  IConfiguration,
+  IConfigurationBuilder,
+  IConfigurationSource,
+  IndexedSection,
+} from "@rhombus-std/config.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { ConfigurationBuilder } from "../configuration-builder";
 import { ChainedConfigurationSource } from "./chained-configuration-source";
 
@@ -61,4 +66,4 @@ export const ChainedBuilderExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, ChainedBuilderExtensions);
+registerAugmentations(nameof<IConfigurationBuilder>(), ChainedBuilderExtensions);

@@ -3,7 +3,7 @@
 // the augmentation-set consts:
 //   - the listener/rule members self-register from diagnostics.core
 //     (metrics/tracing-builder-augmentations) against
-//     METRICS_/TRACING_BUILDER_AUGMENTATION_TOKEN;
+//     the IMetricsBuilder / ITracingBuilder tokens;
 //   - the config-binding members self-register from this package's
 //     metrics/tracing-builder-configuration-augmentations against the same tokens.
 // The concrete MetricsBuilder/TracingBuilder are decorated `@augment(token)`, so

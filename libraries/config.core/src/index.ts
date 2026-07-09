@@ -13,8 +13,3 @@ export type * from "./configuration-root";
 export type * from "./configuration-section";
 export type * from "./configuration-source";
 export type * from "./types";
-
-// The augmentation-registry token for the `IConfigurationBuilder` OPEN receiver —
-// the key every provider package registers its augmentation set against (§38).
-// This is config.core's one runtime value; it stays a plain string constant.
-export { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "./augmentation-tokens";

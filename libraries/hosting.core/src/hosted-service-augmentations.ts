@@ -8,9 +8,9 @@
 //
 // OPEN receiver (docs §38): `ServiceManifest` is extended by many downstream
 // packages, so this const registers against
-// {@link SERVICE_MANIFEST_AUGMENTATION_TOKEN} (owned by di.core). The concrete
+// `nameof<ServiceManifest>()` (owned by di.core). The concrete
 // `ServiceManifestClass` -- in `@rhombus-std/di.core` -- is decorated with
-// `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)` there, so it pulls this bag
+// `@augment(nameof<ServiceManifest>())` there, so it pulls this bag
 // (and every other cross-package set on the same token) onto its prototype. As
 // this is a FOREIGN receiver class, both the interface-side merge (onto
 // `ServiceManifestBase`) and the class-side merge (onto `ServiceManifestClass`)
@@ -21,13 +21,13 @@
 // under the ONE shared {@link HOSTED_SERVICE_TOKEN} as a singleton, and the host
 // resolves the whole set via the collection wrapper token.
 
-import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
 // importable here.
-import type { AddBuilder, DepSlot, ServiceManifestClass } from "@rhombus-std/di.core";
+import type { AddBuilder, DepSlot, ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Ctor } from "@rhombus-toolkit/func";
 import { HOSTED_SERVICE_TOKEN } from "./tokens";
 
@@ -68,4 +68,4 @@ export const ServiceCollectionHostedServiceExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceCollectionHostedServiceExtensions);
+registerAugmentations(nameof<ServiceManifest>(), ServiceCollectionHostedServiceExtensions);

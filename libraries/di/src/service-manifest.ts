@@ -17,7 +17,6 @@
 // this only supplies the runtime.
 
 import { ServiceManifestClass } from "@rhombus-std/di.core";
-import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
 import type {
   OpenRegistration,
   Registration,
@@ -27,6 +26,7 @@ import type {
 } from "@rhombus-std/di.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { ServiceProviderClass } from "./scope.js";
 
@@ -62,7 +62,7 @@ export const ServiceCollectionContainerBuilderExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceCollectionContainerBuilderExtensions);
+registerAugmentations(nameof<ServiceManifestInterface>(), ServiceCollectionContainerBuilderExtensions);
 
 /**
  * The static / constructor side of the public `ServiceManifest`. Extracted as an

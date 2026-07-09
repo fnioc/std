@@ -24,10 +24,10 @@
 
 import type { IConfiguration } from "@rhombus-std/config.core";
 import { LoggerFilterOptions } from "@rhombus-std/logging";
-import { LOGGING_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/logging.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { bindLoggerFilterOptions } from "./filter-options-binding";
 import { LoggingConfiguration } from "./logging-configuration";
 
@@ -81,4 +81,4 @@ declare module "@rhombus-std/logging/internal/logging-builder" {
   }
 }
 
-registerAugmentations(LOGGING_BUILDER_AUGMENTATION_TOKEN, LoggingBuilderExtensions);
+registerAugmentations(nameof<ILoggingBuilder>(), LoggingBuilderExtensions);

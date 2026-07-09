@@ -38,20 +38,3 @@ export const TRACING_OPTIONS_TOKEN: Token = `${NAMESPACE}/tracing-options`;
 export function collectionToken(elementToken: Token): Token {
   return `Array<${elementToken}>`;
 }
-
-// The augmentation-registry tokens for diagnostics.core's OPEN augmentation-target
-// receivers (docs/decisions.md §38). Distinct from the DI-slot tokens above: these
-// key the primitives augmentation registry's bags for the builder receivers, so
-// every extender registers its augmentation set against the same token and the
-// concrete builders decorated with them pull the members onto their prototypes.
-// `IMetricsBuilder`'s token is shared by both `@rhombus-std/diagnostics`'s
-// `MetricsBuilder` and `@rhombus-std/hosting`'s independent `MetricsBuilder`.
-//
-// Values are plain `nameof`-format strings (`<package>:<TypeName>`); the
-// transformer's `nameof<IMetricsBuilder>()` derives the identical literals.
-
-/** Registry token for the `IMetricsBuilder` augmentation receiver. */
-export const METRICS_BUILDER_AUGMENTATION_TOKEN: Token = "@rhombus-std/diagnostics.core:IMetricsBuilder";
-
-/** Registry token for the `ITracingBuilder` augmentation receiver. */
-export const TRACING_BUILDER_AUGMENTATION_TOKEN: Token = "@rhombus-std/diagnostics.core:ITracingBuilder";

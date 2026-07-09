@@ -9,7 +9,7 @@
 // the re-export through the package barrel.
 //
 // `addInMemoryCollection` targets the OPEN `IConfigurationBuilder` receiver, so
-// it registers against CONFIGURATION_BUILDER_AUGMENTATION_TOKEN (docs §38)
+// it registers against nameof<IConfigurationBuilder>() (docs §38)
 // rather than installing directly: the reference extension method targets
 // IConfigurationBuilder, and ConfigurationManager implements that interface
 // too, so both concrete builders are decorated with that one token and a
@@ -21,10 +21,10 @@
 // one's own concrete return type through the fluent chain (ConfigurationBuilder<T>
 // keeps T; ConfigurationManager stays ConfigurationManager).
 
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
-import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { ConfigurationBuilder } from "../configuration-builder";
 import { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
 
@@ -64,4 +64,4 @@ export const MemoryConfigurationBuilderExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, MemoryConfigurationBuilderExtensions);
+registerAugmentations(nameof<IConfigurationBuilder>(), MemoryConfigurationBuilderExtensions);

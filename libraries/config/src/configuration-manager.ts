@@ -28,9 +28,9 @@
 // ConfigurationManager itself implements IConfigurationRoot and never swaps
 // identity; here the stable manager-level token stands in for that.
 
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type {
   ConfigObject,
+  IConfigurationBuilder,
   IConfigurationManager,
   IConfigurationProvider,
   IConfigurationRoot,
@@ -39,6 +39,7 @@ import type {
 } from "@rhombus-std/config.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
 import { augment, ChangeToken } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { ConfigurationReloadToken } from "./configuration-reload-token";
 import { ConfigurationRoot } from "./configuration-root";
 import { MemoryConfigurationSource } from "./memory/memory-configuration-source";
@@ -57,7 +58,7 @@ import { MemoryConfigurationSource } from "./memory/memory-configuration-source"
  * addConfiguration, ...) reaches `manager.` exactly as it reaches `builder.`
  * (docs/decisions.md §38).
  */
-@augment(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN)
+@augment(nameof<IConfigurationBuilder>())
 export class ConfigurationManager implements IConfigurationManager, IConfigurationRoot {
   readonly #sources: IConfigurationSource[] = [];
   readonly #root: ConfigurationRoot = new ConfigurationRoot([]);

@@ -7,7 +7,7 @@
 // installed onto the receiver's prototype AND reachable as `Set.member(receiver, …)`.
 // IMetricsBuilder is an OPEN receiver whose concrete classes live downstream
 // (@rhombus-std/diagnostics' MetricsBuilder AND @rhombus-std/hosting's), so its
-// literal self-registers here against METRICS_BUILDER_AUGMENTATION_TOKEN (docs §38);
+// literal self-registers here against the `IMetricsBuilder` token (docs §38);
 // each concrete builder is decorated `@augment(token)` and pulls the bag onto its
 // prototype. The MetricsOptions literal is a CLOSED set installed in-package (the
 // concrete class lives here) via direct applyAugmentations in ./options-augmentations.
@@ -27,12 +27,13 @@ import type { ConfigureOptions } from "@rhombus-std/options";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { InstrumentRule } from "./instrument-rule";
 import { METER_SCOPE_ALL, MeterScope } from "./meter-scope";
 import type { IMetricsBuilder } from "./metrics-builder";
 import type { IMetricsListener } from "./metrics-listener";
 import { MetricsOptions } from "./metrics-options";
-import { METRICS_BUILDER_AUGMENTATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "./tokens";
+import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "./tokens";
 
 /**
  * Registers an already-built {@link IMetricsListener} instance. Mirrors
@@ -160,7 +161,7 @@ export const MetricsBuilderExtensions = {
 // moves in beside them); the class-side merges for each concrete builder stay
 // downstream next to the class (@rhombus-std/diagnostics' builder-augmentations,
 // @rhombus-std/hosting's metrics-builder). The concrete `MetricsBuilder` classes
-// are decorated `@augment(METRICS_BUILDER_AUGMENTATION_TOKEN)`, so this registration
+// are decorated `@augment(the `IMetricsBuilder` token)`, so this registration
 // reaches their prototypes -- including hosting's independent `MetricsBuilder`,
 // which shares the same token.
 declare module "./metrics-builder" {
@@ -172,4 +173,4 @@ declare module "./metrics-builder" {
   }
 }
 
-registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, MetricsBuilderExtensions);
+registerAugmentations(nameof<IMetricsBuilder>(), MetricsBuilderExtensions);
