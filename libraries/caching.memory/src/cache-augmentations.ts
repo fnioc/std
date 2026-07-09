@@ -1,25 +1,28 @@
-// Reverse-direction dual-export (docs §22) for the cache convenience wrappers.
-// The IMemoryCache/ICacheEntry receiver interfaces live in caching.core and their
-// standalone free-function form ships there (CacheExtensions/CacheEntryExtensions)
-// and here (the MemoryCacheEntryOptions-typed overloads). Per the cross-package
-// rule, the only concrete receiver classes (MemoryCache/CacheEntry) live in THIS
-// package, so both the declaration merge and the runtime install live here --
-// importing the free functions from caching.core -- so a caching.core-only consumer
-// never sees a method type with no runtime behind it.
+// CLOSED-set install (docs §28/§38) for the cache convenience wrappers. The
+// IMemoryCache/ICacheEntry receiver interfaces AND all their augmentations are
+// owned inside caching.core (CacheExtensions/CacheEntryExtensions), so this is a
+// closed set: no registry token, direct `applyAugmentations`. Per the
+// cross-package rule, the only concrete receiver classes (MemoryCache/CacheEntry)
+// live in THIS package, so both the declaration merge and the runtime install
+// live here -- importing the augmentation consts from caching.core -- so a
+// caching.core-only consumer never sees a method type with no runtime behind it.
 //
 // `tryGetValue` is deliberately NOT installed: IMemoryCache already declares a
 // `tryGetValue` member (the primitive the extension wraps), so a method-form merge
 // would both clash with that declaration and, at runtime, overwrite the real
 // implementation. Its standalone free function stays the only form.
 
-import type { CacheItemPriority, ICacheEntry, PostEvictionDelegate } from "@rhombus-std/caching.core";
+import type {
+  CacheItemPriority,
+  ICacheEntry,
+  MemoryCacheEntryOptions,
+  PostEvictionDelegate,
+} from "@rhombus-std/caching.core";
 import { CacheEntryExtensions, CacheExtensions } from "@rhombus-std/caching.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
 import { applyAugmentations } from "@rhombus-std/primitives";
 import { CacheEntry } from "./cache-entry";
-import { MemoryCacheEntryExtensions, MemoryCacheExtensions } from "./entry-options-extensions";
 import { MemoryCache } from "./memory-cache";
-import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 
 // Merge the method form onto the OWNING interfaces (so a consumer holding
 // IMemoryCache/ICacheEntry sees them) AND onto the concrete classes (so they still
@@ -56,7 +59,7 @@ declare module "@rhombus-std/caching.core" {
     registerPostEvictionCallback(callback: PostEvictionDelegate, state?: unknown): this;
     setValue(value: unknown): this;
     setSize(size: number): this;
-    setEntryOptions(options: MemoryCacheEntryOptions): this;
+    setOptions(options: MemoryCacheEntryOptions): this;
   }
 }
 
@@ -93,7 +96,7 @@ declare module "./cache-entry" {
     registerPostEvictionCallback(callback: PostEvictionDelegate, state?: unknown): this;
     setValue(value: unknown): this;
     setSize(size: number): this;
-    setEntryOptions(options: MemoryCacheEntryOptions): this;
+    setOptions(options: MemoryCacheEntryOptions): this;
   }
 }
 
@@ -105,6 +108,4 @@ declare module "./cache-entry" {
 const { tryGetValue, ...cacheInstanceMethods } = CacheExtensions;
 
 applyAugmentations(MemoryCache, cacheInstanceMethods);
-applyAugmentations(MemoryCache, MemoryCacheExtensions);
 applyAugmentations(CacheEntry, CacheEntryExtensions);
-applyAugmentations(CacheEntry, MemoryCacheEntryExtensions);
