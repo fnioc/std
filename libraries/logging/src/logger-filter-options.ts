@@ -6,7 +6,7 @@
 // specific rule per (provider, category) to compute each sink's enabled state.
 // That selection runs inside the filter-options-monitor DI integration which is
 // deferred (see ./logger.ts and ./logger-factory.ts). A caller can still build
-// and inspect rules; `addFilter` (./filter-extensions) appends them.
+// and inspect rules; `addFilter` (./filter-augmentations) appends them.
 
 import { LogLevel } from "@rhombus-std/logging.core";
 import type { Func } from "@rhombus-toolkit/func";

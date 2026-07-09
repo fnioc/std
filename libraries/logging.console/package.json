@@ -16,6 +16,7 @@
     "directory": "libraries/logging.console"
   },
   "type": "module",
+  "sideEffects": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -40,7 +41,9 @@
     "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
   },
   "dependencies": {
-    "@rhombus-std/logging.core": "workspace:*"
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
     "@rhombus-toolkit/func": "3.5.3"

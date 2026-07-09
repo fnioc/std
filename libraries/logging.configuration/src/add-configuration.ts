@@ -3,13 +3,14 @@
 // this ILoggingBuilder, IConfiguration)`.
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface; IConfiguration is
-// a parameter type only (from @rhombus-std/config.core). Per the dual-export
-// convention (docs §22) this ships BOTH forms: the receiver-first free function
-// below is the authored/standalone form, and it is ALSO installed as an instance
-// method (`builder.addConfiguration(cfg)`) onto the concrete LoggingBuilder. The
-// interface lives in logging.core but the only concrete receiver (LoggingBuilder)
-// lives in @rhombus-std/logging, so per the cross-package rule the declaration
-// merge + runtime install both live here, downstream of both.
+// a parameter type only (from @rhombus-std/config.core). Per the augmentation
+// convention (docs §28/§38) this ships BOTH forms: the receiver-first free function
+// below is the authored/standalone form, and it is ALSO registered against the
+// ILoggingBuilder augmentation token so the @augment-decorated LoggingBuilder pulls
+// `builder.addConfiguration(cfg)` onto its prototype. ILoggingBuilder is an OPEN
+// receiver, so this downstream extender registers against the shared token; the
+// interface merge lives here (the member is this package's), the class-side merge too
+// while logging is still source-referenced.
 //
 // Faithfulness note. The reference registers a LAZY `IConfigureOptions<
 // LoggerFilterOptions>` (+ an `IOptionsChangeTokenSource` for reload
@@ -22,9 +23,10 @@
 // provider-oriented) are deferred with the rest of the provider work (issue #75).
 
 import type { IConfiguration } from "@rhombus-std/config.core";
-import { LoggerFilterOptions, LoggingBuilder } from "@rhombus-std/logging";
+import { LoggerFilterOptions } from "@rhombus-std/logging";
+import { LOGGING_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/logging.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { bindLoggerFilterOptions } from "./filter-options-binding";
 import { LoggingConfiguration } from "./logging-configuration";
@@ -56,10 +58,10 @@ export const LoggingBuilderExtensions = {
   addConfiguration,
 } satisfies AugmentationSet<ILoggingBuilder>;
 
-// The method form (docs §28): merge onto the owning ILoggingBuilder interface so a
-// consumer holding it sees the method, then install onto the concrete LoggingBuilder
-// (whose implements-check was fixed in @rhombus-std/logging's own compilation, so no
-// class-side merge is needed here).
+// The method form (docs §38): merge onto the owning ILoggingBuilder interface so a
+// consumer holding it sees the method, then register the set against the shared
+// ILoggingBuilder augmentation token so the @augment-decorated LoggingBuilder pulls
+// it onto its prototype.
 declare module "@rhombus-std/logging.core" {
   interface ILoggingBuilder {
     /** Instance-method form of {@link addConfiguration}. */
@@ -72,10 +74,11 @@ declare module "@rhombus-std/logging.core" {
 // `addConfiguration` the class must declare it too. Merge onto the DECLARING module
 // (reachable via logging's `internal/*` subpath), not the barrel: a class
 // re-exported through the barrel doesn't merge back onto its own declaring module.
+// Retired once logging is dist-built (plan section 5).
 declare module "@rhombus-std/logging/internal/logging-builder" {
   interface LoggingBuilder {
     addConfiguration(configuration: IConfiguration): this;
   }
 }
 
-applyAugmentations(LoggingBuilder, LoggingBuilderExtensions);
+registerAugmentations(LOGGING_BUILDER_AUGMENTATION_TOKEN, LoggingBuilderExtensions);
