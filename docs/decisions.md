@@ -1422,3 +1422,91 @@ chaining building block and switches `hosting` onto it.
   side only was rejected (two sources of truth for zero behavior change). This is the one place the
   M2 payoff doesn't reach, and it's a real ME-parity boundary (the delegate signature), not an
   oversight.
+
+## 38. The augmentation registry: OPEN receivers install via token + event bus — supersedes §28's install mechanics
+
+§28 fixed the _authoring_ shape (one named object literal per ME static extension class,
+`satisfies AugmentationSet<R>`, receiver-first members, the const IS the standalone surface) but
+left the _install_ mechanics direct: every extender called `applyAugmentations(ConcreteClass, Set)`
+itself, which required the extender to import the concrete class. That coupling had a confirmed
+casualty: `hosting`'s independent `MetricsBuilder` never received `enableMetrics` — diagnostics'
+direct install couldn't reach a concrete class it had never heard of. The registry decouples the
+two sides. §28's authoring shape is unchanged; only the install path for OPEN receivers moves.
+
+- **OPEN vs CLOSED receivers.** A receiver interface extended by downstream packages
+  (`ServiceManifest`, `IConfigurationBuilder`, `ILoggingBuilder`, `IMetricsBuilder`,
+  `ITracingBuilder`, `IHost`, `IHostBuilder`, `IHostEnvironment`) is OPEN: extenders register
+  against a token, concrete classes subscribe by decorator. A receiver whose interface AND all
+  augmentations live in one family (`IMemoryCache`/`ICacheEntry`, `MetricsOptions`/
+  `TracingOptions`, `LoggerFilterOptions`, the promoted `IConfiguration`/`IConfigurationRoot`
+  consts) is CLOSED and keeps §28's direct `applyAugmentations` — no token, no registry.
+  CLOSED receivers with MANY implementers (`IConfiguration`/`IConfigurationRoot` — wrappers and
+  fakes are handed to e.g. `ChainedConfigurationProvider`) get NO interface-side merge: it would
+  force phantom members (typed but only installed on our concrete prototypes) onto every
+  implementer, the same several-impls reasoning that kept `ILogger`'s `log*` wrappers
+  standalone-only (§36). Their fluent form is typed per concrete class; interface-typed values
+  use the standalone member.
+- **The mechanism** (`primitives/src/augmentation-registry.ts`): a module-level
+  `Map<Token, bag>` plus a DOM-standard `EventTarget` bus. `registerAugmentations(token, set)`
+  merges `set` into the token's bag — **throwing on member-name collision** (the bag namespace is
+  flat per token; loud failure beats silent clobber, and install order is deliberately
+  unordered) — then dispatches an `Event(token)`. `augment(token)` is a TC39 standard class
+  decorator: it subscribes a listener that (re)installs the token's full bag onto the class
+  prototype (the same this-forwarding thunks `applyAugmentations` mounts) and pulls once
+  immediately. Listeners stay subscribed forever, so a LATER `registerAugmentations` reaches every
+  already-decorated class — import order stops mattering. No Proxy, no observable; re-install is an
+  idempotent `Object.assign`. `Token` itself is hoisted from di.core to primitives (di.core
+  re-exports it), since config-family tokens can't depend on di.core (di ⊥ config).
+- **Token constants**, one per OPEN receiver, named `<RECEIVER>_AUGMENTATION_TOKEN` with
+  nameof-format values (`"<package>:<TypeName>"`), each owned by the `.core` package that owns the
+  receiver interface. One token can decorate several classes (`ConfigurationBuilder` AND
+  `ConfigurationManager`; diagnostics' AND hosting's `MetricsBuilder` — fixing the orphaned-builder
+  bug for good, regression-covered in `tests/augmentations.test`).
+- **Self-registration moves consts' interface merges into `.core` (retires §28's
+  "merge lives downstream" rule for OPEN receivers).** Because the registry decouples install from
+  the concrete class, a const authored in a `.core` package now registers its own runtime there,
+  and its interface-side `declare module` merge moves in beside it. Class-side merges (needed so a
+  src-compiled concrete class still satisfies `implements` once the interface grows members) stay
+  downstream next to each class; they are retired per-lib as libs convert to dist builds (#68).
+- **Merge-identity rule (hard-won):** every interface-side merge for one interface must target the
+  interface's DECLARING module — same resolved file, any specifier. Mixing a package-barrel
+  augmentation (`declare module "@rhombus-std/diagnostics.core"`) with a declaring-module one
+  (`declare module "./metrics-builder"`) makes TS treat the accumulated `this`-returning members as
+  having unrelated this-types, and the concrete classes stop satisfying `implements`. Downstream
+  packages therefore merge via the `internal/*` subpath (e.g.
+  `"@rhombus-std/diagnostics.core/internal/metrics-builder"`), which resolves to the same source
+  file as the owning package's relative merge.
+- **Runtime-identity invariant (§9 extension):** every bundling package keeps
+  `@rhombus-std/primitives` EXTERNAL — an inlined copy forks the registry's Map + bus and the
+  whole mechanism silently splits. Same for `@rhombus-std/config.core`, which loses its pure-types
+  status: the `CONFIGURATION_BUILDER_AUGMENTATION_TOKEN` const is its one runtime export, so it now
+  ships a real `dist/index.js`.
+- **New ME surface landed with the migration:** di.core's `ServiceCollectionDescriptorExtensions`
+  (`removeAll`; `tryAddEnumerable` deferred — the normalized `Registration` collapses
+  implementation identity into an opaque `produce` closure, so the (serviceType, implementationType)
+  dedup key isn't recoverable; tracked against #75), which unstubs logging's `clearProviders`;
+  di's `build()` prototype patch re-homed as `ServiceCollectionContainerBuilderExtensions`;
+  options' `postConfigure` + `validate` (the ME analog of `validate` is the unported
+  `OptionsBuilder.Validate` instance method — the verb collapses onto the manifest, flagged
+  deviation); `ChainedBuilderExtensions` re-shaped onto the registry (§37 content unchanged);
+  logging.console's `ConsoleLoggerExtensions.addConsole` (consumed by hosting's default services).
+- **The `configure` flat-namespace deviation:** ME puts delegate-`Configure` in
+  `OptionsServiceCollectionExtensions`, but the collision-throw forbids a second `configure`
+  member on the manifest token, so `OptionsConfigurationServiceCollectionExtensions.configure`
+  absorbs the delegate overload by argument type (`IConfiguration | (opts) => void`) — the same
+  disambiguation precedent as `addOptions`.
+- **Caching ME-name fidelity:** `MemoryCacheEntryOptions` moves to caching.core (where ME's
+  Abstractions has it); the invented `MemoryCacheExtensions`/`MemoryCacheEntryExtensions` consts
+  are deleted, their members folded into `CacheExtensions` (`setWithOptions`/`getOrCreate*WithOptions`)
+  and `CacheEntryExtensions` (`setEntryOptions` renamed `setOptions`, per ME). The freed
+  `MemoryCacheEntryExtensions` name is reserved for ME's genuine fluent-options-builder class —
+  deferred, YAGNI.
+- **`primitives.transformer` extraction:** `nameof`/token-derivation (`nameof.ts`, `tokens.ts`,
+  `grammar.ts`, `context.ts`) move from di.transformer into the new
+  `@rhombus-std/primitives.transformer` (tokens are a primitives concept now); di.transformer
+  depends on it and re-exports its full prior surface, so no consumer breaks. The new package also
+  ships a minimal standalone transformer that rewrites only `nameof<T>()`, so di-free packages can
+  mint tokens with sugar.
+- **Options layout divergence (recorded):** `addOptions` stays in `options.augmentations` (§14's
+  placement) rather than mirroring ME's in-package `OptionsServiceCollectionExtensions` home —
+  the di ⊥ config bridge rationale is unchanged by the registry.

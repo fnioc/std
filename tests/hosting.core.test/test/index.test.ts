@@ -23,14 +23,18 @@ test("entry point loads and exposes the abstractions surface", () => {
 });
 
 test("environment predicates compare case-insensitively", () => {
-  const env: IHostEnvironment = {
+  // The literal fakes only the DATA surface. IHostEnvironment is an OPEN
+  // augmentation receiver, so the interface also carries the isEnvironment/
+  // isDevelopment/... method form -- installed (via the registry) only on the
+  // downstream concrete HostingEnvironment, which this package doesn't ship --
+  // hence the cast. The standalone member form under test needs no methods on
+  // its receiver.
+  const env = {
     environmentName: "development",
     applicationName: "app",
     contentRootPath: "/",
     contentRootFileProvider: new NullFileProvider(),
-  };
-  // hosting.core ships only the standalone member form (no concrete class here to
-  // patch); the fluent method form is installed downstream in @rhombus-std/hosting.
+  } as IHostEnvironment;
   expect(HostEnvironmentEnvExtensions.isEnvironment(env, "Development")).toBe(true);
   expect(HostEnvironmentEnvExtensions.isDevelopment(env)).toBe(true);
   expect(HostEnvironmentEnvExtensions.isProduction(env)).toBe(false);

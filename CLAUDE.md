@@ -72,13 +72,20 @@ idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during th
 where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
 
 - **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
-  `ChangeToken.onChange`) that underpins live-reload (§8), **and** the augmentation installer infra:
-  one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`,
-  installed onto a constructor's prototype via `applyAugmentations` (§28, superseding §22's
-  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape — landed in #115). It lives here (not
-  `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
+  `ChangeToken.onChange`) that underpins live-reload (§8), **and** the augmentation infra:
+  one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`
+  (§28), installed either directly via `applyAugmentations` (CLOSED receivers) or through the
+  **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
+  re-exports it), `registerAugmentations(token, set)` (flat per-token bag, throws on member-name
+  collision, notifies an `EventTarget` bus), and the `@augment(token)` class decorator that
+  (re)installs the token's bag on the prototype now and on every later registration. It lives here
+  (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
+  `primitives.transformer` hosts the `nameof<T>()`/token-derivation machinery extracted from
+  di.transformer (which depends on it and re-exports the old surface).
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
-  builder + registration-time errors — it ships runtime, §9) ← `di` (the resolution engine:
+  builder + registration-time errors — it ships runtime, §9 — plus the
+  `SERVICE_MANIFEST_AUGMENTATION_TOKEN` and the `ServiceCollectionDescriptorExtensions.removeAll`
+  descriptor verb, §38) ← `di` (the resolution engine:
   scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
   derivation, dependency extraction, registration lowering, factory-signature diagnostic) depends
   on **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.transformer.options`
@@ -89,7 +96,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
 - **`options`** — the collapsed `Options<T>` accessor + the configure / post-configure / validate
   `OptionsFactory` pipeline (§4). Depends **`di.core` only; config-unaware.** `options.augmentations`
   is the **one place di and config meet** — the config→`Options<T>` bridge (§14).
-- **`config`** — `config.core` (types-only `IConfiguration*`) ← `config` (builder/root/section
+- **`config`** — `config.core` (the `IConfiguration*` types + one runtime export, the
+  `IConfigurationBuilder` augmentation token — no longer pure-types, §38) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigurationManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigurationProvider#toString` gives `getDebugView` a friendly
   provider label, §33; `ChainedConfigurationSource`/`ChainedConfigurationProvider` wrap an
@@ -132,9 +140,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `di.core` as peer) ← `logging.configuration` (config-tree → `LoggerFilterOptions` binding,
   `addConfiguration`; ← `logging` + `logging.core` + `config` + `config.core` + `di.core` +
   `options`). No concrete sinks (console/debug/event-log/trace-source providers) are ported this
-  pass — deferred pending a provider design (issue #75). `setMinimumLevel`, `clearProviders`, and
-  `LoggerFactory.create` are hosting-style stubs pending the options-DI-builder and `di` runtime
-  integrations they need.
+  pass except `logging.console` (the console sink, whose `addConsole` hosting's defaults consume);
+  the rest stay deferred pending a provider design (issue #75). `clearProviders` is real (ports
+  through di.core's `removeAll`, §38); `setMinimumLevel` and `LoggerFactory.create` are
+  hosting-style stubs pending the options-DI-builder and `di` runtime integrations they need.
 - **`caching`** — `caching.core` (`IMemoryCache`/`ICacheEntry` abstractions + the
   `CacheExtensions`/`CacheEntryExtensions` convenience functions, owned outright so no
   augmentation is needed; ← `primitives`) ← `caching.memory` (a genuinely working `MemoryCache`:
@@ -159,19 +168,25 @@ before touching):
   (`ServiceProvider`, `Resolver`, `ServiceManifest`); the concrete `*Class` impls never appear in
   a public type (§1, §10).
 - **Runtime identity is load-bearing** — `di` keeps `di.core` _external_ in its bundle so the
-  `ServiceManifestClass` it prototype-patches `build()` onto is the same object that cross-package
-  augmentations patch; a private inlined copy forks identity and breaks the patch (§9). config keeps
-  providers external for the same reason.
+  `ServiceManifestClass` cross-package augmentations install onto is the same object everywhere;
+  a private inlined copy forks identity and breaks the install (§9). config keeps providers
+  external for the same reason. **Every bundling package keeps `@rhombus-std/primitives`
+  external** — an inlined copy forks the augmentation registry's Map + event bus (§38).
 - **Augmentations, one object literal per ME static class** — every augmentation is a single named
   exported const mirroring exactly one reference-stack static extension class (e.g.
   `JsonConfigurationExtensions`), `satisfies AugmentationSet<R>`, with camelCased receiver-first
   members; there are no floating standalone `addX(receiver, …)` functions — the object-literal
-  member (`JsonConfigurationExtensions.addJsonFile(builder, …)`) IS the functional call surface.
-  Installed onto a constructor's prototype via `primitives`' `applyAugmentations`; `defineExtensions`
-  is dropped, `satisfies` alone validates (§28). This decision supersedes §22's dual-export
-  `ExtensionSet`/`defineExtensions`/`applyExtensions` shape and carries the extension→augmentation
-  rename — landed in #115. When the receiver interface is in a
-  `.core` package but the concrete class is downstream, the declare-merge + install live downstream.
+  member (`JsonConfigurationExtensions.addJsonFile(builder, …)`) IS the functional call surface
+  (§28). Install path (§38): CLOSED receivers (interface + all augmentations in one family) use
+  direct `applyAugmentations`; OPEN receivers (extended by downstream packages) register via
+  `registerAugmentations(<RECEIVER>_AUGMENTATION_TOKEN, TheConst)` beside the const, and each
+  concrete class is decorated `@augment(token)` — one token can decorate several classes. A
+  `.core`-authored const's interface-side `declare module` merge lives beside it in `.core`;
+  class-side merges stay downstream next to each concrete class (retired per-lib on dist
+  conversion, #68). **Merge-identity rule:** every interface-side merge for one interface must
+  resolve to the interface's declaring module file (downstream packages use the `internal/*`
+  subpath) — mixing barrel and declaring-module specifiers makes TS treat the `this`-returning
+  members as unrelated this-types and breaks `implements` (§38).
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
