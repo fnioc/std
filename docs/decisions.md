@@ -1510,3 +1510,38 @@ two sides. §28's authoring shape is unchanged; only the install path for OPEN r
 - **Options layout divergence (recorded):** `addOptions` stays in `options.augmentations` (§14's
   placement) rather than mirroring ME's in-package `OptionsServiceCollectionExtensions` home —
   the di ⊥ config bridge rationale is unchanged by the registry.
+
+## 39. `primitives` owns the `AbortSignal`/`AbortController` typings
+
+Library code across `hosting`, `hosting.core`, and `config` names the global `AbortSignal`/
+`AbortController` types, but a library `tsconfig.json` carries no `types` array — those names
+resolve today only because `@types/node` happens to be pulled in transitively. That leaks a
+consumer-side requirement (lib.dom, `@types/node`, or bun-types, just to have `AbortSignal` in
+scope) into the published rolled `.d.ts`. `primitives` — the zero-dep leaf every library already
+depends on — now owns structural `AbortSignal`/`AbortController`/`AbortControllerConstructor`
+interfaces (`libraries/primitives/src/abort.ts`) and a typed re-export of the constructor; every
+library-side use switches to importing them. Every bundling package already keeps `primitives`
+external (§38), so the import survives unresolved into the rolled `.d.ts` — a published consumer
+sees our own types, not a platform-lib requirement.
+
+- **Forced by a platform gap, not an ME port.** The reference gets its cancellation vocabulary
+  (`CancellationToken`/`CancellationTokenSource`) from its base class library — every consumer of
+  the reference implicitly has it. TypeScript has no equivalent always-present base; naming a
+  global type is opt-in per program via `types`/`lib`. `AbortSignal`/`AbortController` have no ME
+  analog to mirror — this is a TS-side gap primitives is the natural, and only, place to close,
+  being the one package every family already depends on for exactly this kind of infrastructure.
+- **Deliberately NOT `declare global`.** Augmenting the ambient `AbortSignal`/`AbortController`
+  globals would collide with `@types/node`'s own declarations the moment both are in scope (most
+  consumer programs). Owned, independently-named interfaces sidestep the collision entirely.
+- **No runtime fallback.** The value export IS `globalThis.AbortController` — native since Node 15
+  and native in bun/deno/browsers. Shipping a polyfill implementation would be pure YAGNI; nothing
+  in this repo runs anywhere that global is absent.
+- **The mutual-assignability keystone.** The interfaces are typed for MUTUAL assignability with
+  both the lib.dom and `@types/node` variants. Members this repo actually calls (`aborted`,
+  `reason`, `throwIfAborted`, the `"abort"` add/removeEventListener pair with `{ once }`,
+  `abort(reason?)`, `signal`) are typed precisely; the `EventTarget` plumbing never touched here
+  (`onabort`, `dispatchEvent`) is present-but-loose (`any`) so our signals stay assignable TO
+  platform APIs (e.g. passing `applicationLifetime.applicationStopping` to
+  `fetch(url, { signal })`) while platform signals stay assignable to our params. Tests and
+  examples (which do carry bun/node types) are left on the platform globals unchanged — a platform
+  instance is structurally assignable to our params either way.

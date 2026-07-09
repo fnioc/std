@@ -30,6 +30,7 @@ import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
+import type { AbortSignal } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConsoleLifetime } from "./console-lifetime";
 import { ConsoleLifetimeOptions } from "./console-lifetime-options";

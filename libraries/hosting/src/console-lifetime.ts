@@ -11,6 +11,7 @@
 import type { IHostApplicationLifetime, IHostEnvironment, IHostLifetime } from "@rhombus-std/hosting.core";
 import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
 import { logInformation, LogLevel } from "@rhombus-std/logging.core";
+import type { AbortSignal } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import type { ConsoleLifetimeOptions } from "./console-lifetime-options";
 

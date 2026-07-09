@@ -19,6 +19,7 @@
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import type { HostBuilderContext, IHost } from "@rhombus-std/hosting.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
+import type { AbortSignal } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import type { ServiceProviderOptions } from "./builder-augmentations";

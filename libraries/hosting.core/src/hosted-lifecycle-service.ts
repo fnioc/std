@@ -1,3 +1,4 @@
+import type { AbortSignal } from "@rhombus-std/primitives";
 import type { IHostedService } from "./hosted-service";
 
 /**

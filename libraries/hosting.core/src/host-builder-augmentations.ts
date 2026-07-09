@@ -14,6 +14,7 @@
 
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
+import type { AbortSignal } from "@rhombus-std/primitives";
 import type { IHost } from "./host";
 import type { IHostBuilder } from "./host-builder";
 import { HOST_BUILDER_AUGMENTATION_TOKEN } from "./tokens";

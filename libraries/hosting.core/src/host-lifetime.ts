@@ -1,3 +1,5 @@
+import type { AbortSignal } from "@rhombus-std/primitives";
+
 /** Tracks host lifetime. */
 export interface IHostLifetime {
   /**
