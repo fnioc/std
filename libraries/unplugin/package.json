@@ -1,0 +1,59 @@
+{
+  "name": "@rhombus-std/unplugin",
+  "version": "0.0.0",
+  "description": "The unplugin host: one bundler plugin (Vite/Rollup/esbuild/webpack/Bun/...) composing the @rhombus-std ts-patch transformers over a shared LanguageService-backed Program.",
+  "keywords": [
+    "unplugin",
+    "vite",
+    "rollup",
+    "esbuild",
+    "bun",
+    "typescript",
+    "transformer",
+    "dependency-injection",
+    "di",
+    "ioc"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/unplugin"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@rhombus-std/config.transformer": "workspace:*",
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/di.transformer.options": "workspace:*",
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "unplugin": "^3.3.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.2"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

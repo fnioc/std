@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    // Resolve `@rhombus-std/di.core` to its BUILT `.d.ts` (the `built` condition),
+    // NOT source. This package imports the transformers' factory functions from
+    // their dist `.d.ts`, which carry the `declare module "@rhombus-std/di.core"`
+    // augmentations (the tokenless authoring overloads). Those merges enter this
+    // program and reference di.core, so its SOURCE cannot co-compile — the
+    // concrete `ServiceManifestClass` no longer satisfies its augmented base
+    // (TS2416). A real published consumer holds di.core's built (skip-lib-checked)
+    // types and augments on top; the `built` condition reproduces that. Same
+    // hatch as `di.transformer` / `di.transformer.test` (docs/decisions.md §1/§9).
+    // No `plugins`: this package is not transformer-active.
+    "customConditions": ["built"]
+  },
+  "include": ["src/**/*"]
+}
