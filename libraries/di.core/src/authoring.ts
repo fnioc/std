@@ -3,25 +3,39 @@
 // interface machinery here erases completely; the concrete `ServiceManifestClass`
 // that implements it ships alongside (runtime) in this same package.
 //
-// PREFERRED authoring shape — an EXTENSION-METHOD augmentation (the §0
-// directive: ME extension methods become fluent side-effect augmentations). A
-// cross-package fluent author `declare module`s the method onto the interface
-// below AND prototype-patches the concrete `ServiceManifestClass` at import
-// time, so a caller writes `services.addMyThing(...)` fluently:
+// PREFERRED authoring shape — a fluent AUGMENTATION (the §0 directive: the
+// reference stack's extension methods become fluent side-effect augmentations;
+// §28/§38). `ServiceManifest` is an OPEN receiver — downstream families extend it
+// — so a cross-package author authors ONE named const `satisfies
+// AugmentationSet<R>`, `declare module`s its member onto the interface below, and
+// REGISTERS it against the shared `ServiceManifest` token beside that merge. The
+// concrete `ServiceManifestClass` is `@augment`-decorated in di.core, so the
+// registration reaches its prototype and a caller writes `services.addMyThing(...)`
+// fluently — even when this package loaded before the extender:
 //
 //   // my-augmentation.ts (side-effect module, "sideEffects": true)
-//   import { ServiceManifestClass } from "@rhombus-std/di.core";
+//   import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
+//   import type { ServiceManifestClass } from "@rhombus-std/di.core";
+//   import { registerAugmentations } from "@rhombus-std/primitives";
+//   import type { AugmentationSet } from "@rhombus-std/primitives";
 //   declare module "@rhombus-std/di.core" {
-//     interface ServiceManifestBase<Scopes extends string> {
+//     interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+//       addMyThing(): this;
+//     }
+//     interface ServiceManifestClass<Scopes extends string = "singleton"> {
 //       addMyThing(): this;
 //     }
 //   }
-//   ServiceManifestClass.prototype.addMyThing = function () { … return this; };
+//   export const MyThingExtensions = {
+//     addMyThing(manifest: ServiceManifestClass<string>) { … return manifest; },
+//   } satisfies AugmentationSet<ServiceManifestClass<string>>;
+//   registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, MyThingExtensions);
 //
 // This mirrors how `@rhombus-std/config` adds `addJsonFile` to
-// `ConfigurationBuilder`, and depends on di.core ALONE — never the di runtime.
-// A plain free function (`addMyThing(services)`) still works for callers who
-// prefer it; slots are authored as plain `DepSlot` data literals either way.
+// `ConfigurationBuilder`, and depends on di.core ALONE — never the di runtime. The
+// exported const's member (`MyThingExtensions.addMyThing(services, …)`) is also the
+// standalone call surface; slots are authored as plain `DepSlot` data literals
+// either way.
 
 import type { Ctor, Func } from "@rhombus-toolkit/func";
 import type { DepSlot, Token } from "./types.js";

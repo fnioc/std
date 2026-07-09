@@ -17,6 +17,7 @@
     "directory": "libraries/di"
   },
   "type": "module",
+  "sideEffects": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -50,7 +51,8 @@
     }
   },
   "dependencies": {
-    "@rhombus-std/di.core": "workspace:^"
+    "@rhombus-std/di.core": "workspace:^",
+    "@rhombus-std/primitives": "workspace:^"
   },
   "devDependencies": {
     "@rhombus-toolkit/func": "3.5.3"

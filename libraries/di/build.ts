@@ -25,14 +25,17 @@ const ENTRY = join(PKG_ROOT, "src", "index.ts");
 
 rmSync(DIST, { recursive: true, force: true });
 
-// 1. JS bundle — @rhombus-std/di.core EXTERNAL (shared runtime identity), ESM,
-//    node target. The only local runtime helper (`assertNever`) is inlined.
+// 1. JS bundle — @rhombus-std/di.core and @rhombus-std/primitives EXTERNAL
+//    (shared runtime identity), ESM, node target. di registers its `build()`
+//    augmentation through primitives' registry; inlining primitives would fork the
+//    registry singleton (§9/§38), same reason di.core stays external. The only
+//    local runtime helper (`assertNever`) is inlined.
 const js = await Bun.build({
   entrypoints: [ENTRY],
   outdir: DIST,
   target: "node",
   format: "esm",
-  external: ["@rhombus-std/di.core"],
+  external: ["@rhombus-std/di.core", "@rhombus-std/primitives"],
 });
 if (!js.success) {
   for (const log of js.logs) { console.error(log); }

@@ -10,8 +10,10 @@
 // statically knows the arg is a function, so the runtime never has to guess
 // class-vs-factory.
 
+import { augment } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
+import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "./augmentation-tokens.js";
 import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 import { OpenTokenRegistrationError } from "./errors.js";
 import type { ServiceProvider } from "./provider.js";
@@ -61,7 +63,16 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  * `build()` onto this prototype. The class is exported so cross-package fluent
  * augmentations can prototype-patch it (their authored typings merge onto the
  * di.core interfaces, never onto this class directly).
+ *
+ * `@augment` marks it as the concrete receiver for the OPEN `ServiceManifest`
+ * augmentation token: every cross-package registration augmentation (`build`,
+ * `addOptions`, `addLogging`, `addMetrics`, `addMemoryCache`,
+ * `addHostedService`, `removeAll`, ...) registers its set against
+ * `SERVICE_MANIFEST_AUGMENTATION_TOKEN`, and the decorator subscribes the class
+ * so each set — including those registered by DOWNSTREAM packages loaded after
+ * this one — is (re)installed onto the prototype (docs/decisions.md §38).
  */
+@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)
 export class ServiceManifestClass<Scopes extends string = "singleton">
   implements ServiceManifestBase<Scopes, ServiceProvider<Scopes>>
 {
@@ -310,6 +321,21 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
       name: "",
       arity: 0,
     });
+  }
+
+  /**
+   * Removes EVERY registration bound to `token` — both the exact-map list and
+   * the open-template list keyed by that base. The removal PRIMITIVE behind the
+   * `ServiceCollectionDescriptorExtensions.removeAll` augmentation
+   * (`service-collection-descriptor-augmentations.ts`), which cannot reach these
+   * private tables from a separate module. Not part of the public authoring
+   * interface (`ServiceManifestBase`) — a consumer reaches the mutation through
+   * the fluent `removeAll` augmentation, exactly as `build()` is reached through
+   * the di runtime, never as a raw method on the collection surface.
+   */
+  public removeRegistrations(token: Token): void {
+    this.#registrations.delete(token);
+    this.#openRegistrations.delete(token);
   }
 
   /**
