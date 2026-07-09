@@ -832,8 +832,7 @@ request out across 0..N inner providers — the 0- and 1-provider cases are full
 
 ## 21. Skipped MECA abstraction APIs ported into `config`, not `config.core` — #79
 
-The original config port skipped several public
-`Microsoft.Extensions.Configuration.Abstractions` APIs. This pass ports them: the convenience
+The original config port skipped several public MECA APIs. This pass ports them: the convenience
 helpers (`ConfigurationExtensions`, `ConfigurationRootExtensions`) and the concrete
 `ConfigurationManager`. All land in `@rhombus-std/config`, not `config.core`, for the same reason
 — they are runtime values, and `config.core` ships none.
