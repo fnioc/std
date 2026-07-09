@@ -1,11 +1,18 @@
 // Build the with-transformer app with `Bun.build` + the @rhombus-std unplugin
 // host — the production replacement for the old `tspc` emit.
 //
-// The plugin's Bun adapter runs every @rhombus-std transformer over ONE shared
+// The plugin's Bun adapter runs the @rhombus-std transformers over ONE shared
 // `ts.Program` built from THIS app's own `tsconfig.json`, so the tokenless
 // authoring forms in `src/main.ts` (`add<I>(C)`, `addOptions<T>()`,
 // `resolve<T>()`, …) lower to exactly what a hand-written token user would emit —
 // identical in behavior to the tspc output the test's stdout diff still pins.
+//
+// `transforms` is pinned to `["di", "di-options"]` — the SAME two plugins the
+// app's `tspc` lint configures in `tsconfig.json` — so the build emit path and
+// the `tspc --noEmit` lint path validate an identical transformer set. (The app
+// uses no `.withType<T>()` or standalone `nameof<T>()`, so the default suite's
+// `config`/`nameof` passes would be no-ops here anyway; pinning keeps build and
+// lint from silently diverging the moment such syntax is added.)
 //
 // `packages: "external"` keeps every bare specifier (`@rhombus-std/*`, `node:*`)
 // out of the bundle, so `dist/main.js` resolves the workspace packages through
@@ -24,7 +31,12 @@ const result = await Bun.build({
   target: "node",
   format: "esm",
   packages: "external",
-  plugins: [unplugin.bun({ tsconfig: join(PKG_ROOT, "tsconfig.json") })],
+  plugins: [
+    unplugin.bun({
+      tsconfig: join(PKG_ROOT, "tsconfig.json"),
+      transforms: ["di", "di-options"],
+    }),
+  ],
   throw: false,
 });
 

@@ -70,9 +70,11 @@ export const TRANSFORMS: Record<TransformName, TransformEntry> = {
 };
 
 /**
- * The default active set, in application order: registration lowering first
- * (`di`), then the `addOptions<T>()` satellite, then config's `.withType<T>()`,
- * then the leaf `nameof<T>()` rewrite. Order matches the `tspc` plugin list the
- * example apps configure today.
+ * The default active set: the full transformer suite in dependency order —
+ * registration lowering first (`di`), then the `addOptions<T>()` satellite, then
+ * config's `.withType<T>()`, then the leaf `nameof<T>()` rewrite. An individual
+ * consumer may configure a narrower subset under `tspc` (the with-transformer
+ * example lists only `di`/`di-options`); `config` and `nameof` are harmless
+ * no-ops on files that use neither `.withType<T>()` nor a standalone `nameof<T>()`.
  */
 export const DEFAULT_TRANSFORMS: readonly TransformName[] = ["di", "di-options", "config", "nameof"];

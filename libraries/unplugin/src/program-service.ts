@@ -114,10 +114,13 @@ export class ProgramService {
       throw new Error(`@rhombus-std/unplugin: file not resolvable into the Program: ${key}`);
     }
 
-    const factories = this.#factoriesFor(program, transforms);
     const diagnostics: ts.Diagnostic[] = [];
+    // Bind the sink's target BEFORE building factories, so a diagnostic raised
+    // during factory construction (not just inside the per-file transform) is
+    // captured rather than silently dropped into an undefined `#currentDiagnostics`.
     this.#currentDiagnostics = diagnostics;
     try {
+      const factories = this.#factoriesFor(program, transforms);
       const result = ts.transform(sourceFile, factories.slice(), this.#options);
       const transformed = result.transformed[0] as ts.SourceFile;
       const text = this.#printer.printFile(transformed);
