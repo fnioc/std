@@ -7,11 +7,12 @@
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
 // registration builder AND the metrics/tracing builder extensions as instance
 // methods on the family's own builders (both via the dual-export convention,
-// docs §22: every extension available as a standalone function AND a method).
+// docs §28/§38: every augmentation available as a standalone function AND a method).
 //
 // `addMetrics`/`addTracing` target di.core's ServiceManifestClass -- a class this
-// package does NOT own -- so per §0 they are extension-method augmentations: TS
-// declaration merging + a runtime prototype assignment, exactly how
+// package does NOT own -- so they are OPEN-set augmentations (docs §38): TS
+// declaration merging + a `registerAugmentations` against the ServiceManifest
+// token, which the class's `@augment` decoration installs, exactly how
 // @rhombus-std/options.augmentations adds `addOptions`/`configure` and
 // @rhombus-std/config.json adds `addJsonFile`. A consumer who only wants the
 // sugar takes a bare side-effect import: `import "@rhombus-std/diagnostics";`.
@@ -30,7 +31,7 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import { RESOLVER_TOKEN, SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
 import type { IMetricsBuilder, ITracingBuilder } from "@rhombus-std/diagnostics.core";
 import {
   METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
@@ -42,14 +43,17 @@ import {
   TRACING_OPTIONS_TOKEN,
   TracingOptions,
 } from "@rhombus-std/diagnostics.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
-// Side-effect: installs the metrics/tracing builder extensions as instance
-// methods onto MetricsBuilder/TracingBuilder (the reverse-direction half of the
-// dual-export convention). Their standalone free-function form ships separately.
+// Type-only side effect: the class-side declaration merges that keep the concrete
+// MetricsBuilder/TracingBuilder satisfying their OPEN interfaces once the builder
+// augmentation members merge in. The RUNTIME install now flows through the registry
+// -- importing the concrete classes below runs their `@augment` decoration, and the
+// registerAugmentations calls (diagnostics.core + the config-augmentation modules)
+// feed their prototypes (docs §38).
 import "./builder-augmentations";
 import { MetricsBuilder } from "./metrics-builder";
 import { TracingBuilder } from "./tracing-builder";
@@ -90,8 +94,9 @@ declare module "@rhombus-std/di.core" {
 // One named object literal per ME static class (docs §28): `addMetrics` mirrors
 // `MetricsServiceExtensions`, `addTracing` mirrors `TracingServiceExtensions` --
 // two ME classes over the same ServiceManifest receiver, so two literals.
-// Installed as prototype methods (the primary path) via applyAugmentations AND
-// exported so the member is the standalone form.
+// Installed as prototype methods (the primary path) via the OPEN-set registry
+// (registerAugmentations below, docs §38) AND exported so the member is the
+// standalone form.
 export const MetricsServiceExtensions = {
   addMetrics(
     manifest: ServiceManifestClass<string>,
@@ -144,8 +149,11 @@ export const TracingServiceExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyAugmentations(ServiceManifestClass, MetricsServiceExtensions);
-applyAugmentations(ServiceManifestClass, TracingServiceExtensions);
+// OPEN receiver: register both sets against di.core's ServiceManifest token
+// (docs §38). The `ServiceManifestClass` decorated `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)`
+// in di.core pulls `addMetrics`/`addTracing` onto its prototype.
+registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, MetricsServiceExtensions);
+registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, TracingServiceExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).
@@ -153,12 +161,13 @@ export { MetricsBuilder } from "./metrics-builder";
 export { TracingBuilder } from "./tracing-builder";
 
 // The config-binding augmentation sets. Their receiver is the family's OWN
-// builder interface; the dual-export convention (docs §28) installs them as
-// instance methods on MetricsBuilder/TracingBuilder via ./builder-augmentations,
+// builder interface; each self-registers against the builder token (docs §38) so
+// the `@augment`'d MetricsBuilder/TracingBuilder gain the instance-method form,
 // so both `MetricsBuilderConfigurationExtensions.addMetricsConfiguration(builder, cfg)`
 // and `builder.addMetricsConfiguration(cfg)` work. The method form is primary.
-export { MetricsBuilderConfigurationExtensions } from "./metrics-builder-configuration-extensions";
-export { TracingBuilderConfigurationExtensions } from "./tracing-builder-configuration-extensions";
+// Re-exporting the consts also runs each module's registerAugmentations side effect.
+export { MetricsBuilderConfigurationExtensions } from "./metrics-builder-configuration-augmentations";
+export { TracingBuilderConfigurationExtensions } from "./tracing-builder-configuration-augmentations";
 
 // The config-bind ConfigureOptions steps (the reference's internal
 // Metrics/TracingConfigureOptions), exposed so a plugin-less consumer can bind a

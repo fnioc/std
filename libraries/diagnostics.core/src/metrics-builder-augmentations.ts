@@ -5,9 +5,12 @@
 // the options-targeted members target the concrete value object MetricsOptions.
 // Both groups are dual-export augmentations (docs §28): a named object literal
 // installed onto the receiver's prototype AND reachable as `Set.member(receiver, …)`.
-// The IMetricsBuilder literal is installed downstream in @rhombus-std/diagnostics
-// (the concrete MetricsBuilder lives there); the MetricsOptions literal is installed
-// in-package (the concrete class lives here) via ./options-augmentations.
+// IMetricsBuilder is an OPEN receiver whose concrete classes live downstream
+// (@rhombus-std/diagnostics' MetricsBuilder AND @rhombus-std/hosting's), so its
+// literal self-registers here against METRICS_BUILDER_AUGMENTATION_TOKEN (docs §38);
+// each concrete builder is decorated `@augment(token)` and pulls the bag onto its
+// prototype. The MetricsOptions literal is a CLOSED set installed in-package (the
+// concrete class lives here) via direct applyAugmentations in ./options-augmentations.
 //
 // The reference splits EnableMetrics/DisableMetrics into a builder-targeted overload
 // (registers a `Configure(MetricsOptions)` step) and a MetricsOptions-targeted
@@ -22,13 +25,14 @@
 import type { Ctor, DepSlot, Token } from "@rhombus-std/di.core";
 import type { ConfigureOptions } from "@rhombus-std/options";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 
 import { InstrumentRule } from "./instrument-rule";
 import { METER_SCOPE_ALL, MeterScope } from "./meter-scope";
 import type { IMetricsBuilder } from "./metrics-builder";
 import type { IMetricsListener } from "./metrics-listener";
 import { MetricsOptions } from "./metrics-options";
-import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "./tokens";
+import { METRICS_BUILDER_AUGMENTATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "./tokens";
 
 /**
  * Registers an already-built {@link IMetricsListener} instance. Mirrors
@@ -149,3 +153,23 @@ export const MetricsBuilderExtensions = {
   enableMetrics,
   disableMetrics,
 } satisfies AugmentationSet<IMetricsBuilder>;
+
+// Self-registration for the OPEN `IMetricsBuilder` receiver (docs §38). The
+// interface-side declaration merge lives here beside the const (rule §38.6:
+// OPEN-set consts register their own runtime in `.core`, so the interface merge
+// moves in beside them); the class-side merges for each concrete builder stay
+// downstream next to the class (@rhombus-std/diagnostics' builder-augmentations,
+// @rhombus-std/hosting's metrics-builder). The concrete `MetricsBuilder` classes
+// are decorated `@augment(METRICS_BUILDER_AUGMENTATION_TOKEN)`, so this registration
+// reaches their prototypes -- including hosting's independent `MetricsBuilder`,
+// which shares the same token.
+declare module "./metrics-builder" {
+  interface IMetricsBuilder {
+    addMetricsListener(listener: IMetricsListener): this;
+    addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
+    disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
+  }
+}
+
+registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, MetricsBuilderExtensions);

@@ -4,10 +4,15 @@
 // (docs §28) and installed onto the concrete builder in ./builder-augmentations.
 
 import type { IConfiguration } from "@rhombus-std/config";
-import { TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURE_TOKEN } from "@rhombus-std/diagnostics.core";
+import {
+  TRACING_BUILDER_AUGMENTATION_TOKEN,
+  TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
+  TRACING_CONFIGURE_TOKEN,
+} from "@rhombus-std/diagnostics.core";
 import type { ITracingBuilder } from "@rhombus-std/diagnostics.core";
 import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 
 import { TracingConfigureOptions } from "./tracing-configure-options";
 
@@ -26,3 +31,22 @@ function addTracingConfiguration(builder: ITracingBuilder, configuration: IConfi
 export const TracingBuilderConfigurationExtensions = {
   addTracingConfiguration,
 } satisfies AugmentationSet<ITracingBuilder>;
+
+// Self-registration for the config-binding member of the OPEN `ITracingBuilder`
+// receiver (docs §38). Lives downstream (its `IConfiguration` dep keeps it out of
+// diagnostics.core), so per rule §38.6 its interface-side merge and its
+// registerAugmentations call live here beside it -- separate from the
+// listener/rule members registering from diagnostics.core against the same token.
+//
+// The merge targets the DECLARING module (via the internal/* subpath), not the
+// package barrel: every interface-side merge for one interface must resolve to
+// the same module file, or TS treats the accumulated `this`-returning members
+// as having unrelated this-types and the concrete builders stop satisfying
+// `implements ITracingBuilder`.
+declare module "@rhombus-std/diagnostics.core/internal/tracing-builder" {
+  interface ITracingBuilder {
+    addTracingConfiguration(configuration: IConfiguration): this;
+  }
+}
+
+registerAugmentations(TRACING_BUILDER_AUGMENTATION_TOKEN, TracingBuilderConfigurationExtensions);
