@@ -12,4 +12,5 @@ await buildPackage({
   dir: import.meta.dir,
   name: "@rhombus-std/caching.core",
   external: ["@rhombus-std/primitives"],
+  tspcProject: "tsconfig.build.json",
 });

@@ -18,4 +18,5 @@ await buildPackage({
     "@rhombus-std/logging.core",
     "@rhombus-std/primitives",
   ],
+  tspcProject: "tsconfig.build.json",
 });

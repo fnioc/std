@@ -19,7 +19,7 @@
 // runtime .js slips into dist.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 export interface BuildPackageOptions {
@@ -46,6 +46,25 @@ export interface BuildPackageOptions {
    * one entrypoint.
    */
   readonly splitting?: boolean;
+  /**
+   * A tsconfig (relative to `dir`) wired with the ts-patch `plugins` that lower
+   * authoring sugar -- in practice `nameof<T>()` via
+   * @rhombus-std/primitives.transformer. When set, the JS pipeline gains a
+   * lowering stage: `tspc -p <this>` emits transformed per-file JS into the
+   * config's `outDir` (conventionally `.tspc-out/`), and `bun build` bundles
+   * THAT emit instead of raw `src` -- `Bun.build` alone never runs ts-patch
+   * transformers, so this stage is what gets `nameof` lowered into the shipped
+   * `dist/*.js`. The d.ts pipeline is unaffected (`nameof` has no type-level
+   * footprint).
+   *
+   * After bundling, the per-file lowered emit is KEPT at `dist/internal/` and
+   * the package's `internal/*` export subpath points its `bun` condition there:
+   * white-box consumers (sibling test packages) execute the same lowered JS a
+   * published consumer would, instead of raw src whose un-lowered `nameof<T>()`
+   * throws at import time. `dist/internal` is publish-excluded via a
+   * `"!dist/internal"` entry in the package's `files`.
+   */
+  readonly tspcProject?: string;
 }
 
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
@@ -59,14 +78,33 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     dtsConfigs = ["rollup.dts.mjs"],
     assertNoJs = false,
     splitting = entrypoints.length > 1,
+    tspcProject,
   } = options;
 
   const dist = join(dir, "dist");
   rmSync(dist, { recursive: true, force: true });
 
+  // The lowering stage: emit transformer-lowered JS with tspc, bundle that.
+  let stageDir: string | undefined;
+  let jsEntrypoints = entrypoints.map((entry) => join(dir, entry));
+  if (emitJs && tspcProject) {
+    stageDir = join(dir, ".tspc-out");
+    rmSync(stageDir, { recursive: true, force: true });
+    const emit = spawnSync(
+      "bun",
+      ["x", "tspc", "-p", join(dir, tspcProject)],
+      { cwd: dir, stdio: "inherit" },
+    );
+    if (emit.status !== 0) {
+      throw new Error(`${name}: tspc lowering emit failed (${tspcProject})`);
+    }
+    // Map each src entrypoint onto its emitted stage file (src/x.ts -> .tspc-out/x.js).
+    jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, "").replace(/\.ts$/, ".js")));
+  }
+
   if (emitJs) {
     const js = await Bun.build({
-      entrypoints: entrypoints.map((entry) => join(dir, entry)),
+      entrypoints: jsEntrypoints,
       outdir: dist,
       target: "node",
       format: "esm",
@@ -78,6 +116,11 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
         console.error(log);
       }
       throw new Error(`${name}: bun build failed`);
+    }
+    if (stageDir) {
+      // Keep the per-file lowered emit as the white-box (`internal/*`) runtime
+      // surface -- see the `tspcProject` doc above.
+      renameSync(stageDir, join(dist, "internal"));
     }
   }
 

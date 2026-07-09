@@ -24,4 +24,5 @@ await buildPackage({
     "@rhombus-std/primitives",
     "@rhombus-toolkit/func",
   ],
+  tspcProject: "tsconfig.build.json",
 });

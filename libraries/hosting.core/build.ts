@@ -1,8 +1,20 @@
-import { rm } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { rename, rm } from "node:fs/promises";
 import { rollup } from "rollup";
 import dts from "rollup-plugin-dts";
 
 await rm("dist", { recursive: true, force: true });
+await rm(".tspc-out", { recursive: true, force: true });
+
+// The tspc lowering stage: the inline `nameof<IHost>()` / `nameof<IHostBuilder>()`
+// / `nameof<IHostEnvironment>()` augmentation tokens must ship as their derived
+// string literals, and `Bun.build` alone never runs ts-patch transformers. So
+// `tspc -p tsconfig.build.json` emits transformer-lowered per-file JS into
+// .tspc-out/, and the JS bundle below is built from THAT emit rather than raw src.
+const emit = spawnSync("bun", ["x", "tspc", "-p", "tsconfig.build.json"], { stdio: "inherit" });
+if (emit.status !== 0) {
+  throw new Error("@rhombus-std/hosting.core: tspc lowering emit failed");
+}
 
 // Every @rhombus-std/* workspace dependency (and @rhombus-toolkit/*) is kept
 // EXTERNAL from the JS bundle -- NOT inlined -- so the cross-package
@@ -12,7 +24,7 @@ await rm("dist", { recursive: true, force: true });
 // consumer ever touches (mirrors libraries/hosting/build.ts and
 // libraries/logging/build.ts's identical rationale).
 const result = await Bun.build({
-  entrypoints: ["src/index.ts"],
+  entrypoints: [".tspc-out/index.js"],
   outdir: "dist",
   target: "node",
   format: "esm",
@@ -42,3 +54,10 @@ await dtsBundle.write({ file: "dist/index.d.ts", format: "es" });
 await dtsBundle.close();
 
 await rm("dist/.types", { recursive: true, force: true });
+
+// Keep the per-file lowered emit as the white-box (`internal/*`) runtime
+// surface: the package's `internal/*` export points its `bun` condition at
+// dist/internal so sibling test packages execute lowered JS instead of raw src
+// (whose un-lowered `nameof<T>()` throws at import time). Publish-excluded via
+// `"!dist/internal"` in package.json `files`.
+await rename(".tspc-out", "dist/internal");

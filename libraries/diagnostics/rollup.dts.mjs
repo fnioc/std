@@ -20,6 +20,7 @@ export default {
     /^@rhombus-std\/options\.augmentations$/,
     /^@rhombus-std\/diagnostics\.core$/,
     /^@rhombus-std\/primitives$/,
+    /^@rhombus-std\/primitives\.transformer(\/|$)/,
     /^@rhombus-toolkit\/func$/,
   ],
   plugins: [

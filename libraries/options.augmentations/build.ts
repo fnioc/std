@@ -19,4 +19,5 @@ await buildPackage({
     "@rhombus-std/config.core",
     "@rhombus-std/primitives",
   ],
+  tspcProject: "tsconfig.build.json",
 });
