@@ -16,14 +16,14 @@ export interface IHost extends Disposable {
    * application runs until interrupted or until
    * `IHostApplicationLifetime.stopApplication` is called.
    *
-   * @param cancellationToken Aborts program start.
+   * @param abortSignal Aborts program start.
    */
-  start(cancellationToken?: AbortSignal): Promise<void>;
+  start(abortSignal?: AbortSignal): Promise<void>;
 
   /**
    * Attempts to gracefully stop the program.
    *
-   * @param cancellationToken Indicates when the stop should no longer be graceful.
+   * @param abortSignal Indicates when the stop should no longer be graceful.
    */
-  stop(cancellationToken?: AbortSignal): Promise<void>;
+  stop(abortSignal?: AbortSignal): Promise<void>;
 }

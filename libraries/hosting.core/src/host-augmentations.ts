@@ -26,9 +26,9 @@ import { HOST_APPLICATION_LIFETIME_TOKEN, HOST_AUGMENTATION_TOKEN } from "./toke
 // downstream in `@rhombus-std/hosting`.
 declare module "./host" {
   interface IHost {
-    run(cancellationToken?: AbortSignal): Promise<void>;
-    runAsync(cancellationToken?: AbortSignal): Promise<void>;
-    waitForShutdownAsync(cancellationToken?: AbortSignal): Promise<void>;
+    run(abortSignal?: AbortSignal): Promise<void>;
+    runAsync(abortSignal?: AbortSignal): Promise<void>;
+    waitForShutdownAsync(abortSignal?: AbortSignal): Promise<void>;
     stopWithTimeout(timeoutMs: number): Promise<void>;
   }
 }
@@ -45,33 +45,33 @@ function whenAborted(signal: AbortSignal): Promise<void> {
 
 /**
  * Returns a promise that completes when shutdown is triggered via
- * `applicationStopping` (or via `cancellationToken`, which requests a stop),
+ * `applicationStopping` (or via `abortSignal`, which requests a stop),
  * then gracefully stops the host.
  */
 async function waitForShutdownAsync(
   host: IHost,
-  cancellationToken?: AbortSignal,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
   const lifetime = host.services.resolve<IHostApplicationLifetime>(
     HOST_APPLICATION_LIFETIME_TOKEN,
   );
 
   const requestStop = (): void => lifetime.stopApplication();
-  if (cancellationToken !== undefined) {
-    if (cancellationToken.aborted) {
+  if (abortSignal !== undefined) {
+    if (abortSignal.aborted) {
       requestStop();
     } else {
-      cancellationToken.addEventListener("abort", requestStop, { once: true });
+      abortSignal.addEventListener("abort", requestStop, { once: true });
     }
   }
 
   try {
     await whenAborted(lifetime.applicationStopping);
   } finally {
-    cancellationToken?.removeEventListener("abort", requestStop);
+    abortSignal?.removeEventListener("abort", requestStop);
   }
 
-  // Don't forward the cancellation token -- it may have been triggered only to
+  // Don't forward the abort signal -- it may have been triggered only to
   // unblock the wait, and forwarding it would trigger an abortive shutdown.
   await host.stop();
 }
@@ -81,10 +81,10 @@ async function waitForShutdownAsync(
  * host (async disposal preferred when available). Completes only once shutdown
  * is triggered.
  */
-async function runAsync(host: IHost, cancellationToken?: AbortSignal): Promise<void> {
+async function runAsync(host: IHost, abortSignal?: AbortSignal): Promise<void> {
   try {
-    await host.start(cancellationToken);
-    await waitForShutdownAsync(host, cancellationToken);
+    await host.start(abortSignal);
+    await waitForShutdownAsync(host, abortSignal);
   } finally {
     const asyncDisposable = host as Partial<AsyncDisposable>;
     const disposeAsync = asyncDisposable[Symbol.asyncDispose];
@@ -101,8 +101,8 @@ async function runAsync(host: IHost, cancellationToken?: AbortSignal): Promise<v
  * calling thread until shutdown; JS cannot, so `run` returns the same promise
  * `runAsync` does.
  */
-function run(host: IHost, cancellationToken?: AbortSignal): Promise<void> {
-  return runAsync(host, cancellationToken);
+function run(host: IHost, abortSignal?: AbortSignal): Promise<void> {
+  return runAsync(host, abortSignal);
 }
 
 /**

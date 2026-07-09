@@ -44,7 +44,7 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
   }
 
   /** Registers the shutdown handlers and (unless suppressed) the banner callbacks. */
-  public waitForStart(_cancellationToken: AbortSignal): Promise<void> {
+  public waitForStart(_abortSignal: AbortSignal): Promise<void> {
     if (!this.#options.suppressStatusMessages) {
       this.#onStarted = () => this.#onApplicationStarted();
       this.#onStopping = () => this.#onApplicationStopping();
@@ -59,7 +59,7 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
   }
 
   /** No-op: there is nothing to do on the lifetime's stop. */
-  public stop(_cancellationToken: AbortSignal): Promise<void> {
+  public stop(_abortSignal: AbortSignal): Promise<void> {
     return Promise.resolve();
   }
 

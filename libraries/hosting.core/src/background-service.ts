@@ -43,21 +43,21 @@ export abstract class BackgroundService implements IHostedService, Disposable {
    * Called when the service starts. The returned promise represents the
    * lifetime of the long-running operation.
    *
-   * @param stoppingToken Triggered when {@link stop} is called.
+   * @param stoppingSignal Triggered when {@link stop} is called.
    */
-  protected abstract execute(stoppingToken: AbortSignal): Promise<void>;
+  protected abstract execute(stoppingSignal: AbortSignal): Promise<void>;
 
   /**
    * Triggered when the application host is ready to start the service. Kicks
    * {@link execute} without awaiting and returns immediately; any result from
    * {@link execute} is observed by {@link stop}.
    *
-   * @param cancellationToken Aborting it also aborts the executing operation.
+   * @param abortSignal Aborting it also aborts the executing operation.
    */
-  public start(cancellationToken: AbortSignal): Promise<void> {
+  public start(abortSignal: AbortSignal): Promise<void> {
     const controller = new AbortController();
     this.#stoppingController = controller;
-    propagateAbort(cancellationToken, controller);
+    propagateAbort(abortSignal, controller);
 
     // Kick execute() without awaiting; retain the promise so stop() can await it.
     // Deferred through Promise.resolve() so a synchronous throw surfaces as a
@@ -70,11 +70,11 @@ export abstract class BackgroundService implements IHostedService, Disposable {
   /**
    * Triggered when the application host is performing a graceful shutdown.
    * Signals cancellation to {@link execute} and waits until it completes or the
-   * stop token triggers, whichever comes first.
+   * stop signal triggers, whichever comes first.
    *
-   * @param cancellationToken Indicates when the stop should no longer be graceful.
+   * @param abortSignal Indicates when the stop should no longer be graceful.
    */
-  public async stop(cancellationToken: AbortSignal): Promise<void> {
+  public async stop(abortSignal: AbortSignal): Promise<void> {
     if (this.#executeTask === undefined) {
       return;
     }
@@ -85,7 +85,7 @@ export abstract class BackgroundService implements IHostedService, Disposable {
       // host explicitly ignores that here (mirrors ConfigureAwaitOptions.SuppressThrowing).
       await Promise.race([
         this.#executeTask.catch(() => undefined),
-        whenAborted(cancellationToken),
+        whenAborted(abortSignal),
       ]);
     }
   }

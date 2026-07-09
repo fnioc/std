@@ -27,16 +27,16 @@ import type { HostOptions } from "./host-options";
 
 declare module "./internal-host" {
   interface Host {
-    run(cancellationToken?: AbortSignal): Promise<void>;
-    runAsync(cancellationToken?: AbortSignal): Promise<void>;
-    waitForShutdownAsync(cancellationToken?: AbortSignal): Promise<void>;
+    run(abortSignal?: AbortSignal): Promise<void>;
+    runAsync(abortSignal?: AbortSignal): Promise<void>;
+    waitForShutdownAsync(abortSignal?: AbortSignal): Promise<void>;
     stopWithTimeout(timeoutMs: number): Promise<void>;
   }
 }
 
 declare module "./host-builder" {
   interface HostBuilder {
-    startHost(cancellationToken?: AbortSignal): Promise<IHost>;
+    startHost(abortSignal?: AbortSignal): Promise<IHost>;
     configureDefaults(args?: readonly string[]): this;
     useEnvironment(environment: string): this;
     useContentRoot(contentRoot: string): this;
@@ -45,7 +45,7 @@ declare module "./host-builder" {
     configureMetrics(configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): this;
     useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
     useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
-    runConsoleAsync(cancellationToken?: AbortSignal): Promise<void>;
+    runConsoleAsync(abortSignal?: AbortSignal): Promise<void>;
   }
 }
 

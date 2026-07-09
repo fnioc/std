@@ -5,15 +5,15 @@ export interface IHostLifetime {
    * before continuing. Can be used to delay startup until signaled by an
    * external event.
    *
-   * @param cancellationToken Aborts program start.
+   * @param abortSignal Aborts program start.
    */
-  waitForStart(cancellationToken: AbortSignal): Promise<void>;
+  waitForStart(abortSignal: AbortSignal): Promise<void>;
 
   /**
    * Called from {@link IHost.stop} to indicate that the host is stopping and
    * it's time to shut down.
    *
-   * @param cancellationToken Indicates when the stop should no longer be graceful.
+   * @param abortSignal Indicates when the stop should no longer be graceful.
    */
-  stop(cancellationToken: AbortSignal): Promise<void>;
+  stop(abortSignal: AbortSignal): Promise<void>;
 }

@@ -46,15 +46,15 @@ test("BackgroundService.start kicks execute without awaiting; stop aborts the st
   let started = false;
 
   class Worker extends BackgroundService {
-    protected override async execute(stoppingToken: AbortSignal): Promise<void> {
+    protected override async execute(stoppingSignal: AbortSignal): Promise<void> {
       started = true;
       await new Promise<void>((resolve) => {
-        if (stoppingToken.aborted) {
+        if (stoppingSignal.aborted) {
           sawAbort = true;
           resolve();
           return;
         }
-        stoppingToken.addEventListener("abort", () => {
+        stoppingSignal.addEventListener("abort", () => {
           sawAbort = true;
           resolve();
         }, { once: true });
@@ -79,10 +79,10 @@ test("BackgroundService[Symbol.dispose] unconditionally aborts the executing ope
   let executing = false;
 
   class Worker extends BackgroundService {
-    protected override async execute(stoppingToken: AbortSignal): Promise<void> {
+    protected override async execute(stoppingSignal: AbortSignal): Promise<void> {
       executing = true;
       await new Promise<void>((resolve) => {
-        stoppingToken.addEventListener("abort", () => {
+        stoppingSignal.addEventListener("abort", () => {
           aborted = true;
           resolve();
         }, { once: true });

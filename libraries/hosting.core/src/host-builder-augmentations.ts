@@ -24,7 +24,7 @@ import { HOST_BUILDER_AUGMENTATION_TOKEN } from "./tokens";
 // SATISFIES the fully-merged interface) lives downstream next to that class.
 declare module "./host-builder" {
   interface IHostBuilder {
-    startHost(cancellationToken?: AbortSignal): Promise<IHost>;
+    startHost(abortSignal?: AbortSignal): Promise<IHost>;
   }
 }
 
@@ -32,15 +32,15 @@ declare module "./host-builder" {
  * Builds the host and starts it.
  *
  * @param hostBuilder The builder to build and start.
- * @param cancellationToken Cancels the start.
+ * @param abortSignal Cancels the start.
  * @returns The started {@link IHost}.
  */
 async function startHost(
   hostBuilder: IHostBuilder,
-  cancellationToken?: AbortSignal,
+  abortSignal?: AbortSignal,
 ): Promise<IHost> {
   const host = hostBuilder.build();
-  await host.start(cancellationToken);
+  await host.start(abortSignal);
   return host;
 }
 

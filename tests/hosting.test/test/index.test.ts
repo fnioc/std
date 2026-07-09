@@ -123,10 +123,10 @@ test("BackgroundService: execute runs on start; stop aborts its stopping signal"
   let stoppingAborted = false;
 
   class Worker extends BackgroundService {
-    protected override async execute(stoppingToken: AbortSignal): Promise<void> {
+    protected override async execute(stoppingSignal: AbortSignal): Promise<void> {
       executing = true;
       await new Promise<void>((resolve) => {
-        stoppingToken.addEventListener("abort", () => {
+        stoppingSignal.addEventListener("abort", () => {
           stoppingAborted = true;
           resolve();
         }, { once: true });

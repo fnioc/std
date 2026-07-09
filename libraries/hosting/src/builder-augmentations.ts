@@ -68,7 +68,7 @@ declare module "@rhombus-std/hosting.core/internal/host-builder" {
     configureMetrics(configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): this;
     useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
     useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
-    runConsoleAsync(cancellationToken?: AbortSignal): Promise<void>;
+    runConsoleAsync(abortSignal?: AbortSignal): Promise<void>;
   }
 }
 
@@ -194,9 +194,9 @@ function useConsoleLifetime(
  */
 function runConsoleAsync(
   hostBuilder: IHostBuilder,
-  cancellationToken?: AbortSignal,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
-  return HostingAbstractionsHostExtensions.runAsync(useConsoleLifetime(hostBuilder).build(), cancellationToken);
+  return HostingAbstractionsHostExtensions.runAsync(useConsoleLifetime(hostBuilder).build(), abortSignal);
 }
 
 /**

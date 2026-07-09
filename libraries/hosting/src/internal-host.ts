@@ -73,14 +73,14 @@ function getHostLifecycles(hostedServices: readonly IHostedService[]): IHostedLi
  */
 async function foreachService<T>(
   services: readonly T[],
-  token: AbortSignal,
+  signal: AbortSignal,
   concurrent: boolean,
   abortOnFirstException: boolean,
   exceptions: unknown[],
   operation: Func<[T, AbortSignal], Promise<void>>,
 ): Promise<void> {
   if (concurrent) {
-    const results = await Promise.allSettled(services.map((service) => operation(service, token)));
+    const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
       if (result.status === "rejected") {
         exceptions.push(result.reason);
@@ -91,7 +91,7 @@ async function foreachService<T>(
 
   for (const service of services) {
     try {
-      await operation(service, token);
+      await operation(service, signal);
     } catch (error) {
       exceptions.push(error);
       if (abortOnFirstException) {
@@ -149,18 +149,18 @@ export class Host implements IHost, AsyncDisposable {
    * scope + resolve hosted services -> `starting` -> `start` -> `started` ->
    * fire `applicationStarted`.
    */
-  public async start(cancellationToken?: AbortSignal): Promise<void> {
+  public async start(abortSignal?: AbortSignal): Promise<void> {
     hostStarting(this.#logger);
 
-    const sources = cancellationToken
-      ? [cancellationToken, this.#applicationLifetime.applicationStopping]
+    const sources = abortSignal
+      ? [abortSignal, this.#applicationLifetime.applicationStopping]
       : [this.#applicationLifetime.applicationStopping];
     const linked = linkSignals(sources, this.#options.startupTimeout);
-    const token = linked.signal;
+    const signal = linked.signal;
 
     try {
-      await this.#hostLifetime.waitForStart(token);
-      token.throwIfAborted();
+      await this.#hostLifetime.waitForStart(signal);
+      signal.throwIfAborted();
 
       const exceptions: unknown[] = [];
       this.#hostStarting = true;
@@ -185,11 +185,11 @@ export class Host implements IHost, AsyncDisposable {
       if (this.#hostedLifecycleServices) {
         await foreachService(
           this.#hostedLifecycleServices,
-          token,
+          signal,
           concurrent,
           abortOnFirstException,
           exceptions,
-          (service, innerToken) => service.starting(innerToken),
+          (service, innerSignal) => service.starting(innerSignal),
         );
         logAndRethrow();
       }
@@ -197,12 +197,12 @@ export class Host implements IHost, AsyncDisposable {
       // start()
       await foreachService(
         this.#hostedServices,
-        token,
+        signal,
         concurrent,
         abortOnFirstException,
         exceptions,
-        async (service, innerToken) => {
-          await service.start(innerToken);
+        async (service, innerSignal) => {
+          await service.start(innerSignal);
           if (service instanceof BackgroundService) {
             const monitor = this.#tryExecuteBackgroundService(service);
             (this.#backgroundServiceTasks ??= []).push(monitor);
@@ -215,11 +215,11 @@ export class Host implements IHost, AsyncDisposable {
       if (this.#hostedLifecycleServices) {
         await foreachService(
           this.#hostedLifecycleServices,
-          token,
+          signal,
           concurrent,
           abortOnFirstException,
           exceptions,
-          (service, innerToken) => service.started(innerToken),
+          (service, innerSignal) => service.started(innerSignal),
         );
       }
       logAndRethrow();
@@ -237,12 +237,12 @@ export class Host implements IHost, AsyncDisposable {
    * `applicationStopping` -> `stop` -> `stopped` -> fire `applicationStopped` ->
    * host lifetime stop -> dispose the singleton scope.
    */
-  public async stop(cancellationToken?: AbortSignal): Promise<void> {
+  public async stop(abortSignal?: AbortSignal): Promise<void> {
     hostStopping(this.#logger);
 
-    const sources = cancellationToken ? [cancellationToken] : [];
+    const sources = abortSignal ? [abortSignal] : [];
     const linked = linkSignals(sources, this.#options.shutdownTimeout);
-    const token = linked.signal;
+    const signal = linked.signal;
 
     try {
       const exceptions: unknown[] = [];
@@ -262,11 +262,11 @@ export class Host implements IHost, AsyncDisposable {
         if (reversedLifecycleServices) {
           await foreachService(
             reversedLifecycleServices,
-            token,
+            signal,
             concurrent,
             false,
             exceptions,
-            (service, innerToken) => service.stopping(innerToken),
+            (service, innerSignal) => service.stopping(innerSignal),
           );
         }
 
@@ -276,22 +276,22 @@ export class Host implements IHost, AsyncDisposable {
         // stop()
         await foreachService(
           reversedServices,
-          token,
+          signal,
           concurrent,
           false,
           exceptions,
-          (service, innerToken) => service.stop(innerToken),
+          (service, innerSignal) => service.stop(innerSignal),
         );
 
         // stopped()
         if (reversedLifecycleServices) {
           await foreachService(
             reversedLifecycleServices,
-            token,
+            signal,
             concurrent,
             false,
             exceptions,
-            (service, innerToken) => service.stopped(innerToken),
+            (service, innerSignal) => service.stopped(innerSignal),
           );
         }
       }
@@ -300,14 +300,14 @@ export class Host implements IHost, AsyncDisposable {
       this.#applicationLifetime.notifyStopped();
 
       try {
-        await this.#hostLifetime.stop(token);
+        await this.#hostLifetime.stop(signal);
       } catch (error) {
         exceptions.push(error);
       }
 
       // Let the background-service monitors settle so their exceptions are visible.
       if (this.#backgroundServiceTasks) {
-        await Promise.race([Promise.allSettled(this.#backgroundServiceTasks), whenAborted(token)]);
+        await Promise.race([Promise.allSettled(this.#backgroundServiceTasks), whenAborted(signal)]);
       }
       if (this.#backgroundServiceExceptions) {
         exceptions.push(...this.#backgroundServiceExceptions);
