@@ -1,9 +1,9 @@
 // Public entry point for @rhombus-std/options.augmentations -- the config -> Options
 // bridge (MEO's Options.ConfigurationExtensions analog; docs/decisions.md §4.1).
 //
-// Installs two fluent authoring methods onto di.core's registration builder via
-// the extension-method-mimicking augmentation pattern (TS declaration merging +
-// a runtime prototype assignment), exactly how @rhombus-std/config.json adds
+// Installs fluent authoring methods onto di.core's registration builder via the
+// augmentation pattern (TS declaration merging + a runtime prototype assignment
+// through the OPEN-set registry), exactly how @rhombus-std/config.json adds
 // `addJsonFile` to ConfigurationBuilder:
 //
 //   - `addOptions<T>(token, makeBase)` -- registers the `Options<T>` assembly
@@ -27,15 +27,21 @@ import type { IConfiguration } from "@rhombus-std/config.core";
 // augmentation block) because unqualified names in a `declare module` body
 // resolve in THIS file's scope.
 import type { AddBuilder, Token } from "@rhombus-std/di.core";
-import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
-import { Options } from "@rhombus-std/options";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { RESOLVER_TOKEN, SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import { Options, ValidateOptionsResult } from "@rhombus-std/options";
+import type { PostConfigureOptions, ValidateOptions } from "@rhombus-std/options";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 
 import { assembleOptions } from "./assemble-options.js";
 import { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
 import { ConfigurationConfigureOptions } from "./configuration-configure-options.js";
-import { changeTokenSourceToken, configureStepToken } from "./option-tokens.js";
+import {
+  changeTokenSourceToken,
+  configureStepToken,
+  postConfigureStepToken,
+  validateStepToken,
+} from "./option-tokens.js";
 
 // The authored methods merge onto core's `ServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` (`= ServiceManifestBase<…>`) a consumer
@@ -77,23 +83,50 @@ declare module "@rhombus-std/di.core" {
      * {@link addOptions} for the same `token`.
      */
     configure(token: Token, section: IConfiguration): this;
+    /**
+     * Registers a code configure step for `token`: `configureOptions` runs
+     * against the value as one configure source among several (no config
+     * section, so no change-token source). The delegate overload of
+     * {@link configure}, distinguished from the config-section overload by its
+     * function argument. ME puts this in `OptionsServiceCollectionExtensions`,
+     * but the registry's flat bag namespace forbids a second `configure` member
+     * on the token, so the config-section member absorbs it by arg type (§38).
+     */
+    configure<T>(token: Token, configureOptions: (options: T) => void): this;
+    /**
+     * Registers a post-configure step for `token`, run after every configure
+     * step. Accepts a {@link PostConfigureOptions} or a bare `(options) => void`
+     * delegate. Mirrors ME's `OptionsServiceCollectionExtensions.PostConfigure`.
+     */
+    postConfigure<T>(token: Token, step: PostConfigureOptions<T> | ((options: T) => void)): this;
+    /**
+     * Registers a validate step for `token`: `validate` runs against the
+     * fully-configured value; a `false` result fails validation with
+     * `failureMessage`. ME analog is the instance-method `OptionsBuilder.Validate`
+     * (unported, §4.2) -- the verb collapses onto the manifest here.
+     */
+    validate<T>(token: Token, validate: (options: T) => boolean, failureMessage?: string): this;
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
     addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
     addOptions<T>(token: Token, makeBase: () => T): AddBuilder<Scopes>;
     configure(token: Token, section: IConfiguration): this;
+    configure<T>(token: Token, configureOptions: (options: T) => void): this;
+    postConfigure<T>(token: Token, step: PostConfigureOptions<T> | ((options: T) => void)): this;
+    validate<T>(token: Token, validate: (options: T) => boolean, failureMessage?: string): this;
   }
 }
 
-// One named object literal per ME static class (docs §28): `addOptions` mirrors
-// `OptionsServiceCollectionExtensions`, `configure` mirrors
-// `OptionsConfigurationServiceCollectionExtensions` -- two ME classes over the
-// same receiver, so two literals. Installed as prototype methods (the primary
-// path) via applyAugmentations AND exported so the member is the standalone
-// form. The overloads/generics live on the declare-module merge above (the
-// method signature's source of truth); the member impl carries the
-// disambiguating union.
+// One named object literal per ME static class (docs §28/§38): `addOptions`,
+// `postConfigure`, `validate` mirror `OptionsServiceCollectionExtensions`;
+// `configure` mirrors `OptionsConfigurationServiceCollectionExtensions` -- two
+// ME classes over the same receiver, so two literals. Each is registered into
+// the OPEN-set augmentation registry (below) so the decorated
+// `ServiceManifestClass` mounts its members as prototype methods (the primary
+// path); the const is also exported so the member is the standalone form. The
+// overloads/generics live on the declare-module merge above (the method
+// signature's source of truth); the member impls carry the disambiguating unions.
 export const OptionsServiceCollectionExtensions = {
   addOptions<T>(
     manifest: ServiceManifestClass<string>,
@@ -114,22 +147,70 @@ export const OptionsServiceCollectionExtensions = {
     }
     return manifest.addFactory(token, (t: T) => Options.of(t), [[source]]);
   },
-} satisfies AugmentationSet<ServiceManifestClass<string>>;
-
-export const OptionsConfigurationServiceCollectionExtensions = {
-  configure(
+  postConfigure<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    section: IConfiguration,
+    step: PostConfigureOptions<T> | ((options: T) => void),
   ): ServiceManifestClass<string> {
-    manifest.addValue(configureStepToken(token), new ConfigurationConfigureOptions(section));
-    manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(section));
+    // A bare delegate is wrapped into a PostConfigureOptions<T>; both append to
+    // the token's post-configure slot, which `assembleOptions` reads and runs
+    // after every configure step (previously a dead slot -- now reachable).
+    const wrapped: PostConfigureOptions<T> = typeof step === "function"
+      ? { postConfigure: step }
+      : step;
+    manifest.addValue(postConfigureStepToken(token), wrapped);
+    return manifest;
+  },
+  validate<T>(
+    manifest: ServiceManifestClass<string>,
+    token: Token,
+    validateFn: (options: T) => boolean,
+    failureMessage?: string,
+  ): ServiceManifestClass<string> {
+    // Wrap the predicate into a ValidateOptions<T> step appended to the token's
+    // validate slot (also previously dead). ME's analog is the instance-method
+    // OptionsBuilder.Validate; OptionsBuilder is unported (§4.2), so the verb
+    // collapses onto the manifest -- flagged as a deliberate deviation.
+    const step: ValidateOptions<T> = {
+      validate(options: T): ValidateOptionsResult {
+        return validateFn(options)
+          ? ValidateOptionsResult.success
+          : ValidateOptionsResult.fail(failureMessage ?? "A validation error has occurred.");
+      },
+    };
+    manifest.addValue(validateStepToken(token), step);
     return manifest;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyAugmentations(ServiceManifestClass, OptionsServiceCollectionExtensions);
-applyAugmentations(ServiceManifestClass, OptionsConfigurationServiceCollectionExtensions);
+export const OptionsConfigurationServiceCollectionExtensions = {
+  configure<T>(
+    manifest: ServiceManifestClass<string>,
+    token: Token,
+    source: IConfiguration | ((options: T) => void),
+  ): ServiceManifestClass<string> {
+    // A bare delegate is a pure code configure step: register only the configure
+    // slot, no change-token source. ME houses delegate-Configure in
+    // OptionsServiceCollectionExtensions, but the registry's flat bag namespace
+    // (rule §38) forbids a second `configure` member on the token, so the
+    // config-section member absorbs the delegate by arg type -- the same
+    // disambiguation precedent `addOptions` uses.
+    if (typeof source === "function") {
+      manifest.addValue(configureStepToken(token), { configure: source });
+      return manifest;
+    }
+    manifest.addValue(configureStepToken(token), new ConfigurationConfigureOptions(source));
+    manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(source));
+    return manifest;
+  },
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
+
+// OPEN set: both consts target ServiceManifest, extended by many downstream
+// packages, so they register into the primitives augmentation registry beside
+// this declare-module merge. The `ServiceManifestClass` decorated with the same
+// token (di.core) pulls these members onto its prototype (§38).
+registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, OptionsServiceCollectionExtensions);
+registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, OptionsConfigurationServiceCollectionExtensions);
 
 export { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
 export { ConfigurationConfigureOptions } from "./configuration-configure-options.js";
