@@ -2,27 +2,26 @@
 //
 // Like the Memory provider, Chained lives in the same package as
 // ConfigurationBuilder, but its sugar method is installed via the SAME
-// extension-method-mimicking pattern the external provider packages use (TS
-// declaration merging + a runtime prototype assignment) -- ConfigurationBuilder
-// itself carries no add* sugar of its own, only augmentations, even for the
-// in-package Chained provider. The augmentation targets the module that
-// DECLARES the class so the merge survives the re-export through the package
-// barrel.
+// augmentation pattern the external provider packages use (TS declaration
+// merging + a registry registration) -- ConfigurationBuilder itself carries no
+// add* sugar of its own, only augmentations, even for the in-package Chained
+// provider. `addConfiguration` targets the OPEN `IConfigurationBuilder`
+// receiver, so it registers against CONFIGURATION_BUILDER_AUGMENTATION_TOKEN
+// (docs/decisions.md §38) rather than installing directly -- both concrete
+// builders (ConfigurationBuilder and ConfigurationManager) are decorated with
+// that token, so one registration reaches both.
 //
-// Installed on BOTH ConfigurationBuilder and ConfigurationManager: the
-// reference extension method targets IConfigurationBuilder, and
-// ConfigurationManager implements that interface too, so
-// `manager.addConfiguration(...)` works the same way `builder.addConfiguration(...)`
-// does. The augmentation's receiver is generic over any receiver whose add()
-// returns itself, rather than pinned to ConfigurationBuilder<T>, so ONE object
-// literal satisfies `AugmentationSet` for both classes -- see memory/index.ts
-// for the full rationale.
+// The augmentation targets the module that DECLARES each class so the merge
+// survives the re-export through the package barrel. The receiver is generic
+// over any builder whose add() returns itself, so ONE object literal satisfies
+// `AugmentationSet` for both classes -- see memory/index.ts for the full
+// rationale.
 
+import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type { IConfiguration, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
-import { ConfigurationBuilder } from "../configuration-builder";
-import { ConfigurationManager } from "../configuration-manager";
+import type { ConfigurationBuilder } from "../configuration-builder";
 import { ChainedConfigurationSource } from "./chained-configuration-source";
 
 export { ChainedConfigurationProvider } from "./chained-configuration-provider";
@@ -48,10 +47,10 @@ declare module "../configuration-manager" {
 }
 
 // One named object literal mirroring the reference `ChainedBuilderExtensions`
-// static class (docs §28), installed as a prototype method on BOTH classes AND
-// exported so the member is the standalone form. `TBuilder` is bounded by
-// "has an add() that returns itself" rather than pinned to
-// ConfigurationBuilder<T> -- see memory/index.ts for the full rationale.
+// static class (docs §28/§38), registered against the shared
+// IConfigurationBuilder token AND exported so the member is the standalone
+// form. `TBuilder` is bounded by "has an add() that returns itself" rather than
+// pinned to ConfigurationBuilder<T> -- see memory/index.ts for the full rationale.
 export const ChainedBuilderExtensions = {
   addConfiguration<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
     builder: TBuilder,
@@ -62,5 +61,4 @@ export const ChainedBuilderExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyAugmentations(ConfigurationBuilder, ChainedBuilderExtensions);
-applyAugmentations(ConfigurationManager, ChainedBuilderExtensions);
+registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, ChainedBuilderExtensions);

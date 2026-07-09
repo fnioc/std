@@ -2,20 +2,22 @@
 //
 // Exports JsonConfigurationSource/JsonConfigurationProvider and installs the
 // `addJsonFile` sugar onto `@rhombus-std/config`'s ConfigurationBuilder AND
-// ConfigurationManager via the extension-method-mimicking augmentation
-// pattern (TS declaration merging + a runtime prototype assignment) -- the
-// reference extension method targets IConfigurationBuilder, which
-// ConfigurationManager implements too, so `manager.addJsonFile(...)` works
-// the same way `builder.addJsonFile(...)` does.
+// ConfigurationManager via the augmentation registry (TS declaration merging +
+// a `registerAugmentations` call against the shared IConfigurationBuilder
+// token) -- the reference extension method targets IConfigurationBuilder, which
+// ConfigurationManager implements too. Both concrete builders are decorated
+// with that one token, so a single registration reaches BOTH, and
+// `manager.addJsonFile(...)` works the same way `builder.addJsonFile(...)` does.
 //
 // A consumer who never names a runtime symbol from this package (only wants
 // the sugar) needs a bare side-effect import: `import "@rhombus-std/config.json";`.
 // This package must NOT set `"sideEffects": false` in package.json (would
 // let a bundler tree-shake the augmentation away).
 
-import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
+import type { ConfigurationBuilder } from "@rhombus-std/config";
+import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { JsonConfigurationSource } from "./json-configuration-source";
 import type { JsonConfigurationSourceOptions } from "./json-configuration-source";
@@ -48,11 +50,11 @@ declare module "@rhombus-std/config/configuration-manager" {
 }
 
 // One named object literal mirroring the reference `JsonConfigurationExtensions`
-// static class (docs §28): its members are the class's static methods,
-// receiver-first. Installed as prototype methods on BOTH classes (the
-// primary path) via applyAugmentations AND exported so the member is the
-// standalone form. `TBuilder` is bounded by "has an add() that returns
-// itself" rather than pinned to ConfigurationBuilder<T> -- see
+// static class (docs §28/§38): its members are the class's static methods,
+// receiver-first. Registered against the shared IConfigurationBuilder token
+// (the primary path -- both decorated builders receive it) AND exported so the
+// member is the standalone form. `TBuilder` is bounded by "has an add() that
+// returns itself" rather than pinned to ConfigurationBuilder<T> -- see
 // @rhombus-std/config's memory/index.ts for the full rationale -- so this one
 // object literal satisfies `AugmentationSet` for both classes while
 // preserving each receiver's own concrete return type.
@@ -66,8 +68,7 @@ export const JsonConfigurationExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyAugmentations(ConfigurationBuilder, JsonConfigurationExtensions);
-applyAugmentations(ConfigurationManager, JsonConfigurationExtensions);
+registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, JsonConfigurationExtensions);
 
 export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";

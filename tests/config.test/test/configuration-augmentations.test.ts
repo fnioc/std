@@ -1,17 +1,14 @@
-// The MECA convenience helpers over IConfiguration: getConnectionString,
-// exists, getRequiredSection, and asEnumerable. Exercised black-box through the
-// public @rhombus-std/config surface -- the in-memory provider builds the tree.
+// The MECA convenience augmentations over IConfiguration: getConnectionString,
+// getRequiredSection, and asEnumerable (members of ConfigurationExtensions),
+// plus the free `exists` function. Exercised black-box through the public
+// @rhombus-std/config surface via the standalone member form -- the in-memory
+// provider builds the tree.
 
-import {
-  asEnumerable,
-  ConfigurationBuilder,
-  exists,
-  getConnectionString,
-  getRequiredSection,
-  type IConfigurationRoot,
-} from "@rhombus-std/config";
+import { ConfigurationBuilder, ConfigurationExtensions, exists, type IConfigurationRoot } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 import { rootOf } from "./support";
+
+const { asEnumerable, getConnectionString, getRequiredSection } = ConfigurationExtensions;
 
 describe("getConnectionString", () => {
   test("returns the connection string under ConnectionStrings", () => {

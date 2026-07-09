@@ -28,6 +28,7 @@
 // ConfigurationManager itself implements IConfigurationRoot and never swaps
 // identity; here the stable manager-level token stands in for that.
 
+import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type {
   ConfigObject,
   IConfigurationManager,
@@ -37,7 +38,7 @@ import type {
   IConfigurationSource,
 } from "@rhombus-std/config.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
-import { ChangeToken } from "@rhombus-std/primitives";
+import { augment, ChangeToken } from "@rhombus-std/primitives";
 import { ConfigurationReloadToken } from "./configuration-reload-token";
 import { ConfigurationRoot } from "./configuration-root";
 import { MemoryConfigurationSource } from "./memory/memory-configuration-source";
@@ -49,7 +50,14 @@ import { MemoryConfigurationSource } from "./memory/memory-configuration-source"
  * phase the way there is with {@link ConfigurationBuilder}. Starts with one
  * empty in-memory source already registered (see the constructor), so
  * {@link set} works immediately, before any other source is ever added.
+ *
+ * ConfigurationManager IS an IConfigurationBuilder too, so `@augment` gives it
+ * the same OPEN-receiver decoration as ConfigurationBuilder -- every provider
+ * package's add* sugar (addJsonFile, addEnvironmentVariables,
+ * addConfiguration, ...) reaches `manager.` exactly as it reaches `builder.`
+ * (docs/decisions.md §38).
  */
+@augment(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN)
 export class ConfigurationManager implements IConfigurationManager, IConfigurationRoot {
   readonly #sources: IConfigurationSource[] = [];
   readonly #root: ConfigurationRoot = new ConfigurationRoot([]);

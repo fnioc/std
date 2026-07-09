@@ -1,22 +1,25 @@
 // Public entry point for @rhombus-std/config.commandline.
 //
 // Importing this module installs the `addCommandLine` sugar method onto
-// `ConfigurationBuilder` AND `ConfigurationManager` via the
-// extension-method-mimicking augmentation pattern (TS declaration merging +
-// a runtime prototype assignment) -- the reference extension method targets
-// IConfigurationBuilder, which ConfigurationManager implements too. A
-// consumer who never names a runtime symbol from this package (only wants
-// the sugar) needs a bare side-effect import: `import
-// "@rhombus-std/config.commandline";`.
+// `ConfigurationBuilder` AND `ConfigurationManager` via the augmentation
+// registry (TS declaration merging + a `registerAugmentations` call against the
+// shared IConfigurationBuilder token) -- the reference extension method targets
+// IConfigurationBuilder, which ConfigurationManager implements too, and both
+// concrete builders are decorated with that one token. A consumer who never
+// names a runtime symbol from this package (only wants the sugar) needs a bare
+// side-effect import: `import "@rhombus-std/config.commandline";`.
 //
 // `@rhombus-std/config` is a peerDependency, kept external in this package's
-// bundle (see build.ts/rollup.dts.mjs) -- so the classes this module patches
-// are the SAME class instances the consumer's own `@rhombus-std/config`
-// import resolves to, not a private inlined copy.
+// bundle (see build.ts/rollup.dts.mjs) -- so the decorated classes the
+// registration reaches are the SAME class instances the consumer's own
+// `@rhombus-std/config` import resolves to, not a private inlined copy. The
+// same holds for `@rhombus-std/primitives`, which MUST stay external so the
+// registry's Map + bus are not forked (docs/decisions.md §9/§38).
 
-import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
+import type { ConfigurationBuilder } from "@rhombus-std/config";
+import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { CommandLineConfigurationSourceOptions } from "./command-line-configuration-source";
 import { CommandLineConfigurationSource } from "./command-line-configuration-source";
@@ -65,11 +68,11 @@ declare module "@rhombus-std/config/configuration-manager" {
 }
 
 // One named object literal mirroring the reference `CommandLineConfigurationExtensions`
-// static class (docs §28), installed as a prototype method on BOTH classes
-// AND exported so the member is the standalone form. `TBuilder` is bounded by
-// "has an add() that returns itself" rather than pinned to
-// ConfigurationBuilder<T> -- see @rhombus-std/config's memory/index.ts for
-// the full rationale.
+// static class (docs §28/§38), registered against the shared
+// IConfigurationBuilder token (both decorated builders receive it) AND exported
+// so the member is the standalone form. `TBuilder` is bounded by "has an add()
+// that returns itself" rather than pinned to ConfigurationBuilder<T> -- see
+// @rhombus-std/config's memory/index.ts for the full rationale.
 export const CommandLineConfigurationExtensions = {
   addCommandLine<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
     builder: TBuilder,
@@ -80,8 +83,7 @@ export const CommandLineConfigurationExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-applyAugmentations(ConfigurationBuilder, CommandLineConfigurationExtensions);
-applyAugmentations(ConfigurationManager, CommandLineConfigurationExtensions);
+registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, CommandLineConfigurationExtensions);
 
 export { CommandLineConfigurationProvider } from "./command-line-configuration-provider";
 export { CommandLineConfigurationSource } from "./command-line-configuration-source";

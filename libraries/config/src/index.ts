@@ -3,9 +3,9 @@
 // Exports the abstractions (IConfiguration* interfaces + the configPath
 // helpers), the engine classes (ConfigurationBuilder / ConfigurationRoot /
 // ConfigurationSection / the abstract ConfigurationProvider base) +
-// compareConfigurationKeys, the bundled Memory and Chained providers + their
-// addInMemoryCollection/addConfiguration augmentations, and the runtime schema
-// surface (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
+// compareConfigurationKeys, the bundled Memory provider + its
+// addInMemoryCollection augmentation, and the runtime schema surface
+// (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
 // (@rhombus-std/config.json/-env/-commandline) peer-depend on this package, extend
 // ConfigurationProvider, implement IConfigurationSource, and augment
 // ConfigurationBuilder with their own add* sugar.
@@ -19,11 +19,13 @@ export type * from "@rhombus-std/config.core";
 // The runtime `configPath` helper namespace stays in this package.
 export * as configPath from "./abstractions/configuration-path";
 
-// Abstraction helpers. The public MECA convenience functions over the core
+// Abstraction helpers. The public MECA convenience augmentations over the core
 // IConfiguration* interfaces -- runtime, so they live here rather than in
-// config.core (which ships zero runtime values).
-export { asEnumerable, exists, getConnectionString, getRequiredSection } from "./configuration-extensions";
-export { type ConfigurationDebugViewContext, getDebugView } from "./configuration-root-extensions";
+// config.core (which ships zero runtime values). Importing this module installs
+// their fluent forms (CLOSED sets, docs §38); the exported consts are the
+// standalone member surface, and `exists` stays a plain free function.
+export { ConfigurationExtensions, exists } from "./configuration-augmentations";
+export { type ConfigurationDebugViewContext, ConfigurationRootExtensions } from "./configuration-root-augmentations";
 
 // Engine.
 export { ConfigurationBuilder } from "./configuration-builder";
@@ -35,14 +37,13 @@ export { ConfigurationRoot } from "./configuration-root";
 export { ConfigurationSection } from "./configuration-section";
 
 // Memory provider. The re-export is side-effectful: importing this module
-// installs the `addInMemoryCollection` prototype method + declaration merge
-// onto ConfigurationBuilder.
+// registers the `addInMemoryCollection` augmentation against the shared
+// IConfigurationBuilder token (docs §38), reaching both decorated builders.
 export * from "./memory";
 
-// Chained provider (wraps an existing IConfiguration as a source). The
-// re-export is side-effectful: importing this module installs the
-// `addConfiguration` prototype method + declaration merge onto
-// ConfigurationBuilder AND ConfigurationManager.
+// Chained provider. Side-effectful re-export: registers the `addConfiguration`
+// augmentation against the same IConfigurationBuilder token, wrapping an
+// already-built IConfiguration as a live source.
 export * from "./chained";
 
 // Runtime coercion + schema. `withType` (Tier 2) is intentionally NOT
