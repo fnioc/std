@@ -49,24 +49,6 @@ import { NullLifetime } from "./null-lifetime";
 /** The category the internal host writes its lifecycle log messages under. */
 export const HOST_LOGGER_CATEGORY = "Rhombus.Hosting.Host";
 
-/**
- * Flattens an {@link IConfiguration} subtree into `[fullPath, value]` pairs for
- * every descendant leaf that carries a value -- the port of the reference's
- * `appConfigBuilder.AddConfiguration(hostConfiguration)`, which folds the host
- * configuration into the application configuration. Seeded into the app config
- * builder via `addInMemoryCollection`.
- */
-export function* flattenConfiguration(
-  configuration: IConfiguration,
-): Generator<readonly [string, string]> {
-  for (const section of configuration.getChildren()) {
-    if (section.value !== undefined) {
-      yield [section.path, section.value];
-    }
-    yield* flattenConfiguration(section);
-  }
-}
-
 /** The category the {@link ApplicationLifetime} writes its callback-error messages under. */
 export const APPLICATION_LIFETIME_CATEGORY = "Rhombus.Hosting.ApplicationLifetime";
 

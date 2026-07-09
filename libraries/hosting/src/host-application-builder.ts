@@ -10,9 +10,8 @@
 // eagerly in the constructor but `HostOptions` is folded from the configuration
 // at `build()` time (in the composition tail), once every source is present.
 
-import { ConfigurationManager, MemoryConfigurationSource } from "@rhombus-std/config";
+import { ConfigurationManager } from "@rhombus-std/config";
 import type { IConfigurationManager } from "@rhombus-std/config.core";
-import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProviderFactory } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
@@ -57,15 +56,21 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
       : new ConfigurationManager();
     this.#framework = createFrameworkServices();
 
+    // Calls made directly on `this.#configuration` (a concrete
+    // `ConfigurationManager`) below use the fluent `add*` sugar; calls routed
+    // through a `default-configuration.ts` helper (`setDefaultContentRoot`,
+    // `addCommandLineConfig`, `applyDefaultAppConfiguration`) stay in the raw
+    // `.add(new Source(...))` form, because those helpers are typed against
+    // the plain `IConfigurationBuilder` interface to stay reusable by the
+    // classic `HostBuilder`'s delegate-typed configuration callbacks, which
+    // never see a concrete class to hang the sugar off of.
     if (!resolved.disableDefaults) {
       if (
         resolved.contentRootPath === undefined && this.#configuration.get(HostDefaults.contentRootKey) === undefined
       ) {
         setDefaultContentRoot(this.#configuration);
       }
-      this.#configuration.add(
-        new EnvironmentVariablesConfigurationSource({ prefix: HOST_ENVIRONMENT_VARIABLE_PREFIX }),
-      );
+      this.#configuration.addEnvironmentVariables({ prefix: HOST_ENVIRONMENT_VARIABLE_PREFIX });
     }
 
     // Command-line args are added even when defaults are disabled: had the caller
@@ -84,7 +89,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
       overrides[HostDefaults.contentRootKey] = resolved.contentRootPath;
     }
     if (Object.keys(overrides).length) {
-      this.#configuration.add(new MemoryConfigurationSource({ initialData: overrides }));
+      this.#configuration.addInMemoryCollection(overrides);
     }
 
     this.#environment = createHostingEnvironment(this.#configuration);

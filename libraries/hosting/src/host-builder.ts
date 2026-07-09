@@ -9,7 +9,7 @@
 // which side-effect-imports the provider packages). Service registration flows
 // through `@rhombus-std/di`'s `ServiceManifest`.
 
-import { ConfigurationManager, MemoryConfigurationSource } from "@rhombus-std/config";
+import { ConfigurationManager } from "@rhombus-std/config";
 import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProviderFactory } from "@rhombus-std/di.core";
@@ -18,7 +18,6 @@ import type { Action } from "@rhombus-toolkit/func";
 import {
   createFrameworkServices,
   createHostingEnvironment,
-  flattenConfiguration,
   populateFrameworkServices,
   resolveHost,
 } from "./host-composition";
@@ -102,11 +101,11 @@ export class HostBuilder implements IHostBuilder {
       properties: this.properties,
     };
 
-    // 4. Application configuration (host configuration folded in first).
+    // 4. Application configuration (host configuration chained in first --
+    // a live read-through, not a snapshot, so a later host-configuration
+    // reload propagates into the application configuration too).
     const appConfigBuilder = new ConfigurationManager();
-    appConfigBuilder.add(
-      new MemoryConfigurationSource({ initialData: [...flattenConfiguration(hostConfiguration)] }),
-    );
+    appConfigBuilder.addConfiguration(hostConfiguration);
     for (const action of this.#configureAppConfigActions) {
       action(hostBuilderContext, appConfigBuilder);
     }
