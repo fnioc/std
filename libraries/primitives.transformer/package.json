@@ -1,22 +1,20 @@
 {
-  "name": "@rhombus-std/di.transformer.options",
-  "version": "0.0.0",
-  "description": "A @rhombus-std/di.transformer satellite: lowers the type-driven addOptions<T>() sugar to the explicit addOptions(token(Options<T>), token(T)) verb at compile time.",
+  "name": "@rhombus-std/primitives.transformer",
+  "version": "10.1.0",
+  "description": "The standalone token-derivation ts-patch transformer: the nameof<T>() compile-time token mechanism and the token-generation machinery, di-independent so any family can mint augmentation tokens from types.",
   "keywords": [
-    "options",
-    "dependency-injection",
-    "di",
-    "ioc",
+    "primitives",
     "typescript",
     "ts-patch",
     "transformer",
-    "compiler"
+    "compiler",
+    "nameof"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/fnioc/std.git",
-    "directory": "libraries/di.transformer.options"
+    "directory": "libraries/primitives.transformer"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -41,17 +39,12 @@
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@rhombus-std/primitives.transformer": "workspace:^"
+    "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^",
-    "@rhombus-std/di.transformer": "workspace:^",
     "typescript": ">=5.2"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di.transformer": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
     "ts-patch": "^3.3.0"
   },
   "publishConfig": {

@@ -31,14 +31,26 @@ export { createTransformerFactory, default as transformer, transform } from "./t
 
 // The shared `TokenContext` builder — a satellite transformer (e.g.
 // `@rhombus-std/di.transformer.options`) imports it so its lowered tokens match
-// the ones this transformer derives for the same program.
-export { createTokenContext, type TokenContextOptions } from "./context.js";
+// the ones this transformer derives for the same program. Re-exported from
+// `@rhombus-std/primitives.transformer`, which now owns the token-derivation
+// machinery this transformer builds on.
+export { createTokenContext, type TokenContextOptions } from "@rhombus-std/primitives.transformer";
 
 // `nameof<T>()` — the compile-time token mechanism (rewritten by the transformer).
-export { nameof } from "./nameof.js";
+export { nameof } from "@rhombus-std/primitives.transformer";
 
 // Token generation, dependency extraction, and diagnostics — exported so
 // downstream tooling (and tests) can reuse the building blocks.
+export {
+  baseTokenForSymbol,
+  type DeriveFailure,
+  deriveToken,
+  holeNumberFor,
+  injectTokenFor,
+  type TokenContext,
+  tokenForType,
+  type TokenResult,
+} from "@rhombus-std/primitives.transformer";
 export { type CheckContext } from "./checks.js";
 export {
   type ConstructorExtraction,
@@ -57,13 +69,3 @@ export {
   type UnionSlot,
 } from "./deps.js";
 export { type Diagnostic, DiagnosticCode, type DiagnosticSink, error, warning } from "./diagnostics.js";
-export {
-  baseTokenForSymbol,
-  type DeriveFailure,
-  deriveToken,
-  holeNumberFor,
-  injectTokenFor,
-  type TokenContext,
-  tokenForType,
-  type TokenResult,
-} from "./tokens.js";

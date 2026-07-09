@@ -12,8 +12,6 @@
 // The result is ONE signature (a positional array), matching the single
 // canonical ctor the transformer sees statically.
 
-import ts from "typescript";
-import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
 import {
   type DeriveFailure,
   deriveToken,
@@ -26,7 +24,9 @@ import {
   type TokenContext,
   tokenForReturnType,
   tokenForType,
-} from "./tokens.js";
+} from "@rhombus-std/primitives.transformer";
+import ts from "typescript";
+import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
 
 /**
  * A factory slot in an extracted signature — the transformer's in-memory mirror

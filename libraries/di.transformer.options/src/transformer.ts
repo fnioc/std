@@ -19,7 +19,7 @@
 // the tokens it emits are byte-identical to the main transformer's, and it emits
 // only di registrations. It never imports the `@rhombus-std/di` RUNTIME.
 
-import { createTokenContext, type TokenContext, type TokenContextOptions } from "@rhombus-std/di.transformer";
+import { createTokenContext, type TokenContext, type TokenContextOptions } from "@rhombus-std/primitives.transformer";
 import ts from "typescript";
 import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
 import { isAddOptionsSugarCall } from "./match.js";

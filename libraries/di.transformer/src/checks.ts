@@ -11,10 +11,10 @@
 //   statically reachable, compare arities and warn on a count mismatch (the
 //   check is arity-only — it does not compare per-position types).
 
+import { intrinsicToken, singletonValue, type TokenContext } from "@rhombus-std/primitives.transformer";
 import ts from "typescript";
 import { classDeclarationOfType, type ConstructorExtraction, findConstructor, slotForParam } from "./deps.js";
 import { DiagnosticCode, type DiagnosticSink, warning } from "./diagnostics.js";
-import { intrinsicToken, singletonValue, type TokenContext } from "./tokens.js";
 
 export interface CheckContext extends TokenContext {
   readonly sink: DiagnosticSink;
