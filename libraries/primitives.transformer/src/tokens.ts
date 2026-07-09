@@ -510,7 +510,8 @@ function isSourceFileModuleSymbol(symbol: ts.Symbol): boolean {
  *
  * Three cases, in order:
  *   - aliasSymbol + aliasTypeArguments → a generic ALIAS applied
- *     (`Wrap<User>`): the alias is the base, its args recurse.
+ *     (`Wrap<User>`): the alias is the base, its args recurse — EXCEPT when
+ *     every argument is exactly the parameter's declared default (see below).
  *   - aliasSymbol with NO aliasTypeArguments → alias-wins (decision 5):
  *     `type UserRepo = IRepository<User>` tokenizes as the bare alias, NO args
  *     — `checker.getTypeArguments` still sees `[User]` underneath, so it must
@@ -518,6 +519,15 @@ function isSourceFileModuleSymbol(symbol: ts.Symbol): boolean {
  *   - no aliasSymbol → an `ObjectFlags.Reference` type reference
  *     (`IRepository<User>`): `checker.getTypeArguments` (defaults arrive
  *     pre-applied — a bare `IFoo<T = string>` yields `["string"]`).
+ *
+ * Defaults-only alias instantiations normalize to the BARE alias. The checker
+ * records `aliasTypeArguments` for a bare reference to a defaulted-generic
+ * alias (`type SM<S = "singleton"> = …; nameof<SM>()`) inconsistently — a
+ * SAME-FILE reference arrives with the defaults pre-applied while an IMPORTED
+ * reference arrives with no arguments — yet both spell the IDENTICAL type, so
+ * they must derive the identical token. When every recorded argument is
+ * reference-equal to its parameter's declared default, the instantiation IS
+ * the bare alias and tokenizes without args (`…:SM`, not `…:SM<"singleton">`).
  */
 function genericTypeArguments(
   type: ts.Type,
@@ -525,7 +535,8 @@ function genericTypeArguments(
 ): readonly ts.Type[] | undefined {
   if (type.aliasSymbol) {
     const args = type.aliasTypeArguments;
-    return args?.length ? args : undefined;
+    if (!args?.length) { return undefined; }
+    return aliasArgsAreDeclaredDefaults(type.aliasSymbol, args, checker) ? undefined : args;
   }
   if (
     type.flags & ts.TypeFlags.Object
@@ -535,6 +546,28 @@ function genericTypeArguments(
     return args.length ? args : undefined;
   }
   return undefined;
+}
+
+/**
+ * True when `args` is exactly the declared parameter-default list of the alias
+ * — i.e. the instantiation is indistinguishable from the bare alias. Compares
+ * by checker type identity (`getTypeFromTypeNode` on the declared default node
+ * returns the interned type object the checker also records as the applied
+ * argument). Any parameter without a default, an arity mismatch, or a single
+ * non-default argument means the reference genuinely applied arguments.
+ */
+function aliasArgsAreDeclaredDefaults(
+  aliasSymbol: ts.Symbol,
+  args: readonly ts.Type[],
+  checker: ts.TypeChecker,
+): boolean {
+  const declaration = aliasSymbol.getDeclarations()?.find(ts.isTypeAliasDeclaration);
+  const parameters = declaration?.typeParameters;
+  if (!parameters || parameters.length !== args.length) { return false; }
+  return args.every((arg, i) => {
+    const defaultNode = parameters[i]!.default;
+    return defaultNode !== undefined && checker.getTypeFromTypeNode(defaultNode) === arg;
+  });
 }
 
 /**

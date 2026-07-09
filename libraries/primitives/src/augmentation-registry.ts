@@ -75,11 +75,20 @@ export function registerAugmentations<R>(token: Token, set: AugmentationSet<R>):
  * subscription is never torn down -- a decorated class is a module singleton
  * that lives for the process, and staying subscribed is exactly what lets a
  * downstream package's later registration reach an already-defined class.
+ *
+ * The constraint is `{ prototype: object }` rather than a constructor signature:
+ * a class with a PRIVATE constructor (the NullLogger-style singleton) is not
+ * assignable to any `new (...) => ...` type outside its own body, yet is a
+ * perfectly good augmentation receiver -- only its prototype is touched here.
  */
 export function augment(token: Token) {
-  return function installOnClass<C extends abstract new(...args: never[]) => unknown>(
+  return function installOnClass<C extends { readonly prototype: object }>(
     Ctor: C,
-    _context?: ClassDecoratorContext,
+    // `unknown` (not `ClassDecoratorContext`): the context type TS synthesizes
+    // for a private-constructor class fails ClassDecoratorContext's own
+    // constructor-signature constraint, so naming the type here would reject
+    // exactly the singleton receivers the widened `C` admits.
+    _context?: unknown,
   ): void {
     function pull(): void {
       const bag = bags.get(token);
