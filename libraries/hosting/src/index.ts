@@ -10,16 +10,21 @@
 //
 // IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it installs the fluent method forms
 // of the host / host-builder / host-environment augmentations onto their
-// concrete classes (see ./host-augmentations), on top of hosting.core's
-// `addHostedService` install.
+// concrete classes. Each concrete class is decorated with
+// `@augment(<receiver>_AUGMENTATION_TOKEN)` at its definition, so loading it
+// pulls its receiver's registered bag onto the prototype; `./host-augmentations`
+// carries the class-side type merges. This rides on top of hosting.core's
+// `addHostedService` registration.
 
 // The hosting ABSTRACTIONS surface (contracts, tokens, host-lifetime + builder
 // augmentation sets, environment predicates, BackgroundService, Environments,
 // HostDefaults) + the `addHostedService` side-effect augmentation.
 export * from "@rhombus-std/hosting.core";
 
-// Side-effect: install the IHost / IHostBuilder / IHostEnvironment method forms
-// onto the concrete Host / HostBuilder / HostingEnvironment classes.
+// Bring the class-side declaration merges (and the runtime registration of the
+// IHostBuilder set) into the program so the concrete classes SATISFY their
+// augmented interfaces and `HostingHostBuilderExtensions` is registered.
+import "./builder-augmentations";
 import "./host-augmentations";
 
 // The builders + factory facade.
@@ -37,7 +42,7 @@ export { MetricsBuilder } from "./metrics-builder";
 export { NullLifetime } from "./null-lifetime";
 
 // The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).
-export { HostingHostBuilderExtensions, type ServiceProviderOptions } from "./builder-extensions";
+export { HostingHostBuilderExtensions, type ServiceProviderOptions } from "./builder-augmentations";
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from "./default-configuration";

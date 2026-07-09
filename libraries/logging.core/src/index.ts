@@ -21,3 +21,7 @@ export { formatLogValues, formatMessage, FormattedLogValues } from "./formatted-
 
 // The real-runtime ILogger convenience wrappers (LoggerExtensions analog).
 export { log, logCritical, logDebug, logError, logInformation, logTrace, logWarning } from "./logger-extensions";
+
+// The augmentation-registry token for the `ILoggingBuilder` OPEN receiver — the
+// key every logging-builder extender registers its augmentation set against (§38).
+export { LOGGING_BUILDER_AUGMENTATION_TOKEN } from "./augmentation-tokens";

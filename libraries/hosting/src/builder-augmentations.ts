@@ -1,10 +1,15 @@
 // IHostBuilder helpers -- ported from the reference hosting runtime's
-// `HostingHostBuilderExtensions` static extension class. Authored as one named
+// `HostingHostBuilderExtensions` static augmentation class. Authored as one named
 // object literal per ME class (docs §28), `satisfies AugmentationSet<IHostBuilder>`.
-// The `IHostBuilder` receiver interface is owned by hosting.core; the fluent
-// method-form install (and the `declare module` merge) live in this package's
-// `./host-augmentations` against the concrete `HostBuilder`. The members here are
-// the standalone call surface.
+//
+// OPEN receiver (docs §38): `IHostBuilder` is owned by hosting.core and extended
+// across packages, so this const registers into the augmentation registry under
+// {@link HOST_BUILDER_AUGMENTATION_TOKEN} (alongside hosting.core's
+// `HostingAbstractionsHostBuilderExtensions`, which contributes `startHost`). The
+// interface-side merge for THIS const's members lives here beside it (rule 0.6);
+// the class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
+// fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
+// class itself is decorated with `@augment(HOST_BUILDER_AUGMENTATION_TOKEN)`.
 //
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
@@ -20,10 +25,11 @@ import type {
   IHostEnvironment,
 } from "@rhombus-std/hosting.core";
 import { HostDefaults, HostingAbstractionsHostExtensions } from "@rhombus-std/hosting.core";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
+import { HOST_APPLICATION_LIFETIME_TOKEN, HOST_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConsoleLifetime } from "./console-lifetime";
 import { ConsoleLifetimeOptions } from "./console-lifetime-options";
@@ -40,6 +46,31 @@ import {
 } from "./framework-tokens";
 import type { HostOptions } from "./host-options";
 import { MetricsBuilder } from "./metrics-builder";
+
+// The interface-side merge for this const's members lives HERE beside the const
+// (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core
+// contributes `startHost` onto the same interface from its own const file; the
+// class-side merge (so `HostBuilder` SATISFIES the fully-merged interface) lives
+// in `./host-augmentations` next to the class.
+//
+// The merge targets the DECLARING module (via the internal/* subpath), not the
+// package barrel: every interface-side merge for one interface must resolve to
+// the same module file (hosting.core augments it via `./host-builder`), or TS
+// treats the accumulated `this`-returning members as having unrelated this-types
+// and the concrete `HostBuilder` stops satisfying `implements IHostBuilder`.
+declare module "@rhombus-std/hosting.core/internal/host-builder" {
+  interface IHostBuilder {
+    configureDefaults(args?: readonly string[]): this;
+    useEnvironment(environment: string): this;
+    useContentRoot(contentRoot: string): this;
+    configureHostOptions(configureOptions: Func<[HostBuilderContext, HostOptions], void>): this;
+    configureLogging(configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>): this;
+    configureMetrics(configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): this;
+    useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
+    useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
+    runConsoleAsync(cancellationToken?: AbortSignal): Promise<void>;
+  }
+}
 
 /**
  * A minimal service-provider-options shape. This repo's container has no
@@ -170,8 +201,9 @@ function runConsoleAsync(
 
 /**
  * The `HostingHostBuilderExtensions` augmentation set for {@link IHostBuilder}
- * (docs §28). Installed as instance methods onto the concrete `HostBuilder` via
- * `./host-augmentations`; the members here are the standalone call surface.
+ * (docs §28). Registered under {@link HOST_BUILDER_AUGMENTATION_TOKEN}; the
+ * concrete `HostBuilder` pulls it (and hosting.core's `startHost`) via `@augment`.
+ * The members here are also the standalone call surface.
  */
 export const HostingHostBuilderExtensions = {
   configureDefaults,
@@ -184,3 +216,5 @@ export const HostingHostBuilderExtensions = {
   useConsoleLifetime,
   runConsoleAsync,
 } satisfies AugmentationSet<IHostBuilder>;
+
+registerAugmentations(HOST_BUILDER_AUGMENTATION_TOKEN, HostingHostBuilderExtensions);

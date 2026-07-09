@@ -7,7 +7,7 @@ await rm("dist", { recursive: true, force: true });
 // Every @rhombus-std/* workspace dependency (and @rhombus-toolkit/*) is kept
 // EXTERNAL from the JS bundle -- NOT inlined -- so the cross-package
 // prototype-patched classes (`ServiceManifestClass`) keep ONE runtime identity:
-// `hosted-service-registration.ts` patches di.core's `ServiceManifestClass`, and
+// `hosted-service-augmentations.ts` registers onto di.core's `ServiceManifestClass`, and
 // a private inlined copy would install `addHostedService` on a class no
 // consumer ever touches (mirrors libraries/hosting/build.ts and
 // libraries/logging/build.ts's identical rationale).

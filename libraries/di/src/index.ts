@@ -26,6 +26,10 @@
 export { ServiceManifestClass } from "@rhombus-std/di.core";
 export { ServiceManifest } from "./service-manifest.js";
 export type { ServiceManifestCtor } from "./service-manifest.js";
+// The `build()` augmentation const (mirrors the reference
+// `ServiceCollectionContainerBuilderExtensions`) — the standalone call surface;
+// importing it here also runs its registry registration side effect.
+export { ServiceCollectionContainerBuilderExtensions } from "./service-manifest.js";
 
 // The authoring TYPE-machinery lives in @rhombus-std/di.core alongside the builder.
 // Re-exported here so a di consumer reaches the whole authoring surface through

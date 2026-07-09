@@ -40,6 +40,9 @@
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@rhombus-std/primitives.transformer": "workspace:^"
+  },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^",
     "@rhombus-std/di.transformer": "workspace:^",
@@ -48,6 +51,7 @@
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/primitives.transformer": "workspace:*",
     "ts-patch": "^3.3.0"
   },
   "publishConfig": {

@@ -103,8 +103,11 @@ services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
         moduleResolution: "Bundler",
         // ESNext.Disposable supplies the global `Disposable`/`AsyncDisposable`
         // the `@rhombus-std/di.core` `ServiceProvider` interface extends — this
-        // temp project compiles core's source, so it needs the lib.
-        lib: ["ES2022", "ESNext.Disposable"],
+        // temp project compiles core's source, so it needs the lib. DOM supplies
+        // `EventTarget`/`Event`/`AbortSignal` for @rhombus-std/primitives, whose
+        // source the program now also compiles (di.core imports the augmentation
+        // registry from it).
+        lib: ["ES2022", "DOM", "ESNext.Disposable"],
         strict: true,
         outDir: "dist",
         rootDir: "src",

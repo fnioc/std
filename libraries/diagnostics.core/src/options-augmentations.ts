@@ -17,9 +17,9 @@ import { applyAugmentations } from "@rhombus-std/primitives";
 
 import type { ActivitySourceScopes } from "./activity-source-scopes";
 import type { MeterScope } from "./meter-scope";
-import { MetricsOptionsExtensions } from "./metrics-builder-extensions";
+import { MetricsOptionsExtensions } from "./metrics-builder-augmentations";
 import { MetricsOptions } from "./metrics-options";
-import { TracingOptionsExtensions } from "./tracing-builder-extensions";
+import { TracingOptionsExtensions } from "./tracing-builder-augmentations";
 import { TracingOptions } from "./tracing-options";
 
 declare module "./metrics-options" {

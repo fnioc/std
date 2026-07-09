@@ -2,12 +2,13 @@
 // `LoggingServiceCollectionExtensions.AddLogging(this IServiceCollection, ...)`.
 //
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
-// — a class this package does NOT own — so it follows the config.json-style
-// declaration-merging side-effect augmentation: prototype-patch
-// `ServiceManifestClass` and declaration-merge the method onto the di.core
-// `ServiceManifestBase` interface, exactly as di.core's authoring.ts documents.
-// This is why the package sets `"sideEffects": true` — a consumer who only wants
-// the sugar writes a bare `import "@rhombus-std/logging";`.
+// — a class this package does NOT own, and an OPEN receiver — so it follows the
+// augmentation-registry path (docs §38): register the set against the shared
+// `SERVICE_MANIFEST_AUGMENTATION_TOKEN` and declaration-merge the method onto the
+// di.core `ServiceManifestBase` interface. The `@augment`-decorated
+// `ServiceManifestClass` (in di.core) pulls the member onto its prototype. This is
+// why the package sets `"sideEffects": true` — a consumer who only wants the sugar
+// writes a bare `import "@rhombus-std/logging";`.
 //
 // Faithfulness vs. the reference AddLogging, given providers + the options DI
 // integration are out of scope (issue #75):
@@ -20,10 +21,10 @@
 //     `IConfigureOptions<LoggerFilterOptions>` (needs the deferred options DI
 //     integration). Documented in the README.
 
-import { ServiceManifestClass } from "@rhombus-std/di.core";
-import type { ServiceManifest } from "@rhombus-std/di.core";
+import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
+import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFactory } from "./logger-factory";
@@ -52,8 +53,10 @@ declare module "@rhombus-std/di.core" {
 }
 
 // One named object literal mirroring the reference `LoggingServiceCollectionExtensions`
-// static class (docs §28), installed as a prototype method (the primary path)
-// via applyAugmentations AND exported so the member is the standalone form.
+// static class (docs §28), registered against the `ServiceManifest` augmentation
+// token (docs §38) — the concrete `ServiceManifestClass`, decorated with
+// `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)` in di.core, pulls the member onto
+// its prototype — AND exported so the member is the standalone form.
 export const LoggingServiceCollectionExtensions = {
   addLogging(
     manifest: ServiceManifestClass<string>,
@@ -71,4 +74,4 @@ export const LoggingServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyAugmentations(ServiceManifestClass, LoggingServiceCollectionExtensions);
+registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, LoggingServiceCollectionExtensions);

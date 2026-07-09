@@ -8,7 +8,7 @@
 // its own failure mode.
 
 import type { IConfiguration } from "@rhombus-std/config.core";
-import { exists } from "./configuration-extensions";
+import { exists } from "./configuration-augmentations";
 import { OPTIONAL, type Schema } from "./schema";
 
 export type ParseResult<T> =

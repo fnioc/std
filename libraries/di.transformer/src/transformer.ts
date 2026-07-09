@@ -14,21 +14,21 @@
 //   2. Rewrites every `nameof<T>()` and tokenless `resolve<T>()` / `resolveAsync<T>()`
 //      call to its string token.
 
-import type { Func } from "@rhombus-toolkit/func";
-import ts from "typescript";
-import { createTokenContext } from "./context.js";
-import { DiagnosticCode, error } from "./diagnostics.js";
-import type { DiagnosticSink } from "./diagnostics.js";
-import { literalExpression, type LowerContext, lowerStatement } from "./lower.js";
-import { NAMEOF_NAME } from "./nameof.js";
 import {
+  createTokenContext,
   deriveToken,
   injectTokenFor,
+  NAMEOF_NAME,
   singletonValue,
   type TokenContext,
   tokenForReturnType,
   tokenForType,
-} from "./tokens.js";
+} from "@rhombus-std/primitives.transformer";
+import type { Func } from "@rhombus-toolkit/func";
+import ts from "typescript";
+import { DiagnosticCode, error } from "./diagnostics.js";
+import type { DiagnosticSink } from "./diagnostics.js";
+import { literalExpression, type LowerContext, lowerStatement } from "./lower.js";
 
 /**
  * Create the `ts.TransformerFactory` that rewrites a SourceFile. Exposed so the

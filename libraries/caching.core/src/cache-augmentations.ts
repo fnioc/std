@@ -1,9 +1,10 @@
 // The IMemoryCache convenience wrappers, ported from ME.Caching.Abstractions'
 // static `CacheExtensions` class -- authored as the named `CacheExtensions`
-// object literal (docs §28), one member per reference static method,
-// receiver-first. The members build only on the three core `IMemoryCache`
-// members (`tryGetValue`/`createEntry`/`remove`). `tryGetValue` is a member of
-// the literal but is NOT prototype-installed (see cache-augmentations.ts).
+// augmentation object literal (docs §28/§38), one member per reference static
+// method, receiver-first. The members build only on the three core
+// `IMemoryCache` members (`tryGetValue`/`createEntry`/`remove`). `tryGetValue`
+// is a member of the literal but is NOT prototype-installed (see
+// caching.memory's cache-augmentations.ts).
 //
 // Collapsing the reference overloads:
 //   - `Get` and `Get<TItem>` collapse into one generic `get<T>` (TS cannot
@@ -14,14 +15,18 @@
 //     `expiration` union -- `Date` -> absolute, `number` (ms) -> relative,
 //     an `IChangeToken` -> expiration token.
 //
-// The `MemoryCacheEntryOptions`-consuming overloads (`Set(options)`,
-// `GetOrCreate(createOptions)`, `SetOptions`) live in
-// @rhombus-std/caching.memory, where that options TYPE is defined -- see the
-// README note on the abstractions/memory split.
+// The `MemoryCacheEntryOptions`-consuming overloads (reference `Set(options)`
+// and `GetOrCreate(createOptions)`) are kept under distinct member names
+// (`setWithOptions`/`getOrCreateWithOptions`/`getOrCreateAsyncWithOptions`,
+// since an object literal cannot overload a single key) and folded into this
+// same `CacheExtensions` const -- `MemoryCacheEntryOptions` now lives in
+// caching.core (as ME has it), so the options TYPE is in scope here.
 
 import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
 import type { ICacheEntry } from "./cache-entry";
+import { CacheEntryExtensions } from "./cache-entry-augmentations";
 import type { IMemoryCache } from "./memory-cache";
+import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 
 /** Narrows the `expiration` union: an `IChangeToken` (not a `Date`/`number`). */
 function isChangeToken(value: unknown): value is IChangeToken {
@@ -119,11 +124,75 @@ async function getOrCreateAsync<T>(
   return value;
 }
 
-/** The `CacheExtensions` augmentation set for {@link IMemoryCache} (docs §28). */
+/** Sets `value` at `key`, applying `options` to the entry (the `Set(options)` port). */
+function setWithOptions<T>(
+  cache: IMemoryCache,
+  key: unknown,
+  value: T,
+  options?: MemoryCacheEntryOptions,
+): T {
+  const entry = cache.createEntry(key);
+  if (options !== undefined) {
+    CacheEntryExtensions.setOptions(entry, options);
+  }
+  entry.value = value;
+  entry[Symbol.dispose]();
+  return value;
+}
+
+/**
+ * {@link getOrCreate} with `createOptions` applied to the fresh entry before
+ * the factory runs (the `GetOrCreate(createOptions)` port).
+ */
+function getOrCreateWithOptions<T>(
+  cache: IMemoryCache,
+  key: unknown,
+  factory: (entry: ICacheEntry) => T,
+  createOptions?: MemoryCacheEntryOptions,
+): T | undefined {
+  const result = cache.tryGetValue(key);
+  if (result[0]) {
+    return result[1] as T | undefined;
+  }
+  const entry = cache.createEntry(key);
+  if (createOptions !== undefined) {
+    CacheEntryExtensions.setOptions(entry, createOptions);
+  }
+  const value = factory(entry);
+  entry.value = value;
+  entry[Symbol.dispose]();
+  return value;
+}
+
+/** Async {@link getOrCreateWithOptions}. */
+async function getOrCreateAsyncWithOptions<T>(
+  cache: IMemoryCache,
+  key: unknown,
+  factory: (entry: ICacheEntry) => Promise<T>,
+  createOptions?: MemoryCacheEntryOptions,
+): Promise<T | undefined> {
+  const result = cache.tryGetValue(key);
+  if (result[0]) {
+    return result[1] as T | undefined;
+  }
+  const entry = cache.createEntry(key);
+  if (createOptions !== undefined) {
+    CacheEntryExtensions.setOptions(entry, createOptions);
+  }
+  const value = await factory(entry);
+  entry.value = value;
+  entry[Symbol.dispose]();
+  return value;
+}
+
+/** The `CacheExtensions` augmentation set for {@link IMemoryCache} (docs §28/§38). */
 export const CacheExtensions = {
   get,
   tryGetValue,
   set,
   getOrCreate,
   getOrCreateAsync,
+  setWithOptions,
+  getOrCreateWithOptions,
+  getOrCreateAsyncWithOptions,
 } satisfies AugmentationSet<IMemoryCache>;

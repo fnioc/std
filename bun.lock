@@ -189,6 +189,7 @@
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/di.core": "workspace:^",
+        "@rhombus-std/primitives": "workspace:^",
       },
       "devDependencies": {
         "@rhombus-toolkit/func": "3.5.3",
@@ -197,6 +198,9 @@
     "libraries/di.core": {
       "name": "@rhombus-std/di.core",
       "version": "10.1.0",
+      "dependencies": {
+        "@rhombus-std/primitives": "workspace:^",
+      },
       "devDependencies": {
         "@rhombus-toolkit/func": "3.5.3",
       },
@@ -205,10 +209,12 @@
       "name": "@rhombus-std/di.transformer",
       "version": "10.1.0",
       "dependencies": {
+        "@rhombus-std/primitives.transformer": "workspace:^",
         "@rhombus-toolkit/func": "3.5.3",
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/primitives.transformer": "workspace:*",
         "ts-patch": "^3.3.0",
       },
       "peerDependencies": {
@@ -219,9 +225,13 @@
     "libraries/di.transformer.options": {
       "name": "@rhombus-std/di.transformer.options",
       "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives.transformer": "workspace:^",
+      },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/primitives.transformer": "workspace:*",
         "ts-patch": "^3.3.0",
       },
       "peerDependencies": {
@@ -353,7 +363,9 @@
       "name": "@rhombus-std/logging.console",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
         "@rhombus-toolkit/func": "3.5.3",
@@ -394,6 +406,40 @@
     "libraries/primitives": {
       "name": "@rhombus-std/primitives",
       "version": "0.0.0",
+    },
+    "libraries/primitives.transformer": {
+      "name": "@rhombus-std/primitives.transformer",
+      "version": "10.1.0",
+      "dependencies": {
+        "@rhombus-toolkit/func": "3.5.3",
+      },
+      "devDependencies": {
+        "ts-patch": "^3.3.0",
+      },
+      "peerDependencies": {
+        "typescript": ">=5.2",
+      },
+    },
+    "tests/augmentations.test": {
+      "name": "@rhombus-std/augmentations.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/caching.core": "workspace:*",
+        "@rhombus-std/caching.memory": "workspace:*",
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.commandline": "workspace:*",
+        "@rhombus-std/config.env": "workspace:*",
+        "@rhombus-std/config.json": "workspace:*",
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/diagnostics": "workspace:*",
+        "@rhombus-std/diagnostics.core": "workspace:*",
+        "@rhombus-std/hosting": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
     },
     "tests/config.commandline.test": {
       "name": "@rhombus-std/config.commandline.test",
@@ -484,26 +530,8 @@
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/primitives.transformer": "workspace:*",
         "ts-patch": "^3.3.0",
-      },
-    },
-    "tests/extensions.test": {
-      "name": "@rhombus-std/extensions.test",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/caching.core": "workspace:*",
-        "@rhombus-std/caching.memory": "workspace:*",
-        "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/config.commandline": "workspace:*",
-        "@rhombus-std/config.env": "workspace:*",
-        "@rhombus-std/config.json": "workspace:*",
-        "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/diagnostics": "workspace:*",
-        "@rhombus-std/diagnostics.core": "workspace:*",
-        "@rhombus-std/logging": "workspace:*",
-        "@rhombus-std/logging.core": "workspace:*",
-        "@rhombus-std/options.augmentations": "workspace:*",
-        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/hosting.core.test": {
@@ -664,6 +692,8 @@
 
     "@pnpm/npm-conf": ["@pnpm/npm-conf@3.0.3", "", { "dependencies": { "@pnpm/config.env-replace": "^1.1.0", "@pnpm/network.ca-file": "^1.0.1", "config-chain": "^1.1.11" } }, "sha512-//0sR/cow/s4ICQaYoAobOl4aU8cjU6x/V24V7XkKotb9+O+3zySIYp146vpaobYHnxa4pZX8NkV54Z5AwbDKA=="],
 
+    "@rhombus-std/augmentations.test": ["@rhombus-std/augmentations.test@workspace:tests/augmentations.test"],
+
     "@rhombus-std/caching.core": ["@rhombus-std/caching.core@workspace:libraries/caching.core"],
 
     "@rhombus-std/caching.memory": ["@rhombus-std/caching.memory@workspace:libraries/caching.memory"],
@@ -722,8 +752,6 @@
 
     "@rhombus-std/examples.lib.without-transformer": ["@rhombus-std/examples.lib.without-transformer@workspace:examples/examples.lib.without-transformer"],
 
-    "@rhombus-std/extensions.test": ["@rhombus-std/extensions.test@workspace:tests/extensions.test"],
-
     "@rhombus-std/fileproviders.composite": ["@rhombus-std/fileproviders.composite@workspace:libraries/fileproviders.composite"],
 
     "@rhombus-std/fileproviders.core": ["@rhombus-std/fileproviders.core@workspace:libraries/fileproviders.core"],
@@ -757,6 +785,8 @@
     "@rhombus-std/primitives": ["@rhombus-std/primitives@workspace:libraries/primitives"],
 
     "@rhombus-std/primitives.test": ["@rhombus-std/primitives.test@workspace:tests/primitives.test"],
+
+    "@rhombus-std/primitives.transformer": ["@rhombus-std/primitives.transformer@workspace:libraries/primitives.transformer"],
 
     "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 

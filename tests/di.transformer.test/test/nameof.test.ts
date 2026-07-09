@@ -1,4 +1,4 @@
-import { nameof } from "@rhombus-std/di.transformer/internal/nameof";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { describe, expect, test } from "bun:test";
 import { fixture, transform, type VirtualFiles } from "./harness.js";
 

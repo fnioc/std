@@ -62,3 +62,13 @@ export { isProviderToken, RESOLVER_TOKEN } from "./provider-token.js";
 // The registration-time error taxonomy root and the open-token registration
 // error. Resolution-time errors extend `DiError` from `@rhombus-std/di`.
 export { DiError, OpenTokenRegistrationError } from "./errors.js";
+
+// The augmentation-registry token for the `ServiceManifest` OPEN receiver — the
+// key every cross-package registration augmentation registers against (§38).
+export { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "./augmentation-tokens.js";
+
+// The descriptor-level mutation augmentation (`removeAll`). A side-effect import:
+// pulling the barrel registers it against the `ServiceManifest` token so the verb
+// is installed onto the collection prototype (§28/§38). The const is the
+// standalone call surface.
+export { ServiceCollectionDescriptorExtensions } from "./service-collection-descriptor-augmentations.js";

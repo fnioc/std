@@ -16,6 +16,13 @@
 // A dynamic arg with no statically derivable signature gets no signature array —
 // the runtime throws with guidance if it needs metadata (a nonzero-arg ctor).
 
+import {
+  deriveToken,
+  isOpenToken,
+  type LiteralValue,
+  parseToken,
+  type TokenContext,
+} from "@rhombus-std/primitives.transformer";
 import ts from "typescript";
 import { type CheckContext, checkExtractedRegistration } from "./checks.js";
 import {
@@ -34,8 +41,6 @@ import {
   type Slot,
 } from "./deps.js";
 import { DiagnosticCode, type DiagnosticSink, error, warning } from "./diagnostics.js";
-import { isOpenToken, parseToken } from "./grammar.js";
-import { deriveToken, type LiteralValue, type TokenContext } from "./tokens.js";
 
 export interface LowerContext extends CheckContext, DepContext {
   readonly factory: ts.NodeFactory;

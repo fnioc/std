@@ -2,10 +2,12 @@
 //
 // Ships with ONLY add(source) + withSchema(schema) + build() -- no
 // addJsonFile/addEnvironmentVariables/etc. baked in. Each provider package (and
-// the in-package Memory provider) bolts its own add* sugar on via TS
-// declaration merging + a runtime prototype assignment, mimicking an extension
-// method. add* return `this` so those augmentations type-check without a cast
-// and preserve `T` through the fluent chain.
+// the in-package Memory/Chained providers) bolts its own add* sugar on via TS
+// declaration merging + an augmentation registered against the shared
+// IConfigurationBuilder token (docs/decisions.md §38); this class is decorated
+// for that token at the bottom of the file. add* return `this` so those
+// augmentations type-check without a cast and preserve `T` through the fluent
+// chain.
 //
 // The generic `T` is the type build() returns:
 //   - default `IndexedSection` (Tier 0) -- the proxy-wrapped root, untyped tree.
@@ -20,16 +22,25 @@
 // consumers program against the class for the typed path. Sources still expect
 // an IConfigurationBuilder, so `this` is cast at the one call site.
 
+import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type {
   IConfigurationBuilder,
   IConfigurationProvider,
   IConfigurationSource,
   IndexedSection,
 } from "@rhombus-std/config.core";
+import { augment } from "@rhombus-std/primitives";
 import { coerceBySchema } from "./coerce";
 import { ConfigurationRoot } from "./configuration-root";
 import type { Infer, ObjectSchema, Schema } from "./schema";
 
+/**
+ * `@augment` decorates the concrete builder for the OPEN IConfigurationBuilder
+ * receiver: it (re)installs the CONFIGURATION_BUILDER_AUGMENTATION_TOKEN bag
+ * onto the prototype now and on every later registration, so downstream
+ * provider packages' add* sugar reaches it (docs/decisions.md §38).
+ */
+@augment(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN)
 export class ConfigurationBuilder<T = IndexedSection> {
   readonly #sources: IConfigurationSource[] = [];
   #schema?: Schema;

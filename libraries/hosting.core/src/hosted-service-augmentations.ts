@@ -1,21 +1,32 @@
 // The `addHostedService` fluent registration -- ported from the reference's
 // ServiceCollection `AddHostedService<T>` extension (which ships in the Hosting
-// abstractions package, not the DI runtime). Installed as a side-effect
+// abstractions package, not the DI runtime). Registered as a cross-package
 // augmentation onto di.core's registration builder, exactly how
-// @rhombus-std/options.augmentations adds `addOptions`/`configure`:
-// TS declaration merging onto the interface + a runtime prototype assignment on
-// the concrete class.
+// @rhombus-std/options.augmentations adds `addOptions`/`configure`: TS
+// declaration merging onto the interface + a runtime install through the
+// augmentation registry.
+//
+// OPEN receiver (docs §38): `ServiceManifest` is extended by many downstream
+// packages, so this const registers against
+// {@link SERVICE_MANIFEST_AUGMENTATION_TOKEN} (owned by di.core). The concrete
+// `ServiceManifestClass` -- in `@rhombus-std/di.core` -- is decorated with
+// `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)` there, so it pulls this bag
+// (and every other cross-package set on the same token) onto its prototype. As
+// this is a FOREIGN receiver class, both the interface-side merge (onto
+// `ServiceManifestBase`) and the class-side merge (onto `ServiceManifestClass`)
+// live here in the extending package.
 //
 // The reference registers `IHostedService` specifically (an enumerable
 // singleton), NOT the concrete type -- so here every hosted service registers
 // under the ONE shared {@link HOSTED_SERVICE_TOKEN} as a singleton, and the host
 // resolves the whole set via the collection wrapper token.
 
-import { ServiceManifestClass } from "@rhombus-std/di.core";
+import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
 // Named imports: unqualified names in a `declare module` body resolve in THIS
-// file's scope, so `AddBuilder`/`Ctor`/`DepSlot` must be importable here.
-import type { AddBuilder, DepSlot } from "@rhombus-std/di.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
+// file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
+// importable here.
+import type { AddBuilder, DepSlot, ServiceManifestClass } from "@rhombus-std/di.core";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Ctor } from "@rhombus-toolkit/func";
 import { HOSTED_SERVICE_TOKEN } from "./tokens";
@@ -43,8 +54,8 @@ declare module "@rhombus-std/di.core" {
 }
 
 // One named object literal mirroring the reference `ServiceCollectionHostedServiceExtensions`
-// static class (docs §28), installed as a prototype method (the primary path) via
-// applyAugmentations AND exported so the member is the standalone form.
+// static class (docs §28), registered into the augmentation registry (the primary
+// path) AND exported so the member is the standalone form.
 export const ServiceCollectionHostedServiceExtensions = {
   addHostedService(
     manifest: ServiceManifestClass<string>,
@@ -57,4 +68,4 @@ export const ServiceCollectionHostedServiceExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-applyAugmentations(ServiceManifestClass, ServiceCollectionHostedServiceExtensions);
+registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceCollectionHostedServiceExtensions);

@@ -10,7 +10,7 @@
 // `baseTokenForSymbol`, so the base tracks whatever this transformer's own
 // derivation would produce for it.
 
-import { baseTokenForSymbol, deriveToken, type TokenContext } from "@rhombus-std/di.transformer";
+import { baseTokenForSymbol, deriveToken, type TokenContext } from "@rhombus-std/primitives.transformer";
 import ts from "typescript";
 
 /**

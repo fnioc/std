@@ -12,10 +12,15 @@
 // listener runtime; there is no such runtime here, so it is omitted.)
 
 import type { IConfiguration } from "@rhombus-std/config";
-import { METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIGURE_TOKEN } from "@rhombus-std/diagnostics.core";
+import {
+  METRICS_BUILDER_AUGMENTATION_TOKEN,
+  METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+  METRICS_CONFIGURE_TOKEN,
+} from "@rhombus-std/diagnostics.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 
 import { MetricsConfigureOptions } from "./metrics-configure-options";
 
@@ -34,3 +39,23 @@ function addMetricsConfiguration(builder: IMetricsBuilder, configuration: IConfi
 export const MetricsBuilderConfigurationExtensions = {
   addMetricsConfiguration,
 } satisfies AugmentationSet<IMetricsBuilder>;
+
+// Self-registration for the config-binding member of the OPEN `IMetricsBuilder`
+// receiver (docs §38). This const lives downstream (its `IConfiguration` dep keeps
+// it out of diagnostics.core), so per rule §38.6 its interface-side merge and its
+// registerAugmentations call live here beside it -- separate from the
+// listener/rule members, which register from diagnostics.core against the same
+// token. The concrete `MetricsBuilder` (@augment'd) pulls both bags' members.
+//
+// The merge targets the DECLARING module (via the internal/* subpath), not the
+// package barrel: every interface-side merge for one interface must resolve to
+// the same module file, or TS treats the accumulated `this`-returning members
+// as having unrelated this-types and the concrete builders stop satisfying
+// `implements IMetricsBuilder`.
+declare module "@rhombus-std/diagnostics.core/internal/metrics-builder" {
+  interface IMetricsBuilder {
+    addMetricsConfiguration(configuration: IConfiguration): this;
+  }
+}
+
+registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, MetricsBuilderConfigurationExtensions);

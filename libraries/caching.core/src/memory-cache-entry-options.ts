@@ -1,17 +1,16 @@
-// MemoryCacheEntryOptions -- ported from MemoryCacheEntryOptions.
-//
-// Upstream this type lives in Caching.Abstractions; this port places it in
-// caching.memory per the family layout for this pass (see the README note on
-// the split). It carries the same per-entry knobs an ICacheEntry exposes, so
-// a caller can build one options bag and apply it to many entries via
-// `setEntryOptions`. Durations are milliseconds; the absolute expiration is a
-// `Date`.
+// MemoryCacheEntryOptions -- ported from ME.Caching.Abstractions'
+// MemoryCacheEntryOptions, and (as ME has it) placed in caching.core alongside
+// the ICacheEntry contract it mirrors. It carries the same per-entry knobs an
+// ICacheEntry exposes, so a caller can build one options bag and apply it to
+// many entries via `CacheEntryExtensions.setOptions`. Durations are
+// milliseconds; the absolute expiration is a `Date`.
 
-import type { CacheItemPriority, PostEvictionCallbackRegistration } from "@rhombus-std/caching.core";
-import { CacheItemPriority as Priority } from "@rhombus-std/caching.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
+import type { CacheItemPriority } from "./cache-item-priority";
+import { CacheItemPriority as Priority } from "./cache-item-priority";
+import type { PostEvictionCallbackRegistration } from "./post-eviction-callback-registration";
 
-/** A reusable bag of the cache options applied to an entry via `setEntryOptions`. */
+/** A reusable bag of the cache options applied to an entry via `CacheEntryExtensions.setOptions`. */
 export class MemoryCacheEntryOptions {
   #absoluteExpirationRelativeToNow: number | undefined = undefined;
   #slidingExpiration: number | undefined = undefined;

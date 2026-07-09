@@ -1,0 +1,54 @@
+{
+  "name": "@rhombus-std/primitives.transformer",
+  "version": "10.1.0",
+  "description": "The standalone token-derivation ts-patch transformer: the nameof<T>() compile-time token mechanism and the token-generation machinery, di-independent so any family can mint augmentation tokens from types.",
+  "keywords": [
+    "primitives",
+    "typescript",
+    "ts-patch",
+    "transformer",
+    "compiler",
+    "nameof"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/primitives.transformer"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-toolkit/func": "3.5.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
+    "ts-patch": "^3.3.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

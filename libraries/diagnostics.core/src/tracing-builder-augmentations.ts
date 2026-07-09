@@ -4,10 +4,12 @@
 // The builder-targeted members target the family's OWN interface (ITracingBuilder);
 // the options-targeted members target the concrete value object TracingOptions. Both
 // groups are dual-export augmentations (docs §28): a named object literal installed
-// onto the receiver's prototype AND reachable as `Set.member(receiver, …)`. The
-// ITracingBuilder literal is installed downstream in @rhombus-std/diagnostics (the
-// concrete TracingBuilder lives there); the TracingOptions literal is installed
-// in-package (the concrete class lives here) via ./options-augmentations.
+// onto the receiver's prototype AND reachable as `Set.member(receiver, …)`. ITracingBuilder
+// is an OPEN receiver whose concrete class lives downstream (@rhombus-std/diagnostics'
+// TracingBuilder), so its literal self-registers here against TRACING_BUILDER_AUGMENTATION_TOKEN
+// (docs §38); the concrete builder is decorated `@augment(token)` and pulls the bag onto
+// its prototype. The TracingOptions literal is a CLOSED set installed in-package (the
+// concrete class lives here) via direct applyAugmentations in ./options-augmentations.
 //
 // The reference AddListener registers a factory that lazily builds+configures an
 // ActivityListenerBuilder when the tracing infrastructure first resolves; with no
@@ -24,11 +26,12 @@
 
 import type { ConfigureOptions } from "@rhombus-std/options";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { ActivityListenerBuilder } from "./activity-listener-builder";
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./activity-source-scopes";
-import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from "./tokens";
+import { TRACING_BUILDER_AUGMENTATION_TOKEN, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from "./tokens";
 import type { ITracingBuilder } from "./tracing-builder";
 import { TracingOptions } from "./tracing-options";
 import { TracingRule } from "./tracing-rule";
@@ -142,3 +145,29 @@ export const TracingBuilderExtensions = {
   enableTracing,
   disableTracing,
 } satisfies AugmentationSet<ITracingBuilder>;
+
+// Self-registration for the OPEN `ITracingBuilder` receiver (docs §38). The
+// interface-side declaration merge lives here beside the const (rule §38.6); the
+// class-side merge for the concrete `TracingBuilder` stays downstream next to the
+// class (@rhombus-std/diagnostics' builder-augmentations). That class is decorated
+// `@augment(TRACING_BUILDER_AUGMENTATION_TOKEN)`, so this registration reaches its
+// prototype.
+declare module "./tracing-builder" {
+  interface ITracingBuilder {
+    addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
+    enableTracing(
+      sourceName?: string,
+      operationName?: string,
+      listenerName?: string,
+      scopes?: ActivitySourceScopes,
+    ): this;
+    disableTracing(
+      sourceName?: string,
+      operationName?: string,
+      listenerName?: string,
+      scopes?: ActivitySourceScopes,
+    ): this;
+  }
+}
+
+registerAugmentations(TRACING_BUILDER_AUGMENTATION_TOKEN, TracingBuilderExtensions);

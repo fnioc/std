@@ -20,8 +20,9 @@ import type {
   IHostedService,
   IHostLifetime,
 } from "@rhombus-std/hosting.core";
-import { hostedServiceCollectionToken } from "@rhombus-std/hosting.core";
+import { HOST_AUGMENTATION_TOKEN, hostedServiceCollectionToken } from "@rhombus-std/hosting.core";
 import type { ILogger } from "@rhombus-std/logging.core";
+import { augment } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { ApplicationLifetime } from "./application-lifetime";
 import { BackgroundServiceExceptionBehavior } from "./background-service-exception-behavior";
@@ -106,6 +107,7 @@ function aggregate(exceptions: readonly unknown[], message: string): unknown {
 }
 
 /** The internal {@link IHost} implementation. */
+@augment(HOST_AUGMENTATION_TOKEN)
 export class Host implements IHost, AsyncDisposable {
   readonly #services: ServiceProvider;
   readonly #applicationLifetime: ApplicationLifetime;
