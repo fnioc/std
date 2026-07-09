@@ -45,8 +45,11 @@ Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` 
   so the upstream `dist` must be complete and stable before they compile — a flat parallel build
   races and silently mis-resolves. `build-all` tiers the workspace by its dependency graph and
   finishes each tier before the next (§1/§9).
-- **`bun run test` is the full gate — there is no CI.** It includes the `examples.app.*`
-  output-diff e2e: build with `tspc`, run, `diff` stdout against the checked-in `expected.txt` (§16).
+- **`bun run test` is the full gate.** It includes the `examples.app.*` output-diff e2e: build with
+  `tspc`, run, `diff` stdout against the checked-in `expected.txt` (§16). CI's `verify` job
+  (`.github/workflows/ci.yml`) runs `build`/`test`/`lint` on every push/PR/merge_group and is a
+  required status check on the `main` merge-queue ruleset — but it's the same local gate running
+  remotely, not a separate suite; `bun run test` locally is still authoritative.
 - **Typecheck is per-package**, inside each package's `build`/`lint` (`tsc --noEmit -p tsconfig.json`,
   or `tspc --noEmit` for transformer-consumers). The root `typecheck` script (`tsc -b`) points at
   an empty solution stub and checks nothing — don't rely on it.
