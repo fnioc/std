@@ -1,0 +1,20 @@
+{
+  "name": "@rhombus-std/unplugin.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/unplugin. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/unplugin": "workspace:*",
+    "typescript": "^5.9.0",
+    "unplugin": "^3.3.0"
+  }
+}

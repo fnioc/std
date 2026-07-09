@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // No cross-package project references in this monorepo; the white-box tests
+    // also reach the library's `internal/*` source, so composite's "every file
+    // must be listed" check (TS6307) must be off.
+    "composite": false,
+    // A `types` array disables automatic @types inclusion, so `bun` (bun:test +
+    // the Node/Bun globals used by the temp-project harness) is listed explicitly.
+    "types": ["bun"],
+    // Assertions index token/version maps freely; relax the unchecked-index rule
+    // for readable specs (production packages keep it on).
+    "noUncheckedIndexedAccess": false,
+    // The `internal/*` seam pulls the transformer packages' dist `.d.ts` (which
+    // carry the `declare module "@rhombus-std/di.core"` augmentations) into this
+    // program, so `@rhombus-std/di.core` must resolve to its BUILT types — its
+    // source can't co-compile under the merged authoring overloads (TS2416).
+    // Same hatch as `di.transformer.test` (docs/decisions.md §1/§9).
+    "customConditions": ["built"]
+  },
+  "include": ["test/**/*"]
+}
