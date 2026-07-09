@@ -5,11 +5,19 @@
 // Written against the `IConfigurationBuilder` INTERFACE (via `.add(source)` with
 // the provider source classes constructed directly) so BOTH the classic
 // `HostBuilder` (over a `ConfigurationBuilder`) and the modern
-// `HostApplicationBuilder` (over a `ConfigurationManager`) reuse them -- the
+// `HostApplicationBuilder` (over a `ConfigurationManager`) reuse them. The
 // fluent `addJsonFile` / `addEnvironmentVariables` / `addCommandLine` sugar is
-// installed only on `ConfigurationBuilder`, not `ConfigurationManager`, so the
-// defaults go through the raw sources instead. (Importing the provider packages
-// still installs that sugar for user code as a side effect.)
+// now installed on BOTH concrete classes, but that doesn't help here: these
+// functions are shared with `IHostBuilder.configureHostConfiguration` /
+// `configureAppConfiguration`, whose delegate parameter is typed as the plain
+// `IConfigurationBuilder` interface (mirrors the reference `Action<IConfigurationBuilder>`)
+// -- a declaration-merged prototype method isn't visible through an interface
+// type, only through the concrete class it was merged onto. So the defaults go
+// through the raw sources instead, here. (Importing the provider packages still
+// installs that sugar for user code as a side effect; `HostBuilder.build()`'s
+// own host/app-configuration composition -- a concretely-typed local
+// `ConfigurationManager`, not something flowing through this interface
+// boundary -- DOES use it, for `addConfiguration`; see host-builder.ts.)
 
 import { MemoryConfigurationSource } from "@rhombus-std/config";
 import { CommandLineConfigurationSource } from "@rhombus-std/config.commandline";

@@ -90,4 +90,10 @@ describe("ConfigurationManager provider augmentations", () => {
     const manager = new ConfigurationManager().addInMemoryCollection({ "Server:Port": "8080" });
     expect(manager.get("Server:Port")).toBe("8080");
   });
+
+  test("addConfiguration installs on ConfigurationManager, not just ConfigurationBuilder", () => {
+    const chained = new ConfigurationManager().addInMemoryCollection({ "Server:Port": "8080" });
+    const manager = new ConfigurationManager().addConfiguration(chained);
+    expect(manager.get("Server:Port")).toBe("8080");
+  });
 });

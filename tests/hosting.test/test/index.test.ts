@@ -212,6 +212,24 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
   host[Symbol.dispose]();
 });
 
+test("host configuration values flow into the application configuration (chained, not snapshotted)", () => {
+  const builder = new HostBuilder();
+  builder.configureHostConfiguration((config) => {
+    config.add(new MemoryConfigurationSource({ initialData: { "Custom:Key": "fromHost" } }));
+  });
+
+  // Observed from inside the configureAppConfiguration callback -- by this
+  // point the host configuration has already been chained into the app
+  // configuration builder, ahead of any user delegate.
+  let seenDuringCompose: string | undefined;
+  builder.configureAppConfiguration((_context, appConfig) => {
+    seenDuringCompose = appConfig.build().get("Custom:Key");
+  });
+
+  builder.build();
+  expect(seenDuringCompose).toBe("fromHost");
+});
+
 test("Host.createApplicationBuilder().build() produces a runnable IHost", async () => {
   const events: string[] = [];
 

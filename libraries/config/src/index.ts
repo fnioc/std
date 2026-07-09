@@ -3,9 +3,9 @@
 // Exports the abstractions (IConfiguration* interfaces + the configPath
 // helpers), the engine classes (ConfigurationBuilder / ConfigurationRoot /
 // ConfigurationSection / the abstract ConfigurationProvider base) +
-// compareConfigurationKeys, the bundled Memory provider + its
-// addInMemoryCollection augmentation, and the runtime schema surface
-// (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
+// compareConfigurationKeys, the bundled Memory and Chained providers + their
+// addInMemoryCollection/addConfiguration augmentations, and the runtime schema
+// surface (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
 // (@rhombus-std/config.json/-env/-commandline) peer-depend on this package, extend
 // ConfigurationProvider, implement IConfigurationSource, and augment
 // ConfigurationBuilder with their own add* sugar.
@@ -38,6 +38,12 @@ export { ConfigurationSection } from "./configuration-section";
 // installs the `addInMemoryCollection` prototype method + declaration merge
 // onto ConfigurationBuilder.
 export * from "./memory";
+
+// Chained provider (wraps an existing IConfiguration as a source). The
+// re-export is side-effectful: importing this module installs the
+// `addConfiguration` prototype method + declaration merge onto
+// ConfigurationBuilder AND ConfigurationManager.
+export * from "./chained";
 
 // Runtime coercion + schema. `withType` (Tier 2) is intentionally NOT
 // re-exported here -- it's opt-in via `import "@rhombus-std/config/with-type-augment"`.
