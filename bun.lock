@@ -35,6 +35,7 @@
         "@rhombus-std/di.transformer": "workspace:*",
         "@rhombus-std/di.transformer.options": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
+        "@rhombus-std/unplugin": "workspace:*",
         "@types/bun": "^1.3.0",
         "ts-patch": "^3.3.0",
         "typescript": "^5.9.0",
