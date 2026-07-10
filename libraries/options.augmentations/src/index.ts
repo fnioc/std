@@ -26,14 +26,17 @@ import type { IConfiguration } from "@rhombus-std/config.core";
 // `AddBuilder` and `Token` are named imports (not member references inside the
 // augmentation block) because unqualified names in a `declare module` body
 // resolve in THIS file's scope.
-import type { AddBuilder, Token } from "@rhombus-std/di.core";
-import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
-import type { ServiceManifest } from "@rhombus-std/di.core";
-import { Options, ValidateOptionsResult } from "@rhombus-std/options";
-import type { PostConfigureOptions, ValidateOptions } from "@rhombus-std/options";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import {
+  type AddBuilder,
+  RESOLVER_TOKEN,
+  type ServiceManifest,
+  ServiceManifestClass,
+  type Token,
+} from "@rhombus-std/di.core";
+import { Options, type PostConfigureOptions, type ValidateOptions, ValidateOptionsResult } from "@rhombus-std/options";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleOptions } from "./assemble-options.js";
 import { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
@@ -77,7 +80,7 @@ declare module "@rhombus-std/di.core" {
      * Returns the `.as(scope)` continuation so the lifetime is chosen at the
      * registration site.
      */
-    addOptions<T>(token: Token, makeBase: () => T): AddBuilder<Scopes>;
+    addOptions<T>(token: Token, makeBase: Func<[], T>): AddBuilder<Scopes>;
     /**
      * Registers a configuration `section` to bind against the options
      * identified by `token`: adds a config-bind configure step and a
@@ -94,29 +97,29 @@ declare module "@rhombus-std/di.core" {
      * but the registry's flat bag namespace forbids a second `configure` member
      * on the token, so the config-section member absorbs it by arg type (§38).
      */
-    configure<T>(token: Token, configureOptions: (options: T) => void): this;
+    configure<T>(token: Token, configureOptions: Func<[T], void>): this;
     /**
      * Registers a post-configure step for `token`, run after every configure
      * step. Accepts a {@link PostConfigureOptions} or a bare `(options) => void`
      * delegate. Mirrors ME's `OptionsServiceCollectionExtensions.PostConfigure`.
      */
-    postConfigure<T>(token: Token, step: PostConfigureOptions<T> | ((options: T) => void)): this;
+    postConfigure<T>(token: Token, step: PostConfigureOptions<T> | Func<[T], void>): this;
     /**
      * Registers a validate step for `token`: `validate` runs against the
      * fully-configured value; a `false` result fails validation with
      * `failureMessage`. ME analog is the instance-method `OptionsBuilder.Validate`
      * (unported, §4.2) -- the verb collapses onto the manifest here.
      */
-    validate<T>(token: Token, validate: (options: T) => boolean, failureMessage?: string): this;
+    validate<T>(token: Token, validate: Func<[T], boolean>, failureMessage?: string): this;
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
     addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
-    addOptions<T>(token: Token, makeBase: () => T): AddBuilder<Scopes>;
+    addOptions<T>(token: Token, makeBase: Func<[], T>): AddBuilder<Scopes>;
     configure(token: Token, section: IConfiguration): this;
-    configure<T>(token: Token, configureOptions: (options: T) => void): this;
-    postConfigure<T>(token: Token, step: PostConfigureOptions<T> | ((options: T) => void)): this;
-    validate<T>(token: Token, validate: (options: T) => boolean, failureMessage?: string): this;
+    configure<T>(token: Token, configureOptions: Func<[T], void>): this;
+    postConfigure<T>(token: Token, step: PostConfigureOptions<T> | Func<[T], void>): this;
+    validate<T>(token: Token, validate: Func<[T], boolean>, failureMessage?: string): this;
   }
 }
 
@@ -133,7 +136,7 @@ export const OptionsServiceCollectionExtensions = {
   addOptions<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    source: Token | (() => T),
+    source: Token | Func<[], T>,
   ): AddBuilder<string> {
     // Two verbs share the name, disambiguated by the second argument (§15):
     //   - a `Token` (string)      → wrap the already-bound `T` resolved from it
@@ -152,7 +155,7 @@ export const OptionsServiceCollectionExtensions = {
   postConfigure<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    step: PostConfigureOptions<T> | ((options: T) => void),
+    step: PostConfigureOptions<T> | Func<[T], void>,
   ): ServiceManifestClass<string> {
     // A bare delegate is wrapped into a PostConfigureOptions<T>; both append to
     // the token's post-configure slot, which `assembleOptions` reads and runs
@@ -166,7 +169,7 @@ export const OptionsServiceCollectionExtensions = {
   validate<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    validateFn: (options: T) => boolean,
+    validateFn: Func<[T], boolean>,
     failureMessage?: string,
   ): ServiceManifestClass<string> {
     // Wrap the predicate into a ValidateOptions<T> step appended to the token's
@@ -189,7 +192,7 @@ export const OptionsConfigurationServiceCollectionExtensions = {
   configure<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    source: IConfiguration | ((options: T) => void),
+    source: IConfiguration | Func<[T], void>,
   ): ServiceManifestClass<string> {
     // A bare delegate is a pure code configure step: register only the configure
     // slot, no change-token source. ME houses delegate-Configure in

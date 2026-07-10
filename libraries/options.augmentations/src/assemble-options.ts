@@ -13,8 +13,14 @@
 // snapshot (`Options.of`).
 
 import type { Resolver, Token } from "@rhombus-std/di.core";
-import type { ConfigureOptions, PostConfigureOptions, ValidateOptions } from "@rhombus-std/options";
-import { Options, OptionsFactory } from "@rhombus-std/options";
+import {
+  type ConfigureOptions,
+  Options,
+  OptionsFactory,
+  type PostConfigureOptions,
+  type ValidateOptions,
+} from "@rhombus-std/options";
+import type { Func } from "@rhombus-toolkit/func";
 
 import { CompositeChangeToken } from "./CompositeChangeToken.js";
 import {
@@ -35,7 +41,7 @@ import type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";
 export function assembleOptions<T>(
   resolver: Resolver,
   optionsToken: Token,
-  makeBase: () => T,
+  makeBase: Func<[], T>,
 ): Options<T> {
   const configures = resolver.resolve<readonly ConfigureOptions<T>[]>(
     collectionToken(configureStepToken(optionsToken)),

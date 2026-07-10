@@ -11,6 +11,8 @@
 //     is no reflective construction in TS, so the base factory is injected as
 //     `makeBase` (the analog of MEO's protected virtual CreateInstance).
 
+import type { Func } from "@rhombus-toolkit/func";
+
 import type { ConfigureOptions } from "./ConfigureOptions.js";
 import { OptionsValidationError } from "./OptionsValidationError.js";
 import type { PostConfigureOptions } from "./PostConfigureOptions.js";
@@ -22,7 +24,7 @@ import type { ValidateOptions } from "./ValidateOptions.js";
  * `OptionsFactory<TOptions>`.
  */
 export class OptionsFactory<T> {
-  readonly #makeBase: () => T;
+  readonly #makeBase: Func<[], T>;
   readonly #configures: readonly ConfigureOptions<T>[];
   readonly #postConfigures: readonly PostConfigureOptions<T>[];
   readonly #validates: readonly ValidateOptions<T>[];
@@ -37,7 +39,7 @@ export class OptionsFactory<T> {
    * value.
    */
   constructor(
-    makeBase: () => T,
+    makeBase: Func<[], T>,
     configures: Iterable<ConfigureOptions<T>>,
     postConfigures: Iterable<PostConfigureOptions<T>>,
     validates: Iterable<ValidateOptions<T>> = [],

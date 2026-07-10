@@ -16,8 +16,7 @@
 
 import { LoggingBuilderExtensions } from "@rhombus-std/logging";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { ConsoleLoggerProvider } from "./ConsoleLoggerProvider";
 

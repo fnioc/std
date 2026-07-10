@@ -29,8 +29,7 @@
 // subscribes to in di.core.
 import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFactory } from "./LoggerFactory";

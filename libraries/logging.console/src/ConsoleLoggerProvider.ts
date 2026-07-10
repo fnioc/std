@@ -11,14 +11,14 @@ import { ConsoleLogger } from "./console-logger";
 
 /** An {@link ILoggerProvider} that creates stdout-writing {@link ConsoleLogger}s. */
 export class ConsoleLoggerProvider implements ILoggerProvider {
-  private readonly loggers = new Map<string, ConsoleLogger>();
+  readonly #loggers = new Map<string, ConsoleLogger>();
 
   /** Creates (or returns the cached) {@link ConsoleLogger} for `categoryName`. */
   public createLogger(categoryName: string): ILogger {
-    let logger = this.loggers.get(categoryName);
+    let logger = this.#loggers.get(categoryName);
     if (logger === undefined) {
       logger = new ConsoleLogger(categoryName);
-      this.loggers.set(categoryName, logger);
+      this.#loggers.set(categoryName, logger);
     }
     return logger;
   }

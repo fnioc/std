@@ -20,8 +20,7 @@
 // event id and a message string are ambiguous at runtime; a caller that needs
 // an explicit event id calls `logger.log(level, EventId.from(n), …)` directly.
 
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { EventId } from "./event-id";
 import { formatLogValues, FormattedLogValues } from "./formatted-log-values";

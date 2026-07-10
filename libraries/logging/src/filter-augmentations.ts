@@ -28,8 +28,7 @@
 // the options-monitor DI integration (see ./logger.ts). This builds the rule set.
 
 import type { LogLevel } from "@rhombus-std/logging.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
 

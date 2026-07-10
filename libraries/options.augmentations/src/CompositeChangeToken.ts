@@ -9,6 +9,7 @@
 // any child has, and registers a callback against every child.
 
 import type { IChangeToken } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 
 /**
  * An {@link IChangeToken} over a set of child tokens: it {@link hasChanged}
@@ -37,7 +38,7 @@ export class CompositeChangeToken implements IChangeToken {
    * Registers `callback` against every child token; the returned disposable
    * unregisters from all of them.
    */
-  public registerChangeCallback(callback: (state: unknown) => void, state?: unknown): Disposable {
+  public registerChangeCallback(callback: Func<[state: unknown], void>, state?: unknown): Disposable {
     const registrations = this.#tokens.map((token) => token.registerChangeCallback(callback, state));
     return {
       [Symbol.dispose](): void {
