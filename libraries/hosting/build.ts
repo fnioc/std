@@ -1,51 +1,26 @@
 // Build @rhombus-std/hosting for publication -- mirrors libraries/di.
 //
-// Two outputs. Every @rhombus-std/* workspace dependency (and @rhombus-toolkit/*)
-// is kept EXTERNAL from the JS bundle -- NOT inlined -- so the cross-package
+// Every @rhombus-std/* workspace dependency (and @rhombus-toolkit/*) is kept
+// EXTERNAL from the JS bundle -- NOT inlined -- so the cross-package
 // prototype-patched classes (`ServiceManifestClass`, `ConfigurationBuilder`)
 // keep ONE runtime identity: hosting registers through di's patched
 // `ServiceManifest.build()`, the config providers patch `ConfigurationBuilder`,
-// and a private inlined copy would fork those identities. (Same reason they stay
-// external in the .d.ts.)
+// and a private inlined copy would fork those identities. primitives stays
+// external for the same reason -- the augmentation registry is a shared
+// singleton (§38). (Same reason they stay external in the .d.ts.)
 //
-//   1. dist/index.js   -- `bun build` bundles the ESM entry with every workspace
-//      package external (re-imported at runtime).
-//   2. dist/index.d.ts -- rollup-plugin-dts rolls hosting's own public types into
-//      one declaration file, re-exporting the external packages' types FROM them
-//      (external, for the augmentation module identity).
+// The JS emit runs through the tspc lowering stage (tsconfig.build.json) so the
+// inline `nameof<IHost>()` / `nameof<IHostBuilder>()` / `nameof<IHostEnvironment>()`
+// / `nameof<IMetricsBuilder>()` augmentation tokens ship as their derived string
+// literals; `Bun.build` alone never runs ts-patch transformers. The lowering
+// engine lives in exactly one place -- `buildPackage`'s `tspcProject` hook -- so
+// a later tspc-engine swap touches only scripts/build-package.ts.
 
-import { spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
-import { join } from "node:path";
+import { buildPackage } from "../../scripts/build-package";
 
-const PKG_ROOT = import.meta.dir;
-const DIST = join(PKG_ROOT, "dist");
-const ENTRY = join(PKG_ROOT, "src", "index.ts");
-
-rmSync(DIST, { recursive: true, force: true });
-
-// 1. JS bundle -- workspace packages EXTERNAL (shared runtime identity), ESM,
-//    node target.
-const js = await Bun.build({
-  entrypoints: [ENTRY],
-  outdir: DIST,
-  target: "node",
-  format: "esm",
+await buildPackage({
+  dir: import.meta.dir,
+  name: "@rhombus-std/hosting",
   external: ["@rhombus-std/*", "@rhombus-toolkit/*"],
+  tspcProject: "tsconfig.build.json",
 });
-if (!js.success) {
-  for (const log of js.logs) {
-    console.error(log);
-  }
-  throw new Error("@rhombus-std/hosting: bun build failed");
-}
-
-// 2. Rolled-up .d.ts -- workspace types re-exported from their external packages.
-const dts = spawnSync(
-  "bun",
-  ["x", "rollup", "-c", join(PKG_ROOT, "rollup.dts.mjs")],
-  { cwd: PKG_ROOT, stdio: "inherit" },
-);
-if (dts.status !== 0) {
-  throw new Error("@rhombus-std/hosting: rollup d.ts bundling failed");
-}

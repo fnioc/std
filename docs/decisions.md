@@ -1545,3 +1545,60 @@ sees our own types, not a platform-lib requirement.
   `fetch(url, { signal })`) while platform signals stay assignable to our params. Tests and
   examples (which do carry bun/node types) are left on the platform globals unchanged — a platform
   instance is structurally assignable to our params either way.
+
+## 40. Augmentation tokens are derived inline — `nameof<Interface>()` at every use site, no token consts
+
+§38 minted one exported `<RECEIVER>_AUGMENTATION_TOKEN` const per OPEN receiver. Those consts are
+gone: every `registerAugmentations(...)` / `@augment(...)` site now derives its token INLINE with
+`nameof<Receiver>()` — the receiver interface itself is the token
+(`nameof<ServiceManifest>()` → `"@rhombus-std/di.core:ServiceManifest"`,
+`nameof<IConfigurationBuilder>()`, `nameof<ILoggingBuilder>()`, `nameof<IHost>()`, …). The
+literal is byte-identical to what the consts hardcoded, so the wire format is unchanged; only the
+spelling moves from a shared const to the type reference at each site. A no-transformer consumer
+(the primary surface, per the repo rule) writes the literal string directly — the format stays
+`"<declaring-package>:<TypeName>"`.
+
+- **Every `nameof` caller is a transformer-consumer, and lowering must reach the SHIPPED JS.**
+  `Bun.build` never runs ts-patch transformers, so each library that calls `nameof<T>()` gains a
+  `tsconfig.build.json` (root config + `plugins: [{ transform: "@rhombus-std/primitives.transformer",
+  import: "transform" }]`, `outDir: .tspc-out`) and a lowering stage in its publish build
+  (`buildPackage`'s `tspcProject` option, or the equivalent inline stage in hosting's custom
+  builds): `tspc` emits transformer-lowered per-file JS, and `bun build` bundles THAT emit.
+  Un-lowered `nameof<T>()` throws at runtime by design — a loud failure, never a silent
+  wrong-token.
+- **The `bun` conditions flip to lowered artifacts.** The `.` export's `bun` condition moves to
+  `./dist/index.js` and `internal/*`'s to `./dist/internal/*.js` — the retained per-file stage
+  emit (`renameSync(.tspc-out → dist/internal)`), publish-excluded via `"!dist/internal"` in
+  `files`. This keeps the white-box surface EXECUTABLE under bun: sibling test packages that
+  import `internal/*` run the same lowered JS a published consumer gets, instead of raw src whose
+  module-load-time `nameof` would throw. `@rhombus-std/config`'s `./configuration-builder` /
+  `./configuration-manager` subpaths point at their `dist/internal` per-file emits, and
+  `./with-type-augment` at its chunk-split `dist/with-type-augment.js` (chunk-splitting keeps the
+  `ConfigurationBuilder` identity shared with the barrel).
+- **One process must not load a registering module through BOTH the bundle and the per-file
+  surface** — `registerAugmentations` throws on a duplicate member per token (§38), which is
+  exactly the guard that catches it. White-box tests therefore reach the package under test
+  through `internal/*` only (its cross-package imports resolve to the other packages' bundles,
+  which is fine — the registry is token-keyed and copy-tolerant by design).
+- **`deriveToken` normalizes defaults-only alias instantiations to the BARE alias.** The checker
+  records `aliasTypeArguments` for a bare reference to a defaulted-generic alias
+  (`type ServiceManifest<S extends string = "singleton">`) inconsistently — a same-file reference
+  arrived closed (`…:ServiceManifest<"singleton">`) while an imported reference arrived bare —
+  so di.core's own `@augment` and everyone's `registerAugmentations` silently disagreed. Since a
+  fully-defaulted instantiation IS the bare alias (identical type ⇒ identical token), the alias
+  branch of `genericTypeArguments` now drops arguments that are reference-equal to the declared
+  parameter defaults. Explicit non-default arguments still tokenize closed.
+- **Newly-converted packages:** `di.core` (both `@augment(nameof<ServiceManifest>())` and the
+  `removeAll` registration; `augmentation-tokens.ts` deleted, the const's index export gone),
+  `di`, `options.augmentations`, `logging.configuration`, `logging.console` (the last two had
+  dodged the Proof phase with file-local literal consts). `config.core` returns to PURE-TYPES
+  status — the token const was its only runtime export, so `emitJs: false` + `assertNoJs` again.
+- **Install defects fixed in the same pass:** logging.core's floating `ILogger` wrappers become a
+  real `LoggerExtensions` set (file renamed `logger-augmentations.ts`) registered against
+  `nameof<ILogger>()`, with `Logger`/`NullLogger` decorated `@augment(nameof<ILogger>())`;
+  class-side `LoggerExtensionMethods` typing only — NO `ILogger` interface merge (§36), and the
+  wrapper `log` is excluded from the prototype install (it would shadow the primitive and
+  self-recurse — caching's `tryGetValue` precedent). caching's `CacheExtensions` /
+  `CacheEntryExtensions` move from caching.memory's direct downstream `applyAugmentations` to the
+  registry in caching.core (`nameof<IMemoryCache>()` / `nameof<ICacheEntry>()`, `tryGetValue`
+  exclusion preserved), with `MemoryCache`/`CacheEntry` decorated in caching.memory.

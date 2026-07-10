@@ -10,10 +10,10 @@
 // side-effect import: `import "@rhombus-std/config.env";`.
 
 import type { ConfigurationBuilder } from "@rhombus-std/config";
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
-import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import {
   EnvironmentVariablesConfigurationSource,
   type EnvironmentVariablesConfigurationSourceOptions,
@@ -59,7 +59,7 @@ export const EnvironmentVariablesExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, EnvironmentVariablesExtensions);
+registerAugmentations(nameof<IConfigurationBuilder>(), EnvironmentVariablesExtensions);
 
 export { EnvironmentVariablesConfigurationProvider } from "./environment-variables-configuration-provider";
 export {

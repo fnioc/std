@@ -24,36 +24,37 @@
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "bun": "./src/index.ts",
+      "bun": "./dist/index.js",
       "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./configuration-builder": {
       "source": "./src/configuration-builder.ts",
-      "bun": "./src/configuration-builder.ts",
+      "bun": "./dist/internal/configuration-builder.js",
       "types": "./src/configuration-builder.ts"
     },
     "./configuration-manager": {
       "source": "./src/configuration-manager.ts",
-      "bun": "./src/configuration-manager.ts",
+      "bun": "./dist/internal/configuration-manager.js",
       "types": "./src/configuration-manager.ts"
     },
     "./with-type-augment": {
       "source": "./src/with-type-augment.ts",
-      "bun": "./src/with-type-augment.ts",
+      "bun": "./dist/with-type-augment.js",
       "types": "./src/with-type-augment.ts",
       "import": "./dist/with-type-augment.js",
       "default": "./dist/with-type-augment.js"
     },
     "./internal/*": {
       "source": "./src/*.ts",
-      "bun": "./src/*.ts",
+      "bun": "./dist/internal/*.js",
       "types": "./src/*.ts"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/internal"
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
@@ -64,6 +65,9 @@
     "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "ts-patch": "^3.3.0",
+    "typescript": "^5.9.0",
     "@rhombus-toolkit/proxy-base": "^1.0.0"
   },
   "publishConfig": {

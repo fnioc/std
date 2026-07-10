@@ -23,4 +23,5 @@ await buildPackage({
   entrypoints: ["src/index.ts", "src/with-type-augment.ts"],
   external: ["@rhombus-std/config.core", "@rhombus-std/primitives"],
   dtsConfigs: ["rollup.dts.mjs", "rollup.with-type-augment.dts.mjs"],
+  tspcProject: "tsconfig.build.json",
 });

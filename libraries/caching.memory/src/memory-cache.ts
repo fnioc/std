@@ -21,11 +21,14 @@ import type { CacheTryGetResult, ICacheEntry, IMemoryCache } from "@rhombus-std/
 import { CacheItemPriority, EvictionReason } from "@rhombus-std/caching.core";
 import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
 import type { Options } from "@rhombus-std/options";
+import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { CacheEntry, type IMemoryCacheHost } from "./cache-entry";
 import type { MemoryCacheOptions } from "./memory-cache-options";
 import { NullLogger } from "./null-logger";
 
 /** A local in-memory cache backed by a `Map`. */
+@augment(nameof<IMemoryCache>())
 export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   readonly #entries = new Map<unknown, CacheEntry>();
   readonly #options: MemoryCacheOptions;

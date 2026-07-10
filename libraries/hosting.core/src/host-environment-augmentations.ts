@@ -5,17 +5,17 @@
 //
 // OPEN receiver (docs §38): `IHostEnvironment` is a public host contract extended
 // across packages, so this const registers into the augmentation registry under
-// {@link HOST_ENVIRONMENT_AUGMENTATION_TOKEN}, beside its interface-side merge
+// the `IHostEnvironment` token, beside its interface-side merge
 // (rule 0.6). The concrete `HostingEnvironment` -- downstream in
 // `@rhombus-std/hosting` -- is decorated with
-// `@augment(HOST_ENVIRONMENT_AUGMENTATION_TOKEN)` and pulls this bag onto its
+// `@augment(nameof<IHostEnvironment>())` and pulls this bag onto its
 // prototype; the class-side merge stays downstream next to that class.
 
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { Environments } from "./environments";
 import type { IHostEnvironment } from "./host-environment";
-import { HOST_ENVIRONMENT_AUGMENTATION_TOKEN } from "./tokens";
 
 // The interface-side merge for the `IHostEnvironment` augmentation members lives
 // HERE, beside the const (rule 0.6). The runtime install onto the concrete
@@ -54,7 +54,7 @@ function isProduction(hostEnvironment: IHostEnvironment): boolean {
 
 /**
  * The `HostEnvironmentEnvExtensions` augmentation set for {@link IHostEnvironment}
- * (docs §28). Registered under {@link HOST_ENVIRONMENT_AUGMENTATION_TOKEN}; the
+ * (docs §28). Registered under the `IHostEnvironment` token; the
  * concrete `HostingEnvironment` downstream pulls it via `@augment`. The members
  * here are also the standalone call surface.
  */
@@ -65,4 +65,4 @@ export const HostEnvironmentEnvExtensions = {
   isProduction,
 } satisfies AugmentationSet<IHostEnvironment>;
 
-registerAugmentations(HOST_ENVIRONMENT_AUGMENTATION_TOKEN, HostEnvironmentEnvExtensions);
+registerAugmentations(nameof<IHostEnvironment>(), HostEnvironmentEnvExtensions);

@@ -5,11 +5,11 @@
 // registration-collection receiver.
 //
 // This is an OPEN set (the `ServiceManifest` receiver is extended by many
-// downstream families), so it registers against `SERVICE_MANIFEST_AUGMENTATION_TOKEN`
+// downstream families), so it registers against `nameof<ServiceManifest>()`
 // through the primitives augmentation registry rather than a direct
 // `applyAugmentations` at the class -- the same token every cross-package
 // registration augmentation (`addOptions`, `addLogging`, `addMetrics`, ...)
-// targets. `ServiceManifestClass` is decorated with `@augment(token)` in
+// derives inline. `ServiceManifestClass` is decorated with `@augment(token)` in
 // `service-manifest.ts`, so registering here reaches its prototype.
 //
 // Ported members:
@@ -29,12 +29,12 @@
 
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
-import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "./augmentation-tokens.js";
 // Type-only: the const references `ServiceManifestClass` solely in type position
 // (the `satisfies` bound and the receiver annotation); the runtime install goes
 // through the registry, not a direct `applyAugmentations(ServiceManifestClass, …)`.
-import type { ServiceManifestClass } from "./service-manifest.js";
+import type { ServiceManifest, ServiceManifestClass } from "./service-manifest.js";
 import type { Token } from "./types.js";
 
 // The authored verb merges onto core's `ServiceManifestBase` interface -- the
@@ -73,4 +73,4 @@ export const ServiceCollectionDescriptorExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceCollectionDescriptorExtensions);
+registerAugmentations(nameof<ServiceManifest>(), ServiceCollectionDescriptorExtensions);

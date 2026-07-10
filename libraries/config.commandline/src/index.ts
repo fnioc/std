@@ -17,10 +17,10 @@
 // registry's Map + bus are not forked (docs/decisions.md §9/§38).
 
 import type { ConfigurationBuilder } from "@rhombus-std/config";
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
-import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { CommandLineConfigurationSourceOptions } from "./command-line-configuration-source";
 import { CommandLineConfigurationSource } from "./command-line-configuration-source";
 
@@ -83,7 +83,7 @@ export const CommandLineConfigurationExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, CommandLineConfigurationExtensions);
+registerAugmentations(nameof<IConfigurationBuilder>(), CommandLineConfigurationExtensions);
 
 export { CommandLineConfigurationProvider } from "./command-line-configuration-provider";
 export { CommandLineConfigurationSource } from "./command-line-configuration-source";

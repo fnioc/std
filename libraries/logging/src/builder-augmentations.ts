@@ -8,9 +8,10 @@
 // This is an OPEN receiver (ILoggingBuilder is extended by downstream packages —
 // logging.configuration's addConfiguration, logging.console's addConsole), so the
 // install goes through the augmentation registry (docs §38): register the set
-// against LOGGING_BUILDER_AUGMENTATION_TOKEN and the `@augment`-decorated
-// LoggingBuilder pulls it (plus every later registrant) onto its prototype. The
-// exported const IS the standalone call surface.
+// against the `ILoggingBuilder` token — derived inline by `nameof<ILoggingBuilder>()`
+// and lowered to its string literal by the primitives.transformer build stage —
+// and the `@augment`-decorated LoggingBuilder pulls it (plus every later
+// registrant) onto its prototype. The exported const IS the standalone call surface.
 //
 // `addProvider` is mechanical, and `clearProviders` ports through di.core's
 // `removeAll` descriptor verb. `setMinimumLevel` routes through
@@ -19,10 +20,10 @@
 // it the method form keeps the surface symmetric — the method throws exactly as
 // the standalone member does.
 
-import { LOGGING_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/logging.core";
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from "@rhombus-std/logging.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { LOGGER_PROVIDER_TOKEN } from "./tokens";
 
 /**
@@ -71,8 +72,8 @@ function clearProviders(builder: ILoggingBuilder): ILoggingBuilder {
 
 /**
  * The `LoggingBuilderExtensions` augmentation set for {@link ILoggingBuilder}
- * (docs §28/§38). Registered against {@link LOGGING_BUILDER_AUGMENTATION_TOKEN}
- * below and reachable as the standalone `LoggingBuilderExtensions.addProvider(builder, …)`.
+ * (docs §28/§38). Registered against the `ILoggingBuilder` token below and
+ * reachable as the standalone `LoggingBuilderExtensions.addProvider(builder, …)`.
  */
 export const LoggingBuilderExtensions = {
   addProvider,
@@ -101,4 +102,4 @@ declare module "./logging-builder" {
   }
 }
 
-registerAugmentations(LOGGING_BUILDER_AUGMENTATION_TOKEN, LoggingBuilderExtensions);
+registerAugmentations(nameof<ILoggingBuilder>(), LoggingBuilderExtensions);

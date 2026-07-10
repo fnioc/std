@@ -4,9 +4,9 @@
 //
 // OPEN receiver (docs §38): `IHost` is extended across packages, so this const
 // registers into the primitives augmentation registry under
-// {@link HOST_AUGMENTATION_TOKEN} (beside the interface-side `declare module`
+// the `IHost` token (beside the interface-side `declare module`
 // merge below, per rule 0.6). The concrete `Host` class -- downstream in
-// `@rhombus-std/hosting` -- is decorated with `@augment(HOST_AUGMENTATION_TOKEN)`,
+// `@rhombus-std/hosting` -- is decorated with `@augment(nameof<IHost>())`,
 // which pulls this bag onto its prototype; the class-side merge stays downstream
 // next to that class. The members here are also the standalone call surface.
 //
@@ -16,9 +16,10 @@
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { AbortController, registerAugmentations } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { IHost } from "./host";
 import type { IHostApplicationLifetime } from "./host-application-lifetime";
-import { HOST_APPLICATION_LIFETIME_TOKEN, HOST_AUGMENTATION_TOKEN } from "./tokens";
+import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
 
 // The interface-side merge for the `IHost` augmentation members lives HERE,
 // beside the const that registers them (rule 0.6): a `hosting.core`-only consumer
@@ -123,7 +124,7 @@ async function stopWithTimeout(host: IHost, timeoutMs: number): Promise<void> {
 /**
  * The `HostingAbstractionsHostExtensions` augmentation set for {@link IHost}
  * (docs §28). Registered into the augmentation registry under
- * {@link HOST_AUGMENTATION_TOKEN}; the concrete `Host` downstream pulls it via
+ * the `IHost` token; the concrete `Host` downstream pulls it via
  * `@augment`. The members here are also the standalone call surface.
  */
 export const HostingAbstractionsHostExtensions = {
@@ -133,4 +134,4 @@ export const HostingAbstractionsHostExtensions = {
   stopWithTimeout,
 } satisfies AugmentationSet<IHost>;
 
-registerAugmentations(HOST_AUGMENTATION_TOKEN, HostingAbstractionsHostExtensions);
+registerAugmentations(nameof<IHost>(), HostingAbstractionsHostExtensions);

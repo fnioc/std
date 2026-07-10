@@ -86,8 +86,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   need lib.dom/`@types/node`/bun-types just to name the abort API.
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9 — plus the
-  `SERVICE_MANIFEST_AUGMENTATION_TOKEN` and the `ServiceCollectionDescriptorExtensions.removeAll`
-  descriptor verb, §38) ← `di` (the resolution engine:
+  `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb, §38) ← `di` (the resolution engine:
   scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
   derivation, dependency extraction, registration lowering, factory-signature diagnostic) depends
   on **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.transformer.options`
@@ -181,8 +180,11 @@ before touching):
   member (`JsonConfigurationExtensions.addJsonFile(builder, …)`) IS the functional call surface
   (§28). Install path (§38): CLOSED receivers (interface + all augmentations in one family) use
   direct `applyAugmentations`; OPEN receivers (extended by downstream packages) register via
-  `registerAugmentations(<RECEIVER>_AUGMENTATION_TOKEN, TheConst)` beside the const, and each
-  concrete class is decorated `@augment(token)` — one token can decorate several classes. A
+  `registerAugmentations(nameof<Receiver>(), TheConst)` beside the const, and each concrete class
+  is decorated `@augment(nameof<Receiver>())` — one token can decorate several classes. Tokens are
+  derived INLINE at each use site (`nameof<Interface>()`, lowered to
+  `"<declaring-package>:<TypeName>"`); there are NO exported token consts (§40). A hand-written
+  (no-transformer) consumer writes the literal string directly. A
   `.core`-authored const's interface-side `declare module` merge lives beside it in `.core`;
   class-side merges stay downstream next to each concrete class (retired per-lib on dist
   conversion, #68). **Merge-identity rule:** every interface-side merge for one interface must
@@ -252,6 +254,12 @@ Two deviations, both because a **transformer** is in play:
   per-package: a `plugins: [{ transform, import }]` entry in `tsconfig.json` plus the `types` array
   bringing the augmentation into the program. `ts-patch`, `rollup`, and `rollup-plugin-dts` live at
   the repo root so every workspace can reach them.
+- **The `nameof` lowering stage (§40).** Any library whose src calls `nameof<T>()` must ship it
+  LOWERED: its build runs `tspc -p tsconfig.build.json` into `.tspc-out/` and `bun build` bundles
+  that emit (`buildPackage`'s `tspcProject`). The per-file emit is kept as `dist/internal/` (the
+  `internal/*` export's `bun` condition — white-box tests execute lowered JS, since un-lowered
+  `nameof` throws at import time; publish-excluded via `"!dist/internal"` in `files`), and the
+  `.` export's `bun` condition points at `dist/index.js`.
 
 Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one rolled `.d.ts`),
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM

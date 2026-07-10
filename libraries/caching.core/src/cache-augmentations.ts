@@ -23,6 +23,8 @@
 // caching.core (as ME has it), so the options TYPE is in scope here.
 
 import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
+import { registerAugmentations } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { ICacheEntry } from "./cache-entry";
 import { CacheEntryExtensions } from "./cache-entry-augmentations";
 import type { IMemoryCache } from "./memory-cache";
@@ -196,3 +198,39 @@ export const CacheExtensions = {
   getOrCreateWithOptions,
   getOrCreateAsyncWithOptions,
 } satisfies AugmentationSet<IMemoryCache>;
+
+// The method-form surface merged onto IMemoryCache (docs §28/§38): the concrete
+// MemoryCache downstream is decorated `@augment(nameof<IMemoryCache>())` and pulls
+// these onto its prototype. `tryGetValue` is absent -- IMemoryCache already
+// declares it (the primitive the wrapper builds on); see the registration below.
+declare module "./memory-cache" {
+  interface IMemoryCache {
+    get<T = unknown>(key: unknown): T | undefined;
+    set<T>(key: unknown, value: T): T;
+    set<T>(key: unknown, value: T, absoluteExpiration: Date): T;
+    set<T>(key: unknown, value: T, relativeToNowMs: number): T;
+    set<T>(key: unknown, value: T, expirationToken: IChangeToken): T;
+    getOrCreate<T>(key: unknown, factory: (entry: ICacheEntry) => T): T | undefined;
+    getOrCreateAsync<T>(key: unknown, factory: (entry: ICacheEntry) => Promise<T>): Promise<T | undefined>;
+    setWithOptions<T>(key: unknown, value: T, options?: MemoryCacheEntryOptions): T;
+    getOrCreateWithOptions<T>(
+      key: unknown,
+      factory: (entry: ICacheEntry) => T,
+      createOptions?: MemoryCacheEntryOptions,
+    ): T | undefined;
+    getOrCreateAsyncWithOptions<T>(
+      key: unknown,
+      factory: (entry: ICacheEntry) => Promise<T>,
+      createOptions?: MemoryCacheEntryOptions,
+    ): Promise<T | undefined>;
+  }
+}
+
+// Self-registration for the OPEN `IMemoryCache` receiver (docs §38). `tryGetValue`
+// is a member of `CacheExtensions` (its standalone surface) but is deliberately
+// NOT prototype-installed: IMemoryCache already declares the `tryGetValue`
+// primitive the wrapper builds on, so installing it would overwrite the real
+// implementation and the mounted thunk would recurse into itself. Omit it via a
+// rest destructure (TS exempts the rest-sibling from unused checks).
+const { tryGetValue: _tryGetValue, ...cacheInstanceMethods } = CacheExtensions;
+registerAugmentations(nameof<IMemoryCache>(), cacheInstanceMethods);

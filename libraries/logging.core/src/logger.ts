@@ -11,7 +11,7 @@ import type { LogLevel } from "./log-level";
  * The single primitive is {@link ILogger.log}: it receives a deferred `state`
  * plus a `formatter` that renders it, so a disabled sink never pays formatting
  * cost. The convenience wrappers (`logInformation`, `logError`, …) in
- * `./logger-extensions` build the state/formatter for you.
+ * `./logger-augmentations` build the state/formatter for you.
  *
  * `beginScope` returns a `Disposable` (the repo standardizes on
  * `ESNext.Disposable`'s `Symbol.dispose` — see @rhombus-std/options) that ends

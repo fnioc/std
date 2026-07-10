@@ -12,15 +12,12 @@
 // listener runtime; there is no such runtime here, so it is omitted.)
 
 import type { IConfiguration } from "@rhombus-std/config";
-import {
-  METRICS_BUILDER_AUGMENTATION_TOKEN,
-  METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-  METRICS_CONFIGURE_TOKEN,
-} from "@rhombus-std/diagnostics.core";
+import { METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIGURE_TOKEN } from "@rhombus-std/diagnostics.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { MetricsConfigureOptions } from "./metrics-configure-options";
 
@@ -58,4 +55,4 @@ declare module "@rhombus-std/diagnostics.core/internal/metrics-builder" {
   }
 }
 
-registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, MetricsBuilderConfigurationExtensions);
+registerAugmentations(nameof<IMetricsBuilder>(), MetricsBuilderConfigurationExtensions);

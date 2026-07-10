@@ -14,10 +14,10 @@
 // fluently — even when this package loaded before the extender:
 //
 //   // my-augmentation.ts (side-effect module, "sideEffects": true)
-//   import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
-//   import type { ServiceManifestClass } from "@rhombus-std/di.core";
+//   import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 //   import { registerAugmentations } from "@rhombus-std/primitives";
 //   import type { AugmentationSet } from "@rhombus-std/primitives";
+//   import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 //   declare module "@rhombus-std/di.core" {
 //     interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
 //       addMyThing(): this;
@@ -29,7 +29,7 @@
 //   export const MyThingExtensions = {
 //     addMyThing(manifest: ServiceManifestClass<string>) { … return manifest; },
 //   } satisfies AugmentationSet<ServiceManifestClass<string>>;
-//   registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, MyThingExtensions);
+//   registerAugmentations(nameof<ServiceManifest>(), MyThingExtensions);
 //
 // This mirrors how `@rhombus-std/config` adds `addJsonFile` to
 // `ConfigurationBuilder`, and depends on di.core ALONE — never the di runtime. The

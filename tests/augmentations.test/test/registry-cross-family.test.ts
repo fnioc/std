@@ -14,7 +14,10 @@
 
 import { ServiceManifest } from "@rhombus-std/di";
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from "@rhombus-std/diagnostics";
-import { METRICS_BUILDER_AUGMENTATION_TOKEN, METRICS_CONFIGURE_TOKEN } from "@rhombus-std/diagnostics.core";
+import { METRICS_CONFIGURE_TOKEN } from "@rhombus-std/diagnostics.core";
+// The IMetricsBuilder augmentation-registry token is derived by `nameof<IMetricsBuilder>()`
+// at each library's build time; this test (no transformer) uses the derived literal directly.
+const METRICS_BUILDER_AUGMENTATION_TOKEN = "@rhombus-std/diagnostics.core:IMetricsBuilder";
 import { HostApplicationBuilder, MetricsBuilder as HostingMetricsBuilder } from "@rhombus-std/hosting";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import { describe, expect, test } from "bun:test";

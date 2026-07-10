@@ -15,10 +15,10 @@
 // let a bundler tree-shake the augmentation away).
 
 import type { ConfigurationBuilder } from "@rhombus-std/config";
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
-import type { IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { JsonConfigurationSource } from "./json-configuration-source";
 import type { JsonConfigurationSourceOptions } from "./json-configuration-source";
 
@@ -68,7 +68,7 @@ export const JsonConfigurationExtensions = {
   },
 } satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
 
-registerAugmentations(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN, JsonConfigurationExtensions);
+registerAugmentations(nameof<IConfigurationBuilder>(), JsonConfigurationExtensions);
 
 export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";

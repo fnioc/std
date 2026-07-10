@@ -5,7 +5,7 @@
 //
 // This is a SECOND concrete `IMetricsBuilder` alongside `@rhombus-std/diagnostics`'s
 // own `MetricsBuilder`; both share the `IMetricsBuilder` receiver, so this class is
-// decorated with `@augment(METRICS_BUILDER_AUGMENTATION_TOKEN)` (docs §38) to pull
+// decorated with `@augment(nameof<IMetricsBuilder>())` (docs §38) to pull
 // the metrics augmentation bag (`addMetricsListener`/`enableMetrics`/... registered
 // by the diagnostics family) onto its prototype -- otherwise a host's `builder.metrics`
 // would never receive `enableMetrics`. The class-side merge below keeps this class
@@ -14,9 +14,9 @@
 
 import type { IConfiguration } from "@rhombus-std/config";
 import type { Ctor, DepSlot, ServiceManifest } from "@rhombus-std/di.core";
-import { METRICS_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/diagnostics.core";
 import type { IMetricsBuilder, IMetricsListener, MeterScope } from "@rhombus-std/diagnostics.core";
 import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 // Class-side merge: the metrics augmentation members reach `IMetricsBuilder` via
 // diagnostics.core, so this class must declare them to still SATISFY the
@@ -32,7 +32,7 @@ declare module "./metrics-builder" {
 }
 
 /** Carries the service-registration surface the metrics extension functions register against. */
-@augment(METRICS_BUILDER_AUGMENTATION_TOKEN)
+@augment(nameof<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
   public readonly services: ServiceManifest;
 

@@ -6,18 +6,18 @@
 // OPEN receiver (docs §38): `IHostBuilder` is extended across packages (this
 // abstractions const AND the runtime `HostingHostBuilderExtensions` both target
 // it), so this const registers into the augmentation registry under
-// {@link HOST_BUILDER_AUGMENTATION_TOKEN}, beside its interface-side merge
+// the `IHostBuilder` token, beside its interface-side merge
 // (rule 0.6). The concrete `HostBuilder` -- downstream in `@rhombus-std/hosting`
-// -- is decorated with `@augment(HOST_BUILDER_AUGMENTATION_TOKEN)` and pulls both
+// -- is decorated with `@augment(nameof<IHostBuilder>())` and pulls both
 // consts' members onto its prototype. The synchronous reference `Start` collapses
 // into the async form -- JS cannot block a thread.
 
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { IHost } from "./host";
 import type { IHostBuilder } from "./host-builder";
-import { HOST_BUILDER_AUGMENTATION_TOKEN } from "./tokens";
 
 // The interface-side merge for this const's member lives HERE, beside the const
 // (rule 0.6). The runtime `HostingHostBuilderExtensions` merges its own members
@@ -48,11 +48,11 @@ async function startHost(
 /**
  * The `HostingAbstractionsHostBuilderExtensions` augmentation set for
  * {@link IHostBuilder} (docs §28). Registered under
- * {@link HOST_BUILDER_AUGMENTATION_TOKEN}; the concrete `HostBuilder` downstream
+ * the `IHostBuilder` token; the concrete `HostBuilder` downstream
  * pulls it via `@augment`. The member here is also the standalone call surface.
  */
 export const HostingAbstractionsHostBuilderExtensions = {
   startHost,
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(HOST_BUILDER_AUGMENTATION_TOKEN, HostingAbstractionsHostBuilderExtensions);
+registerAugmentations(nameof<IHostBuilder>(), HostingAbstractionsHostBuilderExtensions);

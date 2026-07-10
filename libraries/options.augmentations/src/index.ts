@@ -27,11 +27,13 @@ import type { IConfiguration } from "@rhombus-std/config.core";
 // augmentation block) because unqualified names in a `declare module` body
 // resolve in THIS file's scope.
 import type { AddBuilder, Token } from "@rhombus-std/di.core";
-import { RESOLVER_TOKEN, SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import type { ServiceManifest } from "@rhombus-std/di.core";
 import { Options, ValidateOptionsResult } from "@rhombus-std/options";
 import type { PostConfigureOptions, ValidateOptions } from "@rhombus-std/options";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { assembleOptions } from "./assemble-options.js";
 import { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
@@ -209,8 +211,8 @@ export const OptionsConfigurationServiceCollectionExtensions = {
 // packages, so they register into the primitives augmentation registry beside
 // this declare-module merge. The `ServiceManifestClass` decorated with the same
 // token (di.core) pulls these members onto its prototype (§38).
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, OptionsServiceCollectionExtensions);
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, OptionsConfigurationServiceCollectionExtensions);
+registerAugmentations(nameof<ServiceManifest>(), OptionsServiceCollectionExtensions);
+registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
 
 export { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
 export { ConfigurationConfigureOptions } from "./configuration-configure-options.js";

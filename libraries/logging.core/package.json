@@ -20,29 +20,34 @@
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "bun": "./src/index.ts",
+      "bun": "./dist/index.js",
       "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./internal/*": {
       "source": "./src/*.ts",
-      "bun": "./src/*.ts",
+      "bun": "./dist/internal/*.js",
       "types": "./src/*.ts"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/internal"
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
   },
   "dependencies": {
-    "@rhombus-std/di.core": "workspace:*"
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
-    "@rhombus-toolkit/func": "3.5.3"
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@rhombus-toolkit/func": "3.5.3",
+    "ts-patch": "^3.3.0",
+    "typescript": "^5.9.0"
   },
   "publishConfig": {
     "access": "public",

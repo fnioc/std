@@ -31,7 +31,8 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { RESOLVER_TOKEN, SERVICE_MANIFEST_AUGMENTATION_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
+import type { ServiceManifest } from "@rhombus-std/di.core";
 import type { IMetricsBuilder, ITracingBuilder } from "@rhombus-std/diagnostics.core";
 import {
   METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
@@ -45,6 +46,7 @@ import {
 } from "@rhombus-std/diagnostics.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
@@ -150,10 +152,10 @@ export const TracingServiceExtensions = {
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
 // OPEN receiver: register both sets against di.core's ServiceManifest token
-// (docs §38). The `ServiceManifestClass` decorated `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)`
+// (docs §38). The `ServiceManifestClass` decorated `@augment(nameof<ServiceManifest>())`
 // in di.core pulls `addMetrics`/`addTracing` onto its prototype.
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, MetricsServiceExtensions);
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, TracingServiceExtensions);
+registerAugmentations(nameof<ServiceManifest>(), MetricsServiceExtensions);
+registerAugmentations(nameof<ServiceManifest>(), TracingServiceExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).

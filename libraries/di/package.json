@@ -23,7 +23,7 @@
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "bun": "./src/index.ts",
+      "bun": "./dist/index.js",
       "built": "./dist/index.d.ts",
       "types": "./src/index.ts",
       "import": "./dist/index.js",
@@ -31,7 +31,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/internal"
   ],
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
@@ -55,6 +56,9 @@
     "@rhombus-std/primitives": "workspace:^"
   },
   "devDependencies": {
-    "@rhombus-toolkit/func": "3.5.3"
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@rhombus-toolkit/func": "3.5.3",
+    "ts-patch": "^3.3.0",
+    "typescript": "^5.9.0"
   }
 }

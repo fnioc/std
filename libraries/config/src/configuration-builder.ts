@@ -22,7 +22,6 @@
 // consumers program against the class for the typed path. Sources still expect
 // an IConfigurationBuilder, so `this` is cast at the one call site.
 
-import { CONFIGURATION_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/config.core";
 import type {
   IConfigurationBuilder,
   IConfigurationProvider,
@@ -30,17 +29,18 @@ import type {
   IndexedSection,
 } from "@rhombus-std/config.core";
 import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { coerceBySchema } from "./coerce";
 import { ConfigurationRoot } from "./configuration-root";
 import type { Infer, ObjectSchema, Schema } from "./schema";
 
 /**
  * `@augment` decorates the concrete builder for the OPEN IConfigurationBuilder
- * receiver: it (re)installs the CONFIGURATION_BUILDER_AUGMENTATION_TOKEN bag
+ * receiver: it (re)installs the nameof<IConfigurationBuilder>() bag
  * onto the prototype now and on every later registration, so downstream
  * provider packages' add* sugar reaches it (docs/decisions.md §38).
  */
-@augment(CONFIGURATION_BUILDER_AUGMENTATION_TOKEN)
+@augment(nameof<IConfigurationBuilder>())
 export class ConfigurationBuilder<T = IndexedSection> {
   readonly #sources: IConfigurationSource[] = [];
   #schema?: Schema;

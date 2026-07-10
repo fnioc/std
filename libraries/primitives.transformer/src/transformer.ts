@@ -34,10 +34,11 @@ export function createNameofTransformerFactory(
   return function factory(context) {
     return function transformFile(sourceFile) {
       const fileContext: FileContext = { ...tokenContext, factory: context.factory };
-      return ts.factory.updateSourceFile(
-        sourceFile,
-        sourceFile.statements.map((statement) => rewriteNameof(statement, fileContext) as ts.Statement),
-      );
+      const rewritten = sourceFile.statements
+        .map((statement) => rewriteNameof(statement, fileContext) as ts.Statement)
+        .map((statement) => elideNameofImport(statement, fileContext))
+        .filter((statement): statement is ts.Statement => statement !== undefined);
+      return ts.factory.updateSourceFile(sourceFile, rewritten);
     };
   };
 }
@@ -58,6 +59,51 @@ function rewriteNameof(node: ts.Node, ctx: FileContext): ts.Node {
     return ts.visitEachChild(n, visit, undefined);
   }
   return visit(node);
+}
+
+/**
+ * Elide the `nameof` binding from a top-level import declaration — after the
+ * rewrite above there is no runtime reference left, but TypeScript's own
+ * import elision consults the ORIGINAL checker's reference marks (where
+ * `nameof` WAS value-referenced), so without this pass the emitted JS keeps a
+ * dangling `import { nameof } from "@rhombus-std/primitives.transformer/..."`
+ * — a build-time package no runtime consumer can (or should) resolve.
+ *
+ * Matching mirrors {@link isNameofCall}'s looseness: any named-import specifier
+ * whose EXPORTED name is `nameof` (so `import { nameof as keyOf }` elides too).
+ * When the specifier was the import's only binding the whole declaration is
+ * dropped; otherwise the declaration is kept with the remaining bindings.
+ * Returns `undefined` to drop the statement.
+ */
+function elideNameofImport(statement: ts.Statement, ctx: FileContext): ts.Statement | undefined {
+  if (!ts.isImportDeclaration(statement)) {
+    return statement;
+  }
+  const clause = statement.importClause;
+  if (!clause || clause.isTypeOnly || !clause.namedBindings || !ts.isNamedImports(clause.namedBindings)) {
+    return statement;
+  }
+  const kept = clause.namedBindings.elements.filter(
+    (specifier) => specifier.isTypeOnly || (specifier.propertyName ?? specifier.name).text !== NAMEOF_NAME,
+  );
+  if (kept.length === clause.namedBindings.elements.length) {
+    return statement;
+  }
+  if (kept.length === 0 && !clause.name) {
+    return undefined;
+  }
+  return ctx.factory.updateImportDeclaration(
+    statement,
+    statement.modifiers,
+    ctx.factory.updateImportClause(
+      clause,
+      clause.phaseModifier,
+      clause.name,
+      kept.length ? ctx.factory.updateNamedImports(clause.namedBindings, kept) : undefined,
+    ),
+    statement.moduleSpecifier,
+    statement.attributes,
+  );
 }
 
 /**

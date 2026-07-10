@@ -26,4 +26,5 @@ await buildPackage({
   dir: import.meta.dir,
   name: "@rhombus-std/di.core",
   external: ["@rhombus-std/primitives"],
+  tspcProject: "tsconfig.build.json",
 });

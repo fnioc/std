@@ -13,9 +13,9 @@ import { ConfigurationManager } from "@rhombus-std/config";
 import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProviderFactory } from "@rhombus-std/di.core";
-import { HOST_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/hosting.core";
 import type { HostBuilderContext, IHost, IHostBuilder } from "@rhombus-std/hosting.core";
 import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Action } from "@rhombus-toolkit/func";
 import {
   createFrameworkServices,
@@ -25,7 +25,7 @@ import {
 } from "./host-composition";
 
 /** A program initialization utility -- the classic {@link IHostBuilder}. */
-@augment(HOST_BUILDER_AUGMENTATION_TOKEN)
+@augment(nameof<IHostBuilder>())
 export class HostBuilder implements IHostBuilder {
   readonly properties = new Map<string | symbol, unknown>();
 

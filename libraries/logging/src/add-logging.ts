@@ -4,7 +4,7 @@
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
 // — a class this package does NOT own, and an OPEN receiver — so it follows the
 // augmentation-registry path (docs §38): register the set against the shared
-// `SERVICE_MANIFEST_AUGMENTATION_TOKEN` and declaration-merge the method onto the
+// `nameof<ServiceManifest>()` token and declaration-merge the method onto the
 // di.core `ServiceManifestBase` interface. The `@augment`-decorated
 // `ServiceManifestClass` (in di.core) pulls the member onto its prototype. This is
 // why the package sets `"sideEffects": true` — a consumer who only wants the sugar
@@ -21,11 +21,17 @@
 //     `IConfigureOptions<LoggerFilterOptions>` (needs the deferred options DI
 //     integration). Documented in the README.
 
-import { SERVICE_MANIFEST_AUGMENTATION_TOKEN } from "@rhombus-std/di.core";
+// `nameof<ServiceManifest>()` derives the BARE token
+// (`@rhombus-std/di.core:ServiceManifest`) for a bare reference to the
+// defaulted-generic alias — alias-wins derivation records no type arguments
+// (primitives.transformer `genericTypeArguments`, decision 5) — so it agrees
+// exactly with the token the `@augment`-decorated ServiceManifestClass
+// subscribes to in di.core.
 import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFactory } from "./logger-factory";
 import { LoggingBuilder } from "./logging-builder";
@@ -55,7 +61,7 @@ declare module "@rhombus-std/di.core" {
 // One named object literal mirroring the reference `LoggingServiceCollectionExtensions`
 // static class (docs §28), registered against the `ServiceManifest` augmentation
 // token (docs §38) — the concrete `ServiceManifestClass`, decorated with
-// `@augment(SERVICE_MANIFEST_AUGMENTATION_TOKEN)` in di.core, pulls the member onto
+// `@augment(nameof<ServiceManifest>())` in di.core, pulls the member onto
 // its prototype — AND exported so the member is the standalone form.
 export const LoggingServiceCollectionExtensions = {
   addLogging(
@@ -74,4 +80,4 @@ export const LoggingServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(SERVICE_MANIFEST_AUGMENTATION_TOKEN, LoggingServiceCollectionExtensions);
+registerAugmentations(nameof<ServiceManifest>(), LoggingServiceCollectionExtensions);

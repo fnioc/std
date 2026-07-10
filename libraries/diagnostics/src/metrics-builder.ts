@@ -6,19 +6,19 @@
 // package's addMetricsConfiguration).
 
 import type { ServiceManifestBase } from "@rhombus-std/di.core";
-import { METRICS_BUILDER_AUGMENTATION_TOKEN } from "@rhombus-std/diagnostics.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 /**
  * The concrete {@link IMetricsBuilder}.
  *
  * `@augment` subscribes this class to the OPEN `IMetricsBuilder` bag (docs §38):
- * every set registered against METRICS_BUILDER_AUGMENTATION_TOKEN -- the
+ * every set registered against nameof<IMetricsBuilder>() -- the
  * listener/rule members (diagnostics.core) and the config-binding member (this
  * package) -- is installed onto the prototype, now and on any later registration.
  */
-@augment(METRICS_BUILDER_AUGMENTATION_TOKEN)
+@augment(nameof<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
   readonly services: ServiceManifestBase;
 
