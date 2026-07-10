@@ -13,20 +13,18 @@ import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { TracingConfigureOptions } from "./tracing-configure-options";
 
-/**
- * Reads tracing enablement rules from `configuration` and configures which
- * activity sources and activities are enabled. Mirrors
- * `TracingBuilderConfigurationExtensions.AddConfiguration`.
- */
-function addTracingConfiguration(builder: ITracingBuilder, configuration: IConfiguration): ITracingBuilder {
-  builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(configuration));
-  builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigurationChangeTokenSource(configuration));
-  return builder;
-}
-
 /** The `TracingBuilderConfigurationExtensions` augmentation set for {@link ITracingBuilder} (docs §28). */
 export const TracingBuilderConfigurationExtensions = {
-  addTracingConfiguration,
+  /**
+   * Reads tracing enablement rules from `configuration` and configures which
+   * activity sources and activities are enabled. Mirrors
+   * `TracingBuilderConfigurationExtensions.AddConfiguration`.
+   */
+  addTracingConfiguration(builder: ITracingBuilder, configuration: IConfiguration): ITracingBuilder {
+    builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(configuration));
+    builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigurationChangeTokenSource(configuration));
+    return builder;
+  },
 } satisfies AugmentationSet<ITracingBuilder>;
 
 // Self-registration for the config-binding member of the OPEN `ITracingBuilder`

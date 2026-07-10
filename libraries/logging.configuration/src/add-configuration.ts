@@ -38,24 +38,22 @@ export const LOGGER_FILTER_OPTIONS_TOKEN = "@rhombus-std/logging.configuration:L
 export const LOGGING_CONFIGURATION_TOKEN = "@rhombus-std/logging.configuration:LoggingConfiguration";
 
 /**
- * Configures {@link LoggerFilterOptions} from `configuration` and registers the
- * bound options + the raw {@link LoggingConfiguration} on the builder. Returns
- * the builder for chaining.
- */
-function addConfiguration(builder: ILoggingBuilder, configuration: IConfiguration): ILoggingBuilder {
-  const options = new LoggerFilterOptions();
-  bindLoggerFilterOptions(configuration, options);
-  builder.services.addValue(LOGGER_FILTER_OPTIONS_TOKEN, options);
-  builder.services.addValue(LOGGING_CONFIGURATION_TOKEN, new LoggingConfiguration(configuration));
-  return builder;
-}
-
-/**
  * The `LoggingBuilderExtensions` augmentation set for {@link ILoggingBuilder}
  * (docs §28) -- mirrors ME.Logging.Configuration's `LoggingBuilderExtensions`.
  */
 export const LoggingBuilderExtensions = {
-  addConfiguration,
+  /**
+   * Configures {@link LoggerFilterOptions} from `configuration` and registers the
+   * bound options + the raw {@link LoggingConfiguration} on the builder. Returns
+   * the builder for chaining.
+   */
+  addConfiguration(builder: ILoggingBuilder, configuration: IConfiguration): ILoggingBuilder {
+    const options = new LoggerFilterOptions();
+    bindLoggerFilterOptions(configuration, options);
+    builder.services.addValue(LOGGER_FILTER_OPTIONS_TOKEN, options);
+    builder.services.addValue(LOGGING_CONFIGURATION_TOKEN, new LoggingConfiguration(configuration));
+    return builder;
+  },
 } satisfies AugmentationSet<ILoggingBuilder>;
 
 // The method form (docs §38): merge onto the owning ILoggingBuilder interface so a

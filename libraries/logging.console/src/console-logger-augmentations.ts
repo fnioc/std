@@ -22,23 +22,21 @@ import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { ConsoleLoggerProvider } from "./console-logger-provider";
 
 /**
- * Adds a {@link ConsoleLoggerProvider} to the builder — the mechanical port of
- * `builder.AddProvider(new ConsoleLoggerProvider())`. Returns the builder for
- * chaining.
- */
-function addConsole(builder: ILoggingBuilder): ILoggingBuilder {
-  LoggingBuilderExtensions.addProvider(builder, new ConsoleLoggerProvider());
-  return builder;
-}
-
-/**
  * The `ConsoleLoggerExtensions` augmentation set for {@link ILoggingBuilder}
  * (docs §28/§38) — mirrors ME.Logging.Console's `ConsoleLoggerExtensions`.
  * Registered against `nameof<ILoggingBuilder>()` below and reachable
  * as the standalone `ConsoleLoggerExtensions.addConsole(builder)`.
  */
 export const ConsoleLoggerExtensions = {
-  addConsole,
+  /**
+   * Adds a {@link ConsoleLoggerProvider} to the builder — the mechanical port of
+   * `builder.AddProvider(new ConsoleLoggerProvider())`. Returns the builder for
+   * chaining.
+   */
+  addConsole(builder: ILoggingBuilder): ILoggingBuilder {
+    LoggingBuilderExtensions.addProvider(builder, new ConsoleLoggerProvider());
+    return builder;
+  },
 } satisfies AugmentationSet<ILoggingBuilder>;
 
 // The method form (docs §38): merge onto the owning ILoggingBuilder interface so a

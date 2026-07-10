@@ -30,29 +30,27 @@ declare module "./host-builder" {
 }
 
 /**
- * Builds the host and starts it.
- *
- * @param hostBuilder The builder to build and start.
- * @param abortSignal Cancels the start.
- * @returns The started {@link IHost}.
- */
-async function startHost(
-  hostBuilder: IHostBuilder,
-  abortSignal?: AbortSignal,
-): Promise<IHost> {
-  const host = hostBuilder.build();
-  await host.start(abortSignal);
-  return host;
-}
-
-/**
  * The `HostingAbstractionsHostBuilderExtensions` augmentation set for
  * {@link IHostBuilder} (docs §28). Registered under
  * the `IHostBuilder` token; the concrete `HostBuilder` downstream
  * pulls it via `@augment`. The member here is also the standalone call surface.
  */
 export const HostingAbstractionsHostBuilderExtensions = {
-  startHost,
+  /**
+   * Builds the host and starts it.
+   *
+   * @param hostBuilder The builder to build and start.
+   * @param abortSignal Cancels the start.
+   * @returns The started {@link IHost}.
+   */
+  async startHost(
+    hostBuilder: IHostBuilder,
+    abortSignal?: AbortSignal,
+  ): Promise<IHost> {
+    const host = hostBuilder.build();
+    await host.start(abortSignal);
+    return host;
+  },
 } satisfies AugmentationSet<IHostBuilder>;
 
 registerAugmentations(nameof<IHostBuilder>(), HostingAbstractionsHostBuilderExtensions);

@@ -85,138 +85,131 @@ export interface ServiceProviderOptions {
 }
 
 /**
- * Configures an existing {@link IHostBuilder} with the pre-configured defaults:
- * content root = cwd, host config from prefixed env vars + args, app config from
- * `appsettings(.{env}).json` + env vars + args, and the console logging provider.
- */
-function configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
-  hostBuilder.configureHostConfiguration((configBuilder) => applyDefaultHostConfiguration(configBuilder, args));
-  hostBuilder.configureAppConfiguration((context, configBuilder) =>
-    applyDefaultAppConfiguration(configBuilder, context.hostingEnvironment, args)
-  );
-  hostBuilder.configureServices((_context, services) => addDefaultServices(services));
-  return hostBuilder;
-}
-
-/** Specifies the environment. Call after {@link configureDefaults} to avoid being overwritten. */
-function useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
-  return hostBuilder.configureHostConfiguration((configBuilder) => {
-    configBuilder.add(
-      new MemoryConfigurationSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
-    );
-  });
-}
-
-/** Specifies the content root directory. Call after {@link configureDefaults} to avoid being overwritten. */
-function useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
-  return hostBuilder.configureHostConfiguration((configBuilder) => {
-    configBuilder.add(
-      new MemoryConfigurationSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
-    );
-  });
-}
-
-/** Adds a delegate for configuring the {@link HostOptions} of the host. Additive across calls. */
-function configureHostOptions(
-  hostBuilder: IHostBuilder,
-  configureOptions: Func<[HostBuilderContext, HostOptions], void>,
-): IHostBuilder {
-  return hostBuilder.configureServices((context, services) => {
-    services.addValue(
-      HOST_OPTIONS_CONFIGURE_TOKEN,
-      (options: HostOptions) => configureOptions(context, options),
-    );
-  });
-}
-
-/** Adds a delegate for configuring the {@link ILoggingBuilder}. Additive across calls. */
-function configureLogging(
-  hostBuilder: IHostBuilder,
-  configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>,
-): IHostBuilder {
-  return hostBuilder.configureServices((context, services) => {
-    configureLoggingDelegate(context, new LoggingBuilder(services));
-  });
-}
-
-/** Adds a delegate for configuring the {@link IMetricsBuilder}. Additive across calls. */
-function configureMetrics(
-  hostBuilder: IHostBuilder,
-  configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>,
-): IHostBuilder {
-  return hostBuilder.configureServices((context, services) => {
-    configureMetricsDelegate(context, new MetricsBuilder(services));
-  });
-}
-
-/**
- * Specifies the default service-provider configuration. This repo's container
- * exposes no validation toggles, so the delegate runs against a throwaway
- * {@link ServiceProviderOptions} and the result is ignored -- see
- * scaffoldedIncomplete.
- */
-function useDefaultServiceProvider(
-  hostBuilder: IHostBuilder,
-  configure: Func<[ServiceProviderOptions], void>,
-): IHostBuilder {
-  configure({});
-  return hostBuilder;
-}
-
-/**
- * Listens for Ctrl+C / SIGTERM / SIGQUIT and requests a graceful shutdown by
- * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
- * default {@link import("./null-lifetime").NullLifetime}).
- */
-function useConsoleLifetime(
-  hostBuilder: IHostBuilder,
-  configureOptions?: Func<[ConsoleLifetimeOptions], void>,
-): IHostBuilder {
-  const options = new ConsoleLifetimeOptions();
-  configureOptions?.(options);
-  return hostBuilder.configureServices((_context, services) => {
-    services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
-    services.addFactory(
-      HOST_LIFETIME_TOKEN,
-      (resolver: Resolver) =>
-        new ConsoleLifetime(
-          resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN),
-          resolver.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN),
-          resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
-          resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-        ),
-      [[RESOLVER_TOKEN]],
-    );
-  });
-}
-
-/**
- * Enables console support, builds and starts the host, and waits for Ctrl+C /
- * SIGTERM to shut down.
- */
-function runConsoleAsync(
-  hostBuilder: IHostBuilder,
-  abortSignal?: AbortSignal,
-): Promise<void> {
-  return HostingAbstractionsHostExtensions.runAsync(useConsoleLifetime(hostBuilder).build(), abortSignal);
-}
-
-/**
  * The `HostingHostBuilderExtensions` augmentation set for {@link IHostBuilder}
  * (docs §28). Registered under the `IHostBuilder` token; the
  * concrete `HostBuilder` pulls it (and hosting.core's `startHost`) via `@augment`.
  * The members here are also the standalone call surface.
  */
 export const HostingHostBuilderExtensions = {
-  configureDefaults,
-  useEnvironment,
-  useContentRoot,
-  configureHostOptions,
-  configureLogging,
-  configureMetrics,
-  useDefaultServiceProvider,
-  useConsoleLifetime,
-  runConsoleAsync,
+  /**
+   * Configures an existing {@link IHostBuilder} with the pre-configured defaults:
+   * content root = cwd, host config from prefixed env vars + args, app config from
+   * `appsettings(.{env}).json` + env vars + args, and the console logging provider.
+   */
+  configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
+    hostBuilder.configureHostConfiguration((configBuilder) => applyDefaultHostConfiguration(configBuilder, args));
+    hostBuilder.configureAppConfiguration((context, configBuilder) =>
+      applyDefaultAppConfiguration(configBuilder, context.hostingEnvironment, args)
+    );
+    hostBuilder.configureServices((_context, services) => addDefaultServices(services));
+    return hostBuilder;
+  },
+
+  /** Specifies the environment. Call after {@link configureDefaults} to avoid being overwritten. */
+  useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
+    return hostBuilder.configureHostConfiguration((configBuilder) => {
+      configBuilder.add(
+        new MemoryConfigurationSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
+      );
+    });
+  },
+
+  /** Specifies the content root directory. Call after {@link configureDefaults} to avoid being overwritten. */
+  useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
+    return hostBuilder.configureHostConfiguration((configBuilder) => {
+      configBuilder.add(
+        new MemoryConfigurationSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
+      );
+    });
+  },
+
+  /** Adds a delegate for configuring the {@link HostOptions} of the host. Additive across calls. */
+  configureHostOptions(
+    hostBuilder: IHostBuilder,
+    configureOptions: Func<[HostBuilderContext, HostOptions], void>,
+  ): IHostBuilder {
+    return hostBuilder.configureServices((context, services) => {
+      services.addValue(
+        HOST_OPTIONS_CONFIGURE_TOKEN,
+        (options: HostOptions) => configureOptions(context, options),
+      );
+    });
+  },
+
+  /** Adds a delegate for configuring the {@link ILoggingBuilder}. Additive across calls. */
+  configureLogging(
+    hostBuilder: IHostBuilder,
+    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>,
+  ): IHostBuilder {
+    return hostBuilder.configureServices((context, services) => {
+      configureLoggingDelegate(context, new LoggingBuilder(services));
+    });
+  },
+
+  /** Adds a delegate for configuring the {@link IMetricsBuilder}. Additive across calls. */
+  configureMetrics(
+    hostBuilder: IHostBuilder,
+    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>,
+  ): IHostBuilder {
+    return hostBuilder.configureServices((context, services) => {
+      configureMetricsDelegate(context, new MetricsBuilder(services));
+    });
+  },
+
+  /**
+   * Specifies the default service-provider configuration. This repo's container
+   * exposes no validation toggles, so the delegate runs against a throwaway
+   * {@link ServiceProviderOptions} and the result is ignored -- see
+   * scaffoldedIncomplete.
+   */
+  useDefaultServiceProvider(
+    hostBuilder: IHostBuilder,
+    configure: Func<[ServiceProviderOptions], void>,
+  ): IHostBuilder {
+    configure({});
+    return hostBuilder;
+  },
+
+  /**
+   * Listens for Ctrl+C / SIGTERM / SIGQUIT and requests a graceful shutdown by
+   * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
+   * default {@link import("./null-lifetime").NullLifetime}).
+   */
+  useConsoleLifetime(
+    hostBuilder: IHostBuilder,
+    configureOptions?: Func<[ConsoleLifetimeOptions], void>,
+  ): IHostBuilder {
+    const options = new ConsoleLifetimeOptions();
+    configureOptions?.(options);
+    return hostBuilder.configureServices((_context, services) => {
+      services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
+      services.addFactory(
+        HOST_LIFETIME_TOKEN,
+        (resolver: Resolver) =>
+          new ConsoleLifetime(
+            resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN),
+            resolver.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN),
+            resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
+            resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
+          ),
+        [[RESOLVER_TOKEN]],
+      );
+    });
+  },
+
+  /**
+   * Enables console support, builds and starts the host, and waits for Ctrl+C /
+   * SIGTERM to shut down.
+   */
+  runConsoleAsync(
+    hostBuilder: IHostBuilder,
+    abortSignal?: AbortSignal,
+  ): Promise<void> {
+    return HostingAbstractionsHostExtensions.runAsync(
+      HostingHostBuilderExtensions.useConsoleLifetime(hostBuilder).build(),
+      abortSignal,
+    );
+  },
 } satisfies AugmentationSet<IHostBuilder>;
 
 registerAugmentations(nameof<IHostBuilder>(), HostingHostBuilderExtensions);
