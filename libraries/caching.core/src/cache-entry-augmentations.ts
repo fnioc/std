@@ -19,19 +19,6 @@ import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 import { PostEvictionCallbackRegistration } from "./post-eviction-callback-registration";
 import type { PostEvictionDelegate } from "./post-eviction-delegate";
 
-/** Sets an absolute expiration `relativeToNowMs` milliseconds from now. */
-function setAbsoluteExpiration(entry: ICacheEntry, relativeToNowMs: number): ICacheEntry;
-/** Sets an absolute expiration `Date`. */
-function setAbsoluteExpiration(entry: ICacheEntry, absolute: Date): ICacheEntry;
-function setAbsoluteExpiration(entry: ICacheEntry, value: number | Date): ICacheEntry {
-  if (value instanceof Date) {
-    entry.absoluteExpiration = value;
-  } else {
-    entry.absoluteExpirationRelativeToNow = value;
-  }
-  return entry;
-}
-
 /** The `CacheEntryExtensions` augmentation set for {@link ICacheEntry} (docs §28/§38). */
 export const CacheEntryExtensions = {
   /** Sets the entry's compaction {@link CacheItemPriority}. */
@@ -46,7 +33,21 @@ export const CacheEntryExtensions = {
     return entry;
   },
 
-  setAbsoluteExpiration,
+  /** Sets an absolute expiration -- `relativeToNowMs` milliseconds from now, or an absolute `Date`. */
+  setAbsoluteExpiration(
+    entry: ICacheEntry,
+    ...rest:
+      | [relativeToNowMs: number]
+      | [absolute: Date]
+  ): ICacheEntry {
+    const [value] = rest;
+    if (value instanceof Date) {
+      entry.absoluteExpiration = value;
+    } else {
+      entry.absoluteExpirationRelativeToNow = value;
+    }
+    return entry;
+  },
 
   /** Sets how long (in milliseconds) the entry may be inactive before removal. */
   setSlidingExpiration(entry: ICacheEntry, offsetMs: number): ICacheEntry {
