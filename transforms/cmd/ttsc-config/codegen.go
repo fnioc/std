@@ -22,6 +22,7 @@ package main
 import (
 	"regexp"
 
+	"github.com/fnioc/std/transforms/internal/tokens"
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
@@ -174,6 +175,9 @@ func isAcceptableRecord(ctx *codegenContext, t *shimchecker.Type) bool {
 // literal.
 func isLibraryOrExternal(ctx *codegenContext, t *shimchecker.Type) bool {
 	symbol := t.Symbol()
+	if symbol == nil {
+		symbol = tokens.AliasSymbol(t)
+	}
 	if symbol == nil {
 		return false
 	}
