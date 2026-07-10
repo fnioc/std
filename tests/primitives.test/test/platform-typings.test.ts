@@ -15,7 +15,7 @@
 //     common structural type cannot satisfy it (see primitives/src/streams.ts).
 
 import type { ProcessLike, ReadableStream, TimeoutHandle } from "@rhombus-std/primitives";
-import { clearTimeout, process, setTimeout } from "@rhombus-std/primitives";
+import { clearTimeout, neverSignal, process, setTimeout } from "@rhombus-std/primitives";
 import { describe, expect, test } from "bun:test";
 
 describe("process (owned typings)", () => {
@@ -56,6 +56,23 @@ describe("timers (owned typings)", () => {
       fired = true;
     }, 1_000);
     clearTimeout(handle);
+    expect(fired).toBe(false);
+  });
+});
+
+describe("neverSignal", () => {
+  test("is inert", () => {
+    expect(neverSignal.aborted).toBe(false);
+    expect(neverSignal.reason).toBeUndefined();
+    expect(neverSignal.dispatchEvent(new Event("abort"))).toBe(false);
+    expect(() => {
+      neverSignal.throwIfAborted();
+    }).not.toThrow();
+
+    let fired = false;
+    neverSignal.addEventListener("abort", () => {
+      fired = true;
+    });
     expect(fired).toBe(false);
   });
 });

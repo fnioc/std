@@ -82,8 +82,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
   `primitives.transformer` hosts the `nameof<T>()`/token-derivation machinery extracted from
   di.transformer (which depends on it and re-exports the old surface). It also owns the structural
-  platform typings (§39/§44): `AbortSignal`/`AbortController`,
-  `ProcessLike`/`process`, `TimeoutHandle`/`setTimeout`/`clearTimeout`, and
+  platform typings (§39/§44): `AbortSignal`/`AbortController` (+ the inert `neverSignal`
+  singleton), `ProcessLike`/`process`, `TimeoutHandle`/`setTimeout`/`clearTimeout`, and
   `ReadableStream<R>` — typed `globalThis` lookups, so libraries never need
   lib.dom/`@types/node`/bun-types to touch the platform. That zero-ambient-types program is
   pinned by `types: []` in `/tsconfig.lib.json`; `node:fs`/`node:path` imports get per-package

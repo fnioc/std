@@ -1777,7 +1777,8 @@ TS2591/TS2304 across the fleet). This entry closes the gap:
     `values`) that lib.dom's variant lacks — one structural type cannot both carry them (breaks
     the lib.dom implementer) and omit them (fails ours → full-bun-interface).
   - `abort.ts` routes its `globalThis` cast through `unknown` (under the bare program the
-    direct cast is a TS2352).
+    direct cast is a TS2352) and additionally exports **`neverSignal`** — a singleton inert
+    never-aborting signal, the port's analog of the reference stack's never-cancelled token.
   - The augmentation registry's notify bus types `EventTarget`/`Event` structurally
     module-private (nothing public names them, so they are not exported).
 - **`node:fs`/`node:path` get per-package compile-scope `src/node-builtins.d.ts`** (config.json,

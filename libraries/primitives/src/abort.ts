@@ -75,3 +75,21 @@ export const AbortController: AbortControllerConstructor =
   // @types/node / bun-types in a library program) genuinely lacks the
   // property, so the direct cast is a TS2352 under the honest program.
   (globalThis as unknown as { AbortController: AbortControllerConstructor }).AbortController;
+
+/**
+ * A singleton inert signal that never aborts -- the port's analog of the
+ * reference stack's never-cancelled token. Pass it where an
+ * {@link AbortSignal} is required but cancellation is genuinely
+ * not-applicable; every member is a no-op.
+ */
+export const neverSignal: AbortSignal = {
+  aborted: false,
+  reason: undefined,
+  onabort: null,
+  throwIfAborted() {},
+  addEventListener() {},
+  removeEventListener() {},
+  dispatchEvent() {
+    return false;
+  },
+};

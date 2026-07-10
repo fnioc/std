@@ -4,7 +4,7 @@
 //
 // StringValues/StringSegment are NOT ported yet -- see the README.
 
-export { AbortController } from "./abort.js";
+export { AbortController, neverSignal } from "./abort.js";
 export type { AbortControllerConstructor, AbortSignal } from "./abort.js";
 export { augment, registerAugmentations } from "./augmentation-registry.js";
 export { applyAugmentations } from "./augmentations.js";
