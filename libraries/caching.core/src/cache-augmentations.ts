@@ -37,33 +37,6 @@ function isChangeToken(value: unknown): value is IChangeToken {
     && typeof (value as IChangeToken).registerChangeCallback === "function";
 }
 
-/** Associates `value` with `key`. */
-function set<T>(cache: IMemoryCache, key: unknown, value: T): T;
-/** Associates `value` with `key`, expiring at the absolute `Date`. */
-function set<T>(cache: IMemoryCache, key: unknown, value: T, absoluteExpiration: Date): T;
-/** Associates `value` with `key`, expiring `relativeToNowMs` milliseconds from now. */
-function set<T>(cache: IMemoryCache, key: unknown, value: T, relativeToNowMs: number): T;
-/** Associates `value` with `key`, expiring when `expirationToken` fires. */
-function set<T>(cache: IMemoryCache, key: unknown, value: T, expirationToken: IChangeToken): T;
-function set<T>(
-  cache: IMemoryCache,
-  key: unknown,
-  value: T,
-  expiration?: Date | number | IChangeToken,
-): T {
-  const entry = cache.createEntry(key);
-  if (expiration instanceof Date) {
-    entry.absoluteExpiration = expiration;
-  } else if (typeof expiration === "number") {
-    entry.absoluteExpirationRelativeToNow = expiration;
-  } else if (isChangeToken(expiration)) {
-    entry.expirationTokens.push(expiration);
-  }
-  entry.value = value;
-  entry[Symbol.dispose]();
-  return value;
-}
-
 /** The `CacheExtensions` augmentation set for {@link IMemoryCache} (docs §28/§38). */
 export const CacheExtensions = {
   /**
@@ -86,7 +59,31 @@ export const CacheExtensions = {
     const result = cache.tryGetValue(key);
     return result[0] ? [true, result[1] as T | undefined] : [false];
   },
-  set,
+  /**
+   * Associates `value` with `key`, optionally expiring at an absolute `Date`,
+   * `relativeToNowMs` milliseconds from now, or when an `IChangeToken` fires.
+   */
+  set<T>(
+    cache: IMemoryCache,
+    ...rest:
+      | [key: unknown, value: T]
+      | [key: unknown, value: T, absoluteExpiration: Date]
+      | [key: unknown, value: T, relativeToNowMs: number]
+      | [key: unknown, value: T, expirationToken: IChangeToken]
+  ): T {
+    const [key, value, expiration] = rest;
+    const entry = cache.createEntry(key);
+    if (expiration instanceof Date) {
+      entry.absoluteExpiration = expiration;
+    } else if (typeof expiration === "number") {
+      entry.absoluteExpirationRelativeToNow = expiration;
+    } else if (isChangeToken(expiration)) {
+      entry.expirationTokens.push(expiration);
+    }
+    entry.value = value;
+    entry[Symbol.dispose]();
+    return value;
+  },
   /**
    * Returns the value at `key` if present; otherwise runs `factory` to produce
    * one, stores it, and returns it. `factory` receives the fresh

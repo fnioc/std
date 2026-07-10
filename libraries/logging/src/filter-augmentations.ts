@@ -33,30 +33,6 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
 
-/** Adds a `(category, level)` filter rule. */
-function addFilter(
-  options: LoggerFilterOptions,
-  category: string | undefined,
-  level: LogLevel,
-): LoggerFilterOptions;
-/** Adds a raw `(providerName, categoryName, level) => boolean` filter rule. */
-function addFilter(
-  options: LoggerFilterOptions,
-  filter: Func<[string | undefined, string | undefined, LogLevel], boolean>,
-): LoggerFilterOptions;
-function addFilter(
-  options: LoggerFilterOptions,
-  categoryOrFilter: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>,
-  level?: LogLevel,
-): LoggerFilterOptions {
-  if (typeof categoryOrFilter === "function") {
-    options.rules.push(new LoggerFilterRule(undefined, undefined, undefined, categoryOrFilter));
-  } else {
-    options.rules.push(new LoggerFilterRule(undefined, categoryOrFilter, level, undefined));
-  }
-  return options;
-}
-
 /**
  * The `LoggerFilterOptions`-targeted `addFilter` (docs §28). Installed onto the
  * `LoggerFilterOptions` prototype below (CLOSED — direct `applyAugmentations`), and
@@ -66,7 +42,21 @@ function addFilter(
  * overloads and ME provides no distinct name for the value-object side.
  */
 export const LoggerFilterOptionsExtensions = {
-  addFilter,
+  /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
+  addFilter(
+    options: LoggerFilterOptions,
+    ...rest:
+      | [category: string | undefined, level: LogLevel]
+      | [filter: Func<[string | undefined, string | undefined, LogLevel], boolean>]
+  ): LoggerFilterOptions {
+    const [categoryOrFilter, level] = rest;
+    if (typeof categoryOrFilter === "function") {
+      options.rules.push(new LoggerFilterRule(undefined, undefined, undefined, categoryOrFilter));
+    } else {
+      options.rules.push(new LoggerFilterRule(undefined, categoryOrFilter, level, undefined));
+    }
+    return options;
+  },
 } satisfies AugmentationSet<LoggerFilterOptions>;
 
 declare module "./logger-filter-options" {
