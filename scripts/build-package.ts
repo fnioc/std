@@ -36,19 +36,39 @@ import { join } from "node:path";
  */
 export function ttscEnv(repoRoot: string): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
-  delete env.GOROOT;
-  delete env.GOBIN;
   env.GOTOOLCHAIN = "local";
   const goTmp = join(repoRoot, "node_modules", ".cache", "ttsc-gobuild");
   mkdirSync(goTmp, { recursive: true });
   env.GOTMPDIR = goTmp;
-  if (!env.TTSC_GO_BINARY) {
+  let goBin = env.TTSC_GO_BINARY ?? "";
+  if (!goBin) {
     const miseGo = spawnSync("mise", ["which", "go"], { encoding: "utf8" });
-    const goBin = miseGo.status === 0 ? miseGo.stdout.trim() : "";
+    goBin = miseGo.status === 0 ? miseGo.stdout.trim() : "";
     if (goBin) {
       env.TTSC_GO_BINARY = goBin;
     }
   }
+  // GOROOT/GOBIN must match the pinned `go`, not whatever toolchain the caller's
+  // shell had active. Deleting them here is NOT enough: callers merge this env
+  // via `Object.assign(process.env, …)`, which leaves any ambient GOROOT in place
+  // — and a GOROOT whose std objects were built by a different `go` version than
+  // TTSC_GO_BINARY splits the toolchain ("version go1.X does not match go tool
+  // version go1.Y"). So POSITIVELY pin GOROOT to the resolved binary's own root,
+  // which the merge then overrides the stale value with, and blank GOBIN.
+  if (goBin) {
+    // `go env GOROOT` ECHOES the GOROOT env var when it is set, so probe with it
+    // cleared to get the binary's own built-in root rather than the stale ambient.
+    const probeEnv = { ...process.env } as NodeJS.ProcessEnv;
+    delete probeEnv.GOROOT;
+    const goRoot = spawnSync(goBin, ["env", "GOROOT"], {
+      encoding: "utf8",
+      env: probeEnv,
+    });
+    if (goRoot.status === 0 && goRoot.stdout.trim()) {
+      env.GOROOT = goRoot.stdout.trim();
+    }
+  }
+  env.GOBIN = "";
   return env;
 }
 
