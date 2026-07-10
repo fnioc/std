@@ -10,8 +10,9 @@
 // (ME's variant that flips it to `false` only handles a token that can never
 // be canceled, which has no analog here).
 
-import type { AbortSignal } from "./abort.js";
-import type { IChangeToken } from "./IChangeToken.js";
+import type { Func } from "@rhombus-toolkit/func";
+
+import type { AbortSignal, IChangeToken } from "./index.js";
 
 /**
  * An {@link IChangeToken} implementation backed by an `AbortSignal`.
@@ -37,7 +38,7 @@ export class CancellationChangeToken implements IChangeToken {
    * signal is already aborted, `callback` runs synchronously rather than
    * being wired to an `"abort"` event that has already fired.
    */
-  public registerChangeCallback(callback: (state: unknown) => void, state?: unknown): Disposable {
+  public registerChangeCallback(callback: Func<[state: unknown], void>, state?: unknown): Disposable {
     if (this.#signal.aborted) {
       callback(state);
       return { [Symbol.dispose]() {} };

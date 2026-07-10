@@ -28,6 +28,8 @@
 // -- native since Node 15, and native in bun/deno/browsers. Shipping a
 // polyfill would be pure YAGNI.
 
+import type { Ctor } from "@rhombus-toolkit/func";
+
 /**
  * Structural counterpart of the platform `AbortSignal` -- see the module
  * doc comment above for the mutual-assignability design.
@@ -59,10 +61,7 @@ export interface AbortController {
  * Constructor shape for {@link AbortController}, matching the platform
  * global's static side.
  */
-export interface AbortControllerConstructor {
-  new(): AbortController;
-  readonly prototype: AbortController;
-}
+export type AbortControllerConstructor = Ctor<[], AbortController>;
 
 /**
  * The platform `AbortController` constructor, re-typed against our owned

@@ -4,8 +4,7 @@
 // method form must be behaviour-equivalent to calling the object-literal member
 // directly.
 
-import { applyAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
 import { describe, expect, test } from "bun:test";
 
 class Box {

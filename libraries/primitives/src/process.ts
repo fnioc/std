@@ -11,12 +11,14 @@
 // never hand ours back to a platform API), asserted by a type test in
 // tests/primitives.test.
 
+import type { Func } from "@rhombus-toolkit/func";
+
 export interface ProcessLike {
   readonly env: Record<string, string | undefined>;
   cwd(): string;
   readonly stdout: { write(chunk: string): boolean };
-  on(event: string, listener: () => void): unknown;
-  off(event: string, listener: () => void): unknown;
+  on(event: string, listener: Func<[], void>): unknown;
+  off(event: string, listener: Func<[], void>): unknown;
 }
 
 /**

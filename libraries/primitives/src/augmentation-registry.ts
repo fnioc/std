@@ -26,6 +26,8 @@
 // bus, and the registry silently splits -- a class decorated against one copy
 // never sees augmentations registered against the other.
 
+import type { Ctor, Func } from "@rhombus-toolkit/func";
+
 import { type AugmentationSet, installSet } from "./augmentations.js";
 import type { Token } from "./Token.js";
 
@@ -39,12 +41,12 @@ interface NotifyEvent {
   readonly type: string;
 }
 interface NotifyEventTarget {
-  addEventListener(type: string, listener: () => void): void;
+  addEventListener(type: string, listener: Func<[], void>): void;
   dispatchEvent(event: NotifyEvent): boolean;
 }
 const { EventTarget, Event } = globalThis as unknown as {
-  EventTarget: new() => NotifyEventTarget;
-  Event: new(type: string) => NotifyEvent;
+  EventTarget: Ctor<[], NotifyEventTarget>;
+  Event: Ctor<[type: string], NotifyEvent>;
 };
 
 /**
@@ -54,7 +56,7 @@ const { EventTarget, Event } = globalThis as unknown as {
  * the precise typing is restored at the `registerAugmentations` call sites via
  * their `AugmentationSet<R>` argument and at the receiver class via `@augment`.
  */
-type Bag = Record<string, (receiver: never, ...args: never[]) => unknown>;
+type Bag = Record<string, Func<[receiver: never, ...args: never[]], unknown>>;
 
 /** One accumulated bag per token. */
 const bags = new Map<Token, Bag>();
@@ -112,7 +114,7 @@ export function augment(token: Token) {
       const bag = bags.get(token);
       if (bag) {
         installSet(
-          Ctor as unknown as new(...args: any[]) => any,
+          Ctor as unknown as Ctor<any[], any>,
           bag as unknown as AugmentationSet<any>,
         );
       }

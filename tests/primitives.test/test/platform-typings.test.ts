@@ -14,8 +14,15 @@
 //     variant with required consumer-convenience members lib.dom lacks, so a
 //     common structural type cannot satisfy it (see primitives/src/streams.ts).
 
-import type { ProcessLike, ReadableStream, TimeoutHandle } from "@rhombus-std/primitives";
-import { clearTimeout, neverSignal, process, setTimeout } from "@rhombus-std/primitives";
+import {
+  clearTimeout,
+  neverSignal,
+  process,
+  type ProcessLike,
+  type ReadableStream,
+  setTimeout,
+  type TimeoutHandle,
+} from "@rhombus-std/primitives";
 import { describe, expect, test } from "bun:test";
 
 describe("process (owned typings)", () => {

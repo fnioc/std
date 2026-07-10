@@ -186,7 +186,7 @@ function brandLiteralFor<T>(
   type: ts.Type,
   checker: ts.TypeChecker,
   propName: string,
-  extractLiteral: (propType: ts.Type) => T | undefined,
+  extractLiteral: Func<[propType: ts.Type], T | undefined>,
 ): T | undefined {
   const props = checker.getPropertiesOfType(type);
   for (const prop of props) {

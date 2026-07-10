@@ -6,10 +6,12 @@
 // differs (number in browsers, a Timeout object under node), and handles only
 // ever round-trip through our own `clearTimeout`.
 
+import type { Func } from "@rhombus-toolkit/func";
+
 export type TimeoutHandle = unknown;
 
 interface SetTimeoutLike {
-  (callback: () => void, delayMs?: number): TimeoutHandle;
+  (callback: Func<[], void>, delayMs?: number): TimeoutHandle;
 }
 interface ClearTimeoutLike {
   (handle: TimeoutHandle): void;

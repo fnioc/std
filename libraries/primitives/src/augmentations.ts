@@ -21,19 +21,16 @@
 //     through a token + EventTarget so late-registered augmentations still
 //     reach an already-decorated class prototype.
 //
-// This infrastructure lives in `primitives` -- the universal zero-dependency
-// leaf -- because di and config must stay mutually unaware (di ⊥ config, §4.3):
-// `di.core` is disqualified as the home because the config-provider packages
-// would then need a config→di edge just to reach the installer. primitives is
-// the only package every family can already depend on.
-//
-// `primitives` is deliberately dependency-free, so the augmentation-set member
-// type is spelled as a bare receiver-first function type here rather than
-// pulling in `@rhombus-toolkit/func` (which would fork the leaf's
-// zero-dependency invariant).
+// This infrastructure lives in `primitives` -- the universal leaf every
+// family can already depend on -- because di and config must stay mutually
+// unaware (di ⊥ config, §4.3): `di.core` is disqualified as the home because
+// the config-provider packages would then need a config→di edge just to
+// reach the installer.
+
+import type { Ctor, Func } from "@rhombus-toolkit/func";
 
 /** An object literal of receiver-first augmentation functions all sharing receiver type R. */
-export type AugmentationSet<R> = Record<string, (receiver: R, ...args: any[]) => unknown>;
+export type AugmentationSet<R> = Record<string, Func<[receiver: R, ...args: any[]], unknown>>;
 
 /**
  * Dumb installer: mounts each augmentation onto `Ctor.prototype` as a
@@ -44,7 +41,7 @@ export type AugmentationSet<R> = Record<string, (receiver: R, ...args: any[]) =>
  * `InstanceType<R>`, so `Ctor.prototype` is directly typed -- no casts. Call
  * sites pass the class directly and `R` is inferred.
  */
-export function applyAugmentations<R extends new(...args: any[]) => any>(
+export function applyAugmentations<R extends Ctor<any[], any>>(
   Ctor: R,
   augmentations: AugmentationSet<InstanceType<R>>,
 ): void {
@@ -67,7 +64,7 @@ export function applyAugmentations<R extends new(...args: any[]) => any>(
  * `InstanceType<R>` receiver typing at its call sites.
  */
 export function installSet(
-  Ctor: new(...args: any[]) => any,
+  Ctor: Ctor<any[], any>,
   augmentations: AugmentationSet<any>,
 ): void {
   Object.assign(
