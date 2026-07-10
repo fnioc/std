@@ -153,12 +153,21 @@ export const known = provider.isService<ILogger>();
   if (result.status !== 0) {
     throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
   }
+  // ttsc runs the plugin as a SOURCE-to-source stage: it emits the lowered
+  // TypeScript for each file as a stdout envelope (not a written dist/*.js). The
+  // production consumer (a bundler via @ttsc/unplugin) then type-strips that
+  // source to JS — which is where the type-only scaffolding (`declare const
+  // services: { add<I>… }`, interface decls) disappears. Reproduce that final
+  // step here so the assertions test the SHIPPED JS, not the intermediate TS:
+  // otherwise a retained generic type annotation reads as an un-lowered call.
+  let lowered: string;
   try {
-    app = readFileSync(join(projDir, "dist", "app.js"), "utf8");
+    lowered = readFileSync(join(projDir, "dist", "app.js"), "utf8");
   } catch {
     const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string> };
-    app = envelope.typescript["src/app.ts"] ?? "";
+    lowered = envelope.typescript["src/app.ts"] ?? "";
   }
+  app = new Bun.Transpiler({ loader: "ts" }).transformSync(lowered);
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)("ttsc/Go registration lowering byte-parity", () => {
