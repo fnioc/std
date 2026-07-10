@@ -21,20 +21,18 @@ import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { MetricsConfigureOptions } from "./metrics-configure-options";
 
-/**
- * Reads metrics enablement rules from `configuration` and configures which
- * meters, instruments, and listeners are enabled. Mirrors
- * `MetricsBuilderConfigurationExtensions.AddConfiguration`.
- */
-function addMetricsConfiguration(builder: IMetricsBuilder, configuration: IConfiguration): IMetricsBuilder {
-  builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(configuration));
-  builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigurationChangeTokenSource(configuration));
-  return builder;
-}
-
 /** The `MetricsBuilderConfigurationExtensions` augmentation set for {@link IMetricsBuilder} (docs §28). */
 export const MetricsBuilderConfigurationExtensions = {
-  addMetricsConfiguration,
+  /**
+   * Reads metrics enablement rules from `configuration` and configures which
+   * meters, instruments, and listeners are enabled. Mirrors
+   * `MetricsBuilderConfigurationExtensions.AddConfiguration`.
+   */
+  addMetricsConfiguration(builder: IMetricsBuilder, configuration: IConfiguration): IMetricsBuilder {
+    builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(configuration));
+    builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigurationChangeTokenSource(configuration));
+    return builder;
+  },
 } satisfies AugmentationSet<IMetricsBuilder>;
 
 // Self-registration for the config-binding member of the OPEN `IMetricsBuilder`

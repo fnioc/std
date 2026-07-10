@@ -38,25 +38,6 @@ import { TracingOptions } from "./tracing-options";
 import { TracingRule } from "./tracing-rule";
 
 /**
- * Registers a tracing listener identified by `name` and described by `configure`.
- * Mirrors `TracingBuilderExtensions.AddListener(ITracingBuilder, string, Action<ActivityListenerBuilder>)`.
- * @throws {@link Error} if `name` is empty.
- */
-function addTracingListener(
-  builder: ITracingBuilder,
-  name: string,
-  configure: Func<[ActivityListenerBuilder], void>,
-): ITracingBuilder {
-  if (!name) {
-    throw new Error("A tracing listener name must be a non-empty string.");
-  }
-  const listenerBuilder = new ActivityListenerBuilder(name);
-  configure(listenerBuilder);
-  builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
-  return builder;
-}
-
-/**
  * The `TracingOptions`-targeted rule mutators (docs §28) -- the value-object overloads
  * of `TracingBuilderExtensions.{Enable,Disable}Tracing`, which ME names identically to
  * their builder counterparts, distinguished only by `this` receiver. Installed onto
@@ -105,46 +86,59 @@ function configureTracing(builder: ITracingBuilder, apply: (options: TracingOpti
 }
 
 /**
- * Enables activities via a deferred rule. Mirrors
- * `TracingBuilderExtensions.EnableTracing(ITracingBuilder, ...)`.
- */
-function enableTracing(
-  builder: ITracingBuilder,
-  sourceName?: string,
-  operationName?: string,
-  listenerName?: string,
-  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
-): ITracingBuilder {
-  return configureTracing(builder, (options) => {
-    TracingOptionsExtensions.enableTracing(options, sourceName, operationName, listenerName, scopes);
-  });
-}
-
-/**
- * Disables activities via a deferred rule. Mirrors
- * `TracingBuilderExtensions.DisableTracing(ITracingBuilder, ...)`.
- */
-function disableTracing(
-  builder: ITracingBuilder,
-  sourceName?: string,
-  operationName?: string,
-  listenerName?: string,
-  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
-): ITracingBuilder {
-  return configureTracing(builder, (options) => {
-    TracingOptionsExtensions.disableTracing(options, sourceName, operationName, listenerName, scopes);
-  });
-}
-
-/**
  * The `TracingBuilderExtensions` augmentation set for {@link ITracingBuilder}
  * (docs §28) -- the builder-targeted listener/rule methods. Installed onto the
  * concrete builder downstream in `@rhombus-std/diagnostics`.
  */
 export const TracingBuilderExtensions = {
-  addTracingListener,
-  enableTracing,
-  disableTracing,
+  /**
+   * Registers a tracing listener identified by `name` and described by `configure`.
+   * Mirrors `TracingBuilderExtensions.AddListener(ITracingBuilder, string, Action<ActivityListenerBuilder>)`.
+   * @throws {@link Error} if `name` is empty.
+   */
+  addTracingListener(
+    builder: ITracingBuilder,
+    name: string,
+    configure: Func<[ActivityListenerBuilder], void>,
+  ): ITracingBuilder {
+    if (!name) {
+      throw new Error("A tracing listener name must be a non-empty string.");
+    }
+    const listenerBuilder = new ActivityListenerBuilder(name);
+    configure(listenerBuilder);
+    builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
+    return builder;
+  },
+  /**
+   * Enables activities via a deferred rule. Mirrors
+   * `TracingBuilderExtensions.EnableTracing(ITracingBuilder, ...)`.
+   */
+  enableTracing(
+    builder: ITracingBuilder,
+    sourceName?: string,
+    operationName?: string,
+    listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
+  ): ITracingBuilder {
+    return configureTracing(builder, (options) => {
+      TracingOptionsExtensions.enableTracing(options, sourceName, operationName, listenerName, scopes);
+    });
+  },
+  /**
+   * Disables activities via a deferred rule. Mirrors
+   * `TracingBuilderExtensions.DisableTracing(ITracingBuilder, ...)`.
+   */
+  disableTracing(
+    builder: ITracingBuilder,
+    sourceName?: string,
+    operationName?: string,
+    listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
+  ): ITracingBuilder {
+    return configureTracing(builder, (options) => {
+      TracingOptionsExtensions.disableTracing(options, sourceName, operationName, listenerName, scopes);
+    });
+  },
 } satisfies AugmentationSet<ITracingBuilder>;
 
 // Self-registration for the OPEN `ITracingBuilder` receiver (docs §38). The

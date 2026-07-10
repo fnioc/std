@@ -36,31 +36,6 @@ import { MetricsOptions } from "./metrics-options";
 import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "./tokens";
 
 /**
- * Registers an already-built {@link IMetricsListener} instance. Mirrors
- * `MetricsBuilderExtensions.AddListener(IMetricsBuilder, IMetricsListener)`.
- */
-function addMetricsListener(builder: IMetricsBuilder, listener: IMetricsListener): IMetricsBuilder {
-  builder.services.addValue(METRICS_LISTENER_TOKEN, listener);
-  return builder;
-}
-
-/**
- * Registers an {@link IMetricsListener} by its implementation constructor (its
- * dependencies are injected). Mirrors the generic
- * `MetricsBuilderExtensions.AddListener<T>()`. `signatures` carries the ctor's
- * positional dependency slots (as a plugin-less author supplies them, or as the
- * di.transformer would emit).
- */
-function addMetricsListenerType(
-  builder: IMetricsBuilder,
-  ctor: Ctor,
-  signatures?: readonly (readonly DepSlot[])[],
-): IMetricsBuilder {
-  builder.services.add(METRICS_LISTENER_TOKEN, ctor, signatures);
-  return builder;
-}
-
-/**
  * The `MetricsOptions`-targeted rule mutators (docs §28) -- the value-object
  * overloads of `MetricsBuilderExtensions.{Enable,Disable}Metrics`, which ME names
  * identically to their builder counterparts, distinguished only by `this` receiver.
@@ -111,48 +86,65 @@ function configureMetrics(builder: IMetricsBuilder, apply: (options: MetricsOpti
 }
 
 /**
- * Enables instruments via a deferred rule -- registers a configure step that
- * appends an ENABLE {@link InstrumentRule} to the bound {@link MetricsOptions}.
- * Mirrors `MetricsBuilderExtensions.EnableMetrics(IMetricsBuilder, ...)`.
- */
-function enableMetrics(
-  builder: IMetricsBuilder,
-  meterName?: string,
-  instrumentName?: string,
-  listenerName?: string,
-  scopes: MeterScope = METER_SCOPE_ALL,
-): IMetricsBuilder {
-  return configureMetrics(builder, (options) => {
-    MetricsOptionsExtensions.enableMetrics(options, meterName, instrumentName, listenerName, scopes);
-  });
-}
-
-/**
- * Disables instruments via a deferred rule. Mirrors
- * `MetricsBuilderExtensions.DisableMetrics(IMetricsBuilder, ...)`.
- */
-function disableMetrics(
-  builder: IMetricsBuilder,
-  meterName?: string,
-  instrumentName?: string,
-  listenerName?: string,
-  scopes: MeterScope = METER_SCOPE_ALL,
-): IMetricsBuilder {
-  return configureMetrics(builder, (options) => {
-    MetricsOptionsExtensions.disableMetrics(options, meterName, instrumentName, listenerName, scopes);
-  });
-}
-
-/**
  * The `MetricsBuilderExtensions` augmentation set for {@link IMetricsBuilder}
  * (docs §28) -- the builder-targeted listener/rule methods. Installed onto the
  * concrete builder downstream in `@rhombus-std/diagnostics`.
  */
 export const MetricsBuilderExtensions = {
-  addMetricsListener,
-  addMetricsListenerType,
-  enableMetrics,
-  disableMetrics,
+  /**
+   * Registers an already-built {@link IMetricsListener} instance. Mirrors
+   * `MetricsBuilderExtensions.AddListener(IMetricsBuilder, IMetricsListener)`.
+   */
+  addMetricsListener(builder: IMetricsBuilder, listener: IMetricsListener): IMetricsBuilder {
+    builder.services.addValue(METRICS_LISTENER_TOKEN, listener);
+    return builder;
+  },
+  /**
+   * Registers an {@link IMetricsListener} by its implementation constructor (its
+   * dependencies are injected). Mirrors the generic
+   * `MetricsBuilderExtensions.AddListener<T>()`. `signatures` carries the ctor's
+   * positional dependency slots (as a plugin-less author supplies them, or as the
+   * di.transformer would emit).
+   */
+  addMetricsListenerType(
+    builder: IMetricsBuilder,
+    ctor: Ctor,
+    signatures?: readonly (readonly DepSlot[])[],
+  ): IMetricsBuilder {
+    builder.services.add(METRICS_LISTENER_TOKEN, ctor, signatures);
+    return builder;
+  },
+  /**
+   * Enables instruments via a deferred rule -- registers a configure step that
+   * appends an ENABLE {@link InstrumentRule} to the bound {@link MetricsOptions}.
+   * Mirrors `MetricsBuilderExtensions.EnableMetrics(IMetricsBuilder, ...)`.
+   */
+  enableMetrics(
+    builder: IMetricsBuilder,
+    meterName?: string,
+    instrumentName?: string,
+    listenerName?: string,
+    scopes: MeterScope = METER_SCOPE_ALL,
+  ): IMetricsBuilder {
+    return configureMetrics(builder, (options) => {
+      MetricsOptionsExtensions.enableMetrics(options, meterName, instrumentName, listenerName, scopes);
+    });
+  },
+  /**
+   * Disables instruments via a deferred rule. Mirrors
+   * `MetricsBuilderExtensions.DisableMetrics(IMetricsBuilder, ...)`.
+   */
+  disableMetrics(
+    builder: IMetricsBuilder,
+    meterName?: string,
+    instrumentName?: string,
+    listenerName?: string,
+    scopes: MeterScope = METER_SCOPE_ALL,
+  ): IMetricsBuilder {
+    return configureMetrics(builder, (options) => {
+      MetricsOptionsExtensions.disableMetrics(options, meterName, instrumentName, listenerName, scopes);
+    });
+  },
 } satisfies AugmentationSet<IMetricsBuilder>;
 
 // Self-registration for the OPEN `IMetricsBuilder` receiver (docs §38). The

@@ -29,29 +29,6 @@ declare module "./host-environment" {
   }
 }
 
-/** Compares the current host environment name against `environmentName` (case-insensitive). */
-function isEnvironment(
-  hostEnvironment: IHostEnvironment,
-  environmentName: string,
-): boolean {
-  return hostEnvironment.environmentName.toLowerCase() === environmentName.toLowerCase();
-}
-
-/** Checks whether the current host environment name is {@link Environments.Development}. */
-function isDevelopment(hostEnvironment: IHostEnvironment): boolean {
-  return isEnvironment(hostEnvironment, Environments.Development);
-}
-
-/** Checks whether the current host environment name is {@link Environments.Staging}. */
-function isStaging(hostEnvironment: IHostEnvironment): boolean {
-  return isEnvironment(hostEnvironment, Environments.Staging);
-}
-
-/** Checks whether the current host environment name is {@link Environments.Production}. */
-function isProduction(hostEnvironment: IHostEnvironment): boolean {
-  return isEnvironment(hostEnvironment, Environments.Production);
-}
-
 /**
  * The `HostEnvironmentEnvExtensions` augmentation set for {@link IHostEnvironment}
  * (docs §28). Registered under the `IHostEnvironment` token; the
@@ -59,10 +36,28 @@ function isProduction(hostEnvironment: IHostEnvironment): boolean {
  * here are also the standalone call surface.
  */
 export const HostEnvironmentEnvExtensions = {
-  isEnvironment,
-  isDevelopment,
-  isStaging,
-  isProduction,
+  /** Compares the current host environment name against `environmentName` (case-insensitive). */
+  isEnvironment(
+    hostEnvironment: IHostEnvironment,
+    environmentName: string,
+  ): boolean {
+    return hostEnvironment.environmentName.toLowerCase() === environmentName.toLowerCase();
+  },
+
+  /** Checks whether the current host environment name is {@link Environments.Development}. */
+  isDevelopment(hostEnvironment: IHostEnvironment): boolean {
+    return HostEnvironmentEnvExtensions.isEnvironment(hostEnvironment, Environments.Development);
+  },
+
+  /** Checks whether the current host environment name is {@link Environments.Staging}. */
+  isStaging(hostEnvironment: IHostEnvironment): boolean {
+    return HostEnvironmentEnvExtensions.isEnvironment(hostEnvironment, Environments.Staging);
+  },
+
+  /** Checks whether the current host environment name is {@link Environments.Production}. */
+  isProduction(hostEnvironment: IHostEnvironment): boolean {
+    return HostEnvironmentEnvExtensions.isEnvironment(hostEnvironment, Environments.Production);
+  },
 } satisfies AugmentationSet<IHostEnvironment>;
 
 registerAugmentations(nameof<IHostEnvironment>(), HostEnvironmentEnvExtensions);

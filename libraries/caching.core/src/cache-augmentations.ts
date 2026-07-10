@@ -37,28 +37,6 @@ function isChangeToken(value: unknown): value is IChangeToken {
     && typeof (value as IChangeToken).registerChangeCallback === "function";
 }
 
-/**
- * Gets the value associated with `key`, or `undefined` if not present. The
- * type parameter is an unchecked cast of the stored value (mirrors the
- * reference `Get<TItem>`, which likewise does not runtime-verify the type).
- */
-function get<T = unknown>(cache: IMemoryCache, key: unknown): T | undefined {
-  const result = cache.tryGetValue(key);
-  return result[0] ? (result[1] as T | undefined) : undefined;
-}
-
-/**
- * Tries to get the value associated with `key`. Returns `[true, value]` on a
- * hit (value cast to `T`), `[false]` on a miss.
- */
-function tryGetValue<T = unknown>(
-  cache: IMemoryCache,
-  key: unknown,
-): [found: false] | [found: true, value: T | undefined] {
-  const result = cache.tryGetValue(key);
-  return result[0] ? [true, result[1] as T | undefined] : [false];
-}
-
 /** Associates `value` with `key`. */
 function set<T>(cache: IMemoryCache, key: unknown, value: T): T;
 /** Associates `value` with `key`, expiring at the absolute `Date`. */
@@ -86,117 +64,125 @@ function set<T>(
   return value;
 }
 
-/**
- * Returns the value at `key` if present; otherwise runs `factory` to produce
- * one, stores it, and returns it. `factory` receives the fresh
- * {@link ICacheEntry} so it can set expiration/size before the value commits.
- */
-function getOrCreate<T>(
-  cache: IMemoryCache,
-  key: unknown,
-  factory: (entry: ICacheEntry) => T,
-): T | undefined {
-  const result = cache.tryGetValue(key);
-  if (result[0]) {
-    return result[1] as T | undefined;
-  }
-  const entry = cache.createEntry(key);
-  const value = factory(entry);
-  entry.value = value;
-  entry[Symbol.dispose]();
-  return value;
-}
-
-/**
- * Async {@link getOrCreate}: awaits `factory` when the key is absent.
- */
-async function getOrCreateAsync<T>(
-  cache: IMemoryCache,
-  key: unknown,
-  factory: (entry: ICacheEntry) => Promise<T>,
-): Promise<T | undefined> {
-  const result = cache.tryGetValue(key);
-  if (result[0]) {
-    return result[1] as T | undefined;
-  }
-  const entry = cache.createEntry(key);
-  const value = await factory(entry);
-  entry.value = value;
-  entry[Symbol.dispose]();
-  return value;
-}
-
-/** Sets `value` at `key`, applying `options` to the entry (the `Set(options)` port). */
-function setWithOptions<T>(
-  cache: IMemoryCache,
-  key: unknown,
-  value: T,
-  options?: MemoryCacheEntryOptions,
-): T {
-  const entry = cache.createEntry(key);
-  if (options !== undefined) {
-    CacheEntryExtensions.setOptions(entry, options);
-  }
-  entry.value = value;
-  entry[Symbol.dispose]();
-  return value;
-}
-
-/**
- * {@link getOrCreate} with `createOptions` applied to the fresh entry before
- * the factory runs (the `GetOrCreate(createOptions)` port).
- */
-function getOrCreateWithOptions<T>(
-  cache: IMemoryCache,
-  key: unknown,
-  factory: (entry: ICacheEntry) => T,
-  createOptions?: MemoryCacheEntryOptions,
-): T | undefined {
-  const result = cache.tryGetValue(key);
-  if (result[0]) {
-    return result[1] as T | undefined;
-  }
-  const entry = cache.createEntry(key);
-  if (createOptions !== undefined) {
-    CacheEntryExtensions.setOptions(entry, createOptions);
-  }
-  const value = factory(entry);
-  entry.value = value;
-  entry[Symbol.dispose]();
-  return value;
-}
-
-/** Async {@link getOrCreateWithOptions}. */
-async function getOrCreateAsyncWithOptions<T>(
-  cache: IMemoryCache,
-  key: unknown,
-  factory: (entry: ICacheEntry) => Promise<T>,
-  createOptions?: MemoryCacheEntryOptions,
-): Promise<T | undefined> {
-  const result = cache.tryGetValue(key);
-  if (result[0]) {
-    return result[1] as T | undefined;
-  }
-  const entry = cache.createEntry(key);
-  if (createOptions !== undefined) {
-    CacheEntryExtensions.setOptions(entry, createOptions);
-  }
-  const value = await factory(entry);
-  entry.value = value;
-  entry[Symbol.dispose]();
-  return value;
-}
-
 /** The `CacheExtensions` augmentation set for {@link IMemoryCache} (docs §28/§38). */
 export const CacheExtensions = {
-  get,
-  tryGetValue,
+  /**
+   * Gets the value associated with `key`, or `undefined` if not present. The
+   * type parameter is an unchecked cast of the stored value (mirrors the
+   * reference `Get<TItem>`, which likewise does not runtime-verify the type).
+   */
+  get<T = unknown>(cache: IMemoryCache, key: unknown): T | undefined {
+    const result = cache.tryGetValue(key);
+    return result[0] ? (result[1] as T | undefined) : undefined;
+  },
+  /**
+   * Tries to get the value associated with `key`. Returns `[true, value]` on a
+   * hit (value cast to `T`), `[false]` on a miss.
+   */
+  tryGetValue<T = unknown>(
+    cache: IMemoryCache,
+    key: unknown,
+  ): [found: false] | [found: true, value: T | undefined] {
+    const result = cache.tryGetValue(key);
+    return result[0] ? [true, result[1] as T | undefined] : [false];
+  },
   set,
-  getOrCreate,
-  getOrCreateAsync,
-  setWithOptions,
-  getOrCreateWithOptions,
-  getOrCreateAsyncWithOptions,
+  /**
+   * Returns the value at `key` if present; otherwise runs `factory` to produce
+   * one, stores it, and returns it. `factory` receives the fresh
+   * {@link ICacheEntry} so it can set expiration/size before the value commits.
+   */
+  getOrCreate<T>(
+    cache: IMemoryCache,
+    key: unknown,
+    factory: (entry: ICacheEntry) => T,
+  ): T | undefined {
+    const result = cache.tryGetValue(key);
+    if (result[0]) {
+      return result[1] as T | undefined;
+    }
+    const entry = cache.createEntry(key);
+    const value = factory(entry);
+    entry.value = value;
+    entry[Symbol.dispose]();
+    return value;
+  },
+  /**
+   * Async {@link CacheExtensions.getOrCreate}: awaits `factory` when the key is absent.
+   */
+  async getOrCreateAsync<T>(
+    cache: IMemoryCache,
+    key: unknown,
+    factory: (entry: ICacheEntry) => Promise<T>,
+  ): Promise<T | undefined> {
+    const result = cache.tryGetValue(key);
+    if (result[0]) {
+      return result[1] as T | undefined;
+    }
+    const entry = cache.createEntry(key);
+    const value = await factory(entry);
+    entry.value = value;
+    entry[Symbol.dispose]();
+    return value;
+  },
+  /** Sets `value` at `key`, applying `options` to the entry (the `Set(options)` port). */
+  setWithOptions<T>(
+    cache: IMemoryCache,
+    key: unknown,
+    value: T,
+    options?: MemoryCacheEntryOptions,
+  ): T {
+    const entry = cache.createEntry(key);
+    if (options !== undefined) {
+      CacheEntryExtensions.setOptions(entry, options);
+    }
+    entry.value = value;
+    entry[Symbol.dispose]();
+    return value;
+  },
+  /**
+   * {@link CacheExtensions.getOrCreate} with `createOptions` applied to the fresh entry before
+   * the factory runs (the `GetOrCreate(createOptions)` port).
+   */
+  getOrCreateWithOptions<T>(
+    cache: IMemoryCache,
+    key: unknown,
+    factory: (entry: ICacheEntry) => T,
+    createOptions?: MemoryCacheEntryOptions,
+  ): T | undefined {
+    const result = cache.tryGetValue(key);
+    if (result[0]) {
+      return result[1] as T | undefined;
+    }
+    const entry = cache.createEntry(key);
+    if (createOptions !== undefined) {
+      CacheEntryExtensions.setOptions(entry, createOptions);
+    }
+    const value = factory(entry);
+    entry.value = value;
+    entry[Symbol.dispose]();
+    return value;
+  },
+  /** Async {@link CacheExtensions.getOrCreateWithOptions}. */
+  async getOrCreateAsyncWithOptions<T>(
+    cache: IMemoryCache,
+    key: unknown,
+    factory: (entry: ICacheEntry) => Promise<T>,
+    createOptions?: MemoryCacheEntryOptions,
+  ): Promise<T | undefined> {
+    const result = cache.tryGetValue(key);
+    if (result[0]) {
+      return result[1] as T | undefined;
+    }
+    const entry = cache.createEntry(key);
+    if (createOptions !== undefined) {
+      CacheEntryExtensions.setOptions(entry, createOptions);
+    }
+    const value = await factory(entry);
+    entry.value = value;
+    entry[Symbol.dispose]();
+    return value;
+  },
 } satisfies AugmentationSet<IMemoryCache>;
 
 // The method-form surface merged onto IMemoryCache (docs §28/§38): the concrete

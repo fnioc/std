@@ -19,18 +19,6 @@ import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
 import { PostEvictionCallbackRegistration } from "./post-eviction-callback-registration";
 import type { PostEvictionDelegate } from "./post-eviction-delegate";
 
-/** Sets the entry's compaction {@link CacheItemPriority}. */
-function setPriority(entry: ICacheEntry, priority: CacheItemPriority): ICacheEntry {
-  entry.priority = priority;
-  return entry;
-}
-
-/** Expires the entry when `expirationToken` fires. */
-function addExpirationToken(entry: ICacheEntry, expirationToken: IChangeToken): ICacheEntry {
-  entry.expirationTokens.push(expirationToken);
-  return entry;
-}
-
 /** Sets an absolute expiration `relativeToNowMs` milliseconds from now. */
 function setAbsoluteExpiration(entry: ICacheEntry, relativeToNowMs: number): ICacheEntry;
 /** Sets an absolute expiration `Date`. */
@@ -44,84 +32,89 @@ function setAbsoluteExpiration(entry: ICacheEntry, value: number | Date): ICache
   return entry;
 }
 
-/** Sets how long (in milliseconds) the entry may be inactive before removal. */
-function setSlidingExpiration(entry: ICacheEntry, offsetMs: number): ICacheEntry {
-  entry.slidingExpiration = offsetMs;
-  return entry;
-}
-
-/** Registers a callback fired after the entry is evicted. */
-function registerPostEvictionCallback(
-  entry: ICacheEntry,
-  callback: PostEvictionDelegate,
-  state?: unknown,
-): ICacheEntry {
-  const registration = new PostEvictionCallbackRegistration();
-  registration.evictionCallback = callback;
-  registration.state = state;
-  entry.postEvictionCallbacks.push(registration);
-  return entry;
-}
-
-/** Sets the entry's value. */
-function setValue(entry: ICacheEntry, value: unknown): ICacheEntry {
-  entry.value = value;
-  return entry;
-}
-
-/** Sets the entry's size. Throws if `size` is negative. */
-function setSize(entry: ICacheEntry, size: number): ICacheEntry {
-  if (size < 0) {
-    throw new RangeError(`size must be non-negative, was ${size}.`);
-  }
-  entry.size = size;
-  return entry;
-}
-
-/**
- * Applies every value of `options` to `entry` (the `SetOptions` port). Throws
- * if `options` carries a post-eviction registration with no callback.
- */
-function setOptions(entry: ICacheEntry, options: MemoryCacheEntryOptions): ICacheEntry {
-  entry.absoluteExpiration = options.absoluteExpiration;
-  entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
-  entry.slidingExpiration = options.slidingExpiration;
-  entry.priority = options.priority;
-  entry.size = options.size;
-
-  const expirationTokens = options.expirationTokensDirect;
-  if (expirationTokens !== undefined) {
-    for (const token of expirationTokens) {
-      addExpirationToken(entry, token);
-    }
-  }
-
-  const postEvictionCallbacks = options.postEvictionCallbacksDirect;
-  if (postEvictionCallbacks !== undefined) {
-    for (let i = 0; i < postEvictionCallbacks.length; i++) {
-      const registration = postEvictionCallbacks[i]!;
-      if (registration.evictionCallback === undefined) {
-        throw new Error(
-          `MemoryCacheEntryOptions.postEvictionCallbacks contains a registration with no evictionCallback at index ${i}.`,
-        );
-      }
-      entry.postEvictionCallbacks.push(registration);
-    }
-  }
-
-  return entry;
-}
-
 /** The `CacheEntryExtensions` augmentation set for {@link ICacheEntry} (docs §28/§38). */
 export const CacheEntryExtensions = {
-  setPriority,
-  addExpirationToken,
+  /** Sets the entry's compaction {@link CacheItemPriority}. */
+  setPriority(entry: ICacheEntry, priority: CacheItemPriority): ICacheEntry {
+    entry.priority = priority;
+    return entry;
+  },
+
+  /** Expires the entry when `expirationToken` fires. */
+  addExpirationToken(entry: ICacheEntry, expirationToken: IChangeToken): ICacheEntry {
+    entry.expirationTokens.push(expirationToken);
+    return entry;
+  },
+
   setAbsoluteExpiration,
-  setSlidingExpiration,
-  registerPostEvictionCallback,
-  setValue,
-  setSize,
-  setOptions,
+
+  /** Sets how long (in milliseconds) the entry may be inactive before removal. */
+  setSlidingExpiration(entry: ICacheEntry, offsetMs: number): ICacheEntry {
+    entry.slidingExpiration = offsetMs;
+    return entry;
+  },
+
+  /** Registers a callback fired after the entry is evicted. */
+  registerPostEvictionCallback(
+    entry: ICacheEntry,
+    callback: PostEvictionDelegate,
+    state?: unknown,
+  ): ICacheEntry {
+    const registration = new PostEvictionCallbackRegistration();
+    registration.evictionCallback = callback;
+    registration.state = state;
+    entry.postEvictionCallbacks.push(registration);
+    return entry;
+  },
+
+  /** Sets the entry's value. */
+  setValue(entry: ICacheEntry, value: unknown): ICacheEntry {
+    entry.value = value;
+    return entry;
+  },
+
+  /** Sets the entry's size. Throws if `size` is negative. */
+  setSize(entry: ICacheEntry, size: number): ICacheEntry {
+    if (size < 0) {
+      throw new RangeError(`size must be non-negative, was ${size}.`);
+    }
+    entry.size = size;
+    return entry;
+  },
+
+  /**
+   * Applies every value of `options` to `entry` (the `SetOptions` port). Throws
+   * if `options` carries a post-eviction registration with no callback.
+   */
+  setOptions(entry: ICacheEntry, options: MemoryCacheEntryOptions): ICacheEntry {
+    entry.absoluteExpiration = options.absoluteExpiration;
+    entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
+    entry.slidingExpiration = options.slidingExpiration;
+    entry.priority = options.priority;
+    entry.size = options.size;
+
+    const expirationTokens = options.expirationTokensDirect;
+    if (expirationTokens !== undefined) {
+      for (const token of expirationTokens) {
+        CacheEntryExtensions.addExpirationToken(entry, token);
+      }
+    }
+
+    const postEvictionCallbacks = options.postEvictionCallbacksDirect;
+    if (postEvictionCallbacks !== undefined) {
+      for (let i = 0; i < postEvictionCallbacks.length; i++) {
+        const registration = postEvictionCallbacks[i]!;
+        if (registration.evictionCallback === undefined) {
+          throw new Error(
+            `MemoryCacheEntryOptions.postEvictionCallbacks contains a registration with no evictionCallback at index ${i}.`,
+          );
+        }
+        entry.postEvictionCallbacks.push(registration);
+      }
+    }
+
+    return entry;
+  },
 } satisfies AugmentationSet<ICacheEntry>;
 
 // The method-form surface merged onto ICacheEntry (docs §28/§38): the concrete
