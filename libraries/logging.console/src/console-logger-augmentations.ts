@@ -19,7 +19,7 @@ import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { ConsoleLoggerProvider } from "./console-logger-provider";
+import { ConsoleLoggerProvider } from "./ConsoleLoggerProvider";
 
 /**
  * The `ConsoleLoggerExtensions` augmentation set for {@link ILoggingBuilder}
@@ -51,7 +51,7 @@ declare module "@rhombus-std/logging.core" {
   }
 }
 
-declare module "@rhombus-std/logging/internal/logging-builder" {
+declare module "@rhombus-std/logging/internal/LoggingBuilder" {
   interface LoggingBuilder {
     addConsole(): this;
   }

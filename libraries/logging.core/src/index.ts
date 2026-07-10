@@ -10,11 +10,11 @@
 
 export { EventId } from "./event-id";
 export type { EventIdLike } from "./event-id";
-export { LogLevel } from "./log-level";
+export { LogLevel } from "./LogLevel";
 
+export type { ILoggingBuilder } from "./ILoggingBuilder";
 export type { IExternalScopeProvider, ILogger } from "./logger";
 export type { ILoggerFactory, ILoggerProvider } from "./logger-factory";
-export type { ILoggingBuilder } from "./logging-builder";
 
 // Deferred message formatting — exported so a provider-side sink (once
 // providers land) can render or destructure a `FormattedLogValues` state.

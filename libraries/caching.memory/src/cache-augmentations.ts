@@ -22,7 +22,7 @@ import type {
 } from "@rhombus-std/caching.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
 
-declare module "./memory-cache" {
+declare module "./MemoryCache" {
   interface MemoryCache {
     get<T = unknown>(key: unknown): T | undefined;
     set<T>(key: unknown, value: T): T;

@@ -11,14 +11,14 @@
 // external dependency is @rhombus-std/primitives, for the `IChangeToken` type
 // an expiration token flows through.
 
-export { CacheItemPriority } from "./cache-item-priority";
-export { EvictionReason } from "./eviction-reason";
-export { PostEvictionCallbackRegistration } from "./post-eviction-callback-registration";
-export type { PostEvictionDelegate } from "./post-eviction-delegate";
+export { CacheItemPriority } from "./CacheItemPriority";
+export { EvictionReason } from "./EvictionReason";
+export { PostEvictionCallbackRegistration } from "./PostEvictionCallbackRegistration";
+export type { PostEvictionDelegate } from "./PostEvictionDelegate";
 
-export type { ICacheEntry } from "./cache-entry";
+export type { ICacheEntry } from "./ICacheEntry";
 export type { CacheTryGetResult, IMemoryCache } from "./memory-cache";
-export { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
+export { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
 
 export { CacheExtensions } from "./cache-augmentations";
 export { CacheEntryExtensions } from "./cache-entry-augmentations";

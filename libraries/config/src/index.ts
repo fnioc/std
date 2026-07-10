@@ -28,13 +28,13 @@ export { ConfigurationExtensions, exists } from "./configuration-augmentations";
 export { type ConfigurationDebugViewContext, ConfigurationRootExtensions } from "./configuration-root-augmentations";
 
 // Engine.
-export { ConfigurationBuilder } from "./configuration-builder";
 export { compareConfigurationKeys } from "./configuration-key-comparer";
-export { ConfigurationManager } from "./configuration-manager";
-export { ConfigurationProvider } from "./configuration-provider";
-export { ConfigurationReloadToken } from "./configuration-reload-token";
-export { ConfigurationRoot } from "./configuration-root";
 export { ConfigurationSection } from "./configuration-section";
+export { ConfigurationBuilder } from "./ConfigurationBuilder";
+export { ConfigurationManager } from "./ConfigurationManager";
+export { ConfigurationProvider } from "./ConfigurationProvider";
+export { ConfigurationReloadToken } from "./ConfigurationReloadToken";
+export { ConfigurationRoot } from "./ConfigurationRoot";
 
 // Memory provider. The re-export is side-effectful: importing this module
 // registers the `addInMemoryCollection` augmentation against the shared

@@ -33,8 +33,8 @@ import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
-import { LoggerFactory } from "./logger-factory";
-import { LoggingBuilder } from "./logging-builder";
+import { LoggerFactory } from "./LoggerFactory";
+import { LoggingBuilder } from "./LoggingBuilder";
 import { LOGGER_FACTORY_TOKEN } from "./tokens";
 
 // `addLogging` is a BRAND-NEW method name, so it must merge onto BOTH the

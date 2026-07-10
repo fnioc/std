@@ -61,10 +61,10 @@ export const EnvironmentVariablesExtensions = {
 
 registerAugmentations(nameof<IConfigurationBuilder>(), EnvironmentVariablesExtensions);
 
-export { EnvironmentVariablesConfigurationProvider } from "./environment-variables-configuration-provider";
 export {
   colonAndDotVariableNameTransformation,
   defaultVariableNameTransformation,
   EnvironmentVariablesConfigurationSource,
 } from "./environment-variables-configuration-source";
 export type { EnvironmentVariablesConfigurationSourceOptions } from "./environment-variables-configuration-source";
+export { EnvironmentVariablesConfigurationProvider } from "./EnvironmentVariablesConfigurationProvider";

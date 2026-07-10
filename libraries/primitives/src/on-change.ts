@@ -10,7 +10,7 @@
 // re-subscription loop itself (the load-bearing part) is otherwise mirrored
 // exactly.
 
-import type { IChangeToken } from "./change-token.js";
+import type { IChangeToken } from "./IChangeToken.js";
 
 /**
  * Produces an {@link IChangeToken}. `null`/`undefined` means "no token to

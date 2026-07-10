@@ -14,8 +14,8 @@
 import type { IConfigurationProvider, IConfigurationRoot, IConfigurationSection } from "@rhombus-std/config.core";
 import { applyAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
-import { ConfigurationManager } from "./configuration-manager";
-import { ConfigurationRoot } from "./configuration-root";
+import { ConfigurationManager } from "./ConfigurationManager";
+import { ConfigurationRoot } from "./ConfigurationRoot";
 
 /**
  * Data about the current item of the configuration, handed to the
@@ -100,13 +100,13 @@ export const ConfigurationRootExtensions = {
 // every wrapper/fake implementer. The fluent form is typed per concrete class
 // below; an interface-typed root uses the standalone
 // `ConfigurationRootExtensions.getDebugView` form.
-declare module "./configuration-root" {
+declare module "./ConfigurationRoot" {
   interface ConfigurationRoot {
     getDebugView(processValue?: (context: ConfigurationDebugViewContext) => string): string;
   }
 }
 
-declare module "./configuration-manager" {
+declare module "./ConfigurationManager" {
   interface ConfigurationManager {
     getDebugView(processValue?: (context: ConfigurationDebugViewContext) => string): string;
   }

@@ -28,10 +28,10 @@
 import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { ICacheEntry } from "./cache-entry";
 import { CacheEntryExtensions } from "./cache-entry-augmentations";
+import type { ICacheEntry } from "./ICacheEntry";
 import type { IMemoryCache } from "./memory-cache";
-import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
+import type { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
 
 /** Narrows the `expiration` union: an `IChangeToken` (not a `Date`/`number`). */
 function isChangeToken(value: unknown): value is IChangeToken {

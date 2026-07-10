@@ -16,14 +16,14 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { IHost } from "./host";
-import type { IHostBuilder } from "./host-builder";
+import type { IHost } from "./IHost";
+import type { IHostBuilder } from "./IHostBuilder";
 
 // The interface-side merge for this const's member lives HERE, beside the const
 // (rule 0.6). The runtime `HostingHostBuilderExtensions` merges its own members
 // onto `IHostBuilder` downstream; the class-side merge (so `HostBuilder`
 // SATISFIES the fully-merged interface) lives downstream next to that class.
-declare module "./host-builder" {
+declare module "./IHostBuilder" {
   interface IHostBuilder {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
   }

@@ -14,4 +14,4 @@ export { ConsoleLogger } from "./console-logger";
 // Side-effect + standalone surface: registers the `addConsole` augmentation against
 // the logging-builder token and exports the set (docs §38).
 export { ConsoleLoggerExtensions } from "./console-logger-augmentations";
-export { ConsoleLoggerProvider } from "./console-logger-provider";
+export { ConsoleLoggerProvider } from "./ConsoleLoggerProvider";

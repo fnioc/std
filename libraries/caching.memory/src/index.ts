@@ -31,9 +31,9 @@ import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 // `IMemoryCache`/`ICacheEntry` tokens, and the `@augment(nameof<…>())` decoration
 // beside MemoryCache/CacheEntry pulls them onto the prototypes.
 import "./cache-augmentations";
-import { MemoryCache } from "./memory-cache";
-import { MemoryCacheOptions } from "./memory-cache-options";
 import { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
+import { MemoryCache } from "./MemoryCache";
+import { MemoryCacheOptions } from "./MemoryCacheOptions";
 
 // Merge `addMemoryCache` onto core's `ServiceManifestBase` interface (the
 // surface a consumer holding `ServiceManifest<S>` resolves to) AND onto the
@@ -81,10 +81,10 @@ export const MemoryCacheServiceCollectionExtensions = {
 
 registerAugmentations(nameof<ServiceManifest>(), MemoryCacheServiceCollectionExtensions);
 
-export { MemoryCache } from "./memory-cache";
+export { MemoryCache } from "./MemoryCache";
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in
 // Abstractions); re-exported here for source compatibility.
 export { MemoryCacheEntryOptions } from "@rhombus-std/caching.core";
-export { MemoryCacheOptions } from "./memory-cache-options";
+export type { ISystemClock } from "./ISystemClock";
 export { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
-export type { ISystemClock } from "./system-clock";
+export { MemoryCacheOptions } from "./MemoryCacheOptions";

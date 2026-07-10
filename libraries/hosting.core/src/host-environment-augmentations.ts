@@ -15,12 +15,12 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { Environments } from "./environments";
-import type { IHostEnvironment } from "./host-environment";
+import type { IHostEnvironment } from "./IHostEnvironment";
 
 // The interface-side merge for the `IHostEnvironment` augmentation members lives
 // HERE, beside the const (rule 0.6). The runtime install onto the concrete
 // `HostingEnvironment` (and its class-side merge) live downstream.
-declare module "./host-environment" {
+declare module "./IHostEnvironment" {
   interface IHostEnvironment {
     isEnvironment(environmentName: string): boolean;
     isDevelopment(): boolean;

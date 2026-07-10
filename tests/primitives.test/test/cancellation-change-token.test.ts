@@ -1,7 +1,7 @@
 // Behavior tests for CancellationChangeToken -- backed by AbortSignal rather
 // than .NET's CancellationToken (see src/cancellation-change-token.ts).
 
-import { CancellationChangeToken } from "@rhombus-std/primitives/internal/cancellation-change-token";
+import { CancellationChangeToken } from "@rhombus-std/primitives/internal/CancellationChangeToken";
 import { describe, expect, test } from "bun:test";
 
 describe("CancellationChangeToken", () => {

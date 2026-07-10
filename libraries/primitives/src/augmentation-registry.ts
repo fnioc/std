@@ -27,7 +27,7 @@
 // never sees augmentations registered against the other.
 
 import { type AugmentationSet, installSet } from "./augmentations.js";
-import type { Token } from "./token.js";
+import type { Token } from "./Token.js";
 
 /**
  * The accumulated bag per token: a flat map of member name -> receiver-first

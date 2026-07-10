@@ -85,6 +85,6 @@ export const CommandLineConfigurationExtensions = {
 
 registerAugmentations(nameof<IConfigurationBuilder>(), CommandLineConfigurationExtensions);
 
-export { CommandLineConfigurationProvider } from "./command-line-configuration-provider";
 export { CommandLineConfigurationSource } from "./command-line-configuration-source";
 export type { CommandLineConfigurationSourceOptions } from "./command-line-configuration-source";
+export { CommandLineConfigurationProvider } from "./CommandLineConfigurationProvider";

@@ -25,8 +25,8 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { EventId } from "./event-id";
 import { formatLogValues, FormattedLogValues } from "./formatted-log-values";
-import { LogLevel } from "./log-level";
 import type { ILogger } from "./logger";
+import { LogLevel } from "./LogLevel";
 
 /** Routes a wrapper call to the primitive `ILogger.log`, splitting the optional leading error. */
 function emit(logger: ILogger, logLevel: LogLevel, first: string | Error, rest: readonly unknown[]): void {

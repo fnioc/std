@@ -25,9 +25,9 @@
 import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config.core";
 import { applyAugmentations } from "@rhombus-std/primitives";
 import type { AugmentationSet } from "@rhombus-std/primitives";
-import { ConfigurationManager } from "./configuration-manager";
-import { ConfigurationRoot } from "./configuration-root";
 import { ConfigurationSection } from "./configuration-section";
+import { ConfigurationManager } from "./ConfigurationManager";
+import { ConfigurationRoot } from "./ConfigurationRoot";
 
 /**
  * Whether `section` has a {@link IConfigurationSection.value} or at least one
@@ -127,7 +127,7 @@ export const ConfigurationExtensions = {
 // several-impls reasoning that kept ILogger's log* wrappers standalone-only
 // (docs §36/§38). The fluent form is typed per concrete class below; an
 // interface-typed value uses the standalone `ConfigurationExtensions.*` form.
-declare module "./configuration-root" {
+declare module "./ConfigurationRoot" {
   interface ConfigurationRoot {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigurationSection;
@@ -143,7 +143,7 @@ declare module "./configuration-section" {
   }
 }
 
-declare module "./configuration-manager" {
+declare module "./ConfigurationManager" {
   interface ConfigurationManager {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigurationSection;

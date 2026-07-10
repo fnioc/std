@@ -18,7 +18,7 @@ import type { IChangeToken } from "@rhombus-std/primitives";
 import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine, getSectionKey } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
-import type { ConfigurationRoot } from "./configuration-root";
+import type { ConfigurationRoot } from "./ConfigurationRoot";
 
 /**
  * A section of configuration values, identified by its full colon-delimited

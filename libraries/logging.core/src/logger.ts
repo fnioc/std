@@ -3,7 +3,7 @@
 
 import type { Func } from "@rhombus-toolkit/func";
 import type { EventId } from "./event-id";
-import type { LogLevel } from "./log-level";
+import type { LogLevel } from "./LogLevel";
 
 /**
  * Represents a type used to perform logging.

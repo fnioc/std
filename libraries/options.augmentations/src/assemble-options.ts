@@ -16,7 +16,7 @@ import type { Resolver, Token } from "@rhombus-std/di.core";
 import type { ConfigureOptions, PostConfigureOptions, ValidateOptions } from "@rhombus-std/options";
 import { Options, OptionsFactory } from "@rhombus-std/options";
 
-import { CompositeChangeToken } from "./composite-change-token.js";
+import { CompositeChangeToken } from "./CompositeChangeToken.js";
 import {
   changeTokenSourceToken,
   collectionToken,
@@ -24,7 +24,7 @@ import {
   postConfigureStepToken,
   validateStepToken,
 } from "./option-tokens.js";
-import type { OptionsChangeTokenSource } from "./options-change-token-source.js";
+import type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";
 
 /**
  * Assembles the `Options<T>` for `optionsToken` from the pipeline steps

@@ -90,7 +90,7 @@ declare module "@rhombus-std/logging.core" {
   }
 }
 
-declare module "./logging-builder" {
+declare module "./LoggingBuilder" {
   interface LoggingBuilder {
     addProvider(provider: ILoggerProvider): this;
     setMinimumLevel(level: LogLevel): this;

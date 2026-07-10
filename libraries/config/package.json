@@ -30,14 +30,14 @@
       "default": "./dist/index.js"
     },
     "./configuration-builder": {
-      "source": "./src/configuration-builder.ts",
-      "bun": "./dist/internal/configuration-builder.js",
-      "types": "./src/configuration-builder.ts"
+      "source": "./src/ConfigurationBuilder.ts",
+      "bun": "./dist/internal/ConfigurationBuilder.js",
+      "types": "./src/ConfigurationBuilder.ts"
     },
     "./configuration-manager": {
-      "source": "./src/configuration-manager.ts",
-      "bun": "./dist/internal/configuration-manager.js",
-      "types": "./src/configuration-manager.ts"
+      "source": "./src/ConfigurationManager.ts",
+      "bun": "./dist/internal/ConfigurationManager.js",
+      "types": "./src/ConfigurationManager.ts"
     },
     "./with-type-augment": {
       "source": "./src/with-type-augment.ts",

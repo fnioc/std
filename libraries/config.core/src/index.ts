@@ -5,11 +5,11 @@
 // ITryGetResult tuple type. Engine consumers (@rhombus-std/config) and provider
 // packages depend on these via `import type` without pulling any runtime.
 
-export type * from "./configuration";
-export type * from "./configuration-builder";
-export type * from "./configuration-manager";
-export type * from "./configuration-provider";
-export type * from "./configuration-root";
-export type * from "./configuration-section";
-export type * from "./configuration-source";
+export type * from "./IConfiguration";
+export type * from "./IConfigurationBuilder";
+export type * from "./IConfigurationManager";
+export type * from "./IConfigurationProvider";
+export type * from "./IConfigurationRoot";
+export type * from "./IConfigurationSection";
+export type * from "./IConfigurationSource";
 export type * from "./types";

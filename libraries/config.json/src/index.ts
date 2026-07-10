@@ -70,6 +70,6 @@ export const JsonConfigurationExtensions = {
 
 registerAugmentations(nameof<IConfigurationBuilder>(), JsonConfigurationExtensions);
 
-export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";
 export type { JsonConfigurationSourceOptions } from "./json-configuration-source";
+export { JsonConfigurationProvider } from "./JsonConfigurationProvider";

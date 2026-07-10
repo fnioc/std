@@ -43,7 +43,7 @@ export type { AddBuilder, ServiceManifestBase } from "@rhombus-std/di.core";
 // The internal `Scope` frame (cache + disposal + parent link) is deliberately NOT
 // exported: it is a pure implementation type, not public surface. A consumer sees
 // only the `ServiceProvider` interface a scope frame backs (#24).
-export { ServiceProviderClass } from "./scope.js";
+export { ServiceProviderClass } from "./ServiceProviderClass.js";
 
 export type {
   Ctor,

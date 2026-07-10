@@ -16,7 +16,7 @@
 // dist/with-type-augment.js.
 
 import type { IndexedSection } from "@rhombus-std/config.core";
-import { ConfigurationBuilder } from "./configuration-builder";
+import { ConfigurationBuilder } from "./ConfigurationBuilder";
 
 declare module "@rhombus-std/config/configuration-builder" {
   interface ConfigurationBuilder<T = IndexedSection> {

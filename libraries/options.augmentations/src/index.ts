@@ -36,8 +36,8 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 import { assembleOptions } from "./assemble-options.js";
-import { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
-import { ConfigurationConfigureOptions } from "./configuration-configure-options.js";
+import { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
+import { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
 import {
   changeTokenSourceToken,
   configureStepToken,
@@ -214,6 +214,6 @@ export const OptionsConfigurationServiceCollectionExtensions = {
 registerAugmentations(nameof<ServiceManifest>(), OptionsServiceCollectionExtensions);
 registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
 
-export { ConfigurationChangeTokenSource } from "./configuration-change-token-source.js";
-export { ConfigurationConfigureOptions } from "./configuration-configure-options.js";
-export type { OptionsChangeTokenSource } from "./options-change-token-source.js";
+export { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
+export { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
+export type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";

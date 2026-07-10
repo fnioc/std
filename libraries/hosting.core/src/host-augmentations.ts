@@ -17,8 +17,8 @@ import type { AugmentationSet } from "@rhombus-std/primitives";
 import { AbortController, registerAugmentations } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { IHost } from "./host";
-import type { IHostApplicationLifetime } from "./host-application-lifetime";
+import type { IHost } from "./IHost";
+import type { IHostApplicationLifetime } from "./IHostApplicationLifetime";
 import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
 
 // The interface-side merge for the `IHost` augmentation members lives HERE,
@@ -26,7 +26,7 @@ import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
 // holding `IHost` sees the method form. The runtime install onto the concrete
 // `Host` (and its class-side merge so the class still SATISFIES `IHost`) live
 // downstream in `@rhombus-std/hosting`.
-declare module "./host" {
+declare module "./IHost" {
   interface IHost {
     run(abortSignal?: AbortSignal): Promise<void>;
     runAsync(abortSignal?: AbortSignal): Promise<void>;

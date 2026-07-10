@@ -4,9 +4,9 @@
 
 import type { IHostBuilder } from "@rhombus-std/hosting.core";
 import { HostingHostBuilderExtensions } from "./builder-augmentations";
-import { HostApplicationBuilder } from "./host-application-builder";
-import { HostApplicationBuilderSettings } from "./host-application-builder-settings";
-import { HostBuilder } from "./host-builder";
+import { HostApplicationBuilder } from "./HostApplicationBuilder";
+import { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
+import { HostBuilder } from "./HostBuilder";
 
 /** Convenience factories for creating pre-configured builders. */
 export const Host = {

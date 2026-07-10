@@ -13,20 +13,20 @@
 import "./options-augmentations";
 
 // Metrics.
-export { InstrumentRule } from "./instrument-rule";
-export { METER_SCOPE_ALL, MeterScope } from "./meter-scope";
-export type { IMetricsBuilder } from "./metrics-builder";
-export { MetricsBuilderExtensions, MetricsOptionsExtensions } from "./metrics-builder-augmentations";
-export type { IMetricsListener, IObservableInstrumentsSource } from "./metrics-listener";
-export { MetricsOptions } from "./metrics-options";
+export type { IMetricsBuilder } from "./Metrics/IMetricsBuilder";
+export { InstrumentRule } from "./Metrics/InstrumentRule";
+export { METER_SCOPE_ALL, MeterScope } from "./Metrics/meter-scope";
+export { MetricsBuilderExtensions, MetricsOptionsExtensions } from "./Metrics/metrics-builder-augmentations";
+export type { IMetricsListener, IObservableInstrumentsSource } from "./Metrics/metrics-listener";
+export { MetricsOptions } from "./Metrics/MetricsOptions";
 
 // Tracing.
-export { ActivityListenerBuilder } from "./activity-listener-builder";
-export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./activity-source-scopes";
-export type { ITracingBuilder } from "./tracing-builder";
-export { TracingBuilderExtensions, TracingOptionsExtensions } from "./tracing-builder-augmentations";
-export { TracingOptions } from "./tracing-options";
-export { TracingRule } from "./tracing-rule";
+export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./Tracing/activity-source-scopes";
+export { ActivityListenerBuilder } from "./Tracing/ActivityListenerBuilder";
+export type { ITracingBuilder } from "./Tracing/ITracingBuilder";
+export { TracingBuilderExtensions, TracingOptionsExtensions } from "./Tracing/tracing-builder-augmentations";
+export { TracingOptions } from "./Tracing/TracingOptions";
+export { TracingRule } from "./Tracing/TracingRule";
 
 // The DI-slot token ABI shared with @rhombus-std/diagnostics, plus the
 // augmentation-registry tokens for the OPEN metrics/tracing builder receivers (§38).

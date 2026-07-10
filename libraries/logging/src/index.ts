@@ -19,8 +19,8 @@ export { LoggingBuilderExtensions } from "./builder-augmentations";
 // exports the set.
 export { LoggerFilterOptionsExtensions } from "./filter-augmentations";
 export { Logger } from "./logger";
-export { LoggerFactory } from "./logger-factory";
 export { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
-export { LoggingBuilder } from "./logging-builder";
+export { LoggerFactory } from "./LoggerFactory";
+export { LoggingBuilder } from "./LoggingBuilder";
 export { NullLogger, NullLoggerFactory, NullLoggerProvider } from "./null-logger";
 export { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN } from "./tokens";

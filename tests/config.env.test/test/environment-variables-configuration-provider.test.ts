@@ -9,11 +9,11 @@
 import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 import "@rhombus-std/config.env/internal/index";
-import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/environment-variables-configuration-provider";
 import {
   colonAndDotVariableNameTransformation,
   EnvironmentVariablesConfigurationSource,
 } from "@rhombus-std/config.env/internal/environment-variables-configuration-source";
+import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/EnvironmentVariablesConfigurationProvider";
 
 type EnvMap = Record<string, string | undefined>;
 
