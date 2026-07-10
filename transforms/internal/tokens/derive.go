@@ -39,7 +39,14 @@ func DeriveToken(ctx *Context, t *shimchecker.Type) (string, bool) {
 		return "", false
 	}
 
+	// Prefer the ALIAS symbol over the underlying symbol (`type.aliasSymbol ??
+	// type.getSymbol()`): a reference spelled through an alias (`ServiceManifest`,
+	// `type UserRepo = IRepository<User>`) tokenizes on the alias name, and an
+	// alias of an anonymous object literal has no underlying name at all.
 	symbol := t.Symbol()
+	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
+		symbol = alias.symbol
+	}
 	if symbol == nil {
 		return "", false
 	}
@@ -153,10 +160,29 @@ func literalText(t *shimchecker.Type) (string, bool) {
 	return "", false
 }
 
-// genericTypeArguments returns the checker-resolved type arguments of a generic
-// reference type, or nil for a non-generic type. Alias-applied generics are not
-// yet distinguished (the shim exposes no alias accessor); see the port notes.
+// genericTypeArguments returns the type arguments a generic reference was applied
+// with, or nil for a non-generic (or alias-winning) type.
+//
+// An alias instantiation is keyed on its ALIAS arguments, not the underlying
+// reference's: a bare alias (`type UserRepo = IRepository<User>`) tokenizes with
+// NO args even though the reference underneath sees `[User]`. A defaults-only
+// alias instantiation normalizes to the bare alias too — the checker records
+// `aliasTypeArguments` for a bare reference to a defaulted-generic alias
+// (`type SM<S = "singleton"> = …`) inconsistently (defaults pre-applied for a
+// same-file reference, absent for an imported one), yet both spell the identical
+// type and must derive the identical token, so every argument equal to its
+// parameter's declared default drops out.
 func genericTypeArguments(ctx *Context, t *shimchecker.Type) []*shimchecker.Type {
+	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
+		args := alias.typeArguments
+		if len(args) == 0 {
+			return nil
+		}
+		if aliasArgsAreDeclaredDefaults(ctx, alias.symbol, args) {
+			return nil
+		}
+		return args
+	}
 	if t.Flags()&shimchecker.TypeFlagsObject == 0 {
 		return nil
 	}
@@ -168,6 +194,40 @@ func genericTypeArguments(ctx *Context, t *shimchecker.Type) []*shimchecker.Type
 		return nil
 	}
 	return args
+}
+
+// aliasArgsAreDeclaredDefaults reports whether args is exactly the declared
+// parameter-default list of the alias — i.e. the instantiation is
+// indistinguishable from the bare alias. Compares by checker type identity: the
+// type of the declared default node is the interned type object the checker also
+// records as the applied argument. Any parameter without a default, an arity
+// mismatch, or a single non-default argument means arguments were genuinely
+// applied.
+func aliasArgsAreDeclaredDefaults(ctx *Context, aliasSymbol *shimast.Symbol, args []*shimchecker.Type) bool {
+	var decl *shimast.Node
+	for _, d := range aliasSymbol.Declarations {
+		if d.Kind == shimast.KindTypeAliasDeclaration {
+			decl = d
+			break
+		}
+	}
+	if decl == nil {
+		return false
+	}
+	parameters := decl.TypeParameters()
+	if len(parameters) != len(args) {
+		return false
+	}
+	for i, arg := range args {
+		defaultNode := parameters[i].AsTypeParameterDeclaration().DefaultType
+		if defaultNode == nil {
+			return false
+		}
+		if ctx.Checker.GetTypeFromTypeNode(defaultNode) != arg {
+			return false
+		}
+	}
+	return true
 }
 
 // primaryDeclaration picks the declaration a token anchors on, preferring an
