@@ -265,6 +265,36 @@ Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM
 (`scripts/build-package.ts`).
 
+### Two transformer engines — dual-track (§41)
+
+The four authoring-time transformers exist twice. The **ts-patch/TS5** sources
+(`libraries/*.transformer`) stay the **lint/typecheck gate** (`tspc --noEmit`, eslint, the `built`
+condition above) — unchanged. A **Go/`ttsc`** port under the root `transforms/` module
+(`go.mod` `github.com/fnioc/std/transforms`, one `cmd/ttsc-*` per plugin, shared `internal/`) is
+the **build/emit engine**: it lowers `nameof`/`add`/`addOptions`/`withType` into the shipped JS.
+The two must lower **identically — token strings byte-for-byte** (the parity invariant); code shape
+may differ. Go comes from **mise only** (`mise.toml` pin), never system-wide.
+
+- **Descriptor wiring** mirrors the canonical `ttsc` recipe: each transformer keeps its ts-patch
+  `.` entry and adds a `./ttsc` subpath → thin `ttsc.mjs` shim that `path.resolve`s the Go
+  `cmd/ttsc-<name>` source, plus a `"ttsc": { "plugin": { "transform": "…/ttsc" } }` marker.
+- **One native backend per pass** — `ttsc` errors on two plugins, so a consumer needing both di +
+  di-options wires ONE aggregate host (`cmd/ttsc-di-app`, `di.transformer.options/ttsc-app`).
+- **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
+  plugin as a `@ttsc/unplugin/bun` onLoad transform inside `Bun.build`: `buildPackage`'s
+  `ttscProject` (parallel to `tspcProject`, one XOR the other) via `ttscBunPlugin`. Toolchain pinned
+  by `ttscEnv` (`GOTOOLCHAIN=local`, `TTSC_GO_BINARY` from `mise which go`, disk-backed `GOTMPDIR`).
+- **Cache economics** — compiled sidecars cache at **repo-root** `node_modules/.cache/ttsc`
+  (~25 MB/binary, shared not per-package): ~5 min cold once per distinct plugin, ~3-4 s warm. CI
+  provisions Go via `jdx/mise-action` and restores this cache.
+- **Pilot** — only `caching.core` flips its emit to `ttscProject` (byte-identical dist; tspc twin
+  retained as `tsconfig.build.json`); full library-tier conversion is a measured follow-up.
+- **`transforms/go.work` is gitignored** (machine-specific abs paths); `ttsc` makes its own, so
+  `go.mod` has no `replace`. Parity: `tests/*.ttsc.e2e` (script `test:e2e`, self-skip without Go —
+  OUT of the default `bun --filter '*' test` gate) + the app example `expected.txt` byte-diff.
+- **Go gates** — `cd transforms && go build ./... && go vet ./... && go test ./... && gofmt -l .`
+  (needs mise Go on PATH and the machine-local `go.work`).
+
 ## Publishing
 
 **Publish with pnpm — never npm (or `bun publish`).** The dev→dist swap and the
