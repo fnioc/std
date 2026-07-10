@@ -17,12 +17,19 @@
 // (`GetCurrentStatistics`, the Meter counters), linked-entry tracking, and the
 // span-key `TryGetValue` overloads. None has a no-transformer consumer yet.
 
-import type { CacheTryGetResult, ICacheEntry, IMemoryCache } from "@rhombus-std/caching.core";
-import { CacheItemPriority, EvictionReason } from "@rhombus-std/caching.core";
+import {
+  CacheItemPriority,
+  type CacheTryGetResult,
+  EvictionReason,
+  type ICacheEntry,
+  type IMemoryCache,
+} from "@rhombus-std/caching.core";
 import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
 import type { Options } from "@rhombus-std/options";
 import { augment } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { Func } from "@rhombus-toolkit/func";
+import { assertNever } from "@rhombus-toolkit/type-guards";
 import { CacheEntry, type IMemoryCacheHost } from "./cache-entry";
 import type { MemoryCacheOptions } from "./MemoryCacheOptions";
 import { NullLogger } from "./null-logger";
@@ -249,7 +256,7 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     }
   }
 
-  #compact(removalTarget: number, computeSize: (entry: CacheEntry) => number): void {
+  #compact(removalTarget: number, computeSize: Func<[CacheEntry], number>): void {
     const toRemove: CacheEntry[] = [];
     const lowPriority: CacheEntry[] = [];
     const normalPriority: CacheEntry[] = [];
@@ -263,17 +270,24 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
         removed += computeSize(entry);
       } else {
         switch (entry.priority) {
-          case CacheItemPriority.Low:
+          case CacheItemPriority.Low: {
             lowPriority.push(entry);
             break;
-          case CacheItemPriority.Normal:
+          }
+          case CacheItemPriority.Normal: {
             normalPriority.push(entry);
             break;
-          case CacheItemPriority.High:
+          }
+          case CacheItemPriority.High: {
             highPriority.push(entry);
             break;
-          case CacheItemPriority.NeverRemove:
+          }
+          case CacheItemPriority.NeverRemove: {
             break;
+          }
+          default: {
+            assertNever(entry.priority);
+          }
         }
       }
     }

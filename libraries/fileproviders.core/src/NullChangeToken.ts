@@ -9,6 +9,7 @@
 // inline no-op `Disposable`.
 
 import type { IChangeToken } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 
 const NO_OP_DISPOSABLE: Disposable = { [Symbol.dispose]() {} };
 
@@ -40,7 +41,7 @@ export class NullChangeToken implements IChangeToken {
    * @param _state This parameter is ignored.
    * @returns A {@link Disposable} that no-ops on dispose.
    */
-  public registerChangeCallback(_callback: (state: unknown) => void, _state?: unknown): Disposable {
+  public registerChangeCallback(_callback: Func<[unknown], void>, _state?: unknown): Disposable {
     return NO_OP_DISPOSABLE;
   }
 }

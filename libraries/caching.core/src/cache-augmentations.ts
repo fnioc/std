@@ -25,9 +25,9 @@
 // `MemoryCacheEntryOptions` now lives in caching.core (as ME has it), so the
 // options TYPE is in scope here.
 
-import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
+import { type AugmentationSet, type IChangeToken, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { Func } from "@rhombus-toolkit/func";
 import { CacheEntryExtensions } from "./cache-entry-augmentations";
 import type { ICacheEntry } from "./ICacheEntry";
 import type { IMemoryCache } from "./memory-cache";
@@ -95,7 +95,7 @@ export const CacheExtensions = {
   getOrCreate<T>(
     cache: IMemoryCache,
     key: unknown,
-    factory: (entry: ICacheEntry) => T,
+    factory: Func<[ICacheEntry], T>,
   ): T | undefined {
     const result = cache.tryGetValue(key);
     if (result[0]) {
@@ -113,7 +113,7 @@ export const CacheExtensions = {
   async getOrCreateAsync<T>(
     cache: IMemoryCache,
     key: unknown,
-    factory: (entry: ICacheEntry) => Promise<T>,
+    factory: Func<[ICacheEntry], Promise<T>>,
   ): Promise<T | undefined> {
     const result = cache.tryGetValue(key);
     if (result[0]) {
@@ -147,7 +147,7 @@ export const CacheExtensions = {
   getOrCreateWithOptions<T>(
     cache: IMemoryCache,
     key: unknown,
-    factory: (entry: ICacheEntry) => T,
+    factory: Func<[ICacheEntry], T>,
     createOptions?: MemoryCacheEntryOptions,
   ): T | undefined {
     const result = cache.tryGetValue(key);
@@ -167,7 +167,7 @@ export const CacheExtensions = {
   async getOrCreateAsyncWithOptions<T>(
     cache: IMemoryCache,
     key: unknown,
-    factory: (entry: ICacheEntry) => Promise<T>,
+    factory: Func<[ICacheEntry], Promise<T>>,
     createOptions?: MemoryCacheEntryOptions,
   ): Promise<T | undefined> {
     const result = cache.tryGetValue(key);
@@ -196,17 +196,17 @@ declare module "./memory-cache" {
     set<T>(key: unknown, value: T, absoluteExpiration: Date): T;
     set<T>(key: unknown, value: T, relativeToNowMs: number): T;
     set<T>(key: unknown, value: T, expirationToken: IChangeToken): T;
-    getOrCreate<T>(key: unknown, factory: (entry: ICacheEntry) => T): T | undefined;
-    getOrCreateAsync<T>(key: unknown, factory: (entry: ICacheEntry) => Promise<T>): Promise<T | undefined>;
+    getOrCreate<T>(key: unknown, factory: Func<[ICacheEntry], T>): T | undefined;
+    getOrCreateAsync<T>(key: unknown, factory: Func<[ICacheEntry], Promise<T>>): Promise<T | undefined>;
     setWithOptions<T>(key: unknown, value: T, options?: MemoryCacheEntryOptions): T;
     getOrCreateWithOptions<T>(
       key: unknown,
-      factory: (entry: ICacheEntry) => T,
+      factory: Func<[ICacheEntry], T>,
       createOptions?: MemoryCacheEntryOptions,
     ): T | undefined;
     getOrCreateAsyncWithOptions<T>(
       key: unknown,
-      factory: (entry: ICacheEntry) => Promise<T>,
+      factory: Func<[ICacheEntry], Promise<T>>,
       createOptions?: MemoryCacheEntryOptions,
     ): Promise<T | undefined>;
   }

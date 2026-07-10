@@ -7,6 +7,7 @@
 import type { EventId, ILogger, LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
 import { augment } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { Func } from "@rhombus-toolkit/func";
 
 // Class-side type merge for the registry-installed `LoggerExtensions` methods —
 // same §36 reasoning as @rhombus-std/logging's NullLogger (no ILogger interface
@@ -22,7 +23,7 @@ class NullLoggerImpl implements ILogger {
     _eventId: EventId,
     _state: TState,
     _error: Error | undefined,
-    _formatter: (state: TState, error: Error | undefined) => string,
+    _formatter: Func<[TState, Error | undefined], string>,
   ): void {
     // discard
   }

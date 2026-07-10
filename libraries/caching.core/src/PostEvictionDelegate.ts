@@ -4,6 +4,8 @@
 // The reference `object key` / `object? value` map to `unknown`; `object?
 // state` (the state captured at registration) maps to `unknown`.
 
+import type { Func } from "@rhombus-toolkit/func";
+
 import type { EvictionReason } from "./EvictionReason";
 
 /**
@@ -14,9 +16,7 @@ import type { EvictionReason } from "./EvictionReason";
  * @param reason The {@link EvictionReason}.
  * @param state The state passed when the callback was registered.
  */
-export type PostEvictionDelegate = (
-  key: unknown,
-  value: unknown,
-  reason: EvictionReason,
-  state: unknown,
-) => void;
+export type PostEvictionDelegate = Func<
+  [key: unknown, value: unknown, reason: EvictionReason, state: unknown],
+  void
+>;

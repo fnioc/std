@@ -10,8 +10,7 @@
 // applies a whole `MemoryCacheEntryOptions` bag -- that TYPE now lives in
 // caching.core (as ME has it), so the helper is here rather than downstream.
 
-import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
+import { type AugmentationSet, type IChangeToken, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { CacheItemPriority } from "./CacheItemPriority";
 import type { ICacheEntry } from "./ICacheEntry";

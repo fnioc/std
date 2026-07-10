@@ -22,9 +22,9 @@
 // `MemoryCacheOptions` is a named import so its unqualified name resolves
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
 import type { AddBuilder, ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { Func } from "@rhombus-toolkit/func";
 // Brings the class-side type merges for the IMemoryCache/ICacheEntry convenience
 // wrappers into the program. The runtime install is the registry path (docs §38):
 // caching.core registers CacheExtensions/CacheEntryExtensions against the
@@ -48,11 +48,11 @@ declare module "@rhombus-std/di.core" {
      * {@link MemoryCacheOptions} eagerly at registration time. Returns the
      * manifest for chaining.
      */
-    addMemoryCache(setup?: (options: MemoryCacheOptions) => void): this;
+    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
-    addMemoryCache(setup?: (options: MemoryCacheOptions) => void): this;
+    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
   }
 }
 
@@ -64,7 +64,7 @@ declare module "@rhombus-std/di.core" {
 export const MemoryCacheServiceCollectionExtensions = {
   addMemoryCache(
     manifest: ServiceManifestClass<string>,
-    setup?: (options: MemoryCacheOptions) => void,
+    setup?: Func<[MemoryCacheOptions], void>,
   ): ServiceManifestClass<string> {
     const options = new MemoryCacheOptions();
     if (setup !== undefined) {
