@@ -33,7 +33,7 @@
     "!dist/internal"
   ],
   "scripts": {
-    "build": "bun run build.ts",
+    "build": "bun ../../scripts/build-lib.ts",
     "lint": "eslint ."
   },
   "publishConfig": {

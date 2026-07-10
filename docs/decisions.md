@@ -1709,3 +1709,44 @@ written: many were authored as a standalone `function` pulled into the literal b
 
 Behavior-neutral: the `declare module` merges, `registerAugmentations`/`applyAugmentations`
 installs, and runtime bodies are unchanged; the full gate stayed green with no test edits.
+
+## 43. Build args derive from the manifest; tsconfigs extend shared root fragments
+
+The 26 per-package `build.ts` files and the near-identical tsconfig bodies they sat beside were
+restatements of information the package manifests already carried. Both are consolidated; dist
+output was verified byte-identical before/after (sha256 over every `libraries/*/dist` file).
+
+- **One build entry point** — every `libraries/*` `build` script runs
+  `bun ../../scripts/build-lib.ts`, which typechecks (`tsc --noEmit -p tsconfig.json`) and then
+  derives the `buildPackage` arguments from `package.json`:
+  - `external` = `dependencies ∪ peerDependencies` — the §9/§38 runtime-identity invariant
+    expressed as a rule: every runtime workspace dep stays external; devDependencies inline
+    (which is how `config` folds in its extensionless-ESM vendored dep).
+  - `entrypoints`/`dtsConfigs` from the `exports` map: any subpath whose `import` condition is a
+    non-index `dist/*.js` adds `src/<n>.ts` + `rollup.<n>.dts.mjs` (one rolled d.ts per JS
+    entry, asserted).
+  - lowering engine by twin-config existence: `tsconfig.build.json` → tspc, `tsconfig.ttsc.json`
+    → ttsc (§40/§41).
+- **`rhombusBuild`** — an optional manifest field for the four genuine deviations, each with a
+  `//rhombusBuild` why-note beside it: `caching.core` `{lowering: "ttsc"}` (§41 pilot holds both
+  twin configs), `config.core` `{typesOnly: true}` (no JS bundle, asserted), `di.transformer`
+  `{inline: […]}` (dist-parity carve-out — its retired bespoke build inlined two declared
+  dependencies; aligning it to the rule is a published-bytes change, tracked as a follow-up),
+  `config.transformer` `{forbidImports: ["@rhombus-std/config"]}` (bundle must stay
+  @rhombus-std-free; the derived-external form makes the assert load-bearing, since a real
+  import now survives bundling and is caught). The other 22 packages carry no field.
+- **`scripts/build-all.ts` unchanged** — tiering and per-tier `bun --filter <names> build` keep
+  working because the per-package `build` script entry is preserved; per-package invocation
+  (`bun --filter '<pkg>' build`, `cd libraries/<pkg> && bun run build`) keeps working too.
+  Process isolation per package is load-bearing: the ttsc adapter mutates `process.env`
+  (GOROOT/GOTMPDIR), which an in-process parallel tier would race.
+- **tsconfig fragments** — `/tsconfig.lib.json` (the noEmit library typecheck profile) and
+  `/tsconfig.tspc.json` (the tspc lowering stage: `noEmit: false` + the ts-patch `plugins`
+  entry, hoistable because ts-patch resolves the transform specifier from the `-p` project dir,
+  where it is a declared devDep). Leaf `tsconfig.json` = extends + `include` (which must stay
+  leaf-side — relative include globs anchor to the declaring file); leaf `tsconfig.build.json` =
+  `extends: ["./tsconfig.json", "../../tsconfig.tspc.json"]` + `rootDir`/`outDir` (path options
+  stay leaf-side, and the emit stage needs `rootDir` so `.tspc-out/` mirrors `src/`).
+  `customConditions: ["built"]` stays leaf-side in the two transformer packages (§1/§9). The 18
+  `tsconfig.lint.json` files were functionally identical to their `tsconfig.json` (tests moved
+  to sibling packages long ago) — deleted, `lint` scripts repointed.

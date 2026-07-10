@@ -265,6 +265,16 @@ Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM
 (`scripts/build-package.ts`).
 
+**Build args are derived, not authored (§43).** There are no per-package `build.ts` files: every
+library's `build` script runs `scripts/build-lib.ts`, which derives the `buildPackage` args from
+the manifest — `external` = deps ∪ peers (the §9/§38 identity invariant as a rule; devDeps
+inline), entrypoints/dts configs from the `exports` map, lowering engine from twin-config
+existence (`tsconfig.build.json` → tspc, `tsconfig.ttsc.json` → ttsc). The optional
+`rhombusBuild` manifest field carries the four deviations (`lowering`/`typesOnly`/`inline`/
+`forbidImports`), each documented by a `//rhombusBuild` neighbor. Library tsconfigs extend the
+shared root fragments `tsconfig.lib.json` (typecheck profile) / `tsconfig.tspc.json` (lowering
+stage); `include`, `rootDir`/`outDir`, and `customConditions: ["built"]` stay leaf-side.
+
 ### Two transformer engines — dual-track (§41)
 
 The four authoring-time transformers exist twice. The **ts-patch/TS5** sources

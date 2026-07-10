@@ -29,8 +29,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build.ts",
+    "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "//rhombusBuild": "Pure-types package -- ships ZERO runtime (every consumer uses `import type`); the build emits no JS bundle and asserts none appears (§40).",
+  "rhombusBuild": {
+    "typesOnly": true
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*"
