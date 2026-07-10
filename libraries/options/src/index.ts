@@ -7,9 +7,9 @@
 
 export { Options } from "./options.js";
 
-export type { ConfigureOptions } from "./configure-options.js";
-export { OptionsFactory } from "./options-factory.js";
-export { OptionsValidationError } from "./options-validation-error.js";
-export type { PostConfigureOptions } from "./post-configure-options.js";
-export { ValidateOptionsResult } from "./validate-options-result.js";
-export type { ValidateOptions } from "./validate-options.js";
+export type { ConfigureOptions } from "./ConfigureOptions.js";
+export { OptionsFactory } from "./OptionsFactory.js";
+export { OptionsValidationError } from "./OptionsValidationError.js";
+export type { PostConfigureOptions } from "./PostConfigureOptions.js";
+export type { ValidateOptions } from "./ValidateOptions.js";
+export { ValidateOptionsResult } from "./ValidateOptionsResult.js";

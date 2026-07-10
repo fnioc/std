@@ -1,0 +1,12 @@
+{
+  "//": "The library typecheck profile: every libraries/* tsconfig.json extends this. Libraries never emit through tsc (publish artifacts come from scripts/build-lib.ts -- bun build + rollup-plugin-dts), so the emit-shaped base options are switched off here once instead of per package. `include` stays leaf-side: relative include globs resolve against the file that declares them, so hoisting it would anchor at the repo root. `types: []` pins the ZERO-ambient-platform-types program (docs/decisions.md §39/§44): without it tsc 5.9 auto-includes every node_modules/@types walking up from the package -- the root @types/bun -> bun-types -> @types/node -- and the gate silently compiles a different (looser) program than a bare published consumer sees. Every platform global a library touches must instead come from @rhombus-std/primitives' owned structural typings (abort/process/timers/streams) or a package-local compile-scope d.ts (node-builtins.d.ts).",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": []
+  }
+}

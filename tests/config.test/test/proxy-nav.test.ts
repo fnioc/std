@@ -1,8 +1,12 @@
 // Proxy integration: dot/bracket navigation over the Section tree via
 // @rhombus-toolkit/proxy-base's IndexAccessed, plus every guarded hazard.
 
-import { ConfigurationBuilder, ConfigurationRoot, ConfigurationSection } from "@rhombus-std/config";
-import type { IndexedSection } from "@rhombus-std/config";
+import {
+  ConfigurationBuilder,
+  ConfigurationRoot,
+  ConfigurationSection,
+  type IndexedSection,
+} from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 
 function navRoot(): IndexedSection {

@@ -15,26 +15,23 @@
 // collapse into their async forms -- JS cannot block a thread.
 
 import { MemoryConfigurationSource } from "@rhombus-std/config";
-import { RESOLVER_TOKEN } from "@rhombus-std/di.core";
-import type { Resolver } from "@rhombus-std/di.core";
+import { type Resolver, RESOLVER_TOKEN } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import type {
-  HostBuilderContext,
-  IHostApplicationLifetime,
-  IHostBuilder,
-  IHostEnvironment,
+import {
+  HOST_APPLICATION_LIFETIME_TOKEN,
+  type HostBuilderContext,
+  HostDefaults,
+  HostingAbstractionsHostExtensions,
+  type IHostApplicationLifetime,
+  type IHostBuilder,
+  type IHostEnvironment,
 } from "@rhombus-std/hosting.core";
-import { HostDefaults, HostingAbstractionsHostExtensions } from "@rhombus-std/hosting.core";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import { type AbortSignal, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
-import { ConsoleLifetime } from "./console-lifetime";
-import { ConsoleLifetimeOptions } from "./console-lifetime-options";
+import { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
 import {
   addDefaultServices,
   applyDefaultAppConfiguration,
@@ -46,8 +43,9 @@ import {
   HOST_LIFETIME_TOKEN,
   HOST_OPTIONS_CONFIGURE_TOKEN,
 } from "./framework-tokens";
-import type { HostOptions } from "./host-options";
-import { MetricsBuilder } from "./metrics-builder";
+import type { HostOptions } from "./HostOptions";
+import { ConsoleLifetime } from "./Internal/console-lifetime";
+import { MetricsBuilder } from "./MetricsBuilder";
 
 // The interface-side merge for this const's members lives HERE beside the const
 // (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core
@@ -60,7 +58,7 @@ import { MetricsBuilder } from "./metrics-builder";
 // the same module file (hosting.core augments it via `./host-builder`), or TS
 // treats the accumulated `this`-returning members as having unrelated this-types
 // and the concrete `HostBuilder` stops satisfying `implements IHostBuilder`.
-declare module "@rhombus-std/hosting.core/internal/host-builder" {
+declare module "@rhombus-std/hosting.core/internal/IHostBuilder" {
   interface IHostBuilder {
     configureDefaults(args?: readonly string[]): this;
     useEnvironment(environment: string): this;
@@ -173,7 +171,7 @@ export const HostingHostBuilderExtensions = {
   /**
    * Listens for Ctrl+C / SIGTERM / SIGQUIT and requests a graceful shutdown by
    * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
-   * default {@link import("./null-lifetime").NullLifetime}).
+   * default {@link import("./Internal/NullLifetime").NullLifetime}).
    */
   useConsoleLifetime(
     hostBuilder: IHostBuilder,

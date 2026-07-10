@@ -26,8 +26,28 @@
 // bus, and the registry silently splits -- a class decorated against one copy
 // never sees augmentations registered against the other.
 
+import type { Ctor, Func } from "@rhombus-toolkit/func";
+
 import { type AugmentationSet, installSet } from "./augmentations.js";
-import type { Token } from "./token.js";
+import type { Token } from "./Token.js";
+
+// Structural typings for the notify bus -- module-private on purpose: the bus
+// and its dispatched events never appear in a public signature, so unlike the
+// abort typings these are NOT barrel-exported. Same recipe as ./abort.ts:
+// library programs carry zero ambient platform types (docs/decisions.md §39),
+// so the platform `EventTarget`/`Event` values are pulled off `globalThis`
+// re-typed against the minimal member set this module actually uses.
+interface NotifyEvent {
+  readonly type: string;
+}
+interface NotifyEventTarget {
+  addEventListener(type: string, listener: Func<[], void>): void;
+  dispatchEvent(event: NotifyEvent): boolean;
+}
+const { EventTarget, Event } = globalThis as unknown as {
+  EventTarget: Ctor<[], NotifyEventTarget>;
+  Event: Ctor<[type: string], NotifyEvent>;
+};
 
 /**
  * The accumulated bag per token: a flat map of member name -> receiver-first
@@ -36,7 +56,7 @@ import type { Token } from "./token.js";
  * the precise typing is restored at the `registerAugmentations` call sites via
  * their `AugmentationSet<R>` argument and at the receiver class via `@augment`.
  */
-type Bag = Record<string, (receiver: never, ...args: never[]) => unknown>;
+type Bag = Record<string, Func<[receiver: never, ...args: never[]], unknown>>;
 
 /** One accumulated bag per token. */
 const bags = new Map<Token, Bag>();
@@ -94,7 +114,7 @@ export function augment(token: Token) {
       const bag = bags.get(token);
       if (bag) {
         installSet(
-          Ctor as unknown as new(...args: any[]) => any,
+          Ctor as unknown as Ctor<any[], any>,
           bag as unknown as AugmentationSet<any>,
         );
       }

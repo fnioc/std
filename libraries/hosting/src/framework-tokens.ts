@@ -21,16 +21,16 @@ export const CONFIGURATION_TOKEN: Token = "@rhombus-std/hosting/IConfiguration";
 /** Token the host's {@link import("@rhombus-std/hosting.core").IHostLifetime} is registered under. */
 export const HOST_LIFETIME_TOKEN: Token = "@rhombus-std/hosting/IHostLifetime";
 
-/** Token the resolved {@link import("./host-options").HostOptions} value is registered under. */
+/** Token the resolved {@link import("./HostOptions").HostOptions} value is registered under. */
 export const HOST_OPTIONS_TOKEN: Token = "@rhombus-std/hosting/HostOptions";
 
-/** Token the {@link import("./console-lifetime-options").ConsoleLifetimeOptions} value is registered under. */
+/** Token the {@link import("./ConsoleLifetimeOptions").ConsoleLifetimeOptions} value is registered under. */
 export const CONSOLE_LIFETIME_OPTIONS_TOKEN: Token = "@rhombus-std/hosting/ConsoleLifetimeOptions";
 
 /**
  * Collection token each `configureHostOptions` mutation registers under. The
  * composition resolves the whole set after `build()` and applies each to the
- * shared {@link import("./host-options").HostOptions} instance -- the
+ * shared {@link import("./HostOptions").HostOptions} instance -- the
  * container-mediated stand-in for the reference's
  * `Configure<HostOptions>` options-pipeline registration.
  */

@@ -13,4 +13,4 @@ export {
   LoggingBuilderExtensions,
 } from "./add-configuration";
 export { bindLoggerFilterOptions, parseLogLevel } from "./filter-options-binding";
-export { LoggingConfiguration } from "./logging-configuration";
+export { LoggingConfiguration } from "./LoggingConfiguration";

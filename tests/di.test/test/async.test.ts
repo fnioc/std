@@ -1,11 +1,12 @@
 import {
   AsyncDisposalRequiredError,
   AsyncResolutionRequiredError,
+  closeToken,
   NoSatisfiableSignatureError,
   ServiceManifest,
+  union,
   UnregisteredTokenError,
 } from "@rhombus-std/di";
-import { closeToken, union } from "@rhombus-std/di";
 import type { Token } from "@rhombus-std/di.core";
 import { describe, expect, test } from "bun:test";
 import { defineDeps } from "./fixtures.js";

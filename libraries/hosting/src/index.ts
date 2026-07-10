@@ -29,17 +29,17 @@ import "./host-augmentations";
 
 // The builders + factory facade.
 export { Host } from "./host";
-export { HostApplicationBuilder } from "./host-application-builder";
-export { HostApplicationBuilderSettings } from "./host-application-builder-settings";
-export { HostBuilder } from "./host-builder";
+export { HostApplicationBuilder } from "./HostApplicationBuilder";
+export { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
+export { HostBuilder } from "./HostBuilder";
 
 // Host runtime objects.
-export { BackgroundServiceExceptionBehavior } from "./background-service-exception-behavior";
-export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from "./console-lifetime";
-export { ConsoleLifetimeOptions } from "./console-lifetime-options";
-export { HostOptions } from "./host-options";
-export { MetricsBuilder } from "./metrics-builder";
-export { NullLifetime } from "./null-lifetime";
+export { BackgroundServiceExceptionBehavior } from "./BackgroundServiceExceptionBehavior";
+export { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
+export { HostOptions } from "./HostOptions";
+export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from "./Internal/console-lifetime";
+export { NullLifetime } from "./Internal/NullLifetime";
+export { MetricsBuilder } from "./MetricsBuilder";
 
 // The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).
 export { HostingHostBuilderExtensions, type ServiceProviderOptions } from "./builder-augmentations";

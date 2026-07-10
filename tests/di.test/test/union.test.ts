@@ -1,9 +1,13 @@
-import { NoSatisfiableSignatureError, NoSatisfiableUnionError, ServiceManifest } from "@rhombus-std/di";
-import { RESOLVER_TOKEN, union } from "@rhombus-std/di";
+import {
+  NoSatisfiableSignatureError,
+  NoSatisfiableUnionError,
+  RESOLVER_TOKEN,
+  ServiceManifest,
+  union,
+} from "@rhombus-std/di";
 import type { FactoryRef } from "@rhombus-std/di.core";
 import { describe, expect, test } from "bun:test";
-import { defineDeps } from "./fixtures.js";
-import { T } from "./fixtures.js";
+import { defineDeps, T } from "./fixtures.js";
 
 // Union slot resolution: first resolvable member wins; fallthrough when first
 // is unregistered; exhaustion throws NoSatisfiableUnionError.

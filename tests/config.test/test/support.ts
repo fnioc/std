@@ -4,8 +4,7 @@
 // production ConfigurationBuilder -> MemoryConfigurationSource ->
 // ConfigurationRoot path rather than hand-constructing an internal map.
 
-import { ConfigurationBuilder, type ConfigurationData } from "@rhombus-std/config";
-import type { IConfigurationRoot } from "@rhombus-std/config";
+import { ConfigurationBuilder, type ConfigurationData, type IConfigurationRoot } from "@rhombus-std/config";
 
 /**
  * Builds a ConfigurationRoot from in-memory `entries` (a Record or `[k,v]`

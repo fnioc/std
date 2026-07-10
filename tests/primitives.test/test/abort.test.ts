@@ -4,8 +4,7 @@
 // mutually assignable with the platform types (bun/node's, in this test
 // package's `types: ["bun"]` program).
 
-import { AbortController } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import { AbortController, type AbortSignal } from "@rhombus-std/primitives";
 import { describe, expect, test } from "bun:test";
 
 describe("AbortController (owned typings)", () => {

@@ -43,8 +43,15 @@
     "ttsc.mjs"
   ],
   "scripts": {
-    "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
+    "build": "bun ../../scripts/build-lib.ts",
     "lint": "eslint ."
+  },
+  "//rhombusBuild": "Dist-parity carve-out: the retired bespoke build inlined these two declared dependencies (typescript was its only external); aligning to the deps-stay-external rule changes published bytes and is a follow-up PR.",
+  "rhombusBuild": {
+    "inline": [
+      "@rhombus-std/primitives.transformer",
+      "@rhombus-toolkit/func"
+    ]
   },
   "dependencies": {
     "@rhombus-std/primitives.transformer": "workspace:^",
@@ -57,7 +64,8 @@
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0"
+    "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1"
   },
   "publishConfig": {
     "access": "public",

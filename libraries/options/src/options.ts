@@ -15,8 +15,8 @@
 // configure/validate/OptionsFactory pipeline IS now built -- in its own
 // files (`options-factory.ts` and the step interfaces), adopted per §4.5.
 
-import type { ChangeTokenProducer } from "@rhombus-std/primitives";
-import { ChangeToken } from "@rhombus-std/primitives";
+import { ChangeToken, type ChangeTokenProducer } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 
 /**
  * The current value of a bound options object -- collapses MEO's
@@ -39,7 +39,7 @@ export interface Options<T> {
    * @param listener Called with the new value each time it changes.
    * @returns A {@link Disposable} that unregisters `listener`.
    */
-  subscribe?(listener: (value: T) => void): Disposable;
+  subscribe?(listener: Func<[T], void>): Disposable;
 }
 
 /**
@@ -62,12 +62,12 @@ function of<T>(value: T): Options<T> {
  * @param produceToken Produces the change token to watch next -- see
  * {@link ChangeTokenProducer}.
  */
-function watch<T>(getValue: () => T, produceToken: ChangeTokenProducer): Options<T> {
+function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): Options<T> {
   return {
     get value(): T {
       return getValue();
     },
-    subscribe(listener: (value: T) => void): Disposable {
+    subscribe(listener: Func<[T], void>): Disposable {
       return ChangeToken.onChange(produceToken, () => listener(getValue()));
     },
   };

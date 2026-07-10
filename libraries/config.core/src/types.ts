@@ -4,7 +4,7 @@
 // pattern. Grouped here (rather than split further) because none of these has
 // its own ME source file to mirror -- see docs/decisions.md's split-oracle note.
 
-import type { IConfigurationSection } from "./configuration-section";
+import type { IConfigurationSection } from "./IConfigurationSection";
 
 /**
  * A node's subtree as a nested plain string object. A node that has children

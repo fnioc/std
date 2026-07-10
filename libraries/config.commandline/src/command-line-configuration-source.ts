@@ -17,7 +17,7 @@
 // full rationale.
 
 import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { CommandLineConfigurationProvider } from "./command-line-configuration-provider";
+import { CommandLineConfigurationProvider } from "./CommandLineConfigurationProvider";
 
 /** Options accepted by {@link CommandLineConfigurationSource}'s constructor. */
 export interface CommandLineConfigurationSourceOptions {

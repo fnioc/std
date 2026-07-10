@@ -18,6 +18,7 @@ import { ConfigurationBuilder, MemoryConfigurationBuilderExtensions } from "@rho
 import type { ServiceManifestBase } from "@rhombus-std/di.core";
 import { MetricsBuilder } from "@rhombus-std/diagnostics";
 import {
+  type IMetricsListener,
   METRICS_LISTENER_TOKEN,
   MetricsBuilderExtensions,
   MetricsOptions,
@@ -25,7 +26,6 @@ import {
   TracingOptions,
   TracingOptionsExtensions,
 } from "@rhombus-std/diagnostics.core";
-import type { IMetricsListener } from "@rhombus-std/diagnostics.core";
 import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from "@rhombus-std/logging";
 import { LogLevel } from "@rhombus-std/logging.core";
 import { describe, expect, test } from "bun:test";

@@ -18,21 +18,21 @@
 // in `@rhombus-std/hosting`) pull those bags onto their prototypes via `@augment`.
 
 // Core contracts.
-export type { IHost } from "./host";
-export type { IHostApplicationBuilder } from "./host-application-builder";
-export type { IHostApplicationLifetime } from "./host-application-lifetime";
-export type { IHostBuilder } from "./host-builder";
-export type { HostBuilderContext } from "./host-builder-context";
-export type { IHostEnvironment } from "./host-environment";
-export type { IHostLifetime } from "./host-lifetime";
-export type { IHostedLifecycleService } from "./hosted-lifecycle-service";
-export type { IHostedService } from "./hosted-service";
+export type { HostBuilderContext } from "./HostBuilderContext";
+export type { IHost } from "./IHost";
+export type { IHostApplicationBuilder } from "./IHostApplicationBuilder";
+export type { IHostApplicationLifetime } from "./IHostApplicationLifetime";
+export type { IHostBuilder } from "./IHostBuilder";
+export type { IHostedLifecycleService } from "./IHostedLifecycleService";
+export type { IHostedService } from "./IHostedService";
+export type { IHostEnvironment } from "./IHostEnvironment";
+export type { IHostLifetime } from "./IHostLifetime";
 
 // Concrete values the reference ships in the abstractions package.
-export { BackgroundService } from "./background-service";
+export { BackgroundService } from "./BackgroundService";
 export { Environments } from "./environments";
-export { HostAbortedException } from "./host-aborted-exception";
 export { HostDefaults } from "./host-defaults";
+export { HostAbortedException } from "./HostAbortedException";
 
 // The shared DI-slot token ABI (registration + resolution travel through these),
 // plus the augmentation-registry tokens for the OPEN host/builder/environment

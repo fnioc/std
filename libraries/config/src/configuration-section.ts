@@ -15,10 +15,11 @@
 
 import type { ConfigObject, IConfiguration, IConfigurationSection, IndexedSection } from "@rhombus-std/config.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine, getSectionKey } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
-import type { ConfigurationRoot } from "./configuration-root";
+import type { ConfigurationRoot } from "./ConfigurationRoot";
 
 /**
  * A section of configuration values, identified by its full colon-delimited
@@ -57,8 +58,8 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
   }
 
   public get(path: string): string | undefined;
-  public get<T>(path: string, factory: (value: string) => T): T | undefined;
-  public get<T>(path: string, factory?: (value: string) => T): (string | T) | undefined {
+  public get<T>(path: string, factory: Func<[string], T>): T | undefined;
+  public get<T>(path: string, factory?: Func<[string], T>): (string | T) | undefined {
     const raw = this.#root.get(combine(this.#path, path));
     if (raw === undefined) {
       return undefined;

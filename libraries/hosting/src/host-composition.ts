@@ -24,15 +24,19 @@
 import type { IConfiguration } from "@rhombus-std/config.core";
 import type { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProvider } from "@rhombus-std/di.core";
-import type { IHost, IHostLifetime } from "@rhombus-std/hosting.core";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
-import { Environments, HostDefaults } from "@rhombus-std/hosting.core";
-import type { HostBuilderContext } from "@rhombus-std/hosting.core";
+import {
+  Environments,
+  HOST_APPLICATION_LIFETIME_TOKEN,
+  type HostBuilderContext,
+  HostDefaults,
+  type IHost,
+  type IHostLifetime,
+} from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from "@rhombus-std/logging";
 import type { ILoggerProvider } from "@rhombus-std/logging.core";
+import { process } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { isAbsolute, resolve as resolvePath } from "node:path";
-import { ApplicationLifetime } from "./application-lifetime";
 import {
   CONFIGURATION_TOKEN,
   HOST_BUILDER_CONTEXT_TOKEN,
@@ -41,10 +45,11 @@ import {
   HOST_OPTIONS_CONFIGURE_TOKEN,
   HOST_OPTIONS_TOKEN,
 } from "./framework-tokens";
-import { HostOptions } from "./host-options";
-import { HostingEnvironment } from "./hosting-environment";
-import { Host } from "./internal-host";
-import { NullLifetime } from "./null-lifetime";
+import { HostOptions } from "./HostOptions";
+import { ApplicationLifetime } from "./Internal/ApplicationLifetime";
+import { Host } from "./Internal/Host";
+import { HostingEnvironment } from "./Internal/HostingEnvironment";
+import { NullLifetime } from "./Internal/NullLifetime";
 
 /** The category the internal host writes its lifecycle log messages under. */
 export const HOST_LOGGER_CATEGORY = "Rhombus.Hosting.Host";

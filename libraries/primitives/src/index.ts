@@ -4,13 +4,18 @@
 //
 // StringValues/StringSegment are NOT ported yet -- see the README.
 
-export { AbortController } from "./abort.js";
+export { AbortController, neverSignal } from "./abort.js";
 export type { AbortControllerConstructor, AbortSignal } from "./abort.js";
 export { augment, registerAugmentations } from "./augmentation-registry.js";
 export { applyAugmentations } from "./augmentations.js";
 export type { AugmentationSet } from "./augmentations.js";
-export { CancellationChangeToken } from "./cancellation-change-token.js";
-export type { IChangeToken } from "./change-token.js";
+export { CancellationChangeToken } from "./CancellationChangeToken.js";
+export type { IChangeToken } from "./IChangeToken.js";
 export { ChangeToken } from "./on-change.js";
 export type { ChangeTokenProducer } from "./on-change.js";
-export type { Token } from "./token.js";
+export { process } from "./process.js";
+export type { ProcessLike } from "./process.js";
+export type { ReadableStream } from "./streams.js";
+export { clearTimeout, setTimeout } from "./timers.js";
+export type { TimeoutHandle } from "./timers.js";
+export type { Token } from "./Token.js";

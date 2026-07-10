@@ -7,7 +7,7 @@
 // ported (see the README): they are perf/diagnostic surface with no
 // no-transformer consumer yet.
 
-import type { ICacheEntry } from "./cache-entry";
+import type { ICacheEntry } from "./ICacheEntry";
 
 /**
  * The result of {@link IMemoryCache.tryGetValue}: `[false]` on a miss,

@@ -35,7 +35,7 @@
     "!dist/internal"
   ],
   "scripts": {
-    "build": "tsc --noEmit -p tsconfig.json && bun run build.ts",
+    "build": "bun ../../scripts/build-lib.ts",
     "lint": "eslint ."
   },
   "publishConfig": {

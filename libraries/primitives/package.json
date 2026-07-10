@@ -34,8 +34,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "publishConfig": {
     "access": "public",
@@ -49,5 +49,8 @@
         "default": "./dist/index.js"
       }
     }
+  },
+  "dependencies": {
+    "@rhombus-toolkit/func": "^3.5.3"
   }
 }

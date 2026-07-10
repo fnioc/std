@@ -43,17 +43,25 @@
     "ttsc.mjs"
   ],
   "scripts": {
-    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "//rhombusBuild": "The runtime bundle must be @rhombus-std-free: the only \"@rhombus-std/config\" occurrence is the codegen'd import-specifier STRING the transformer emits, never a real ESM import.",
+  "rhombusBuild": {
+    "forbidImports": [
+      "@rhombus-std/config"
+    ]
   },
   "peerDependencies": {
     "@rhombus-std/config": "workspace:^",
     "typescript": ">=5.2"
   },
+  "dependencies": {},
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
-    "ts-patch": "^3.3.0"
+    "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1"
   },
   "publishConfig": {
     "access": "public",

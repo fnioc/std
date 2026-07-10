@@ -116,7 +116,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
    * last-wins bare-T resolution but would pollute collection aggregation
    * (`Array<T>` / `Iterable<T>`), which enumerates every registration of T.
    */
-  #scopedContinuation(applyScope: (scope: Scopes) => void): AddBuilder<Scopes> {
+  #scopedContinuation(applyScope: Func<[scope: Scopes], void>): AddBuilder<Scopes> {
     return {
       as<S extends Scopes>(scope?: S): void {
         // The lowered form always passes a value arg; the authored type-arg-only

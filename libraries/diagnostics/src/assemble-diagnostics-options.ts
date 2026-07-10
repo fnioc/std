@@ -12,9 +12,9 @@
 
 import type { Resolver, Token } from "@rhombus-std/di.core";
 import { collectionToken } from "@rhombus-std/diagnostics.core";
-import { Options } from "@rhombus-std/options";
-import type { ConfigureOptions } from "@rhombus-std/options";
+import { type ConfigureOptions, Options } from "@rhombus-std/options";
 import type { OptionsChangeTokenSource } from "@rhombus-std/options.augmentations";
+import type { Func } from "@rhombus-toolkit/func";
 
 import { CompositeChangeToken } from "./composite-change-token";
 
@@ -31,7 +31,7 @@ export function assembleDiagnosticsOptions<T>(
   resolver: Resolver,
   configureToken: Token,
   sourceToken: Token,
-  makeBase: () => T,
+  makeBase: Func<[], T>,
 ): Options<T> {
   const steps = resolver.resolve<readonly ConfigureOptions<T>[]>(collectionToken(configureToken));
   const sources = resolver.resolve<readonly OptionsChangeTokenSource[]>(collectionToken(sourceToken));

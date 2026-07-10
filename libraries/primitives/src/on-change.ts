@@ -10,24 +10,26 @@
 // re-subscription loop itself (the load-bearing part) is otherwise mirrored
 // exactly.
 
-import type { IChangeToken } from "./change-token.js";
+import type { Func } from "@rhombus-toolkit/func";
+
+import type { IChangeToken } from "./IChangeToken.js";
 
 /**
  * Produces an {@link IChangeToken}. `null`/`undefined` means "no token to
  * subscribe to right now" -- `onChange` skips registration until a
  * subsequent call returns one.
  */
-export type ChangeTokenProducer = () => IChangeToken | null | undefined;
+export type ChangeTokenProducer = Func<[], IChangeToken | null | undefined>;
 
 class ChangeTokenRegistration<TState> {
   #disposable: Disposable | undefined;
   #disposed = false;
 
   readonly #produceToken: ChangeTokenProducer;
-  readonly #consumeToken: (state: TState) => void;
+  readonly #consumeToken: Func<[state: TState], void>;
   readonly #state: TState;
 
-  public constructor(produceToken: ChangeTokenProducer, consumeToken: (state: TState) => void, state: TState) {
+  public constructor(produceToken: ChangeTokenProducer, consumeToken: Func<[state: TState], void>, state: TState) {
     this.#produceToken = produceToken;
     this.#consumeToken = consumeToken;
     this.#state = state;
@@ -100,7 +102,7 @@ export const ChangeToken = {
    */
   onChange<TState = undefined>(
     produceToken: ChangeTokenProducer,
-    consumeToken: (state: TState) => void,
+    consumeToken: Func<[state: TState], void>,
     state?: TState,
   ): Disposable {
     return new ChangeTokenRegistration(produceToken, consumeToken, state as TState);

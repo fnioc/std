@@ -1,8 +1,0 @@
-{
-  "//": "Lint-time typecheck config: identical to tsconfig.json but without the src-only rootDir. Tests moved out to @rhombus-std/options.test (tests/options.test/), which type-checks itself via its own tsconfig.json.",
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "."
-  },
-  "include": ["src/**/*"]
-}

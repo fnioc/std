@@ -26,8 +26,7 @@ import {
 } from "@rhombus-std/primitives.transformer";
 import type { Func } from "@rhombus-toolkit/func";
 import ts from "typescript";
-import { DiagnosticCode, error } from "./diagnostics.js";
-import type { DiagnosticSink } from "./diagnostics.js";
+import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
 import { literalExpression, type LowerContext, lowerStatement } from "./lower.js";
 
 /**

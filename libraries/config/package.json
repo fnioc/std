@@ -30,14 +30,14 @@
       "default": "./dist/index.js"
     },
     "./configuration-builder": {
-      "source": "./src/configuration-builder.ts",
-      "bun": "./dist/internal/configuration-builder.js",
-      "types": "./src/configuration-builder.ts"
+      "source": "./src/ConfigurationBuilder.ts",
+      "bun": "./dist/internal/ConfigurationBuilder.js",
+      "types": "./src/ConfigurationBuilder.ts"
     },
     "./configuration-manager": {
-      "source": "./src/configuration-manager.ts",
-      "bun": "./dist/internal/configuration-manager.js",
-      "types": "./src/configuration-manager.ts"
+      "source": "./src/ConfigurationManager.ts",
+      "bun": "./dist/internal/ConfigurationManager.js",
+      "types": "./src/ConfigurationManager.ts"
     },
     "./with-type-augment": {
       "source": "./src/with-type-augment.ts",
@@ -57,12 +57,14 @@
     "!dist/internal"
   ],
   "scripts": {
-    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@rhombus-std/config.core": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3",
+    "@rhombus-toolkit/type-guards": "^1.3.4"
   },
   "devDependencies": {
     "@rhombus-std/primitives.transformer": "workspace:*",

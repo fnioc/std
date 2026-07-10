@@ -46,7 +46,7 @@
     "ttsc-app.mjs"
   ],
   "scripts": {
-    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
+    "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -61,7 +61,8 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0"
+    "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1"
   },
   "publishConfig": {
     "access": "public",

@@ -5,7 +5,7 @@
 // optionality handling is folded in directly here.
 
 import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { JsonConfigurationProvider } from "./json-configuration-provider";
+import { JsonConfigurationProvider } from "./JsonConfigurationProvider";
 
 /** Options accepted by {@link JsonConfigurationSource}'s constructor. */
 export interface JsonConfigurationSourceOptions {

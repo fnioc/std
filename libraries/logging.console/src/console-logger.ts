@@ -13,11 +13,11 @@
 // i.e. `<level>: <category>[<eventId>]`, then the message on its own
 // padded line (padding = the width of `<level>: `).
 
-import type { EventId, ILogger, LoggerExtensionMethods } from "@rhombus-std/logging.core";
-import { LogLevel } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
+import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
+import { augment, process } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
+import { assertNever } from "@rhombus-toolkit/type-guards";
 
 /**
  * The four-character level names of the reference simple console format.
@@ -43,8 +43,13 @@ function logLevelString(logLevel: LogLevel): string {
     case LogLevel.Critical: {
       return "crit";
     }
-    default: {
+    case LogLevel.None: {
+      // A valid enum member that must never reach the formatter -- isEnabled
+      // filters it before log() gets here.
       throw new RangeError(`Invalid log level: ${logLevel}.`);
+    }
+    default: {
+      assertNever(logLevel);
     }
   }
 }
@@ -61,10 +66,10 @@ export interface ConsoleLogger extends LoggerExtensionMethods {}
 /** An {@link ILogger} that writes the simple console format to stdout. */
 @augment(nameof<ILogger>())
 export class ConsoleLogger implements ILogger {
-  private readonly category: string;
+  readonly #category: string;
 
   public constructor(category: string) {
-    this.category = category;
+    this.#category = category;
   }
 
   public log<TState>(
@@ -78,7 +83,7 @@ export class ConsoleLogger implements ILogger {
       return;
     }
 
-    let entry = `${logLevelString(logLevel)}: ${this.category}[${eventId.id}]\n`
+    let entry = `${logLevelString(logLevel)}: ${this.#category}[${eventId.id}]\n`
       + `${MESSAGE_PADDING}${formatter(state, error)}\n`;
     if (error !== undefined) {
       // The reference appends the exception on its own line after the message.

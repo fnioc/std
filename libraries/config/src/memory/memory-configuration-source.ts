@@ -3,7 +3,7 @@
 // an in-memory source is a core building block, not an optional add-on.
 
 import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { MemoryConfigurationProvider } from "./memory-configuration-provider";
+import { MemoryConfigurationProvider } from "./MemoryConfigurationProvider";
 
 /**
  * In-memory initial data: either an iterable of `[key, value]` pairs (a `Map`,

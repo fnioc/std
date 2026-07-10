@@ -10,9 +10,10 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3",
     "ts-patch": "^3.3.0"
   }
 }

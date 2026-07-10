@@ -1,12 +1,6 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.lib.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
     // Resolve `@rhombus-std/di.core` + `@rhombus-std/di.transformer` to their BUILT
     // `.d.ts` (the `built` condition), NOT source. This program pulls in
     // di.transformer's `declare module "@rhombus-std/di.core"` augmentation (via the

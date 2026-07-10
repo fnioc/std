@@ -2,7 +2,7 @@
 // load-bearing part: a fired token must produce a fresh registration, and
 // state must flow through untouched.
 
-import type { IChangeToken } from "@rhombus-std/primitives/internal/change-token";
+import type { IChangeToken } from "@rhombus-std/primitives/internal/IChangeToken";
 import { ChangeToken } from "@rhombus-std/primitives/internal/on-change";
 import { describe, expect, test } from "bun:test";
 

@@ -1,4 +1,5 @@
 import { closeToken, ServiceManifest, typeArg } from "@rhombus-std/di";
+import type { Func } from "@rhombus-toolkit/func";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { type CompiledProject, compileWithTransformer } from "./harness.js";
 
@@ -185,12 +186,12 @@ interface LoadedRepo {
   readonly entityToken: string;
 }
 interface LoadedObservations {
-  readonly root: { resolve: (token: string) => unknown };
+  readonly root: { resolve: Func<[token: string], unknown> };
   readonly orderA: LoadedRepo;
   readonly orderB: LoadedRepo;
   readonly invoice: LoadedRepo;
   readonly user: LoadedRepo;
-  readonly orderCat: { tag: (msg: string) => string; category: string };
+  readonly orderCat: { tag: Func<[msg: string], string>; category: string };
   readonly invoiceCat: { category: string };
   readonly auditLine: string;
   readonly logger: { readonly lines: readonly string[] };
@@ -254,7 +255,7 @@ describe("emit contract — open-generics lowered ABI", () => {
 describe("behavior — multiple closings against the real di engine", () => {
   test("each closing is a distinct per-closing singleton with correct closed deps", async () => {
     const app = await project.load("app.js");
-    const obs = (app.observe as () => LoadedObservations)();
+    const obs = (app.observe as Func<[], LoadedObservations>)();
 
     // Same closing → same instance (singleton caches per CLOSED token).
     expect(obs.orderA).toBe(obs.orderB);
@@ -271,7 +272,7 @@ describe("behavior — multiple closings against the real di engine", () => {
 
   test("exact registration beats the open fallback", async () => {
     const app = await project.load("app.js");
-    const obs = (app.observe as () => LoadedObservations)();
+    const obs = (app.observe as Func<[], LoadedObservations>)();
     expect(obs.user.kind).toBe("special");
     expect(obs.user.entityToken).toBe("special:User");
     // Sibling closings still fall back to the open registration.
@@ -280,7 +281,7 @@ describe("behavior — multiple closings against the real di engine", () => {
 
   test("ILogger<T>-style witness: category = the closing's arg token", async () => {
     const app = await project.load("app.js");
-    const obs = (app.observe as () => LoadedObservations)();
+    const obs = (app.observe as Func<[], LoadedObservations>)();
     expect(obs.orderCat.category).toBe(T.order);
     expect(obs.invoiceCat.category).toBe(T.invoice);
     expect(obs.orderCat.tag("hi")).toBe(`[${T.order}] hi`);
@@ -292,7 +293,7 @@ describe("behavior — multiple closings against the real di engine", () => {
 describe("ABI unification — manual path ↔ transformer-derived tokens", () => {
   test("authored resolve closes the MANUAL template; its dep closes the authored open reg", async () => {
     const app = await project.load("app.js");
-    const obs = (app.observe as () => LoadedObservations)();
+    const obs = (app.observe as Func<[], LoadedObservations>)();
     // AuditTrail was registered plugin-lessly (hand-written template token +
     // typeArg(1) signature); resolve<IAudit<Order>>() reached it, and its
     // `IRepository<$1>` dep closed against the transformer-authored open
@@ -302,7 +303,7 @@ describe("ABI unification — manual path ↔ transformer-derived tokens", () =>
 
   test("manually-computed closeToken hits the transformer-authored open registration", async () => {
     const app = await project.load("app.js");
-    const obs = (app.observe as () => LoadedObservations)();
+    const obs = (app.observe as Func<[], LoadedObservations>)();
     // closeToken renders the same canonical string the transformer derives, so
     // a plugin-less consumer addresses the compiled graph directly.
     const viaManualToken = obs.root.resolve(closeToken(T.repoBase, T.order));

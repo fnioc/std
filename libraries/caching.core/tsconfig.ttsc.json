@@ -3,6 +3,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
+    "rootDir": "./src",
     "outDir": ".ttsc-out",
     "plugins": [
       { "transform": "@rhombus-std/primitives.transformer/ttsc" }

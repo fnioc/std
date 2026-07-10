@@ -7,17 +7,18 @@
 // cleanup dance, and reloading with a different map fully replaces the data.
 
 import { ConfigurationBuilder, ConfigurationManager } from "@rhombus-std/config";
+import type { Func } from "@rhombus-toolkit/func";
 import { describe, expect, test } from "bun:test";
 import "@rhombus-std/config.env/internal/index";
-import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/environment-variables-configuration-provider";
 import {
   colonAndDotVariableNameTransformation,
   EnvironmentVariablesConfigurationSource,
 } from "@rhombus-std/config.env/internal/environment-variables-configuration-source";
+import { EnvironmentVariablesConfigurationProvider } from "@rhombus-std/config.env/internal/EnvironmentVariablesConfigurationProvider";
 
 type EnvMap = Record<string, string | undefined>;
 
-function providerOf(env: EnvMap, options?: { prefix?: string; variableNameTransformation?: (name: string) => string }) {
+function providerOf(env: EnvMap, options?: { prefix?: string; variableNameTransformation?: Func<[string], string> }) {
   const provider = new EnvironmentVariablesConfigurationProvider(
     new EnvironmentVariablesConfigurationSource({ ...options, env }),
   );

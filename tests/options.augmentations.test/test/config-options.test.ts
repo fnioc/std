@@ -2,8 +2,7 @@
 // the container, and observe reactivity across a reload -- the config -> Options
 // bridge (#40) exercised through its public authoring surface only.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import type { IConfigurationRoot } from "@rhombus-std/config";
+import { ConfigurationBuilder, type IConfigurationRoot } from "@rhombus-std/config";
 import { ServiceManifest } from "@rhombus-std/di";
 import type { Options } from "@rhombus-std/options";
 import "@rhombus-std/options.augmentations";

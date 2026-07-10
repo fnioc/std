@@ -1,12 +1,11 @@
 // Compile-time regression coverage for the runtime `Schema` + `Infer` +
 // `OPTIONAL` design. `bun test` does not type-check anything; what makes these
 // assertions load-bearing is the package's `lint` script running
-// `tsc -p tsconfig.lint.json` (which includes test/**/*). The `@ts-expect-error`
+// `tsc -p tsconfig.json` (which includes test/**/*). The `@ts-expect-error`
 // lines below fail the build with "Unused '@ts-expect-error' directive" if the
 // types ever silently loosen.
 
-import { OPTIONAL } from "@rhombus-std/config";
-import type { Infer, Schema } from "@rhombus-std/config";
+import { type Infer, OPTIONAL, type Schema } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 
 // A valid schema authored inline with the OPTIONAL symbol wrapper compiles, and

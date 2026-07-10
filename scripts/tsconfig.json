@@ -1,0 +1,13 @@
+{
+  "//": "Repo tooling runs under bun and is never published, so unlike the libraries (docs/decisions.md §39: zero ambient platform types) this program takes the bun types explicitly. Without this file the scripts fall into the IDE's inferred project, which flags every `Bun`/`import.meta.dir` use.",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["bun"]
+  },
+  "include": ["*.ts"]
+}

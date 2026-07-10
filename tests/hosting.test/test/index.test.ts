@@ -5,13 +5,11 @@ import {
   HOST_APPLICATION_LIFETIME_TOKEN,
   HOST_ENVIRONMENT_TOKEN,
   HostBuilder,
+  type IHostApplicationLifetime,
+  type IHostedLifecycleService,
+  type IHostEnvironment,
 } from "@rhombus-std/hosting/internal/index";
-import type {
-  IHostApplicationLifetime,
-  IHostedLifecycleService,
-  IHostEnvironment,
-} from "@rhombus-std/hosting/internal/index";
-import { HOSTED_SERVICE_TOKEN } from "@rhombus-std/hosting/internal/internal-host";
+import { HOSTED_SERVICE_TOKEN } from "@rhombus-std/hosting/internal/Internal/Host";
 import { expect, test } from "bun:test";
 
 test("Host.createDefaultBuilder returns a configured builder", () => {

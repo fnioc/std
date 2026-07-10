@@ -21,8 +21,7 @@
 // the standalone member does.
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from "@rhombus-std/logging.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { LOGGER_PROVIDER_TOKEN } from "./tokens";
 
@@ -90,7 +89,7 @@ declare module "@rhombus-std/logging.core" {
   }
 }
 
-declare module "./logging-builder" {
+declare module "./LoggingBuilder" {
   interface LoggingBuilder {
     addProvider(provider: ILoggerProvider): this;
     setMinimumLevel(level: LogLevel): this;

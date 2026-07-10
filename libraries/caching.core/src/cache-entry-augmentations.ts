@@ -10,14 +10,13 @@
 // applies a whole `MemoryCacheEntryOptions` bag -- that TYPE now lives in
 // caching.core (as ME has it), so the helper is here rather than downstream.
 
-import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
+import { type AugmentationSet, type IChangeToken, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { ICacheEntry } from "./cache-entry";
-import type { CacheItemPriority } from "./cache-item-priority";
-import type { MemoryCacheEntryOptions } from "./memory-cache-entry-options";
-import { PostEvictionCallbackRegistration } from "./post-eviction-callback-registration";
-import type { PostEvictionDelegate } from "./post-eviction-delegate";
+import type { CacheItemPriority } from "./CacheItemPriority";
+import type { ICacheEntry } from "./ICacheEntry";
+import type { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
+import { PostEvictionCallbackRegistration } from "./PostEvictionCallbackRegistration";
+import type { PostEvictionDelegate } from "./PostEvictionDelegate";
 
 /** The `CacheEntryExtensions` augmentation set for {@link ICacheEntry} (docs §28/§38). */
 export const CacheEntryExtensions = {
@@ -121,7 +120,7 @@ export const CacheEntryExtensions = {
 // The method-form surface merged onto ICacheEntry (docs §28/§38): the concrete
 // CacheEntry downstream is decorated `@augment(nameof<ICacheEntry>())` and pulls
 // these onto its prototype.
-declare module "./cache-entry" {
+declare module "./ICacheEntry" {
   interface ICacheEntry {
     setPriority(priority: CacheItemPriority): this;
     addExpirationToken(expirationToken: IChangeToken): this;

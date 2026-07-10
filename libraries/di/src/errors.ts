@@ -5,8 +5,7 @@
 // written for a human reading a stack trace at the moment a graph fails to
 // resolve.
 
-import { DiError } from "@rhombus-std/di.core";
-import type { DepSlot, Token } from "@rhombus-std/di.core";
+import { type DepSlot, DiError, type Token } from "@rhombus-std/di.core";
 
 // The error-taxonomy root `DiError` and the registration-time
 // `OpenTokenRegistrationError` live in `@rhombus-std/di.core` (raised by the

@@ -23,10 +23,10 @@ import type { AbortSignal } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import type { ServiceProviderOptions } from "./builder-augmentations";
-import type { ConsoleLifetimeOptions } from "./console-lifetime-options";
-import type { HostOptions } from "./host-options";
+import type { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
+import type { HostOptions } from "./HostOptions";
 
-declare module "./internal-host" {
+declare module "./Internal/Host" {
   interface Host {
     run(abortSignal?: AbortSignal): Promise<void>;
     runAsync(abortSignal?: AbortSignal): Promise<void>;
@@ -35,7 +35,7 @@ declare module "./internal-host" {
   }
 }
 
-declare module "./host-builder" {
+declare module "./HostBuilder" {
   interface HostBuilder {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
     configureDefaults(args?: readonly string[]): this;
@@ -50,7 +50,7 @@ declare module "./host-builder" {
   }
 }
 
-declare module "./hosting-environment" {
+declare module "./Internal/HostingEnvironment" {
   interface HostingEnvironment {
     isEnvironment(environmentName: string): boolean;
     isDevelopment(): boolean;

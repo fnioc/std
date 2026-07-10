@@ -46,7 +46,7 @@ export type {
 
 // The pluggable provider-factory seam (the reference `IServiceProviderFactory`
 // analog). A single-container no-op here, but named so hosting shares one type.
-export type { ServiceProviderFactory } from "./service-provider-factory.js";
+export type { ServiceProviderFactory } from "./ServiceProviderFactory.js";
 
 // The slot/token ABI runtime helpers. A di consumer reaches these through the
 // re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
@@ -67,4 +67,4 @@ export { DiError, OpenTokenRegistrationError } from "./errors.js";
 // pulling the barrel registers it against the `ServiceManifest` token so the verb
 // is installed onto the collection prototype (§28/§38). The const is the
 // standalone call surface.
-export { ServiceCollectionDescriptorExtensions } from "./service-collection-descriptor-augmentations.js";
+export { ServiceCollectionDescriptorExtensions } from "./Extensions/service-collection-descriptor-augmentations.js";

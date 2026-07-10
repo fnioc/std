@@ -25,10 +25,10 @@ import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { JsonConfigurationSource } from "@rhombus-std/config.json";
 import { ServiceManifest } from "@rhombus-std/di";
-import { HostDefaults } from "@rhombus-std/hosting.core";
-import type { IHostEnvironment } from "@rhombus-std/hosting.core";
+import { HostDefaults, type IHostEnvironment } from "@rhombus-std/hosting.core";
 import { LoggingBuilder, LoggingBuilderExtensions } from "@rhombus-std/logging";
 import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
+import { process } from "@rhombus-std/primitives";
 
 /**
  * The environment-variable prefix the host configuration is seeded from. The

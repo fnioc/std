@@ -21,25 +21,26 @@ import type {
   PostEvictionDelegate,
 } from "@rhombus-std/caching.core";
 import type { IChangeToken } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 
-declare module "./memory-cache" {
+declare module "./MemoryCache" {
   interface MemoryCache {
     get<T = unknown>(key: unknown): T | undefined;
     set<T>(key: unknown, value: T): T;
     set<T>(key: unknown, value: T, absoluteExpiration: Date): T;
     set<T>(key: unknown, value: T, relativeToNowMs: number): T;
     set<T>(key: unknown, value: T, expirationToken: IChangeToken): T;
-    getOrCreate<T>(key: unknown, factory: (entry: ICacheEntry) => T): T | undefined;
-    getOrCreateAsync<T>(key: unknown, factory: (entry: ICacheEntry) => Promise<T>): Promise<T | undefined>;
+    getOrCreate<T>(key: unknown, factory: Func<[ICacheEntry], T>): T | undefined;
+    getOrCreateAsync<T>(key: unknown, factory: Func<[ICacheEntry], Promise<T>>): Promise<T | undefined>;
     setWithOptions<T>(key: unknown, value: T, options?: MemoryCacheEntryOptions): T;
     getOrCreateWithOptions<T>(
       key: unknown,
-      factory: (entry: ICacheEntry) => T,
+      factory: Func<[ICacheEntry], T>,
       createOptions?: MemoryCacheEntryOptions,
     ): T | undefined;
     getOrCreateAsyncWithOptions<T>(
       key: unknown,
-      factory: (entry: ICacheEntry) => Promise<T>,
+      factory: Func<[ICacheEntry], Promise<T>>,
       createOptions?: MemoryCacheEntryOptions,
     ): Promise<T | undefined>;
   }

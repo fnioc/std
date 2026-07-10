@@ -13,12 +13,18 @@
 // The synchronous reference wrappers (Start/Run/WaitForShutdown that block a
 // thread) collapse into their async forms -- JS cannot block a thread.
 
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { AbortController, registerAugmentations } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import {
+  AbortController,
+  type AbortSignal,
+  type AugmentationSet,
+  clearTimeout,
+  neverSignal,
+  registerAugmentations,
+  setTimeout,
+} from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { IHost } from "./host";
-import type { IHostApplicationLifetime } from "./host-application-lifetime";
+import type { IHost } from "./IHost";
+import type { IHostApplicationLifetime } from "./IHostApplicationLifetime";
 import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
 
 // The interface-side merge for the `IHost` augmentation members lives HERE,
@@ -26,7 +32,7 @@ import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
 // holding `IHost` sees the method form. The runtime install onto the concrete
 // `Host` (and its class-side merge so the class still SATISFIES `IHost`) live
 // downstream in `@rhombus-std/hosting`.
-declare module "./host" {
+declare module "./IHost" {
   interface IHost {
     run(abortSignal?: AbortSignal): Promise<void>;
     runAsync(abortSignal?: AbortSignal): Promise<void>;
@@ -111,7 +117,7 @@ export const HostingAbstractionsHostExtensions = {
 
     // Don't forward the abort signal -- it may have been triggered only to
     // unblock the wait, and forwarding it would trigger an abortive shutdown.
-    await host.stop();
+    await host.stop(neverSignal);
   },
 
   /**

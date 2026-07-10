@@ -35,11 +35,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@rhombus-std/primitives": "workspace:*"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3"
   },
   "publishConfig": {
     "access": "public",

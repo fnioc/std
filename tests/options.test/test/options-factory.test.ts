@@ -1,10 +1,10 @@
 // Behavior tests for the OptionsFactory pipeline (docs/decisions.md §4.5):
 // make base -> configure steps -> post-configure steps -> validate -> return.
 
-import { OptionsFactory } from "@rhombus-std/options/internal/options-factory";
-import { OptionsValidationError } from "@rhombus-std/options/internal/options-validation-error";
-import type { ValidateOptions } from "@rhombus-std/options/internal/validate-options";
-import { ValidateOptionsResult } from "@rhombus-std/options/internal/validate-options-result";
+import { OptionsFactory } from "@rhombus-std/options/internal/OptionsFactory";
+import { OptionsValidationError } from "@rhombus-std/options/internal/OptionsValidationError";
+import type { ValidateOptions } from "@rhombus-std/options/internal/ValidateOptions";
+import { ValidateOptionsResult } from "@rhombus-std/options/internal/ValidateOptionsResult";
 import { describe, expect, test } from "bun:test";
 
 interface Settings {

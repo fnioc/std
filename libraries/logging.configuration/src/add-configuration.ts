@@ -25,11 +25,10 @@
 import type { IConfiguration } from "@rhombus-std/config.core";
 import { LoggerFilterOptions } from "@rhombus-std/logging";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { bindLoggerFilterOptions } from "./filter-options-binding";
-import { LoggingConfiguration } from "./logging-configuration";
+import { LoggingConfiguration } from "./LoggingConfiguration";
 
 /** Token the config-bound {@link LoggerFilterOptions} is registered under. */
 export const LOGGER_FILTER_OPTIONS_TOKEN = "@rhombus-std/logging.configuration:LoggerFilterOptions";
@@ -73,7 +72,7 @@ declare module "@rhombus-std/logging.core" {
 // (reachable via logging's `internal/*` subpath), not the barrel: a class
 // re-exported through the barrel doesn't merge back onto its own declaring module.
 // Retired once logging is dist-built (plan section 5).
-declare module "@rhombus-std/logging/internal/logging-builder" {
+declare module "@rhombus-std/logging/internal/LoggingBuilder" {
   interface LoggingBuilder {
     addConfiguration(configuration: IConfiguration): this;
   }

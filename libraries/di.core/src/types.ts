@@ -6,7 +6,7 @@ import type { Ctor, Func } from "@rhombus-toolkit/func";
 // `EventTarget`/`Event`/`AbortSignal`) and force every di.core consumer's
 // tsconfig `lib` to carry those web globals. The leaf module is a bare
 // `type Token = string` with zero such dependencies.
-import type { Token } from "@rhombus-std/primitives/internal/token";
+import type { Token } from "@rhombus-std/primitives/internal/Token";
 
 /**
  * Anything a dependency signature can describe: a class constructor (its deps

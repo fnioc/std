@@ -16,11 +16,9 @@
 
 import type { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { JsonConfigurationSource } from "./json-configuration-source";
-import type { JsonConfigurationSourceOptions } from "./json-configuration-source";
+import { JsonConfigurationSource, type JsonConfigurationSourceOptions } from "./json-configuration-source";
 
 // Augmenting the declaring module ("@rhombus-std/config/configuration-builder"),
 // NOT the barrel ("@rhombus-std/config") -- TS's declaration merging for a class
@@ -70,6 +68,6 @@ export const JsonConfigurationExtensions = {
 
 registerAugmentations(nameof<IConfigurationBuilder>(), JsonConfigurationExtensions);
 
-export { JsonConfigurationProvider } from "./json-configuration-provider";
 export { JsonConfigurationSource } from "./json-configuration-source";
 export type { JsonConfigurationSourceOptions } from "./json-configuration-source";
+export { JsonConfigurationProvider } from "./JsonConfigurationProvider";

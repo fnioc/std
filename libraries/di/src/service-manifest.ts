@@ -16,19 +16,18 @@
 // import-time side effect. The core `build()` interface member already exists —
 // this only supplies the runtime.
 
-import { ServiceManifestClass } from "@rhombus-std/di.core";
-import type {
-  OpenRegistration,
-  Registration,
-  ServiceManifest as ServiceManifestInterface,
-  ServiceProvider,
-  Token,
+import {
+  type OpenRegistration,
+  type Registration,
+  type ServiceManifest as ServiceManifestInterface,
+  ServiceManifestClass,
+  type ServiceProvider,
+  type Token,
 } from "@rhombus-std/di.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
-import { ServiceProviderClass } from "./scope.js";
+import { ServiceProviderClass } from "./ServiceProviderClass.js";
 
 /**
  * The public authoring INTERFACE a `@rhombus-std/di` consumer holds — di.core's

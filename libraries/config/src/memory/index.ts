@@ -22,19 +22,18 @@
 // keeps T; ConfigurationManager stays ConfigurationManager).
 
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { ConfigurationBuilder } from "../configuration-builder";
+import type { ConfigurationBuilder } from "../ConfigurationBuilder";
 import { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
 
-export { MemoryConfigurationProvider } from "./memory-configuration-provider";
 export { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
+export { MemoryConfigurationProvider } from "./MemoryConfigurationProvider";
 
 // The generic arity + default MUST match the class declaration exactly, or
 // declaration merging fails (TS2428). Every augmentation spells `<T =
 // IndexedSection>` and imports the same `IndexedSection` from @rhombus-std/config.core.
-declare module "../configuration-builder" {
+declare module "../ConfigurationBuilder" {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Registers an in-memory configuration source seeded with `initialData`. */
     addInMemoryCollection(initialData?: ConfigurationData): this;
@@ -43,7 +42,7 @@ declare module "../configuration-builder" {
 
 // ConfigurationManager has no generic type parameter, so there's no TS2428
 // arity concern here the way there is for ConfigurationBuilder<T>.
-declare module "../configuration-manager" {
+declare module "../ConfigurationManager" {
   interface ConfigurationManager {
     /** Registers an in-memory configuration source seeded with `initialData`. */
     addInMemoryCollection(initialData?: ConfigurationData): this;

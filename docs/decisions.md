@@ -1709,3 +1709,156 @@ written: many were authored as a standalone `function` pulled into the literal b
 
 Behavior-neutral: the `declare module` merges, `registerAugmentations`/`applyAugmentations`
 installs, and runtime bodies are unchanged; the full gate stayed green with no test edits.
+
+## 43. Build args derive from the manifest; tsconfigs extend shared root fragments
+
+The 26 per-package `build.ts` files and the near-identical tsconfig bodies they sat beside were
+restatements of information the package manifests already carried. Both are consolidated; dist
+output was verified byte-identical before/after (sha256 over every `libraries/*/dist` file).
+
+- **One build entry point** — every `libraries/*` `build` script runs
+  `bun ../../scripts/build-lib.ts`, which typechecks (`tsc --noEmit -p tsconfig.json`) and then
+  derives the `buildPackage` arguments from `package.json`:
+  - `external` = `dependencies ∪ peerDependencies` — the §9/§38 runtime-identity invariant
+    expressed as a rule: every runtime workspace dep stays external; devDependencies inline
+    (which is how `config` folds in its extensionless-ESM vendored dep).
+  - `entrypoints`/`dtsConfigs` from the `exports` map: any subpath whose `import` condition is a
+    non-index `dist/*.js` adds `src/<n>.ts` + `rollup.<n>.dts.mjs` (one rolled d.ts per JS
+    entry, asserted).
+  - lowering engine by twin-config existence: `tsconfig.build.json` → tspc, `tsconfig.ttsc.json`
+    → ttsc (§40/§41).
+- **`rhombusBuild`** — an optional manifest field for the four genuine deviations, each with a
+  `//rhombusBuild` why-note beside it: `caching.core` `{lowering: "ttsc"}` (§41 pilot holds both
+  twin configs), `config.core` `{typesOnly: true}` (no JS bundle, asserted), `di.transformer`
+  `{inline: […]}` (dist-parity carve-out — its retired bespoke build inlined two declared
+  dependencies; aligning it to the rule is a published-bytes change, tracked as a follow-up),
+  `config.transformer` `{forbidImports: ["@rhombus-std/config"]}` (bundle must stay
+  @rhombus-std-free; the derived-external form makes the assert load-bearing, since a real
+  import now survives bundling and is caught). The other 22 packages carry no field.
+- **`scripts/build-all.ts` unchanged** — tiering and per-tier `bun --filter <names> build` keep
+  working because the per-package `build` script entry is preserved; per-package invocation
+  (`bun --filter '<pkg>' build`, `cd libraries/<pkg> && bun run build`) keeps working too.
+  Process isolation per package is load-bearing: the ttsc adapter mutates `process.env`
+  (GOROOT/GOTMPDIR), which an in-process parallel tier would race.
+- **tsconfig fragments** — `/tsconfig.lib.json` (the noEmit library typecheck profile) and
+  `/tsconfig.tspc.json` (the tspc lowering stage: `noEmit: false` + the ts-patch `plugins`
+  entry, hoistable because ts-patch resolves the transform specifier from the `-p` project dir,
+  where it is a declared devDep). Leaf `tsconfig.json` = extends + `include` (which must stay
+  leaf-side — relative include globs anchor to the declaring file); leaf `tsconfig.build.json` =
+  `extends: ["./tsconfig.json", "../../tsconfig.tspc.json"]` + `rootDir`/`outDir` (path options
+  stay leaf-side, and the emit stage needs `rootDir` so `.tspc-out/` mirrors `src/`).
+  `customConditions: ["built"]` stays leaf-side in the two transformer packages (§1/§9). The 18
+  `tsconfig.lint.json` files were functionally identical to their `tsconfig.json` (tests moved
+  to sibling packages long ago) — deleted, `lint` scripts repointed.
+
+## 44. Zero ambient platform types in libraries — §39 finished and machine-checked
+
+§39 gave `primitives` owned `AbortSignal`/`AbortController` typings so the published d.ts never
+leans on lib.dom/@types/node. But the rest of the platform surface still resolved by ACCIDENT:
+no library tsconfig had a `types` array, so tsc auto-included every `node_modules/@types`
+walking up from the package — root `@types/bun` → `bun-types` → `@types/node` — and the gate
+compiled a looser program than a bare published consumer sees (the honest program showed
+TS2591/TS2304 across the fleet). This entry closes the gap:
+
+- **`primitives` owns the remaining platform typings**, same recipe as §39 (typed `globalThis`
+  lookup, no `declare global`):
+  - `process.ts` — `ProcessLike` (exactly the observed member set: `env`, `cwd`,
+    `stdout.write`, signal `on`/`off`) + a typed `process` value re-export; consumers
+    (config.env, config.json, hosting, logging.console) import it instead of naming the ambient
+    global. One-way assignability (platform → ours) is sufficient and type-tested.
+  - `timers.ts` — opaque `TimeoutHandle` (`unknown`; the platform return type differs per
+    runtime and handles only round-trip through our own `clearTimeout`) + typed
+    `setTimeout`/`clearTimeout` re-exports; consumers: hosting.core, hosting.
+  - `streams.ts` — structural `ReadableStream<R>` for the one stream type in a PUBLIC signature
+    (fileproviders.core's `IFileInfo.createReadStream`); precise members + loose plumbing + an
+    optional phantom `__chunkType?: R` for variance. The load-bearing platform → ours direction
+    is type-tested; full §39 MUTUAL assignability is impossible here because bun-types extends
+    its variant with required consumer-convenience members (`text`/`json`/`bytes`/`blob`/
+    `values`) that lib.dom's variant lacks — one structural type cannot both carry them (breaks
+    the lib.dom implementer) and omit them (fails ours → full-bun-interface).
+  - `abort.ts` routes its `globalThis` cast through `unknown` (under the bare program the
+    direct cast is a TS2352) and additionally exports **`neverSignal`** — a singleton inert
+    never-aborting signal, the port's analog of the reference stack's never-cancelled token.
+  - The augmentation registry's notify bus types `EventTarget`/`Event` structurally
+    module-private (nothing public names them, so they are not exported).
+- **`node:fs`/`node:path` get per-package compile-scope `src/node-builtins.d.ts`** (config.json,
+  hosting) declaring exactly the imported signatures. Nothing imports these files, so
+  rollup-plugin-dts never ships them; under a consumer program that has @types/node they merge
+  as extra overloads (inert). Tighter than putting ambient `declare module "node:*"` blocks in
+  primitives, which would leak them into every consumer program.
+- **Enforcement: `types: []` in `/tsconfig.lib.json`** — every library (and, via extends, every
+  lowering-stage config) now compiles the bare program, so the tsc 5.9 gate and the honest view
+  can never silently diverge again; the §39 guarantee is machine-checked instead of accidental.
+  Tests/examples keep their bun/node types deliberately; repo tooling gets its own
+  `scripts/tsconfig.json` with `types: ["bun"]` (it runs under bun and is never published).
+- The four transformer packages' `ttsc.mjs` shims declare a `ttsc` devDependency so the JSDoc
+  `import("ttsc")` types resolve under bun's isolated linker (previously only caching.core did).
+
+## 45. `src/` mirrors the ME package folder layout; single-type files are named after their type
+
+The port's `src/` trees had drifted from the reference stack's own directory shape (`Metrics/`,
+`Tracing/`, `Internal/`, `Extensions/`, …) and from a consistent filename convention, both
+accidents of incremental porting rather than a decision. Neither was load-bearing for behavior,
+but both cost lookup time when cross-checking against the reference source, so this entry settles
+them as a repo-wide rule, applied in one mechanical pass (165 files, all renames — no content
+changes beyond import-path rewrites).
+
+- **Directory mirror.** A file whose ME counterpart lives in a subdirectory moves into the
+  matching subdirectory: `diagnostics`/`diagnostics.core` gained `Metrics/` and `Tracing/` (each
+  with a nested `Configuration/` for the binding half), `hosting` gained `Internal/`, `di.core`
+  gained `Extensions/`. A file with no clean single-subdirectory ME source stays at package root
+  — `diagnostics.core`'s `options-augmentations.ts` augments types declared in BOTH `Metrics/`
+  and `Tracing/`, so it has no single mirrored home short of splitting the file (not done: no
+  behavioral reason to split it).
+- **Single-type filename.** Every `src` file that declares exactly one exported type, class, or
+  interface is renamed to that name (`configuration-builder.ts` → `IConfigurationBuilder.ts` in
+  `config.core`, → `ConfigurationBuilder.ts` in `config`; `cache-entry.ts` → `ICacheEntry.ts`).
+  Files with more than one exported declaration (augmentation sets, index barrels, files with a
+  type + its companion value) are left as-is — the rule only fires where "the file's name" and
+  "the type's name" have exactly one honest answer.
+- **Verification, not judgement calls.** Every proposed rename was checked mechanically before
+  landing: the new basename must be exported from the file, and no renamed file may export more
+  than one named declaration. Six renames had a genuinely ambiguous target subdirectory (no single
+  ME source file to key off); each was resolved by hand against the reference source rather than
+  left unrenamed.
+- **Public surface is unaffected.** Only `src/*.ts` filenames and their relative/subpath imports
+  move — `@rhombus-std/*/internal/*` subpath specifiers (including `declare module` augmentation
+  targets) and `package.json` `exports` targets are rewritten to match, but the PUBLIC subpath
+  names themselves (`./configuration-builder`, `./configuration-manager`, …) are unchanged, since
+  those are the published contract, not an internal file layout detail.
+
+## 46. Repo-wide TS conventions: `Func`/`Ctor`, `assertNever`, and import consolidation
+
+A house-style sweep across every library, landed as this branch's bulk of commits. None of these
+change behavior — the full gate stayed green throughout, verified per-family commit — they
+tighten idiom consistency now that `@rhombus-toolkit/func` and `@rhombus-toolkit/type-guards` are
+a dependency of every `libraries/*` package (`dependencies`, not `devDependencies` — they land in
+the derived build `external` set per §43, and every published consumer needs them at the type
+level even where no runtime call survives bundling).
+
+- **`Func<Args, Return>` replaces every bare lambda function TYPE** — `(x: Foo) => Bar` becomes
+  `Func<[Foo], Bar>`; a zero-arg form is `Func<[], T>`; a rest-param callback is
+  `Func<any[], T>`. This is a type-only change (`import type { Func } from "@rhombus-toolkit/func"`)
+  — arrow VALUES/expressions are untouched, only the type position. `Ctor` from the same package
+  covers constructor-type positions (di's `DepTarget = Ctor | Func<never[], unknown>`).
+- **`assertNever` closes every exhaustive switch/if-else chain over a union** — a runtime import
+  from `@rhombus-toolkit/type-guards`, placed in the `default:`/final `else` arm (`caching.memory`'s
+  priority switch, `config`'s schema-coercion switch, `logging.console`'s level switch). Bodies
+  gain explicit braces per switch-case (`useBraces: always`) where they didn't already have them,
+  since a `default: assertNever(x)` arm needs its own block like every other case.
+- **Import consolidation is barrel-preferring, single-line, and type+value-merged.** A file that
+  imports several names from the same specifier — whether a cross-package barrel
+  (`@rhombus-std/di.core`) or a same-package sibling (`./index.js`) — merges them into ONE
+  `import { … }` statement, inlining `type` on the individual specifiers that are type-only
+  (`import { closeToken, type DepSlot, isFactoryRef, … } from "@rhombus-std/di.core"`) rather than
+  a separate `import type { … }` statement for the same specifier. Within a package, sibling
+  modules import from the package's own `./index.js` barrel where possible (`CancellationChangeToken`
+  now pulls `AbortSignal, IChangeToken` from `primitives`' `./index.js` instead of two separate
+  deep imports).
+  - **Circular-import carve-out.** A file does NOT import its own package's barrel when doing so
+    would close an import cycle — the barrel re-exports the file itself, or a sibling the barrel
+    pulls in ahead of it. `caching.memory`'s `cache-entry.ts` is the canonical instance: it
+    declares `IMemoryCacheHost` as a same-file interface specifically so it never has to import
+    `MemoryCache` (which imports `cache-entry.ts`), breaking the cycle at the type level rather
+    than importing around it. `index.ts` files, by construction, can never import their own
+    barrel and always import siblings directly.
