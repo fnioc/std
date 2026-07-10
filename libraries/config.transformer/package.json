@@ -56,10 +56,7 @@
     "@rhombus-std/config": "workspace:^",
     "typescript": ">=5.2"
   },
-  "dependencies": {
-    "@rhombus-toolkit/func": "^3.5.3",
-    "@rhombus-toolkit/type-guards": "^1.3.4"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
