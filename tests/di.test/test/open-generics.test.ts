@@ -1,19 +1,22 @@
 import {
   closeToken,
   NoSatisfiableSignatureError,
+  type OpenRegistration,
   OpenTokenRegistrationError,
   OpenTokenResolutionError,
+  type Registration,
+  type Resolver,
   RESOLVER_TOKEN,
   ServiceManifest,
   ServiceProviderClass,
+  type Token,
   typeArg,
   union,
   UnregisteredTokenError,
 } from "@rhombus-std/di";
-import type { OpenRegistration, Registration, Resolver, Token } from "@rhombus-std/di";
+import type { Func } from "@rhombus-toolkit/func";
 import { describe, expect, test } from "bun:test";
-import { defineDeps } from "./fixtures.js";
-import { AsyncDisposableThing, DisposeLog, G, SyncDisposable, T } from "./fixtures.js";
+import { AsyncDisposableThing, defineDeps, DisposeLog, G, SyncDisposable, T } from "./fixtures.js";
 
 // Open generics: the runtime engine side. Everything is hand-fed (no
 // transformer) — open templates registered as string tokens with holes, closed
@@ -168,7 +171,7 @@ describe("substitution across slot kinds", () => {
     }
     class Consumer {
       public constructor(
-        public readonly makeThing: (p: unknown) => Thing,
+        public readonly makeThing: Func<[p: unknown], Thing>,
       ) {}
     }
     const services = new ServiceManifest();
@@ -571,7 +574,7 @@ describe("resolveFactory against an open template — top-level public API (gree
     services.add("app/IG<$1>", GenSvc, [["$1"]]);
 
     const sp = services.build();
-    const make = sp.resolveFactory(closeToken("app/IG" as Token, T.B)) as () => GenSvc;
+    const make = sp.resolveFactory(closeToken("app/IG" as Token, T.B)) as Func<[], GenSvc>;
     const svc = make();
 
     expect(svc).toBeInstanceOf(GenSvc);
@@ -592,9 +595,7 @@ describe("resolveFactory against an open template — top-level public API (gree
     services.add("app/IW<$1>", Widget, [["$1", "app/IParam"]]);
 
     const sp = services.build();
-    const make = sp.resolveFactory("app/IW<pkg:IA>", ["app/IParam"]) as (
-      p: unknown,
-    ) => Widget;
+    const make = sp.resolveFactory("app/IW<pkg:IA>", ["app/IParam"]) as Func<[p: unknown], Widget>;
     const w = make("supplied!");
 
     expect(w).toBeInstanceOf(Widget);

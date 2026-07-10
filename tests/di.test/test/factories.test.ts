@@ -1,9 +1,7 @@
-import { FactoryTargetError, ServiceManifest } from "@rhombus-std/di";
-import { closeToken } from "@rhombus-std/di";
+import { closeToken, FactoryTargetError, ServiceManifest } from "@rhombus-std/di";
 import type { FactoryRef, Token } from "@rhombus-std/di.core";
 import { describe, expect, test } from "bun:test";
-import { defineDeps } from "./fixtures.js";
-import { T } from "./fixtures.js";
+import { defineDeps, T } from "./fixtures.js";
 
 // Factory injection + caller-supplied params.
 //

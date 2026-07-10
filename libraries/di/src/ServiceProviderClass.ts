@@ -21,9 +21,24 @@
 // one's cached instance — when no matching frame encloses the owner, the dep
 // resolves transiently (a fresh instance) instead.
 
-import type { DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, Union } from "@rhombus-std/di.core";
-import { isFactoryRef, isLiteralRef, isProviderToken, isTypeArgRef, isUnionSlot } from "@rhombus-std/di.core";
-import { closeToken, isOpenToken, parseToken, substituteSignatures } from "@rhombus-std/di.core";
+import {
+  closeToken,
+  type DepSlot,
+  type FactoryRef,
+  isFactoryRef,
+  isLiteralRef,
+  isOpenToken,
+  isProviderToken,
+  isTypeArgRef,
+  isUnionSlot,
+  type LiteralRef,
+  type ParsedToken,
+  parseToken,
+  substituteSignatures,
+  type Token,
+  type TypeArgRef,
+  type Union,
+} from "@rhombus-std/di.core";
 import type { Func } from "@rhombus-toolkit/func";
 
 import {

@@ -1,9 +1,7 @@
-import { NoSatisfiableSignatureError, ServiceManifest } from "@rhombus-std/di";
-import { isLiteralRef, union } from "@rhombus-std/di";
+import { isLiteralRef, NoSatisfiableSignatureError, ServiceManifest, union } from "@rhombus-std/di";
 import type { LiteralRef } from "@rhombus-std/di.core";
 import { describe, expect, test } from "bun:test";
-import { defineDeps } from "./fixtures.js";
-import { T } from "./fixtures.js";
+import { defineDeps, T } from "./fixtures.js";
 
 // LiteralRef (Rule 2): a singular literal / nullish-singleton slot supplies its
 // value directly, with NO container lookup. Always satisfiable — it never makes

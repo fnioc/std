@@ -27,8 +27,7 @@
 // this conversion should smuggle in, and it has no in-tree consumer yet. Filed for
 // the finalize phase (tracked against #75).
 
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
 // Type-only: the const references `ServiceManifestClass` solely in type position
