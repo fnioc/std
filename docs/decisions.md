@@ -1359,10 +1359,11 @@ pre-§28 free-function shape, and a full audit confirms no other augmentation si
   `ConfigurationExtensions`/`ConfigurationRootExtensions` (`getConnectionString`/`exists`/
   `getRequiredSection`/`asEnumerable`/`getDebugView`). These carry no prototype-method form on any
   concrete class — `ILogger`/`IConfiguration` have several impls and no single downstream concrete
-  to patch, and `logTrace`/… rely on two-overload public signatures that an object-literal member
-  would flatten — so §28 (which governs how dual-export augmentations are _authored_, not which ports
-  become augmentations) does not reach them. Everything else the sweep surfaced is an ordinary
-  helper, token factory, or transformer internal.
+  to patch — so §28 (which governs how dual-export augmentations are _authored_, not which ports
+  become augmentations) does not reach them. (§42 retires the "two-overload public signatures …
+  would flatten" clause this entry originally also cited — overloading no longer forces a member
+  standalone.) Everything else the sweep surfaced is an ordinary helper, token factory, or
+  transformer internal.
 
 ## 37. Chained configuration source — closes the `hosting` half of #126's deferral
 
@@ -1674,3 +1675,37 @@ and their test packages stay and keep passing verbatim.
   Go-dependency reasoning that keeps the parity e2e off the required check. They are a
   Go-provisioned / local gate for now; wiring a dedicated Go CI job that runs
   `*.ttsc.e2e` is the natural next step and intentionally not in the pilot PR.
+
+## 42. Augmentation-set members are defined inline in the object literal — overloaded members too — #139, #140
+
+§28 fixed the augmentation authoring _shape_ (one named object literal per ME static class,
+`satisfies AugmentationSet<R>`, receiver-first members) but left open HOW each member's body is
+written: many were authored as a standalone `function` pulled into the literal by shorthand
+(`const X = { foo, … }`). This entry settles that on the direct form.
+
+- **Members are defined INLINE as object methods** (`const X = { foo(receiver, …) { … }, … }`),
+  not as standalone functions referenced by shorthand — directness/readability. #139 converted
+  the 13 remaining shorthand-authored sets.
+- **Same-const sibling calls use `ConstName.member(receiver, …)`, never `this`:** the install
+  thunk (`installSet`, `primitives/src/augmentations.ts`) invokes members as a plain
+  `fn(receiver, …)` call, so `this` is undefined on the installed method path.
+- **Overloaded members inline too** — the earlier "an object-literal method key can't carry
+  multiple call signatures, so overloaded members stay standalone" rationale is RETIRED. Two
+  techniques, both preserving `satisfies AugmentationSet<R>`:
+  - **Invariant return type** → a union-of-tuples rest parameter, destructured in the body, e.g.
+    `set<T>(cache, ...rest: [k, v] | [k, v, Date] | [k, v, number] | [k, v, IChangeToken]): T`.
+    Model: `Host.createApplicationBuilder` (`libraries/hosting/src/host.ts`). #140 inlined `set`
+    (`CacheExtensions`), `setAbsoluteExpiration` (`CacheEntryExtensions`), and `addFilter`
+    (`LoggerFilterOptionsExtensions`) this way.
+  - **Varying return type** → cast the single implementation to an overload-signature object
+    type: `fn: function (...args: any[]) { … } as { (p: number): number; (p: string): string }`
+    (a lambda form needs parentheses: `((...args) => …) as { … }`). Not needed anywhere yet —
+    recorded for completeness.
+  - The method-form `declare module` overloads are unchanged either way; only the object-literal
+    member's authoring shape changes.
+- **The ONLY remaining reason to keep a member standalone is cross-package export** — a member
+  imported by another package as a plain function (the 7 `log*` wrappers in `logging.core`,
+  imported by `hosting`/`caching.memory`). Overloading alone no longer forces it.
+
+Behavior-neutral: the `declare module` merges, `registerAugmentations`/`applyAugmentations`
+installs, and runtime bodies are unchanged; the full gate stayed green with no test edits.
