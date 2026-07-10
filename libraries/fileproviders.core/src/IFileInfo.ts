@@ -8,6 +8,8 @@
 //     responsible for consuming/cancelling it (mirroring "the caller should
 //     dispose the stream when complete").
 
+import type { ReadableStream } from "@rhombus-std/primitives";
+
 /**
  * Represents a file in the given file provider.
  */

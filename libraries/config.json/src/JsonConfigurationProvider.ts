@@ -8,6 +8,7 @@
 // empty" as distinct states.
 
 import { ConfigurationProvider } from "@rhombus-std/config";
+import { process } from "@rhombus-std/primitives";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { JsonConfigurationSource } from "./json-configuration-source";

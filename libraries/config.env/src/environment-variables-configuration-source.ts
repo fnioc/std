@@ -18,6 +18,7 @@
 // the default transform, for names that also want a `.` delimiter.
 
 import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
+import { process } from "@rhombus-std/primitives";
 import { EnvironmentVariablesConfigurationProvider } from "./EnvironmentVariablesConfigurationProvider";
 
 /** Options accepted by {@link EnvironmentVariablesConfigurationSource}. */

@@ -71,4 +71,7 @@ export interface AbortControllerConstructor {
  * browsers).
  */
 export const AbortController: AbortControllerConstructor =
-  (globalThis as { AbortController: AbortControllerConstructor }).AbortController;
+  // Through `unknown`: the bare-lib `typeof globalThis` (no lib.dom /
+  // @types/node / bun-types in a library program) genuinely lacks the
+  // property, so the direct cast is a TS2352 under the honest program.
+  (globalThis as unknown as { AbortController: AbortControllerConstructor }).AbortController;

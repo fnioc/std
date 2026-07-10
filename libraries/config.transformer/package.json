@@ -63,7 +63,8 @@
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
-    "ts-patch": "^3.3.0"
+    "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1"
   },
   "publishConfig": {
     "access": "public",

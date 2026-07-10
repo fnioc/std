@@ -94,7 +94,9 @@ export const ConfigurationExtensions = {
    */
   *asEnumerable(
     configuration: IConfiguration,
-    makePathsRelative = false,
+    // Annotated: AugmentationSet<R>'s index signature (`...args: any[]`)
+    // contextually types the parameter `any`, beating default-value inference.
+    makePathsRelative: boolean = false,
   ): Generator<[key: string, value: string | undefined]> {
     const rootIsSection = configuration instanceof ConfigurationSection;
     // Trim the root section's path plus its trailing delimiter; a non-section

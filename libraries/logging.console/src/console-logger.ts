@@ -15,9 +15,10 @@
 
 import type { EventId, ILogger, LoggerExtensionMethods } from "@rhombus-std/logging.core";
 import { LogLevel } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
+import { augment, process } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
+import { assertNever } from "@rhombus-toolkit/type-guards";
 
 /**
  * The four-character level names of the reference simple console format.
@@ -43,8 +44,13 @@ function logLevelString(logLevel: LogLevel): string {
     case LogLevel.Critical: {
       return "crit";
     }
-    default: {
+    case LogLevel.None: {
+      // A valid enum member that must never reach the formatter -- isEnabled
+      // filters it before log() gets here.
       throw new RangeError(`Invalid log level: ${logLevel}.`);
+    }
+    default: {
+      assertNever(logLevel);
     }
   }
 }

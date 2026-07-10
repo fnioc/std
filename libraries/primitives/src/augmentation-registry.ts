@@ -29,6 +29,24 @@
 import { type AugmentationSet, installSet } from "./augmentations.js";
 import type { Token } from "./Token.js";
 
+// Structural typings for the notify bus -- module-private on purpose: the bus
+// and its dispatched events never appear in a public signature, so unlike the
+// abort typings these are NOT barrel-exported. Same recipe as ./abort.ts:
+// library programs carry zero ambient platform types (docs/decisions.md §39),
+// so the platform `EventTarget`/`Event` values are pulled off `globalThis`
+// re-typed against the minimal member set this module actually uses.
+interface NotifyEvent {
+  readonly type: string;
+}
+interface NotifyEventTarget {
+  addEventListener(type: string, listener: () => void): void;
+  dispatchEvent(event: NotifyEvent): boolean;
+}
+const { EventTarget, Event } = globalThis as unknown as {
+  EventTarget: new() => NotifyEventTarget;
+  Event: new(type: string) => NotifyEvent;
+};
+
 /**
  * The accumulated bag per token: a flat map of member name -> receiver-first
  * function. Typed with `never` receivers because a bag is keyed by an erased

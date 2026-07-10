@@ -7,7 +7,7 @@
 // once `timeoutMs` elapses. `dispose` detaches the listeners and clears the
 // timer.
 
-import { AbortController } from "@rhombus-std/primitives";
+import { AbortController, clearTimeout, setTimeout } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 

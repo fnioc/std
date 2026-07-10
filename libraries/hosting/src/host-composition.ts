@@ -30,6 +30,7 @@ import { Environments, HostDefaults } from "@rhombus-std/hosting.core";
 import type { HostBuilderContext } from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from "@rhombus-std/logging";
 import type { ILoggerProvider } from "@rhombus-std/logging.core";
+import { process } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { isAbsolute, resolve as resolvePath } from "node:path";
 import {

@@ -29,6 +29,7 @@ import { HostDefaults } from "@rhombus-std/hosting.core";
 import type { IHostEnvironment } from "@rhombus-std/hosting.core";
 import { LoggingBuilder, LoggingBuilderExtensions } from "@rhombus-std/logging";
 import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
+import { process } from "@rhombus-std/primitives";
 
 /**
  * The environment-variable prefix the host configuration is seeded from. The

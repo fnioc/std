@@ -98,7 +98,17 @@ for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
 }
 
 // External: deps ∪ peers, minus explicit inline overrides.
-const inline = new Set(overrides.inline ?? []);
+//
+// @rhombus-toolkit/type-guards is ALWAYS inlined, repo policy rather than a
+// per-package override: its published ESM uses extensionless relative imports
+// plain Node rejects (the same defect that makes config inline
+// @rhombus-toolkit/proxy-base), so it can never be a runtime external of any
+// published bundle here -- the examples e2e runs the built app under node and
+// fails with ERR_MODULE_NOT_FOUND the moment it is kept external. Inlining is
+// safe: its exports are pure stateless functions (assertNever, the is*
+// guards), so a private copy forks no identity. The manifest keeps the
+// dependency entry for the type-level surface.
+const inline = new Set(["@rhombus-toolkit/type-guards", ...(overrides.inline ?? [])]);
 const external = [
   ...new Set([
     ...Object.keys(manifest.dependencies ?? {}),

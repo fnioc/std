@@ -14,7 +14,7 @@
 // thread) collapse into their async forms -- JS cannot block a thread.
 
 import type { AugmentationSet } from "@rhombus-std/primitives";
-import { AbortController, registerAugmentations } from "@rhombus-std/primitives";
+import { AbortController, clearTimeout, registerAugmentations, setTimeout } from "@rhombus-std/primitives";
 import type { AbortSignal } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { IHost } from "./IHost";

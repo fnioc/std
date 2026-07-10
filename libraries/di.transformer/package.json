@@ -65,7 +65,8 @@
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0"
+    "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1"
   },
   "publishConfig": {
     "access": "public",
