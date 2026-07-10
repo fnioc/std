@@ -1793,3 +1793,72 @@ TS2591/TS2304 across the fleet). This entry closes the gap:
   `scripts/tsconfig.json` with `types: ["bun"]` (it runs under bun and is never published).
 - The four transformer packages' `ttsc.mjs` shims declare a `ttsc` devDependency so the JSDoc
   `import("ttsc")` types resolve under bun's isolated linker (previously only caching.core did).
+
+## 45. `src/` mirrors the ME package folder layout; single-type files are named after their type
+
+The port's `src/` trees had drifted from the reference stack's own directory shape (`Metrics/`,
+`Tracing/`, `Internal/`, `Extensions/`, …) and from a consistent filename convention, both
+accidents of incremental porting rather than a decision. Neither was load-bearing for behavior,
+but both cost lookup time when cross-checking against the reference source, so this entry settles
+them as a repo-wide rule, applied in one mechanical pass (165 files, all renames — no content
+changes beyond import-path rewrites).
+
+- **Directory mirror.** A file whose ME counterpart lives in a subdirectory moves into the
+  matching subdirectory: `diagnostics`/`diagnostics.core` gained `Metrics/` and `Tracing/` (each
+  with a nested `Configuration/` for the binding half), `hosting` gained `Internal/`, `di.core`
+  gained `Extensions/`. A file with no clean single-subdirectory ME source stays at package root
+  — `diagnostics.core`'s `options-augmentations.ts` augments types declared in BOTH `Metrics/`
+  and `Tracing/`, so it has no single mirrored home short of splitting the file (not done: no
+  behavioral reason to split it).
+- **Single-type filename.** Every `src` file that declares exactly one exported type, class, or
+  interface is renamed to that name (`configuration-builder.ts` → `IConfigurationBuilder.ts` in
+  `config.core`, → `ConfigurationBuilder.ts` in `config`; `cache-entry.ts` → `ICacheEntry.ts`).
+  Files with more than one exported declaration (augmentation sets, index barrels, files with a
+  type + its companion value) are left as-is — the rule only fires where "the file's name" and
+  "the type's name" have exactly one honest answer.
+- **Verification, not judgement calls.** Every proposed rename was checked mechanically before
+  landing: the new basename must be exported from the file, and no renamed file may export more
+  than one named declaration. Six renames had a genuinely ambiguous target subdirectory (no single
+  ME source file to key off); each was resolved by hand against the reference source rather than
+  left unrenamed.
+- **Public surface is unaffected.** Only `src/*.ts` filenames and their relative/subpath imports
+  move — `@rhombus-std/*/internal/*` subpath specifiers (including `declare module` augmentation
+  targets) and `package.json` `exports` targets are rewritten to match, but the PUBLIC subpath
+  names themselves (`./configuration-builder`, `./configuration-manager`, …) are unchanged, since
+  those are the published contract, not an internal file layout detail.
+
+## 46. Repo-wide TS conventions: `Func`/`Ctor`, `assertNever`, and import consolidation
+
+A house-style sweep across every library, landed as this branch's bulk of commits. None of these
+change behavior — the full gate stayed green throughout, verified per-family commit — they
+tighten idiom consistency now that `@rhombus-toolkit/func` and `@rhombus-toolkit/type-guards` are
+a dependency of every `libraries/*` package (`dependencies`, not `devDependencies` — they land in
+the derived build `external` set per §43, and every published consumer needs them at the type
+level even where no runtime call survives bundling).
+
+- **`Func<Args, Return>` replaces every bare lambda function TYPE** — `(x: Foo) => Bar` becomes
+  `Func<[Foo], Bar>`; a zero-arg form is `Func<[], T>`; a rest-param callback is
+  `Func<any[], T>`. This is a type-only change (`import type { Func } from "@rhombus-toolkit/func"`)
+  — arrow VALUES/expressions are untouched, only the type position. `Ctor` from the same package
+  covers constructor-type positions (di's `DepTarget = Ctor | Func<never[], unknown>`).
+- **`assertNever` closes every exhaustive switch/if-else chain over a union** — a runtime import
+  from `@rhombus-toolkit/type-guards`, placed in the `default:`/final `else` arm (`caching.memory`'s
+  priority switch, `config`'s schema-coercion switch, `logging.console`'s level switch). Bodies
+  gain explicit braces per switch-case (`useBraces: always`) where they didn't already have them,
+  since a `default: assertNever(x)` arm needs its own block like every other case.
+- **Import consolidation is barrel-preferring, single-line, and type+value-merged.** A file that
+  imports several names from the same specifier — whether a cross-package barrel
+  (`@rhombus-std/di.core`) or a same-package sibling (`./index.js`) — merges them into ONE
+  `import { … }` statement, inlining `type` on the individual specifiers that are type-only
+  (`import { closeToken, type DepSlot, isFactoryRef, … } from "@rhombus-std/di.core"`) rather than
+  a separate `import type { … }` statement for the same specifier. Within a package, sibling
+  modules import from the package's own `./index.js` barrel where possible (`CancellationChangeToken`
+  now pulls `AbortSignal, IChangeToken` from `primitives`' `./index.js` instead of two separate
+  deep imports).
+  - **Circular-import carve-out.** A file does NOT import its own package's barrel when doing so
+    would close an import cycle — the barrel re-exports the file itself, or a sibling the barrel
+    pulls in ahead of it. `caching.memory`'s `cache-entry.ts` is the canonical instance: it
+    declares `IMemoryCacheHost` as a same-file interface specifically so it never has to import
+    `MemoryCache` (which imports `cache-entry.ts`), breaking the cycle at the type level rather
+    than importing around it. `index.ts` files, by construction, can never import their own
+    barrel and always import siblings directly.
