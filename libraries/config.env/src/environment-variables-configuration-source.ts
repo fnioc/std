@@ -19,6 +19,7 @@
 
 import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
 import { process } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 import { EnvironmentVariablesConfigurationProvider } from "./EnvironmentVariablesConfigurationProvider";
 
 /** Options accepted by {@link EnvironmentVariablesConfigurationSource}. */
@@ -33,7 +34,7 @@ export interface EnvironmentVariablesConfigurationSourceOptions {
    * Defaults to replacing every `__` with `:`, the conventional way to spell
    * a section-delimited key in an environment variable name.
    */
-  variableNameTransformation?: (name: string) => string;
+  variableNameTransformation?: Func<[string], string>;
   /**
    * The environment map to read. Defaults to `process.env`. Injectable so
    * `load()` is pure with respect to an explicit map -- tests (and any caller
@@ -71,7 +72,7 @@ export class EnvironmentVariablesConfigurationSource implements IConfigurationSo
   /** Only variables whose transformed name starts with this prefix (case-insensitive) are kept. */
   public prefix?: string;
   /** Applied to each raw variable name before prefix matching. */
-  public variableNameTransformation: (name: string) => string;
+  public variableNameTransformation: Func<[string], string>;
   /** The environment map read at load time (defaults to `process.env`). */
   public env: Record<string, string | undefined>;
 

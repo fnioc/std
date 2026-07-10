@@ -5,8 +5,7 @@
 // lines below fail the build with "Unused '@ts-expect-error' directive" if the
 // types ever silently loosen.
 
-import { OPTIONAL } from "@rhombus-std/config";
-import type { Infer, Schema } from "@rhombus-std/config";
+import { type Infer, OPTIONAL, type Schema } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 
 // A valid schema authored inline with the OPTIONAL symbol wrapper compiles, and

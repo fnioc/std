@@ -22,8 +22,7 @@
 // keeps T; ConfigurationManager stays ConfigurationManager).
 
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { ConfigurationBuilder } from "../ConfigurationBuilder";
 import { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";

@@ -6,30 +6,28 @@
 
 import {
   compareConfigurationKeys,
+  type ConfigObject,
   configPath,
   ConfigurationBuilder,
   ConfigurationProvider,
   ConfigurationRoot,
   ConfigurationSection,
+  type IConfiguration,
+  type IConfigurationBuilder,
+  type IConfigurationProvider,
+  type IConfigurationRoot,
+  type IConfigurationSection,
+  type IConfigurationSource,
+  type IndexedSection,
+  type Infer,
+  type ITryGetResult,
   MemoryConfigurationProvider,
   MemoryConfigurationSource,
+  type ObjectSchema,
   OPTIONAL,
+  type OptionalSchema,
+  type Schema,
   SchemaCoercionError,
-} from "@rhombus-std/config";
-import type {
-  ConfigObject,
-  IConfiguration,
-  IConfigurationBuilder,
-  IConfigurationProvider,
-  IConfigurationRoot,
-  IConfigurationSection,
-  IConfigurationSource,
-  IndexedSection,
-  Infer,
-  ITryGetResult,
-  ObjectSchema,
-  OptionalSchema,
-  Schema,
 } from "@rhombus-std/config";
 import { describe, expect, test } from "bun:test";
 

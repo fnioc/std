@@ -2,6 +2,7 @@
 // one-type-per-file layout (see docs/decisions.md #46).
 
 import type { IChangeToken } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 import type { IConfigurationSection } from "./IConfigurationSection";
 import type { ConfigObject } from "./types";
 
@@ -19,7 +20,7 @@ export interface IConfiguration {
   get(path: string): string | undefined;
 
   /** A typed leaf via a caller-supplied factory (undefined if the path is absent). */
-  get<T>(path: string, factory: (value: string) => T): T | undefined;
+  get<T>(path: string, factory: Func<[string], T>): T | undefined;
 
   /**
    * Coerces a leaf to a finite number. Returns `dflt` (or undefined) when the

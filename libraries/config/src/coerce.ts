@@ -8,6 +8,7 @@
 // its own failure mode.
 
 import type { IConfiguration } from "@rhombus-std/config.core";
+import { assertNever } from "@rhombus-toolkit/type-guards";
 import { exists } from "./configuration-augmentations";
 import { OPTIONAL, type Schema } from "./schema";
 
@@ -111,6 +112,8 @@ function walkRequired(
         }
         return r.value;
       }
+      default:
+        return assertNever(schema);
     }
   }
 

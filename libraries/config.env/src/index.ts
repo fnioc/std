@@ -11,8 +11,7 @@
 
 import type { ConfigurationBuilder } from "@rhombus-std/config";
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import {
   EnvironmentVariablesConfigurationSource,

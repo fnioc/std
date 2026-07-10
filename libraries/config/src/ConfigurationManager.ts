@@ -37,9 +37,9 @@ import type {
   IConfigurationSection,
   IConfigurationSource,
 } from "@rhombus-std/config.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
-import { augment, ChangeToken } from "@rhombus-std/primitives";
+import { augment, ChangeToken, type IChangeToken } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { Func } from "@rhombus-toolkit/func";
 import { ConfigurationReloadToken } from "./ConfigurationReloadToken";
 import { ConfigurationRoot } from "./ConfigurationRoot";
 import { MemoryConfigurationSource } from "./memory/memory-configuration-source";
@@ -114,8 +114,8 @@ export class ConfigurationManager implements IConfigurationManager, IConfigurati
   }
 
   public get(path: string): string | undefined;
-  public get<T>(path: string, factory: (value: string) => T): T | undefined;
-  public get<T>(path: string, factory?: (value: string) => T): (string | T) | undefined {
+  public get<T>(path: string, factory: Func<[string], T>): T | undefined;
+  public get<T>(path: string, factory?: Func<[string], T>): (string | T) | undefined {
     return factory === undefined ? this.#root.get(path) : this.#root.get(path, factory);
   }
 

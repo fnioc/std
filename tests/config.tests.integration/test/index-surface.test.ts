@@ -17,16 +17,22 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { ConfigurationBuilder } from "@rhombus-std/config";
-import { CommandLineConfigurationProvider, CommandLineConfigurationSource } from "@rhombus-std/config.commandline";
-import type { CommandLineConfigurationSourceOptions } from "@rhombus-std/config.commandline";
+import {
+  CommandLineConfigurationProvider,
+  CommandLineConfigurationSource,
+  type CommandLineConfigurationSourceOptions,
+} from "@rhombus-std/config.commandline";
 import {
   defaultVariableNameTransformation,
   EnvironmentVariablesConfigurationProvider,
   EnvironmentVariablesConfigurationSource,
+  type EnvironmentVariablesConfigurationSourceOptions,
 } from "@rhombus-std/config.env";
-import type { EnvironmentVariablesConfigurationSourceOptions } from "@rhombus-std/config.env";
-import { JsonConfigurationProvider, JsonConfigurationSource } from "@rhombus-std/config.json";
-import type { JsonConfigurationSourceOptions } from "@rhombus-std/config.json";
+import {
+  JsonConfigurationProvider,
+  JsonConfigurationSource,
+  type JsonConfigurationSourceOptions,
+} from "@rhombus-std/config.json";
 
 describe("cross-package public surface (built dist)", () => {
   test("each provider package exports its Source and Provider runtime bindings", () => {

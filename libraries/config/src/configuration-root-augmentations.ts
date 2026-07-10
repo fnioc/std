@@ -12,8 +12,8 @@
 // (`ConfigurationRootExtensions.getDebugView(root)`).
 
 import type { IConfigurationProvider, IConfigurationRoot, IConfigurationSection } from "@rhombus-std/config.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 import { ConfigurationManager } from "./ConfigurationManager";
 import { ConfigurationRoot } from "./ConfigurationRoot";
 
@@ -69,7 +69,7 @@ export const ConfigurationRootExtensions = {
    */
   getDebugView(
     root: IConfigurationRoot,
-    processValue?: (context: ConfigurationDebugViewContext) => string,
+    processValue?: Func<[ConfigurationDebugViewContext], string>,
   ): string {
     const parts: string[] = [];
 
@@ -102,13 +102,13 @@ export const ConfigurationRootExtensions = {
 // `ConfigurationRootExtensions.getDebugView` form.
 declare module "./ConfigurationRoot" {
   interface ConfigurationRoot {
-    getDebugView(processValue?: (context: ConfigurationDebugViewContext) => string): string;
+    getDebugView(processValue?: Func<[ConfigurationDebugViewContext], string>): string;
   }
 }
 
 declare module "./ConfigurationManager" {
   interface ConfigurationManager {
-    getDebugView(processValue?: (context: ConfigurationDebugViewContext) => string): string;
+    getDebugView(processValue?: Func<[ConfigurationDebugViewContext], string>): string;
   }
 }
 

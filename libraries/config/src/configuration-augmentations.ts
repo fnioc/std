@@ -23,8 +23,7 @@
 // split rule it becomes a SEPARATE builder-targeted const, never folded here.
 
 import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config.core";
-import { applyAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
 import { ConfigurationSection } from "./configuration-section";
 import { ConfigurationManager } from "./ConfigurationManager";
 import { ConfigurationRoot } from "./ConfigurationRoot";
