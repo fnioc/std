@@ -1,8 +1,0 @@
-{
-  "//": "Lint-time typecheck config: identical to tsconfig.json but WIDENED to rootDir '.'. Tests now live in the sibling tests/primitives.test package, which has its own lint via its own tsconfig.",
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "."
-  },
-  "include": ["src/**/*"]
-}

@@ -39,7 +39,7 @@
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.lint.json"
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@rhombus-std/config.core": "workspace:*",

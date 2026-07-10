@@ -1,8 +1,0 @@
-{
-  "//": "Lint-time typecheck config: identical to tsconfig.json. The load-bearing @ts-expect-error assertions that once lived in this package's co-located test/schema.test.ts -- proving SchemaFor<T> rejects a drifting schema literal at compile time -- now live in the sibling @rhombus-std/config.test package and are re-checked by ITS `lint` script running `tsc -p tsconfig.json` there.",
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "."
-  },
-  "include": ["src/**/*"]
-}

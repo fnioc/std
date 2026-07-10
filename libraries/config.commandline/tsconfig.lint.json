@@ -1,5 +1,0 @@
-{
-  "//": "Lint-time typecheck config: identical to tsconfig.json. Tests used to live locally and widen this to test/**/*, but they've moved out to the sibling @rhombus-std/config.commandline.test package, so this now only covers src/**/*.",
-  "extends": "./tsconfig.json",
-  "include": ["src/**/*"]
-}

@@ -1,5 +1,0 @@
-{
-  "//": "Lint-time typecheck config: identical to tsconfig.json -- tests now live in the sibling @rhombus-std/config.json.test package (tests/config.json.test/), which type-checks itself via its own tsconfig.json.",
-  "extends": "./tsconfig.json",
-  "include": ["src/**/*"]
-}
