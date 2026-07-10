@@ -1,0 +1,10 @@
+{
+  "//": "The ttsc/Go plugin config read by @ttsc/unplugin/bun during the Bun.build emit (build.ts): src/main.ts needs BOTH registration and addOptions<T>() lowering, and ttsc runs a single native backend per pass, so it wires the ONE aggregate `/ttsc-app` plugin (transforms/cmd/ttsc-di-app) that composes both stages — not two separate plugins. Extends the tspc tsconfig but swaps the plugins for the aggregate descriptor and drops the ts-patch `types` augmentations — the Go plugin pattern-matches the call sites and queries the checker directly. @types/bun is kept so the Generic Host's process/node:* surface stays resolved. Lint stays on typescript 5 (tspc --noEmit) via the base tsconfig.json.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@types/bun"],
+    "plugins": [
+      { "transform": "@rhombus-std/di.transformer.options/ttsc-app" }
+    ]
+  }
+}

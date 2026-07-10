@@ -20,7 +20,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun x tspc -p tsconfig.json",
+    "build": "bun build.ts",
     "lint": "bun x tspc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -30,7 +30,9 @@
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
     "@rhombus-std/options": "workspace:*",
+    "@ttsc/unplugin": "^0.18.1",
     "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
   }
 }
