@@ -28,6 +28,7 @@
       "default": "./dist/index.js"
     },
     "./ttsc": "./ttsc.mjs",
+    "./ttsc-app": "./ttsc-app.mjs",
     "./internal/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
@@ -41,7 +42,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs"
+    "ttsc.mjs",
+    "ttsc-app.mjs"
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",

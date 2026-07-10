@@ -1,4 +1,4 @@
-package main
+package dioptionstransform
 
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"

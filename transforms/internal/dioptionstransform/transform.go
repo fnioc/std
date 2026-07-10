@@ -1,4 +1,4 @@
-package main
+package dioptionstransform
 
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -36,7 +36,7 @@ const (
 // The options wrapper base is resolved ONCE per program (it scans the module
 // export graph for the package-public `Options` interface); an absent base makes
 // every sugar call unlowerable.
-func addOptionsTransform(prog *driver.Program, ctx *tokens.Context, addDiagnostic func(plugin.Diagnostic)) plugin.FileTransform {
+func AddOptionsTransform(prog *driver.Program, ctx *tokens.Context, addDiagnostic func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	optionsBase, hasBase := resolveOptionsBase(prog, ctx)
 

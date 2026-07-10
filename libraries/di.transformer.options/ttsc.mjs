@@ -8,8 +8,9 @@
 //
 // The existing ts-patch entry (the `.` export's `transform`) is untouched — this
 // is the parallel ttsc/Go emit path, wired through the separate `./ttsc` subpath.
-// Configure it ALONGSIDE the registration transformer's `./ttsc` plugin, exactly
-// as the ts-patch forms are paired.
+// This descriptor lowers addOptions<T>() ONLY. ttsc runs a single native backend
+// per pass, so it CANNOT be listed alongside the registration `./ttsc` plugin — a
+// consumer that needs both wires the aggregate `./ttsc-app` descriptor instead.
 
 import path from "node:path";
 
