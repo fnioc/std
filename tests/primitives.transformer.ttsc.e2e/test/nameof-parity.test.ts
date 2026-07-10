@@ -91,20 +91,29 @@ beforeAll(() => {
   );
   writeFileSync(join(lib, "index.d.ts"), `export { Deep } from "./internal/deep";\n`);
   writeFileSync(join(lib, "internal", "deep.d.ts"), `export interface Deep {}\n`);
-  writeFileSync(join(lib, "contracts", "index.d.ts"), `export interface IFoo {}\n`);
+  writeFileSync(
+    join(lib, "contracts", "index.d.ts"),
+    `export interface IFoo {}\nexport interface ScopedBase<S extends string> {}\nexport type Scoped<S extends string = "singleton"> = ScopedBase<S>;\n`,
+  );
 
   writeFileSync(join(projDir, "src", "nameof.ts"), `export declare function nameof<T>(): string;\n`);
   writeFileSync(
     join(projDir, "src", "app.ts"),
     `
 import { nameof } from "./nameof";
-import { IFoo } from "your-lib/contracts";
+import { IFoo, Scoped } from "your-lib/contracts";
 import { Deep } from "your-lib";
 interface ILocal {}
+interface LocalBase<S extends string> {}
+type Local<S extends string = "singleton"> = LocalBase<S>;
 export const appInternal = nameof<ILocal>();
 export const asyncToken = nameof<Promise<ILocal>>();
 export const packagePublic = nameof<IFoo>();
 export const bareReexport = nameof<Deep>();
+export const localDefaultAlias = nameof<Local>();
+export const localExplicitAlias = nameof<Local<"request">>();
+export const publicDefaultAlias = nameof<Scoped>();
+export const publicExplicitAlias = nameof<Scoped<"request">>();
 `,
   );
   writeFileSync(
@@ -164,5 +173,30 @@ describe.skipIf(!toolchainReady)("ttsc/Go nameof lowering byte-parity", () => {
     // The augmentation-token shape: nameof<T>() over an interface re-exported
     // from the package root tokenizes as the bare package, not the nested file.
     expect(app).toContain(`"your-lib:Deep"`);
+  });
+
+  test("defaulted-generic alias, referenced bare → bare alias token (defaults dropped)", () => {
+    // A fully-defaulted instantiation IS the bare alias, so nameof<Local>() /
+    // nameof<Scoped>() drop the "singleton" default rather than closing it in —
+    // the augmentation-token shape (`nameof<ServiceManifest>()`, whose
+    // `type ServiceManifest<S extends string = "singleton"> = …<S>` mirrors the
+    // fixture's `Local`/`Scoped`). Anchor each token to its own export name so
+    // the sibling explicit-arg alias in the same file can't cross-match. The
+    // emit escapes inner quotes (`\"request\"`), so the default form we must
+    // NOT see is `Local<\"singleton\">`.
+    expect(app).toContain(`localDefaultAlias = "./app:Local"`);
+    expect(app).not.toContain(`"./app:Local<\\"singleton\\">"`);
+    expect(app).toContain(`publicDefaultAlias = "your-lib/contracts:Scoped"`);
+    expect(app).not.toContain(`"your-lib/contracts:Scoped<\\"singleton\\">"`);
+  });
+
+  test("defaulted-generic alias with an explicit non-default arg → closed token", () => {
+    expect(app).toContain(`localExplicitAlias = "./app:Local<\\"request\\">"`);
+    expect(app).toContain(`publicExplicitAlias = "your-lib/contracts:Scoped<\\"request\\">"`);
+  });
+
+  test("the elided nameof import leaves no dangling build-time import", () => {
+    expect(app).not.toContain("nameof");
+    expect(app).not.toContain("./nameof");
   });
 });
