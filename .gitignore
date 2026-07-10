@@ -9,3 +9,7 @@ dist/
 coverage/
 .turbo/
 .moon/cache/
+
+# Local-only Go workspace pinning ttsc shims from node_modules (machine-specific paths)
+transforms/go.work
+transforms/go.work.sum

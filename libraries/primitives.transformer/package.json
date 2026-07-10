@@ -25,14 +25,21 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./ttsc": "./ttsc.mjs",
     "./internal/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"
     }
   },
+  "ttsc": {
+    "plugin": {
+      "transform": "@rhombus-std/primitives.transformer/ttsc"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun x tsc --noEmit -p tsconfig.json && bun build.ts",
