@@ -31,10 +31,10 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { RESOLVER_TOKEN, ServiceManifestClass } from "@rhombus-std/di.core";
-import type { ServiceManifest } from "@rhombus-std/di.core";
-import type { IMetricsBuilder, ITracingBuilder } from "@rhombus-std/diagnostics.core";
+import { RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 import {
+  type IMetricsBuilder,
+  type ITracingBuilder,
   METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
   METRICS_CONFIGURE_TOKEN,
   METRICS_OPTIONS_TOKEN,
@@ -44,8 +44,7 @@ import {
   TRACING_OPTIONS_TOKEN,
   TracingOptions,
 } from "@rhombus-std/diagnostics.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 

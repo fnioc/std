@@ -25,8 +25,7 @@
 // workaround) is dropped now that #115 gives each its own literal (#105).
 
 import type { ConfigureOptions } from "@rhombus-std/options";
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
@@ -75,7 +74,7 @@ export const TracingOptionsExtensions = {
 } satisfies AugmentationSet<TracingOptions>;
 
 /** Registers a `ConfigureOptions<TracingOptions>` step that runs `apply`. */
-function configureTracing(builder: ITracingBuilder, apply: (options: TracingOptions) => void): ITracingBuilder {
+function configureTracing(builder: ITracingBuilder, apply: Func<[options: TracingOptions], void>): ITracingBuilder {
   const step: ConfigureOptions<TracingOptions> = {
     configure(options: TracingOptions): void {
       apply(options);

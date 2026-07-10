@@ -13,9 +13,15 @@
 // The synchronous reference wrappers (Start/Run/WaitForShutdown that block a
 // thread) collapse into their async forms -- JS cannot block a thread.
 
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { AbortController, clearTimeout, registerAugmentations, setTimeout } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import {
+  AbortController,
+  type AbortSignal,
+  type AugmentationSet,
+  clearTimeout,
+  neverSignal,
+  registerAugmentations,
+  setTimeout,
+} from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { IHost } from "./IHost";
 import type { IHostApplicationLifetime } from "./IHostApplicationLifetime";
@@ -111,7 +117,7 @@ export const HostingAbstractionsHostExtensions = {
 
     // Don't forward the abort signal -- it may have been triggered only to
     // unblock the wait, and forwarding it would trigger an abortive shutdown.
-    await host.stop();
+    await host.stop(neverSignal);
   },
 
   /**

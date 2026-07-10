@@ -9,10 +9,8 @@
 // category is {@link HOSTING_LIFETIME_CATEGORY} (no vendor branding).
 
 import type { IHostApplicationLifetime, IHostEnvironment, IHostLifetime } from "@rhombus-std/hosting.core";
-import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
-import { logInformation, LogLevel } from "@rhombus-std/logging.core";
-import type { AbortSignal } from "@rhombus-std/primitives";
-import { process } from "@rhombus-std/primitives";
+import { type ILogger, type ILoggerFactory, logInformation, LogLevel } from "@rhombus-std/logging.core";
+import { type AbortSignal, process } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import type { ConsoleLifetimeOptions } from "../ConsoleLifetimeOptions";
 

@@ -6,12 +6,13 @@ import {
   HOSTED_SERVICE_TOKEN,
   hostedServiceCollectionToken,
   HostEnvironmentEnvExtensions,
+  type IHostedService,
+  type IHostEnvironment,
 } from "@rhombus-std/hosting.core/internal/index";
 // Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
 import "@rhombus-std/hosting.core/internal/index";
 import { ServiceManifest } from "@rhombus-std/di";
 import { NullFileProvider } from "@rhombus-std/fileproviders.core";
-import type { IHostedService, IHostEnvironment } from "@rhombus-std/hosting.core/internal/index";
 import { expect, test } from "bun:test";
 
 test("entry point loads and exposes the abstractions surface", () => {

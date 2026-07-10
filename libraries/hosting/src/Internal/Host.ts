@@ -13,18 +13,17 @@
 // scope is what gives singleton semantics and deterministic disposal.
 
 import type { Resolver, ServiceProvider } from "@rhombus-std/di.core";
-import { BackgroundService } from "@rhombus-std/hosting.core";
-import type {
-  IHost,
-  IHostApplicationLifetime,
-  IHostedLifecycleService,
-  IHostedService,
-  IHostLifetime,
+import {
+  BackgroundService,
+  hostedServiceCollectionToken,
+  type IHost,
+  type IHostApplicationLifetime,
+  type IHostedLifecycleService,
+  type IHostedService,
+  type IHostLifetime,
 } from "@rhombus-std/hosting.core";
-import { hostedServiceCollectionToken } from "@rhombus-std/hosting.core";
 import type { ILogger } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import { type AbortSignal, augment } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 import { BackgroundServiceExceptionBehavior } from "../BackgroundServiceExceptionBehavior";

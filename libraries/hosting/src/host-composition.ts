@@ -24,10 +24,14 @@
 import type { IConfiguration } from "@rhombus-std/config.core";
 import type { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProvider } from "@rhombus-std/di.core";
-import type { IHost, IHostLifetime } from "@rhombus-std/hosting.core";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
-import { Environments, HostDefaults } from "@rhombus-std/hosting.core";
-import type { HostBuilderContext } from "@rhombus-std/hosting.core";
+import {
+  Environments,
+  HOST_APPLICATION_LIFETIME_TOKEN,
+  type HostBuilderContext,
+  HostDefaults,
+  type IHost,
+  type IHostLifetime,
+} from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from "@rhombus-std/logging";
 import type { ILoggerProvider } from "@rhombus-std/logging.core";
 import { process } from "@rhombus-std/primitives";

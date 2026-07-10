@@ -24,8 +24,8 @@
 
 import type { Ctor, DepSlot, Token } from "@rhombus-std/di.core";
 import type { ConfigureOptions } from "@rhombus-std/options";
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
+import type { Func } from "@rhombus-toolkit/func";
 
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "../tokens";
@@ -74,7 +74,7 @@ export const MetricsOptionsExtensions = {
 } satisfies AugmentationSet<MetricsOptions>;
 
 /** Registers a `ConfigureOptions<MetricsOptions>` step at `token` that runs `apply`. */
-function configureMetrics(builder: IMetricsBuilder, apply: (options: MetricsOptions) => void): IMetricsBuilder {
+function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: MetricsOptions], void>): IMetricsBuilder {
   const step: ConfigureOptions<MetricsOptions> = {
     configure(options: MetricsOptions): void {
       apply(options);

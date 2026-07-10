@@ -15,8 +15,13 @@ import type { IConfigurationManager } from "@rhombus-std/config.core";
 import { ServiceManifest } from "@rhombus-std/di";
 import type { ServiceProviderFactory } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import type { HostBuilderContext, IHost, IHostApplicationBuilder, IHostEnvironment } from "@rhombus-std/hosting.core";
-import { HostDefaults } from "@rhombus-std/hosting.core";
+import {
+  type HostBuilderContext,
+  HostDefaults,
+  type IHost,
+  type IHostApplicationBuilder,
+  type IHostEnvironment,
+} from "@rhombus-std/hosting.core";
 import { LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggingBuilder } from "@rhombus-std/logging.core";
 import type { Action } from "@rhombus-toolkit/func";

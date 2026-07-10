@@ -12,9 +12,7 @@
 // consts' members onto its prototype. The synchronous reference `Start` collapses
 // into the async form -- JS cannot block a thread.
 
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import { type AbortSignal, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { IHost } from "./IHost";
 import type { IHostBuilder } from "./IHostBuilder";

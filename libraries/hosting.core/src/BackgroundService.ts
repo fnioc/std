@@ -1,5 +1,4 @@
-import { AbortController } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import { AbortController, type AbortSignal } from "@rhombus-std/primitives";
 import type { IHostedService } from "./IHostedService";
 
 /** Aborts `target` whenever `source` aborts (or immediately, if already aborted). */

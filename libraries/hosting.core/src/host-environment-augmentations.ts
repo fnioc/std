@@ -11,8 +11,7 @@
 // `@augment(nameof<IHostEnvironment>())` and pulls this bag onto its
 // prototype; the class-side merge stays downstream next to that class.
 
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import { Environments } from "./environments";
 import type { IHostEnvironment } from "./IHostEnvironment";

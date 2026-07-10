@@ -25,8 +25,7 @@
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
 // importable here.
 import type { AddBuilder, DepSlot, ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AugmentationSet } from "@rhombus-std/primitives";
+import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Ctor } from "@rhombus-toolkit/func";
 import { HOSTED_SERVICE_TOKEN } from "./tokens";

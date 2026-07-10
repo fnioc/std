@@ -4,8 +4,7 @@
 // `NullFileProvider`; a physical file provider is deferred (see decisions.md
 // §20).
 
-import type { IFileProvider } from "@rhombus-std/fileproviders.core";
-import { NullFileProvider } from "@rhombus-std/fileproviders.core";
+import { type IFileProvider, NullFileProvider } from "@rhombus-std/fileproviders.core";
 import type { IHostEnvironment } from "@rhombus-std/hosting.core";
 import { augment } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";

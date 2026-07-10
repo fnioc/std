@@ -5,11 +5,9 @@ import {
   HOST_APPLICATION_LIFETIME_TOKEN,
   HOST_ENVIRONMENT_TOKEN,
   HostBuilder,
-} from "@rhombus-std/hosting/internal/index";
-import type {
-  IHostApplicationLifetime,
-  IHostedLifecycleService,
-  IHostEnvironment,
+  type IHostApplicationLifetime,
+  type IHostedLifecycleService,
+  type IHostEnvironment,
 } from "@rhombus-std/hosting/internal/index";
 import { HOSTED_SERVICE_TOKEN } from "@rhombus-std/hosting/internal/Internal/Host";
 import { expect, test } from "bun:test";

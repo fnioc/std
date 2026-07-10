@@ -15,22 +15,20 @@
 // collapse into their async forms -- JS cannot block a thread.
 
 import { MemoryConfigurationSource } from "@rhombus-std/config";
-import { RESOLVER_TOKEN } from "@rhombus-std/di.core";
-import type { Resolver } from "@rhombus-std/di.core";
+import { type Resolver, RESOLVER_TOKEN } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import type {
-  HostBuilderContext,
-  IHostApplicationLifetime,
-  IHostBuilder,
-  IHostEnvironment,
+import {
+  HOST_APPLICATION_LIFETIME_TOKEN,
+  type HostBuilderContext,
+  HostDefaults,
+  HostingAbstractionsHostExtensions,
+  type IHostApplicationLifetime,
+  type IHostBuilder,
+  type IHostEnvironment,
 } from "@rhombus-std/hosting.core";
-import { HostDefaults, HostingAbstractionsHostExtensions } from "@rhombus-std/hosting.core";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "@rhombus-std/hosting.core";
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
 import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { registerAugmentations } from "@rhombus-std/primitives";
-import type { AbortSignal } from "@rhombus-std/primitives";
+import { type AbortSignal, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";

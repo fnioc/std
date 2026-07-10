@@ -6,9 +6,7 @@
 // reads, folding them onto the defaults.
 
 import type { IConfiguration } from "@rhombus-std/config.core";
-import type { IHost } from "@rhombus-std/hosting.core";
-import type { IHostedLifecycleService } from "@rhombus-std/hosting.core";
-import type { BackgroundService } from "@rhombus-std/hosting.core";
+import type { BackgroundService, IHost, IHostedLifecycleService } from "@rhombus-std/hosting.core";
 import { BackgroundServiceExceptionBehavior } from "./BackgroundServiceExceptionBehavior";
 
 /** Parses a strictly non-negative integer (digits only), or `undefined`. */
