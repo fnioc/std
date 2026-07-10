@@ -18,9 +18,12 @@
 // The `MemoryCacheEntryOptions`-consuming overloads (reference `Set(options)`
 // and `GetOrCreate(createOptions)`) are kept under distinct member names
 // (`setWithOptions`/`getOrCreateWithOptions`/`getOrCreateAsyncWithOptions`,
-// since an object literal cannot overload a single key) and folded into this
-// same `CacheExtensions` const -- `MemoryCacheEntryOptions` now lives in
-// caching.core (as ME has it), so the options TYPE is in scope here.
+// since a `MemoryCacheEntryOptions` bag isn't runtime-distinguishable from the
+// `Date`/`number`/`IChangeToken` expiration argument `set`/`getOrCreate` already
+// discriminate on -- a distinct member name is clearer than another overload,
+// docs §42) and folded into this same `CacheExtensions` const --
+// `MemoryCacheEntryOptions` now lives in caching.core (as ME has it), so the
+// options TYPE is in scope here.
 
 import type { AugmentationSet, IChangeToken } from "@rhombus-std/primitives";
 import { registerAugmentations } from "@rhombus-std/primitives";
