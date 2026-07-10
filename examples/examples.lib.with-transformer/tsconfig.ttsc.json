@@ -1,0 +1,10 @@
+{
+  "//": "The ttsc/Go plugin config read by @ttsc/unplugin/bun during the Bun.build JS emit (build.ts): the @rhombus-std/di.transformer ttsc plugin (a Go sidecar) lowers the tokenless resolve<T>()/tryResolve<T>()/isService<T>() calls in server-report.ts. Extends the tspc tsconfig but swaps the plugin to the /ttsc descriptor and drops the `types` augmentation (the lowered calls are real di.core Resolver methods, so no declaration merge is needed for the transform's checker). Lint and d.ts emit stay on typescript 5 via the base tsconfig.json.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "plugins": [
+      { "transform": "@rhombus-std/di.transformer/ttsc" }
+    ]
+  }
+}

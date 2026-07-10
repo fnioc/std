@@ -22,6 +22,10 @@ jobs:
     name: verify
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    # A cold ttsc plugin cache compiles the typescript-go sidecars from scratch
+    # (~5 min per distinct plugin, 3 plugins). Give the whole job room to survive
+    # that on top of the normal gate; warm-cache runs finish in a couple minutes.
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -31,8 +35,24 @@ jobs:
         with:
           bun-version: latest
 
+      # The ttsc/Go lowering engine (transforms/) compiles a native sidecar with
+      # the mise-pinned Go; `bun run build`/`bun run test` resolve it via
+      # `mise which go`. Install the mise.toml toolchain so Go is on PATH.
+      - uses: jdx/mise-action@v2
+
       - name: Install dependencies
         run: bun install
+
+      # The compiled ttsc sidecars live under node_modules/.cache/ttsc (~25 MB
+      # each). Cache them keyed on the Go sources + toolchain manifest + ttsc
+      # version (bun.lock) so only a genuine transform change forces a cold build.
+      - name: Cache ttsc plugin sidecars
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/ttsc
+          key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
+          restore-keys: |
+            ttsc-plugins-${{ runner.os }}-
 
       - name: Build
         run: bun run build
@@ -59,9 +79,21 @@ jobs:
         with:
           bun-version: latest
 
+      # build-all.ts lowers caching.core through the ttsc/Go engine, which needs
+      # the mise-pinned Go on PATH (resolved via `mise which go`).
+      - uses: jdx/mise-action@v2
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - name: Cache ttsc plugin sidecars
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/ttsc
+          key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
+          restore-keys: |
+            ttsc-plugins-${{ runner.os }}-
 
       - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
         run: npm install -g npm@latest

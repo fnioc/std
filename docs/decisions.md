@@ -1602,3 +1602,75 @@ spelling moves from a shared const to the type reference at each site. A no-tran
   `CacheEntryExtensions` move from caching.memory's direct downstream `applyAugmentations` to the
   registry in caching.core (`nameof<IMemoryCache>()` / `nameof<ICacheEntry>()`, `tryGetValue`
   exclusion preserved), with `MemoryCache`/`CacheEntry` decorated in caching.memory.
+
+## 41. `transforms/` — the Go/`ttsc` engine as a dual-track port of the four transformers
+
+The four authoring-time transformers (`primitives.transformer` nameof/token-derivation core,
+`di.transformer` registration lowering, `di.transformer.options` `addOptions<T>()`,
+`config.transformer` `withType<T>()`) are ported to Go, compiled and run as `ttsc`
+(`typescript-go`) plugin sidecars. The Go sources live in a NEW ROOT module `transforms/`
+(`go.mod` `module github.com/fnioc/std/transforms`, one `cmd/` per plugin, shared logic under
+`internal/`). This is a **second implementation**, not a replacement — the TS/ts-patch sources
+and their test packages stay and keep passing verbatim.
+
+- **Dual-track policy — the two engines have distinct jobs.** ts-patch/TS5 stays the
+  **lint/typecheck gate** for transformer-consumers (the `tsc`/`tspc --noEmit` and eslint passes,
+  the `built`-condition src-referencing story of the Build-layout section — all unchanged). The
+  Go/`ttsc` path is the **build/emit engine**: it is what actually lowers `nameof<T>()` /
+  `add<T>()` / `addOptions<T>()` / `withType<T>()` into the shipped JS. The two must produce
+  **semantically equivalent lowering** — token strings byte-identical — and that equivalence is
+  the load-bearing invariant, not the code shape.
+- **Descriptor wiring mirrors the canonical `ttsc` recipe.** Each transformer package keeps its
+  untouched ts-patch entry on the `.` export (`transform`), and gains a parallel `./ttsc` subpath
+  pointing at a thin `ttsc.mjs` descriptor plus a `"ttsc": { "plugin": { "transform":
+  "@rhombus-std/<pkg>/ttsc" } }` marker in its `package.json`. The descriptor is a JS shim whose
+  only job is `path.resolve(context.dirname, "..", "..", "transforms", "cmd", "ttsc-<name>")` —
+  it hands `ttsc` the ABSOLUTE PATH to the Go plugin source shipped in the monorepo, and `ttsc`
+  compiles+runs it as a native sidecar with the local Go toolchain. `ttsc` / `typescript@^7` /
+  `@ttsc/unplugin` are worktree-local bun devDeps; the isolated linker keeps the existing
+  `typescript@5.9.3` packages untouched.
+- **One native backend per pass → the aggregate host.** `ttsc` runs a single native plugin per
+  source-to-source pass and hard-errors on two. A consumer needing both the registration transform
+  AND its `addOptions` satellite (the app example) therefore cannot list two `/ttsc` plugins;
+  it wires ONE aggregate — `transforms/cmd/ttsc-di-app`, exposed as
+  `@rhombus-std/di.transformer.options/ttsc-app` — that composes both stages back-to-back over one
+  loaded program. The satellite's transform is extracted to `internal/dioptionstransform` so the
+  aggregate and the standalone `cmd/ttsc-di-options` share it; the call shapes are disjoint and
+  order-independent, so tokens are identical to the two standalone sidecars.
+- **The alias-symbol shim.** The checker records the type ALIAS a reference was spelled through in
+  an unexported `alias` field; the `ttsc` shim surfaces it only as audit metadata, never as an
+  accessor. `internal/tokens/alias.go` reads it via a layout-mirrored, offset-checked
+  `unsafe.Pointer` cast (`aliasOf`) guarded by a checksum against the sanctioned `Type.Symbol()`
+  accessor — fail-safe to "no alias" on struct drift. This is the sole route to alias symbol +
+  type-arguments, needed for defaulted-generic normalization (§40) and Date/Map exclusion in the
+  config schema walk.
+- **The `ttsc`/Go path is an in-bundle transform, not a file-emitting compiler.** `ttsc -p` emits
+  a stdout JSON envelope of lowered TS, not files, so the build engine runs the Go plugin(s) as a
+  `@ttsc/unplugin/bun` onLoad source transform inside a `Bun.build` call (`ttscBunPlugin` /
+  `ttscProject` in `scripts/build-package.ts`, parallel to `tspcProject`; a package sets one XOR
+  the other). The toolchain is pinned in-process by `ttscEnv`: `GOTOOLCHAIN=local`,
+  `TTSC_GO_BINARY` from `mise which go`, and `GOTMPDIR` redirected onto the disk-backed
+  `node_modules/.cache/ttsc-gobuild` (a cold `typescript-go` compile overruns a size-capped tmpfs
+  `/tmp`). `go` comes from mise ONLY (`mise.toml` pin), never system-wide. The committed
+  `transforms/go.work` is machine-specific (absolute `node_modules` paths pinning the shims) and
+  **gitignored** — `ttsc` materializes its own scratch workspace, so `go.mod` carries no `replace`.
+- **Shared plugin-cache economics.** The compiled sidecar for each distinct plugin is cached at
+  **repo-root** `node_modules/.cache/ttsc` (~25 MB/binary), NOT per-package — so the isolated
+  linker does not force a cold rebuild per consumer. Cost is ~5 min cold, paid once per distinct
+  plugin; warm emit is ~3-4 s. CI (`.github/workflows/ci.yml`) provisions Go via `jdx/mise-action`
+  and restores this cache keyed on the Go sources + `go.mod` + `bun.lock` (the `ttsc` version),
+  with the `verify` job timeout raised to survive a cold-cache run.
+- **`caching.core` is the pilot; full library-tier conversion is a measured follow-up.** Only
+  `caching.core` (a `nameof`-only consumer) flips its emit to `ttscProject` this pass — its dist
+  output is byte-identical to the tspc twin (retained as `tsconfig.build.json`). The remaining
+  `nameof` consumers stay on `tspcProject`. A `ttsc` package produces no per-file `dist/internal`
+  white-box surface (`Bun.build` bundles), so a `ttsc` consumer that needs `internal/*` (§40's
+  executable white-box story) is part of that follow-up; `caching.core` has no such consumer.
+- **The parity harnesses are the bridge-keeper.** `tests/{di.transformer,di.transformer.options,
+  config.transformer}.ttsc.e2e` assert the Go path lowers the existing TS parity corpus to the
+  same tokens; the app example's `expected.txt` byte-diff is the end-to-end di+di-options proof.
+  These harnesses expose a `test:e2e` script (NOT `test`) and self-skip when `mise which go`
+  fails, so they are deliberately OUT of the default `bun --filter '*' test` gate — the same
+  Go-dependency reasoning that keeps the parity e2e off the required check. They are a
+  Go-provisioned / local gate for now; wiring a dedicated Go CI job that runs
+  `*.ttsc.e2e` is the natural next step and intentionally not in the pilot PR.

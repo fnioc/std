@@ -83,3 +83,37 @@ describe("nameof<T>() rewriting", () => {
     expect(out).toContain("const k = \"./src/app:IBar\"");
   });
 });
+
+describe("nameof<T>() defaulted-generic alias normalization (§40)", () => {
+  // A defaulted generic alias referenced BARE is indistinguishable from the
+  // bare alias — the checker records the pre-applied default argument for a
+  // same-file reference but omits it for an imported one, yet both spell the
+  // identical type. When every recorded argument equals its parameter's
+  // declared default, the token drops the args: the augmentation-token shape
+  // (`nameof<ServiceManifest>()` on `type ServiceManifest<S extends string =
+  // "singleton"> = …`). An explicit non-default argument keeps the args.
+
+  test("bare reference to a defaulted-generic alias drops the default → bare token", () => {
+    const src = `
+      import { nameof } from "@rhombus-std/di.transformer";
+      interface ManifestBase<S extends string> {}
+      type Manifest<S extends string = "singleton"> = ManifestBase<S>;
+      const key = nameof<Manifest>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("const key = \"./app:Manifest\"");
+    expect(output).not.toContain("./app:Manifest<");
+  });
+
+  test("explicit non-default argument keeps the closed-generic token", () => {
+    const src = `
+      import { nameof } from "@rhombus-std/di.transformer";
+      interface ManifestBase<S extends string> {}
+      type Manifest<S extends string = "singleton"> = ManifestBase<S>;
+      const key = nameof<Manifest<"request">>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain("./app:Manifest<");
+    expect(output).toContain("request");
+  });
+});
