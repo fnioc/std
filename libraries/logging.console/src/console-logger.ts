@@ -13,8 +13,10 @@
 // i.e. `<level>: <category>[<eventId>]`, then the message on its own
 // padded line (padding = the width of `<level>: `).
 
-import type { EventId, ILogger } from "@rhombus-std/logging.core";
+import type { EventId, ILogger, LoggerExtensionMethods } from "@rhombus-std/logging.core";
 import { LogLevel } from "@rhombus-std/logging.core";
+import { augment } from "@rhombus-std/primitives";
+import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 
 /**
@@ -50,7 +52,14 @@ function logLevelString(logLevel: LogLevel): string {
 /** Message-line padding: the width of a `<level>: ` prefix (4 + 2). */
 const MESSAGE_PADDING = "      ";
 
+// The class-side type merge for the registry-installed `LoggerExtensions`
+// methods (log/logInformation/…). `ILogger` itself gets NO interface merge
+// (§36: many implementers); the method form is typed here, exactly where
+// `@augment(nameof<ILogger>())` installs it — see @rhombus-std/logging's Logger.
+export interface ConsoleLogger extends LoggerExtensionMethods {}
+
 /** An {@link ILogger} that writes the simple console format to stdout. */
+@augment(nameof<ILogger>())
 export class ConsoleLogger implements ILogger {
   private readonly category: string;
 
