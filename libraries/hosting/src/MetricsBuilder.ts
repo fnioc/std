@@ -25,6 +25,7 @@ declare module "./MetricsBuilder" {
   interface MetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    clearMetricsListeners(): this;
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     addMetricsConfiguration(configuration: IConfiguration): this;

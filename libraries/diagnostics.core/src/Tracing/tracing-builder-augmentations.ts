@@ -109,6 +109,17 @@ export const TracingBuilderExtensions = {
     return builder;
   },
   /**
+   * Removes all {@link ActivityListenerBuilder} registrations from the builder --
+   * the port of `TracingBuilderExtensions.ClearListeners(ITracingBuilder)`
+   * (`builder.Services.RemoveAll<ActivityListenerBuilder>()`), via di.core's
+   * `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb
+   * (installed as a manifest method through the augmentation registry).
+   */
+  clearTracingListeners(builder: ITracingBuilder): ITracingBuilder {
+    builder.services.removeAll(TRACING_LISTENER_TOKEN);
+    return builder;
+  },
+  /**
    * Enables activities via a deferred rule. Mirrors
    * `TracingBuilderExtensions.EnableTracing(ITracingBuilder, ...)`.
    */
@@ -149,6 +160,7 @@ export const TracingBuilderExtensions = {
 declare module "./ITracingBuilder" {
   interface ITracingBuilder {
     addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
+    clearTracingListeners(): this;
     enableTracing(
       sourceName?: string,
       operationName?: string,

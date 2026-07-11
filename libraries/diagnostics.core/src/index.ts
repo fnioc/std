@@ -3,8 +3,12 @@
 // enums, builder interfaces) and the builder extension FUNCTIONS as real runtime.
 // There is no metrics/tracing runtime behind these (no Meter/Instrument/Activity/
 // ActivitySource analog in this repo) -- what is ported is the pure-data rule /
-// options model plus the DI-registration wiring, which is self-consistent and
-// useful on its own. See the package README/tbd for what is intentionally skipped.
+// options model, the DI-registration wiring, and the most-specific-rule-wins
+// resolvers (`getMostSpecificInstrumentRule`/`getMostSpecificTracingRule`, the
+// selection algorithms the reference listener runtimes evaluate their rules
+// with, promoted here to the consumable selection primitive), which is
+// self-consistent and useful on its own. See the package README/tbd for what is
+// intentionally skipped.
 
 // Side-effect: installs the MetricsOptions/TracingOptions value-object augmentations
 // (enableMetrics/disableMetrics/enableTracing/disableTracing) as instance methods onto
@@ -14,6 +18,12 @@ import "./options-augmentations";
 
 // Metrics.
 export type { IMetricsBuilder } from "./Metrics/IMetricsBuilder";
+export {
+  getMostSpecificInstrumentRule,
+  instrumentRuleMatches,
+  isMoreSpecificInstrumentRule,
+} from "./Metrics/instrument-rule-matching";
+export type { InstrumentRuleQuery } from "./Metrics/instrument-rule-matching";
 export { InstrumentRule } from "./Metrics/InstrumentRule";
 export { METER_SCOPE_ALL, MeterScope } from "./Metrics/meter-scope";
 export { MetricsBuilderExtensions, MetricsOptionsExtensions } from "./Metrics/metrics-builder-augmentations";
@@ -25,6 +35,12 @@ export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./Tracing/acti
 export { ActivityListenerBuilder } from "./Tracing/ActivityListenerBuilder";
 export type { ITracingBuilder } from "./Tracing/ITracingBuilder";
 export { TracingBuilderExtensions, TracingOptionsExtensions } from "./Tracing/tracing-builder-augmentations";
+export {
+  getMostSpecificTracingRule,
+  isMoreSpecificTracingRule,
+  tracingRuleMatches,
+} from "./Tracing/tracing-rule-matching";
+export type { TracingRuleQuery } from "./Tracing/tracing-rule-matching";
 export { TracingOptions } from "./Tracing/TracingOptions";
 export { TracingRule } from "./Tracing/TracingRule";
 
