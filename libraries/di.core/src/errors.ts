@@ -15,6 +15,30 @@ export class DiError extends Error {
 }
 
 /**
+ * Activation failed in `ActivatorUtilities` — a constructor slot could neither be
+ * resolved from the provider nor filled by a supplied argument. The reference DI
+ * throws `InvalidOperationException` ("Unable to resolve service …") from the same
+ * spot; a `Token` names the unsatisfiable slot. Registration-time (di.core), not
+ * resolution-time, because activation runs its OWN construction against the public
+ * provider surface — it never enters the `@rhombus-std/di` resolution engine.
+ */
+export class ActivationError extends DiError {
+  public constructor(
+    public readonly ctorName: string,
+    /** The slot token that could not be filled, when the failure names one. */
+    public readonly token?: Token,
+  ) {
+    super(
+      token === undefined
+        ? `Unable to activate "${ctorName}": a constructor argument is neither `
+          + `resolvable from the provider nor supplied directly.`
+        : `Unable to activate "${ctorName}": the constructor argument "${token}" `
+          + `is neither registered in the provider nor supplied directly.`,
+    );
+  }
+}
+
+/**
  * An open template token was passed to a registration method that cannot
  * accept one: `addValue`/`addFactory` (open registrations are class-only), or
  * `add` with a template whose type arguments are not ALL holes (v1 forbids

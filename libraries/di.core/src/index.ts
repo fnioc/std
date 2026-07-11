@@ -59,9 +59,15 @@ export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteTo
 // the engine resolves it to the live provider view (see `provider-token.ts`).
 export { isProviderToken, RESOLVER_TOKEN } from "./provider-token.js";
 
-// The registration-time error taxonomy root and the open-token registration
-// error. Resolution-time errors extend `DiError` from `@rhombus-std/di`.
-export { DiError, OpenTokenRegistrationError } from "./errors.js";
+// `ActivatorUtilities` — activate an UNREGISTERED class against a provider,
+// injecting its dependency-signature slots. The reference activator-helper analog.
+export { ActivatorUtilities } from "./activator-utilities.js";
+export type { ObjectFactory } from "./activator-utilities.js";
+
+// The registration-time error taxonomy root, the open-token registration error,
+// and the activation error `ActivatorUtilities` raises. Resolution-time errors
+// extend `DiError` from `@rhombus-std/di`.
+export { ActivationError, DiError, OpenTokenRegistrationError } from "./errors.js";
 
 // The descriptor-level mutation augmentation (`removeAll`). A side-effect import:
 // pulling the barrel registers it against the `ServiceManifest` token so the verb
