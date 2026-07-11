@@ -72,7 +72,9 @@ idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during th
 where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
 
 - **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
-  `ChangeToken.onChange`) that underpins live-reload (§8), **and** the augmentation infra:
+  `ChangeToken.onChange` — the async-consumer forms real, via a runtime thenable check, §58 — plus
+  `CompositeChangeToken` merging N tokens into one, §58) that underpins live-reload (§8), **and**
+  the augmentation infra:
   one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`
   (§28), installed either directly via `applyAugmentations` (CLOSED receivers) or through the
   **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
@@ -90,27 +92,41 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   compile-scope `node-builtins.d.ts` files (§44).
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9 — plus the
-  `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb, §38) ← `di` (the resolution engine:
-  scopes, resolution, captive-dependency protection, disposal). `di.transformer` (ts-patch: token
-  derivation, dependency extraction, registration lowering, factory-signature diagnostic) depends
-  on **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.transformer.options`
-  is a satellite lowering the `addOptions<T>()` sugar (§15). di.core's public type surface also ships
-  `ServiceProviderFactory` — the reference `IServiceProviderFactory` analog, shared by the hosting
-  builders (§24) — and the capability interfaces `RequiredResolver` / `ServiceQuery` that `Resolver`
-  composes (the reference `ISupportRequiredService` / `IServiceProviderIsService` analogs, §27).
+  `ServiceCollectionDescriptorExtensions.removeAll`/`tryAdd*`/`replace*` descriptor verbs (§38, §56),
+  `ActivatorUtilities` (activate an unregistered class from a provider, §56), and the
+  `EmptyServiceProvider` null-object singleton, §56) ← `di` (the resolution engine: scopes,
+  resolution, captive-dependency protection, `ServiceProviderOptions`-gated `validateScopes` /
+  `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57).
+  `di.transformer` (ts-patch: token derivation, dependency extraction, registration lowering,
+  factory-signature diagnostic) depends on **`di.core` types only, never the `di` runtime**
+  (§2 — hard invariant). `di.transformer.options` is a satellite lowering the `addOptions<T>()`
+  sugar (§15). di.core's public type surface also ships `ServiceProviderFactory` — the reference
+  `IServiceProviderFactory` analog, shared by the hosting builders (§24) — and the capability
+  interfaces `RequiredResolver` / `ServiceQuery` that `Resolver` composes (the reference
+  `ISupportRequiredService` / `IServiceProviderIsService` analogs, §27).
 - **`options`** — the collapsed `Options<T>` accessor + the configure / post-configure / validate
-  `OptionsFactory` pipeline (§4). Depends **`di.core` only; config-unaware.** `options.augmentations`
-  is the **one place di and config meet** — the config→`Options<T>` bridge (§14).
+  `OptionsFactory` pipeline (§4), **plus** startup validation (`IStartupValidator`/`StartupValidator`,
+  forced by `Host.start`, §55) and `ValidateOptionsResultBuilder` for multi-failure aggregation
+  (§64). Depends **`di.core` only; config-unaware.** `options.augmentations` is the **one place di
+  and config meet** — the config→`Options<T>` bridge (§14) — and now also exports its pipeline
+  slot-token grammar (`configureStepToken` et al., §54) so a downstream package can register an
+  OPEN `IConfigureOptions`/`IOptionsChangeTokenSource`-style step for a type it doesn't own; its
+  `validateOnStart` manifest verb (§55) and DI-injected `configure`/`postConfigure`/`validate`
+  overloads (a token-tuple + tuple-typed callback, §64) round out the pipeline.
 - **`config`** — `config.core` (the `IConfiguration*` types + one runtime export, the
-  `IConfigurationBuilder` augmentation token — no longer pure-types, §38) ← `config` (builder/root/section
+  `IConfigurationBuilder` augmentation token — no longer pure-types, §38 — plus the shared
+  `properties` key/value bag between a builder and its sources, §59) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigurationManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigurationProvider#toString` gives `getDebugView` a friendly
   provider label, §33; `ChainedConfigurationSource`/`ChainedConfigurationProvider` wrap an
   existing `IConfiguration` as a source — implements `IConfigurationProvider` directly, no data
   store of its own — installing `addConfiguration` on BOTH `ConfigurationBuilder` and
-  `ConfigurationManager`, §37) ← providers `config.json` / `config.env` / `config.commandline`
-  (each a `declare module` augmentation adding e.g. `addJsonFile` to BOTH `ConfigurationBuilder`
-  and `ConfigurationManager`, §35). `config.env` also exports
+  `ConfigurationManager`, §37; `StreamConfigurationSource`/`Provider` read an already-open
+  `Uint8Array | string` payload with a once-only load guard, §59) ← providers `config.json` /
+  `config.env` / `config.commandline` (each a `declare module` augmentation adding e.g.
+  `addJsonFile` to BOTH `ConfigurationBuilder` and `ConfigurationManager`, §35; `config.json` adds
+  `JsonStreamConfigurationSource`/`Provider` + `addJsonStream` over a shared internal
+  `JsonConfigurationFileParser`, §59). `config.env` also exports
   `colonAndDotVariableNameTransformation` and normalizes its prefix through the transform before
   matching (§30/§31); `config.commandline` honors bare `key=value` argv tokens (§34).
   `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
@@ -123,13 +139,26 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `HostingEnvironment`; ← the concrete `config`/`di`/`diagnostics`/`logging` packages +
   `options` + `options.augmentations` + the new `logging.console` console sink). The host→app
   configuration composition is a live `addConfiguration` chain, not a `flattenConfiguration`
-  snapshot (§37). Full reference parity, no stubs inside hosting itself (§23); the physical file
-  provider and the non-console logging sinks it composes stay deferred at their own families
-  (§18, §20).
+  snapshot (§37). Full reference parity, no stubs inside hosting itself (§23); the builder parity
+  surface is now finished (§67): `addHostedService`'s factory overload, a real
+  `useDefaultServiceProvider` (threading `di`'s `ServiceProviderOptions` through `build()`, via a
+  `WeakMap` side channel on the classic builder since the single-container model has no factory
+  seam, §24), `HostApplicationBuilder.asHostBuilder()` (a classic `IHostBuilder` view backed by an
+  internal `HostBuilderAdapter`), the `HostAbortedException(message, innerException)` constructor,
+  and no-context convenience overloads on the pure-extension builder members only (the three
+  core-interface members keep their single context-taking signature — a TS arity constraint, not
+  an omission). The physical file provider and the non-console logging sinks it composes stay
+  deferred at their own families (§18, §20).
 - **`diagnostics`** — `diagnostics.core` (the `IMetricsBuilder`/`ITracingBuilder` abstractions,
-  the rule/options data model, `METRICS_*`/`TRACING_*` tokens; ← `di.core` + `options`) ←
+  the rule/options data model, `METRICS_*`/`TRACING_*` tokens, `clearMetricsListeners`/
+  `clearTracingListeners` via `di.core`'s `removeAll` (§61), and the most-specific-rule-wins
+  resolvers `getMostSpecificInstrumentRule`/`getMostSpecificTracingRule` extracted as standalone
+  pure functions over plain-data rule queries — the family's documented selection primitive,
+  independent of the still-deferred listener runtime, §61; ← `di.core` + `options`) ←
   `diagnostics` (concrete `MetricsBuilder`/`TracingBuilder`, config-binding pipeline wired
-  through `ConfigurationChangeTokenSource` for reload-reactive `Options<T>`, and the
+  through `ConfigurationChangeTokenSource` for reload-reactive `Options<T>`, the per-listener
+  `IMetricListenerConfigurationFactory`/`ActivityListenerConfigurationFactory` merged-configuration
+  views `addMetricsConfiguration`/`addTracingConfiguration` register (§66), and the
   `addMetrics`/`addTracing` declaration-merging augmentations onto `di.core`'s
   `ServiceManifestClass`; ← `diagnostics.core` + `config` + `options` + `options.augmentations`
   - `primitives`, `di.core` as peer). The metrics/tracing **listener runtime** (no `Meter`/
@@ -139,31 +168,51 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
     listener packages, `ME.Http.Diagnostics`, `ME.Diagnostics.ResourceMonitoring`, and
     `ME.Diagnostics.ExceptionSummarization` are all out of scope (no consumer, YAGNI).
 - **`logging`** — `logging.core` (`ILogger`/`ILoggerFactory`/`ILoggerProvider`/`ILoggingBuilder`,
-  `LogLevel`, `EventId`, `FormattedLogValues` + the `log*` convenience wrappers; ← `di.core`) ←
-  `logging` (`Logger`/`LoggerFactory` composite fan-out, `NullLogger*`, `LoggerFilterOptions`,
-  the `addLogging` augmentation onto `di.core`'s `ServiceManifestClass`; ← `logging.core`,
-  `di.core` as peer) ← `logging.configuration` (config-tree → `LoggerFilterOptions` binding,
-  `addConfiguration`; ← `logging` + `logging.core` + `config` + `config.core` + `di.core` +
-  `options`). No concrete sinks (console/debug/event-log/trace-source providers) are ported this
-  pass except `logging.console` (the console sink, whose `addConsole` hosting's defaults consume);
-  the rest stay deferred pending a provider design (issue #75). `clearProviders` is real (ports
-  through di.core's `removeAll`, §38); `setMinimumLevel` and `LoggerFactory.create` are
-  hosting-style stubs pending the options-DI-builder and `di` runtime integrations they need.
+  `LogLevel`, `EventId`, structured `FormattedLogValues` (a lazy `[holeName, value]` enumeration +
+  the `{OriginalFormat}` pseudo-entry, §63) + the `log*` convenience wrappers, plus the
+  reference-type-parity additions `LogEntry<TState>`, `IBufferedLogger`/`BufferedLogRecord`,
+  `ProviderAlias` (a decorator-free symbol marker + `getProviderAlias` reader), and
+  `LoggerMessage.define`/`defineScope` (§63); `beginScope` and `LoggerFactoryExtensions.createLogger`
+  are standalone-only-permanently, since each collides with its own receiver's primitive (§50); ←
+  `di.core`) ← `logging` (`Logger`/`LoggerFactory` composite fan-out, `NullLogger*`,
+  `LoggerFilterOptions`, `ILogger<T>`/`Logger<T>` generic-category logger via an open
+  `ILogger<$1> → Logger<$1>` registration, `ISupportExternalScope` +
+  `LoggerExternalScopeProvider` (`AsyncLocalStorage`-backed), the `LoggerRuleSelector`
+  filter-selection engine actually consulted at log time, and the `addLogging` augmentation onto
+  `di.core`'s `ServiceManifestClass`; ← `logging.core` + `options` + `options.augmentations`,
+  `di` + `di.core` as peers — `setMinimumLevel` and `LoggerFactory.create` are real, no longer
+  stubs, §62) ← `logging.configuration` (config-tree → `LoggerFilterOptions` binding via a lazy
+  `addOptions`/`ConfigurationChangeTokenSource` pipeline, `addConfiguration`, and the full
+  `ILoggerProviderConfigurationFactory`/`ILoggerProviderConfiguration<T>` provider-configuration
+  plumbing over an open di template, §54; ← `logging` + `logging.core` + `config` + `config.core` +
+  `di.core` + `options` + `options.augmentations`). Console/debug/event-log/trace-source providers
+  beyond `logging.console` stay deferred pending a provider design (issue #75); `logging.console`
+  itself is at full reference parity — formatters (`Simple`/`Json`/`Systemd`), ANSI colors, and a
+  microtask-drained background queue in place of the reference's writer thread (§53).
 - **`caching`** — `caching.core` (`IMemoryCache`/`ICacheEntry` abstractions + the
   `CacheExtensions`/`CacheEntryExtensions` convenience functions, owned outright so no
-  augmentation is needed; ← `primitives`) ← `caching.memory` (a genuinely working `MemoryCache`:
-  absolute/sliding/change-token expiration, size-limited priority-then-LRU compaction, eviction
-  callbacks; ← `caching.core` + `logging.core` + `options` + `primitives`, `di.core` as peer via
-  the `addMemoryCache` augmentation). Statistics/metrics, linked-entry tracking, and the
-  options-pipeline/`ILoggerFactory`-DI wiring for `addMemoryCache` are deferred — no consumer yet.
+  augmentation is needed; the `MemoryCacheEntryExtensions` fluent sugar on `MemoryCacheEntryOptions`
+  — a CLOSED value-object set, §49; the distributed-cache surface `IDistributedCache`/
+  `DistributedCacheEntryOptions`/`DistributedCacheExtensions`/`DistributedCacheEntryExtensions`,
+  with `IDistributedCache` getting the many-implementers no-interface-merge treatment (§48, §60);
+  and the `Hybrid/` abstractions-only subsystem (`HybridCache`/`HybridCacheEntryOptions`/
+  `HybridCacheEntryFlags`/`IHybridCacheSerializer`/`IHybridCacheSerializerFactory`), ported ahead
+  of any concrete tiered-cache implementation, §60; ← `primitives`) ← `caching.memory` (a
+  genuinely working `MemoryCache`: absolute/sliding/change-token expiration, size-limited
+  priority-then-LRU compaction, eviction callbacks, `getCurrentStatistics`/`MemoryCacheStatistics`,
+  `keys`/`count` enumeration, linked-entry tracking (§65), plus `MemoryDistributedCache` +
+  `addDistributedMemoryCache` (§60); `addMemoryCache`/`addDistributedMemoryCache` now route through
+  a real `Options<T>` pipeline and resolve `ILoggerFactory` via `tryResolve`, registering through
+  `di.core`'s `tryAddFactory` (§65); ← `caching.core` + `logging.core` + `options` + `primitives`,
+  `di.core` as peer). Meter/observable-counter metrics hooks stay unported — no meter/instrument
+  analog exists (§17).
 - **`fileproviders`** — `fileproviders.core` (`IFileProvider`/`IFileInfo`/`IDirectoryContents`,
   `NullFileProvider`; ← `primitives`) ← `fileproviders.composite` (`CompositeFileProvider`
-  fan-out over 0/1/N inner providers; ← `fileproviders.core` + `primitives`). A disk-backed
-  provider (`ME.FileProviders.Physical`) and `ME.FileSystemGlobbing` (only ever a `Physical`
-  dependency upstream) are deliberately deferred — what a physical provider means here is an open
-  design question, not yet scoped. `CompositeFileProvider.watch` over 2+ change-emitting
-  providers is a stub pending a `CompositeChangeToken` primitive (tracked against issue #77; the
-  0- and 1-provider cases are fully functional).
+  fan-out over 0/1/N inner providers, `watch` now real for all tiers — including 2+
+  change-emitting providers via `primitives`' `CompositeChangeToken`, closing issue #77, §58; ←
+  `fileproviders.core` + `primitives`). A disk-backed provider (`ME.FileProviders.Physical`) and
+  `ME.FileSystemGlobbing` (only ever a `Physical` dependency upstream) are deliberately deferred —
+  what a physical provider means here is an open design question, not yet scoped.
 
 Cross-cutting invariants (each spans several packages — confirm against `docs/decisions.md`
 before touching):
@@ -192,9 +241,16 @@ before touching):
   `.core`-authored const's interface-side `declare module` merge lives beside it in `.core`;
   class-side merges stay downstream next to each concrete class (retired per-lib on dist
   conversion, #68). **Merge-identity rule:** every interface-side merge for one interface must
-  resolve to the interface's declaring module file (downstream packages use the `internal/*`
-  subpath) — mixing barrel and declaring-module specifiers makes TS treat the `this`-returning
-  members as unrelated this-types and breaks `implements` (§38).
+  resolve to the interface's declaring module file — but a DOWNSTREAM/published-facing author
+  merging onto an OPEN receiver it doesn't own must resolve through the receiver's PUBLIC BARREL,
+  never `internal/*` (the publish-time scrub makes `internal/*` unreachable for a published
+  extender, §47; `di.core`'s `authoring.ts` documents the barrel form). Mixing barrel and
+  declaring-module specifiers for the SAME interface makes TS treat the `this`-returning members as
+  unrelated this-types and breaks `implements` (§38). **Many-implementers rule:** a receiver with
+  multiple present/future/test-fake implementers and no single owning concrete (`ILogger`,
+  `IDistributedCache`) gets NO interface-side merge at all — registry install + per-class
+  `@augment` + an exported `*ExtensionMethods` typing interface only, since a merge would force
+  phantom members onto every implementer (§36, §48).
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the

@@ -1862,3 +1862,490 @@ level even where no runtime call survives bundling).
     `MemoryCache` (which imports `cache-entry.ts`), breaking the cycle at the type level rather
     than importing around it. `index.ts` files, by construction, can never import their own
     barrel and always import siblings directly.
+
+## 47. Published-facing OPEN-receiver merges resolve through the owning package's barrel — refines §38's merge-identity rule
+
+§38's merge-identity rule already forbids mixing a barrel specifier and a declaring-module (`internal/*`)
+specifier for merges targeting the SAME interface, because TS then treats the `this`-returning
+members as unrelated this-types and `implements` breaks. This entry narrows the rule further for a
+downstream package authoring a NEW merge onto an OPEN receiver it doesn't own: that merge must
+resolve through the receiver's PUBLIC barrel, never `internal/*` — because the publish-time scrub
+(§7) makes `internal/*` genuinely unreachable for a published extender, not merely discouraged.
+`di.core`'s `authoring.ts` documents this as the canonical recipe: its worked example imports
+`registerAugmentations`/`AugmentationSet` from `@rhombus-std/primitives`'s bare specifier, never an
+internal path, precisely because a downstream author has no other route once published. A parallel
+sweep (branch `fix-publish-merge-specifiers`) is auditing every existing OPEN-receiver merge and
+flipping any that still resolve through `internal/*` to the barrel; this entry records the RULE
+the sweep enforces, not its per-file diff.
+
+## 48. Many-implementers receivers get no interface-side merge — generalizes §36's `ILogger` precedent
+
+§36 left `ILogger`/`IConfiguration` without a prototype-method form because they have "several
+impls and no single downstream concrete to patch," but didn't generalize the shape beyond those two
+CLOSED-package cases. The distributed-cache slice (#147) hit the identical situation with
+`IDistributedCache` — memory today, remote providers by design, hand-written test fakes — and
+resolved it the same way, this time through the §38 REGISTRY rather than a bare standalone
+function: `DistributedCacheExtensions` registers against `nameof<IDistributedCache>()` with NO
+interface-side `declare module` merge (a merge would force phantom members onto every implementer,
+present and future); each concrete class (`MemoryDistributedCache`) is `@augment`-decorated and
+separately typed via an exported `DistributedCacheExtensionMethods` interface, so the method form
+exists per concrete class without touching the interface. The general rule: a many-implementers
+receiver — an interface with multiple present/future/test-fake implementers and no single owning
+concrete — gets registry install + per-class `@augment` + an exported `*ExtensionMethods` typing
+interface, and NO interface-side merge, whether the receiver is a CLOSED package (`ILogger`) or the
+newer registry-based OPEN shape (`IDistributedCache`).
+
+## 49. `caching.core`: `MemoryCacheEntryExtensions` — the third value-object CLOSED-set — #144
+
+Ports the fluent sugar on `MemoryCacheEntryOptions` (`setPriority`/`setSize`/`addExpirationToken`/
+`setAbsoluteExpiration`/`setSlidingExpiration`/`registerPostEvictionCallback`), each returning the
+bag for chaining. `MemoryCacheEntryOptions` is a concrete class living in the SAME package as the
+const, so — like `MetricsOptions`/`TracingOptions` (§17) and `LoggerFilterOptions` before it — this
+is the reverse-direction value-object case: CLOSED set, direct `applyAugmentations` + class-side
+`declare module` merge beside the const, no registry. `MemoryCacheEntryExtensions` is caching's
+third instance of this recipe. Overload collapses mirror `CacheEntryExtensions`: the two
+`SetAbsoluteExpiration` overloads (relative/absolute) collapse via the §42 union-tuple-rest form;
+the two `RegisterPostEvictionCallback` overloads collapse into an optional `state` parameter.
+Validation lives in the bag's own setters rather than duplicating the reference's explicit guards.
+
+## 50. `logging.core`: `LoggerFactoryExtensions.createLogger` and `beginScope` join the standalone-only-permanently list — #145, #160
+
+`LoggerFactoryExtensions.createLogger(factory, type)` (category-from-type logger creation) and
+`ILogger`'s templated `beginScope` convenience wrapper both share a name with a primitive their own
+receiver already defines (`ILoggerFactory.createLogger`, `ILogger.beginScope`). A registry install
+would `Object.assign` a thunk over the concrete implementation, and for `createLogger` the
+string-delegation path would recurse into itself. Both join `tryGetValue` (§29) and the plain `log`
+wrapper (§40) on the standalone-only-permanently list: no token, no `@augment`, no interface- or
+class-side merge — the call surface is the const's own member (`LoggerFactoryExtensions.createLogger
+(factory, MyService)`). Category derivation for `createLogger` collapses the reference's
+namespace-qualified/generic-stripped/nested-dot type-name helper entirely to the constructor's bare
+`name` (a TS constructor carries none of that data); the parameter type is `AbstractCtor` (first
+repo use, admitting abstract constructors to match the reference's `Type`-accepting form).
+
+## 51. `logging`: `FilterLoggingBuilderExtensions` — the `ILoggingBuilder` half of `addFilter` — #146
+
+Completes the reference's split `FilterLoggingBuilderExtensions` class: the `LoggerFilterOptions`-
+receiver half was already ported; this adds the separate `ILoggingBuilder`-receiver const (an OPEN
+receiver, registered via the registry against `nameof<ILoggingBuilder>()`), honoring the recorded
+single-receiver-per-const split rather than folding the two into one. The reference's private
+`ConfigureFilter` helper is realized by routing each `addFilter` call through `options.augmentations`'
+`configure` verb at a new `LOGGER_FILTER_OPTIONS_TOKEN` — the first consumer of an OPEN options-
+pipeline slot for a type the registering package (`logging`) doesn't own, establishing
+`logging → options.augmentations` as a load-bearing edge (mirrors the reference `Logging → Options`
+edge). Overload shape mirrors the options half: the two unambiguous shapes ((category, level) and
+the raw 3-arg boolean filter) via the §42 union-tuple-rest inlining; the wider provider-scoped `<T>`
+matrix stays unported sugar. `logging.configuration`'s separately-named, eagerly-bound filter token
+is flagged to converge onto this pipeline token once its own lazy-binding gap closes (closed in
+§54).
+
+## 52. `config`: `InternalConfigurationRootExtensions` — the internal-static-class recipe's first instance — #148
+
+The reference keeps child enumeration in an INTERNAL static extension class
+(`InternalConfigurationRootExtensions.GetChildrenImplementation`), but the port had folded it into a
+public instance method on `ConfigurationRoot` — an accidental public API that also shadowed the
+`getChildrenImplementation` key in index navigation. Extracted into the §28/§42 authoring shape (one
+object-literal const, receiver-first, `satisfies AugmentationSet<IConfigurationRoot>`) but marked
+INTERNAL like its reference: exported only for the owning package's own call sites, never
+barrel-exported, never installed on a prototype. This is the recipe's first instance and the
+pattern for any future reference-internal static class: the same authoring shape as a public
+augmentation, but no barrel export and no install path at all. Two reference members stay
+deliberately unmirrored — the copy-on-write reference-counted-providers branch (its guarded
+copy-on-write provider list is itself unported, no concurrent-reader story in a single-threaded
+runtime), and `TryGetConfiguration` (dead code here, since every section read already routes
+through `ConfigurationRoot.get`'s private `#rawGet`).
+
+## 53. `logging.console` reaches full reference parity — formatters, colors, background queue — #149
+
+Revokes the "advanced console surface omitted" deferral. Ports the `ConsoleFormatter` abstraction
+plus all three built-ins (`Simple`/`Json`/`Systemd`), the full `ConsoleLoggerOptions`/
+`ConsoleFormatterOptions` model, and the background writer — adapted from the reference's dedicated
+writer THREAD to a microtask-drained async queue (`ConsoleLoggerProcessor`), with the write-path
+semantics (drop-counting, error routing, dispose-time flush) kept faithful; `Wait` mode admits
+messages past its limit rather than blocking the single-threaded drain (documented on the enum, not
+a silent gap). `ConsoleLoggerExtensions` grows its full member set (`addConsole`/`addSimpleConsole`/
+`addJsonConsole`/`addSystemdConsole`/`addConsoleFormatter`).
+
+Divergences: colors are ANSI escape sequences (this platform's native color mechanism, so the
+reference's ANSI-to-legacy-console translation layer has nothing to translate to and isn't ported);
+`addConsoleFormatter` takes a constructed formatter instance rather than a DI-constructed generic
+type (no-transformer-first); registration wiring is direct construction with the DI-pipeline
+semantics reproduced (one provider per manifest via a `WeakMap`, configure delegates accumulating
+through an internal `ReloadableOptions`). Residual, blocked on sibling-package types: `LogEntry`/
+`IBufferedLogger`/`ISupportExternalScope`'s marker, and the config-binding pipeline — all closed by
+§54/§55/§63 below.
+
+## 54. `logging.configuration` reaches full reference parity — lazy filter pipeline + provider-configuration plumbing — #151
+
+Revokes both deferments the package's own header documented. The one-arg `addConfiguration` no
+longer eagerly binds; it now registers the faithful lazy pipeline (an `addOptions` assembly, a
+`LoggerFilterConfigureOptions` configure step reshaped from the old eager `bindLoggerFilterOptions`
+walk, and a `ConfigurationChangeTokenSource`) — nothing reads configuration until the options
+materialize, and a reload re-runs the parse. The provider-configuration surface
+(`ILoggerProviderConfigurationFactory`/`ILoggerProviderConfiguration<T>` + concretes,
+`LoggerProviderOptions.registerProviderOptions`) is ported file-for-file, with the reference's
+open-generic registration realized as a real di open template closing per provider via `typeArg(1)`.
+The no-arg `AddConfiguration()` and the one-arg form share one receiver and one member name; the
+registry's flat per-token bag forbids a second member, so one member absorbs both by arity (§42
+union-tuple-rest — the `options.augmentations` `configure` precedent).
+
+Two changes landed OUTSIDE the package, both load-bearing: **`options.augmentations` exports its
+pipeline slot-token grammar** (`configureStepToken` et al.) — in the reference these slots are OPEN
+public service contracts (any package may register an `IConfigureOptions<T>`/
+`IOptionsChangeTokenSource<T>` for a type it doesn't own), which is exactly what this package's
+`registerProviderOptions` does, so keeping the derivation helpers module-private would have forced
+either a parallel diagnostics-style pipeline or string-grammar duplication. And **a `di` engine
+fix**: `#isResolvable` now treats collection tokens (`Array<T>`/`Iterable<T>`) as always-satisfiable,
+matching `#isKnown` and what `#resolve` already supported — without it, a constructor signature
+naming a collection slot (the reference `IEnumerable<T>` injection the provider-configuration
+factory needs) was rejected even though resolution would succeed.
+
+Provider ALIAS lookup stays a residual here (needs a provider-alias analog in `logging.core`,
+closed in §63).
+
+## 55. `options`: startup validation — `IStartupValidator`/`StartupValidator`/`validateOnStart` — #152
+
+Ports the reference options startup-validation surface into the collapsed shape: `IStartupValidator`
+(the host-facing seam) and the built-in `StartupValidator` in `options`, plus the
+`validateOnStart(token)` manifest verb in `options.augmentations` that marks a registration for
+eager validation. `Host.start` resolves `IStartupValidator` (registered only when `validateOnStart`
+ran) after hosted services resolve but before they start, so misconfiguration fails at boot rather
+than on first use.
+
+The reference verb hangs off `OptionsBuilder<TOptions>` (unported, §4.2); it collapses onto
+`ServiceManifest` alongside `validate`/`postConfigure`, keyed by the options token, keeping the
+reference static-class name `OptionsBuilderExtensions`. Targets accumulate through a flat collection
+slot (§12) rather than the reference's dictionary-through-the-options-pipeline indirection —
+realizing the previously-unused `options → di.core` edge, since the concrete validator is `options`'
+first consumer of `di.core`'s `Resolver` type. Aggregation matches the reference: one failure
+rethrows as itself, many aggregate as one `AggregateError`; async validation is out of scope (no
+async pipeline exists to run it, stated so it isn't later "restored"). The augmentation file is
+named `options-builder-augmentations.ts` after its reference class (renamed post-landing, #154/#163
+— pure rename, no behavior change).
+
+## 56. `di.core`: descriptor try-add/replace verbs, `ActivatorUtilities`, `EmptyServiceProvider` — #156
+
+Three provider-side abstractions land, faithful-first with every divergence documented at its site:
+
+- **`tryAdd`/`tryAddFactory`/`tryAddValue` + `replace`/`replaceFactory`/`replaceValue`** on
+  `ServiceCollectionDescriptorExtensions` — conditional register-if-absent and unconditional
+  replace, backed by a new `hasRegistrations(token)` primitive (the "already registered?" analog of
+  `removeRegistrations`).
+- **`ActivatorUtilities`** (`createInstance`/`createFactory`/`getServiceOrCreateInstance`) activates
+  an unregistered class from a provider, injecting constructor deps via the same explicit `DepSlot`
+  signature the rest of `di.core` uses, and never enters the resolution engine.
+- **`EmptyServiceProvider`**, a stateless null-object `ServiceProvider` singleton where only the
+  intrinsic provider token resolves.
+
+Deliberate divergences: lifetime-named try-add verbs (`tryAddSingleton` etc.) collapse away —
+lifetime here is always the fluent `.as(scope)`, so reintroducing named-lifetime verbs would bake in
+scope names a manifest need not declare. There is no `ServiceDescriptor` object, so the reference's
+descriptor-taking overloads collapse into per-kind verbs. Activation adapts to the no-reflection
+model: no constructor-selection heuristics, no preferred-ctor marking, no keyed-service paths —
+supplied arguments match constructor slots POSITIONALLY (a provider-satisfiable slot resolves, the
+rest draw from args left to right) rather than by type-assignability, which TS cannot perform.
+`EmptyServiceProvider` does not mirror empty-`IEnumerable<T>` resolution — that behavior is owned by
+the resolution engine (`di`), and reproducing it here would fork that knowledge into `di.core`.
+
+## 57. `di`: `ServiceProviderOptions` (`validateScopes`/`validateOnBuild`) + disposal aggregation — #157
+
+`build(options?)` now accepts `{ validateScopes?, validateOnBuild? }`, both defaulting `false` per
+the reference `Default`. The `ServiceProviderOptions` TYPE lives in `di.core` rather than the
+reference's concrete-package placement, because `build(options?)` is declared on `di.core`'s
+`ServiceManifestBase` authoring interface — the parameter type must be reachable without the
+runtime engine. The reference's bare-`bool` convenience overload is deliberately collapsed into the
+options object (a positional boolean is opaque at the call site).
+
+**`validateScopes`** adapts the reference's fixed root/singleton/scoped call-site validator to the
+uniform-named-frame scope model: the reference's two checks (scoped-resolved-from-root,
+scoped-injected-into-singleton) collapse into ONE rule — a scope-tagged registration whose
+owner-frame lookup fails throws `ScopeValidationError` instead of the previously-silent transient
+fallback. A `Captor` (the nearest enclosing OWNED construction) threads through the resolution spine
+to reproduce all three reference message flavors (direct, indirect-from-root, captive-consumer);
+factories stay captor-opaque, matching the reference's leaf treatment of factory call sites. This
+generalizes past the reference's fixed two-level hierarchy to arbitrary named-scope capture pairs.
+
+**`validateOnBuild`** eagerly dry-run-validates every exact registration at `build()` — missing
+metadata, greedy (async-mode) signature selection, a recursive dependency walk with cycle detection
+— wrapping each failure in `RegistrationValidationError` and throwing one `AggregateError`. Open-
+template registrations are skipped, mirroring un-validated open generics; a closing synthesized from
+one IS validated when reachable as an exact registration's dependency. The reference's STATIC
+scoped-in-singleton check at build time has no analog here (scope names have no static ordering,
+frame arrangements are dynamic) — that half of validation stays resolve-time-only, covered by
+`validateScopes`.
+
+**Disposal aggregation**: `dispose()`/`disposeAsync()` previously aborted at the first throwing
+disposable, leaking every not-yet-disposed sibling. Both paths now attempt every owned instance's
+disposal regardless, then rethrow — a single collected failure as itself, two or more as one
+`AggregateError` — matching the reference policy. Reverse-construction order and the sync-thenable
+pre-check (`AsyncDisposalRequiredError`, thrown BEFORE any teardown so `disposeAsync()` can still
+run the full teardown) are unchanged.
+
+## 58. `primitives`: `CompositeChangeToken` + async `ChangeToken.onChange` — unstubs `CompositeFileProvider.watch`, closes #77 — #153
+
+**`CompositeChangeToken`** composes N change tokens into one: `hasChanged`/`activeChangeCallbacks`
+are any-of ORs, callbacks fire exactly once through a one-shot latch. Adaptations from the
+reference: the cancellation-source latch becomes an `AbortController` (reusing
+`CancellationChangeToken` for the latch registrations); the lock-based double-checked init collapses
+to a plain lazy check (single-threaded JS); there is no `try/catch` around the latch cancel, since
+`abort()` never rethrows listener exceptions (verified empirically — `EventTarget` dispatch isolates
+them). Reference semantics kept: callbacks only propagate from inner tokens with active change
+callbacks, poll-only inner changes are detected on a `hasChanged` poll, inner registrations release
+once the latch fires.
+
+**Async `ChangeToken.onChange` consumers** port into the EXISTING single signature via a runtime
+thenable check, rather than separate overloads: a returned promise defers re-registration until it
+settles; synchronous throws propagate to the trigger code; async rejections are swallowed AFTER
+re-registration — the platform's unhandled-rejection default is process death (not the reference's
+ignore-by-default), so leaving them unhandled would be the LESS faithful adaptation.
+`ChangeTokenConsumer` stays a union of the sync/async function shapes rather than one
+`void | PromiseLike<void>` return, because the union preserves TS's void-return assignability rule
+(`() => count++` stays a legal consumer — a pre-existing `config.test` consumer depends on it).
+
+**`CompositeFileProvider.watch`** over 2+ change-emitting providers replaces the §20/#77 throw with
+the reference's exact tiering (null tokens excluded; 0 → `NullChangeToken.singleton`; 1 →
+pass-through; 2+ → `CompositeChangeToken`), closing the deferment both §17 and §20 flagged as
+blocked on this promotion.
+
+## 59. `config`: stream configuration sources + `IConfigurationBuilder.properties` — #158
+
+**`IConfigurationBuilder.properties`** — the shared key/value bag between a builder and its sources
+— is added to `config.core`'s interface and both concrete builders. Divergence: the reference
+`ConfigurationManager` wraps the bag so any mutation triggers a rebuild-all-sources pass; this
+port's manager composes providers incrementally (§32) and has no rebuild-everything path (a rebuild
+would discard provider `set()` state), so the bag is a plain shared `Map` and a source observes
+properties as of its own `build()` time.
+
+**`StreamConfigurationSource`/`Provider`** (`config`) — the abstract stream source/provider pair,
+with the once-only load guard (a second `load()`, including via a root-wide reload, throws).
+Platform adaptation: the whole load path stays synchronous while `primitives`' structural
+`ReadableStream` is async-consume-only, so the payload type is `Uint8Array | string`
+(`StreamPayload`) rather than `ReadableStream<R>` — matching the reference type's actual in-memory
+usage. The reference's overloaded abstract `Load(Stream)`/concrete `Load()` pair can't share one
+name in TS, so the payload-taking half is `loadStream`.
+
+**`JsonStreamConfigurationSource`/`Provider` + `addJsonStream`** (`config.json`) join the
+`JsonConfigurationExtensions` set, installed on BOTH builder classes like `addJsonFile` (§35). The
+parse/flatten logic moved into a shared internal `JsonConfigurationFileParser` (mirroring the
+reference's internal parser, not barrel-exported) so both providers flatten identically; one
+reference behavior is unreachable — its parser throws on duplicate sibling keys, but `JSON.parse`
+folds duplicates before user code sees them.
+
+## 60. `caching.core`: the distributed-cache surface + the `Hybrid/` abstractions — #147, #159
+
+**Distributed cache** (`IDistributedCache`, `DistributedCacheEntryOptions`,
+`DistributedCacheExtensions`, `DistributedCacheEntryExtensions` in `caching.core`;
+`MemoryDistributedCache` + `MemoryDistributedCacheOptions` + `addDistributedMemoryCache` in
+`caching.memory`) finishes the reference `Caching.Abstractions`/`Caching.Memory` projects'
+distributed slice. Byte payloads map to `Uint8Array` (a miss resolves `undefined`); the four
+sync+async member pairs collapse to single Promise-returning members (no sync analog for
+distributed IO); `CancellationToken` maps to an optional `AbortSignal` (§39). `IDistributedCache`
+gets the many-implementers treatment §48 generalizes. The reference's internal `Freeze()` on
+`DistributedCacheEntryOptions` ports as a module-scoped, barrel-excluded helper (the reference-
+internal-member convention `freezeDistributedCacheEntryOptions`/`toDistributedCacheEntryOptions`
+below both follow). `IBufferDistributedCache` is not ported — its entire purpose is the reference's
+pooled-buffer vocabulary (`IBufferWriter<byte>`/`ReadOnlySequence<byte>`), which has no analog here;
+`Uint8Array` payloads already ARE the plain-buffer shape.
+
+**`Hybrid/` abstractions** (`HybridCache`, `HybridCacheEntryOptions`, `HybridCacheEntryFlags`,
+`IHybridCacheSerializer<T>`, `IHybridCacheSerializerFactory`) port as abstractions only — the
+reference's concrete multi-tier cache lives in its own project with no started std lib. Notable
+collapses: the `TState`-threading `GetOrCreateAsync` overload exists solely to let CLR callers avoid
+closure allocations via non-capturing lambdas, an optimization JS cannot express (closures ARE the
+platform's state-capture mechanism) — it collapses to the state-less form. Same-name abstract/
+virtual arity pairs (`remove`/`removeKeys`, `removeByTag`/`removeByTags`) split into distinct names,
+since a TS class can't mix an abstract signature and a base-implemented one under one member name —
+the split keeps each half independently overridable, matching the reference's abstract/virtual
+semantics. `IHybridCacheSerializerFactory.TryCreateSerializer<T>`'s implicit `typeof(T)` reflection
+becomes an explicit runtime type-token parameter (§40 vocabulary) — TS erases `T`, so a factory
+needs the type's identity to arrive as a value to dispatch per-type at all.
+
+## 61. `diagnostics.core`: `clearListeners` + the most-specific-rule-wins resolvers — #155
+
+**`clearMetricsListeners`/`clearTracingListeners`** join `addMetricsListener`/`addTracingListener`
+on their respective builders, removing all listener registrations via `di.core`'s `removeAll`
+(§38) — the `logging` `clearProviders` recipe.
+
+**The most-specific-rule-wins resolvers** — buried inside the reference's listener runtime
+(`ListenerSubscription.RuleMatches`/`IsMoreSpecific` for metrics; `DefaultActivitySourceFactory`'s
+matching for tracing) but NOT actually coupled to `Instrument`/`Meter`/`Activity` — are extracted as
+standalone pure functions (`getMostSpecificInstrumentRule`/`getMostSpecificTracingRule` + the
+`*RuleMatches`/`isMoreSpecific*` predicates) over `MetricsOptions`/`TracingOptions`' rule lists,
+queried by plain-data descriptors (`InstrumentRuleQuery`/`TracingRuleQuery`). No matching rule
+resolves to `undefined` ⇒ disabled: `getMostSpecific*(rules, query)?.enable ?? false` is exactly the
+reference default. This makes the resolvers the documented selection PRIMITIVE of
+`diagnostics.core`, ahead of and independent from the still-deferred listener/subscription runtime
+itself (§17). The tracing matcher's `considerOperationName` flag is always `true` at every
+reference call site, so the dead parameter is inlined rather than ported.
+
+## 62. `logging`: the filter-selection engine, external scope, and generic-category logger — #162
+
+`LoggerFilterOptions` rules are now CONSUMED at log time, not just held. `LoggerFactory` runs every
+provider's `LoggerInformation` through `LoggerRuleSelector` (most-specific rule wins: provider
+match, longest category prefix, wildcard, last-of-ties) to compute per-(provider, category)
+`MessageLogger`/`ScopeLogger` views; the composite `Logger` consults those, and a reactive filter
+source re-filters every existing logger on change. `addLogging` registers the
+`Options<LoggerFilterOptions>` assembly, defaults the minimum level to `Information`, and injects
+the assembled options plus the provider set into the factory — the filter token is the SAME
+`Options<LoggerFilterOptions>` token `logging.configuration`'s `addConfiguration` already derives
+(§54), so config-bound, `addFilter` (§51), and `setMinimumLevel` steps compose into one pipeline.
+
+**External scope**: `ISupportExternalScope` + `LoggerExternalScopeProvider`
+(`AsyncLocalStorage`-backed) flow scopes from the composite logger to scope-aware sinks. It lives in
+`logging` (impl), not `logging.core`, so its `node:async_hooks` import doesn't force a compile-scope
+requirement onto every package that src-compiles the abstractions barrel.
+
+**Generic-category logger**: `ILogger<T>`/`Logger<T>` plus the open `ILogger<$1> → Logger<$1>`
+registration, the closing type's token flowing in via `typeArg(1)`. TS forbids two same-named
+interfaces of differing arity, so `ILogger` and the reference's `ILogger<TCategoryName>` collapse
+into one defaulted-generic interface (`ILogger` = `ILogger<unknown>`) — consequently
+`nameof<ILogger>()` lowers to `…:ILogger<unknown>` (the registry key), while the open service token
+uses the clean `…:ILogger` base a `nameof<ILogger<Foo>>()` derives.
+
+`setMinimumLevel` and `LoggerFactory.create` are UNSTUBBED — the former through the configure
+pipeline, the latter through a real `@rhombus-std/di` container. The reference edge
+`Logging → DependencyInjection.Abstractions` in `docs/reference/me-extensions-dependencies.md`
+undercounts the real project (it also needs the DI runtime and Options); `logging` now depends on
+both.
+
+## 63. `logging.core`: reference type-parity port — `LogEntry`, buffered logging, `ProviderAlias`, `LoggerMessage`, structured `FormattedLogValues`, `beginScope` — #160
+
+**`FormattedLogValues`** upgrades to the reference `IReadOnlyList<KeyValuePair>` shape: it parses
+the template's named holes and enumerates one `[holeName, value]` pair per hole plus the
+`{OriginalFormat}` pseudo-entry (lazy; `message`/`args`/`toString()` unchanged) — what a structured
+sink's `state as IReadOnlyList<…>` probe reads.
+
+**`LogEntry<TState>`** moves to its reference home here; the placeholder copy `logging.console` had
+carried (§53's residual) is retired and every console consumer re-points at `logging.core`
+(structural type, non-breaking).
+
+**`ProviderAlias`** — the `ProviderAliasAttribute` analog. TS has no attributes and the repo's one
+decorator is reserved for runtime installation, so this is a decorator-free static marker keyed by a
+`providerAlias` symbol on the provider type, read back by `getProviderAlias` — resolving §54's
+residual.
+
+**`beginScope`** joins the standalone-only-permanently list (§50) — its name collides with
+`ILogger.beginScope` exactly as `LoggerFactoryExtensions.createLogger` collides with
+`ILoggerFactory.createLogger`.
+
+**`IBufferedLogger`/`BufferedLogRecord`** (a batch-delivery capability a provider may implement
+beside `ILogger`) and **`LoggerMessage.define`/`defineScope`** (the cached-delegate factory runtime
+half, up to six template values — the source-generator/attribute half stays out of scope) round out
+the family's type-parity surface.
+
+## 64. `options`: `ValidateOptionsResultBuilder` + DI-injected pipeline steps — #161
+
+**`ValidateOptionsResultBuilder`** accumulates validation failures across sources (`addError` with
+an optional property name, `addResult`/`addResults` over the family's `ValidateOptionsResult`,
+`clear`) and folds them into one result via `build()` — a validate step checking many things
+collects errors instead of stopping at the first failure. Drops the reference's DataAnnotations
+`ValidationResult` overloads (no DataAnnotations port exists, so there's no per-member result to
+consume).
+
+**DI-injected `configure`/`postConfigure`/`validate`** in `options.augmentations` mirror the
+reference `OptionsBuilder<T>.Configure`/`PostConfigure`/`Validate<TDep1..5>` family: a caller
+supplies a tuple of dependency tokens alongside the callback, each resolved from the provider at
+ASSEMBLY time (once, when the pipeline slot is read — not re-resolved per materialization like the
+reference, harmless for stable deps) and passed to the callback as trailing arguments. The
+reference's five fixed arities collapse into one variadic overload (§42): a token tuple plus a
+tuple-typed callback, so each verb keeps exactly two public overloads (the existing non-DI form +
+this one) rather than growing six. The dep list is token strings, not compile-time type parameters
+— a typed caller inlines `nameof<Dep>()`.
+
+## 65. `caching`: `MemoryCache` statistics, keys, linked entries + a real `addMemoryCache` options pipeline — #164
+
+**`getCurrentStatistics` + `MemoryCacheStatistics`** — the snapshot type and `IMemoryCache` member;
+the reference's per-thread `Stats`/`StatsHandler` sharding collapses to plain hit/miss/eviction
+counters (correct on single-threaded JS); user-initiated removals/replacements don't count as
+evictions, matching the reference.
+
+**Keys enumeration** — `MemoryCache.keys`/`count` over the single backing `Map` (the reference's
+string/non-string dictionary split has no JS meaning).
+
+**Linked cache-entry tracking** — the create→dispose push/pop chain and expiration-option
+propagation from a nested `getOrCreate` factory's inner entry up to its parent. The reference's
+`AsyncLocal<CacheEntry>` slot becomes a module-scoped variable — equivalent for every SYNCHRONOUS
+create→dispose window, with the async-flow divergence documented inline (the pinned bun runtime's
+`AsyncLocalStorage.enterWith` cannot reproduce restore-on-async-exit and segfaults after an `await`
+at the time of writing).
+
+**`addMemoryCache`'s options pipeline** finally mirrors the reference `AddOptions()` +
+`Configure(setup)` + singleton composition: the `Options<T>` assembly registers at a per-cache
+options token, `setup` becomes a lazy configure step, and the cache factory resolves the assembled
+options plus, via `tryResolve`, the `ILoggerFactory` (reproducing the reference's constructor-
+selection fallback to the logger-less ctor when logging isn't registered). The singleton registers
+through `di.core`'s `tryAddFactory` (§56) — the reference `TryAdd(Singleton<...>)` analog — so an
+earlier registration wins while configure steps still accumulate. The meter/observable-counter
+metrics hooks stay unported (need a meter/instrument analog `diagnostics` deliberately omits, §17).
+
+## 66. `diagnostics`: per-listener configuration factories — #165
+
+Ports the reference per-listener configuration surface that `addMetricsConfiguration`/
+`addTracingConfiguration` previously dropped on the floor: `IMetricListenerConfigurationFactory`
+(metrics, an interface) and `ActivityListenerConfigurationFactory` (tracing, the reference's public
+abstract class) each resolve a merged `IConfiguration` view for a named listener, chaining the
+`{listenerName}` section of every bound configuration through a `ConfigurationBuilder` into one view
+(later registrations win on key conflicts). `addMetricsConfiguration`/`addTracingConfiguration`
+register one marker per bound configuration into a collection slot; `addMetrics`/`addTracing`
+register the concrete factory as a singleton, ctor-injected with that collection. The markers and
+concrete factories are `internal` in the reference; they're exported here (matching the existing
+`ConfigureOptions`-step convention) so a plugin-less consumer can wire the same path by hand. There
+is still no listener/subscription runtime analog — this is purely the resolvable-configuration
+surface §17 already flagged as separable from the runtime it sits inside.
+
+## 67. `hosting`: the host builder parity surface is finished — #150, #166
+
+**`HostingLoggerExtensions`** (#150) reshapes the host runtime's internal structured log messages
+from loose free functions into the internal object-literal form every other set follows
+(module-scoped, receiver-first, `satisfies AugmentationSet<ILogger>`, no barrel export, no install)
+— `LoggerEventIds` splits into its own module mirroring the reference file layout.
+
+**`HostAbortedException`**'s three constructors collapse into one `(message?, innerException?)`,
+mapping the inner exception onto the JS `Error` `cause`.
+
+**`addHostedService`'s factory overload** mirrors `AddHostedService(Func<IServiceProvider,
+THostedService>)`, sharing the enumerable-singleton token with the ctor form; the factory injects
+the live resolver via a dep slot, and the overloads disambiguate by type (ES-class vs function) with
+the factory form listed first so an un-annotated `sp => …` infers its resolver.
+
+**`useDefaultServiceProvider` is real**: it configures a `di.core` `ServiceProviderOptions` (§57's
+`validateScopes`/`validateOnBuild`) threaded into `ServiceManifest.build(options)`; `configureDefaults`
+installs the dev-environment default (validation on only in Development). The single-container
+build has no pluggable factory seam (§24), so the classic `HostBuilder` threads the pending options
+through a package-internal `WeakMap` side channel resolved at build time (last write wins);
+`HostApplicationBuilder` computes them inline.
+
+**`HostApplicationBuilder.asHostBuilder()`** is a classic `IHostBuilder` view over the modern
+builder, backed by an internal `HostBuilderAdapter` that accumulates `configure*` delegates and
+replays them onto the shared configuration/services at build time, guarding late
+application-name/environment/content-root changes.
+
+**No-context convenience overloads** land for the pure-EXTENSION builder members
+(`configureHostOptions`/`configureLogging`/`configureMetrics`) only. The reference's no-context
+forms of the three INTERFACE members (`configureServices`/`configureAppConfiguration`/
+`configureContainer`) are deliberately NOT surfaced: a TS overload can't disambiguate the two
+arities for an un-annotated lambda without degrading contextual typing of the dominant
+(context-taking) form every in-repo caller uses — those three keep the single reference-interface
+signature. This is an empirically-confirmed TS arity/contextual-typing constraint, not an
+oversight, and generalizes: a no-context convenience overload is only safe on a member with NO base
+interface signature to compete with.
+
+`useDefaultServiceProvider`'s context-form overload (`Action<HostBuilderContext,
+ServiceProviderOptions>`) stays unported — no consumer (YAGNI, flagged so it isn't later "restored"
+without one).
+
+## 68. Residual open items after the port-completion wave (#144–#166)
+
+- **`useDefaultServiceProvider`'s context-form overload** — unported by design (§67); revisit only
+  if a consumer needs the `HostBuilderContext` inside the callback.
+- **`logging.configuration` ↔ `logging` filter-options token convergence** — §51 flagged
+  `logging.configuration`'s eagerly-bound filter token as needing to converge on `logging`'s
+  pipeline token (§62) once its lazy-binding gap closed; §54 closed the lazy-binding gap, but the
+  two packages still derive their tokens independently rather than sharing one — an open follow-up,
+  not a regression.
+- **Transformer consolidation** — an open owner-level question, not yet decided: whether future
+  authoring-time lowering work should ship as an "advertised lowering" via a `rhombusTransform`
+  manifest field (one generic mechanism a library opts into) versus more dedicated
+  `di.transformer.*`-style satellites (one package per lowering concern, the current shape). Either
+  direction must preserve §41's byte-parity constraint (the ts-patch and Go/`ttsc` engines lower
+  identically, token strings byte-for-byte) — that invariant is not up for renegotiation, only the
+  authoring mechanism feeding it.
