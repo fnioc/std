@@ -22,6 +22,8 @@ export type {
   ServiceProvider,
   // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
   ServiceProviderFactory,
+  // The provider-construction options `build(options?)` accepts.
+  ServiceProviderOptions,
   ServiceQuery,
   Union,
 } from "@rhombus-std/di.core";

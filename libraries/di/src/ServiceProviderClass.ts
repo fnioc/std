@@ -34,6 +34,7 @@ import {
   type LiteralRef,
   type ParsedToken,
   parseToken,
+  type ServiceProviderOptions,
   substituteSignatures,
   type Token,
   type TypeArgRef,
@@ -50,6 +51,8 @@ import {
   NoSatisfiableSignatureError,
   NoSatisfiableUnionError,
   OpenTokenResolutionError,
+  RegistrationValidationError,
+  ScopeValidationError,
   UnregisteredTokenError,
 } from "./errors.js";
 import type { OpenRegistration, Registration, Resolver, ScopeFactory, ServiceProvider } from "./types.js";
@@ -219,6 +222,20 @@ function wrapCollection(
 }
 
 /**
+ * The nearest enclosing OWNED construction — set when the spine constructs an
+ * instance that a frame will cache, and threaded down that construction's
+ * dependency resolutions. The engine's analog of the reference validator's
+ * "current singleton" state: when `validateScopes` trips on a tagged dep with
+ * no owner frame, the captor names WHO would capture the fresh transient.
+ */
+interface Captor {
+  /** The owned instance's token. */
+  readonly token: Token;
+  /** The scope name of the frame that owns (caches) it. */
+  readonly scope: string;
+}
+
+/**
  * A scope frame — a node in the parent-linked chain. Holds this scope's name,
  * its instance cache, an ordered list for disposal, and an optional parent.
  * It does NOT hold registrations (those live sealed on the ServiceProvider).
@@ -293,17 +310,35 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    */
   readonly #closedMemo: Map<Token, Registration>;
 
+  /**
+   * The provider options (`ServiceProviderOptions`), shared across the tree —
+   * `#childScope` passes the same object to every descendant. `undefined`
+   * means the defaults (no validation), matching the reference's `Default`.
+   */
+  readonly #options: ServiceProviderOptions | undefined;
+
   public constructor(
     registrations: ReadonlyMap<Token, Registration[]>,
     openRegistrations: ReadonlyMap<Token, readonly OpenRegistration[]>,
     closedMemo: Map<Token, Registration>,
     /** This provider's scope frame, if any. */
     frame?: Scope,
+    /** The provider's validation options; omitted ⇒ no validation. */
+    options?: ServiceProviderOptions,
   ) {
     this.#registrations = registrations;
     this.#openRegistrations = openRegistrations;
     this.#closedMemo = closedMemo;
     this.#frame = frame;
+    this.#options = options;
+
+    // The eager all-registrations validation — the reference runs it in its
+    // provider constructor; here it is gated to the FRAMELESS construction
+    // (the one `build()` performs) so `createScope`'s child constructions
+    // never re-validate the shared sealed maps.
+    if (options?.validateOnBuild === true && frame === undefined) {
+      this.#validateOnBuild();
+    }
   }
 
   /**
@@ -345,6 +380,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       this.#openRegistrations,
       this.#closedMemo,
       new Scope(name, parentFrame),
+      this.#options,
     );
   }
 
@@ -630,12 +666,16 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * resolution path (for cycle detection); it is shared across the whole
    * `resolve()`/`resolveAsync()` call but never across separate calls. `async`
    * gates whether the `Promise<T>` fallback can satisfy a lookup miss.
+   * `captor` is the nearest enclosing OWNED construction — `undefined` at the
+   * public entry points, set by `#resolveWith` when it constructs an instance
+   * a frame will cache — consumed only by the `validateScopes` check.
    */
   #resolve<T>(
     token: Token,
     vantage: Scope | undefined,
     stack: Token[],
     async: boolean,
+    captor?: Captor,
   ): T | Pending<T> {
     if (stack.includes(token)) {
       throw new CircularDependencyError([...stack, token]);
@@ -646,7 +686,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     // the resolving frame, never a registration. This is what makes "I want the
     // provider" plain DI — it subsumes the retired `ScopeRef` slot.
     if (isProviderToken(token)) {
-      return this.#makeProviderView(vantage, stack) as T;
+      return this.#makeProviderView(vantage, stack, captor) as T;
     }
 
     const registration = this.#lookup(token);
@@ -661,7 +701,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
         const promiseToken = closeToken("Promise", token);
         if (this.#lookup(promiseToken)) {
           return new Pending(
-            settle(this.#resolve<T>(promiseToken, vantage, stack, async)),
+            settle(this.#resolve<T>(promiseToken, vantage, stack, async, captor)),
           );
         }
       }
@@ -672,7 +712,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       // circuits the aggregation, step 1 of the two-step lookup).
       const collection = collectionRequest(token);
       if (collection) {
-        return this.#resolveCollection(collection, vantage, stack, async) as
+        return this.#resolveCollection(collection, vantage, stack, async, captor) as
           | T
           | Pending<T>;
       }
@@ -684,7 +724,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       throw new UnregisteredTokenError(token);
     }
 
-    return this.#resolveWith<T>(token, registration, vantage, stack, async);
+    return this.#resolveWith<T>(token, registration, vantage, stack, async, captor);
   }
 
   /**
@@ -713,6 +753,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     vantage: Scope | undefined,
     stack: Token[],
     async: boolean,
+    captor?: Captor,
   ): T | Pending<T> {
     if (stack.includes(token)) {
       throw new CircularDependencyError([...stack, token]);
@@ -721,6 +762,21 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     const owner = registration.scope
       ? ServiceProviderClass.#findOwner(vantage, registration.scope)
       : undefined;
+
+    // ── Scope validation (`validateScopes`). A scope tag with no matching open
+    // frame would fall back to a transient — the central-principle fallback —
+    // which is exactly the reference validator's hazard surface: a "scoped"
+    // service resolved from the root provider, or consumed by a "singleton"
+    // (an instance owned by a frame whose chain lacks the tag's frame). With
+    // scopes as uniform named frames both collapse to this one check; `captor`
+    // and `stack[0]` reconstruct which reference flavor to report.
+    if (
+      this.#options?.validateScopes === true
+      && registration.scope
+      && owner === undefined
+    ) {
+      throw new ScopeValidationError(token, registration.scope, captor, stack[0]);
+    }
 
     if (owner?.cache.has(registration)) {
       const hit = owner.cache.get(registration) as T | Pending<T>;
@@ -734,13 +790,19 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     stack.push(token);
     try {
       // Construct relative to the OWNER when one exists — the critical rule —
-      // otherwise relative to the current vantage (the transient path).
+      // otherwise relative to the current vantage (the transient path). An
+      // OWNED construction becomes the captor its dependency resolutions see
+      // (nearest-owned wins — more actionable than the reference's outermost
+      // singleton); a transient construction passes the enclosing one through.
       const instance = this.#instantiate<T>(
         token,
         registration,
         owner ?? vantage,
         stack,
         async,
+        owner !== undefined
+          ? { token, scope: registration.scope! }
+          : captor,
       );
       if (owner) {
         // Single-flight: the entry (a Pending included) lands in the cache
@@ -782,10 +844,11 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     vantage: Scope | undefined,
     stack: Token[],
     async: boolean,
+    captor?: Captor,
   ): unknown | Pending<unknown> {
     const registrations = this.#collectionRegistrations(request.element);
     const elements = registrations.map((registration) =>
-      this.#resolveWith<unknown>(request.element, registration, vantage, stack, async)
+      this.#resolveWith<unknown>(request.element, registration, vantage, stack, async, captor)
     );
 
     if (!elements.some(isPending)) {
@@ -833,6 +896,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     owningFrame: Scope | undefined,
     stack: Token[],
     async: boolean,
+    captor?: Captor,
   ): T | Pending<T> {
     // Signatures + the producer ride solely on the registration record — the
     // global store is retired and the three kinds are one `produce` shape.
@@ -856,7 +920,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       signatures,
       async,
     );
-    const args = signature.map((slot) => this.#resolveSlot<unknown>(slot, owningFrame, stack, async));
+    const args = signature.map((slot) => this.#resolveSlot<unknown>(slot, owningFrame, stack, async, captor));
 
     const build: Func<[readonly unknown[]], T> = (builtArgs) => registration.produce(...builtArgs) as T;
 
@@ -885,7 +949,11 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * that continues the active cycle `stack` and resolves relative to
    * `owningFrame`.
    */
-  #makeProviderView(owningFrame: Scope | undefined, stack: Token[]): Resolver & ScopeFactory<S> {
+  #makeProviderView(
+    owningFrame: Scope | undefined,
+    stack: Token[],
+    captor?: Captor,
+  ): Resolver & ScopeFactory<S> {
     const sp = this;
     return {
       resolve: <U>(depToken?: Token): U => {
@@ -896,7 +964,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
           );
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
-        return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
+        return sp.#resolve<U>(depToken, owningFrame, stack, false, captor) as U;
       },
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
         if (depToken === undefined) {
@@ -905,7 +973,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
               + "token at runtime).",
           );
         }
-        return settle(sp.#resolve<U>(depToken, owningFrame, stack, true)) as Promise<U>;
+        return settle(sp.#resolve<U>(depToken, owningFrame, stack, true, captor)) as Promise<U>;
       },
       tryResolve: <U>(depToken?: Token): U | undefined => {
         if (depToken === undefined) {
@@ -918,7 +986,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
           return undefined;
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
-        return sp.#resolve<U>(depToken, owningFrame, stack, false) as U;
+        return sp.#resolve<U>(depToken, owningFrame, stack, false, captor) as U;
       },
       isService: (depToken: Token): boolean => sp.#isKnown(depToken),
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
@@ -1195,6 +1263,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     owningFrame: Scope | undefined,
     stack: Token[],
     async: boolean,
+    captor?: Captor,
     members: readonly DepSlot[] = slot.union as readonly DepSlot[],
   ): T | Pending<T> {
     for (let i = 0; i < members.length; i++) {
@@ -1203,14 +1272,14 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
         continue;
       }
       try {
-        const result = this.#resolveSlot<T>(member, owningFrame, stack, async);
+        const result = this.#resolveSlot<T>(member, owningFrame, stack, async, captor);
         if (!isPending(result)) {
           return result;
         }
         const rest = members.slice(i + 1);
         const snapshot = [...stack];
         return new Pending(
-          result.promise.catch(() => settle(this.#resolveUnion<T>(slot, owningFrame, snapshot, true, rest))),
+          result.promise.catch(() => settle(this.#resolveUnion<T>(slot, owningFrame, snapshot, true, captor, rest))),
         );
       } catch {
         // Member resolvable in principle but failed to build (cycle, missing
@@ -1237,12 +1306,16 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     owningFrame: Scope | undefined,
     stack: Token[],
     async: boolean,
+    captor?: Captor,
   ): T | Pending<T> {
     if (isFactoryRef(slot)) {
+      // The captor deliberately does NOT flow into the factory: it is invoked
+      // later, outside this construction — the reference validator likewise
+      // treats factory call sites as opaque leaves.
       return this.#makeFactory(slot, owningFrame) as T;
     }
     if (isUnionSlot(slot)) {
-      return this.#resolveUnion<T>(slot, owningFrame, stack, async);
+      return this.#resolveUnion<T>(slot, owningFrame, stack, async, captor);
     }
     if (isLiteralRef(slot)) {
       return slot.value as T;
@@ -1250,7 +1323,168 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     if (isTypeArgRef(slot)) {
       throw rawTypeArgError(slot);
     }
-    return this.#resolve<T>(slot, owningFrame, stack, async);
+    return this.#resolve<T>(slot, owningFrame, stack, async, captor);
+  }
+
+  // ── Build-time validation (`validateOnBuild`) ──────────────────────────────
+
+  /**
+   * The eager all-registrations validation `build({ validateOnBuild: true })`
+   * runs. Every EXACT registration is dry-run validated — no instance is ever
+   * constructed — and every failure is collected, wrapped per-registration in
+   * a `RegistrationValidationError`, and thrown as ONE `AggregateError`, so a
+   * broken graph reports all its holes at once (the reference's "Some services
+   * are not able to be constructed" aggregation).
+   *
+   * Open-template registrations are deliberately NOT validated: they have no
+   * closed args to substitute into their dep signatures, mirroring the
+   * reference's "open generic services aren't validated". A closing synthesized
+   * from one IS validated when it appears as a dependency of an exact
+   * registration.
+   */
+  #validateOnBuild(): void {
+    const failures: RegistrationValidationError[] = [];
+    const validated = new Set<Registration>();
+    for (const [token, list] of this.#registrations) {
+      for (const registration of list) {
+        try {
+          this.#validateRegistration(token, registration, [], validated);
+        } catch (err) {
+          failures.push(new RegistrationValidationError(token, err));
+        }
+      }
+    }
+    if (failures.length) {
+      throw new AggregateError(
+        failures,
+        "Some services are not able to be constructed",
+      );
+    }
+  }
+
+  /**
+   * Dry-run validation of one registration: the same checks construction would
+   * hit — missing metadata, greedy signature selection (in async mode, the most
+   * permissive: a service resolvable only via `resolveAsync` is still
+   * constructible), then a RECURSIVE walk of the selected signature's slots —
+   * without producing anything. `chain` is the active validation path (the
+   * cycle detector, mirroring resolution's `stack`); `validated` memoizes
+   * fully-validated registrations so shared dependencies are walked once.
+   */
+  #validateRegistration(
+    token: Token,
+    registration: Registration,
+    chain: Token[],
+    validated: Set<Registration>,
+  ): void {
+    if (validated.has(registration)) {
+      return;
+    }
+    if (chain.includes(token)) {
+      throw new CircularDependencyError([...chain, token]);
+    }
+    chain.push(token);
+    try {
+      const signatures = registration.signatures;
+      if (!signatures?.length) {
+        // Same rule as `#instantiate`: a signature-less producer is fine only
+        // when its ctor genuinely takes no args.
+        if (registration.arity) {
+          throw new MissingMetadataError(token, registration.name);
+        }
+      } else {
+        const signature = this.#selectSignature(
+          token,
+          registration.name,
+          signatures,
+          true,
+        );
+        for (const slot of signature) {
+          this.#validateSlot(slot, chain, validated);
+        }
+      }
+      validated.add(registration);
+    } finally {
+      chain.pop();
+    }
+  }
+
+  /**
+   * Validates one dependency slot of a selected signature — the dry-run mirror
+   * of `#resolveSlot`'s dispatch:
+   *
+   *   - `LiteralRef` — always constructible;
+   *   - `TypeArgRef` — a raw template slot reaching resolution is always an
+   *     error (only substitution closes it);
+   *   - `FactoryRef` — injection requires the target registered (a miss throws
+   *     `FactoryTargetError` at construction time); the factory BODY runs
+   *     post-build with caller args, so its own graph is not walked — the
+   *     reference validator likewise treats factory call sites as leaves;
+   *   - `Union` — resolution takes the first member that BUILDS, falling
+   *     through on failure, so the union validates iff some member does;
+   *   - a string token — recurse (`#validateToken`).
+   */
+  #validateSlot(slot: DepSlot, chain: Token[], validated: Set<Registration>): void {
+    if (isLiteralRef(slot)) {
+      return;
+    }
+    if (isTypeArgRef(slot)) {
+      throw rawTypeArgError(slot);
+    }
+    if (isFactoryRef(slot)) {
+      if (this.#lookup(slot.type) === undefined) {
+        throw new FactoryTargetError(slot.type, "unregistered");
+      }
+      return;
+    }
+    if (isUnionSlot(slot)) {
+      for (const member of slot.union) {
+        try {
+          this.#validateSlot(member, chain, validated);
+          return;
+        } catch {
+          // Member invalid — fall through to the next candidate, exactly as
+          // resolution would.
+        }
+      }
+      throw new NoSatisfiableUnionError(slot.union);
+    }
+    this.#validateToken(slot, chain, validated);
+  }
+
+  /**
+   * Validates a string-token dependency: the intrinsic provider is always
+   * available; a collection wrapper validates every aggregated element
+   * registration (an empty aggregate is a valid resolution); otherwise the
+   * token's own registration (exact, or synthesized from an open template) is
+   * validated recursively, with the honest `Promise<T>` fallback accepted —
+   * matching `#selectSignature`'s async-mode satisfiability. The trailing
+   * throw is defensive: a slot only reaches here from a signature
+   * `#selectSignature` already deemed satisfiable.
+   */
+  #validateToken(token: Token, chain: Token[], validated: Set<Registration>): void {
+    if (isProviderToken(token)) {
+      return;
+    }
+    const collection = collectionRequest(token);
+    if (collection) {
+      for (const registration of this.#collectionRegistrations(collection.element)) {
+        this.#validateRegistration(collection.element, registration, chain, validated);
+      }
+      return;
+    }
+    const registration = this.#lookup(token);
+    if (registration !== undefined) {
+      this.#validateRegistration(token, registration, chain, validated);
+      return;
+    }
+    const promiseToken = closeToken("Promise", token);
+    const promiseRegistration = this.#lookup(promiseToken);
+    if (promiseRegistration !== undefined) {
+      this.#validateRegistration(promiseToken, promiseRegistration, chain, validated);
+      return;
+    }
+    throw new UnregisteredTokenError(token);
   }
 
   // ── Disposal ────────────────────────────────────────────────────────────────

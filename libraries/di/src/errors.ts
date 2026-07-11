@@ -144,6 +144,76 @@ export class OpenTokenResolutionError extends DiError {
 }
 
 /**
+ * A scope-tagged registration was resolved with `validateScopes` on and NO
+ * matching frame open in the owning chain — the resolution would silently fall
+ * back to a transient instance, which scope validation makes loud instead.
+ *
+ * The engine's analog of the reference validator's three failures, told apart
+ * by the fields (each `undefined` field narrows the flavor):
+ *
+ *   - `consumer` set — "scoped consumed by a singleton": the tagged service was
+ *     a dependency of an instance OWNED by a frame whose chain has no `scope`
+ *     frame, so the consumer would capture a fresh transient.
+ *   - `consumer` unset, `requested` ≠ `token` — "scoped required from the root
+ *     provider": a transient chain starting at `requested` reached the tagged
+ *     service with no `scope` frame open at the vantage.
+ *   - otherwise — "scoped resolved from the root provider": the tagged service
+ *     was requested directly with no `scope` frame open.
+ */
+export class ScopeValidationError extends DiError {
+  public constructor(
+    /** The scope-tagged service that found no matching open frame. */
+    public readonly token: Token,
+    /** The registration's scope tag (the frame name that is not open). */
+    public readonly scope: string,
+    /**
+     * The nearest enclosing OWNED (frame-cached) instance consuming `token` —
+     * its token and the scope owning it — when the violation happened inside
+     * a construction: the reference validator's "singleton" party.
+     */
+    public readonly consumer?: { readonly token: Token; readonly scope: string },
+    /** The token the triggering `resolve()` call originally requested. */
+    public readonly requested?: Token,
+  ) {
+    super(
+      consumer !== undefined
+        ? `Cannot consume "${scope}"-scoped service "${token}" from `
+          + `"${consumer.scope}"-owned "${consumer.token}": no "${scope}" `
+          + `scope is open in the consumer's owning chain, so the dependency `
+          + `would resolve transiently and be captured for the consumer's `
+          + `whole lifetime.`
+        : requested !== undefined && requested !== token
+        ? `Cannot resolve "${requested}" from this provider: it requires `
+          + `"${scope}"-scoped service "${token}" and no "${scope}" scope is `
+          + `open. Open one with createScope("${scope}") first.`
+        : `Cannot resolve "${scope}"-scoped service "${token}" from this `
+          + `provider: no "${scope}" scope is open. Open one with `
+          + `createScope("${scope}") first.`,
+    );
+  }
+}
+
+/**
+ * One registration failed the eager `validateOnBuild` pass. Wraps the
+ * underlying failure (available as `cause`), naming the registration's token —
+ * the reference's per-descriptor "Error while validating the service
+ * descriptor" wrapper. `build()` collects these into one `AggregateError`.
+ */
+export class RegistrationValidationError extends DiError {
+  public constructor(
+    public readonly token: Token,
+    cause: unknown,
+  ) {
+    super(
+      `Error while validating the registration for "${token}": ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`,
+    );
+    this.cause = cause;
+  }
+}
+
+/**
  * Sync `dispose()` was called on a scope that owns a Promise-valued (thenable)
  * cached instance. A pending Promise cannot be disposed synchronously — the
  * caller must use `disposeAsync()`.
