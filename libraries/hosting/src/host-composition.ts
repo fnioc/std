@@ -23,7 +23,7 @@
 
 import type { IConfiguration } from "@rhombus-std/config.core";
 import type { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProvider } from "@rhombus-std/di.core";
+import type { ServiceProvider, ServiceProviderOptions } from "@rhombus-std/di.core";
 import {
   Environments,
   HOST_APPLICATION_LIFETIME_TOKEN,
@@ -161,13 +161,18 @@ export function populateFrameworkServices(
  *
  * `configuration` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
+ *
+ * `serviceProviderOptions` (the reference `ServiceProviderOptions`) carries the
+ * `validateScopes` / `validateOnBuild` toggles the builders resolved; omitted ⇒
+ * an unvalidated build.
  */
 export function resolveHost(
   services: ServiceManifest,
   framework: FrameworkServices,
   configuration: IConfiguration,
+  serviceProviderOptions?: ServiceProviderOptions,
 ): IHost {
-  const provider: ServiceProvider = services.build();
+  const provider: ServiceProvider = services.build(serviceProviderOptions);
 
   const loggerProviders = provider.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
   for (const loggerProvider of loggerProviders) {

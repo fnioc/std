@@ -15,7 +15,7 @@
 // collapse into their async forms -- JS cannot block a thread.
 
 import { MemoryConfigurationSource } from "@rhombus-std/config";
-import { type Resolver, RESOLVER_TOKEN } from "@rhombus-std/di.core";
+import { type Resolver, RESOLVER_TOKEN, type ServiceProviderOptions } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import {
   HOST_APPLICATION_LIFETIME_TOKEN,
@@ -36,6 +36,7 @@ import {
   addDefaultServices,
   applyDefaultAppConfiguration,
   applyDefaultHostConfiguration,
+  createDefaultServiceProviderOptions,
 } from "./default-configuration";
 import {
   CONSOLE_LIFETIME_OPTIONS_TOKEN,
@@ -46,6 +47,7 @@ import {
 import type { HostOptions } from "./HostOptions";
 import { ConsoleLifetime } from "./Internal/console-lifetime";
 import { MetricsBuilder } from "./MetricsBuilder";
+import { setServiceProviderOptionsFactory } from "./service-provider-options-store";
 
 // The interface-side merge for this const's members lives HERE beside the const
 // (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core
@@ -63,23 +65,18 @@ declare module "@rhombus-std/hosting.core/internal/IHostBuilder" {
     configureDefaults(args?: readonly string[]): this;
     useEnvironment(environment: string): this;
     useContentRoot(contentRoot: string): this;
+    // No-context overloads listed first so an un-annotated one-parameter lambda
+    // resolves to them (TS picks the earliest compatible overload).
+    configureHostOptions(configureOptions: Func<[HostOptions], void>): this;
     configureHostOptions(configureOptions: Func<[HostBuilderContext, HostOptions], void>): this;
+    configureLogging(configureLoggingDelegate: Func<[ILoggingBuilder], void>): this;
     configureLogging(configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>): this;
+    configureMetrics(configureMetricsDelegate: Func<[IMetricsBuilder], void>): this;
     configureMetrics(configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): this;
     useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
     useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
     runConsoleAsync(abortSignal?: AbortSignal): Promise<void>;
   }
-}
-
-/**
- * A minimal service-provider-options shape. This repo's container has no
- * validate-scopes / validate-on-build toggles, so {@link useDefaultServiceProvider}
- * accepts this shape and no-ops -- see scaffoldedIncomplete.
- */
-export interface ServiceProviderOptions {
-  validateScopes?: boolean;
-  validateOnBuild?: boolean;
 }
 
 /**
@@ -100,6 +97,14 @@ export const HostingHostBuilderExtensions = {
       applyDefaultAppConfiguration(configBuilder, context.hostingEnvironment, args)
     );
     hostBuilder.configureServices((_context, services) => addDefaultServices(services));
+    // The reference finishes with a default service-provider factory carrying the
+    // dev-environment validation options. Here the single-container `build()`
+    // reads them from the side channel instead (docs §24); the factory computes
+    // them at build time, once the hosting environment is resolved.
+    setServiceProviderOptionsFactory(
+      hostBuilder,
+      (context) => createDefaultServiceProviderOptions(context.hostingEnvironment),
+    );
     return hostBuilder;
   },
 
@@ -121,50 +126,81 @@ export const HostingHostBuilderExtensions = {
     });
   },
 
-  /** Adds a delegate for configuring the {@link HostOptions} of the host. Additive across calls. */
+  /**
+   * Adds a delegate for configuring the {@link HostOptions} of the host. Additive
+   * across calls. The no-context form (a one-parameter delegate) is the
+   * reference's convenience overload; the two are told apart by declared arity.
+   */
   configureHostOptions(
     hostBuilder: IHostBuilder,
-    configureOptions: Func<[HostBuilderContext, HostOptions], void>,
+    configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>,
   ): IHostBuilder {
     return hostBuilder.configureServices((context, services) => {
       services.addValue(
         HOST_OPTIONS_CONFIGURE_TOKEN,
-        (options: HostOptions) => configureOptions(context, options),
+        (options: HostOptions) => {
+          if (configureOptions.length >= 2) {
+            (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
+          } else {
+            (configureOptions as Func<[HostOptions], void>)(options);
+          }
+        },
       );
     });
   },
 
-  /** Adds a delegate for configuring the {@link ILoggingBuilder}. Additive across calls. */
+  /**
+   * Adds a delegate for configuring the {@link ILoggingBuilder}. Additive across
+   * calls. The one-parameter no-context form is the reference's convenience
+   * overload, distinguished by declared arity.
+   */
   configureLogging(
     hostBuilder: IHostBuilder,
-    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>,
+    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder], void>,
   ): IHostBuilder {
     return hostBuilder.configureServices((context, services) => {
-      configureLoggingDelegate(context, new LoggingBuilder(services));
-    });
-  },
-
-  /** Adds a delegate for configuring the {@link IMetricsBuilder}. Additive across calls. */
-  configureMetrics(
-    hostBuilder: IHostBuilder,
-    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>,
-  ): IHostBuilder {
-    return hostBuilder.configureServices((context, services) => {
-      configureMetricsDelegate(context, new MetricsBuilder(services));
+      const builder = new LoggingBuilder(services);
+      if (configureLoggingDelegate.length >= 2) {
+        (configureLoggingDelegate as Func<[HostBuilderContext, ILoggingBuilder], void>)(context, builder);
+      } else {
+        (configureLoggingDelegate as Func<[ILoggingBuilder], void>)(builder);
+      }
     });
   },
 
   /**
-   * Specifies the default service-provider configuration. This repo's container
-   * exposes no validation toggles, so the delegate runs against a throwaway
-   * {@link ServiceProviderOptions} and the result is ignored -- see
-   * scaffoldedIncomplete.
+   * Adds a delegate for configuring the {@link IMetricsBuilder}. Additive across
+   * calls. The one-parameter no-context form is the reference's convenience
+   * overload, distinguished by declared arity.
+   */
+  configureMetrics(
+    hostBuilder: IHostBuilder,
+    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder], void>,
+  ): IHostBuilder {
+    return hostBuilder.configureServices((context, services) => {
+      const builder = new MetricsBuilder(services);
+      if (configureMetricsDelegate.length >= 2) {
+        (configureMetricsDelegate as Func<[HostBuilderContext, IMetricsBuilder], void>)(context, builder);
+      } else {
+        (configureMetricsDelegate as Func<[IMetricsBuilder], void>)(builder);
+      }
+    });
+  },
+
+  /**
+   * Specifies the default service-provider configuration — the reference
+   * `UseDefaultServiceProvider`. The delegate configures a fresh
+   * {@link ServiceProviderOptions} (`validateScopes` / `validateOnBuild`) that
+   * `build()` then threads into `ServiceManifest.build(options)`. Overrides any
+   * options set by an earlier `configureDefaults`.
    */
   useDefaultServiceProvider(
     hostBuilder: IHostBuilder,
     configure: Func<[ServiceProviderOptions], void>,
   ): IHostBuilder {
-    configure({});
+    const options: ServiceProviderOptions = {};
+    configure(options);
+    setServiceProviderOptionsFactory(hostBuilder, () => options);
     return hostBuilder;
   },
 

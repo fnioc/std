@@ -27,12 +27,20 @@ export interface IHostBuilder {
    * Sets up the configuration for the remainder of the build and the
    * application. Additive across calls; results are exposed at
    * {@link HostBuilderContext.configuration} and in {@link IHost.services}.
+   *
+   * This is the reference's context form (the `IHostBuilder` interface method).
+   * The reference also offers a no-context `Action<IConfigurationBuilder>`
+   * convenience extension; it is intentionally not surfaced here — a TS overload
+   * on this method can't distinguish the two forms for an un-annotated lambda
+   * without degrading contextual typing of this dominant context form, and every
+   * in-repo caller uses the context form. A hand author writes the two-parameter
+   * form with an unused first parameter.
    */
   configureAppConfiguration(
     configureDelegate: Action<[HostBuilderContext, IConfigurationBuilder]>,
   ): this;
 
-  /** Adds services to the container. Additive across calls. */
+  /** Adds services to the container. Additive across calls. (Context form; see {@link configureAppConfiguration} on the omitted no-context convenience.) */
   configureServices(configureDelegate: Action<[HostBuilderContext, ServiceManifest]>): this;
 
   /**
@@ -47,10 +55,7 @@ export interface IHostBuilder {
     factory: ServiceProviderFactory<TContainerBuilder>,
   ): this;
 
-  /**
-   * Enables configuring the instantiated dependency container. Additive across
-   * calls.
-   */
+  /** Enables configuring the instantiated dependency container. Additive across calls. (Context form; see {@link configureAppConfiguration} on the omitted no-context convenience.) */
   configureContainer<TContainerBuilder>(
     configureDelegate: Action<[HostBuilderContext, TContainerBuilder]>,
   ): this;

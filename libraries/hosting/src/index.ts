@@ -42,7 +42,11 @@ export { NullLifetime } from "./Internal/NullLifetime";
 export { MetricsBuilder } from "./MetricsBuilder";
 
 // The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).
-export { HostingHostBuilderExtensions, type ServiceProviderOptions } from "./builder-augmentations";
+export { HostingHostBuilderExtensions } from "./builder-augmentations";
+
+// The provider-construction options `useDefaultServiceProvider` configures
+// (reference ServiceProviderOptions) — re-exported from di.core, which owns it.
+export type { ServiceProviderOptions } from "@rhombus-std/di.core";
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from "./default-configuration";
