@@ -217,10 +217,12 @@ export const OptionsConfigurationServiceCollectionExtensions = {
 registerAugmentations(nameof<ServiceManifest>(), OptionsServiceCollectionExtensions);
 registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
 
-// `validateOnStart` lives in its own file (its own reference static class,
-// `OptionsBuilderExtensions`, §28). The re-export executes that module, so its
-// `registerAugmentations` side effect installs the verb onto the manifest.
-export { OptionsBuilderExtensions } from "./validate-on-start.js";
+// `validateOnStart` lives in its own file named after its reference static class
+// (`OptionsBuilderExtensions`, §28) with `Extensions` -> `augmentations`, matching
+// the di.core `service-collection-descriptor-augmentations.ts` precedent. The
+// re-export executes that module, so its `registerAugmentations` side effect
+// installs the verb onto the manifest.
+export { OptionsBuilderExtensions } from "./options-builder-augmentations.js";
 
 export { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
 export { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
