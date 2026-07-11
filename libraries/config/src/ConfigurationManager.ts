@@ -62,8 +62,23 @@ import { MemoryConfigurationSource } from "./memory/memory-configuration-source"
 @augment(nameof<IConfigurationBuilder>())
 export class ConfigurationManager implements IConfigurationManager, IConfigurationRoot {
   readonly #sources: IConfigurationSource[] = [];
+  readonly #properties = new Map<string, unknown>();
   readonly #root: ConfigurationRoot = new ConfigurationRoot([]);
   #changeToken = new ConfigurationReloadToken();
+
+  /**
+   * The shared key/value bag between this builder and its registered sources
+   * ({@link IConfigurationBuilder.properties}). DIVERGENCE: the reference
+   * manager wraps its bag so that ANY mutation triggers a full
+   * rebuild-all-sources pass (its `ReloadSources`); this port's manager
+   * composes providers incrementally and has no rebuild-everything path (see
+   * the class doc -- a rebuild would discard provider `set()` state), so the
+   * bag is a plain shared Map and a source observes `properties` as of its
+   * own {@link IConfigurationSource.build} time.
+   */
+  public get properties(): Map<string, unknown> {
+    return this.#properties;
+  }
 
   /**
    * Subscribes the manager's stable token to the persistent root's token. The
