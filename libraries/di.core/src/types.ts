@@ -1,12 +1,10 @@
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-// The Token TYPE only, from primitives' leaf `token` module -- NOT the package
-// barrel. di.core is src-referenced, so any consumer compiling its source also
-// compiles whatever di.core imports; pulling the whole `@rhombus-std/primitives`
-// barrel would drag in the change-token + registry runtime (which references
-// `EventTarget`/`Event`/`AbortSignal`) and force every di.core consumer's
-// tsconfig `lib` to carry those web globals. The leaf module is a bare
-// `type Token = string` with zero such dependencies.
-import type { Token } from '@rhombus-std/primitives/internal/Token';
+// The Token TYPE only, a type-only import (erased from emit) from the
+// `@rhombus-std/primitives` PUBLIC barrel -- never the publish-unreachable
+// `internal/*` subpath. Token is hoisted to primitives (docs/decisions.md §38) so
+// the augmentation registry can key its bags on it without a di.core dependency
+// (di ⊥ config); di.core re-exports it UNCHANGED below.
+import type { Token } from '@rhombus-std/primitives';
 
 /**
  * Anything a dependency signature can describe: a class constructor (its deps
