@@ -1079,8 +1079,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    *   - a `FactoryRef` — always satisfiable; injected as a callable;
    *   - a `LiteralRef` — always satisfiable; injected as its value (Rule 2);
    *   - a `Union` — satisfiable iff at least one member is resolvable; or
-   *   - a string token whose registration exists in the sealed map, or the
-   *     intrinsic provider token (always satisfiable — the live view).
+   *   - a string token whose registration exists in the sealed map, the
+   *     intrinsic provider token (always satisfiable — the live view), or a
+   *     collection wrapper (always satisfiable — the aggregate may be empty).
    *
    * An unregistered string token is not satisfiable — unless it is the provider
    * token, or `async` and its honest `Promise<T>` registration exists (the
@@ -1140,9 +1141,12 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
 
   /**
    * True when `slot` is a registered string token — the intrinsic provider token
-   * (always resolvable), or a registration in the sealed map, or in `async` mode
-   * the honest `Promise<T>` fallback the spine would take. A `FactoryRef` or
-   * `Union` is not tested here — use `isResolvableSlot` for a full slot check.
+   * (always resolvable), or a registration in the sealed map, or a collection
+   * wrapper (`Array<T>` / `Iterable<T>` — always resolvable: the aggregate may
+   * be empty, and an empty collection is a valid resolution, exactly as
+   * `#isKnown` probes it), or in `async` mode the honest `Promise<T>` fallback
+   * the spine would take. A `FactoryRef` or `Union` is not tested here — use
+   * `isResolvableSlot` for a full slot check.
    */
   #isResolvable(slot: DepSlot, async: boolean): boolean {
     if (typeof slot !== "string") {
@@ -1152,6 +1156,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       return true;
     }
     if (this.#lookup(slot)) {
+      return true;
+    }
+    if (collectionRequest(slot) !== undefined) {
       return true;
     }
     return async && !!this.#lookup(closeToken("Promise", slot));
