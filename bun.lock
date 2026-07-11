@@ -664,6 +664,14 @@
         "@rhombus-std/hosting": "workspace:*",
       },
     },
+    "tests/logging.core.test": {
+      "name": "@rhombus-std/logging.core.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+      },
+    },
     "tests/options.augmentations.test": {
       "name": "@rhombus-std/options.augmentations.test",
       "version": "0.0.0",
@@ -1118,6 +1126,8 @@
     "@rhombus-std/logging.console": ["@rhombus-std/logging.console@workspace:libraries/logging.console"],
 
     "@rhombus-std/logging.core": ["@rhombus-std/logging.core@workspace:libraries/logging.core"],
+
+    "@rhombus-std/logging.core.test": ["@rhombus-std/logging.core.test@workspace:tests/logging.core.test"],
 
     "@rhombus-std/options": ["@rhombus-std/options@workspace:libraries/options"],
 
