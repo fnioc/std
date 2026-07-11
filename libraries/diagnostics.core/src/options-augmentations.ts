@@ -15,21 +15,21 @@
 
 import { applyAugmentations } from "@rhombus-std/primitives";
 
-import type { MeterScope } from "./Metrics/meter-scope";
-import { MetricsOptionsExtensions } from "./Metrics/metrics-builder-augmentations";
-import { MetricsOptions } from "./Metrics/MetricsOptions";
-import type { ActivitySourceScopes } from "./Tracing/activity-source-scopes";
-import { TracingOptionsExtensions } from "./Tracing/tracing-builder-augmentations";
-import { TracingOptions } from "./Tracing/TracingOptions";
+import type { MeterScope } from "./metrics/meter-scope";
+import { MetricsOptionsExtensions } from "./metrics/metrics-builder-augmentations";
+import { MetricsOptions } from "./metrics/MetricsOptions";
+import type { ActivitySourceScopes } from "./tracing/activity-source-scopes";
+import { TracingOptionsExtensions } from "./tracing/tracing-builder-augmentations";
+import { TracingOptions } from "./tracing/TracingOptions";
 
-declare module "./Metrics/MetricsOptions" {
+declare module "./metrics/MetricsOptions" {
   interface MetricsOptions {
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
   }
 }
 
-declare module "./Tracing/TracingOptions" {
+declare module "./tracing/TracingOptions" {
   interface TracingOptions {
     enableTracing(
       sourceName?: string,

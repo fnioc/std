@@ -65,10 +65,10 @@ import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
 // registerAugmentations calls (diagnostics.core + the config-augmentation modules)
 // feed their prototypes (docs §38).
 import "./builder-augmentations";
-import { MetricListenerConfigurationFactory } from "./Metrics/Configuration/MetricListenerConfigurationFactory";
-import { MetricsBuilder } from "./Metrics/MetricsBuilder";
-import { DefaultActivityListenerConfigurationFactory } from "./Tracing/Configuration/DefaultActivityListenerConfigurationFactory";
-import { TracingBuilder } from "./Tracing/TracingBuilder";
+import { MetricListenerConfigurationFactory } from "./metrics/configuration/MetricListenerConfigurationFactory";
+import { MetricsBuilder } from "./metrics/MetricsBuilder";
+import { DefaultActivityListenerConfigurationFactory } from "./tracing/configuration/DefaultActivityListenerConfigurationFactory";
+import { TracingBuilder } from "./tracing/TracingBuilder";
 
 // The authored methods merge onto core's `ServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` a consumer holds resolves to -- AND onto
@@ -185,8 +185,8 @@ registerAugmentations(nameof<ServiceManifest>(), TracingServiceExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).
-export { MetricsBuilder } from "./Metrics/MetricsBuilder";
-export { TracingBuilder } from "./Tracing/TracingBuilder";
+export { MetricsBuilder } from "./metrics/MetricsBuilder";
+export { TracingBuilder } from "./tracing/TracingBuilder";
 
 // The config-binding augmentation sets. Their receiver is the family's OWN
 // builder interface; each self-registers against the builder token (docs §38) so
@@ -194,14 +194,14 @@ export { TracingBuilder } from "./Tracing/TracingBuilder";
 // so both `MetricsBuilderConfigurationExtensions.addMetricsConfiguration(builder, cfg)`
 // and `builder.addMetricsConfiguration(cfg)` work. The method form is primary.
 // Re-exporting the consts also runs each module's registerAugmentations side effect.
-export { MetricsBuilderConfigurationExtensions } from "./Metrics/Configuration/metrics-builder-configuration-augmentations";
-export { TracingBuilderConfigurationExtensions } from "./Tracing/Configuration/tracing-builder-configuration-augmentations";
+export { MetricsBuilderConfigurationExtensions } from "./metrics/configuration/metrics-builder-configuration-augmentations";
+export { TracingBuilderConfigurationExtensions } from "./tracing/configuration/tracing-builder-configuration-augmentations";
 
 // The config-bind ConfigureOptions steps (the reference's internal
 // Metrics/TracingConfigureOptions), exposed so a plugin-less consumer can bind a
 // configuration section without the addMetricsConfiguration wrapper.
-export { MetricsConfigureOptions } from "./Metrics/Configuration/MetricsConfigureOptions";
-export { TracingConfigureOptions } from "./Tracing/Configuration/TracingConfigureOptions";
+export { MetricsConfigureOptions } from "./metrics/configuration/MetricsConfigureOptions";
+export { TracingConfigureOptions } from "./tracing/configuration/TracingConfigureOptions";
 
 // The per-listener configuration factories. `addMetrics`/`addTracing` register
 // the concrete factory at METRICS/TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN;
@@ -210,9 +210,9 @@ export { TracingConfigureOptions } from "./Tracing/Configuration/TracingConfigur
 // The concrete factories and the Metrics/TracingConfiguration markers are
 // internal in the reference, exposed here (like the ConfigureOptions steps
 // above) so a plugin-less consumer can wire the same path by hand.
-export type { IMetricListenerConfigurationFactory } from "./Metrics/Configuration/IMetricListenerConfigurationFactory";
-export { MetricListenerConfigurationFactory } from "./Metrics/Configuration/MetricListenerConfigurationFactory";
-export { MetricsConfiguration } from "./Metrics/Configuration/MetricsConfiguration";
-export { ActivityListenerConfigurationFactory } from "./Tracing/Configuration/ActivityListenerConfigurationFactory";
-export { DefaultActivityListenerConfigurationFactory } from "./Tracing/Configuration/DefaultActivityListenerConfigurationFactory";
-export { TracingConfiguration } from "./Tracing/Configuration/TracingConfiguration";
+export type { IMetricListenerConfigurationFactory } from "./metrics/configuration/IMetricListenerConfigurationFactory";
+export { MetricListenerConfigurationFactory } from "./metrics/configuration/MetricListenerConfigurationFactory";
+export { MetricsConfiguration } from "./metrics/configuration/MetricsConfiguration";
+export { ActivityListenerConfigurationFactory } from "./tracing/configuration/ActivityListenerConfigurationFactory";
+export { DefaultActivityListenerConfigurationFactory } from "./tracing/configuration/DefaultActivityListenerConfigurationFactory";
+export { TracingConfiguration } from "./tracing/configuration/TracingConfiguration";

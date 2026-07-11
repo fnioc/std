@@ -81,4 +81,4 @@ export { ActivationError, DiError, OpenTokenRegistrationError } from "./errors.j
 // pulling the barrel registers it against the `ServiceManifest` token so the verb
 // is installed onto the collection prototype (§28/§38). The const is the
 // standalone call surface.
-export { ServiceCollectionDescriptorExtensions } from "./Extensions/service-collection-descriptor-augmentations.js";
+export { ServiceCollectionDescriptorExtensions } from "./extensions/service-collection-descriptor-augmentations.js";

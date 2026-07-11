@@ -43,8 +43,8 @@ export type { IDistributedCache } from "./IDistributedCache";
 // The hybrid-cache surface. `toDistributedCacheEntryOptions` is deliberately
 // NOT re-exported (it mirrors the reference's internal
 // ToDistributedCacheEntryOptions).
-export { HybridCache } from "./Hybrid/HybridCache";
-export { HybridCacheEntryFlags } from "./Hybrid/HybridCacheEntryFlags";
-export { HybridCacheEntryOptions } from "./Hybrid/HybridCacheEntryOptions";
-export type { IHybridCacheSerializer } from "./Hybrid/IHybridCacheSerializer";
-export type { IHybridCacheSerializerFactory } from "./Hybrid/IHybridCacheSerializerFactory";
+export { HybridCache } from "./hybrid/HybridCache";
+export { HybridCacheEntryFlags } from "./hybrid/HybridCacheEntryFlags";
+export { HybridCacheEntryOptions } from "./hybrid/HybridCacheEntryOptions";
+export type { IHybridCacheSerializer } from "./hybrid/IHybridCacheSerializer";
+export type { IHybridCacheSerializerFactory } from "./hybrid/IHybridCacheSerializerFactory";

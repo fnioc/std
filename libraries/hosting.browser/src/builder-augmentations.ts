@@ -41,7 +41,7 @@ declare module "@rhombus-std/hosting/internal/HostBuilder" {
   }
 }
 
-declare module "@rhombus-std/hosting/internal/Internal/HostBuilderAdapter" {
+declare module "@rhombus-std/hosting/internal/internal/HostBuilderAdapter" {
   interface HostBuilderAdapter {
     useBrowserLifetime(configureOptions?: Func<[BrowserLifetimeOptions], void>): this;
   }
