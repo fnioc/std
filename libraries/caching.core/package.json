@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/caching.core",
   "version": "0.0.0",
-  "description": "In-memory cache abstractions ported from ME.Caching.Abstractions: IMemoryCache/ICacheEntry + CacheItemPriority/EvictionReason/PostEvictionDelegate, plus the real-runtime get/set/getOrCreate/tryGetValue convenience wrappers. Depends on @rhombus-std/primitives for the IChangeToken type only.",
+  "description": "Cache abstractions ported from ME.Caching.Abstractions: IMemoryCache/ICacheEntry + CacheItemPriority/EvictionReason/PostEvictionDelegate, IDistributedCache/DistributedCacheEntryOptions, plus the real-runtime get/set/getOrCreate/tryGetValue/setString/getString convenience wrappers. Depends on @rhombus-std/primitives for the IChangeToken type only.",
   "keywords": [
     "caching",
     "cache",

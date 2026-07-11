@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/caching.memory",
   "version": "0.0.0",
-  "description": "In-memory cache implementation ported from ME.Caching.Memory: MemoryCache + MemoryCacheOptions/MemoryCacheEntryOptions, plus the addMemoryCache authoring augmentation that registers IMemoryCache on @rhombus-std/di.core's ServiceManifest.",
+  "description": "In-memory cache implementation ported from ME.Caching.Memory: MemoryCache + MemoryCacheOptions/MemoryCacheEntryOptions, the memory-backed MemoryDistributedCache + MemoryDistributedCacheOptions, plus the addMemoryCache/addDistributedMemoryCache authoring augmentations that register IMemoryCache/IDistributedCache on @rhombus-std/di.core's ServiceManifest.",
   "keywords": [
     "caching",
     "cache",
