@@ -1,0 +1,77 @@
+{
+  "name": "@rhombus-std/hosting.browser",
+  "version": "0.0.0",
+  "description": "Browser hosting for the Generic Host: BrowserLifetime (page-lifecycle-driven shutdown, bfcache-safe), the PageLifecycleEvents bridge for hosted services, a browser IHostEnvironment factory, and the BrowserHost.createApplicationBuilder facade wiring in-memory config, the browser environment, browser console logging, and the browser lifetime.",
+  "keywords": [
+    "hosting",
+    "browser",
+    "generic-host",
+    "lifetime",
+    "bfcache",
+    "page-lifecycle",
+    "ioc",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/hosting.browser"
+  },
+  "type": "module",
+  "sideEffects": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./dist/index.js",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./dist/internal/*.js",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/internal"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/fileproviders.core": "workspace:*",
+    "@rhombus-std/hosting": "workspace:*",
+    "@rhombus-std/hosting.core": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.browserconsole": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3"
+  },
+  "devDependencies": {
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "ts-patch": "^3.3.0",
+    "typescript": "^5.9.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}

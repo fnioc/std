@@ -366,6 +366,27 @@
         "typescript": "^5.9.0",
       },
     },
+    "libraries/hosting.browser": {
+      "name": "@rhombus-std/hosting.browser",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/hosting": "workspace:*",
+        "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.browserconsole": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@rhombus-std/primitives.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+    },
     "libraries/hosting.core": {
       "name": "@rhombus-std/hosting.core",
       "version": "0.0.0",
@@ -717,6 +738,20 @@
       "devDependencies": {
         "@rhombus-std/fileproviders.composite": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "tests/hosting.browser.test": {
+      "name": "@rhombus-std/hosting.browser.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/hosting": "workspace:*",
+        "@rhombus-std/hosting.browser": "workspace:*",
+        "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.browserconsole": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
       },
     },
@@ -1245,6 +1280,10 @@
     "@rhombus-std/fileproviders.core": ["@rhombus-std/fileproviders.core@workspace:libraries/fileproviders.core"],
 
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
+
+    "@rhombus-std/hosting.browser": ["@rhombus-std/hosting.browser@workspace:libraries/hosting.browser"],
+
+    "@rhombus-std/hosting.browser.test": ["@rhombus-std/hosting.browser.test@workspace:tests/hosting.browser.test"],
 
     "@rhombus-std/hosting.core": ["@rhombus-std/hosting.core@workspace:libraries/hosting.core"],
 

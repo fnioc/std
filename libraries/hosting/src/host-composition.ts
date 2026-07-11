@@ -139,10 +139,14 @@ export function resolveContentRootPath(
 export function createHostingEnvironment(configuration: IConfiguration): HostingEnvironment {
   const environment = new HostingEnvironment();
   environment.environmentName = configuration.get(HostDefaults.environmentKey) ?? Environments.Production;
-  environment.contentRootPath = resolveContentRootPath(
-    configuration.get(HostDefaults.contentRootKey),
-    process.cwd(),
-  );
+  // `process.cwd()` is reached only when the configured content root doesn't
+  // already resolve on its own: an already-absolute root short-circuits BEFORE
+  // the cwd lookup, so a browser composition (no `process` global; content
+  // root seeded to "/" by @rhombus-std/hosting.browser) never touches it.
+  const contentRootPath = configuration.get(HostDefaults.contentRootKey);
+  environment.contentRootPath = contentRootPath !== undefined && isAbsolute(contentRootPath)
+    ? contentRootPath
+    : resolveContentRootPath(contentRootPath, process.cwd());
   const applicationName = configuration.get(HostDefaults.applicationKey);
   if (applicationName) {
     environment.applicationName = applicationName;

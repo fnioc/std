@@ -1,0 +1,22 @@
+{
+  "name": "@rhombus-std/hosting.browser.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/hosting.browser. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/hosting": "workspace:*",
+    "@rhombus-std/hosting.browser": "workspace:*",
+    "@rhombus-std/hosting.core": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.browserconsole": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
+  }
+}
