@@ -30,6 +30,22 @@ describe("ConfigurationManager", () => {
     expect(manager.get("a")).toBe("b");
   });
 
+  test("properties is a shared mutable bag a source can read at build() time", () => {
+    const manager = new ConfigurationManager();
+    manager.properties.set("BasePath", "/etc/app");
+
+    // Same Map instance on every read, and visible to a source built later.
+    expect(manager.properties.get("BasePath")).toBe("/etc/app");
+    let observed: unknown;
+    manager.add({
+      build(builder) {
+        observed = builder.properties.get("BasePath");
+        return new MemoryConfigurationSource().build(builder);
+      },
+    });
+    expect(observed).toBe("/etc/app");
+  });
+
   test("add(source) exposes the new values immediately, with no separate build phase", () => {
     const manager = new ConfigurationManager();
     manager.add(source({ "Server:Port": "8080" }));

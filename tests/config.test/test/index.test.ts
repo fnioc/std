@@ -60,6 +60,27 @@ describe("public entry point", () => {
     expect(root.get("A")).toBe("1");
   });
 
+  test("properties is a shared mutable bag a source can read at build() time", () => {
+    const builder = new ConfigurationBuilder();
+
+    // One Map instance for the builder's lifetime -- mutations are visible
+    // through every later read of the getter.
+    builder.properties.set("BasePath", "/etc/app");
+    expect(builder.properties.get("BasePath")).toBe("/etc/app");
+    expect(builder.properties).toBe(builder.properties);
+
+    // A source observes the bag through the builder handed to build().
+    let observed: unknown;
+    class PropertiesReadingSource implements IConfigurationSource {
+      public build(b: IConfigurationBuilder): IConfigurationProvider {
+        observed = b.properties.get("BasePath");
+        return new MemoryConfigurationProvider(new MemoryConfigurationSource());
+      }
+    }
+    builder.add(new PropertiesReadingSource()).build();
+    expect(observed).toBe("/etc/app");
+  });
+
   test("sources are ordered-list semantics: registration order preserved, no reference dedup", () => {
     const builder = new ConfigurationBuilder();
     const a = new MemoryConfigurationSource({ initialData: { "A": "1" } });

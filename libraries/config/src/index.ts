@@ -46,6 +46,10 @@ export * from "./memory";
 // already-built IConfiguration as a live source.
 export * from "./chained";
 
+// Stream provider bases -- the abstract Source/Provider pair stream-shaped
+// provider packages (e.g. @rhombus-std/config.json's addJsonStream) extend.
+export * from "./stream";
+
 // Runtime coercion + schema. `withType` (Tier 2) is intentionally NOT
 // re-exported here -- it's opt-in via `import "@rhombus-std/config/with-type-augment"`.
 export { SchemaCoercionError } from "./coerce";

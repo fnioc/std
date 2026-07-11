@@ -43,7 +43,18 @@ import type { Infer, ObjectSchema, Schema } from "./schema";
 @augment(nameof<IConfigurationBuilder>())
 export class ConfigurationBuilder<T = IndexedSection> {
   readonly #sources: IConfigurationSource[] = [];
+  readonly #properties = new Map<string, unknown>();
   #schema?: Schema;
+
+  /**
+   * The shared key/value bag between this builder and its registered sources
+   * ({@link IConfigurationBuilder.properties}): a source can read a
+   * builder-wide setting from it during {@link IConfigurationSource.build}.
+   * One mutable Map instance for the builder's lifetime.
+   */
+  public get properties(): Map<string, unknown> {
+    return this.#properties;
+  }
 
   /**
    * The registered sources, in registration order. Ordered-list semantics --
