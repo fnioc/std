@@ -144,7 +144,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `useDefaultServiceProvider` (threading `di`'s `ServiceProviderOptions` through `build()`, via a
   `WeakMap` side channel on the classic builder since the single-container model has no factory
   seam, §24), `HostApplicationBuilder.asHostBuilder()` (a classic `IHostBuilder` view backed by an
-  internal `HostBuilderAdapter`), the `HostAbortedException(message, innerException)` constructor,
+  internal `HostBuilderAdapter`), the `HostAbortedError(message, innerError)` constructor,
   and no-context convenience overloads on the pure-extension builder members only (the three
   core-interface members keep their single context-taking signature — a TS arity constraint, not
   an omission). The physical file provider and the non-console logging sinks it composes stay
