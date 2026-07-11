@@ -21,6 +21,11 @@ export type { ILoggerFactory, ILoggerProvider } from "./logger-factory";
 // console provider re-exports it from here.
 export type { LogEntry } from "./log-entry";
 
+// The provider-alias filtering marker (the reference `ProviderAliasAttribute`)
+// and its reader — a provider class declares `static readonly [providerAlias]`.
+export { getProviderAlias, providerAlias } from "./provider-alias";
+export type { ProviderAliased } from "./provider-alias";
+
 // Deferred message formatting — exported so a provider-side sink can render or
 // structurally destructure a `FormattedLogValues` state (its `[name, value]`
 // pairs plus the `{OriginalFormat}` entry).
