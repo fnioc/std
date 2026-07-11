@@ -15,3 +15,4 @@ export type { PostConfigureOptions } from "./PostConfigureOptions.js";
 export { StartupValidator } from "./StartupValidator.js";
 export type { ValidateOptions } from "./ValidateOptions.js";
 export { ValidateOptionsResult } from "./ValidateOptionsResult.js";
+export { ValidateOptionsResultBuilder } from "./ValidateOptionsResultBuilder.js";
