@@ -236,6 +236,25 @@ interface Captor {
 }
 
 /**
+ * Disposal failure policy, mirroring the reference scope disposal: every owned
+ * instance's disposal is ATTEMPTED (a throwing disposable never aborts its
+ * siblings' teardown); afterwards a single collected failure rethrows as
+ * itself, and two or more aggregate into one `AggregateError`.
+ */
+function throwDisposalFailures(failures: readonly unknown[]): void {
+  if (!failures.length) {
+    return;
+  }
+  if (failures.length === 1) {
+    throw failures[0];
+  }
+  throw new AggregateError(
+    failures,
+    "One or more errors occurred while disposing the service provider.",
+  );
+}
+
+/**
  * A scope frame — a node in the parent-linked chain. Holds this scope's name,
  * its instance cache, an ordered list for disposal, and an optional parent.
  * It does NOT hold registrations (those live sealed on the ServiceProvider).
@@ -1496,7 +1515,14 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    *
    * Throws `AsyncDisposalRequiredError` if any owned instance is a Promise
    * (thenable) — a pending Promise cannot be disposed synchronously; the caller
-   * must use `disposeAsync()`. Idempotent: a second call is a no-op.
+   * must use `disposeAsync()`. (This pre-check runs BEFORE any disposal, so the
+   * provider stays undisposed and `disposeAsync()` can still run everything.)
+   * Idempotent: a second call is a no-op.
+   *
+   * A THROWING disposable never aborts its siblings' teardown: every owned
+   * instance's disposal is attempted, and the collected failures are rethrown
+   * afterwards — one failure as itself, several as one `AggregateError` — the
+   * reference scope-disposal aggregation.
    */
   public dispose(): void {
     if (this.#disposed) { return; }
@@ -1513,13 +1539,19 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     }
 
     this.#disposed = true;
+    const failures: unknown[] = [];
     for (let i = owned.length - 1; i >= 0; i--) {
       const instance = owned[i];
       if (isDisposable(instance)) {
-        instance[Symbol.dispose]();
+        try {
+          instance[Symbol.dispose]();
+        } catch (err) {
+          failures.push(err);
+        }
       }
     }
     this.#clear();
+    throwDisposalFailures(failures);
   }
 
   /**
@@ -1527,6 +1559,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * instance first (so an async factory's result settles before teardown), then
    * disposes owned instances in REVERSE construction order — honoring both
    * `Symbol.asyncDispose` and `Symbol.dispose`. Idempotent.
+   *
+   * Same failure aggregation as `dispose()`: every disposal is attempted, one
+   * collected failure rethrows as itself, several aggregate.
    */
   public async disposeAsync(): Promise<void> {
     if (this.#disposed) { return; }
@@ -1559,15 +1594,21 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       }
     }
 
+    const failures: unknown[] = [];
     for (let i = settled.length - 1; i >= 0; i--) {
       const instance = settled[i];
-      if (isAsyncDisposable(instance)) {
-        await instance[Symbol.asyncDispose]();
-      } else if (isDisposable(instance)) {
-        instance[Symbol.dispose]();
+      try {
+        if (isAsyncDisposable(instance)) {
+          await instance[Symbol.asyncDispose]();
+        } else if (isDisposable(instance)) {
+          instance[Symbol.dispose]();
+        }
+      } catch (err) {
+        failures.push(err);
       }
     }
     this.#clear();
+    throwDisposalFailures(failures);
   }
 
   /** Drops owned references after disposal so they can be collected. */
