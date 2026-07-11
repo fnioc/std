@@ -7,9 +7,8 @@
 //
 // Durations map to milliseconds (`number`): the reference
 // `ExpirationScanFrequency` default `TimeSpan.FromMinutes(1)` becomes 60_000.
-// The obsolete `CompactOnMemoryPressure` and the metrics/statistics surface
-// (`TrackStatistics`, `Name`) are dropped -- no consumer this pass; noted in
-// the README.
+// The obsolete `CompactOnMemoryPressure` is dropped -- the reference marks it
+// `Obsolete(error: true)`.
 
 import type { Options } from "@rhombus-std/options";
 import type { ISystemClock } from "./ISystemClock";
@@ -34,6 +33,21 @@ export class MemoryCacheOptions implements Options<MemoryCacheOptions> {
    * the README).
    */
   public trackLinkedCacheEntries = false;
+
+  /**
+   * Whether cache statistics (hits, misses, evictions, entry count, estimated
+   * size) are tracked, surfacing through
+   * {@link MemoryCache.getCurrentStatistics}. Defaults to `false`.
+   */
+  public trackStatistics = false;
+
+  /**
+   * The name of this cache instance. The reference uses it to tag the
+   * metrics its meter emits; the metrics wiring is not ported (no
+   * meter/instrument analog exists in the diagnostics family), so the name is
+   * carried for parity but nothing consumes it yet.
+   */
+  public name = "Default";
 
   /**
    * The maximum total size of the cache (arbitrary units; each entry supplies
