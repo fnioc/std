@@ -15,13 +15,13 @@ npm install @rhombus-std/primitives
 ## Basic usage
 
 ```ts
-import { CancellationChangeToken, ChangeToken } from "@rhombus-std/primitives";
+import { CancellationChangeToken, ChangeToken } from '@rhombus-std/primitives';
 
 let controller = new AbortController();
 
 const disposable = ChangeToken.onChange(
   () => new CancellationChangeToken(controller.signal),
-  () => console.log("changed"),
+  () => console.log('changed'),
 );
 
 controller.abort(); // logs "changed"

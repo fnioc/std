@@ -15,8 +15,8 @@
 // configure/validate/OptionsFactory pipeline IS now built -- in its own
 // files (`options-factory.ts` and the step interfaces), adopted per §4.5.
 
-import { ChangeToken, type ChangeTokenProducer } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import { ChangeToken, type ChangeTokenProducer } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * The current value of a bound options object -- collapses MEO's

@@ -35,40 +35,28 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
-import {
-  collectionToken,
-  type IMetricsBuilder,
-  type ITracingBuilder,
-  METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-  METRICS_CONFIGURATION_TOKEN,
-  METRICS_CONFIGURE_TOKEN,
-  METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-  METRICS_OPTIONS_TOKEN,
-  MetricsOptions,
-  TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
-  TRACING_CONFIGURATION_TOKEN,
-  TRACING_CONFIGURE_TOKEN,
-  TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-  TRACING_OPTIONS_TOKEN,
-  TracingOptions,
-} from "@rhombus-std/diagnostics.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
+import { RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
+import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+  METRICS_CONFIGURATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
+  METRICS_OPTIONS_TOKEN, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
+  TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, TRACING_OPTIONS_TOKEN,
+  TracingOptions } from '@rhombus-std/diagnostics.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
 
-import { assembleDiagnosticsOptions } from "./assemble-diagnostics-options";
+import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
 // Type-only side effect: the class-side declaration merges that keep the concrete
 // MetricsBuilder/TracingBuilder satisfying their OPEN interfaces once the builder
 // augmentation members merge in. The RUNTIME install now flows through the registry
 // -- importing the concrete classes below runs their `@augment` decoration, and the
 // registerAugmentations calls (diagnostics.core + the config-augmentation modules)
 // feed their prototypes (docs §38).
-import "./builder-augmentations";
-import { MetricListenerConfigurationFactory } from "./metrics/configuration/MetricListenerConfigurationFactory";
-import { MetricsBuilder } from "./metrics/MetricsBuilder";
-import { DefaultActivityListenerConfigurationFactory } from "./tracing/configuration/DefaultActivityListenerConfigurationFactory";
-import { TracingBuilder } from "./tracing/TracingBuilder";
+import './builder-augmentations';
+import { MetricListenerConfigurationFactory } from './metrics/configuration/MetricListenerConfigurationFactory';
+import { MetricsBuilder } from './metrics/MetricsBuilder';
+import { DefaultActivityListenerConfigurationFactory } from './tracing/configuration/DefaultActivityListenerConfigurationFactory';
+import { TracingBuilder } from './tracing/TracingBuilder';
 
 // The authored methods merge onto core's `ServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` a consumer holds resolves to -- AND onto
@@ -76,8 +64,8 @@ import { TracingBuilder } from "./tracing/TracingBuilder";
 // ServiceManifestBase` once these NEW method names are on the interface.
 // `Provider`/`Scopes` are defaulted so each merge matches its target's
 // type-parameter list (TS2428 requires identical parameters).
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers the metrics options assembly and, if `configure` is supplied,
      * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
@@ -97,7 +85,7 @@ declare module "@rhombus-std/di.core" {
     addTracing(configure?: Func<[ITracingBuilder], void>): this;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addMetrics(configure?: Func<[IMetricsBuilder], void>): this;
     addTracing(configure?: Func<[ITracingBuilder], void>): this;
   }
@@ -130,7 +118,7 @@ export const MetricsServiceExtensions = {
           () => new MetricsOptions(),
         ),
       [[RESOLVER_TOKEN]],
-    ).as("singleton");
+    ).as('singleton');
     // The per-listener configuration factory (the reference's TryAddSingleton of
     // IMetricListenerConfigurationFactory): ctor-injected with the collection of
     // every MetricsConfiguration marker addMetricsConfiguration registered.
@@ -138,7 +126,7 @@ export const MetricsServiceExtensions = {
       METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
       MetricListenerConfigurationFactory,
       [[collectionToken(METRICS_CONFIGURATION_TOKEN)]],
-    ).as("singleton");
+    ).as('singleton');
     if (configure) {
       configure(new MetricsBuilder(manifest));
     }
@@ -161,7 +149,7 @@ export const TracingServiceExtensions = {
           () => new TracingOptions(),
         ),
       [[RESOLVER_TOKEN]],
-    ).as("singleton");
+    ).as('singleton');
     // The per-listener configuration factory (the reference's TryAddSingleton of
     // ActivityListenerConfigurationFactory): ctor-injected with the collection of
     // every TracingConfiguration marker addTracingConfiguration registered.
@@ -169,7 +157,7 @@ export const TracingServiceExtensions = {
       TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
       DefaultActivityListenerConfigurationFactory,
       [[collectionToken(TRACING_CONFIGURATION_TOKEN)]],
-    ).as("singleton");
+    ).as('singleton');
     if (configure) {
       configure(new TracingBuilder(manifest));
     }
@@ -185,8 +173,8 @@ registerAugmentations(nameof<ServiceManifest>(), TracingServiceExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).
-export { MetricsBuilder } from "./metrics/MetricsBuilder";
-export { TracingBuilder } from "./tracing/TracingBuilder";
+export { MetricsBuilder } from './metrics/MetricsBuilder';
+export { TracingBuilder } from './tracing/TracingBuilder';
 
 // The config-binding augmentation sets. Their receiver is the family's OWN
 // builder interface; each self-registers against the builder token (docs §38) so
@@ -194,14 +182,14 @@ export { TracingBuilder } from "./tracing/TracingBuilder";
 // so both `MetricsBuilderConfigurationExtensions.addMetricsConfiguration(builder, cfg)`
 // and `builder.addMetricsConfiguration(cfg)` work. The method form is primary.
 // Re-exporting the consts also runs each module's registerAugmentations side effect.
-export { MetricsBuilderConfigurationExtensions } from "./metrics/configuration/metrics-builder-configuration-augmentations";
-export { TracingBuilderConfigurationExtensions } from "./tracing/configuration/tracing-builder-configuration-augmentations";
+export { MetricsBuilderConfigurationExtensions } from './metrics/configuration/metrics-builder-configuration-augmentations';
+export { TracingBuilderConfigurationExtensions } from './tracing/configuration/tracing-builder-configuration-augmentations';
 
 // The config-bind ConfigureOptions steps (the reference's internal
 // Metrics/TracingConfigureOptions), exposed so a plugin-less consumer can bind a
 // configuration section without the addMetricsConfiguration wrapper.
-export { MetricsConfigureOptions } from "./metrics/configuration/MetricsConfigureOptions";
-export { TracingConfigureOptions } from "./tracing/configuration/TracingConfigureOptions";
+export { MetricsConfigureOptions } from './metrics/configuration/MetricsConfigureOptions';
+export { TracingConfigureOptions } from './tracing/configuration/TracingConfigureOptions';
 
 // The per-listener configuration factories. `addMetrics`/`addTracing` register
 // the concrete factory at METRICS/TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN;
@@ -210,9 +198,9 @@ export { TracingConfigureOptions } from "./tracing/configuration/TracingConfigur
 // The concrete factories and the Metrics/TracingConfiguration markers are
 // internal in the reference, exposed here (like the ConfigureOptions steps
 // above) so a plugin-less consumer can wire the same path by hand.
-export type { IMetricListenerConfigurationFactory } from "./metrics/configuration/IMetricListenerConfigurationFactory";
-export { MetricListenerConfigurationFactory } from "./metrics/configuration/MetricListenerConfigurationFactory";
-export { MetricsConfiguration } from "./metrics/configuration/MetricsConfiguration";
-export { ActivityListenerConfigurationFactory } from "./tracing/configuration/ActivityListenerConfigurationFactory";
-export { DefaultActivityListenerConfigurationFactory } from "./tracing/configuration/DefaultActivityListenerConfigurationFactory";
-export { TracingConfiguration } from "./tracing/configuration/TracingConfiguration";
+export type { IMetricListenerConfigurationFactory } from './metrics/configuration/IMetricListenerConfigurationFactory';
+export { MetricListenerConfigurationFactory } from './metrics/configuration/MetricListenerConfigurationFactory';
+export { MetricsConfiguration } from './metrics/configuration/MetricsConfiguration';
+export { ActivityListenerConfigurationFactory } from './tracing/configuration/ActivityListenerConfigurationFactory';
+export { DefaultActivityListenerConfigurationFactory } from './tracing/configuration/DefaultActivityListenerConfigurationFactory';
+export { TracingConfiguration } from './tracing/configuration/TracingConfiguration';

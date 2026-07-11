@@ -1,8 +1,8 @@
-import { beforeAll, describe, expect, test } from "bun:test";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { beforeAll, describe, expect, test } from 'bun:test';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 // Production-path e2e parity: drives the REAL ttsc (typescript-go toolchain) over
 // a temp project that wires the Go registration plugin through the
@@ -21,17 +21,17 @@ import { join, resolve } from "node:path";
 // the ambient (mise) environment — a version split there makes the plugin compile
 // fail. Pin to one self-consistent toolchain via TTSC_GO_BINARY + GOTOOLCHAIN=local.
 
-const goToolchain = spawnSync("mise", ["which", "go"], { encoding: "utf8" });
+const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
 const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
 
-const PKG_ROOT = resolve(import.meta.dir, "..");
-const REPO_ROOT = resolve(PKG_ROOT, "..", "..");
-const TTSC = join(PKG_ROOT, "node_modules", "ttsc", "lib", "launcher", "ttsc.js");
-const TS7 = join(PKG_ROOT, "node_modules", "typescript");
-const UNPLUGIN = join(PKG_ROOT, "node_modules", "@ttsc", "unplugin");
-const DI = join(REPO_ROOT, "libraries", "di.transformer");
+const PKG_ROOT = resolve(import.meta.dir, '..');
+const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
+const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
+const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
+const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
+const DI = join(REPO_ROOT, 'libraries', 'di.transformer');
 
-const projDir = join(tmpdir(), "fnioc-ttsc-di-e2e");
+const projDir = join(tmpdir(), 'fnioc-ttsc-di-e2e');
 const COLD_BUILD_MS = 420_000;
 
 function link(target: string, linkPath: string): void {
@@ -46,59 +46,59 @@ function link(target: string, linkPath: string): void {
 // in the system TMPDIR, which is a size-capped tmpfs on this host — a cold
 // typescript-go compile exhausts it. Redirecting GOTMPDIR onto the (large) home
 // filesystem keeps the build off tmpfs.
-const goBuildTmp = join(REPO_ROOT, "node_modules", ".cache", "ttsc-di-gobuild");
+const goBuildTmp = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-di-gobuild');
 
 /** A build env with a single self-consistent Go toolchain (see file header). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   delete env.GOROOT;
   delete env.GOBIN;
-  env.GOTOOLCHAIN = "local";
+  env.GOTOOLCHAIN = 'local';
   mkdirSync(goBuildTmp, { recursive: true });
   env.GOTMPDIR = goBuildTmp;
-  const miseGo = spawnSync("mise", ["which", "go"], { encoding: "utf8" });
-  const goBin = miseGo.status === 0 ? miseGo.stdout.trim() : "";
+  const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
+  const goBin = miseGo.status === 0 ? miseGo.stdout.trim() : '';
   if (goBin) {
     env.TTSC_GO_BINARY = goBin;
   }
   return env;
 }
 
-let app = "";
+let app = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
     return;
   }
-  const nm = join(projDir, "node_modules");
-  mkdirSync(join(nm, "@rhombus-std"), { recursive: true });
-  mkdirSync(join(nm, "@ttsc"), { recursive: true });
-  mkdirSync(join(projDir, "src"), { recursive: true });
-  rmSync(join(projDir, "dist"), { recursive: true, force: true });
+  const nm = join(projDir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  mkdirSync(join(nm, '@ttsc'), { recursive: true });
+  mkdirSync(join(projDir, 'src'), { recursive: true });
+  rmSync(join(projDir, 'dist'), { recursive: true, force: true });
 
-  link(TS7, join(nm, "typescript"));
-  link(join(PKG_ROOT, "node_modules", "ttsc"), join(nm, "ttsc"));
-  link(UNPLUGIN, join(nm, "@ttsc", "unplugin"));
-  link(DI, join(nm, "@rhombus-std", "di.transformer"));
+  link(TS7, join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
+  link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
+  link(DI, join(nm, '@rhombus-std', 'di.transformer'));
 
   // A package-public library exporting the service interface through a subpath —
   // exercises the Tier-1 (import-specifier) token in a registration.
-  const lib = join(nm, "your-lib");
-  mkdirSync(join(lib, "contracts"), { recursive: true });
+  const lib = join(nm, 'your-lib');
+  mkdirSync(join(lib, 'contracts'), { recursive: true });
   writeFileSync(
-    join(lib, "package.json"),
+    join(lib, 'package.json'),
     JSON.stringify({
-      name: "your-lib",
-      version: "3.4.5",
-      exports: { ".": "./index.js", "./contracts": "./contracts/index.js" },
+      name: 'your-lib',
+      version: '3.4.5',
+      exports: { '.': './index.js', './contracts': './contracts/index.js' },
     }),
   );
-  writeFileSync(join(lib, "index.d.ts"), `export {};\n`);
-  writeFileSync(join(lib, "contracts", "index.d.ts"), `export interface IUserRepo {}\n`);
+  writeFileSync(join(lib, 'index.d.ts'), `export {};\n`);
+  writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IUserRepo {}\n`);
 
-  writeFileSync(join(projDir, "src", "nameof.ts"), `export declare function nameof<T>(): string;\n`);
+  writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
   writeFileSync(
-    join(projDir, "src", "app.ts"),
+    join(projDir, 'src', 'app.ts'),
     `
 import { nameof } from "./nameof";
 import { IUserRepo } from "your-lib/contracts";
@@ -127,27 +127,27 @@ export const known = provider.isService<ILogger>();
 `,
   );
   writeFileSync(
-    join(projDir, "tsconfig.json"),
+    join(projDir, 'tsconfig.json'),
     JSON.stringify({
       compilerOptions: {
-        target: "ES2022",
-        module: "ESNext",
-        moduleResolution: "Bundler",
-        lib: ["ES2022"],
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        lib: ['ES2022'],
         strict: true,
-        outDir: "dist",
-        rootDir: "src",
+        outDir: 'dist',
+        rootDir: 'src',
         skipLibCheck: true,
         noEmitOnError: false,
-        plugins: [{ transform: "@rhombus-std/di.transformer/ttsc" }],
+        plugins: [{ transform: '@rhombus-std/di.transformer/ttsc' }],
       },
-      include: ["src/**/*"],
+      include: ['src/**/*'],
     }),
   );
 
-  const result = spawnSync("node", [TTSC, "-p", "tsconfig.json"], {
+  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
     cwd: projDir,
-    encoding: "utf8",
+    encoding: 'utf8',
     env: goEnv(),
   });
   if (result.status !== 0) {
@@ -162,31 +162,31 @@ export const known = provider.isService<ILogger>();
   // otherwise a retained generic type annotation reads as an un-lowered call.
   let lowered: string;
   try {
-    lowered = readFileSync(join(projDir, "dist", "app.js"), "utf8");
+    lowered = readFileSync(join(projDir, 'dist', 'app.js'), 'utf8');
   } catch {
-    const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string> };
-    lowered = envelope.typescript["src/app.ts"] ?? "";
+    const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
+    lowered = envelope.typescript['src/app.ts'] ?? '';
   }
-  app = new Bun.Transpiler({ loader: "ts" }).transformSync(lowered);
+  app = new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered);
 }, COLD_BUILD_MS);
 
-describe.skipIf(!toolchainReady)("ttsc/Go registration lowering byte-parity", () => {
-  test("no type-argument authoring forms survive the lowering", () => {
-    expect(app).not.toContain("add<");
-    expect(app).not.toContain(".as<");
-    expect(app).not.toContain("resolve<");
-    expect(app).not.toContain("isService<");
-    expect(app).not.toContain("nameof<");
+describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', () => {
+  test('no type-argument authoring forms survive the lowering', () => {
+    expect(app).not.toContain('add<');
+    expect(app).not.toContain('.as<');
+    expect(app).not.toContain('resolve<');
+    expect(app).not.toContain('isService<');
+    expect(app).not.toContain('nameof<');
   });
 
-  test("zero-arg class registration → token + empty inline signature + scope", () => {
+  test('zero-arg class registration → token + empty inline signature + scope', () => {
     // services.add<ILogger>(ConsoleLogger).as<"singleton">()
     expect(app).toContain(`"./app:ILogger"`);
-    expect(app).toContain("ConsoleLogger");
+    expect(app).toContain('ConsoleLogger');
     expect(app).toContain(`.as("singleton")`);
   });
 
-  test("multi-param ctor → package-public service token + inline dep signature (Rule 1)", () => {
+  test('multi-param ctor → package-public service token + inline dep signature (Rule 1)', () => {
     // The service token is the Tier-1 import specifier; the ctor deps are the
     // app-internal interface tokens and the bare intrinsic "string" (Rule 1).
     expect(app).toContain(`"your-lib/contracts:IUserRepo"`);
@@ -195,15 +195,15 @@ describe.skipIf(!toolchainReady)("ttsc/Go registration lowering byte-parity", ()
     expect(app).toContain(`.as("request")`);
   });
 
-  test("nameof<T>() → the same byte-identical package-public token", () => {
+  test('nameof<T>() → the same byte-identical package-public token', () => {
     expect(app).toContain(`marker = "your-lib/contracts:IUserRepo"`);
   });
 
-  test("tokenless resolve<I>() → resolve(\"<token>\")", () => {
+  test('tokenless resolve<I>() → resolve("<token>")', () => {
     expect(app).toContain(`resolve("./app:ILogger")`);
   });
 
-  test("tokenless isService<I>() → isService(\"<token>\")", () => {
+  test('tokenless isService<I>() → isService("<token>")', () => {
     expect(app).toContain(`isService("./app:ILogger")`);
   });
 });

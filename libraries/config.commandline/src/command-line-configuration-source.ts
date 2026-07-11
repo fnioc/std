@@ -16,8 +16,8 @@
 // switch/missing-value behavior. See that file's module doc comment for the
 // full rationale.
 
-import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { CommandLineConfigurationProvider } from "./CommandLineConfigurationProvider";
+import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from '@rhombus-std/config.core';
+import { CommandLineConfigurationProvider } from './CommandLineConfigurationProvider';
 
 /** Options accepted by {@link CommandLineConfigurationSource}'s constructor. */
 export interface CommandLineConfigurationSourceOptions {
@@ -40,7 +40,7 @@ function validateSwitchMappings(switchMappings: Record<string, string>): void {
   const seenByFoldedKey = new Map<string, string>();
 
   for (const key of Object.keys(switchMappings)) {
-    if (!key.startsWith("-")) {
+    if (!key.startsWith('-')) {
       throw new Error(
         `Invalid switch mapping key "${key}" -- switch mapping keys must start with "-" (e.g. "-p" or "--port").`,
       );

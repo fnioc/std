@@ -11,9 +11,9 @@
 // call -- made during the fire itself -- observes a live, not-yet-aborted
 // signal.
 
-import { Options } from "@rhombus-std/options/internal/options";
-import { CancellationChangeToken } from "@rhombus-std/primitives";
-import { describe, expect, test } from "bun:test";
+import { Options } from '@rhombus-std/options/internal/options';
+import { CancellationChangeToken } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
 
 /** A manually-fired reload source, backed by a real CancellationChangeToken. */
 function manualReloadSource() {
@@ -28,20 +28,20 @@ function manualReloadSource() {
   };
 }
 
-describe("Options.of", () => {
-  test("value is a static snapshot", () => {
+describe('Options.of', () => {
+  test('value is a static snapshot', () => {
     const options = Options.of({ port: 8080 });
     expect(options.value).toEqual({ port: 8080 });
   });
 
-  test("subscribe is absent", () => {
+  test('subscribe is absent', () => {
     const options = Options.of(1);
     expect(options.subscribe).toBeUndefined();
   });
 });
 
-describe("Options.watch", () => {
-  test("value re-reads getValue on every access", () => {
+describe('Options.watch', () => {
+  test('value re-reads getValue on every access', () => {
     let port = 8080;
     const options = Options.watch(() => ({ port }), () => undefined);
 
@@ -50,7 +50,7 @@ describe("Options.watch", () => {
     expect(options.value).toEqual({ port: 9090 });
   });
 
-  test("subscribe fires the listener with the new value when the injected change token fires", () => {
+  test('subscribe fires the listener with the new value when the injected change token fires', () => {
     let port = 8080;
     const source = manualReloadSource();
     const options = Options.watch(() => ({ port }), source.produceToken);
@@ -66,7 +66,7 @@ describe("Options.watch", () => {
     registration[Symbol.dispose]();
   });
 
-  test("subscribe re-registers against the next token, so a second fire is also observed", () => {
+  test('subscribe re-registers against the next token, so a second fire is also observed', () => {
     let port = 8080;
     const source = manualReloadSource();
     const options = Options.watch(() => ({ port }), source.produceToken);
@@ -85,7 +85,7 @@ describe("Options.watch", () => {
     registration[Symbol.dispose]();
   });
 
-  test("disposing the subscription stops further notifications", () => {
+  test('disposing the subscription stops further notifications', () => {
     let port = 8080;
     const source = manualReloadSource();
     const options = Options.watch(() => ({ port }), source.produceToken);

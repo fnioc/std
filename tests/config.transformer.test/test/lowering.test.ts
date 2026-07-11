@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test";
-import { fixture, transform } from "./harness.js";
+import { describe, expect, test } from 'bun:test';
+import { fixture, transform } from './harness.js';
 
-describe("withType -> withSchema lowering", () => {
-  test("flat interface lowers to a schema literal with an OPTIONAL wrapper", () => {
+describe('withType -> withSchema lowering', () => {
+  test('flat interface lowers to a schema literal with an OPTIONAL wrapper', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface ServerConfig { host: string; port: number; ssl?: boolean }
@@ -10,15 +10,15 @@ describe("withType -> withSchema lowering", () => {
       `),
     );
     expect(diagnostics).toHaveLength(0);
-    expect(output).toContain(".withSchema(");
-    expect(output).not.toContain(".withType(");
+    expect(output).toContain('.withSchema(');
+    expect(output).not.toContain('.withType(');
     expect(output).toContain(`host: "string"`);
     expect(output).toContain(`port: "number"`);
     // Optional field wraps under the OPTIONAL computed key.
     expect(output).toContain(`ssl: { [OPTIONAL]: "boolean" }`);
   });
 
-  test("nested objects recurse", () => {
+  test('nested objects recurse', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface AppConfig {
@@ -36,7 +36,7 @@ describe("withType -> withSchema lowering", () => {
     expect(output).toMatch(/Database:\s*\{\s*Primary:\s*\{/);
   });
 
-  test("required boolean lowers to \"boolean\" (wide-boolean-before-union)", () => {
+  test('required boolean lowers to "boolean" (wide-boolean-before-union)', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface Flags { flag: boolean }
@@ -47,7 +47,7 @@ describe("withType -> withSchema lowering", () => {
     expect(output).toContain(`flag: "boolean"`);
   });
 
-  test("property-name casing is preserved", () => {
+  test('property-name casing is preserved', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface Server { Host: string; Port: number }
@@ -61,7 +61,7 @@ describe("withType -> withSchema lowering", () => {
     expect(output).not.toContain(`port:`);
   });
 
-  test("receiver chain is preserved and the type argument dropped", () => {
+  test('receiver chain is preserved and the type argument dropped', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface T { a: string }
@@ -71,12 +71,12 @@ describe("withType -> withSchema lowering", () => {
     );
     expect(diagnostics).toHaveLength(0);
     expect(output).toMatch(/\.add\(src\)\s*\.withSchema\(/);
-    expect(output).not.toContain(".withType");
+    expect(output).not.toContain('.withType');
     // The <T> type argument must be gone.
-    expect(output).not.toContain("withSchema<");
+    expect(output).not.toContain('withSchema<');
   });
 
-  test("a non-ConfigurationBuilder .withType is left untouched", () => {
+  test('a non-ConfigurationBuilder .withType is left untouched', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface T { a: string }
@@ -85,7 +85,7 @@ describe("withType -> withSchema lowering", () => {
       `),
     );
     expect(diagnostics).toHaveLength(0);
-    expect(output).toContain("new Other().withType<T>()");
-    expect(output).not.toContain(".withSchema(");
+    expect(output).toContain('new Other().withType<T>()');
+    expect(output).not.toContain('.withSchema(');
   });
 });

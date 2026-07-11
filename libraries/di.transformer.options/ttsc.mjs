@@ -12,7 +12,7 @@
 // per pass, so it CANNOT be listed alongside the registration `./ttsc` plugin — a
 // consumer that needs both wires the aggregate `./ttsc-app` descriptor instead.
 
-import path from "node:path";
+import path from 'node:path';
 
 /**
  * @param {import("ttsc").ITtscPluginFactoryContext} context
@@ -23,13 +23,13 @@ export function createTtscPlugin(context) {
   // (libraries/di.transformer.options); the Go plugin lives at the repo root.
   const source = path.resolve(
     context.dirname,
-    "..",
-    "..",
-    "transforms",
-    "cmd",
-    "ttsc-di-options",
+    '..',
+    '..',
+    'transforms',
+    'cmd',
+    'ttsc-di-options',
   );
-  return { name: "di-options", source };
+  return { name: 'di-options', source };
 }
 
 export default createTtscPlugin;

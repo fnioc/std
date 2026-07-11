@@ -1,5 +1,5 @@
-import { AbortController, type AbortSignal } from "@rhombus-std/primitives";
-import type { IHostedService } from "./IHostedService";
+import { AbortController, type AbortSignal } from '@rhombus-std/primitives';
+import type { IHostedService } from './IHostedService';
 
 /** Aborts `target` whenever `source` aborts (or immediately, if already aborted). */
 function propagateAbort(source: AbortSignal, target: AbortController): void {
@@ -7,7 +7,7 @@ function propagateAbort(source: AbortSignal, target: AbortController): void {
     target.abort(source.reason);
     return;
   }
-  source.addEventListener("abort", () => target.abort(source.reason), { once: true });
+  source.addEventListener('abort', () => target.abort(source.reason), { once: true });
 }
 
 /** A promise that settles when `signal` aborts (or immediately, if already aborted). */
@@ -16,7 +16,7 @@ function whenAborted(signal: AbortSignal): Promise<void> {
     return Promise.resolve();
   }
   return new Promise((resolve) => {
-    signal.addEventListener("abort", () => resolve(), { once: true });
+    signal.addEventListener('abort', () => resolve(), { once: true });
   });
 }
 

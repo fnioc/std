@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test";
-import { fixture, transform } from "./harness.js";
+import { describe, expect, test } from 'bun:test';
+import { fixture, transform } from './harness.js';
 
-describe("OPTIONAL import injection", () => {
-  test("injects the named import when absent", () => {
+describe('OPTIONAL import injection', () => {
+  test('injects the named import when absent', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface T { ssl?: boolean }
@@ -14,7 +14,7 @@ describe("OPTIONAL import injection", () => {
     expect(output).toContain(`ssl: { [OPTIONAL]: "boolean" }`);
   });
 
-  test("does not duplicate an existing named import", () => {
+  test('does not duplicate an existing named import', () => {
     const { output, diagnostics } = transform(
       fixture(`
         import { OPTIONAL } from "@rhombus-std/config";
@@ -28,7 +28,7 @@ describe("OPTIONAL import injection", () => {
     expect(output).toContain(`[OPTIONAL]: "boolean"`);
   });
 
-  test("honors an aliased named import", () => {
+  test('honors an aliased named import', () => {
     const { output, diagnostics } = transform(
       fixture(`
         import { OPTIONAL as OPT } from "@rhombus-std/config";
@@ -42,7 +42,7 @@ describe("OPTIONAL import injection", () => {
     expect(output).not.toContain(`import { OPTIONAL }`);
   });
 
-  test("honors a namespace import", () => {
+  test('honors a namespace import', () => {
     const { output, diagnostics } = transform(
       fixture(`
         import * as cfg from "@rhombus-std/config";
@@ -55,7 +55,7 @@ describe("OPTIONAL import injection", () => {
     expect(output).not.toContain(`import { OPTIONAL }`);
   });
 
-  test("no optional field means no injected import", () => {
+  test('no optional field means no injected import', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface T { host: string; port: number }
@@ -64,6 +64,6 @@ describe("OPTIONAL import injection", () => {
     );
     expect(diagnostics).toHaveLength(0);
     expect(output).not.toContain(`import { OPTIONAL }`);
-    expect(output).toContain(".withSchema(");
+    expect(output).toContain('.withSchema(');
   });
 });

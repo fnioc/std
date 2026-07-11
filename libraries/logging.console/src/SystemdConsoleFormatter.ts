@@ -10,35 +10,35 @@
 //
 // The `BufferedLogRecord` fast path is NOT ported (see SimpleConsoleFormatter).
 
-import type { IExternalScopeProvider, LogEntry } from "@rhombus-std/logging.core";
-import { LogLevel } from "@rhombus-std/logging.core";
-import type { Options } from "@rhombus-std/options";
-import { assertNever } from "@rhombus-toolkit/type-guards";
-import { ConsoleControlCharacterSanitizer } from "./ConsoleControlCharacterSanitizer";
-import { ConsoleFormatter } from "./ConsoleFormatter";
-import { ConsoleFormatterNames } from "./ConsoleFormatterNames";
-import type { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
-import { formatTimestamp } from "./date-format";
-import type { TextWriter } from "./text-writer";
+import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
+import { LogLevel } from '@rhombus-std/logging.core';
+import type { Options } from '@rhombus-std/options';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import { ConsoleControlCharacterSanitizer } from './ConsoleControlCharacterSanitizer';
+import { ConsoleFormatter } from './ConsoleFormatter';
+import { ConsoleFormatterNames } from './ConsoleFormatterNames';
+import type { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
+import { formatTimestamp } from './date-format';
+import type { TextWriter } from './text-writer';
 
 /** 'Syslog Message Severities' from RFC 5424. */
 function getSyslogSeverityString(logLevel: LogLevel): string {
   switch (logLevel) {
     case LogLevel.Trace:
     case LogLevel.Debug: {
-      return "<7>"; // debug-level messages
+      return '<7>'; // debug-level messages
     }
     case LogLevel.Information: {
-      return "<6>"; // informational messages
+      return '<6>'; // informational messages
     }
     case LogLevel.Warning: {
-      return "<4>"; // warning conditions
+      return '<4>'; // warning conditions
     }
     case LogLevel.Error: {
-      return "<3>"; // error conditions
+      return '<3>'; // error conditions
     }
     case LogLevel.Critical: {
-      return "<2>"; // critical conditions
+      return '<2>'; // critical conditions
     }
     case LogLevel.None: {
       throw new RangeError(`Invalid log level: ${logLevel}.`);
@@ -111,27 +111,27 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
 
     // category and event id
     textWriter.write(category);
-    textWriter.write("[");
+    textWriter.write('[');
     textWriter.write(String(eventId));
-    textWriter.write("]");
+    textWriter.write(']');
 
     // scope information
     this.#writeScopeInformation(textWriter, scopeProvider);
 
     // message
-    if (message !== "") {
-      textWriter.write(" ");
-      textWriter.write(message.replaceAll("\n", " "));
+    if (message !== '') {
+      textWriter.write(' ');
+      textWriter.write(message.replaceAll('\n', ' '));
     }
 
     // exception, single-line
     if (exception !== undefined) {
-      textWriter.write(" ");
-      textWriter.write(exception.replaceAll("\n", " "));
+      textWriter.write(' ');
+      textWriter.write(exception.replaceAll('\n', ' '));
     }
 
     // newline delimiter
-    textWriter.write("\n");
+    textWriter.write('\n');
   }
 
   #getCurrentDateTime(): Date | undefined {
@@ -143,7 +143,7 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
       return;
     }
     scopeProvider.forEachScope((scope, state) => {
-      state.write(" => ");
+      state.write(' => ');
       state.write(ConsoleControlCharacterSanitizer.sanitize(String(scope)));
     }, textWriter);
   }

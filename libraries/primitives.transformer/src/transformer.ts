@@ -15,11 +15,11 @@
 // di.transformer has each `nameof<T>()` consumed by whichever plugin runs
 // first; the other simply finds no `nameof` calls left.
 
-import type { Func } from "@rhombus-toolkit/func";
-import ts from "typescript";
-import { createTokenContext } from "./context.js";
-import { NAMEOF_NAME } from "./nameof.js";
-import { deriveToken, type TokenContext } from "./tokens.js";
+import type { Func } from '@rhombus-toolkit/func';
+import ts from 'typescript';
+import { createTokenContext } from './context.js';
+import { NAMEOF_NAME } from './nameof.js';
+import { deriveToken, type TokenContext } from './tokens.js';
 
 /**
  * Create the `ts.TransformerFactory` that rewrites `nameof<T>()` calls in a
@@ -28,7 +28,7 @@ import { deriveToken, type TokenContext } from "./tokens.js";
  */
 export function createNameofTransformerFactory(
   program: ts.Program,
-  options: { readFile?: Func<[string], string | undefined> } = {},
+  options: { readFile?: Func<[string], string | undefined>; } = {},
 ): ts.TransformerFactory<ts.SourceFile> {
   const tokenContext = createTokenContext(program, options);
   return function factory(context) {
@@ -54,7 +54,7 @@ function rewriteNameof(node: ts.Node, ctx: FileContext): ts.Node {
       const typeArg = n.typeArguments![0]!;
       const type = ctx.checker.getTypeFromTypeNode(typeArg);
       const token = deriveToken(type, ctx);
-      return ctx.factory.createStringLiteral(token ?? "");
+      return ctx.factory.createStringLiteral(token ?? '');
     }
     return ts.visitEachChild(n, visit, undefined);
   }
@@ -163,7 +163,7 @@ export function transform(
   program: ts.Program,
   _config: unknown,
   _extras: ProgramTransformerExtras,
-): { before: ts.TransformerFactory<ts.SourceFile> } {
+): { before: ts.TransformerFactory<ts.SourceFile>; } {
   return { before: createNameofTransformerFactory(program) };
 }
 

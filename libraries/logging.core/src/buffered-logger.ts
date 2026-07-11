@@ -7,8 +7,8 @@
 // provider for this interface and, if present, delivers records through
 // `logRecords` instead of one-at-a-time `ILogger.log` calls.
 
-import type { EventId } from "./event-id";
-import type { LogLevel } from "./LogLevel";
+import type { EventId } from './event-id';
+import type { LogLevel } from './LogLevel';
 
 /**
  * A single buffered log record, delivered in batch to an {@link IBufferedLogger}.

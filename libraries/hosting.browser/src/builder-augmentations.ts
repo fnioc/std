@@ -22,26 +22,26 @@
 // class's own in-package merges resolve to (a class can't use the barrel
 // without a phantom-duplicate type).
 
-import type { IHostBuilder } from "@rhombus-std/hosting.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { BrowserLifetimeOptions } from "./BrowserLifetimeOptions";
-import { registerBrowserLifetime } from "./register-browser-lifetime";
+import type { IHostBuilder } from '@rhombus-std/hosting.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
+import { registerBrowserLifetime } from './register-browser-lifetime';
 
-declare module "@rhombus-std/hosting.core" {
+declare module '@rhombus-std/hosting.core' {
   interface IHostBuilder {
     useBrowserLifetime(configureOptions?: Func<[BrowserLifetimeOptions], void>): this;
   }
 }
 
-declare module "@rhombus-std/hosting/internal/HostBuilder" {
+declare module '@rhombus-std/hosting/internal/HostBuilder' {
   interface HostBuilder {
     useBrowserLifetime(configureOptions?: Func<[BrowserLifetimeOptions], void>): this;
   }
 }
 
-declare module "@rhombus-std/hosting/internal/internal/HostBuilderAdapter" {
+declare module '@rhombus-std/hosting/internal/internal/HostBuilderAdapter' {
   interface HostBuilderAdapter {
     useBrowserLifetime(configureOptions?: Func<[BrowserLifetimeOptions], void>): this;
   }

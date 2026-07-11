@@ -13,26 +13,19 @@
 // The synchronous reference wrappers (Start/Run/WaitForShutdown that block a
 // thread) collapse into their async forms -- JS cannot block a thread.
 
-import {
-  AbortController,
-  type AbortSignal,
-  type AugmentationSet,
-  clearTimeout,
-  neverSignal,
-  registerAugmentations,
-  setTimeout,
-} from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { IHost } from "./IHost";
-import type { IHostApplicationLifetime } from "./IHostApplicationLifetime";
-import { HOST_APPLICATION_LIFETIME_TOKEN } from "./tokens";
+import { AbortController, type AbortSignal, type AugmentationSet, clearTimeout, neverSignal, registerAugmentations,
+  setTimeout } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { IHost } from './IHost';
+import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
+import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';
 
 // The interface-side merge for the `IHost` augmentation members lives HERE,
 // beside the const that registers them (rule 0.6): a `hosting.core`-only consumer
 // holding `IHost` sees the method form. The runtime install onto the concrete
 // `Host` (and its class-side merge so the class still SATISFIES `IHost`) live
 // downstream in `@rhombus-std/hosting`.
-declare module "./IHost" {
+declare module './IHost' {
   interface IHost {
     run(abortSignal?: AbortSignal): Promise<void>;
     runAsync(abortSignal?: AbortSignal): Promise<void>;
@@ -47,7 +40,7 @@ function whenAborted(signal: AbortSignal): Promise<void> {
     return Promise.resolve();
   }
   return new Promise((resolve) => {
-    signal.addEventListener("abort", () => resolve(), { once: true });
+    signal.addEventListener('abort', () => resolve(), { once: true });
   });
 }
 
@@ -79,7 +72,7 @@ export const HostingAbstractionsHostExtensions = {
     } finally {
       const asyncDisposable = host as Partial<AsyncDisposable>;
       const disposeAsync = asyncDisposable[Symbol.asyncDispose];
-      if (typeof disposeAsync === "function") {
+      if (typeof disposeAsync === 'function') {
         await disposeAsync.call(host);
       } else {
         host[Symbol.dispose]();
@@ -105,14 +98,14 @@ export const HostingAbstractionsHostExtensions = {
       if (abortSignal.aborted) {
         requestStop();
       } else {
-        abortSignal.addEventListener("abort", requestStop, { once: true });
+        abortSignal.addEventListener('abort', requestStop, { once: true });
       }
     }
 
     try {
       await whenAborted(lifetime.applicationStopping);
     } finally {
-      abortSignal?.removeEventListener("abort", requestStop);
+      abortSignal?.removeEventListener('abort', requestStop);
     }
 
     // Don't forward the abort signal -- it may have been triggered only to

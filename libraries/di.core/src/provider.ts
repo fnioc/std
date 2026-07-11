@@ -11,7 +11,7 @@
 //
 // Every export here is pure type-level machinery — it erases completely.
 
-import type { Token } from "./types.js";
+import type { Token } from './types.js';
 
 /**
  * The throwing required-resolution surface — the reference `ISupportRequiredService`
@@ -116,7 +116,7 @@ export interface Resolver extends RequiredResolver, ServiceQuery {
  */
 export interface ScopeFactory<S extends string = string> {
   createScope(
-    ...args: "scoped" extends S ? [name?: S] : [name: S]
+    ...args: 'scoped' extends S ? [name?: S] : [name: S]
   ): ServiceProvider<S>;
 }
 
@@ -169,4 +169,4 @@ export interface ResolveScope extends Resolver {
  * to `"scoped"`). Transient is represented by the ABSENCE of a lifetime tag
  * (`undefined` on the registration), not by the string `"transient"`.
  */
-export type Lifetime<U extends string = "scoped"> = "singleton" | "transient" | U;
+export type Lifetime<U extends string = 'scoped'> = 'singleton' | 'transient' | U;

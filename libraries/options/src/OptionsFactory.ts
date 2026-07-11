@@ -11,12 +11,12 @@
 //     is no reflective construction in TS, so the base factory is injected as
 //     `makeBase` (the analog of MEO's protected virtual CreateInstance).
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
-import type { ConfigureOptions } from "./ConfigureOptions.js";
-import { OptionsValidationError } from "./OptionsValidationError.js";
-import type { PostConfigureOptions } from "./PostConfigureOptions.js";
-import type { ValidateOptions } from "./ValidateOptions.js";
+import type { ConfigureOptions } from './ConfigureOptions.js';
+import { OptionsValidationError } from './OptionsValidationError.js';
+import type { PostConfigureOptions } from './PostConfigureOptions.js';
+import type { ValidateOptions } from './ValidateOptions.js';
 
 /**
  * Builds bound options of type `T` by running configure, post-configure, and

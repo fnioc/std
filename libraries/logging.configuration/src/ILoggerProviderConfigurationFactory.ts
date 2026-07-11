@@ -8,8 +8,8 @@
 // the same `typeof(T)` analog the rest of the repo uses (di.core's `Typeof<T>`
 // brand / `typeArg(n)` slot).
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { Token } from "@rhombus-std/di.core";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { Token } from '@rhombus-std/di.core';
 
 /** Allows access to the configuration section associated with a logger provider. */
 export interface ILoggerProviderConfigurationFactory {

@@ -28,22 +28,15 @@
 // ConfigurationManager itself implements IConfigurationRoot and never swaps
 // identity; here the stable manager-level token stands in for that.
 
-import type {
-  ConfigObject,
-  IConfigurationBuilder,
-  IConfigurationManager,
-  IConfigurationProvider,
-  IConfigurationRoot,
-  IConfigurationSection,
-  IConfigurationSource,
-} from "@rhombus-std/config.core";
-import { augment, ChangeToken, type IChangeToken } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { ConfigurationReloadToken } from "./ConfigurationReloadToken";
-import { ConfigurationRoot } from "./ConfigurationRoot";
-import { InternalConfigurationRootExtensions } from "./internal-configuration-root-augmentations";
-import { MemoryConfigurationSource } from "./memory/memory-configuration-source";
+import type { ConfigObject, IConfigurationBuilder, IConfigurationManager, IConfigurationProvider, IConfigurationRoot,
+  IConfigurationSection, IConfigurationSource } from '@rhombus-std/config.core';
+import { augment, ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { ConfigurationReloadToken } from './ConfigurationReloadToken';
+import { ConfigurationRoot } from './ConfigurationRoot';
+import { InternalConfigurationRootExtensions } from './internal-configuration-root-augmentations';
+import { MemoryConfigurationSource } from './memory/memory-configuration-source';
 
 /**
  * A mutable configuration object: both an {@link IConfigurationBuilder} and

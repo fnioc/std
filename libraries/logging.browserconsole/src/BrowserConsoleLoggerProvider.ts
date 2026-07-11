@@ -4,9 +4,9 @@
 // styling); the provider is a category-keyed logger cache over one
 // ConsoleLike.
 
-import type { ILogger, ILoggerProvider } from "@rhombus-std/logging.core";
-import { BrowserConsoleLogger } from "./BrowserConsoleLogger";
-import { console as globalConsole, type ConsoleLike } from "./console-global";
+import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
+import { BrowserConsoleLogger } from './BrowserConsoleLogger';
+import { console as globalConsole, type ConsoleLike } from './console-global';
 
 /** An {@link ILoggerProvider} that creates {@link BrowserConsoleLogger}s. */
 export class BrowserConsoleLoggerProvider implements ILoggerProvider {

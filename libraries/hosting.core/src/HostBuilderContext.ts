@@ -1,5 +1,5 @@
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { IHostEnvironment } from "./IHostEnvironment";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IHostEnvironment } from './IHostEnvironment';
 
 /**
  * Context carrying the common services shared across the host build process.

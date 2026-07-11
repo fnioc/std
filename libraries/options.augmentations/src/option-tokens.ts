@@ -9,11 +9,11 @@
 // `configure` (which appends) and `assembleOptions` (which reads) agree without
 // sharing state — they travel through the container.
 
-import type { Token } from "@rhombus-std/di.core";
+import type { Token } from '@rhombus-std/di.core';
 
 // Namespaced so a derived slot token can never collide with a consumer's own
 // registration token, whatever the options token happens to be.
-const NAMESPACE = "@rhombus-std/options.augmentations";
+const NAMESPACE = '@rhombus-std/options.augmentations';
 
 /** The slot token whose collection holds the {@link ConfigureOptions} steps for `optionsToken`. */
 export function configureStepToken(optionsToken: Token): Token {

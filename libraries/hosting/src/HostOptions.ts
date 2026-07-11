@@ -5,9 +5,9 @@
 // (no timeout). `initialize` reads the same configuration keys the reference
 // reads, folding them onto the defaults.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { BackgroundService, IHost, IHostedLifecycleService } from "@rhombus-std/hosting.core";
-import { BackgroundServiceExceptionBehavior } from "./BackgroundServiceExceptionBehavior";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { BackgroundService, IHost, IHostedLifecycleService } from '@rhombus-std/hosting.core';
+import { BackgroundServiceExceptionBehavior } from './BackgroundServiceExceptionBehavior';
 
 /** Parses a strictly non-negative integer (digits only), or `undefined`. */
 function parseNonNegativeInt(value: string | undefined): number | undefined {
@@ -23,10 +23,10 @@ function parseBool(value: string | undefined): boolean | undefined {
     return undefined;
   }
   const normalized = value.toLowerCase();
-  if (normalized === "true") {
+  if (normalized === 'true') {
     return true;
   }
-  if (normalized === "false") {
+  if (normalized === 'false') {
     return false;
   }
   return undefined;
@@ -69,22 +69,22 @@ export class HostOptions {
 
   /** Folds the host-option configuration keys onto these options. */
   public initialize(configuration: IConfiguration): void {
-    const shutdownSeconds = parseNonNegativeInt(configuration.get("shutdownTimeoutSeconds"));
+    const shutdownSeconds = parseNonNegativeInt(configuration.get('shutdownTimeoutSeconds'));
     if (shutdownSeconds !== undefined) {
       this.shutdownTimeout = shutdownSeconds * 1000;
     }
 
-    const startupSeconds = parseNonNegativeInt(configuration.get("startupTimeoutSeconds"));
+    const startupSeconds = parseNonNegativeInt(configuration.get('startupTimeoutSeconds'));
     if (startupSeconds !== undefined) {
       this.startupTimeout = startupSeconds * 1000;
     }
 
-    const startConcurrently = parseBool(configuration.get("servicesStartConcurrently"));
+    const startConcurrently = parseBool(configuration.get('servicesStartConcurrently'));
     if (startConcurrently !== undefined) {
       this.servicesStartConcurrently = startConcurrently;
     }
 
-    const stopConcurrently = parseBool(configuration.get("servicesStopConcurrently"));
+    const stopConcurrently = parseBool(configuration.get('servicesStopConcurrently'));
     if (stopConcurrently !== undefined) {
       this.servicesStopConcurrently = stopConcurrently;
     }

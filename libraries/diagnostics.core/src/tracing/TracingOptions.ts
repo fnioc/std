@@ -1,6 +1,6 @@
 // TracingOptions -- ported from MED.Tracing's `TracingOptions`.
 
-import type { TracingRule } from "./TracingRule";
+import type { TracingRule } from './TracingRule';
 
 /**
  * Options for configuring the tracing system: the set of {@link TracingRule}s

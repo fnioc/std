@@ -14,20 +14,12 @@
 //   2. Rewrites every `nameof<T>()` and tokenless `resolve<T>()` / `resolveAsync<T>()`
 //      call to its string token.
 
-import {
-  createTokenContext,
-  deriveToken,
-  injectTokenFor,
-  NAMEOF_NAME,
-  singletonValue,
-  type TokenContext,
-  tokenForReturnType,
-  tokenForType,
-} from "@rhombus-std/primitives.transformer";
-import type { Func } from "@rhombus-toolkit/func";
-import ts from "typescript";
-import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
-import { literalExpression, type LowerContext, lowerStatement } from "./lower.js";
+import { createTokenContext, deriveToken, injectTokenFor, NAMEOF_NAME, singletonValue, type TokenContext,
+  tokenForReturnType, tokenForType } from '@rhombus-std/primitives.transformer';
+import type { Func } from '@rhombus-toolkit/func';
+import ts from 'typescript';
+import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { literalExpression, type LowerContext, lowerStatement } from './lower.js';
 
 /**
  * Create the `ts.TransformerFactory` that rewrites a SourceFile. Exposed so the
@@ -37,7 +29,7 @@ import { literalExpression, type LowerContext, lowerStatement } from "./lower.js
 export function createTransformerFactory(
   program: ts.Program,
   sink: DiagnosticSink,
-  options: { readFile?: Func<[string], string | undefined> } = {},
+  options: { readFile?: Func<[string], string | undefined>; } = {},
 ): ts.TransformerFactory<ts.SourceFile> {
   const tokenContext = createTokenContext(program, options);
   return (context) => (sourceFile) =>
@@ -122,9 +114,9 @@ function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
 
 /** The tokenless resolution methods the rewrite recognizes and lowers. */
 const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
-  "resolve",
-  "resolveAsync",
-  "tryResolve",
+  'resolve',
+  'resolveAsync',
+  'tryResolve',
 ]);
 
 /**
@@ -133,9 +125,15 @@ const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
  */
 function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) { return false; }
-  if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) { return false; }
-  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
+  if (!ts.isPropertyAccessExpression(callee)) {
+    return false;
+  }
+  if (!TOKENLESS_RESOLVE_METHODS.has(callee.name.text)) {
+    return false;
+  }
+  if (!call.typeArguments || call.typeArguments.length !== 1) {
+    return false;
+  }
   return !call.arguments.length;
 }
 
@@ -147,9 +145,15 @@ function isTokenlessResolveCall(call: ts.CallExpression): boolean {
  */
 function isTokenlessIsServiceCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) { return false; }
-  if (callee.name.text !== "isService") { return false; }
-  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
+  if (!ts.isPropertyAccessExpression(callee)) {
+    return false;
+  }
+  if (callee.name.text !== 'isService') {
+    return false;
+  }
+  if (!call.typeArguments || call.typeArguments.length !== 1) {
+    return false;
+  }
   return !call.arguments.length;
 }
 
@@ -202,7 +206,7 @@ function lowerResolveCall(
   let paramTokens: string[] | undefined;
 
   if (ts.isFunctionTypeNode(typeArg)) {
-    method = "resolveFactory";
+    method = 'resolveFactory';
     const signature = ctx.checker.getSignatureFromDeclaration(typeArg);
     token = signature ? tokenForReturnType(signature, ctx) : undefined;
 
@@ -237,7 +241,7 @@ function lowerResolveCall(
               "cannot derive a token for this type — name the type or brand the parameter with `Inject<T, 'my:token'>`",
             ),
           );
-          paramTokens.push("??unresolvable??");
+          paramTokens.push('??unresolvable??');
         }
       }
     }
@@ -274,7 +278,7 @@ function rewriteNameof(node: ts.Node, ctx: LowerContext): ts.Node {
       const type = ctx.checker.getTypeFromTypeNode(typeArg);
       const token = deriveToken(type, ctx);
       return token === undefined
-        ? ctx.factory.createStringLiteral("")
+        ? ctx.factory.createStringLiteral('')
         : ctx.factory.createStringLiteral(token);
     }
     return ts.visitEachChild(n, visit, undefined);
@@ -294,15 +298,21 @@ function rewriteNameof(node: ts.Node, ctx: LowerContext): ts.Node {
  * be the transformer's `nameof`.
  */
 function isNameofCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
+  if (!call.typeArguments || call.typeArguments.length !== 1) {
+    return false;
+  }
   const callee = call.expression;
   const id = ts.isIdentifier(callee)
     ? callee
     : ts.isPropertyAccessExpression(callee)
     ? callee.name
     : undefined;
-  if (!id) { return false; }
-  if (id.text === NAMEOF_NAME) { return true; }
+  if (!id) {
+    return false;
+  }
+  if (id.text === NAMEOF_NAME) {
+    return true;
+  }
 
   // Aliased import: resolve through the alias and check the real exported name.
   const symbol = checker.getSymbolAtLocation(callee);
@@ -343,7 +353,7 @@ export function transform(
   program: ts.Program,
   _config: unknown,
   extras: ProgramTransformerExtras,
-): { before: ts.TransformerFactory<ts.SourceFile> } {
+): { before: ts.TransformerFactory<ts.SourceFile>; } {
   const sink: DiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };

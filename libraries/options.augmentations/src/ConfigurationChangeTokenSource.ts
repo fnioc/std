@@ -3,10 +3,10 @@
 // back its reload token, so an assembled reactive `Options<T>` re-runs its
 // pipeline whenever the configuration reloads (#6).
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IChangeToken } from '@rhombus-std/primitives';
 
-import type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";
+import type { OptionsChangeTokenSource } from './OptionsChangeTokenSource.js';
 
 /**
  * An {@link OptionsChangeTokenSource} backed by an {@link IConfiguration}:

@@ -16,9 +16,9 @@
 // only the provider TYPE name is matched; a rule keyed by an alias simply does
 // not match. Wiring the alias in is a documented residual.
 
-import type { LogLevel } from "@rhombus-std/logging.core";
-import type { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
-import type { LoggerFilterDelegate } from "./logger-information";
+import type { LogLevel } from '@rhombus-std/logging.core';
+import type { LoggerFilterOptions, LoggerFilterRule } from './logger-filter-options';
+import type { LoggerFilterDelegate } from './logger-information';
 
 /** The selected filter for one provider/category: the effective min level and optional delegate. */
 export interface SelectedRule {
@@ -49,7 +49,7 @@ export function select(
   return { minLevel: options.minLevel, filter: undefined };
 }
 
-const WILDCARD_CHAR = "*";
+const WILDCARD_CHAR = '*';
 
 /** Whether `rule` is a strictly better match than `current` for `logger`/`category`. */
 function isBetter(
@@ -67,11 +67,11 @@ function isBetter(
   if (categoryName !== undefined) {
     const wildcardIndex = categoryName.indexOf(WILDCARD_CHAR);
     if (wildcardIndex !== -1 && categoryName.indexOf(WILDCARD_CHAR, wildcardIndex + 1) !== -1) {
-      throw new Error("Only one wildcard character is allowed in category name.");
+      throw new Error('Only one wildcard character is allowed in category name.');
     }
 
     const prefix = wildcardIndex === -1 ? categoryName : categoryName.slice(0, wildcardIndex);
-    const suffix = wildcardIndex === -1 ? "" : categoryName.slice(wildcardIndex + 1);
+    const suffix = wildcardIndex === -1 ? '' : categoryName.slice(wildcardIndex + 1);
 
     if (!startsWithIgnoreCase(category, prefix) || !endsWithIgnoreCase(category, suffix)) {
       return false;

@@ -5,9 +5,9 @@
 // many entries via `CacheEntryExtensions.setOptions`. Durations are
 // milliseconds; the absolute expiration is a `Date`.
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import { type CacheItemPriority, CacheItemPriority as Priority } from "./CacheItemPriority";
-import type { PostEvictionCallbackRegistration } from "./PostEvictionCallbackRegistration";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import { type CacheItemPriority, CacheItemPriority as Priority } from './CacheItemPriority';
+import type { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
 
 /** A reusable bag of the cache options applied to an entry via `CacheEntryExtensions.setOptions`. */
 export class MemoryCacheEntryOptions {

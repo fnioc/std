@@ -25,33 +25,26 @@
 //   await host.start();
 
 // The lifetime + its options.
-export { BROWSER_LIFETIME_CATEGORY, BrowserLifetime } from "./browser-lifetime";
-export { BrowserLifetimeOptions } from "./BrowserLifetimeOptions";
-export { registerBrowserLifetime } from "./register-browser-lifetime";
+export { BROWSER_LIFETIME_CATEGORY, BrowserLifetime } from './browser-lifetime';
+export { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
+export { registerBrowserLifetime } from './register-browser-lifetime';
 
 // The page-lifecycle bridge.
-export { PageLifecycleEvents, type PageLifecyclePhase } from "./PageLifecycleEvents";
+export { PageLifecycleEvents, type PageLifecyclePhase } from './PageLifecycleEvents';
 
 // The browser environment factory.
-export { type BrowserEnvironmentSettings, createBrowserEnvironment } from "./browser-environment";
+export { type BrowserEnvironmentSettings, createBrowserEnvironment } from './browser-environment';
 
 // The builder facade.
-export { BrowserHost, type BrowserHostApplicationBuilderSettings } from "./BrowserHost";
+export { BrowserHost, type BrowserHostApplicationBuilderSettings } from './BrowserHost';
 
 // The structural page typings (injectable for tests).
-export type {
-  DocumentLifecycleEventType,
-  DocumentLike,
-  DocumentVisibilityState,
-  PageContext,
-  PageTransitionEventLike,
-  WindowLifecycleEventType,
-  WindowLike,
-} from "./page-context";
-export { defaultPageContext } from "./page-context";
+export type { DocumentLifecycleEventType, DocumentLike, DocumentVisibilityState, PageContext, PageTransitionEventLike,
+  WindowLifecycleEventType, WindowLike } from './page-context';
+export { defaultPageContext } from './page-context';
 
 // The DI-slot tokens this package registers under.
-export { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from "./tokens";
+export { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './tokens';
 
 // The IHostBuilder augmentation set (+ its side-effect registration).
-export { BrowserLifetimeHostBuilderExtensions } from "./builder-augmentations";
+export { BrowserLifetimeHostBuilderExtensions } from './builder-augmentations';

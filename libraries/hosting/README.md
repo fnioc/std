@@ -25,15 +25,10 @@ layer this builds on.
 ## Quick start
 
 ```ts
-import {
-  Host,
-  HOST_APPLICATION_LIFETIME_TOKEN,
-  runAsync,
-} from "@rhombus-std/hosting";
-import type {
-  IHostApplicationLifetime,
-  IHostedLifecycleService,
-} from "@rhombus-std/hosting";
+import { Host, HOST_APPLICATION_LIFETIME_TOKEN,
+  runAsync } from '@rhombus-std/hosting';
+import type { IHostApplicationLifetime,
+  IHostedLifecycleService } from '@rhombus-std/hosting';
 
 class Worker implements IHostedLifecycleService {
   public constructor(private readonly lifetime: IHostApplicationLifetime) {}

@@ -25,8 +25,8 @@
 // NEVER `unload`/`beforeunload` (bfcache disqualifiers) — the page-context
 // typings cannot even name them.
 
-import type { Func } from "@rhombus-toolkit/func";
-import { defaultPageContext, type PageContext, type PageTransitionEventLike } from "./page-context";
+import type { Func } from '@rhombus-toolkit/func';
+import { defaultPageContext, type PageContext, type PageTransitionEventLike } from './page-context';
 
 /**
  * The bridge's phase snapshot values. `visible`/`hidden` mirror
@@ -34,7 +34,7 @@ import { defaultPageContext, type PageContext, type PageTransitionEventLike } fr
  * persisted `pagehide` (the page is entering the bfcache); `terminated` is a
  * non-persisted `pagehide` (the page is being discarded).
  */
-export type PageLifecyclePhase = "visible" | "hidden" | "frozen" | "terminated";
+export type PageLifecyclePhase = 'visible' | 'hidden' | 'frozen' | 'terminated';
 
 /**
  * The injectable page-lifecycle bridge. Constructed (and its listeners
@@ -65,20 +65,20 @@ export class PageLifecycleEvents implements Disposable {
 
     this.#onVisibilityChange = () => {
       this.#setPhase(document.visibilityState);
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === 'hidden') {
         // The recurring persistence point — every transition to hidden, not
         // just the first.
         this.#notify(this.#flushListeners);
       }
     };
     this.#onFreeze = () => {
-      this.#setPhase("frozen");
+      this.#setPhase('frozen');
     };
     this.#onResume = () => {
       this.#setPhase(document.visibilityState);
     };
     this.#onPageHide = (event) => {
-      this.#setPhase(event.persisted ? "frozen" : "terminated");
+      this.#setPhase(event.persisted ? 'frozen' : 'terminated');
     };
     this.#onPageShow = (event) => {
       if (event.persisted) {
@@ -87,11 +87,11 @@ export class PageLifecycleEvents implements Disposable {
       }
     };
 
-    document.addEventListener("visibilitychange", this.#onVisibilityChange);
-    document.addEventListener("freeze", this.#onFreeze);
-    document.addEventListener("resume", this.#onResume);
-    window.addEventListener("pagehide", this.#onPageHide);
-    window.addEventListener("pageshow", this.#onPageShow);
+    document.addEventListener('visibilitychange', this.#onVisibilityChange);
+    document.addEventListener('freeze', this.#onFreeze);
+    document.addEventListener('resume', this.#onResume);
+    window.addEventListener('pagehide', this.#onPageHide);
+    window.addEventListener('pageshow', this.#onPageShow);
   }
 
   /** The current phase — a stable primitive snapshot (useSyncExternalStore's getSnapshot). */
@@ -137,11 +137,11 @@ export class PageLifecycleEvents implements Disposable {
   /** Detaches every page listener and drops every subscriber. */
   public [Symbol.dispose](): void {
     const { document, window } = this.#context;
-    document.removeEventListener("visibilitychange", this.#onVisibilityChange);
-    document.removeEventListener("freeze", this.#onFreeze);
-    document.removeEventListener("resume", this.#onResume);
-    window.removeEventListener("pagehide", this.#onPageHide);
-    window.removeEventListener("pageshow", this.#onPageShow);
+    document.removeEventListener('visibilitychange', this.#onVisibilityChange);
+    document.removeEventListener('freeze', this.#onFreeze);
+    document.removeEventListener('resume', this.#onResume);
+    window.removeEventListener('pagehide', this.#onPageHide);
+    window.removeEventListener('pageshow', this.#onPageShow);
     this.#phaseListeners.clear();
     this.#flushListeners.clear();
     this.#restoreListeners.clear();

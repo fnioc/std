@@ -55,9 +55,9 @@ export interface FactoryRef {
 The provider is an intrinsically resolvable type — no dedicated slot kind. A parameter typed `Resolver` derives the ordinary token `RESOLVER_TOKEN`, and the engine resolves it to the nearest open scope's provider VIEW rather than a registration, so "I want the provider" is plain DI. A plugin-less author hand-feeds the exported constant in a signature:
 
 ```ts
-import { RESOLVER_TOKEN } from "@rhombus-std/di.core";
+import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 
-services.addFactory("app/IReport", (sp) => buildReport(sp), [[RESOLVER_TOKEN]]);
+services.addFactory('app/IReport', (sp) => buildReport(sp), [[RESOLVER_TOKEN]]);
 ```
 
 `isProviderToken(token)` is the runtime predicate the engine uses. (This retires the former `{ scope: true }` `ScopeRef` slot marker — the provider token subsumes it.)
@@ -85,9 +85,9 @@ export function union(...slots: DepSlot[]): Union;
 ```
 
 ```ts
-services.add("pkg:IHandler", Handler, [[
-  union("pkg:IRedis", "pkg:IMemoryCache"),
-  "pkg:ILogger",
+services.add('pkg:IHandler', Handler, [[
+  union('pkg:IRedis', 'pkg:IMemoryCache'),
+  'pkg:ILogger',
 ]]);
 ```
 
@@ -113,7 +113,7 @@ A phantom brand type. Pins the token for one constructor or factory parameter wi
 
 ```ts
 declare const TOK: unique symbol;
-export type Inject<T, K extends Token> = T & { readonly [TOK]?: K };
+export type Inject<T, K extends Token> = T & { readonly [TOK]?: K; };
 ```
 
 The brand is optional — a plain `T` is still assignable. Zero runtime cost.
@@ -122,7 +122,7 @@ The brand is optional — a plain `T` is still assignable. Zero runtime cost.
 // Pin a specific token for one arg; others derive normally
 class Handler {
   constructor(
-    a: Inject<ICache, "pkg:redis-cache">,
+    a: Inject<ICache, 'pkg:redis-cache'>,
     b: ILogger,
   ) {}
 }
@@ -140,7 +140,7 @@ Compile-time skolems — placeholders standing in for the `N`th type argument of
 
 ```ts
 declare const HOLE: unique symbol;
-export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
+export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
 
 export type $<N extends number> = Hole<N>;
 ```
@@ -161,7 +161,7 @@ A phantom brand marking a constructor parameter that receives the **token string
 
 ```ts
 declare const ARG: unique symbol;
-export type Typeof<T> = Token & { readonly [ARG]?: T };
+export type Typeof<T> = Token & { readonly [ARG]?: T; };
 ```
 
 `Typeof<T>` is type-driven — the transformer infers the hole from `T`; its manual counterpart `typeArg(n)` is positional. The value type stays `Token` (a plain string) — the brand property is optional, so any string is assignable. When `T` resolves to a `Hole`, the transformer emits an open `TypeArgRef` slot (`{ typeArg: N }`) that substitution closes per registration; when `T` is concrete (a closed registration via an instantiation expression), it emits the derived token directly as a `LiteralRef` value slot — no substitution step needed.
@@ -226,12 +226,12 @@ on the registration, passed as the optional **third argument** to
 `@rhombus-std/di`'s `add` / `addFactory`:
 
 ```ts
-import { ServiceManifest } from "@rhombus-std/di";
+import { ServiceManifest } from '@rhombus-std/di';
 
 const services = new ServiceManifest();
 
-services.add("pkg:IHandler", Handler, [
-  ["pkg:ILogger", "pkg:IDb"], // overload 0 — one signature per constructor overload
+services.add('pkg:IHandler', Handler, [
+  ['pkg:ILogger', 'pkg:IDb'], // overload 0 — one signature per constructor overload
 ]);
 ```
 
@@ -271,8 +271,8 @@ export function closeToken(base: Token, ...args: Token[]): Token;
 Renders the canonical form. With no args, returns `base` unchanged.
 
 ```ts
-closeToken("pkg:IRepository", "pkg:User"); // "pkg:IRepository<pkg:User>"
-closeToken("pkg:IMap", "string", "$1"); // "pkg:IMap<string,$1>"
+closeToken('pkg:IRepository', 'pkg:User'); // "pkg:IRepository<pkg:User>"
+closeToken('pkg:IMap', 'string', '$1'); // "pkg:IMap<string,$1>"
 ```
 
 ### `parseToken(token)`
@@ -304,7 +304,7 @@ export function substituteToken(template: Token, args: readonly Token[]): Token;
 Grammar-aware, recursive substitution — NOT a naive string replace. A node that is exactly `$N` is replaced by `args[N - 1]` (which may itself be a closed-generic token); everything else recurses through the parsed structure. Throws `RangeError` if the template references a hole beyond the supplied args.
 
 ```ts
-substituteToken("pkg:IRepository<$1>", ["pkg:User"]);
+substituteToken('pkg:IRepository<$1>', ['pkg:User']);
 // → "pkg:IRepository<pkg:User>"
 ```
 

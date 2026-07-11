@@ -30,8 +30,8 @@
 //     special cases (pure await-machinery avoidance); the plain loop is
 //     behaviorally identical.
 
-import type { AbortSignal } from "@rhombus-std/primitives";
-import type { HybridCacheEntryOptions } from "./HybridCacheEntryOptions";
+import type { AbortSignal } from '@rhombus-std/primitives';
+import type { HybridCacheEntryOptions } from './HybridCacheEntryOptions';
 
 /**
  * Provides multi-tier caching services building on `IDistributedCache`

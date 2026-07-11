@@ -8,15 +8,15 @@
 // NOT ported — those types don't exist in @rhombus-std/logging.core yet
 // (residual, see the package index).
 
-import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
-import type { IExternalScopeProvider, LogEntry } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import type { ConsoleFormatter } from "./ConsoleFormatter";
-import type { ConsoleLoggerOptions } from "./ConsoleLoggerOptions";
-import type { ConsoleLoggerProcessor } from "./ConsoleLoggerProcessor";
-import { StringWriter } from "./text-writer";
+import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from '@rhombus-std/logging.core';
+import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import type { ConsoleFormatter } from './ConsoleFormatter';
+import type { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
+import type { ConsoleLoggerProcessor } from './ConsoleLoggerProcessor';
+import { StringWriter } from './text-writer';
 
 // The reference renders through a [ThreadStatic] StringWriter; single-threaded
 // runtime → one shared module-level writer.

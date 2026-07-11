@@ -4,10 +4,10 @@
 // `NullFileProvider`; a physical file provider is deferred (see decisions.md
 // §20).
 
-import { type IFileProvider, NullFileProvider } from "@rhombus-std/fileproviders.core";
-import type { IHostEnvironment } from "@rhombus-std/hosting.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import { type IFileProvider, NullFileProvider } from '@rhombus-std/fileproviders.core';
+import type { IHostEnvironment } from '@rhombus-std/hosting.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 /**
  * The mutable {@link IHostEnvironment} the host populates while building. This
@@ -15,8 +15,8 @@ import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
  */
 @augment(nameof<IHostEnvironment>())
 export class HostingEnvironment implements IHostEnvironment {
-  public environmentName = "";
-  public applicationName = "";
-  public contentRootPath = "";
+  public environmentName = '';
+  public applicationName = '';
+  public contentRootPath = '';
   public contentRootFileProvider: IFileProvider = new NullFileProvider();
 }

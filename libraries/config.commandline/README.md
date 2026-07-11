@@ -15,15 +15,15 @@ npm install @rhombus-std/config @rhombus-std/config.commandline
 ## Basic usage
 
 ```ts
-import "@rhombus-std/config.commandline"; // unlocks .addCommandLine() on ConfigurationBuilder
-import { ConfigurationBuilder } from "@rhombus-std/config";
+import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigurationBuilder
+import { ConfigurationBuilder } from '@rhombus-std/config';
 
 const config = new ConfigurationBuilder()
-  .addCommandLine(process.argv.slice(2), { "-p": "Server:Port" })
+  .addCommandLine(process.argv.slice(2), { '-p': 'Server:Port' })
   .build();
 
 // `node app.js --Server:Port=8080` or `node app.js -p 8080`
-config.get("Server:Port"); // "8080"
+config.get('Server:Port'); // "8080"
 ```
 
 `switchMappings` keys are validated at construction time: every key must
@@ -42,5 +42,5 @@ nothing forcing it to load this package's module — you must import it for
 its side effect explicitly:
 
 ```ts
-import "@rhombus-std/config.commandline"; // unlocks .addCommandLine() on ConfigurationBuilder
+import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigurationBuilder
 ```

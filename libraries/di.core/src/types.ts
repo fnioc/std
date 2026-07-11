@@ -1,4 +1,4 @@
-import type { Ctor, Func } from "@rhombus-toolkit/func";
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 // The Token TYPE only, from primitives' leaf `token` module -- NOT the package
 // barrel. di.core is src-referenced, so any consumer compiling its source also
 // compiles whatever di.core imports; pulling the whole `@rhombus-std/primitives`
@@ -6,7 +6,7 @@ import type { Ctor, Func } from "@rhombus-toolkit/func";
 // `EventTarget`/`Event`/`AbortSignal`) and force every di.core consumer's
 // tsconfig `lib` to carry those web globals. The leaf module is a bare
 // `type Token = string` with zero such dependencies.
-import type { Token } from "@rhombus-std/primitives/internal/Token";
+import type { Token } from '@rhombus-std/primitives/internal/Token';
 
 /**
  * Anything a dependency signature can describe: a class constructor (its deps

@@ -17,24 +17,20 @@
 // `AugmentationSet` for both classes -- see memory/index.ts for the full
 // rationale.
 
-import type {
-  IConfiguration,
-  IConfigurationBuilder,
-  IConfigurationSource,
-  IndexedSection,
-} from "@rhombus-std/config.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { ConfigurationBuilder } from "../ConfigurationBuilder";
-import { ChainedConfigurationSource } from "./ChainedConfigurationSource";
+import type { IConfiguration, IConfigurationBuilder, IConfigurationSource,
+  IndexedSection } from '@rhombus-std/config.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { ConfigurationBuilder } from '../ConfigurationBuilder';
+import { ChainedConfigurationSource } from './ChainedConfigurationSource';
 
-export { ChainedConfigurationProvider } from "./ChainedConfigurationProvider";
-export { ChainedConfigurationSource } from "./ChainedConfigurationSource";
+export { ChainedConfigurationProvider } from './ChainedConfigurationProvider';
+export { ChainedConfigurationSource } from './ChainedConfigurationSource';
 
 // The generic arity + default MUST match the class declaration exactly, or
 // declaration merging fails (TS2428). Every augmentation spells `<T =
 // IndexedSection>` and imports the same `IndexedSection` from @rhombus-std/config.core.
-declare module "../ConfigurationBuilder" {
+declare module '../ConfigurationBuilder' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Adds `config` as a chained configuration source. */
     addConfiguration(config: IConfiguration, shouldDisposeConfiguration?: boolean): this;
@@ -43,7 +39,7 @@ declare module "../ConfigurationBuilder" {
 
 // ConfigurationManager has no generic type parameter, so there's no TS2428
 // arity concern here the way there is for ConfigurationBuilder<T>.
-declare module "../ConfigurationManager" {
+declare module '../ConfigurationManager' {
   interface ConfigurationManager {
     /** Adds `config` as a chained configuration source. */
     addConfiguration(config: IConfiguration, shouldDisposeConfiguration?: boolean): this;
@@ -56,7 +52,7 @@ declare module "../ConfigurationManager" {
 // form. `TBuilder` is bounded by "has an add() that returns itself" rather than
 // pinned to ConfigurationBuilder<T> -- see memory/index.ts for the full rationale.
 export const ChainedBuilderExtensions = {
-  addConfiguration<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+  addConfiguration<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
     builder: TBuilder,
     config: IConfiguration,
     shouldDisposeConfiguration = false,

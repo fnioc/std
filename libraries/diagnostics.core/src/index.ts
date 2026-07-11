@@ -14,50 +14,33 @@
 // (enableMetrics/disableMetrics/enableTracing/disableTracing) as instance methods onto
 // the concrete option classes -- the reverse-direction half of their dual-export
 // (docs §28). Package keeps `"sideEffects": true` so a bundler cannot drop it.
-import "./options-augmentations";
+import './options-augmentations';
 
 // Metrics.
-export type { IMetricsBuilder } from "./metrics/IMetricsBuilder";
-export {
-  getMostSpecificInstrumentRule,
-  instrumentRuleMatches,
-  isMoreSpecificInstrumentRule,
-} from "./metrics/instrument-rule-matching";
-export type { InstrumentRuleQuery } from "./metrics/instrument-rule-matching";
-export { InstrumentRule } from "./metrics/InstrumentRule";
-export { METER_SCOPE_ALL, MeterScope } from "./metrics/meter-scope";
-export { MetricsBuilderExtensions, MetricsOptionsExtensions } from "./metrics/metrics-builder-augmentations";
-export type { IMetricsListener, IObservableInstrumentsSource } from "./metrics/metrics-listener";
-export { MetricsOptions } from "./metrics/MetricsOptions";
+export type { IMetricsBuilder } from './metrics/IMetricsBuilder';
+export { getMostSpecificInstrumentRule, instrumentRuleMatches,
+  isMoreSpecificInstrumentRule } from './metrics/instrument-rule-matching';
+export type { InstrumentRuleQuery } from './metrics/instrument-rule-matching';
+export { InstrumentRule } from './metrics/InstrumentRule';
+export { METER_SCOPE_ALL, MeterScope } from './metrics/meter-scope';
+export { MetricsBuilderExtensions, MetricsOptionsExtensions } from './metrics/metrics-builder-augmentations';
+export type { IMetricsListener, IObservableInstrumentsSource } from './metrics/metrics-listener';
+export { MetricsOptions } from './metrics/MetricsOptions';
 
 // Tracing.
-export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./tracing/activity-source-scopes";
-export { ActivityListenerBuilder } from "./tracing/ActivityListenerBuilder";
-export type { ITracingBuilder } from "./tracing/ITracingBuilder";
-export { TracingBuilderExtensions, TracingOptionsExtensions } from "./tracing/tracing-builder-augmentations";
-export {
-  getMostSpecificTracingRule,
-  isMoreSpecificTracingRule,
-  tracingRuleMatches,
-} from "./tracing/tracing-rule-matching";
-export type { TracingRuleQuery } from "./tracing/tracing-rule-matching";
-export { TracingOptions } from "./tracing/TracingOptions";
-export { TracingRule } from "./tracing/TracingRule";
+export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './tracing/activity-source-scopes';
+export { ActivityListenerBuilder } from './tracing/ActivityListenerBuilder';
+export type { ITracingBuilder } from './tracing/ITracingBuilder';
+export { TracingBuilderExtensions, TracingOptionsExtensions } from './tracing/tracing-builder-augmentations';
+export { getMostSpecificTracingRule, isMoreSpecificTracingRule,
+  tracingRuleMatches } from './tracing/tracing-rule-matching';
+export type { TracingRuleQuery } from './tracing/tracing-rule-matching';
+export { TracingOptions } from './tracing/TracingOptions';
+export { TracingRule } from './tracing/TracingRule';
 
 // The DI-slot token ABI shared with @rhombus-std/diagnostics, plus the
 // augmentation-registry tokens for the OPEN metrics/tracing builder receivers (§38).
-export {
-  collectionToken,
-  METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-  METRICS_CONFIGURATION_TOKEN,
-  METRICS_CONFIGURE_TOKEN,
-  METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-  METRICS_LISTENER_TOKEN,
-  METRICS_OPTIONS_TOKEN,
-  TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
-  TRACING_CONFIGURATION_TOKEN,
-  TRACING_CONFIGURE_TOKEN,
-  TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-  TRACING_LISTENER_TOKEN,
-  TRACING_OPTIONS_TOKEN,
-} from "./tokens";
+export { collectionToken, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIGURATION_TOKEN, METRICS_CONFIGURE_TOKEN,
+  METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN, METRICS_LISTENER_TOKEN, METRICS_OPTIONS_TOKEN,
+  TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN, TRACING_CONFIGURE_TOKEN,
+  TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, TRACING_LISTENER_TOKEN, TRACING_OPTIONS_TOKEN } from './tokens';

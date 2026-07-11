@@ -18,14 +18,14 @@
 //   - Unsupported anything aborts the WHOLE call rewrite (a `failed` flag) --
 //     never a silent partial.
 
-import ts from "typescript";
-import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
-import type { OptionalRef } from "./inject.js";
+import ts from 'typescript';
+import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import type { OptionalRef } from './inject.js';
 
 /** The result of synthesizing a schema literal for a type node. */
 export type CodegenResult =
-  | { readonly ok: true; readonly literal: ts.Expression }
-  | { readonly ok: false };
+  | { readonly ok: true; readonly literal: ts.Expression; }
+  | { readonly ok: false; };
 
 /** Shared context threaded through the codegen walk. */
 export interface CodegenContext {
@@ -57,9 +57,9 @@ export function schemaLiteralForTypeNode(
         ctx.sourceFile,
         typeNode,
         DiagnosticCode.NonObjectRoot,
-        "withType<T>() requires T to be an object type. A bare leaf or non-record "
-          + "type has no top-level schema; wrap your fields in an interface or "
-          + "object type.",
+        'withType<T>() requires T to be an object type. A bare leaf or non-record '
+          + 'type has no top-level schema; wrap your fields in an interface or '
+          + 'object type.',
       ),
     );
     return { ok: false };
@@ -124,14 +124,14 @@ function schemaForType(
   // 1. Wide boolean (`false | true`) FIRST -- it carries both Union and Boolean
   //    flags; must not fall through to the union/unsupported branch.
   if (type.flags & ts.TypeFlags.Boolean) {
-    return ctx.factory.createStringLiteral("boolean");
+    return ctx.factory.createStringLiteral('boolean');
   }
   // 2/3. String / number.
   if (type.flags & ts.TypeFlags.String) {
-    return ctx.factory.createStringLiteral("string");
+    return ctx.factory.createStringLiteral('string');
   }
   if (type.flags & ts.TypeFlags.Number) {
-    return ctx.factory.createStringLiteral("number");
+    return ctx.factory.createStringLiteral('number');
   }
   // 4. Nested record -> recurse.
   if (isAcceptableRecord(type, ctx)) {
@@ -145,14 +145,14 @@ function schemaForType(
       ctx.sourceFile,
       anchor,
       DiagnosticCode.UnsupportedType,
-      "unsupported type for a configuration field. The runtime schema supports "
-        + "string, number, boolean, and nested object types only -- name the field "
-        + "with one of those (unions, arrays, functions, and library types like Date "
-        + "have no schema representation).",
+      'unsupported type for a configuration field. The runtime schema supports '
+        + 'string, number, boolean, and nested object types only -- name the field '
+        + 'with one of those (unions, arrays, functions, and library types like Date '
+        + 'have no schema representation).',
     ),
   );
   // Emit a harmless placeholder; the failed flag aborts the whole rewrite.
-  return ctx.factory.createStringLiteral("string");
+  return ctx.factory.createStringLiteral('string');
 }
 
 /**
@@ -202,7 +202,7 @@ function isLibraryOrExternal(type: ts.Type, ctx: CodegenContext): boolean {
     const file = decl.getSourceFile();
     return (
       ctx.program.isSourceFileDefaultLibrary(file)
-      || file.fileName.includes("/node_modules/")
+      || file.fileName.includes('/node_modules/')
     );
   });
 }

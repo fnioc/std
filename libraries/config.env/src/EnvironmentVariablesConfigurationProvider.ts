@@ -16,8 +16,8 @@
 // form ("Foo:Bar:"); the transformation is idempotent on the latter, so this
 // is a strict superset of matching only the raw form.
 
-import { ConfigurationProvider } from "@rhombus-std/config";
-import type { EnvironmentVariablesConfigurationSource } from "./environment-variables-configuration-source";
+import { ConfigurationProvider } from '@rhombus-std/config';
+import type { EnvironmentVariablesConfigurationSource } from './environment-variables-configuration-source';
 
 export class EnvironmentVariablesConfigurationProvider extends ConfigurationProvider {
   readonly #source: EnvironmentVariablesConfigurationSource;

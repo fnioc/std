@@ -4,7 +4,7 @@
 // config-unaware -- same placement as the reference, whose interface sits in
 // the implementation project, not the abstractions one.
 
-import type { IConfiguration } from "@rhombus-std/config";
+import type { IConfiguration } from '@rhombus-std/config';
 
 /** Retrieves the metrics configuration for any listener name. */
 export interface IMetricListenerConfigurationFactory {

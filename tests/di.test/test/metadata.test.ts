@@ -1,18 +1,18 @@
-import { CircularDependencyError, MissingMetadataError, ServiceManifest } from "@rhombus-std/di";
-import { describe, expect, test } from "bun:test";
-import { T } from "./fixtures.js";
+import { CircularDependencyError, MissingMetadataError, ServiceManifest } from '@rhombus-std/di';
+import { describe, expect, test } from 'bun:test';
+import { T } from './fixtures.js';
 
 // Metadata handling: zero-arg ctor constructs directly; a ctor with params but
 // no registration-carried signature throws with guidance. Plus cycle detection
 // with the full path.
 
-describe("missing metadata", () => {
-  test("a zero-arg ctor is constructed directly (no dep lookup)", () => {
+describe('missing metadata', () => {
+  test('a zero-arg ctor is constructed directly (no dep lookup)', () => {
     class NoDeps {
       public readonly ok = true;
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, NoDeps).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, NoDeps).as('singleton');
 
     const instance = services.build().resolve<NoDeps>(
       T.Service,
@@ -20,60 +20,60 @@ describe("missing metadata", () => {
     expect(instance.ok).toBe(true);
   });
 
-  test("a ctor with params but no metadata throws MissingMetadataError", () => {
+  test('a ctor with params but no metadata throws MissingMetadataError', () => {
     class NeedsParams {
       public constructor(public readonly a: unknown) {}
     }
     // No signature passed — the transformer never saw it and it's un-annotated.
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, NeedsParams).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, NeedsParams).as('singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.Service)).toThrow(MissingMetadataError);
   });
 
-  test("the MissingMetadataError names the ctor and the token", () => {
+  test('the MissingMetadataError names the ctor and the token', () => {
     class WidgetService {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, WidgetService).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, WidgetService).as('singleton');
 
     try {
       services.build().resolve(T.Service);
-      throw new Error("expected a throw");
+      throw new Error('expected a throw');
     } catch (err) {
       expect(err).toBeInstanceOf(MissingMetadataError);
       const e = err as MissingMetadataError;
-      expect(e.ctorName).toBe("WidgetService");
+      expect(e.ctorName).toBe('WidgetService');
       expect(e.token).toBe(T.Service);
-      expect(e.message).toContain("signature");
-      expect(e.message).toContain("factory");
+      expect(e.message).toContain('signature');
+      expect(e.message).toContain('factory');
     }
   });
 
-  test("an empty-signatures DepRecord on a param ctor still throws", () => {
+  test('an empty-signatures DepRecord on a param ctor still throws', () => {
     class EdgeCase {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, EdgeCase, []).as("singleton"); // empty signatures
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, EdgeCase, []).as('singleton'); // empty signatures
 
     expect(() => services.build().resolve(T.Service)).toThrow(MissingMetadataError);
   });
 });
 
-describe("cycle detection", () => {
-  test("a direct A→B→A cycle throws with the full path", () => {
+describe('cycle detection', () => {
+  test('a direct A→B→A cycle throws with the full path', () => {
     class A {
       public constructor(public readonly b: unknown) {}
     }
     class B {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.A, A, [[T.B]]).as("singleton");
-    services.add(T.B, B, [[T.A]]).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.A, A, [[T.B]]).as('singleton');
+    services.add(T.B, B, [[T.A]]).as('singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.A)).toThrow(CircularDependencyError);
@@ -88,18 +88,18 @@ describe("cycle detection", () => {
     }
   });
 
-  test("a self-cycle (A→A) throws", () => {
+  test('a self-cycle (A→A) throws', () => {
     class SelfRef {
       public constructor(public readonly self: unknown) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.A, SelfRef, [[T.A]]).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.A, SelfRef, [[T.A]]).as('singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.A)).toThrow(CircularDependencyError);
   });
 
-  test("a longer A→B→C→A cycle reports the full path", () => {
+  test('a longer A→B→C→A cycle reports the full path', () => {
     class A {
       public constructor(public readonly b: unknown) {}
     }
@@ -109,25 +109,25 @@ describe("cycle detection", () => {
     class C {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.A, A, [[T.B]]).as("singleton");
-    services.add(T.B, B, [[T.C]]).as("singleton");
-    services.add(T.C, C, [[T.A]]).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.A, A, [[T.B]]).as('singleton');
+    services.add(T.B, B, [[T.C]]).as('singleton');
+    services.add(T.C, C, [[T.A]]).as('singleton');
 
     try {
       services.build().resolve(T.A);
-      throw new Error("expected a throw");
+      throw new Error('expected a throw');
     } catch (err) {
       const e = err as CircularDependencyError;
       expect(e.path).toEqual([T.A, T.B, T.C, T.A]);
     }
   });
 
-  test("a diamond (shared, non-cyclic dep) does NOT falsely trip", () => {
+  test('a diamond (shared, non-cyclic dep) does NOT falsely trip', () => {
     // A depends on B and C; both B and C depend on D. D appears twice but on
     // separate branches — not a cycle. The stack is popped between branches.
     class D {
-      public readonly id = "D";
+      public readonly id = 'D';
     }
     class B {
       public constructor(public readonly d: D) {}
@@ -141,13 +141,13 @@ describe("cycle detection", () => {
         public readonly c: C,
       ) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Db, D, [[]]).as("singleton");
-    services.add(T.B, B, [[T.Db]]).as("singleton");
-    services.add(T.C, C, [[T.Db]]).as("singleton");
-    services.add(T.A, A, [[T.B, T.C]]).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Db, D, [[]]).as('singleton');
+    services.add(T.B, B, [[T.Db]]).as('singleton');
+    services.add(T.C, C, [[T.Db]]).as('singleton');
+    services.add(T.A, A, [[T.B, T.C]]).as('singleton');
 
-    const a = services.build().createScope("singleton").resolve<A>(T.A);
+    const a = services.build().createScope('singleton').resolve<A>(T.A);
     expect(a.b.d).toBe(a.c.d); // shared singleton D, no false cycle
   });
 });

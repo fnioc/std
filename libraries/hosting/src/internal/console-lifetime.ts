@@ -8,17 +8,17 @@
 // logger from an `ILoggerFactory` under a fixed lifetime category; the in-repo
 // category is {@link HOSTING_LIFETIME_CATEGORY} (no vendor branding).
 
-import type { IHostApplicationLifetime, IHostEnvironment, IHostLifetime } from "@rhombus-std/hosting.core";
-import { type ILogger, type ILoggerFactory, logInformation, LogLevel } from "@rhombus-std/logging.core";
-import { type AbortSignal, process } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import type { ConsoleLifetimeOptions } from "../ConsoleLifetimeOptions";
+import type { IHostApplicationLifetime, IHostEnvironment, IHostLifetime } from '@rhombus-std/hosting.core';
+import { type ILogger, type ILoggerFactory, logInformation, LogLevel } from '@rhombus-std/logging.core';
+import { type AbortSignal, process } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import type { ConsoleLifetimeOptions } from '../ConsoleLifetimeOptions';
 
 /** The logging category the console lifetime writes its status banner under. */
-export const HOSTING_LIFETIME_CATEGORY = "Rhombus.Hosting.Lifetime";
+export const HOSTING_LIFETIME_CATEGORY = 'Rhombus.Hosting.Lifetime';
 
 /** The POSIX signals that request a graceful shutdown. */
-const SHUTDOWN_SIGNALS = ["SIGINT", "SIGTERM", "SIGQUIT"] as const;
+const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGQUIT'] as const;
 
 /** Listens for Ctrl+C or a termination signal and initiates a graceful shutdown. */
 export class ConsoleLifetime implements IHostLifetime, Disposable {
@@ -48,8 +48,8 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
     if (!this.#options.suppressStatusMessages) {
       this.#onStarted = () => this.#onApplicationStarted();
       this.#onStopping = () => this.#onApplicationStopping();
-      this.#applicationLifetime.applicationStarted.addEventListener("abort", this.#onStarted, { once: true });
-      this.#applicationLifetime.applicationStopping.addEventListener("abort", this.#onStopping, { once: true });
+      this.#applicationLifetime.applicationStarted.addEventListener('abort', this.#onStarted, { once: true });
+      this.#applicationLifetime.applicationStopping.addEventListener('abort', this.#onStopping, { once: true });
     }
 
     this.#registerShutdownHandlers();
@@ -68,11 +68,11 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
     this.#unregisterShutdownHandlers();
 
     if (this.#onStarted) {
-      this.#applicationLifetime.applicationStarted.removeEventListener("abort", this.#onStarted);
+      this.#applicationLifetime.applicationStarted.removeEventListener('abort', this.#onStarted);
       this.#onStarted = undefined;
     }
     if (this.#onStopping) {
-      this.#applicationLifetime.applicationStopping.removeEventListener("abort", this.#onStopping);
+      this.#applicationLifetime.applicationStopping.removeEventListener('abort', this.#onStopping);
       this.#onStopping = undefined;
     }
   }
@@ -98,13 +98,13 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
 
   #onApplicationStarted(): void {
     if (this.#logger.isEnabled(LogLevel.Information)) {
-      logInformation(this.#logger, "Application started. Press Ctrl+C to shut down.");
+      logInformation(this.#logger, 'Application started. Press Ctrl+C to shut down.');
       logInformation(this.#logger, `Hosting environment: ${this.#environment.environmentName}`);
       logInformation(this.#logger, `Content root path: ${this.#environment.contentRootPath}`);
     }
   }
 
   #onApplicationStopping(): void {
-    logInformation(this.#logger, "Application is shutting down...");
+    logInformation(this.#logger, 'Application is shutting down...');
   }
 }

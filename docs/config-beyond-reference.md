@@ -15,12 +15,12 @@ subscriber never has to manually re-subscribe after a reload swaps the token out
 
 ```ts
 const provider = new JsonConfigurationProvider(
-  new JsonConfigurationSource("app.json"),
+  new JsonConfigurationSource('app.json'),
 );
 const root = new ConfigurationRoot([provider]);
 
 using _sub = ChangeToken.onChange(() => root.getReloadToken(), () => {
-  console.log("config changed:", root.get("Server:Port"));
+  console.log('config changed:', root.get('Server:Port'));
 });
 
 root.reload(); // re-runs provider.load(), then fires the root's token once
@@ -42,11 +42,11 @@ interface, so hand-authoring stays the base case and codegen is optional sugar.
 
 ```ts
 const config = new ConfigurationBuilder()
-  .addJsonFile("appsettings.json")
+  .addJsonFile('appsettings.json')
   .withSchema(
     {
-      Server: { Host: "string", Port: "number" },
-      Ssl: { [OPTIONAL]: "boolean" },
+      Server: { Host: 'string', Port: 'number' },
+      Ssl: { [OPTIONAL]: 'boolean' },
     } as const,
   )
   .build();
@@ -57,10 +57,10 @@ config.Server.Port; // number, not string -- COERCED, not just typed
 
 // Tier 2, with config.transformer's compile-time codegen:
 interface AppConfig {
-  Server: { Host: string; Port: number };
+  Server: { Host: string; Port: number; };
   Ssl?: boolean;
 }
-new ConfigurationBuilder().addJsonFile("appsettings.json").withType<AppConfig>()
+new ConfigurationBuilder().addJsonFile('appsettings.json').withType<AppConfig>()
   .build();
 ```
 
@@ -72,8 +72,8 @@ defaults, test fixtures, programmatic overrides -- not an optional add-on a cons
 
 ```ts
 const config = new ConfigurationBuilder()
-  .addInMemoryCollection({ "Server:Port": "8080" }) // no extra package needed
-  .addJsonFile("appsettings.json", { optional: true })
+  .addInMemoryCollection({ 'Server:Port': '8080' }) // no extra package needed
+  .addJsonFile('appsettings.json', { optional: true })
   .build();
 ```
 
@@ -89,11 +89,11 @@ it reaches a one-shot `ConfigurationBuilder`.
 
 ```ts
 // method form (primary) -- identical sugar on either receiver
-new ConfigurationBuilder().addJsonFile("a.json").addEnvironmentVariables();
-new ConfigurationManager().addJsonFile("a.json").addEnvironmentVariables();
+new ConfigurationBuilder().addJsonFile('a.json').addEnvironmentVariables();
+new ConfigurationManager().addJsonFile('a.json').addEnvironmentVariables();
 
 // standalone form (fallback) -- the exact same function, callable directly
-JsonConfigurationExtensions.addJsonFile(someBuilder, "a.json");
+JsonConfigurationExtensions.addJsonFile(someBuilder, 'a.json');
 ```
 
 ## 5. `toObject(): ConfigObject`
@@ -106,15 +106,15 @@ section's) subtree as an ordinary nested string record.
 ```ts
 const root = new ConfigurationBuilder()
   .addInMemoryCollection({
-    "Server:Host": "h",
-    "Server:Port": "8080",
-    "Flag": "on",
+    'Server:Host': 'h',
+    'Server:Port': '8080',
+    Flag: 'on',
   })
   .build();
 
 root.toObject();
 // { Server: { Host: "h", Port: "8080" }, Flag: "on" }
-root.getSection("Server").toObject();
+root.getSection('Server').toObject();
 // { Host: "h", Port: "8080" } -- just the subtree
 ```
 
@@ -126,12 +126,12 @@ factory)` / `getNum` / `getBool` (each with an optional default) sit directly on
 itself, and `set` returns `this` for fluent chaining.
 
 ```ts
-config.getNum("Server:Port"); // number | undefined
-config.getNum("Server:Port", 8080); // number, defaulted
-config.getBool("Feature:Enabled", false);
-config.get("Server:Timeout", (raw) => Duration.parse(raw)); // custom factory
+config.getNum('Server:Port'); // number | undefined
+config.getNum('Server:Port', 8080); // number, defaulted
+config.getBool('Feature:Enabled', false);
+config.get('Server:Timeout', (raw) => Duration.parse(raw)); // custom factory
 
-config.set("Server:Port", "9090").set("Feature:Enabled", "true"); // fluent
+config.set('Server:Port', '9090').set('Feature:Enabled', 'true'); // fluent
 ```
 
 ## 7. `IndexAccessed` proxy navigation
@@ -144,12 +144,12 @@ members (`get`, `value`, `getSection`, …) always win over the indexer, and the
 
 ```ts
 const config = new ConfigurationBuilder()
-  .addInMemoryCollection({ "Server:Host": "localhost", "Server:Port": "8080" })
+  .addInMemoryCollection({ 'Server:Host': 'localhost', 'Server:Port': '8080' })
   .build(); // IndexedSection
 
 config.Server.Port.value; // "8080" -- no getSection() chain needed
-config["Server"]["Host"].value; // bracket form works too
-config.Server.getNum("Port"); // real methods stay reachable mid-navigation
+config['Server']['Host'].value; // bracket form works too
+config.Server.getNum('Port'); // real methods stay reachable mid-navigation
 ```
 
 ## 8. `adoptProvider()` + a stable manager-level reload token
@@ -165,10 +165,10 @@ manager ever needing to swap identity to get that for free.
 
 ```ts
 const manager = new ConfigurationManager();
-manager.set("A", "mutated"); // works immediately -- a manager always starts with one source
+manager.set('A', 'mutated'); // works immediately -- a manager always starts with one source
 using _sub = ChangeToken.onChange(() => manager.getReloadToken(), notify);
 
-manager.addJsonFile("overrides.json"); // appends + loads ONLY this provider
+manager.addJsonFile('overrides.json'); // appends + loads ONLY this provider
 // "A" keeps its mutated value -- the existing provider was never rebuilt --
 // and notify() still fires, even though the subscription predates this add().
 ```
@@ -182,8 +182,8 @@ sandboxed caller -- never have to mutate, and then restore, the real environment
 
 ```ts
 const source = new EnvironmentVariablesConfigurationSource({
-  prefix: "APP_",
-  env: { "APP_Port": "8080" }, // not process.env
+  prefix: 'APP_',
+  env: { APP_Port: '8080' }, // not process.env
 });
 const provider = source.build(new ConfigurationBuilder());
 provider.load(); // pure w.r.t. the injected map -- process.env untouched
@@ -199,7 +199,7 @@ strictly earlier than `build()`/`load()` would ever reach it.
 
 ```ts
 new CommandLineConfigurationSource(process.argv.slice(2), {
-  switchMappings: { "p": "Server:Port" }, // missing the leading "-"
+  switchMappings: { p: 'Server:Port' }, // missing the leading "-"
 });
 // throws immediately, at construction -- before .build() is ever called
 ```

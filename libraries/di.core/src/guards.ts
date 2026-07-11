@@ -4,23 +4,23 @@
 // describe. The engine (`@rhombus-std/di`) and the registration builder both
 // consume them.
 
-import type { DepSlot, FactoryRef, LiteralRef, TypeArgRef, Union } from "./types.js";
+import type { DepSlot, FactoryRef, LiteralRef, TypeArgRef, Union } from './types.js';
 
 /** True when `slot` is a `FactoryRef` (carries a `.type` token). */
 export function isFactoryRef(slot: DepSlot): slot is FactoryRef {
   return (
-    typeof slot === "object"
+    typeof slot === 'object'
     && slot !== null
-    && typeof (slot as { type?: unknown }).type === "string"
+    && typeof (slot as { type?: unknown; }).type === 'string'
   );
 }
 
 /** True when `slot` is a `Union` (carries a `.union` array of member slots). */
 export function isUnionSlot(slot: DepSlot): slot is Union {
   return (
-    typeof slot === "object"
+    typeof slot === 'object'
     && slot !== null
-    && Array.isArray((slot as { union?: unknown }).union)
+    && Array.isArray((slot as { union?: unknown; }).union)
   );
 }
 
@@ -35,7 +35,7 @@ export function isUnionSlot(slot: DepSlot): slot is Union {
  * `.union`) carries a `value` key, so this is unambiguous.
  */
 export function isLiteralRef(slot: DepSlot): slot is LiteralRef {
-  return typeof slot === "object" && slot !== null && "value" in slot;
+  return typeof slot === 'object' && slot !== null && 'value' in slot;
 }
 
 /**
@@ -46,8 +46,8 @@ export function isLiteralRef(slot: DepSlot): slot is LiteralRef {
  */
 export function isTypeArgRef(slot: DepSlot): slot is TypeArgRef {
   return (
-    typeof slot === "object"
+    typeof slot === 'object'
     && slot !== null
-    && typeof (slot as { typeArg?: unknown }).typeArg === "number"
+    && typeof (slot as { typeArg?: unknown; }).typeArg === 'number'
   );
 }

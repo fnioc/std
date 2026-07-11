@@ -10,8 +10,8 @@
 // `baseTokenForSymbol`, so the base tracks whatever this transformer's own
 // derivation would produce for it.
 
-import { baseTokenForSymbol, deriveToken, type TokenContext } from "@rhombus-std/primitives.transformer";
-import ts from "typescript";
+import { baseTokenForSymbol, deriveToken, type TokenContext } from '@rhombus-std/primitives.transformer';
+import ts from 'typescript';
 
 /**
  * The canonical base token of `@rhombus-std/options`'s `Options<T>`. Used ONLY
@@ -19,7 +19,7 @@ import ts from "typescript";
  * the emitted token still comes from {@link baseTokenForSymbol} on the located
  * symbol, never from this constant.
  */
-const OPTIONS_BASE = "@rhombus-std/options:Options";
+const OPTIONS_BASE = '@rhombus-std/options:Options';
 
 /** The pair of tokens the sugar lowers to. */
 export interface OptionTokens {
@@ -66,7 +66,7 @@ function findOptionsBase(
       continue;
     }
     for (const exported of checker.getExportsOfModule(moduleSymbol)) {
-      if (exported.getName() !== "Options") {
+      if (exported.getName() !== 'Options') {
         continue;
       }
       const resolved = exported.flags & ts.SymbolFlags.Alias

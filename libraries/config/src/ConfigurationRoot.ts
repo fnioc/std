@@ -15,20 +15,15 @@
 // helper (see internal-configuration-root-augmentations.ts), shared with the
 // manager and the sections -- mirroring the reference split.
 
-import type {
-  ConfigObject,
-  IConfigurationProvider,
-  IConfigurationRoot,
-  IConfigurationSection,
-  IndexedSection,
-} from "@rhombus-std/config.core";
-import { ChangeToken, type IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
-import { parseBoolean, parseNumber } from "./coerce";
-import { ConfigurationSection, subtreeToObject } from "./configuration-section";
-import { ConfigurationReloadToken } from "./ConfigurationReloadToken";
-import { InternalConfigurationRootExtensions } from "./internal-configuration-root-augmentations";
+import type { ConfigObject, IConfigurationProvider, IConfigurationRoot, IConfigurationSection,
+  IndexedSection } from '@rhombus-std/config.core';
+import { ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
+import { parseBoolean, parseNumber } from './coerce';
+import { ConfigurationSection, subtreeToObject } from './configuration-section';
+import { ConfigurationReloadToken } from './ConfigurationReloadToken';
+import { InternalConfigurationRootExtensions } from './internal-configuration-root-augmentations';
 
 export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements IConfigurationRoot, Disposable {
   readonly #providers: IConfigurationProvider[];
@@ -87,12 +82,12 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
 
   /** The root sentinel: empty key. */
   public get key(): string {
-    return "";
+    return '';
   }
 
   /** The root sentinel: empty path. */
   public get path(): string {
-    return "";
+    return '';
   }
 
   /** The root has no own value. */
@@ -101,7 +96,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
   }
 
   public set value(_value: string) {
-    throw new TypeError("the configuration root has no value");
+    throw new TypeError('the configuration root has no value');
   }
 
   /** The providers backing this root, in registration order. */
@@ -168,7 +163,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
    */
   public set(key: string, value: string): this {
     if (this.#providers.length === 0) {
-      throw new Error("Cannot set configuration value: no configuration sources are registered.");
+      throw new Error('Cannot set configuration value: no configuration sources are registered.');
     }
     for (const provider of this.#providers) {
       provider.set(key, value);
@@ -217,10 +212,10 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
   }
 
   protected _getIndex(key: PropertyKey): IndexedSection {
-    if (typeof key !== "string") {
+    if (typeof key !== 'string') {
       return undefined as unknown as IndexedSection;
     }
-    if (key === "then") {
+    if (key === 'then') {
       return undefined as unknown as IndexedSection;
     }
     return this.getSection(key) as unknown as IndexedSection;
@@ -228,7 +223,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
 
   protected _setIndex(_key: PropertyKey, _value: IndexedSection): IndexedSection {
     throw new TypeError(
-      "Configuration is read-only through index access; use set(key, value) or the value setter.",
+      'Configuration is read-only through index access; use set(key, value) or the value setter.',
     );
   }
 }

@@ -9,7 +9,7 @@
 // interface exported from this package's root (`<source>:<exportName>`), so a
 // param typed `Resolver` and this constant unify on the same string.
 
-import type { Token } from "./types.js";
+import type { Token } from './types.js';
 
 /**
  * The token a `Resolver`-typed parameter derives to. The engine resolves it to
@@ -18,13 +18,13 @@ import type { Token } from "./types.js";
  * plugin-less author can hand-feed it in a signature (`[[RESOLVER_TOKEN]]`)
  * without spelling the package-qualified string by hand.
  */
-export const RESOLVER_TOKEN: Token = "@rhombus-std/di.core:Resolver";
+export const RESOLVER_TOKEN: Token = '@rhombus-std/di.core:Resolver';
 
 /**
  * The deprecated `ResolveScope` contract token — still recognized so a param
  * typed with that non-generic alias resolves to the provider view too.
  */
-const RESOLVE_SCOPE_TOKEN: Token = "@rhombus-std/di.core:ResolveScope";
+const RESOLVE_SCOPE_TOKEN: Token = '@rhombus-std/di.core:ResolveScope';
 
 /** The set of tokens the engine treats as the intrinsic provider. */
 const PROVIDER_TOKENS: ReadonlySet<Token> = new Set([

@@ -9,11 +9,11 @@
 // analog here -- `AbortController.abort()` never rethrows listener
 // exceptions (EventTarget dispatch isolates them).
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
-import { AbortController } from "./abort.js";
-import { CancellationChangeToken } from "./CancellationChangeToken.js";
-import type { IChangeToken } from "./IChangeToken.js";
+import { AbortController } from './abort.js';
+import { CancellationChangeToken } from './CancellationChangeToken.js';
+import type { IChangeToken } from './IChangeToken.js';
 
 /**
  * An {@link IChangeToken} that represents one or more {@link IChangeToken}

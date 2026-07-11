@@ -7,21 +7,21 @@ object back — merged from JSON files, environment variables, and CLI flags —
 with zero hand-written schema and zero reflection.
 
 ```ts
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import "@rhombus-std/config/with-type-augment";
-import "@rhombus-std/config.json";
-import "@rhombus-std/config.env";
-import "@rhombus-std/config.commandline";
+import { ConfigurationBuilder } from '@rhombus-std/config';
+import '@rhombus-std/config/with-type-augment';
+import '@rhombus-std/config.json';
+import '@rhombus-std/config.env';
+import '@rhombus-std/config.commandline';
 
 interface AppConfig {
-  Server: { Host: string; Port: number; Ssl?: boolean };
-  Database: { Primary: { Host: string; PoolSize: number } };
+  Server: { Host: string; Port: number; Ssl?: boolean; };
+  Database: { Primary: { Host: string; PoolSize: number; }; };
 }
 
 const config = new ConfigurationBuilder()
-  .addJsonFile("appsettings.json")
-  .addJsonFile("appsettings.Development.json", { optional: true })
-  .addEnvironmentVariables({ prefix: "APP_" })
+  .addJsonFile('appsettings.json')
+  .addJsonFile('appsettings.Development.json', { optional: true })
+  .addEnvironmentVariables({ prefix: 'APP_' })
   .addCommandLine(process.argv.slice(2))
   .withType<AppConfig>() // ← generates the schema from your interface. that's it.
   .build();
@@ -69,9 +69,9 @@ bun add @rhombus-std/config.transformer
 Providers register their `add*` builder methods via side-effect import:
 
 ```ts
-import "@rhombus-std/config.json";
-import "@rhombus-std/config.env";
-import "@rhombus-std/config.commandline";
+import '@rhombus-std/config.json';
+import '@rhombus-std/config.env';
+import '@rhombus-std/config.commandline';
 ```
 
 `@rhombus-std/config` ships the builder, the merge engine, and the in-memory
@@ -102,7 +102,7 @@ not three functions deep into a request handler:
 ```ts
 // appsettings.json is missing Database.Primary.PoolSize
 const config = new ConfigurationBuilder()
-  .addJsonFile("appsettings.json")
+  .addJsonFile('appsettings.json')
   .withType<AppConfig>()
   .build();
 // throws SchemaCoercionError at build(), naming every missing/invalid key at
@@ -138,18 +138,18 @@ Every `add*` call stacks a layer. Layers merge left to right — later sources
 overwrite matching keys, everything else merges through untouched.
 
 ```ts
-import "@rhombus-std/config.json";
-import "@rhombus-std/config.env";
-import "@rhombus-std/config.commandline";
+import '@rhombus-std/config.json';
+import '@rhombus-std/config.env';
+import '@rhombus-std/config.commandline';
 
 const config = new ConfigurationBuilder()
-  .addInMemoryCollection({ "Server:Port": "3000" }) // 1. baseline defaults
-  .addJsonFile("appsettings.json") // 2. checked-in config
-  .addJsonFile("appsettings.Development.json", { optional: true }) // 2b. overlay, ok if absent
-  .addEnvironmentVariables({ prefix: "APP_" }) // 3. env vars, prefix stripped
+  .addInMemoryCollection({ 'Server:Port': '3000' }) // 1. baseline defaults
+  .addJsonFile('appsettings.json') // 2. checked-in config
+  .addJsonFile('appsettings.Development.json', { optional: true }) // 2b. overlay, ok if absent
+  .addEnvironmentVariables({ prefix: 'APP_' }) // 3. env vars, prefix stripped
   .addCommandLine(process.argv.slice(2), {
-    "-p": "Server:Port",
-    "-h": "Server:Host",
+    '-p': 'Server:Port',
+    '-h': 'Server:Host',
   }) // 4. short flags, highest wins
   .build();
 ```
@@ -178,12 +178,12 @@ schema.
 **Tier 1 — hand-write the schema once.**
 
 ```ts
-import { ConfigurationBuilder, OPTIONAL } from "@rhombus-std/config";
+import { ConfigurationBuilder, OPTIONAL } from '@rhombus-std/config';
 
 const config = new ConfigurationBuilder()
-  .addJsonFile("appsettings.json")
+  .addJsonFile('appsettings.json')
   .withSchema({
-    Server: { Host: "string", Port: "number", Ssl: { [OPTIONAL]: "boolean" } },
+    Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } },
   })
   .build();
 
@@ -194,14 +194,14 @@ config.Server.Port; // number — same typed, coerced tree as the transformer pa
 
 ```ts
 const config = new ConfigurationBuilder()
-  .addJsonFile("appsettings.json")
+  .addJsonFile('appsettings.json')
   .build();
 
-config.getNum("Server:Port"); // number
-config.getNum("Server:Port", 3000); // number, defaulted if the key is absent
-config.getBool("Server:Ssl"); // boolean — accepts true/1/yes/on
-config.get("Cors:Origins", (s) => s.split(",")); // any shape, via a factory function
-config.get("Server:Host"); // raw string, no coercion
+config.getNum('Server:Port'); // number
+config.getNum('Server:Port', 3000); // number, defaulted if the key is absent
+config.getBool('Server:Ssl'); // boolean — accepts true/1/yes/on
+config.get('Cors:Origins', (s) => s.split(',')); // any shape, via a factory function
+config.get('Server:Host'); // raw string, no coercion
 ```
 
 Same builder, same sources — just a different amount of ceremony. Mix tiers
@@ -211,11 +211,11 @@ across a single config tree if that's what the project needs.
 
 ```ts
 config.Server.Port; // dot access, typed
-config["Server"]["Port"]; // bracket access, identical value
-config.getSection("Server").getNum("Port"); // chainable, scoped access
+config['Server']['Port']; // bracket access, identical value
+config.getSection('Server').getNum('Port'); // chainable, scoped access
 
 // getSection never returns null — an absent section is just an empty one.
-config.getSection("Does:Not:Exist").get("Key"); // undefined, not a thrown error
+config.getSection('Does:Not:Exist').get('Key'); // undefined, not a thrown error
 ```
 
 Every accessor returns exactly one type. `getNum` returns `number` — never
@@ -230,8 +230,8 @@ exact point you ask for one: through your interface, a hand-written schema,
 or an explicit `getNum`/`getBool` call.
 
 ```ts
-config.getNum("Server:Port"); // "8080"    → 8080
-config.getNum("Server:Host"); // "0.0.0.0" → throws. not numeric, not NaN, not a guess.
+config.getNum('Server:Port'); // "8080"    → 8080
+config.getNum('Server:Host'); // "0.0.0.0" → throws. not numeric, not NaN, not a guess.
 ```
 
 No implicit coercion, no truthy/falsy guessing, no `parseInt` landmines.

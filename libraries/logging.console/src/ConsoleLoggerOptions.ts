@@ -2,9 +2,9 @@
 // reference `ConsoleLoggerOptions` (including its deprecated members, whose
 // upstream `[Obsolete]` markers are preserved as `@deprecated`).
 
-import { LogLevel } from "@rhombus-std/logging.core";
-import { ConsoleLoggerFormat } from "./ConsoleLoggerFormat";
-import { ConsoleLoggerQueueFullMode } from "./ConsoleLoggerQueueFullMode";
+import { LogLevel } from '@rhombus-std/logging.core';
+import { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
+import { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';
 
 /** The default {@link ConsoleLoggerOptions.maxQueueLength}. */
 export const DEFAULT_MAX_QUEUE_LENGTH = 2500;

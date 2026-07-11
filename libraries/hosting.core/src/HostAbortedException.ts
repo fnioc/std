@@ -9,7 +9,7 @@ export class HostAbortedException extends Error {
    * the JS `Error` `cause` — the platform's analog of a wrapped inner exception.
    */
   public constructor(message?: string, innerException?: Error) {
-    super(message ?? "The host was aborted.", innerException ? { cause: innerException } : undefined);
-    this.name = "HostAbortedException";
+    super(message ?? 'The host was aborted.', innerException ? { cause: innerException } : undefined);
+    this.name = 'HostAbortedException';
   }
 }

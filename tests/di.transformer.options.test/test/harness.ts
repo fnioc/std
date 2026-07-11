@@ -11,9 +11,9 @@
 // without the real di.core). Token generation reads the virtual `package.json`
 // through the injected `readFile`.
 
-import type { Diagnostic } from "@rhombus-std/di.transformer.options/internal/diagnostics";
-import { createTransformerFactory } from "@rhombus-std/di.transformer.options/internal/transformer";
-import ts from "typescript";
+import type { Diagnostic } from '@rhombus-std/di.transformer.options/internal/diagnostics';
+import { createTransformerFactory } from '@rhombus-std/di.transformer.options/internal/transformer';
+import ts from 'typescript';
 
 /** A virtual filesystem: absolute POSIX path -> file contents. */
 export type VirtualFiles = Record<string, string>;
@@ -27,7 +27,7 @@ export interface TransformResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-const PROJ_ROOT = "/proj";
+const PROJ_ROOT = '/proj';
 export const APP_PATH = `${PROJ_ROOT}/src/app.ts`;
 
 export interface TransformOptions {
@@ -47,7 +47,7 @@ export function transform(
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    lib: ["lib.es2022.d.ts"],
+    lib: ['lib.es2022.d.ts'],
     strict: true,
     skipLibCheck: true,
     noEmitOnError: false,
@@ -68,12 +68,12 @@ export function transform(
       return ts.createSourceFile(fileName, text, languageVersion, true);
     },
     getDefaultLibFileName: () => libFileName,
-    getDefaultLibLocation: () => libSourcePath.replace(/[^/\\]+$/, ""),
+    getDefaultLibLocation: () => libSourcePath.replace(/[^/\\]+$/, ''),
     writeFile: () => undefined,
     getCurrentDirectory: () => PROJ_ROOT,
     getCanonicalFileName: (f) => f,
     useCaseSensitiveFileNames: () => true,
-    getNewLine: () => "\n",
+    getNewLine: () => '\n',
     fileExists(fileName) {
       return (
         Object.prototype.hasOwnProperty.call(files, fileName)
@@ -98,7 +98,7 @@ export function transform(
   };
 
   const entry = options.entry
-    ?? Object.keys(files).filter((f) => f.endsWith(".ts") && !f.endsWith(".d.ts"));
+    ?? Object.keys(files).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
 
   const program = ts.createProgram(entry.slice(), compilerOptions, host);
 
@@ -137,7 +137,7 @@ export function transform(
 
   return {
     outputs,
-    output: outputs[entry[0]!] ?? "",
+    output: outputs[entry[0]!] ?? '',
     diagnostics,
   };
 }
@@ -158,7 +158,7 @@ function readVirtualOrReal(
 }
 
 function anyFileUnder(files: VirtualFiles, dir: string): boolean {
-  const normalized = dir.endsWith("/") ? dir : dir + "/";
+  const normalized = dir.endsWith('/') ? dir : dir + '/';
   return Object.keys(files).some((f) => f.startsWith(normalized));
 }
 
@@ -185,12 +185,12 @@ declare const services: ServiceManifest<"singleton">;
  */
 export function optionsFixture(appSource: string): VirtualFiles {
   return {
-    "/proj/node_modules/@rhombus-std/options/package.json": JSON.stringify({
-      name: "@rhombus-std/options",
-      version: "1.0.0",
-      exports: { ".": "./index.js" },
+    '/proj/node_modules/@rhombus-std/options/package.json': JSON.stringify({
+      name: '@rhombus-std/options',
+      version: '1.0.0',
+      exports: { '.': './index.js' },
     }),
-    "/proj/node_modules/@rhombus-std/options/index.d.ts": "export interface Options<T> { readonly value: T; }\n",
+    '/proj/node_modules/@rhombus-std/options/index.d.ts': 'export interface Options<T> { readonly value: T; }\n',
     [APP_PATH]: MANIFEST_STUB + appSource,
   };
 }
@@ -220,7 +220,7 @@ declare const services: ServiceManifest<"singleton">;
  */
 export function addOptionsArgs(
   output: string,
-): { readonly wrapper: string; readonly element: string } | undefined {
+): { readonly wrapper: string; readonly element: string; } | undefined {
   const match = output.match(/addOptions\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)/);
   if (!match) {
     return undefined;

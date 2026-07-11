@@ -38,22 +38,22 @@
 // @rhombus-std/logging.configuration yet, so none of the config-binding wiring
 // is ported — see the package index.
 
-import { LoggingBuilderExtensions } from "@rhombus-std/logging";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import type { ConsoleFormatter } from "./ConsoleFormatter";
-import { ConsoleFormatterNames } from "./ConsoleFormatterNames";
-import { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
-import { ConsoleLoggerOptions } from "./ConsoleLoggerOptions";
-import { ConsoleLoggerProvider } from "./ConsoleLoggerProvider";
-import { JsonConsoleFormatter } from "./JsonConsoleFormatter";
-import { JsonConsoleFormatterOptions } from "./JsonConsoleFormatterOptions";
-import { ReloadableOptions } from "./ReloadableOptions";
-import { SimpleConsoleFormatter } from "./SimpleConsoleFormatter";
-import { SimpleConsoleFormatterOptions } from "./SimpleConsoleFormatterOptions";
-import { SystemdConsoleFormatter } from "./SystemdConsoleFormatter";
+import { LoggingBuilderExtensions } from '@rhombus-std/logging';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import type { ConsoleFormatter } from './ConsoleFormatter';
+import { ConsoleFormatterNames } from './ConsoleFormatterNames';
+import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
+import { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
+import { ConsoleLoggerProvider } from './ConsoleLoggerProvider';
+import { JsonConsoleFormatter } from './JsonConsoleFormatter';
+import { JsonConsoleFormatterOptions } from './JsonConsoleFormatterOptions';
+import { ReloadableOptions } from './ReloadableOptions';
+import { SimpleConsoleFormatter } from './SimpleConsoleFormatter';
+import { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
+import { SystemdConsoleFormatter } from './SystemdConsoleFormatter';
 
 /** The per-manifest console registration state (see the module doc). */
 interface ConsoleRegistration {
@@ -66,7 +66,7 @@ interface ConsoleRegistration {
   provider: ConsoleLoggerProvider | undefined;
 }
 
-const registrations = new WeakMap<ILoggingBuilder["services"], ConsoleRegistration>();
+const registrations = new WeakMap<ILoggingBuilder['services'], ConsoleRegistration>();
 
 function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
   let registration = registrations.get(builder.services);
@@ -194,7 +194,7 @@ export const ConsoleLoggerExtensions = {
 // source is recompiled in this program under source-libs) so it still SATISFIES
 // `implements ILoggingBuilder`. The class-side merge is retired once logging is
 // dist-built (plan section 5).
-declare module "@rhombus-std/logging.core" {
+declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
     /** Instance-method form of {@link ConsoleLoggerExtensions.addConsole}. */
     addConsole(configure?: Func<[ConsoleLoggerOptions], void>): this;
@@ -209,7 +209,7 @@ declare module "@rhombus-std/logging.core" {
   }
 }
 
-declare module "@rhombus-std/logging/internal/LoggingBuilder" {
+declare module '@rhombus-std/logging/internal/LoggingBuilder' {
   interface LoggingBuilder {
     addConsole(configure?: Func<[ConsoleLoggerOptions], void>): this;
     addSimpleConsole(configure?: Func<[SimpleConsoleFormatterOptions], void>): this;

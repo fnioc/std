@@ -1,6 +1,6 @@
-import { NoSatisfiableSignatureError, ServiceManifest } from "@rhombus-std/di";
-import { describe, expect, test } from "bun:test";
-import { defineDeps, T } from "./fixtures.js";
+import { NoSatisfiableSignatureError, ServiceManifest } from '@rhombus-std/di';
+import { describe, expect, test } from 'bun:test';
+import { defineDeps, T } from './fixtures.js';
 
 // Greedy signature selection over Token|FactoryRef|Union signatures from
 // getDeps. Scan longest → shortest; first SATISFIABLE wins. A FactoryRef is
@@ -14,17 +14,17 @@ import { defineDeps, T } from "./fixtures.js";
 
 // A sentinel token that is never registered — used to model "caller-supplied"
 // slots in the new design (replaces hole).
-const UNREGISTERED = "test:unregistered" as const;
+const UNREGISTERED = 'test:unregistered' as const;
 
 class LoggerImpl {
-  public readonly kind = "logger";
+  public readonly kind = 'logger';
 }
 class DbImpl {
-  public readonly kind = "db";
+  public readonly kind = 'db';
 }
 
-describe("greedy signature selection", () => {
-  test("longest satisfiable signature wins when both are satisfiable", () => {
+describe('greedy signature selection', () => {
+  test('longest satisfiable signature wins when both are satisfiable', () => {
     // Two overloads: [Logger, Db] and [Db]. Both satisfiable; the longer wins.
     class Svc {
       public readonly args: unknown[];
@@ -37,10 +37,10 @@ describe("greedy signature selection", () => {
       [T.Db],
     ]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Logger, LoggerImpl).as("singleton");
-    services.add(T.Db, DbImpl).as("singleton");
-    services.add(T.Service, Svc).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Logger, LoggerImpl).as('singleton');
+    services.add(T.Db, DbImpl).as('singleton');
+    services.add(T.Service, Svc).as('singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(2);
@@ -48,7 +48,7 @@ describe("greedy signature selection", () => {
     expect(svc.args[1]).toBeInstanceOf(DbImpl);
   });
 
-  test("falls back to a shorter signature when the longest is unsatisfiable", () => {
+  test('falls back to a shorter signature when the longest is unsatisfiable', () => {
     // [Logger, Db] needs Db (unregistered) ⇒ skip. [Logger] is satisfiable.
     class Svc {
       public readonly args: unknown[];
@@ -61,17 +61,17 @@ describe("greedy signature selection", () => {
       [T.Logger],
     ]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Logger, LoggerImpl).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Logger, LoggerImpl).as('singleton');
     // T.Db deliberately NOT registered.
-    services.add(T.Service, Svc).as("singleton");
+    services.add(T.Service, Svc).as('singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(1);
     expect(svc.args[0]).toBeInstanceOf(LoggerImpl);
   });
 
-  test("an unregistered slot blocks the signature; falls to the shorter overload", () => {
+  test('an unregistered slot blocks the signature; falls to the shorter overload', () => {
     // An unregistered token is an unresolvable slot — it blocks [Logger, UNREGISTERED]
     // so selection falls to the shorter [Logger] overload and constructs with one arg.
     // (This models an optional/defaulted param: the transformer emits both
@@ -87,10 +87,10 @@ describe("greedy signature selection", () => {
       [T.Logger],
     ]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Logger, LoggerImpl).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Logger, LoggerImpl).as('singleton');
     // UNREGISTERED deliberately NOT registered.
-    services.add(T.Service, Svc).as("singleton");
+    services.add(T.Service, Svc).as('singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     // Selection falls to [T.Logger] — the shorter satisfiable overload.
@@ -98,7 +98,7 @@ describe("greedy signature selection", () => {
     expect(svc.args[0]).toBeInstanceOf(LoggerImpl);
   });
 
-  test("equal-arity tie breaks by registration order (first declared wins)", () => {
+  test('equal-arity tie breaks by registration order (first declared wins)', () => {
     // Two same-length signatures, both satisfiable. The first in the DepRecord
     // (registration order) is chosen. Distinct tokens so we can tell which ran.
     class Svc {
@@ -110,10 +110,10 @@ describe("greedy signature selection", () => {
     // [Logger] declared first, [Db] second — both arity 1, both registered.
     defineDeps(Svc, [[T.Logger], [T.Db]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Logger, LoggerImpl).as("singleton");
-    services.add(T.Db, DbImpl).as("singleton");
-    services.add(T.Service, Svc).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Logger, LoggerImpl).as('singleton');
+    services.add(T.Db, DbImpl).as('singleton');
+    services.add(T.Service, Svc).as('singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(1);
@@ -121,15 +121,15 @@ describe("greedy signature selection", () => {
     expect(svc.args[0]).toBeInstanceOf(LoggerImpl);
   });
 
-  test("throws NoSatisfiableSignatureError naming the unsatisfiable tokens", () => {
+  test('throws NoSatisfiableSignatureError naming the unsatisfiable tokens', () => {
     class Svc {
       public constructor(..._args: unknown[]) {}
     }
     defineDeps(Svc, [[T.Logger, T.Db]]);
 
-    const services = new ServiceManifest<"singleton">();
+    const services = new ServiceManifest<'singleton'>();
     // Neither Logger nor Db registered.
-    services.add(T.Service, Svc).as("singleton");
+    services.add(T.Service, Svc).as('singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.Service)).toThrow(NoSatisfiableSignatureError);
@@ -143,7 +143,7 @@ describe("greedy signature selection", () => {
     }
   });
 
-  test("an all-unregistered signature is unsatisfiable on direct resolve; throws NoSatisfiableSignatureError", () => {
+  test('an all-unregistered signature is unsatisfiable on direct resolve; throws NoSatisfiableSignatureError', () => {
     // An unregistered token is not satisfiable on a direct resolve. A class with
     // only unregistered slots and no shorter fallback overload surfaces
     // NoSatisfiableSignatureError.
@@ -157,15 +157,15 @@ describe("greedy signature selection", () => {
     }
     defineDeps(Svc, [[UNREGISTERED]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, Svc).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, Svc).as('singleton');
     // UNREGISTERED not registered.
 
     const root = services.build();
     expect(() => root.resolve<Svc>(T.Service)).toThrow(NoSatisfiableSignatureError);
   });
 
-  test("throws naming only the unregistered token in a mixed signature", () => {
+  test('throws naming only the unregistered token in a mixed signature', () => {
     // [Db, UNREGISTERED] — UNREGISTERED is fine as a caller-supplied slot would be,
     // but Db is also unregistered ⇒ both are unsatisfiable.
     class Svc {
@@ -173,8 +173,8 @@ describe("greedy signature selection", () => {
     }
     defineDeps(Svc, [[T.Db, UNREGISTERED]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, Svc).as("singleton"); // T.Db NOT registered
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, Svc).as('singleton'); // T.Db NOT registered
 
     const root = services.build();
     expect(() => root.resolve(T.Service)).toThrow(NoSatisfiableSignatureError);

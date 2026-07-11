@@ -9,7 +9,7 @@
 // The existing ts-patch entry (the `.` export's `transform`) is untouched — this
 // is the parallel ttsc/Go emit path, wired through the separate `./ttsc` subpath.
 
-import path from "node:path";
+import path from 'node:path';
 
 /**
  * @param {import("ttsc").ITtscPluginFactoryContext} context
@@ -20,13 +20,13 @@ export function createTtscPlugin(context) {
   // (libraries/di.transformer); the Go plugin lives at the repo root.
   const source = path.resolve(
     context.dirname,
-    "..",
-    "..",
-    "transforms",
-    "cmd",
-    "ttsc-di",
+    '..',
+    '..',
+    'transforms',
+    'cmd',
+    'ttsc-di',
   );
-  return { name: "di", source };
+  return { name: 'di', source };
 }
 
 export default createTtscPlugin;

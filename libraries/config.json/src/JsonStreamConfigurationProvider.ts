@@ -4,9 +4,9 @@
 // JsonConfigurationProvider -- both delegate to the shared
 // JsonConfigurationFileParser.
 
-import { StreamConfigurationProvider, type StreamPayload } from "@rhombus-std/config";
-import { JsonConfigurationFileParser } from "./json-configuration-file-parser";
-import type { JsonStreamConfigurationSource } from "./JsonStreamConfigurationSource";
+import { StreamConfigurationProvider, type StreamPayload } from '@rhombus-std/config';
+import { JsonConfigurationFileParser } from './json-configuration-file-parser';
+import type { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
 
 // Structural typing for the platform's UTF-8 decoder global (native in
 // node/bun/deno/browsers), local to this module: the zero-ambient-types
@@ -18,7 +18,7 @@ import type { JsonStreamConfigurationSource } from "./JsonStreamConfigurationSou
 interface Utf8Decoder {
   decode(input: Uint8Array): string;
 }
-const { TextDecoder } = globalThis as unknown as { TextDecoder: new() => Utf8Decoder };
+const { TextDecoder } = globalThis as unknown as { TextDecoder: new() => Utf8Decoder; };
 const utf8Decoder = new TextDecoder();
 
 /** Provides configuration key/value pairs obtained from a JSON stream payload. */
@@ -29,8 +29,8 @@ export class JsonStreamConfigurationProvider extends StreamConfigurationProvider
 
   /** Parses and flattens the JSON payload into this provider's store. */
   public override loadStream(stream: StreamPayload): void {
-    const raw = typeof stream === "string" ? stream : utf8Decoder.decode(stream);
-    for (const [key, value] of JsonConfigurationFileParser.parse(raw, "JsonStreamConfigurationProvider")) {
+    const raw = typeof stream === 'string' ? stream : utf8Decoder.decode(stream);
+    for (const [key, value] of JsonConfigurationFileParser.parse(raw, 'JsonStreamConfigurationProvider')) {
       this.set(key, value);
     }
   }

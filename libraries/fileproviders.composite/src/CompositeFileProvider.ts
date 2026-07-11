@@ -6,15 +6,10 @@
 // a single rest-parameter constructor covers both, since an existing collection
 // is passed with spread (`new CompositeFileProvider(...providers)`).
 
-import {
-  type IDirectoryContents,
-  type IFileInfo,
-  type IFileProvider,
-  NotFoundFileInfo,
-  NullChangeToken,
-} from "@rhombus-std/fileproviders.core";
-import { CompositeChangeToken, type IChangeToken } from "@rhombus-std/primitives";
-import { CompositeDirectoryContents } from "./CompositeDirectoryContents.js";
+import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundFileInfo,
+  NullChangeToken } from '@rhombus-std/fileproviders.core';
+import { CompositeChangeToken, type IChangeToken } from '@rhombus-std/primitives';
+import { CompositeDirectoryContents } from './CompositeDirectoryContents.js';
 
 /**
  * Looks up files using a collection of {@link IFileProvider}.

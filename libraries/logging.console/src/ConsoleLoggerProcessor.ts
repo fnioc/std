@@ -20,15 +20,15 @@
 // drain — so it admits messages past the limit (no-loss preserved); see
 // ConsoleLoggerQueueFullMode.
 //
-import { ConsoleLoggerQueueFullMode } from "./ConsoleLoggerQueueFullMode";
-import type { IConsole } from "./IConsole";
-import type { LogMessageEntry } from "./LogMessageEntry";
+import { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';
+import type { IConsole } from './IConsole';
+import type { LogMessageEntry } from './LogMessageEntry';
 
 /** The warning written when `DropWrite` has dropped messages. */
 export function droppedMessagesWarning(count: number): string {
   return `${count} message(s) dropped because of queue size limit. Increase the queue size or `
-    + "decrease logging verbosity to avoid this. You may change `ConsoleLoggerQueueFullMode` "
-    + "to stop dropping messages.\n";
+    + 'decrease logging verbosity to avoid this. You may change `ConsoleLoggerQueueFullMode` '
+    + 'to stop dropping messages.\n';
 }
 
 /** The async queue between logger `log(...)` calls and console writes. */

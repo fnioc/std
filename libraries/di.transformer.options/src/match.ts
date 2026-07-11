@@ -10,17 +10,17 @@
 // match: a user-defined `addOptions<T>()` on a ServiceManifest-symboled receiver
 // is expected to be this augmentation's sugar.
 
-import ts from "typescript";
+import ts from 'typescript';
 
-const ADD_OPTIONS_NAME = "addOptions";
+const ADD_OPTIONS_NAME = 'addOptions';
 
 // The registration builder's type symbol names: the public `ServiceManifest`
 // alias, the `ServiceManifestBase` interface it expands to, and the concrete
 // `ServiceManifestClass` a runtime `new ServiceManifest()` produces.
 const MANIFEST_NAMES: ReadonlySet<string> = new Set([
-  "ServiceManifest",
-  "ServiceManifestBase",
-  "ServiceManifestClass",
+  'ServiceManifest',
+  'ServiceManifestBase',
+  'ServiceManifestClass',
 ]);
 
 /**

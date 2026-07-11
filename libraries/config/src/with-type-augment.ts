@@ -15,10 +15,10 @@
 // class through the relative module so it's bundled into
 // dist/with-type-augment.js.
 
-import type { IndexedSection } from "@rhombus-std/config.core";
-import { ConfigurationBuilder } from "./ConfigurationBuilder";
+import type { IndexedSection } from '@rhombus-std/config.core';
+import { ConfigurationBuilder } from './ConfigurationBuilder';
 
-declare module "@rhombus-std/config/configuration-builder" {
+declare module '@rhombus-std/config/configuration-builder' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /**
      * TIER 2 -- contributed by @rhombus-std/config.transformer, which rewrites this call
@@ -37,6 +37,6 @@ declare module "@rhombus-std/config/configuration-builder" {
 ConfigurationBuilder.prototype.withType = function(): never {
   throw new Error(
     "withType<T>() requires @rhombus-std/config.transformer's compile-time transform to run. "
-      + "It has not been applied. Use withSchema({...}) directly, or configure the transformer.",
+      + 'It has not been applied. Use withSchema({...}) directly, or configure the transformer.',
   );
 };

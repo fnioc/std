@@ -1,7 +1,7 @@
 // The `IConfigurationSection` interface -- mirrors MECA's
 // `IConfigurationSection.cs` one-type-per-file layout (see docs/decisions.md #46).
 
-import type { IConfiguration } from "./IConfiguration";
+import type { IConfiguration } from './IConfiguration';
 
 /** Represents a section of application configuration values. */
 export interface IConfigurationSection extends IConfiguration {

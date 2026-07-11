@@ -21,10 +21,10 @@
 
 // A named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
-import type { AddBuilder } from "@rhombus-std/di.core";
+import type { AddBuilder } from '@rhombus-std/di.core';
 
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Type-driven options sugar — registers an `Options<T>` at `token(Options<T>)`
      * that wraps the `T` resolved from `token(T)`. Lowers to the explicit

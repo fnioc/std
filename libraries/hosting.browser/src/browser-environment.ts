@@ -9,10 +9,10 @@
 // environment predicates (isDevelopment/…) from the augmentation registry, and
 // class-side-merged below so it still SATISFIES the fully-merged interface.
 
-import { NullFileProvider } from "@rhombus-std/fileproviders.core";
-import { Environments, type IHostEnvironment } from "@rhombus-std/hosting.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import { NullFileProvider } from '@rhombus-std/fileproviders.core';
+import { Environments, type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 /** The name/application settings the browser environment reads. */
 export interface BrowserEnvironmentSettings {
@@ -25,7 +25,7 @@ export interface BrowserEnvironmentSettings {
 // The class-side merge for the registry-installed environment predicates
 // (hosting.core's HostEnvironmentEnvExtensions) — the interface-side merge
 // lives beside that const in hosting.core.
-declare module "./browser-environment" {
+declare module './browser-environment' {
   interface BrowserHostingEnvironment {
     isEnvironment(environmentName: string): boolean;
     isDevelopment(): boolean;
@@ -38,9 +38,9 @@ declare module "./browser-environment" {
 @augment(nameof<IHostEnvironment>())
 export class BrowserHostingEnvironment implements IHostEnvironment {
   public environmentName: string = Environments.Production;
-  public applicationName = "";
-  public contentRootPath = "/";
-  public contentRootFileProvider: IHostEnvironment["contentRootFileProvider"] = new NullFileProvider();
+  public applicationName = '';
+  public contentRootPath = '/';
+  public contentRootFileProvider: IHostEnvironment['contentRootFileProvider'] = new NullFileProvider();
 }
 
 /**

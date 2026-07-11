@@ -20,25 +20,19 @@
 //   - `LoggerFactoryOptions` / `ActivityTrackingOptions` are omitted (same
 //     reason); the scope-provider constructor parameter is kept.
 
-import { ServiceManifest, type ServiceProvider } from "@rhombus-std/di";
-import {
-  type IExternalScopeProvider,
-  type ILogger,
-  type ILoggerFactory,
-  type ILoggerProvider,
-  type ILoggingBuilder,
-  LogLevel,
-} from "@rhombus-std/logging.core";
-import { Options } from "@rhombus-std/options";
-import type { Func } from "@rhombus-toolkit/func";
-import { Logger } from "./logger";
-import { LoggerExternalScopeProvider } from "./logger-external-scope-provider";
-import { LoggerFilterOptions } from "./logger-filter-options";
-import { LoggerInformation, MessageLogger, ScopeLogger } from "./logger-information";
-import { LoggerRuleSelector } from "./logger-rule-selector";
-import { NullLogger } from "./null-logger";
-import { isSupportExternalScope } from "./support-external-scope-guard";
-import { LOGGER_FACTORY_TOKEN } from "./tokens";
+import { ServiceManifest, type ServiceProvider } from '@rhombus-std/di';
+import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
+  LogLevel } from '@rhombus-std/logging.core';
+import { Options } from '@rhombus-std/options';
+import type { Func } from '@rhombus-toolkit/func';
+import { Logger } from './logger';
+import { LoggerExternalScopeProvider } from './logger-external-scope-provider';
+import { LoggerFilterOptions } from './logger-filter-options';
+import { LoggerInformation, MessageLogger, ScopeLogger } from './logger-information';
+import { LoggerRuleSelector } from './logger-rule-selector';
+import { NullLogger } from './null-logger';
+import { isSupportExternalScope } from './support-external-scope-guard';
+import { LOGGER_FACTORY_TOKEN } from './tokens';
 
 /** A provider plus whether the factory owns its disposal. */
 interface ProviderRegistration {
@@ -116,7 +110,7 @@ export class LoggerFactory implements ILoggerFactory {
 
   #throwIfDisposed(): void {
     if (this.#disposed) {
-      throw new Error("LoggerFactory has been disposed.");
+      throw new Error('LoggerFactory has been disposed.');
     }
   }
 
@@ -195,7 +189,7 @@ export class LoggerFactory implements ILoggerFactory {
     const services = new ServiceManifest();
     services.addLogging(configure);
     const provider = services.build();
-    const singletonScope = provider.createScope("singleton");
+    const singletonScope = provider.createScope('singleton');
     const factory = singletonScope.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN);
     return new DisposingLoggerFactory(factory, singletonScope);
   }

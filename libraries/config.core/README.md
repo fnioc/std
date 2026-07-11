@@ -27,12 +27,10 @@ npm install @rhombus-std/config.core
 ## Usage
 
 ```ts
-import type {
-  IConfiguration,
-  IConfigurationSource,
-} from "@rhombus-std/config.core";
+import type { IConfiguration,
+  IConfigurationSource } from '@rhombus-std/config.core';
 
 function readPort(config: IConfiguration): string | undefined {
-  return config.get("Server:Port");
+  return config.get('Server:Port');
 }
 ```

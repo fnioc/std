@@ -1,4 +1,4 @@
-import type { IBanner } from "@rhombus-std/examples.contracts";
+import type { IBanner } from '@rhombus-std/examples.contracts';
 
 /**
  * Simulates an async banner fetch — the source of this library's
@@ -8,5 +8,5 @@ import type { IBanner } from "@rhombus-std/examples.contracts";
  */
 export async function fetchBanner(): Promise<IBanner> {
   await Promise.resolve(); // stand-in for a real network round-trip
-  return { text: "== @rhombus-std interop demo ==" };
+  return { text: '== @rhombus-std interop demo ==' };
 }

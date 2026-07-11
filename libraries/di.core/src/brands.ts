@@ -5,7 +5,7 @@
 // -- split out of the former bundled `types.ts` (see docs/decisions.md #46);
 // port-original (no reference-source file to mirror). Zero runtime footprint.
 
-import type { Token } from "./types.js";
+import type { Token } from './types.js';
 
 // ── Inject brand ──────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ import type { Token } from "./types.js";
  * ```
  */
 declare const TOK: unique symbol;
-export type Inject<T, K extends Token> = T & { readonly [TOK]?: K };
+export type Inject<T, K extends Token> = T & { readonly [TOK]?: K; };
 
 // ── Hole brand (open generics) ────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export type Inject<T, K extends Token> = T & { readonly [TOK]?: K };
  * hole as its type argument. Zero runtime footprint.
  */
 declare const HOLE: unique symbol;
-export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
+export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
 
 /**
  * Unbounded sugar for the common unconstrained hole: `$<1>`, `$<2>`, … `$<N>`.
@@ -75,4 +75,4 @@ export type $<N extends number> = Hole<N>;
  * ```
  */
 declare const ARG: unique symbol;
-export type Typeof<T> = Token & { readonly [ARG]?: T };
+export type Typeof<T> = Token & { readonly [ARG]?: T; };

@@ -13,8 +13,8 @@
 //     (or written as the literal string by hand), is the platform analog of
 //     `typeof(T)`.
 
-import type { Token } from "@rhombus-std/primitives";
-import type { IHybridCacheSerializer } from "./IHybridCacheSerializer";
+import type { Token } from '@rhombus-std/primitives';
+import type { IHybridCacheSerializer } from './IHybridCacheSerializer';
 
 /** Factory provider for per-type {@link IHybridCacheSerializer} instances. */
 export interface IHybridCacheSerializerFactory {

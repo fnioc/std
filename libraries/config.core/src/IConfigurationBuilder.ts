@@ -1,8 +1,8 @@
 // The `IConfigurationBuilder` interface -- mirrors MECA's
 // `IConfigurationBuilder.cs` one-type-per-file layout (see docs/decisions.md #46).
 
-import type { IConfigurationRoot } from "./IConfigurationRoot";
-import type { IConfigurationSource } from "./IConfigurationSource";
+import type { IConfigurationRoot } from './IConfigurationRoot';
+import type { IConfigurationSource } from './IConfigurationSource';
 
 /** Represents a type used to build application configuration. */
 export interface IConfigurationBuilder {

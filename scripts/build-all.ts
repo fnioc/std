@@ -18,9 +18,9 @@
 // tier's packages have no ordering between them and build in parallel (one
 // `bun --filter` invocation per tier).
 
-import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawnSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 interface Manifest {
   readonly name: string;
@@ -37,16 +37,16 @@ interface Package {
   readonly deps: readonly string[];
 }
 
-const ROOT = join(import.meta.dir, "..");
+const ROOT = join(import.meta.dir, '..');
 // The workspace groups from the root package.json `workspaces` globs.
-const GROUPS = ["libraries", "examples", "tests"];
+const GROUPS = ['libraries', 'examples', 'tests'];
 
 /** Yields the workspace-protocol dependency names across every dependency kind. */
 function* workspaceDeps(manifest: Manifest): Generator<string> {
   const fields = [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies];
   for (const field of fields) {
     for (const [name, spec] of Object.entries(field ?? {})) {
-      if (String(spec).startsWith("workspace:")) {
+      if (String(spec).startsWith('workspace:')) {
         yield name;
       }
     }
@@ -66,7 +66,7 @@ function discoverPackages(): Map<string, Package> {
     for (const entry of entries) {
       let manifest: Manifest;
       try {
-        manifest = JSON.parse(readFileSync(join(ROOT, group, entry, "package.json"), "utf8")) as Manifest;
+        manifest = JSON.parse(readFileSync(join(ROOT, group, entry, 'package.json'), 'utf8')) as Manifest;
       } catch {
         continue;
       }
@@ -94,7 +94,7 @@ function computeTiers(packages: Map<string, Package>): string[][] {
   while (pending.size) {
     const tier = [...pending].filter(([, deps]) => !deps.size).map(([name]) => name);
     if (!tier.length) {
-      throw new Error(`build-all: dependency cycle among ${[...pending.keys()].join(", ")}`);
+      throw new Error(`build-all: dependency cycle among ${[...pending.keys()].join(', ')}`);
     }
     for (const name of tier) {
       pending.delete(name);
@@ -117,9 +117,9 @@ for (const tier of tiers) {
   if (!toBuild.length) {
     continue;
   }
-  console.log(`\n▶ build tier: ${toBuild.join(", ")}`);
-  const filters = toBuild.flatMap((name) => ["--filter", name]);
-  const result = spawnSync("bun", [...filters, "build"], { cwd: ROOT, stdio: "inherit" });
+  console.log(`\n▶ build tier: ${toBuild.join(', ')}`);
+  const filters = toBuild.flatMap((name) => ['--filter', name]);
+  const result = spawnSync('bun', [...filters, 'build'], { cwd: ROOT, stdio: 'inherit' });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }

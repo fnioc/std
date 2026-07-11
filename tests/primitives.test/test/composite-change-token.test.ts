@@ -3,9 +3,9 @@
 // and callbacks fire exactly once per composite (the one-shot latch), no
 // matter how many inner tokens fire afterwards.
 
-import { CompositeChangeToken } from "@rhombus-std/primitives/internal/CompositeChangeToken";
-import type { IChangeToken } from "@rhombus-std/primitives/internal/IChangeToken";
-import { describe, expect, test } from "bun:test";
+import { CompositeChangeToken } from '@rhombus-std/primitives/internal/CompositeChangeToken';
+import type { IChangeToken } from '@rhombus-std/primitives/internal/IChangeToken';
+import { describe, expect, test } from 'bun:test';
 
 // A minimal, mutable IChangeToken stub -- fires every registered callback
 // once, then sets hasChanged, matching the "hasChanged MUST be set before
@@ -58,8 +58,8 @@ class PollOnlyChangeToken implements IChangeToken {
   }
 }
 
-describe("CompositeChangeToken", () => {
-  test("hasChanged is true when any inner token has changed", () => {
+describe('CompositeChangeToken', () => {
+  test('hasChanged is true when any inner token has changed', () => {
     const first = new TestChangeToken();
     const second = new TestChangeToken();
     const composite = new CompositeChangeToken([first, second]);
@@ -70,7 +70,7 @@ describe("CompositeChangeToken", () => {
     expect(composite.hasChanged).toBe(true);
   });
 
-  test("activeChangeCallbacks is true when at least one inner token raises callbacks", () => {
+  test('activeChangeCallbacks is true when at least one inner token raises callbacks', () => {
     const active = new TestChangeToken();
     const passive = new PollOnlyChangeToken();
 
@@ -79,7 +79,7 @@ describe("CompositeChangeToken", () => {
     expect(new CompositeChangeToken([]).activeChangeCallbacks).toBe(false);
   });
 
-  test("a callback fires when any inner token fires, and only once per composite", () => {
+  test('a callback fires when any inner token fires, and only once per composite', () => {
     const first = new TestChangeToken();
     const second = new TestChangeToken();
     const composite = new CompositeChangeToken([first, second]);
@@ -101,20 +101,20 @@ describe("CompositeChangeToken", () => {
     expect(calls).toBe(1);
   });
 
-  test("passes state through to the callback", () => {
+  test('passes state through to the callback', () => {
     const inner = new TestChangeToken();
     const composite = new CompositeChangeToken([inner]);
 
     let seen: unknown;
     composite.registerChangeCallback((state) => {
       seen = state;
-    }, "hello");
+    }, 'hello');
 
     inner.fire();
-    expect(seen).toBe("hello");
+    expect(seen).toBe('hello');
   });
 
-  test("registering when an inner token has already changed fires synchronously", () => {
+  test('registering when an inner token has already changed fires synchronously', () => {
     const changed = new TestChangeToken();
     changed.hasChanged = true;
     const composite = new CompositeChangeToken([new TestChangeToken(), changed]);
@@ -128,7 +128,7 @@ describe("CompositeChangeToken", () => {
     expect(composite.hasChanged).toBe(true);
   });
 
-  test("polling hasChanged on a poll-only inner change fires registered callbacks", () => {
+  test('polling hasChanged on a poll-only inner change fires registered callbacks', () => {
     const active = new TestChangeToken();
     const passive = new PollOnlyChangeToken();
     const composite = new CompositeChangeToken([active, passive]);
@@ -146,7 +146,7 @@ describe("CompositeChangeToken", () => {
     expect(calls).toBe(1);
   });
 
-  test("a disposed callback registration does not fire", () => {
+  test('a disposed callback registration does not fire', () => {
     const inner = new TestChangeToken();
     const composite = new CompositeChangeToken([inner]);
 
@@ -160,7 +160,7 @@ describe("CompositeChangeToken", () => {
     expect(calls).toBe(0);
   });
 
-  test("callbacks are not registered on poll-only inner tokens", () => {
+  test('callbacks are not registered on poll-only inner tokens', () => {
     const active = new TestChangeToken();
     const passive = new PollOnlyChangeToken();
     let passiveRegistrations = 0;
@@ -182,7 +182,7 @@ describe("CompositeChangeToken", () => {
     expect(active.registeredCallbackCount).toBe(1);
   });
 
-  test("exposes the composed tokens", () => {
+  test('exposes the composed tokens', () => {
     const tokens = [new TestChangeToken(), new PollOnlyChangeToken()];
     const composite = new CompositeChangeToken(tokens);
 

@@ -2,11 +2,11 @@
 // `Host` class. Convenience factory methods that hand back a builder with the
 // pre-configured defaults already applied.
 
-import type { IHostBuilder } from "@rhombus-std/hosting.core";
-import { HostingHostBuilderExtensions } from "./builder-augmentations";
-import { HostApplicationBuilder } from "./HostApplicationBuilder";
-import { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
-import { HostBuilder } from "./HostBuilder";
+import type { IHostBuilder } from '@rhombus-std/hosting.core';
+import { HostingHostBuilderExtensions } from './builder-augmentations';
+import { HostApplicationBuilder } from './HostApplicationBuilder';
+import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
+import { HostBuilder } from './HostBuilder';
 
 /** Convenience factories for creating pre-configured builders. */
 export const Host = {

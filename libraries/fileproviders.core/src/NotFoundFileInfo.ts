@@ -6,8 +6,8 @@
 // `[DoesNotReturn] CreateReadStream` that throws FileNotFoundException maps to
 // a plain `throw new Error(...)`.
 
-import type { ReadableStream } from "@rhombus-std/primitives";
-import type { IFileInfo } from "./IFileInfo.js";
+import type { ReadableStream } from '@rhombus-std/primitives';
+import type { IFileInfo } from './IFileInfo.js';
 
 /**
  * Represents a nonexistent file.

@@ -14,7 +14,7 @@
 // first, so e.g. `mm` never splits into two `m` passthroughs.
 
 function pad(value: number, width: number): string {
-  return String(value).padStart(width, "0");
+  return String(value).padStart(width, '0');
 }
 
 interface DateParts {
@@ -57,42 +57,42 @@ function getParts(date: Date, utc: boolean): DateParts {
 
 function renderToken(token: string, parts: DateParts): string {
   switch (token) {
-    case "yyyy": {
+    case 'yyyy': {
       return pad(parts.year, 4);
     }
-    case "MM": {
+    case 'MM': {
       return pad(parts.month, 2);
     }
-    case "dd": {
+    case 'dd': {
       return pad(parts.day, 2);
     }
-    case "HH": {
+    case 'HH': {
       return pad(parts.hours, 2);
     }
-    case "hh": {
+    case 'hh': {
       const twelve = parts.hours % 12;
       return pad(twelve === 0 ? 12 : twelve, 2);
     }
-    case "mm": {
+    case 'mm': {
       return pad(parts.minutes, 2);
     }
-    case "ss": {
+    case 'ss': {
       return pad(parts.seconds, 2);
     }
-    case "fff": {
+    case 'fff': {
       return pad(parts.milliseconds, 3);
     }
-    case "ff": {
+    case 'ff': {
       return pad(Math.floor(parts.milliseconds / 10), 2);
     }
-    case "f": {
+    case 'f': {
       return String(Math.floor(parts.milliseconds / 100));
     }
-    case "tt": {
-      return parts.hours < 12 ? "AM" : "PM";
+    case 'tt': {
+      return parts.hours < 12 ? 'AM' : 'PM';
     }
-    case "zzz": {
-      const sign = parts.offsetMinutes < 0 ? "-" : "+";
+    case 'zzz': {
+      const sign = parts.offsetMinutes < 0 ? '-' : '+';
       const abs = Math.abs(parts.offsetMinutes);
       return `${sign}${pad(Math.floor(abs / 60), 2)}:${pad(abs % 60, 2)}`;
     }

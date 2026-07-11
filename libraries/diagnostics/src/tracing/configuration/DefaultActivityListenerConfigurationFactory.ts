@@ -8,10 +8,10 @@
 // the reference; exported here so a plugin-less consumer can construct one over
 // hand-registered markers.
 
-import { ConfigurationBuilder, type IConfiguration } from "@rhombus-std/config";
+import { ConfigurationBuilder, type IConfiguration } from '@rhombus-std/config';
 
-import { ActivityListenerConfigurationFactory } from "./ActivityListenerConfigurationFactory";
-import type { TracingConfiguration } from "./TracingConfiguration";
+import { ActivityListenerConfigurationFactory } from './ActivityListenerConfigurationFactory';
+import type { TracingConfiguration } from './TracingConfiguration';
 
 /** The concrete {@link ActivityListenerConfigurationFactory}. */
 export class DefaultActivityListenerConfigurationFactory extends ActivityListenerConfigurationFactory {

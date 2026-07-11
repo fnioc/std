@@ -11,8 +11,8 @@
 // The engine still sees exactly `registration.signatures` — pure authoring sugar
 // over the inline third-argument form.
 
-import { ServiceManifestClass } from "@rhombus-std/di";
-import type { DepSlot } from "@rhombus-std/di.core";
+import { ServiceManifestClass } from '@rhombus-std/di';
+import type { DepSlot } from '@rhombus-std/di.core';
 
 type Signatures = readonly (readonly DepSlot[])[];
 
@@ -48,15 +48,15 @@ export function forCtor(ctor: object): ForCtorBuilder {
 // channel when the caller passed only `(token, target)`. A no-op when the target
 // has no stash or a signature was passed explicitly.
 type AddFn = (...args: unknown[]) => unknown;
-function patchThirdArg(method: "add" | "addFactory"): void {
+function patchThirdArg(method: 'add' | 'addFactory'): void {
   const proto = ServiceManifestClass.prototype as unknown as Record<string, AddFn>;
   const original = proto[method]!;
   proto[method] = function(this: unknown, ...args: unknown[]): unknown {
     const target = args[1];
     if (
       args.length === 2
-      && typeof args[0] === "string"
-      && (typeof target === "object" || typeof target === "function")
+      && typeof args[0] === 'string'
+      && (typeof target === 'object' || typeof target === 'function')
       && target !== null
     ) {
       const stashed = testStore.get(target);
@@ -67,5 +67,5 @@ function patchThirdArg(method: "add" | "addFactory"): void {
     return original.apply(this, args);
   };
 }
-patchThirdArg("add");
-patchThirdArg("addFactory");
+patchThirdArg('add');
+patchThirdArg('addFactory');

@@ -19,11 +19,11 @@
 // the tokens it emits are byte-identical to the main transformer's, and it emits
 // only di registrations. It never imports the `@rhombus-std/di` RUNTIME.
 
-import { createTokenContext, type TokenContext, type TokenContextOptions } from "@rhombus-std/primitives.transformer";
-import ts from "typescript";
-import { DiagnosticCode, type DiagnosticSink, error } from "./diagnostics.js";
-import { isAddOptionsSugarCall } from "./match.js";
-import { optionTokensFor, resolveOptionsBase } from "./option-tokens.js";
+import { createTokenContext, type TokenContext, type TokenContextOptions } from '@rhombus-std/primitives.transformer';
+import ts from 'typescript';
+import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { isAddOptionsSugarCall } from './match.js';
+import { optionTokensFor, resolveOptionsBase } from './option-tokens.js';
 
 /**
  * Create the `ts.TransformerFactory` that rewrites a SourceFile. Exposed so the
@@ -75,9 +75,9 @@ function rewriteAddOptions(
         sourceFile,
         typeArg,
         DiagnosticCode.UnlowerableAddOptions,
-        "cannot lower addOptions<T>(): the @rhombus-std/options `Options` type is "
-          + "not in the program, so the Options<T> wrapper token cannot be derived. "
-          + "Ensure @rhombus-std/options is a dependency.",
+        'cannot lower addOptions<T>(): the @rhombus-std/options `Options` type is '
+          + 'not in the program, so the Options<T> wrapper token cannot be derived. '
+          + 'Ensure @rhombus-std/options is a dependency.',
       ),
     );
     return call;
@@ -90,8 +90,8 @@ function rewriteAddOptions(
         sourceFile,
         typeArg,
         DiagnosticCode.UnlowerableAddOptions,
-        "cannot lower addOptions<T>(): no token can be derived for T — name the "
-          + "options type (an anonymous inline object type has no stable token).",
+        'cannot lower addOptions<T>(): no token can be derived for T — name the '
+          + 'options type (an anonymous inline object type has no stable token).',
       ),
     );
     return call;
@@ -138,7 +138,7 @@ export function transform(
   program: ts.Program,
   _config: unknown,
   extras: ProgramTransformerExtras,
-): { before: ts.TransformerFactory<ts.SourceFile> } {
+): { before: ts.TransformerFactory<ts.SourceFile>; } {
   const sink: DiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };

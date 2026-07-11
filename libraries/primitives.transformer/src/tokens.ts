@@ -35,8 +35,8 @@
 // typed `Promise<IConfig>` depends on the token `Promise<...IConfig>`, and the
 // async registration is keyed at that same token.
 
-import type { Func } from "@rhombus-toolkit/func";
-import ts from "typescript";
+import type { Func } from '@rhombus-toolkit/func';
+import ts from 'typescript';
 
 // The unique symbol key name that the Inject brand uses. We look for a property
 // named exactly "TOK" on the intersection — the brand is declared as:
@@ -49,21 +49,21 @@ import ts from "typescript";
 //
 // A simpler approach: look for a property whose key is a unique symbol AND whose
 // type is a string literal. That is unique enough to be the brand in practice.
-const INJECT_TOK_PROPERTY = "TOK";
+const INJECT_TOK_PROPERTY = 'TOK';
 
 // The unique symbol key name of the `Hole<N, C>` brand (open generics) —
 // detected exactly like the Inject brand above, except the extracted literal is
 // the NUMBER `N` rather than a token string:
 //   declare const HOLE: unique symbol;
 //   type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
-const HOLE_BRAND_PROPERTY = "HOLE";
+const HOLE_BRAND_PROPERTY = 'HOLE';
 
 // The default-lib collection bases whose wrapper token keeps ONLY its element
 // type argument — the closed-generic form `Array<elem>` / `Iterable<elem>` the
 // resolution engine aggregates on. A default-lib `Array` / `Iterable` tokenizes
 // as its bare name (no `source:` prefix), so these bare strings only match the
 // intrinsic collection types, never a user-declared same-named type.
-const COLLECTION_TOKEN_BASES = new Set<string>(["Array", "Iterable"]);
+const COLLECTION_TOKEN_BASES = new Set<string>(['Array', 'Iterable']);
 
 export interface TokenContext {
   readonly checker: ts.TypeChecker;
@@ -105,7 +105,7 @@ export interface TokenContext {
  * emitting a hard diagnostic (UnderivableToken). The `hole` variant has been
  * removed; there is no silent fallback.
  */
-export type TokenResult = { readonly kind: "resolvable"; readonly token: string };
+export type TokenResult = { readonly kind: 'resolvable'; readonly token: string; };
 
 /**
  * The bare token for an INTRINSIC type — `string`, `number`, `boolean`,
@@ -133,15 +133,17 @@ export function intrinsicToken(type: ts.Type): string | undefined {
   // value 67359327). The presence of a string `intrinsicName` IS the intrinsic
   // marker — every intrinsic type carries it, no non-intrinsic does — so we read
   // that directly rather than depend on the private flag.
-  if (type.flags & ts.TypeFlags.BooleanLiteral) { return undefined; }
+  if (type.flags & ts.TypeFlags.BooleanLiteral) {
+    return undefined;
+  }
   if (
     type.flags
     & (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void)
   ) {
     return undefined;
   }
-  const name = (type as unknown as { intrinsicName?: unknown }).intrinsicName;
-  return typeof name === "string" && name.length ? name : undefined;
+  const name = (type as unknown as { intrinsicName?: unknown; }).intrinsicName;
+  return typeof name === 'string' && name.length ? name : undefined;
 }
 
 /**
@@ -163,7 +165,7 @@ export function tokenForType(
   failure?: DeriveFailure,
 ): TokenResult | undefined {
   const token = deriveToken(type, ctx, failure);
-  return token === undefined ? undefined : { kind: "resolvable", token };
+  return token === undefined ? undefined : { kind: 'resolvable', token };
 }
 
 /**
@@ -193,34 +195,50 @@ function brandLiteralFor<T>(
     const decls = prop.getDeclarations();
     // We need the property to be declared as a computed-symbol property. The
     // unique symbol shows up as a symbol-keyed property.
-    if (!decls || !decls.length) { continue; }
+    if (!decls || !decls.length) {
+      continue;
+    }
 
     // Check if the property name is our unique symbol by looking for a property
     // whose valueDeclaration is a PropertySignature with a computed name referencing
     // a const declaration named `propName`.
     const isBrandProp = decls.some((decl) => {
-      if (!ts.isPropertySignature(decl)) { return false; }
+      if (!ts.isPropertySignature(decl)) {
+        return false;
+      }
       const name = decl.name;
-      if (!ts.isComputedPropertyName(name)) { return false; }
+      if (!ts.isComputedPropertyName(name)) {
+        return false;
+      }
       const expr = name.expression;
-      if (!ts.isIdentifier(expr)) { return false; }
+      if (!ts.isIdentifier(expr)) {
+        return false;
+      }
       return expr.text === propName;
     });
-    if (!isBrandProp) { continue; }
+    if (!isBrandProp) {
+      continue;
+    }
 
     const propType = checker.getTypeOfSymbol(prop);
     const literal = extractLiteral(propType);
-    if (literal !== undefined) { return literal; }
+    if (literal !== undefined) {
+      return literal;
+    }
   }
   return undefined;
 }
 
 /** Pull a string-literal token `K` out of `propType`, or `K | undefined`. */
 function extractStringLiteral(propType: ts.Type): string | undefined {
-  if (propType.isStringLiteral()) { return propType.value; }
+  if (propType.isStringLiteral()) {
+    return propType.value;
+  }
   if (propType.isUnion()) {
     for (const member of propType.types) {
-      if (member.isStringLiteral()) { return member.value; }
+      if (member.isStringLiteral()) {
+        return member.value;
+      }
     }
   }
   return undefined;
@@ -228,10 +246,14 @@ function extractStringLiteral(propType: ts.Type): string | undefined {
 
 /** Pull a number-literal token `N` out of `propType`, or `N | undefined`. */
 function extractNumberLiteral(propType: ts.Type): number | undefined {
-  if (propType.isNumberLiteral()) { return propType.value; }
+  if (propType.isNumberLiteral()) {
+    return propType.value;
+  }
   if (propType.isUnion()) {
     for (const member of propType.types) {
-      if (member.isNumberLiteral()) { return member.value; }
+      if (member.isNumberLiteral()) {
+        return member.value;
+      }
     }
   }
   return undefined;
@@ -264,9 +286,13 @@ export function injectTokenFor(
   if (type.isUnion()) {
     for (const member of type.types) {
       const isNullish = member.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null);
-      if (isNullish) { continue; }
+      if (isNullish) {
+        continue;
+      }
       const result = injectTokenFor(member, checker);
-      if (result !== undefined) { return result; }
+      if (result !== undefined) {
+        return result;
+      }
     }
     return undefined;
   }
@@ -342,14 +368,18 @@ export function deriveToken(
   // literal-level discrimination (`nameof<"a">()`, `add<1 | 2>(...)`,
   // `resolve<"a" | "b">()`).
   const literal = literalToken(type);
-  if (literal !== undefined) { return literal; }
+  if (literal !== undefined) {
+    return literal;
+  }
 
   // Rule 1: every intrinsic (string / number / boolean / symbol / bigint / any /
   // unknown / void / never) tokenizes by its name. Wide `boolean` lands here as
   // `"boolean"` (literalToken excludes it). Intrinsics carry no symbol, so this
   // must precede the symbol lookup below.
   const intrinsic = intrinsicToken(type);
-  if (intrinsic !== undefined) { return intrinsic; }
+  if (intrinsic !== undefined) {
+    return intrinsic;
+  }
 
   // A Hole-branded placeholder tokenizes as `$N`. Must run BEFORE the
   // alias/symbol derivation — an aliased hole (`type H2 = Hole<2, Entity>`)
@@ -357,7 +387,9 @@ export function deriveToken(
   // unconstrained form (`Hole<1>`) is an anonymous `__type` that would
   // otherwise bail as underivable.
   const hole = holeNumberFor(type, ctx.checker);
-  if (hole !== undefined) { return `$${hole}`; }
+  if (hole !== undefined) {
+    return `$${hole}`;
+  }
 
   // An unbound type parameter has no token — it names a compile-time binding,
   // not a type identity. Report it through the failure channel so callers can
@@ -365,18 +397,26 @@ export function deriveToken(
   // via the flag (not `isTypeParameter()`) — the predicate's negation would
   // narrow `type` to `never` for the rest of the function.
   if (type.flags & ts.TypeFlags.TypeParameter) {
-    if (failure) { failure.unboundTypeParameter = type; }
+    if (failure) {
+      failure.unboundTypeParameter = type;
+    }
     return undefined;
   }
 
   const symbol = type.aliasSymbol ?? type.getSymbol();
-  if (!symbol) { return undefined; }
+  if (!symbol) {
+    return undefined;
+  }
 
   const name = symbol.getName();
-  if (!name || name === "__type") { return undefined; }
+  if (!name || name === '__type') {
+    return undefined;
+  }
 
   const declaration = primaryDeclaration(symbol);
-  if (!declaration) { return undefined; }
+  if (!declaration) {
+    return undefined;
+  }
 
   const sourceFile = declaration.getSourceFile();
   const base = baseTokenFor(symbol, sourceFile, ctx);
@@ -385,7 +425,9 @@ export function deriveToken(
   // recursively: `base<arg1,arg2>`. Non-generic types return the bare base —
   // exactly the pre-open-generics derivation.
   const typeArguments = genericTypeArguments(type, ctx.checker);
-  if (!typeArguments) { return base; }
+  if (!typeArguments) {
+    return base;
+  }
 
   // Collection wrappers derive a SINGLE-element token: `Array<elem>` /
   // `Iterable<elem>` — the convention the resolution engine aggregates on. Both
@@ -401,10 +443,12 @@ export function deriveToken(
   const argTokens: string[] = [];
   for (const arg of effectiveArgs) {
     const argToken = deriveToken(arg, ctx, failure);
-    if (argToken === undefined) { return undefined; }
+    if (argToken === undefined) {
+      return undefined;
+    }
     argTokens.push(argToken);
   }
-  return `${base}<${argTokens.join(",")}>`;
+  return `${base}<${argTokens.join(',')}>`;
 }
 
 /**
@@ -443,7 +487,9 @@ function baseTokenFor(
   sourceFile: ts.SourceFile,
   ctx: TokenContext,
 ): string {
-  if (ctx.isDefaultLib?.(sourceFile)) { return symbol.getName(); }
+  if (ctx.isDefaultLib?.(sourceFile)) {
+    return symbol.getName();
+  }
 
   const exportName = qualifiedExportName(symbol);
   const declPath = sourceFile.fileName;
@@ -451,7 +497,9 @@ function baseTokenFor(
   if (pkg) {
     // Tier 1 — package-public: the exact import specifier from the export graph.
     const spec = publicImportSpecifier(pkg, symbol, ctx);
-    if (spec !== undefined) { return `${spec}:${exportName}`; }
+    if (spec !== undefined) {
+      return `${spec}:${exportName}`;
+    }
     // Tier 2 — app-internal: `packageName/<decl path rel. to package root>`.
     return packagePrivateToken(pkg, declPath, exportName);
   }
@@ -495,7 +543,7 @@ function topLevelAncestor(symbol: ts.Symbol): ts.Symbol {
 
 /** `symbol.parent` — a private field not in the public typings. */
 function symbolParent(symbol: ts.Symbol): ts.Symbol | undefined {
-  return (symbol as ts.Symbol & { parent?: ts.Symbol }).parent;
+  return (symbol as ts.Symbol & { parent?: ts.Symbol; }).parent;
 }
 
 /** True when `symbol` is a source-file module (its declaration IS a SourceFile). */
@@ -535,7 +583,9 @@ function genericTypeArguments(
 ): readonly ts.Type[] | undefined {
   if (type.aliasSymbol) {
     const args = type.aliasTypeArguments;
-    if (!args?.length) { return undefined; }
+    if (!args?.length) {
+      return undefined;
+    }
     return aliasArgsAreDeclaredDefaults(type.aliasSymbol, args, checker) ? undefined : args;
   }
   if (
@@ -563,7 +613,9 @@ function aliasArgsAreDeclaredDefaults(
 ): boolean {
   const declaration = aliasSymbol.getDeclarations()?.find(ts.isTypeAliasDeclaration);
   const parameters = declaration?.typeParameters;
-  if (!parameters || parameters.length !== args.length) { return false; }
+  if (!parameters || parameters.length !== args.length) {
+    return false;
+  }
   return args.every((arg, i) => {
     const defaultNode = parameters[i]!.default;
     return defaultNode !== undefined && checker.getTypeFromTypeNode(defaultNode) === arg;
@@ -582,14 +634,18 @@ function aliasArgsAreDeclaredDefaults(
  * value and return `undefined` (they fall through to symbol-based derivation).
  */
 function literalText(type: ts.Type): string | undefined {
-  if (type.isStringLiteral()) { return JSON.stringify(type.value); }
-  if (type.isNumberLiteral()) { return String(type.value); }
+  if (type.isStringLiteral()) {
+    return JSON.stringify(type.value);
+  }
+  if (type.isNumberLiteral()) {
+    return String(type.value);
+  }
   if (type.flags & ts.TypeFlags.BigIntLiteral) {
     const value = (type as ts.BigIntLiteralType).value;
-    return `${value.negative ? "-" : ""}${value.base10Value}n`;
+    return `${value.negative ? '-' : ''}${value.base10Value}n`;
   }
   if (type.flags & ts.TypeFlags.BooleanLiteral) {
-    return (type as unknown as { intrinsicName: string }).intrinsicName;
+    return (type as unknown as { intrinsicName: string; }).intrinsicName;
   }
   return undefined;
 }
@@ -620,24 +676,34 @@ export interface LiteralResult {
  * `never` is deliberately NOT singular here — it stays a Rule-1 token.
  */
 export function singletonValue(type: ts.Type): LiteralResult | undefined {
-  if (type.isUnion()) { return undefined; }
-  if (type.flags & ts.TypeFlags.Boolean) { return undefined; }
-  if (type.isStringLiteral()) { return { value: type.value }; }
-  if (type.isNumberLiteral()) { return { value: type.value }; }
+  if (type.isUnion()) {
+    return undefined;
+  }
+  if (type.flags & ts.TypeFlags.Boolean) {
+    return undefined;
+  }
+  if (type.isStringLiteral()) {
+    return { value: type.value };
+  }
+  if (type.isNumberLiteral()) {
+    return { value: type.value };
+  }
   if (type.flags & ts.TypeFlags.BigIntLiteral) {
     const value = (type as ts.BigIntLiteralType).value;
-    return { value: BigInt(`${value.negative ? "-" : ""}${value.base10Value}`) };
+    return { value: BigInt(`${value.negative ? '-' : ''}${value.base10Value}`) };
   }
   if (type.flags & ts.TypeFlags.BooleanLiteral) {
     return {
-      value: (type as unknown as { intrinsicName: string }).intrinsicName === "true",
+      value: (type as unknown as { intrinsicName: string; }).intrinsicName === 'true',
     };
   }
   // Singleton non-literal types: void / undefined → undefined; null → null.
   if (type.flags & (ts.TypeFlags.Void | ts.TypeFlags.Undefined)) {
     return { value: undefined };
   }
-  if (type.flags & ts.TypeFlags.Null) { return { value: null }; }
+  if (type.flags & ts.TypeFlags.Null) {
+    return { value: null };
+  }
   return undefined;
 }
 
@@ -657,17 +723,23 @@ export function singletonValue(type: ts.Type): LiteralResult | undefined {
  * `BooleanLiteral`, not the wide `Boolean` flag).
  */
 function literalToken(type: ts.Type): string | undefined {
-  if (type.flags & ts.TypeFlags.Boolean) { return undefined; }
+  if (type.flags & ts.TypeFlags.Boolean) {
+    return undefined;
+  }
   const single = literalText(type);
-  if (single !== undefined) { return single; }
+  if (single !== undefined) {
+    return single;
+  }
   if (type.isUnion()) {
     const parts: string[] = [];
     for (const member of type.types) {
       const text = literalText(member);
-      if (text === undefined) { return undefined; }
+      if (text === undefined) {
+        return undefined;
+      }
       parts.push(text);
     }
-    return parts.length ? parts.sort().join(" | ") : undefined;
+    return parts.length ? parts.sort().join(' | ') : undefined;
   }
   return undefined;
 }
@@ -682,13 +754,17 @@ function literalToken(type: ts.Type): string | undefined {
  * as the `| undefined` member is present.
  */
 export function literalUnionTokenForOptional(type: ts.Type): string | undefined {
-  if (!type.isUnion()) { return undefined; }
+  if (!type.isUnion()) {
+    return undefined;
+  }
   const nonNullishMembers = type.types.filter(
     (t) =>
       !(t.flags
         & (ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void)),
   );
-  if (nonNullishMembers.length < 2) { return undefined; }
+  if (nonNullishMembers.length < 2) {
+    return undefined;
+  }
   // Wide `boolean` is `false | true` internally. After stripping `| undefined`
   // from `boolean | undefined`, the survivors are both BooleanLiterals — which
   // together form the wide boolean scalar. Fall through so `intrinsicToken`
@@ -699,10 +775,12 @@ export function literalUnionTokenForOptional(type: ts.Type): string | undefined 
   const parts: string[] = [];
   for (const member of nonNullishMembers) {
     const text = literalText(member);
-    if (text === undefined) { return undefined; }
+    if (text === undefined) {
+      return undefined;
+    }
     parts.push(text);
   }
-  return parts.sort().join(" | ");
+  return parts.sort().join(' | ');
 }
 
 /**
@@ -714,15 +792,21 @@ export function literalUnionTokenForOptional(type: ts.Type): string | undefined 
  * returns false — it is a scalar token, handled separately.
  */
 export function isPureLiteralUnion(type: ts.Type): boolean {
-  if (type.flags & ts.TypeFlags.Boolean) { return false; }
-  if (!type.isUnion()) { return false; }
+  if (type.flags & ts.TypeFlags.Boolean) {
+    return false;
+  }
+  if (!type.isUnion()) {
+    return false;
+  }
   return type.types.every((member) => literalText(member) !== undefined);
 }
 
 /** The declaration we anchor a token on — prefer interface/class/type-alias. */
 function primaryDeclaration(symbol: ts.Symbol): ts.Declaration | undefined {
   const decls = symbol.getDeclarations();
-  if (!decls || !decls.length) { return undefined; }
+  if (!decls || !decls.length) {
+    return undefined;
+  }
   const preferred = decls.find(
     (d) =>
       ts.isInterfaceDeclaration(d)
@@ -777,7 +861,9 @@ function nearestPackage(
   for (;;) {
     const cached = cache.get(dir);
     if (cached !== undefined) {
-      if (cached) { return cached; }
+      if (cached) {
+        return cached;
+      }
     } else {
       const pkgPath = `${dir}/package.json`;
       const text = read(pkgPath);
@@ -785,7 +871,7 @@ function nearestPackage(
       if (text !== undefined) {
         try {
           const json = JSON.parse(text) as PackageJson;
-          if (typeof json.name === "string" && json.name.length) {
+          if (typeof json.name === 'string' && json.name.length) {
             resolved = { name: json.name, dir, json };
           }
         } catch {
@@ -793,10 +879,14 @@ function nearestPackage(
         }
       }
       cache.set(dir, resolved);
-      if (resolved) { return resolved; }
+      if (resolved) {
+        return resolved;
+      }
     }
     const parent = dirname(dir);
-    if (parent === dir) { return undefined; }
+    if (parent === dir) {
+      return undefined;
+    }
     dir = parent;
   }
 }
@@ -824,19 +914,27 @@ function publicImportSpecifier(
   symbol: ts.Symbol,
   ctx: TokenContext,
 ): string | undefined {
-  if (!ctx.sourceFileAtStem) { return undefined; }
+  if (!ctx.sourceFileAtStem) {
+    return undefined;
+  }
   const target = topLevelAncestor(symbol);
   const targetDecls = new Set(target.getDeclarations() ?? []);
-  if (!targetDecls.size) { return undefined; }
+  if (!targetDecls.size) {
+    return undefined;
+  }
   const declFile = primaryDeclaration(target)?.getSourceFile();
 
-  const matches: { subpath: string; targetsDeclFile: boolean }[] = [];
+  const matches: { subpath: string; targetsDeclFile: boolean; }[] = [];
   for (const entry of collectExportEntries(pkg)) {
     const absStem = stripExt(`${pkg.dir}/${entry.targetRel}`);
     const sf = ctx.sourceFileAtStem(absStem);
-    if (!sf) { continue; }
+    if (!sf) {
+      continue;
+    }
     const mod = ctx.checker.getSymbolAtLocation(sf);
-    if (!mod) { continue; }
+    if (!mod) {
+      continue;
+    }
     for (const exp of ctx.checker.getExportsOfModule(mod)) {
       const resolved = exp.flags & ts.SymbolFlags.Alias
         ? ctx.checker.getAliasedSymbol(exp)
@@ -848,7 +946,9 @@ function publicImportSpecifier(
       }
     }
   }
-  if (!matches.length) { return undefined; }
+  if (!matches.length) {
+    return undefined;
+  }
 
   matches.sort((a, b) => {
     if (a.targetsDeclFile !== b.targetsDeclFile) {
@@ -860,7 +960,7 @@ function publicImportSpecifier(
     return a.subpath < b.subpath ? -1 : a.subpath > b.subpath ? 1 : 0;
   });
   const best = matches[0]!;
-  return best.subpath === "" ? pkg.name : `${pkg.name}/${best.subpath}`;
+  return best.subpath === '' ? pkg.name : `${pkg.name}/${best.subpath}`;
 }
 
 interface ExportEntry {
@@ -882,25 +982,27 @@ function collectExportEntries(pkg: PackageInfo): ExportEntry[] {
 
   const pushTarget = (subKey: string, target: unknown): void => {
     const targets = resolveConditionTargets(target);
-    const subpath = subKey === "." ? "" : subKey.replace(/^\.\/?/, "");
+    const subpath = subKey === '.' ? '' : subKey.replace(/^\.\/?/, '');
     for (const t of targets) {
-      out.push({ subpath, targetRel: t.replace(/^\.\/?/, "") });
+      out.push({ subpath, targetRel: t.replace(/^\.\/?/, '') });
     }
   };
 
   if (json.exports !== undefined && json.exports !== null) {
     const exp = json.exports;
-    if (typeof exp === "string") {
-      pushTarget(".", exp);
-    } else if (typeof exp === "object") {
+    if (typeof exp === 'string') {
+      pushTarget('.', exp);
+    } else if (typeof exp === 'object') {
       const obj = exp as Record<string, unknown>;
       const keys = Object.keys(obj);
-      const looksLikeSubpathMap = keys.some((k) => k === "." || k.startsWith("./"));
+      const looksLikeSubpathMap = keys.some((k) => k === '.' || k.startsWith('./'));
       if (looksLikeSubpathMap) {
-        for (const key of keys) { pushTarget(key, obj[key]); }
+        for (const key of keys) {
+          pushTarget(key, obj[key]);
+        }
       } else {
         // A bare conditions object at the top level == the root entry.
-        pushTarget(".", obj);
+        pushTarget('.', obj);
       }
     }
   }
@@ -908,28 +1010,33 @@ function collectExportEntries(pkg: PackageInfo): ExportEntry[] {
   // Fallbacks broaden the public surface (a package may ship `main`/`types`
   // without an `exports` map, or alongside a root-only `exports`).
   for (const field of [json.main, json.module, json.types, json.typings]) {
-    if (typeof field === "string" && field.length) {
-      out.push({ subpath: "", targetRel: field.replace(/^\.\/?/, "") });
+    if (typeof field === 'string' && field.length) {
+      out.push({ subpath: '', targetRel: field.replace(/^\.\/?/, '') });
     }
   }
   if (!out.length) {
     // No declared surface at all → treat the conventional `index` as public.
-    out.push({ subpath: "", targetRel: "index" });
+    out.push({ subpath: '', targetRel: 'index' });
   }
   return out;
 }
 
 /** Resolve an exports condition value to its concrete string target(s). */
 function resolveConditionTargets(target: unknown): string[] {
-  if (typeof target === "string") { return [target]; }
-  if (typeof target === "object" && target !== null) {
+  if (typeof target === 'string') {
+    return [target];
+  }
+  if (typeof target === 'object' && target !== null) {
     const obj = target as Record<string, unknown>;
     const out: string[] = [];
     // Prefer the import/types/default channels; collect all string leaves.
-    for (const key of ["types", "import", "module", "default", "require", "node", "bun"]) {
+    for (const key of ['types', 'import', 'module', 'default', 'require', 'node', 'bun']) {
       const v = obj[key];
-      if (typeof v === "string") { out.push(v); }
-      else if (typeof v === "object" && v !== null) { out.push(...resolveConditionTargets(v)); }
+      if (typeof v === 'string') {
+        out.push(v);
+      } else if (typeof v === 'object' && v !== null) {
+        out.push(...resolveConditionTargets(v));
+      }
     }
     return out;
   }
@@ -939,29 +1046,35 @@ function resolveConditionTargets(target: unknown): string[] {
 // ── path helpers (POSIX-normalized; the harness uses `/` virtual paths) ──────
 
 function posixRelative(from: string, to: string): string | undefined {
-  const a = normalize(from).replace(/\/$/, "");
+  const a = normalize(from).replace(/\/$/, '');
   const b = normalize(to);
-  if (b === a) { return ""; }
-  if (b.startsWith(a + "/")) { return b.slice(a.length + 1); }
+  if (b === a) {
+    return '';
+  }
+  if (b.startsWith(a + '/')) {
+    return b.slice(a.length + 1);
+  }
   return undefined;
 }
 
 function normalize(p: string): string {
-  return p.replace(/\\/g, "/");
+  return p.replace(/\\/g, '/');
 }
 
 /** POSIX dirname over a normalized path; returns the input when at the root. */
 function dirname(p: string): string {
-  const n = normalize(p).replace(/\/+$/, "");
-  const idx = n.lastIndexOf("/");
-  if (idx <= 0) { return idx === 0 ? "/" : n; }
+  const n = normalize(p).replace(/\/+$/, '');
+  const idx = n.lastIndexOf('/');
+  if (idx <= 0) {
+    return idx === 0 ? '/' : n;
+  }
   return n.slice(0, idx);
 }
 
 export function stripExt(p: string): string {
   return p
-    .replace(/\.d\.ts$/, "")
-    .replace(/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, "");
+    .replace(/\.d\.ts$/, '')
+    .replace(/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, '');
 }
 
 /**
@@ -975,7 +1088,7 @@ function packagePrivateToken(
   exportName: string,
 ): string {
   const rel = posixRelative(pkg.dir, declPath);
-  const base = stripExt(rel ?? normalize(declPath).replace(/^\/+/, ""));
+  const base = stripExt(rel ?? normalize(declPath).replace(/^\/+/, ''));
   return `${pkg.name}/${base}:${exportName}`;
 }
 
@@ -992,6 +1105,6 @@ function rootlessToken(
   projectRoot: string,
 ): string {
   const rel = posixRelative(projectRoot, declPath);
-  const base = stripExt(rel ?? normalize(declPath).replace(/^\/+/, ""));
+  const base = stripExt(rel ?? normalize(declPath).replace(/^\/+/, ''));
   return `./${base}:${exportName}`;
 }

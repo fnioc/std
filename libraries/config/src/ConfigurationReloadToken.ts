@@ -12,8 +12,8 @@
 // private AbortController -- the structural analog of the reference's
 // AbortController-backed implementation.
 
-import { AbortController, CancellationChangeToken, type IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import { AbortController, CancellationChangeToken, type IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
 export class ConfigurationReloadToken implements IChangeToken {
   readonly #controller = new AbortController();

@@ -8,9 +8,9 @@
 // `Array<...>`-wrapper collection-resolution convention @rhombus-std/options.augmentations
 // uses to aggregate every registration of a slot.
 
-import type { Token } from "@rhombus-std/di.core";
+import type { Token } from '@rhombus-std/di.core';
 
-const NAMESPACE = "@rhombus-std/diagnostics";
+const NAMESPACE = '@rhombus-std/diagnostics';
 
 /** Collection slot: every registered {@link IMetricsListener}. */
 export const METRICS_LISTENER_TOKEN: Token = `${NAMESPACE}/metrics-listener`;

@@ -12,10 +12,10 @@
 // consts' members onto its prototype. The synchronous reference `Start` collapses
 // into the async form -- JS cannot block a thread.
 
-import { type AbortSignal, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { IHost } from "./IHost";
-import type { IHostBuilder } from "./IHostBuilder";
+import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { IHost } from './IHost';
+import type { IHostBuilder } from './IHostBuilder';
 
 // The interface-side merge for this const's member lives HERE, beside the const
 // (rule 0.6). The runtime `HostingHostBuilderExtensions` merges its own members
@@ -32,7 +32,7 @@ import type { IHostBuilder } from "./IHostBuilder";
 // resolves in-repo but breaks published consumers). Every merge site for this
 // interface therefore targets the barrel -- the same all-barrel discipline
 // di.core's `ServiceManifest` and logging.core's `ILoggingBuilder` already use.
-declare module "@rhombus-std/hosting.core" {
+declare module '@rhombus-std/hosting.core' {
   interface IHostBuilder {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
   }

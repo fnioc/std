@@ -14,8 +14,8 @@
 //     `freezeDistributedCacheEntryOptions` precedent). The reference's private
 //     `_dc` memo field becomes the module-scoped WeakMap.
 
-import { DistributedCacheEntryOptions } from "../DistributedCacheEntryOptions";
-import type { HybridCacheEntryFlags } from "./HybridCacheEntryFlags";
+import { DistributedCacheEntryOptions } from '../DistributedCacheEntryOptions';
+import type { HybridCacheEntryFlags } from './HybridCacheEntryFlags';
 
 /**
  * Specifies additional options (for example, expiration) that apply to a

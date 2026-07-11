@@ -21,49 +21,23 @@
 // one's cached instance — when no matching frame encloses the owner, the dep
 // resolves transiently (a fresh instance) instead.
 
-import {
-  closeToken,
-  type DepSlot,
-  type FactoryRef,
-  isFactoryRef,
-  isLiteralRef,
-  isOpenToken,
-  isProviderToken,
-  isTypeArgRef,
-  isUnionSlot,
-  type LiteralRef,
-  type ParsedToken,
-  parseToken,
-  type ServiceProviderOptions,
-  substituteSignatures,
-  type Token,
-  type TypeArgRef,
-  type Union,
-} from "@rhombus-std/di.core";
-import type { Func } from "@rhombus-toolkit/func";
+import { closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken, isProviderToken,
+  isTypeArgRef, isUnionSlot, type LiteralRef, type ParsedToken, parseToken, type ServiceProviderOptions,
+  substituteSignatures, type Token, type TypeArgRef, type Union } from '@rhombus-std/di.core';
+import type { Func } from '@rhombus-toolkit/func';
 
-import {
-  AsyncDisposalRequiredError,
-  AsyncResolutionRequiredError,
-  CircularDependencyError,
-  FactoryTargetError,
-  MissingMetadataError,
-  NoSatisfiableSignatureError,
-  NoSatisfiableUnionError,
-  OpenTokenResolutionError,
-  RegistrationValidationError,
-  ScopeValidationError,
-  UnregisteredTokenError,
-} from "./errors.js";
-import type { OpenRegistration, Registration, Resolver, ScopeFactory, ServiceProvider } from "./types.js";
+import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
+  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
+  RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
+import type { OpenRegistration, Registration, Resolver, ScopeFactory, ServiceProvider } from './types.js';
 
 /** True when a value implements the native synchronous `Disposable`. */
 function isDisposable(value: unknown): value is Disposable {
   return (
     value != null
-    && (typeof value === "object" || typeof value === "function")
-    && typeof (value as { [Symbol.dispose]?: unknown })[Symbol.dispose]
-      === "function"
+    && (typeof value === 'object' || typeof value === 'function')
+    && typeof (value as { [Symbol.dispose]?: unknown; })[Symbol.dispose]
+      === 'function'
   );
 }
 
@@ -71,10 +45,10 @@ function isDisposable(value: unknown): value is Disposable {
 function isAsyncDisposable(value: unknown): value is AsyncDisposable {
   return (
     value != null
-    && (typeof value === "object" || typeof value === "function")
-    && typeof (value as { [Symbol.asyncDispose]?: unknown })[
+    && (typeof value === 'object' || typeof value === 'function')
+    && typeof (value as { [Symbol.asyncDispose]?: unknown; })[
         Symbol.asyncDispose
-      ] === "function"
+      ] === 'function'
   );
 }
 
@@ -82,8 +56,8 @@ function isAsyncDisposable(value: unknown): value is AsyncDisposable {
 function isThenable(value: unknown): value is PromiseLike<unknown> {
   return (
     value != null
-    && (typeof value === "object" || typeof value === "function")
-    && typeof (value as { then?: unknown }).then === "function"
+    && (typeof value === 'object' || typeof value === 'function')
+    && typeof (value as { then?: unknown; }).then === 'function'
   );
 }
 
@@ -135,7 +109,7 @@ function rawTypeArgError(slot: TypeArgRef): TypeError {
  */
 function* unionTokenMembers(slot: Union): Generator<Token> {
   for (const member of slot.union) {
-    if (typeof member === "string") {
+    if (typeof member === 'string') {
       yield member;
     } else if (isUnionSlot(member)) {
       yield* unionTokenMembers(member);
@@ -170,8 +144,8 @@ function orderByArityDesc(
  * sibling. The convention is the plain closed-generic form `base<elementToken>`
  * — the same string a manual `add("Array<pkg:IFoo>", …)` writes.
  */
-const ARRAY_TOKEN_BASE = "Array";
-const ITERABLE_TOKEN_BASE = "Iterable";
+const ARRAY_TOKEN_BASE = 'Array';
+const ITERABLE_TOKEN_BASE = 'Iterable';
 
 /** A recognized collection request: its wrapper base and single element token. */
 interface CollectionRequest {
@@ -208,7 +182,7 @@ function collectionRequest(token: Token): CollectionRequest | undefined {
  * distinct from an array so the requested container type is honored.
  */
 function wrapCollection(
-  base: CollectionRequest["base"],
+  base: CollectionRequest['base'],
   items: readonly unknown[],
 ): unknown {
   if (base === ARRAY_TOKEN_BASE) {
@@ -250,7 +224,7 @@ function throwDisposalFailures(failures: readonly unknown[]): void {
   }
   throw new AggregateError(
     failures,
-    "One or more errors occurred while disposing the service provider.",
+    'One or more errors occurred while disposing the service provider.',
   );
 }
 
@@ -366,7 +340,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    */
   public get name(): S {
     if (this.#frame === undefined) {
-      throw new TypeError("This ServiceProvider has no scope frame open.");
+      throw new TypeError('This ServiceProvider has no scope frame open.');
     }
     return this.#frame.name as S;
   }
@@ -382,9 +356,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * conditional-rest-param type ensures this at the call site).
    */
   public createScope(
-    ...args: "scoped" extends S ? [name?: S] : [name: S]
+    ...args: 'scoped' extends S ? [name?: S] : [name: S]
   ): ServiceProvider<S> {
-    return this.#childScope((args[0] ?? "scoped") as string, this.#frame);
+    return this.#childScope((args[0] ?? 'scoped') as string, this.#frame);
   }
 
   /**
@@ -418,9 +392,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   public resolve<T>(token?: Token): T {
     if (token === undefined) {
       throw new TypeError(
-        "resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at "
-          + "runtime). Without it, resolve with an explicit token: "
-          + "resolve<T>(\"my:token\").",
+        'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+          + 'runtime). Without it, resolve with an explicit token: '
+          + 'resolve<T>("my:token").',
       );
     }
     const result = this.#resolve<T>(token, this.#frame, [], false);
@@ -441,9 +415,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   public async resolveAsync<T>(token?: Token): Promise<T> {
     if (token === undefined) {
       throw new TypeError(
-        "resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no token "
-          + "at runtime). Without it, resolve with an explicit token: "
-          + "resolveAsync<T>(\"my:token\").",
+        'resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no token '
+          + 'at runtime). Without it, resolve with an explicit token: '
+          + 'resolveAsync<T>("my:token").',
       );
     }
     return settle(this.#resolve<T>(token, this.#frame, [], true)) as Promise<T>;
@@ -463,9 +437,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   public tryResolve<T>(token?: Token): T | undefined {
     if (token === undefined) {
       throw new TypeError(
-        "tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at "
-          + "runtime). Without it, resolve with an explicit token: "
-          + "tryResolve<T>(\"my:token\").",
+        'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+          + 'runtime). Without it, resolve with an explicit token: '
+          + 'tryResolve<T>("my:token").',
       );
     }
     if (!this.#isKnown(token)) {
@@ -616,7 +590,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   static #matchOpen(
     list: readonly OpenRegistration[] | undefined,
     parsed: ParsedToken,
-  ): { open: OpenRegistration; args: readonly Token[] } | undefined {
+  ): { open: OpenRegistration; args: readonly Token[]; } | undefined {
     if (list === undefined) {
       return undefined;
     }
@@ -665,7 +639,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   ): Scope | undefined {
     let node = vantage;
     while (node !== undefined) {
-      if (node.name === scopeName) { return node; }
+      if (node.name === scopeName) {
+        return node;
+      }
       node = node.parent;
     }
     return undefined;
@@ -717,7 +693,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       // Typing the inner resolve as T matches runtime truth: settle hands back
       // a promise that fulfills with T (promise auto-flattening).
       if (async) {
-        const promiseToken = closeToken("Promise", token);
+        const promiseToken = closeToken('Promise', token);
         if (this.#lookup(promiseToken)) {
           return new Pending(
             settle(this.#resolve<T>(promiseToken, vantage, stack, async, captor)),
@@ -978,8 +954,8 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       resolve: <U>(depToken?: Token): U => {
         if (depToken === undefined) {
           throw new TypeError(
-            "resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at "
-              + "runtime).",
+            'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+              + 'runtime).',
           );
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
@@ -988,8 +964,8 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
         if (depToken === undefined) {
           throw new TypeError(
-            "resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no "
-              + "token at runtime).",
+            'resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no '
+              + 'token at runtime).',
           );
         }
         return settle(sp.#resolve<U>(depToken, owningFrame, stack, true, captor)) as Promise<U>;
@@ -997,8 +973,8 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       tryResolve: <U>(depToken?: Token): U | undefined => {
         if (depToken === undefined) {
           throw new TypeError(
-            "tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token "
-              + "at runtime).",
+            'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token '
+              + 'at runtime).',
           );
         }
         if (!sp.#isKnown(depToken)) {
@@ -1010,8 +986,8 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       isService: (depToken: Token): boolean => sp.#isKnown(depToken),
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
-      createScope: (...args: ["scoped"?] | [S]): ServiceProvider<S> =>
-        sp.#childScope((args[0] ?? "scoped") as string, owningFrame),
+      createScope: (...args: ['scoped'?] | [S]): ServiceProvider<S> =>
+        sp.#childScope((args[0] ?? 'scoped') as string, owningFrame),
     } as Resolver & ScopeFactory<S>;
   }
 
@@ -1048,7 +1024,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     const target = this.#lookup(ref.type);
 
     if (target === undefined) {
-      throw new FactoryTargetError(ref.type, "unregistered");
+      throw new FactoryTargetError(ref.type, 'unregistered');
     }
 
     const callerParams = ref.params !== undefined && ref.params.length
@@ -1134,7 +1110,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     const remainingParamIndices: number[] = callerParams.map((_, i) => i);
 
     const args = signature.map((slot) => {
-      if (typeof slot === "string") {
+      if (typeof slot === 'string') {
         // String token slot: check if it is claimed by callerParams (caller
         // wins, even if the token is also registered).
         const matchIdx = remainingParamIndices.findIndex(
@@ -1185,7 +1161,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     for (const sig of orderByArityDesc(signatures)) {
       let satisfiable = true;
       for (const slot of sig) {
-        if (isFactoryRef(slot) || isLiteralRef(slot)) { continue; }
+        if (isFactoryRef(slot) || isLiteralRef(slot)) {
+          continue;
+        }
         if (isTypeArgRef(slot)) {
           // A raw TypeArgRef is an unclosed template slot — never satisfiable
           // (only substitution turns it into a LiteralRef).
@@ -1198,16 +1176,22 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
           // exactly what to register.
           if (!this.#isResolvableSlot(slot, async)) {
             satisfiable = false;
-            for (const token of unionTokenMembers(slot)) { unsatisfiable.add(token); }
+            for (const token of unionTokenMembers(slot)) {
+              unsatisfiable.add(token);
+            }
           }
           continue;
         }
         if (!this.#isResolvable(slot, async)) {
           satisfiable = false;
-          if (typeof slot === "string") { unsatisfiable.add(slot); }
+          if (typeof slot === 'string') {
+            unsatisfiable.add(slot);
+          }
         }
       }
-      if (satisfiable) { return sig; }
+      if (satisfiable) {
+        return sig;
+      }
     }
 
     throw new NoSatisfiableSignatureError(token, targetName, [...unsatisfiable]);
@@ -1236,7 +1220,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * `isResolvableSlot` for a full slot check.
    */
   #isResolvable(slot: DepSlot, async: boolean): boolean {
-    if (typeof slot !== "string") {
+    if (typeof slot !== 'string') {
       return false;
     }
     if (isProviderToken(slot)) {
@@ -1248,7 +1232,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     if (collectionRequest(slot) !== undefined) {
       return true;
     }
-    return async && !!this.#lookup(closeToken("Promise", slot));
+    return async && !!this.#lookup(closeToken('Promise', slot));
   }
 
   /**
@@ -1259,8 +1243,12 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    *     sealed map, or (async) the `Promise<T>` fallback.
    */
   #isResolvableSlot(slot: DepSlot, async: boolean): boolean {
-    if (isFactoryRef(slot) || isLiteralRef(slot)) { return true; }
-    if (isTypeArgRef(slot)) { return false; }
+    if (isFactoryRef(slot) || isLiteralRef(slot)) {
+      return true;
+    }
+    if (isTypeArgRef(slot)) {
+      return false;
+    }
     if (isUnionSlot(slot)) {
       return slot.union.some((member) => this.#isResolvableSlot(member, async));
     }
@@ -1376,7 +1364,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     if (failures.length) {
       throw new AggregateError(
         failures,
-        "Some services are not able to be constructed",
+        'Some services are not able to be constructed',
       );
     }
   }
@@ -1452,7 +1440,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     }
     if (isFactoryRef(slot)) {
       if (this.#lookup(slot.type) === undefined) {
-        throw new FactoryTargetError(slot.type, "unregistered");
+        throw new FactoryTargetError(slot.type, 'unregistered');
       }
       return;
     }
@@ -1497,7 +1485,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       this.#validateRegistration(token, registration, chain, validated);
       return;
     }
-    const promiseToken = closeToken("Promise", token);
+    const promiseToken = closeToken('Promise', token);
     const promiseRegistration = this.#lookup(promiseToken);
     if (promiseRegistration !== undefined) {
       this.#validateRegistration(promiseToken, promiseRegistration, chain, validated);
@@ -1525,7 +1513,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * reference scope-disposal aggregation.
    */
   public dispose(): void {
-    if (this.#disposed) { return; }
+    if (this.#disposed) {
+      return;
+    }
 
     const owned = this.#frame?.owned ?? [];
 
@@ -1564,7 +1554,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * collected failure rethrows as itself, several aggregate.
    */
   public async disposeAsync(): Promise<void> {
-    if (this.#disposed) { return; }
+    if (this.#disposed) {
+      return;
+    }
     this.#disposed = true;
 
     const owned = this.#frame?.owned ?? [];

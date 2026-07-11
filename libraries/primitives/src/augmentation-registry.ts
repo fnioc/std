@@ -26,10 +26,10 @@
 // bus, and the registry silently splits -- a class decorated against one copy
 // never sees augmentations registered against the other.
 
-import type { Ctor, Func } from "@rhombus-toolkit/func";
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { type AugmentationSet, installSet } from "./augmentations.js";
-import type { Token } from "./Token.js";
+import { type AugmentationSet, installSet } from './augmentations.js';
+import type { Token } from './Token.js';
 
 // Structural typings for the notify bus -- module-private on purpose: the bus
 // and its dispatched events never appear in a public signature, so unlike the
@@ -102,7 +102,7 @@ export function registerAugmentations<R>(token: Token, set: AugmentationSet<R>):
  * perfectly good augmentation receiver -- only its prototype is touched here.
  */
 export function augment(token: Token) {
-  return function installOnClass<C extends { readonly prototype: object }>(
+  return function installOnClass<C extends { readonly prototype: object; }>(
     Ctor: C,
     // `unknown` (not `ClassDecoratorContext`): the context type TS synthesizes
     // for a private-constructor class fails ClassDecoratorContext's own

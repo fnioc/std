@@ -4,10 +4,10 @@
 // their root. No OS file-watching lives here (out of v0 scope) -- every fire
 // below is either root.reload() or a provider explicitly reporting a refresh.
 
-import { ConfigurationBuilder, ConfigurationProvider, type IConfigurationRoot } from "@rhombus-std/config";
-import { ChangeToken } from "@rhombus-std/primitives";
-import { describe, expect, test } from "bun:test";
-import { rootOf } from "./support";
+import { ConfigurationBuilder, ConfigurationProvider, type IConfigurationRoot } from '@rhombus-std/config';
+import { ChangeToken } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
+import { rootOf } from './support';
 
 /** A provider whose `refresh()` mimics a source-driven data change: it writes
  * a key, then reports the refresh via the protected `onReload` hook every
@@ -20,7 +20,7 @@ class RefreshableProvider extends ConfigurationProvider {
   }
 }
 
-function rootOfRefreshable(): { root: IConfigurationRoot; provider: RefreshableProvider } {
+function rootOfRefreshable(): { root: IConfigurationRoot; provider: RefreshableProvider; } {
   const provider = new RefreshableProvider();
   // ConfigurationBuilder has no add(provider) sugar -- a source that just
   // hands back the pre-built provider mirrors how a real
@@ -30,13 +30,13 @@ function rootOfRefreshable(): { root: IConfigurationRoot; provider: RefreshableP
   return { root, provider };
 }
 
-describe("ConfigurationProvider.getReloadToken", () => {
-  test("hasChanged flips only after onReload runs", () => {
+describe('ConfigurationProvider.getReloadToken', () => {
+  test('hasChanged flips only after onReload runs', () => {
     const provider = new RefreshableProvider();
     const before = provider.getReloadToken();
     expect(before.hasChanged).toBe(false);
 
-    provider.refresh("Key", "value");
+    provider.refresh('Key', 'value');
 
     expect(before.hasChanged).toBe(true);
     // A fresh token is swapped in for the next fire.
@@ -44,22 +44,22 @@ describe("ConfigurationProvider.getReloadToken", () => {
     expect(provider.getReloadToken().hasChanged).toBe(false);
   });
 
-  test("registerChangeCallback fires exactly once per refresh", () => {
+  test('registerChangeCallback fires exactly once per refresh', () => {
     const provider = new RefreshableProvider();
     let fires = 0;
     provider.getReloadToken().registerChangeCallback(() => {
       fires++;
     });
 
-    provider.refresh("Key", "value");
+    provider.refresh('Key', 'value');
 
     expect(fires).toBe(1);
   });
 });
 
-describe("ConfigurationRoot.getReloadToken", () => {
+describe('ConfigurationRoot.getReloadToken', () => {
   test("root.reload() fires the root's token exactly once", () => {
-    const root = rootOf({ "Server:Port": "8080" });
+    const root = rootOf({ 'Server:Port': '8080' });
     let fires = 0;
     ChangeToken.onChange(() => root.getReloadToken(), () => {
       fires++;
@@ -70,8 +70,8 @@ describe("ConfigurationRoot.getReloadToken", () => {
     expect(fires).toBe(1);
   });
 
-  test("ChangeToken.onChange keeps observing across multiple reloads", () => {
-    const root = rootOf({ "Server:Port": "8080" });
+  test('ChangeToken.onChange keeps observing across multiple reloads', () => {
+    const root = rootOf({ 'Server:Port': '8080' });
     const seen: number[] = [];
     ChangeToken.onChange(() => root.getReloadToken(), () => {
       seen.push(seen.length);
@@ -91,17 +91,17 @@ describe("ConfigurationRoot.getReloadToken", () => {
       fires++;
     });
 
-    provider.refresh("Key", "value");
+    provider.refresh('Key', 'value');
 
     expect(fires).toBe(1);
-    expect(root.get("Key")).toBe("value");
+    expect(root.get('Key')).toBe('value');
   });
 });
 
-describe("ConfigurationSection.getReloadToken", () => {
-  test("delegates to the owning root -- a section has no reload state of its own", () => {
-    const root = rootOf({ "Server:Port": "8080" });
-    const section = root.getSection("Server");
+describe('ConfigurationSection.getReloadToken', () => {
+  test('delegates to the owning root -- a section has no reload state of its own', () => {
+    const root = rootOf({ 'Server:Port': '8080' });
+    const section = root.getSection('Server');
 
     expect(section.getReloadToken()).toBe(root.getReloadToken());
 

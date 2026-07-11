@@ -13,18 +13,18 @@
 //   - `build()` is unsupported (as in the reference); the adapter only mutates the
 //     application builder it wraps.
 
-import type { IConfigurationBuilder, IConfigurationManager } from "@rhombus-std/config.core";
-import type { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProviderFactory } from "@rhombus-std/di.core";
-import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from "@rhombus-std/hosting.core";
-import { augment, process } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Action } from "@rhombus-toolkit/func";
-import { resolveContentRootPath } from "../host-composition";
+import type { IConfigurationBuilder, IConfigurationManager } from '@rhombus-std/config.core';
+import type { ServiceManifest } from '@rhombus-std/di';
+import type { ServiceProviderFactory } from '@rhombus-std/di.core';
+import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
+import { augment, process } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Action } from '@rhombus-toolkit/func';
+import { resolveContentRootPath } from '../host-composition';
 
 /** Ordinal case-insensitive comparison, treating an absent value as the empty string. */
 function equalsIgnoreCase(left: string | undefined, right: string | undefined): boolean {
-  return (left ?? "").toLowerCase() === (right ?? "").toLowerCase();
+  return (left ?? '').toLowerCase() === (right ?? '').toLowerCase();
 }
 
 /** The classic-builder adapter over a modern application builder. */
@@ -86,7 +86,7 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   /** Not supported: the adapter mutates the application builder, it does not build. */
   public build(): IHost {
-    throw new Error("Build is not supported on the HostBuilderAdapter; build the HostApplicationBuilder instead.");
+    throw new Error('Build is not supported on the HostBuilderAdapter; build the HostApplicationBuilder instead.');
   }
 
   /**
@@ -113,14 +113,14 @@ export class HostBuilderAdapter implements IHostBuilder {
         throw new Error(
           `The application name changed from "${previousApplicationName}" to `
             + `"${config.get(HostDefaults.applicationKey)}". Changing host settings after the `
-            + "host builder adapter has been created is not supported.",
+            + 'host builder adapter has been created is not supported.',
         );
       }
       if (!equalsIgnoreCase(previousEnvironment, config.get(HostDefaults.environmentKey))) {
         throw new Error(
           `The environment changed from "${previousEnvironment}" to `
             + `"${config.get(HostDefaults.environmentKey)}". Changing host settings after the `
-            + "host builder adapter has been created is not supported.",
+            + 'host builder adapter has been created is not supported.',
         );
       }
       // A content-root change is allowed only when it resolves back to the same
@@ -136,7 +136,7 @@ export class HostBuilderAdapter implements IHostBuilder {
         throw new Error(
           `The content root changed from "${previousContentRootConfig}" to `
             + `"${currentContentRootConfig}". Changing host settings after the host builder `
-            + "adapter has been created is not supported.",
+            + 'adapter has been created is not supported.',
         );
       }
     }

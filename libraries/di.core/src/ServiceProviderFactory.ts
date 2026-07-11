@@ -13,8 +13,8 @@
 // builder's `configureContainer` name one shared di.core type. Pure type-level; it
 // erases completely.
 
-import type { Resolver } from "./provider.js";
-import type { ServiceManifest } from "./service-manifest.js";
+import type { Resolver } from './provider.js';
+import type { ServiceManifest } from './service-manifest.js';
 
 /**
  * The reference `IServiceProviderFactory<TContainerBuilder>` analog — a pluggable

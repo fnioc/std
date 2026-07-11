@@ -4,52 +4,32 @@
 // ConfigurationProvider base is subclassable, and that a root builds and coerces
 // end-to-end through the public entry point alone.
 
-import {
-  compareConfigurationKeys,
-  type ConfigObject,
-  configPath,
-  ConfigurationBuilder,
-  ConfigurationProvider,
-  ConfigurationRoot,
-  ConfigurationSection,
-  type IConfiguration,
-  type IConfigurationBuilder,
-  type IConfigurationProvider,
-  type IConfigurationRoot,
-  type IConfigurationSection,
-  type IConfigurationSource,
-  type IndexedSection,
-  type Infer,
-  type ITryGetResult,
-  MemoryConfigurationProvider,
-  MemoryConfigurationSource,
-  type ObjectSchema,
-  OPTIONAL,
-  type OptionalSchema,
-  type Schema,
-  SchemaCoercionError,
-} from "@rhombus-std/config";
-import { describe, expect, test } from "bun:test";
+import { compareConfigurationKeys, type ConfigObject, configPath, ConfigurationBuilder, ConfigurationProvider,
+  ConfigurationRoot, ConfigurationSection, type IConfiguration, type IConfigurationBuilder, type IConfigurationProvider,
+  type IConfigurationRoot, type IConfigurationSection, type IConfigurationSource, type IndexedSection, type Infer,
+  type ITryGetResult, MemoryConfigurationProvider, MemoryConfigurationSource, type ObjectSchema, OPTIONAL,
+  type OptionalSchema, type Schema, SchemaCoercionError } from '@rhombus-std/config';
+import { describe, expect, test } from 'bun:test';
 
-describe("public entry point", () => {
-  test("exports the core value bindings a consumer and the provider packages need", () => {
+describe('public entry point', () => {
+  test('exports the core value bindings a consumer and the provider packages need', () => {
     expect(ConfigurationBuilder).toBeDefined();
     expect(ConfigurationRoot).toBeDefined();
     expect(ConfigurationSection).toBeDefined();
     expect(ConfigurationProvider).toBeDefined();
-    expect(typeof compareConfigurationKeys).toBe("function");
+    expect(typeof compareConfigurationKeys).toBe('function');
     expect(MemoryConfigurationSource).toBeDefined();
     expect(MemoryConfigurationProvider).toBeDefined();
     expect(SchemaCoercionError).toBeDefined();
-    expect(typeof OPTIONAL).toBe("symbol");
+    expect(typeof OPTIONAL).toBe('symbol');
     expect(configPath).toBeDefined();
-    expect(configPath.combine("Server", "Port")).toBe("Server:Port");
-    expect(configPath.getSectionKey("Server:Port")).toBe("Port");
+    expect(configPath.combine('Server', 'Port')).toBe('Server:Port');
+    expect(configPath.getSectionKey('Server:Port')).toBe('Port');
   });
 
-  test("ConfigurationBuilder ships add() (returning this) plus build()", () => {
+  test('ConfigurationBuilder ships add() (returning this) plus build()', () => {
     const builder = new ConfigurationBuilder();
-    const returned = builder.add(new MemoryConfigurationSource({ initialData: { "A": "1" } }));
+    const returned = builder.add(new MemoryConfigurationSource({ initialData: { A: '1' } }));
 
     // add() must return `this` for the augmentation pattern to type-check.
     expect(returned).toBe(builder);
@@ -57,34 +37,34 @@ describe("public entry point", () => {
 
     const root = builder.build();
     expect(root).toBeInstanceOf(ConfigurationRoot);
-    expect(root.get("A")).toBe("1");
+    expect(root.get('A')).toBe('1');
   });
 
-  test("properties is a shared mutable bag a source can read at build() time", () => {
+  test('properties is a shared mutable bag a source can read at build() time', () => {
     const builder = new ConfigurationBuilder();
 
     // One Map instance for the builder's lifetime -- mutations are visible
     // through every later read of the getter.
-    builder.properties.set("BasePath", "/etc/app");
-    expect(builder.properties.get("BasePath")).toBe("/etc/app");
+    builder.properties.set('BasePath', '/etc/app');
+    expect(builder.properties.get('BasePath')).toBe('/etc/app');
     expect(builder.properties).toBe(builder.properties);
 
     // A source observes the bag through the builder handed to build().
     let observed: unknown;
     class PropertiesReadingSource implements IConfigurationSource {
       public build(b: IConfigurationBuilder): IConfigurationProvider {
-        observed = b.properties.get("BasePath");
+        observed = b.properties.get('BasePath');
         return new MemoryConfigurationProvider(new MemoryConfigurationSource());
       }
     }
     builder.add(new PropertiesReadingSource()).build();
-    expect(observed).toBe("/etc/app");
+    expect(observed).toBe('/etc/app');
   });
 
-  test("sources are ordered-list semantics: registration order preserved, no reference dedup", () => {
+  test('sources are ordered-list semantics: registration order preserved, no reference dedup', () => {
     const builder = new ConfigurationBuilder();
-    const a = new MemoryConfigurationSource({ initialData: { "A": "1" } });
-    const b = new MemoryConfigurationSource({ initialData: { "B": "2" } });
+    const a = new MemoryConfigurationSource({ initialData: { A: '1' } });
+    const b = new MemoryConfigurationSource({ initialData: { B: '2' } });
 
     builder.add(a).add(b).add(a);
 
@@ -93,18 +73,18 @@ describe("public entry point", () => {
     expect([...builder.sources]).toEqual([a, b, a]);
   });
 
-  test("addInMemoryCollection augmentation is installed on the prototype", () => {
+  test('addInMemoryCollection augmentation is installed on the prototype', () => {
     const root = new ConfigurationBuilder()
-      .addInMemoryCollection({ "Server:Port": "8080" })
+      .addInMemoryCollection({ 'Server:Port': '8080' })
       .build();
 
-    expect(root.get("Server:Port")).toBe("8080");
+    expect(root.get('Server:Port')).toBe('8080');
   });
 
-  test("the abstract ConfigurationProvider base is subclassable by provider packages", () => {
+  test('the abstract ConfigurationProvider base is subclassable by provider packages', () => {
     class FixedProvider extends ConfigurationProvider {
       public override load(): void {
-        this.set("Fixed:Key", "value");
+        this.set('Fixed:Key', 'value');
       }
     }
     class FixedSource implements IConfigurationSource {
@@ -115,22 +95,22 @@ describe("public entry point", () => {
 
     const root = new ConfigurationBuilder().add(new FixedSource()).build();
     // Loaded eagerly at construction, resolved case-insensitively.
-    expect(root.get("fixed:key")).toBe("value");
+    expect(root.get('fixed:key')).toBe('value');
   });
 
-  test("end-to-end: build a typed, coerced config through the public entry point alone", () => {
+  test('end-to-end: build a typed, coerced config through the public entry point alone', () => {
     const typed = new ConfigurationBuilder()
-      .addInMemoryCollection({ "Host": "localhost", "Port": "8080" })
-      .withSchema({ Host: "string", Port: "number" })
+      .addInMemoryCollection({ Host: 'localhost', Port: '8080' })
+      .withSchema({ Host: 'string', Port: 'number' })
       .build();
 
-    expect(typed).toEqual({ Host: "localhost", Port: 8080 });
+    expect(typed).toEqual({ Host: 'localhost', Port: 8080 });
     // The generic threads through so `Port` is statically a number.
     const port: number = typed.Port;
     expect(port).toBe(8080);
   });
 
-  test("type-only exports are usable in a type position", () => {
+  test('type-only exports are usable in a type position', () => {
     // Compile-time-only assertions -- if any of these types stopped being
     // exported, this file would fail to type-check under `tsc --noEmit`.
     type _Config = IConfiguration;
@@ -147,8 +127,8 @@ describe("public entry point", () => {
     // A concrete, non-recursive schema shape -- `Infer<Schema>` (the fully
     // recursive union `Schema` itself) sends `tsc` into TS2589; this exercises
     // `Infer` in a type position without that runaway recursion.
-    type _Inferred = Infer<{ a: "string"; b: { c: "number" } }>;
-    const _schema: Schema = "string";
-    expect(_schema).toBe("string");
+    type _Inferred = Infer<{ a: 'string'; b: { c: 'number'; }; }>;
+    const _schema: Schema = 'string';
+    expect(_schema).toBe('string');
   });
 });

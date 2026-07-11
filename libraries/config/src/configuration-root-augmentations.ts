@@ -11,11 +11,11 @@
 // a fluent method (`root.getDebugView()`) and as the standalone member form
 // (`ConfigurationRootExtensions.getDebugView(root)`).
 
-import type { IConfigurationProvider, IConfigurationRoot, IConfigurationSection } from "@rhombus-std/config.core";
-import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import { ConfigurationManager } from "./ConfigurationManager";
-import { ConfigurationRoot } from "./ConfigurationRoot";
+import type { IConfigurationProvider, IConfigurationRoot, IConfigurationSection } from '@rhombus-std/config.core';
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import { ConfigurationManager } from './ConfigurationManager';
+import { ConfigurationRoot } from './ConfigurationRoot';
 
 /**
  * Data about the current item of the configuration, handed to the
@@ -89,8 +89,8 @@ export const ConfigurationRootExtensions = {
       }
     };
 
-    recurse(root.getChildren(), "");
-    return parts.join("");
+    recurse(root.getChildren(), '');
+    return parts.join('');
   },
 } satisfies AugmentationSet<IConfigurationRoot>;
 
@@ -100,13 +100,13 @@ export const ConfigurationRootExtensions = {
 // every wrapper/fake implementer. The fluent form is typed per concrete class
 // below; an interface-typed root uses the standalone
 // `ConfigurationRootExtensions.getDebugView` form.
-declare module "./ConfigurationRoot" {
+declare module './ConfigurationRoot' {
   interface ConfigurationRoot {
     getDebugView(processValue?: Func<[ConfigurationDebugViewContext], string>): string;
   }
 }
 
-declare module "./ConfigurationManager" {
+declare module './ConfigurationManager' {
   interface ConfigurationManager {
     getDebugView(processValue?: Func<[ConfigurationDebugViewContext], string>): string;
   }

@@ -43,7 +43,7 @@ export class ValidateOptionsResult {
     this.skipped = skipped;
     this.failed = failures !== undefined;
     this.failures = failures ?? [];
-    this.failureMessage = failures !== undefined ? failures.join("; ") : undefined;
+    this.failureMessage = failures !== undefined ? failures.join('; ') : undefined;
   }
 
   /**
@@ -54,7 +54,7 @@ export class ValidateOptionsResult {
    * @param failures The failure message, or messages.
    */
   static fail(failures: string | Iterable<string>): ValidateOptionsResult {
-    const list = typeof failures === "string" ? [failures] : [...failures];
+    const list = typeof failures === 'string' ? [failures] : [...failures];
     return new ValidateOptionsResult(false, false, list);
   }
 }

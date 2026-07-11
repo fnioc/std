@@ -4,4 +4,4 @@
 // the cache with `provider.resolve(MEMORY_CACHE_TOKEN)`.
 
 /** The registration token for the `IMemoryCache` singleton `addMemoryCache` installs. */
-export const MEMORY_CACHE_TOKEN = "@rhombus-std/caching.memory:IMemoryCache";
+export const MEMORY_CACHE_TOKEN = '@rhombus-std/caching.memory:IMemoryCache';

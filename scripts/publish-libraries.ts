@@ -17,9 +17,9 @@
 // A failed publish exits non-zero immediately -- a partial lockstep release
 // (some packages at the new version, some not) is worse than stopping.
 
-import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawnSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 interface Manifest {
   readonly name: string;
@@ -38,15 +38,15 @@ interface Package {
   readonly deps: readonly string[];
 }
 
-const ROOT = join(import.meta.dir, "..");
-const GROUP = "libraries";
+const ROOT = join(import.meta.dir, '..');
+const GROUP = 'libraries';
 
 /** Yields the workspace-protocol dependency names across every dependency kind. */
 function* workspaceDeps(manifest: Manifest): Generator<string> {
   const fields = [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies];
   for (const field of fields) {
     for (const [name, spec] of Object.entries(field ?? {})) {
-      if (String(spec).startsWith("workspace:")) {
+      if (String(spec).startsWith('workspace:')) {
         yield name;
       }
     }
@@ -66,7 +66,7 @@ function discoverPackages(): Map<string, Package> {
     const dir = join(ROOT, GROUP, entry);
     let manifest: Manifest;
     try {
-      manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as Manifest;
+      manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as Manifest;
     } catch {
       continue;
     }
@@ -98,7 +98,7 @@ function computeTiers(packages: Map<string, Package>): string[][] {
   while (pending.size) {
     const tier = [...pending].filter(([, deps]) => !deps.size).map(([name]) => name);
     if (!tier.length) {
-      throw new Error(`publish-libraries: dependency cycle among ${[...pending.keys()].join(", ")}`);
+      throw new Error(`publish-libraries: dependency cycle among ${[...pending.keys()].join(', ')}`);
     }
     for (const name of tier) {
       pending.delete(name);
@@ -121,7 +121,7 @@ function topologicalOrder(): Package[] {
 }
 
 function run(cmd: string, args: string[], cwd: string): void {
-  const result = spawnSync(cmd, args, { cwd, stdio: "inherit" });
+  const result = spawnSync(cmd, args, { cwd, stdio: 'inherit' });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
@@ -134,22 +134,22 @@ function parseArg(flag: string): string | undefined {
 
 const ordered = topologicalOrder();
 
-if (process.argv.includes("--list")) {
+if (process.argv.includes('--list')) {
   for (const pkg of ordered) {
     console.log(pkg.name);
   }
   process.exit(0);
 }
 
-const version = parseArg("--version");
-const tag = parseArg("--tag");
+const version = parseArg('--version');
+const tag = parseArg('--tag');
 if (!version || !tag) {
-  console.error("usage: publish-libraries.ts --list | --version <semver> --tag <disttag>");
+  console.error('usage: publish-libraries.ts --list | --version <semver> --tag <disttag>');
   process.exit(2);
 }
 
 for (const pkg of ordered) {
   console.log(`\n▶ publish ${pkg.name}@${version} (--tag ${tag})`);
-  run("pnpm", ["pkg", "set", `version=${version}`], pkg.dir);
-  run("pnpm", ["publish", "--tag", tag, "--provenance", "--no-git-checks"], pkg.dir);
+  run('pnpm', ['pkg', 'set', `version=${version}`], pkg.dir);
+  run('pnpm', ['publish', '--tag', tag, '--provenance', '--no-git-checks'], pkg.dir);
 }

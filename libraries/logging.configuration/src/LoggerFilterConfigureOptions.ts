@@ -18,13 +18,13 @@
 // scoped to that provider (its key). A category of "Default" maps to the
 // catch-all rule (category = undefined).
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import { LoggerFilterOptions, LoggerFilterRule } from "@rhombus-std/logging";
-import { LogLevel } from "@rhombus-std/logging.core";
-import type { ConfigureOptions } from "@rhombus-std/options";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import { LoggerFilterOptions, LoggerFilterRule } from '@rhombus-std/logging';
+import { LogLevel } from '@rhombus-std/logging.core';
+import type { ConfigureOptions } from '@rhombus-std/options';
 
-const LOG_LEVEL_KEY = "loglevel";
-const DEFAULT_CATEGORY = "default";
+const LOG_LEVEL_KEY = 'loglevel';
+const DEFAULT_CATEGORY = 'default';
 
 const LEVEL_BY_NAME: Record<string, LogLevel> = {
   trace: LogLevel.Trace,
@@ -60,7 +60,7 @@ function loadRules(
 ): void {
   for (const entry of levelSection.getChildren()) {
     const value = entry.value;
-    if (value === undefined || value === "") {
+    if (value === undefined || value === '') {
       continue;
     }
     const level = parseLogLevel(value);
@@ -86,7 +86,7 @@ export class LoggerFilterConfigureOptions implements ConfigureOptions<LoggerFilt
 
   /** Populates `options` from the configuration, mutating it in place. */
   public configure(options: LoggerFilterOptions): void {
-    options.captureScopes = this.#configuration.getBool("CaptureScopes", options.captureScopes);
+    options.captureScopes = this.#configuration.getBool('CaptureScopes', options.captureScopes);
 
     for (const section of this.#configuration.getChildren()) {
       if (section.key.toLowerCase() === LOG_LEVEL_KEY) {
@@ -96,7 +96,7 @@ export class LoggerFilterConfigureOptions implements ConfigureOptions<LoggerFilt
         // Provider-specific rules under `<provider>:LogLevel`. A missing
         // section is an empty IConfiguration (never null), so this is a safe
         // no-op.
-        loadRules(options, section.getSection("LogLevel"), section.key);
+        loadRules(options, section.getSection('LogLevel'), section.key);
       }
     }
   }

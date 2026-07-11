@@ -3,7 +3,7 @@
 // ME's `IDirectoryContents : IEnumerable<IFileInfo>` maps to extending the
 // built-in `Iterable<IFileInfo>` -- the idiomatic TS analog of IEnumerable.
 
-import type { IFileInfo } from "./IFileInfo.js";
+import type { IFileInfo } from './IFileInfo.js';
 
 /**
  * Represents a directory's content in the file provider.

@@ -8,8 +8,8 @@
 // (the structural deep-merge bind), seeded with the provider's configuration
 // section.
 
-import { ConfigurationConfigureOptions } from "@rhombus-std/options.augmentations";
-import type { ILoggerProviderConfiguration } from "./ILoggerProviderConfiguration";
+import { ConfigurationConfigureOptions } from '@rhombus-std/options.augmentations';
+import type { ILoggerProviderConfiguration } from './ILoggerProviderConfiguration';
 
 /**
  * A configure step that loads the settings of provider `TProvider` into a

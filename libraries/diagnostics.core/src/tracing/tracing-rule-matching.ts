@@ -38,8 +38,8 @@
 // so the flag is not ported -- the always-taken branch is inlined. Flagged as a
 // deliberate surface simplification.
 
-import { ActivitySourceScopes } from "./activity-source-scopes";
-import type { TracingRule } from "./TracingRule";
+import { ActivitySourceScopes } from './activity-source-scopes';
+import type { TracingRule } from './TracingRule';
 
 /**
  * A plain-data description of the activity source (and resolving listener) a
@@ -86,9 +86,9 @@ function sourceNameMatches(pattern: string | undefined, name: string): boolean {
     return true;
   }
 
-  const wildcardIndex = pattern.indexOf("*");
+  const wildcardIndex = pattern.indexOf('*');
   const prefix = wildcardIndex < 0 ? pattern : pattern.slice(0, wildcardIndex);
-  const suffix = wildcardIndex < 0 ? "" : pattern.slice(wildcardIndex + 1);
+  const suffix = wildcardIndex < 0 ? '' : pattern.slice(wildcardIndex + 1);
   const actual = name.toLowerCase();
   return actual.startsWith(prefix.toLowerCase()) && actual.endsWith(suffix.toLowerCase());
 }

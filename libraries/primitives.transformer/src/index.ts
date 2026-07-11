@@ -18,36 +18,21 @@
 
 // The ts-patch entry (default + named `transform`) and the test-drivable factory
 // that rewrites `nameof<T>()` calls.
-export { createNameofTransformerFactory, default as transformer, transform } from "./transformer.js";
+export { createNameofTransformerFactory, default as transformer, transform } from './transformer.js';
 
 // The shared `TokenContext` builder — the di transformers import it so their
 // lowered tokens match the ones this package derives for the same program.
-export { createTokenContext, type TokenContextOptions } from "./context.js";
+export { createTokenContext, type TokenContextOptions } from './context.js';
 
 // `nameof<T>()` — the compile-time token mechanism (rewritten by the transformer)
 // — and the exported identifier name the transformer recognizes.
-export { nameof, NAMEOF_NAME } from "./nameof.js";
+export { nameof, NAMEOF_NAME } from './nameof.js';
 
 // The closed-generic token grammar helpers (compile-time `parseToken` /
 // `isOpenToken`).
-export { isOpenToken, type ParsedToken, parseToken } from "./grammar.js";
+export { isOpenToken, type ParsedToken, parseToken } from './grammar.js';
 
 // The token-generation building blocks.
-export {
-  baseTokenForSymbol,
-  type DeriveFailure,
-  deriveToken,
-  holeNumberFor,
-  injectTokenFor,
-  intrinsicToken,
-  isPureLiteralUnion,
-  type LiteralResult,
-  literalUnionTokenForOptional,
-  type LiteralValue,
-  singletonValue,
-  stripExt,
-  type TokenContext,
-  tokenForReturnType,
-  tokenForType,
-  type TokenResult,
-} from "./tokens.js";
+export { baseTokenForSymbol, type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, intrinsicToken,
+  isPureLiteralUnion, type LiteralResult, literalUnionTokenForOptional, type LiteralValue, singletonValue, stripExt,
+  type TokenContext, tokenForReturnType, tokenForType, type TokenResult } from './tokens.js';

@@ -4,11 +4,11 @@
 /** Reserved formatter names for the built-in console formatters. */
 export const ConsoleFormatterNames = {
   /** Reserved name for the simple console formatter. */
-  simple: "simple",
+  simple: 'simple',
 
   /** Reserved name for the JSON console formatter. */
-  json: "json",
+  json: 'json',
 
   /** Reserved name for the systemd console formatter. */
-  systemd: "systemd",
+  systemd: 'systemd',
 } as const;

@@ -1,7 +1,7 @@
-import { closeToken, ServiceManifest, typeArg } from "@rhombus-std/di";
-import type { Func } from "@rhombus-toolkit/func";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { type CompiledProject, compileWithTransformer } from "./harness.js";
+import { closeToken, ServiceManifest, typeArg } from '@rhombus-std/di';
+import type { Func } from '@rhombus-toolkit/func';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { type CompiledProject, compileWithTransformer } from './harness.js';
 
 // Open-generics integration — the cross-package gate for the feature.
 //
@@ -20,7 +20,7 @@ import { type CompiledProject, compileWithTransformer } from "./harness.js";
 // strings hit the transformer-authored open registration.
 
 const FILES: Record<string, string> = {
-  "contracts.ts": `
+  'contracts.ts': `
 export interface ILogger {
   log(line: string): void;
   readonly lines: readonly string[];
@@ -41,7 +41,7 @@ export class User {}
 export class Order {}
 export class Invoice {}
 `,
-  "services.ts": `
+  'services.ts': `
 import type { Typeof } from "@rhombus-std/di.core";
 import type { IAudit, ICategoryLogger, ILogger, IRepository } from "./contracts.js";
 import type { User } from "./contracts.js";
@@ -98,7 +98,7 @@ export class AuditTrail<T> implements IAudit<T> {
   }
 }
 `,
-  "wiring.ts": `
+  'wiring.ts': `
 import type { $ } from "@rhombus-std/di.core";
 import { ServiceManifest, typeArg } from "@rhombus-std/di";
 import type { ICategoryLogger, ILogger, IRepository } from "./contracts.js";
@@ -128,7 +128,7 @@ services.add<ICategoryLogger<$<1>>>(CategoryLogger<$<1>>).as<"singleton">();
 // IRepository<$1> dep closes the transformer-authored open registration above.
 services.add("fnioc-integration-sample/src/contracts:IAudit<$1>", AuditTrail, [["fnioc-integration-sample/src/contracts:IRepository<$1>", typeArg(1)]]).as("singleton");
 `,
-  "app.ts": `
+  'app.ts': `
 import type { ServiceProvider } from "@rhombus-std/di";
 import type { IAudit, ICategoryLogger, ILogger, IRepository } from "./contracts.js";
 import { Invoice, Order, User } from "./contracts.js";
@@ -172,13 +172,13 @@ export function observe(): Observations {
 // emit-shape assertions below; the behavioral tests reuse them for the
 // manual-token cross-checks).
 const T = {
-  logger: "fnioc-integration-sample/src/contracts:ILogger",
-  repoBase: "fnioc-integration-sample/src/contracts:IRepository",
-  repoTemplate: "fnioc-integration-sample/src/contracts:IRepository<$1>",
-  catTemplate: "fnioc-integration-sample/src/contracts:ICategoryLogger<$1>",
-  user: "fnioc-integration-sample/src/contracts:User",
-  order: "fnioc-integration-sample/src/contracts:Order",
-  invoice: "fnioc-integration-sample/src/contracts:Invoice",
+  logger: 'fnioc-integration-sample/src/contracts:ILogger',
+  repoBase: 'fnioc-integration-sample/src/contracts:IRepository',
+  repoTemplate: 'fnioc-integration-sample/src/contracts:IRepository<$1>',
+  catTemplate: 'fnioc-integration-sample/src/contracts:ICategoryLogger<$1>',
+  user: 'fnioc-integration-sample/src/contracts:User',
+  order: 'fnioc-integration-sample/src/contracts:Order',
+  invoice: 'fnioc-integration-sample/src/contracts:Invoice',
 } as const;
 
 interface LoadedRepo {
@@ -186,15 +186,15 @@ interface LoadedRepo {
   readonly entityToken: string;
 }
 interface LoadedObservations {
-  readonly root: { resolve: Func<[token: string], unknown> };
+  readonly root: { resolve: Func<[token: string], unknown>; };
   readonly orderA: LoadedRepo;
   readonly orderB: LoadedRepo;
   readonly invoice: LoadedRepo;
   readonly user: LoadedRepo;
-  readonly orderCat: { tag: Func<[msg: string], string>; category: string };
-  readonly invoiceCat: { category: string };
+  readonly orderCat: { tag: Func<[msg: string], string>; category: string; };
+  readonly invoiceCat: { category: string; };
   readonly auditLine: string;
-  readonly logger: { readonly lines: readonly string[] };
+  readonly logger: { readonly lines: readonly string[]; };
 }
 
 let project: CompiledProject;
@@ -207,9 +207,9 @@ afterAll(() => project?.cleanup());
 
 // ── Emitted ABI shape ─────────────────────────────────────────────────────────
 
-describe("emit contract — open-generics lowered ABI", () => {
-  test("open registration: template token + carried signatures, no hoist, no defineDeps", () => {
-    const wiring = project.emitted("wiring.js");
+describe('emit contract — open-generics lowered ABI', () => {
+  test('open registration: template token + carried signatures, no hoist, no defineDeps', () => {
+    const wiring = project.emitted('wiring.js');
     expect(wiring).toContain(
       `services.add("${T.repoTemplate}", SqlRepository, `
         + `[["${T.logger}", { typeArg: 1 }]]).as("singleton");`,
@@ -220,31 +220,31 @@ describe("emit contract — open-generics lowered ABI", () => {
     expect(wiring).not.toMatch(/const ɵreg\d+ = CategoryLogger;/);
   });
 
-  test("Typeof-only ctor lowers to a single open { typeArg: 1 } slot", () => {
-    const wiring = project.emitted("wiring.js");
+  test('Typeof-only ctor lowers to a single open { typeArg: 1 } slot', () => {
+    const wiring = project.emitted('wiring.js');
     expect(wiring).toContain(
       `services.add("${T.catTemplate}", CategoryLogger, [[{ typeArg: 1 }]]).as("singleton");`,
     );
   });
 
-  test("exact closed registration: closed token, non-generic impl carries its inline signature", () => {
-    const wiring = project.emitted("wiring.js");
+  test('exact closed registration: closed token, non-generic impl carries its inline signature', () => {
+    const wiring = project.emitted('wiring.js');
     expect(wiring).not.toMatch(/const ɵreg\d+ = SpecialUserRepository;/);
-    expect(wiring).not.toContain("defineDeps");
+    expect(wiring).not.toContain('defineDeps');
     expect(wiring).toContain(
       `services.add("${T.repoBase}<${T.user}>", SpecialUserRepository, `
         + `[["${T.logger}"]]).as("singleton");`,
     );
   });
 
-  test("manual (explicit-token) registration passes through the transformer untouched", () => {
-    const wiring = project.emitted("wiring.js");
-    expect(wiring).toContain("services.add(\"fnioc-integration-sample/src/contracts:IAudit<$1>\", AuditTrail, ");
+  test('manual (explicit-token) registration passes through the transformer untouched', () => {
+    const wiring = project.emitted('wiring.js');
+    expect(wiring).toContain('services.add("fnioc-integration-sample/src/contracts:IAudit<$1>", AuditTrail, ');
     expect(wiring).toContain(`"${T.repoTemplate}", typeArg(1)`);
   });
 
-  test("authored tokenless resolve<T>() picks up closed tokens", () => {
-    const app = project.emitted("app.js");
+  test('authored tokenless resolve<T>() picks up closed tokens', () => {
+    const app = project.emitted('app.js');
     expect(app).toContain(`root.resolve("${T.repoBase}<${T.order}>")`);
     expect(app).toContain(`root.resolve("${T.repoBase}<${T.user}>")`);
   });
@@ -252,17 +252,17 @@ describe("emit contract — open-generics lowered ABI", () => {
 
 // ── Lowered output running against the live engine ───────────────────────────
 
-describe("behavior — multiple closings against the real di engine", () => {
-  test("each closing is a distinct per-closing singleton with correct closed deps", async () => {
-    const app = await project.load("app.js");
+describe('behavior — multiple closings against the real di engine', () => {
+  test('each closing is a distinct per-closing singleton with correct closed deps', async () => {
+    const app = await project.load('app.js');
     const obs = (app.observe as Func<[], LoadedObservations>)();
 
     // Same closing → same instance (singleton caches per CLOSED token).
     expect(obs.orderA).toBe(obs.orderB);
     // Different closings → distinct instances of the same erased class.
     expect(obs.invoice).not.toBe(obs.orderA);
-    expect(obs.orderA.kind).toBe("sql");
-    expect(obs.invoice.kind).toBe("sql");
+    expect(obs.orderA.kind).toBe('sql');
+    expect(obs.invoice.kind).toBe('sql');
     // The Typeof witness carries each closing's arg token.
     expect(obs.orderA.entityToken).toBe(T.order);
     expect(obs.invoice.entityToken).toBe(T.invoice);
@@ -270,29 +270,29 @@ describe("behavior — multiple closings against the real di engine", () => {
     expect(obs.logger.lines).toContain(`save:${T.order}`);
   });
 
-  test("exact registration beats the open fallback", async () => {
-    const app = await project.load("app.js");
+  test('exact registration beats the open fallback', async () => {
+    const app = await project.load('app.js');
     const obs = (app.observe as Func<[], LoadedObservations>)();
-    expect(obs.user.kind).toBe("special");
-    expect(obs.user.entityToken).toBe("special:User");
+    expect(obs.user.kind).toBe('special');
+    expect(obs.user.entityToken).toBe('special:User');
     // Sibling closings still fall back to the open registration.
-    expect(obs.orderA.kind).toBe("sql");
+    expect(obs.orderA.kind).toBe('sql');
   });
 
   test("ILogger<T>-style witness: category = the closing's arg token", async () => {
-    const app = await project.load("app.js");
+    const app = await project.load('app.js');
     const obs = (app.observe as Func<[], LoadedObservations>)();
     expect(obs.orderCat.category).toBe(T.order);
     expect(obs.invoiceCat.category).toBe(T.invoice);
-    expect(obs.orderCat.tag("hi")).toBe(`[${T.order}] hi`);
+    expect(obs.orderCat.tag('hi')).toBe(`[${T.order}] hi`);
   });
 });
 
 // ── ABI unification — manual and transformer-derived tokens are one grammar ──
 
-describe("ABI unification — manual path ↔ transformer-derived tokens", () => {
-  test("authored resolve closes the MANUAL template; its dep closes the authored open reg", async () => {
-    const app = await project.load("app.js");
+describe('ABI unification — manual path ↔ transformer-derived tokens', () => {
+  test('authored resolve closes the MANUAL template; its dep closes the authored open reg', async () => {
+    const app = await project.load('app.js');
     const obs = (app.observe as Func<[], LoadedObservations>)();
     // AuditTrail was registered plugin-lessly (hand-written template token +
     // typeArg(1) signature); resolve<IAudit<Order>>() reached it, and its
@@ -301,8 +301,8 @@ describe("ABI unification — manual path ↔ transformer-derived tokens", () =>
     expect(obs.auditLine).toBe(`audit:${T.order}:via:sql`);
   });
 
-  test("manually-computed closeToken hits the transformer-authored open registration", async () => {
-    const app = await project.load("app.js");
+  test('manually-computed closeToken hits the transformer-authored open registration', async () => {
+    const app = await project.load('app.js');
     const obs = (app.observe as Func<[], LoadedObservations>)();
     // closeToken renders the same canonical string the transformer derives, so
     // a plugin-less consumer addresses the compiled graph directly.
@@ -310,9 +310,9 @@ describe("ABI unification — manual path ↔ transformer-derived tokens", () =>
     expect(viaManualToken).toBe(obs.orderA);
   });
 
-  test("plugin-less manifest: carried signatures via add(token, ctor, signatures)", () => {
+  test('plugin-less manifest: carried signatures via add(token, ctor, signatures)', () => {
     class Logger {
-      public readonly id = "logger";
+      public readonly id = 'logger';
     }
     class Repo {
       public constructor(
@@ -320,40 +320,40 @@ describe("ABI unification — manual path ↔ transformer-derived tokens", () =>
         public readonly entityToken: string,
       ) {}
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add("app:ILogger", Logger).as("singleton");
-    services.add("app:IRepo<$1>", Repo, [["app:ILogger", typeArg(1)]]).as("singleton");
-    const root = services.build().createScope("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add('app:ILogger', Logger).as('singleton');
+    services.add('app:IRepo<$1>', Repo, [['app:ILogger', typeArg(1)]]).as('singleton');
+    const root = services.build().createScope('singleton');
 
-    const cats = root.resolve<Repo>(closeToken("app:IRepo", "app:Cat"));
-    const dogs = root.resolve<Repo>(closeToken("app:IRepo", "app:Dog"));
+    const cats = root.resolve<Repo>(closeToken('app:IRepo', 'app:Cat'));
+    const dogs = root.resolve<Repo>(closeToken('app:IRepo', 'app:Dog'));
     expect(cats).not.toBe(dogs);
     expect(cats.logger).toBe(dogs.logger);
-    expect(cats.entityToken).toBe("app:Cat");
-    expect(dogs.entityToken).toBe("app:Dog");
-    expect(root.resolve<Repo>(closeToken("app:IRepo", "app:Cat"))).toBe(cats);
+    expect(cats.entityToken).toBe('app:Cat');
+    expect(dogs.entityToken).toBe('app:Dog');
+    expect(root.resolve<Repo>(closeToken('app:IRepo', 'app:Cat'))).toBe(cats);
   });
 
-  test("plugin-less manifest: single-hole template signature carried inline", () => {
+  test('plugin-less manifest: single-hole template signature carried inline', () => {
     class Logger {
-      public readonly id = "logger";
+      public readonly id = 'logger';
     }
     class Box {
       public constructor(public readonly content: unknown) {}
     }
     class Thing {
-      public readonly name = "thing";
+      public readonly name = 'thing';
     }
-    const services = new ServiceManifest<"singleton">();
-    services.add("app:Logger", Logger).as("singleton");
-    services.add("integ:Thing", Thing).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add('app:Logger', Logger).as('singleton');
+    services.add('integ:Thing', Thing).as('singleton');
     // The hole-template signature rides on the registration (the global store is
     // retired) — `$1` substitutes to the closing's arg token per resolution.
-    services.add("app:IBox<$1>", Box, [["$1"]]).as("singleton");
-    const root = services.build().createScope("singleton");
+    services.add('app:IBox<$1>', Box, [['$1']]).as('singleton');
+    const root = services.build().createScope('singleton');
 
-    const box = root.resolve<Box>(closeToken("app:IBox", "integ:Thing"));
-    expect((box.content as Thing).name).toBe("thing");
-    expect(root.resolve<Box>(closeToken("app:IBox", "integ:Thing"))).toBe(box);
+    const box = root.resolve<Box>(closeToken('app:IBox', 'integ:Thing'));
+    expect((box.content as Thing).name).toBe('thing');
+    expect(root.resolve<Box>(closeToken('app:IBox', 'integ:Thing'))).toBe(box);
   });
 });

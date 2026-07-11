@@ -1,47 +1,36 @@
-import { HOST_LIFETIME_TOKEN } from "@rhombus-std/hosting";
-import {
-  BROWSER_LIFETIME_OPTIONS_TOKEN,
-  BrowserHost,
-  BrowserLifetime,
-  type BrowserLifetimeOptions,
-  createBrowserEnvironment,
-  PAGE_LIFECYCLE_EVENTS_TOKEN,
-  PageLifecycleEvents,
-} from "@rhombus-std/hosting.browser";
-import {
-  Environments,
-  HOST_APPLICATION_LIFETIME_TOKEN,
-  type IHostApplicationLifetime,
-  type IHostLifetime,
-} from "@rhombus-std/hosting.core";
-import { LOGGER_PROVIDER_TOKEN } from "@rhombus-std/logging";
-import { BrowserConsoleLoggerProvider } from "@rhombus-std/logging.browserconsole";
-import type { ILoggerProvider } from "@rhombus-std/logging.core";
-import { expect, test } from "bun:test";
-import { makeFakePage } from "./fakes";
+import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
+import { BROWSER_LIFETIME_OPTIONS_TOKEN, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
+  createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TOKEN, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
+import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type IHostApplicationLifetime,
+  type IHostLifetime } from '@rhombus-std/hosting.core';
+import { LOGGER_PROVIDER_TOKEN } from '@rhombus-std/logging';
+import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
+import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import { expect, test } from 'bun:test';
+import { makeFakePage } from './fakes';
 
 test("createBrowserEnvironment: names from settings, content root '/', null file provider", () => {
   const environment = createBrowserEnvironment({
     environmentName: Environments.Development,
-    applicationName: "spa",
+    applicationName: 'spa',
   });
 
-  expect(environment.environmentName).toBe("Development");
-  expect(environment.applicationName).toBe("spa");
-  expect(environment.contentRootPath).toBe("/");
-  expect(environment.contentRootFileProvider.getFileInfo("anything").exists).toBe(false);
+  expect(environment.environmentName).toBe('Development');
+  expect(environment.applicationName).toBe('spa');
+  expect(environment.contentRootPath).toBe('/');
+  expect(environment.contentRootFileProvider.getFileInfo('anything').exists).toBe(false);
   expect(environment.isDevelopment()).toBe(true);
 
   expect(createBrowserEnvironment().environmentName).toBe(Environments.Production);
 });
 
-test("the facade composes settings config, browser environment, console logging, lifetime, and the bridge", () => {
+test('the facade composes settings config, browser environment, console logging, lifetime, and the bridge', () => {
   const page = makeFakePage();
 
   const builder = BrowserHost.createApplicationBuilder({
     environmentName: Environments.Development,
-    applicationName: "spa",
-    initialData: { "feature:flag": "on" },
+    applicationName: 'spa',
+    initialData: { 'feature:flag': 'on' },
     configureLifetime: (options) => {
       options.stopOnPagehide = false;
     },
@@ -49,13 +38,13 @@ test("the facade composes settings config, browser environment, console logging,
   });
 
   // Environment: browser-shaped through the ordinary builder settings.
-  expect(builder.environment.environmentName).toBe("Development");
-  expect(builder.environment.applicationName).toBe("spa");
-  expect(builder.environment.contentRootPath).toBe("/");
-  expect(builder.environment.contentRootFileProvider.getFileInfo("x").exists).toBe(false);
+  expect(builder.environment.environmentName).toBe('Development');
+  expect(builder.environment.applicationName).toBe('spa');
+  expect(builder.environment.contentRootPath).toBe('/');
+  expect(builder.environment.contentRootFileProvider.getFileInfo('x').exists).toBe(false);
 
   // Configuration: seeded from settings.initialData.
-  expect(builder.configuration.get("feature:flag")).toBe("on");
+  expect(builder.configuration.get('feature:flag')).toBe('on');
 
   const host = builder.build();
 
@@ -75,12 +64,12 @@ test("the facade composes settings config, browser environment, console logging,
   // The bridge: registered as a value, eagerly attached to the page context.
   const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
-  expect(page.document.registeredTypes).toContain("visibilitychange");
+  expect(page.document.registeredTypes).toContain('visibilitychange');
 
   host[Symbol.dispose]();
 });
 
-test("host stop detaches both the lifetime and the bridge listeners — no leak across host cycles", async () => {
+test('host stop detaches both the lifetime and the bridge listeners — no leak across host cycles', async () => {
   const page = makeFakePage();
 
   const builder = BrowserHost.createApplicationBuilder({ pageContext: page.context });
@@ -104,7 +93,7 @@ test("host stop detaches both the lifetime and the bridge listeners — no leak 
   host[Symbol.dispose]();
 });
 
-test("a built browser host starts, stops on terminal pagehide via the main.ts wiring, and never on bfcache", async () => {
+test('a built browser host starts, stops on terminal pagehide via the main.ts wiring, and never on bfcache', async () => {
   const page = makeFakePage();
   const events: string[] = [];
 
@@ -112,10 +101,10 @@ test("a built browser host starts, stops on terminal pagehide via the main.ts wi
   builder.services.addHostedService(
     class Worker {
       public async start(): Promise<void> {
-        events.push("start");
+        events.push('start');
       }
       public async stop(): Promise<void> {
-        events.push("stop");
+        events.push('stop');
       }
     },
     [[]],
@@ -125,23 +114,23 @@ test("a built browser host starts, stops on terminal pagehide via the main.ts wi
   // The documented one-line main.ts stop wiring.
   const applicationLifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
   let stopDriven: Promise<void> | undefined;
-  applicationLifetime.applicationStopping.addEventListener("abort", () => {
+  applicationLifetime.applicationStopping.addEventListener('abort', () => {
     stopDriven = host.stop();
   }, { once: true });
 
   await host.start();
-  expect(events).toEqual(["start"]);
+  expect(events).toEqual(['start']);
 
   // bfcache pagehide: the host MUST NOT stop.
   page.pageHide(true);
   expect(stopDriven).toBeUndefined();
-  expect(events).toEqual(["start"]);
+  expect(events).toEqual(['start']);
 
   // Terminal pagehide: stopApplication fires, the wiring drives the pipeline.
   page.pageHide(false);
   expect(stopDriven).toBeDefined();
   await stopDriven;
-  expect(events).toEqual(["start", "stop"]);
+  expect(events).toEqual(['start', 'stop']);
 
   host[Symbol.dispose]();
 });

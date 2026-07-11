@@ -18,15 +18,15 @@
 //     have yet. Once it exists, a second chained `getSection(alias)` per
 //     configuration restores parity.
 
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { Token } from "@rhombus-std/di.core";
-import type { ILoggerProviderConfigurationFactory } from "./ILoggerProviderConfigurationFactory";
-import type { LoggingConfiguration } from "./LoggingConfiguration";
+import { ConfigurationBuilder } from '@rhombus-std/config';
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { Token } from '@rhombus-std/di.core';
+import type { ILoggerProviderConfigurationFactory } from './ILoggerProviderConfigurationFactory';
+import type { LoggingConfiguration } from './LoggingConfiguration';
 
 /** The token's TypeName component — the flat section key the lookup uses. */
 function sectionKeyFor(providerType: Token): string {
-  return providerType.slice(providerType.indexOf(":") + 1);
+  return providerType.slice(providerType.indexOf(':') + 1);
 }
 
 /**

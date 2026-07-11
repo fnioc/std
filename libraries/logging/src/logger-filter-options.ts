@@ -8,8 +8,8 @@
 // deferred (see ./logger.ts and ./logger-factory.ts). A caller can still build
 // and inspect rules; `addFilter` (./filter-augmentations) appends them.
 
-import { LogLevel } from "@rhombus-std/logging.core";
-import type { Func } from "@rhombus-toolkit/func";
+import { LogLevel } from '@rhombus-std/logging.core';
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * A rule used to filter log messages. `filter` receives

@@ -6,28 +6,28 @@
 // prototype patch live in `./metadata-shim.js` — shared verbatim with
 // `@rhombus-std/di.tests.integration`'s tests, which hand-feed fixtures the same way.
 
-import type { Token } from "@rhombus-std/di.core";
+import type { Token } from '@rhombus-std/di.core';
 
-export { defineDeps } from "./metadata-shim.js";
+export { defineDeps } from './metadata-shim.js';
 
 // ── Tokens ──────────────────────────────────────────────────────────────────
 
 export const T = {
-  Logger: "pkg:ILogger" as Token,
-  Db: "pkg:IDb" as Token,
-  Repo: "pkg:IRepo" as Token,
-  Service: "pkg:IService" as Token,
-  Config: "pkg:IConfig" as Token,
-  A: "pkg:IA" as Token,
-  B: "pkg:IB" as Token,
-  C: "pkg:IC" as Token,
+  Logger: 'pkg:ILogger' as Token,
+  Db: 'pkg:IDb' as Token,
+  Repo: 'pkg:IRepo' as Token,
+  Service: 'pkg:IService' as Token,
+  Config: 'pkg:IConfig' as Token,
+  A: 'pkg:IA' as Token,
+  B: 'pkg:IB' as Token,
+  C: 'pkg:IC' as Token,
 } as const;
 
 /** Generic-token fixtures for the open-generics suite. */
 export const G = {
-  RepoTemplate: "pkg:IRepo<$1>" as Token,
-  RepoOfA: "pkg:IRepo<pkg:IA>" as Token,
-  RepoOfB: "pkg:IRepo<pkg:IB>" as Token,
+  RepoTemplate: 'pkg:IRepo<$1>' as Token,
+  RepoOfA: 'pkg:IRepo<pkg:IA>' as Token,
+  RepoOfB: 'pkg:IRepo<pkg:IB>' as Token,
 } as const;
 
 // ── Disposal probes ─────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ export class NonDisposable {
 
 /** Zero-arg constructor — `new`ed directly, no dep lookup. */
 export class ZeroArg {
-  public readonly tag = "zero";
+  public readonly tag = 'zero';
 }
 
 /**

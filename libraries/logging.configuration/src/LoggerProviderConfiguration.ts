@@ -7,10 +7,10 @@
 // registration's `typeArg(1)` slot (see the no-arg `addConfiguration`), and a
 // direct construction passes `nameof<TProvider>()`.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { Typeof } from "@rhombus-std/di.core";
-import type { ILoggerProviderConfiguration } from "./ILoggerProviderConfiguration";
-import type { ILoggerProviderConfigurationFactory } from "./ILoggerProviderConfigurationFactory";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { Typeof } from '@rhombus-std/di.core';
+import type { ILoggerProviderConfiguration } from './ILoggerProviderConfiguration';
+import type { ILoggerProviderConfigurationFactory } from './ILoggerProviderConfigurationFactory';
 
 /**
  * The concrete {@link ILoggerProviderConfiguration}: asks the

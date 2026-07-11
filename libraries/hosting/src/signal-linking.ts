@@ -7,8 +7,8 @@
 // once `timeoutMs` elapses. `dispose` detaches the listeners and clears the
 // timer.
 
-import { AbortController, type AbortSignal, clearTimeout, setTimeout } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import { AbortController, type AbortSignal, clearTimeout, setTimeout } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
 /** A linked {@link AbortSignal} plus the teardown for its wiring. */
 export interface LinkedSignal extends Disposable {
@@ -36,12 +36,12 @@ export function linkSignals(sources: readonly AbortSignal[], timeoutMs?: number)
       break;
     }
     const onAbort = (): void => abort(source.reason);
-    source.addEventListener("abort", onAbort, { once: true });
-    cleanups.push(() => source.removeEventListener("abort", onAbort));
+    source.addEventListener('abort', onAbort, { once: true });
+    cleanups.push(() => source.removeEventListener('abort', onAbort));
   }
 
   if (timeoutMs !== undefined && Number.isFinite(timeoutMs)) {
-    const timer = setTimeout(() => abort(new Error("A host lifecycle timeout elapsed.")), timeoutMs);
+    const timer = setTimeout(() => abort(new Error('A host lifecycle timeout elapsed.')), timeoutMs);
     cleanups.push(() => clearTimeout(timer));
   }
 
@@ -61,6 +61,6 @@ export function whenAborted(signal: AbortSignal): Promise<void> {
     return Promise.resolve();
   }
   return new Promise((resolve) => {
-    signal.addEventListener("abort", () => resolve(), { once: true });
+    signal.addEventListener('abort', () => resolve(), { once: true });
   });
 }

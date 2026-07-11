@@ -23,7 +23,7 @@
 // parser's acceptance of a bare `Key=Value` token. A bare token with no "="
 // remains a positional and is silently ignored, same as anything after "--".
 
-import { ConfigurationProvider } from "@rhombus-std/config";
+import { ConfigurationProvider } from '@rhombus-std/config';
 
 /** Whether `token` is a syntactically-valid negative number (e.g. `-5`, `-3.14`). */
 function isNegativeNumber(token: string): boolean {
@@ -60,23 +60,23 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
       // the following token. Checked BEFORE the "/switch" rewrite since "--"
       // does not start with "/" anyway, but kept first for clarity/parity
       // with the pre-monorepo baseline.
-      if (token === "--") {
+      if (token === '--') {
         break;
       }
 
       // "/switch" -> "--switch": Windows-style switch notation, normalized
       // only at switch-position (never applied to a value token -- see the
       // module doc comment above).
-      if (token.startsWith("/")) {
+      if (token.startsWith('/')) {
         token = `--${token.slice(1)}`;
       }
 
-      if (token.startsWith("--")) {
+      if (token.startsWith('--')) {
         i = this.consumeLongSwitch(token, argv, i);
         continue;
       }
 
-      if (token.startsWith("-")) {
+      if (token.startsWith('-')) {
         i = this.consumeShortSwitch(token, argv, i);
         continue;
       }
@@ -84,7 +84,7 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
       // Bare token (no leading dash): a "key=value" pair is honored, split
       // at the FIRST "="; anything else is a positional arg and stays
       // ignored (see the module doc comment).
-      const eqIndex = token.indexOf("=");
+      const eqIndex = token.indexOf('=');
       if (eqIndex !== -1) {
         this.set(token.slice(0, eqIndex), token.slice(eqIndex + 1));
       }
@@ -100,7 +100,7 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
     index: number,
   ): number {
     const rest = token.slice(2);
-    const eqIndex = rest.indexOf("=");
+    const eqIndex = rest.indexOf('=');
 
     if (eqIndex !== -1) {
       const key = rest.slice(0, eqIndex);
@@ -124,7 +124,7 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
     // numbers (`--Offset -5`) stay intact, and a genuine dash-led string
     // value is reachable via the `=` form (`--Key=-x`).
     if (this.isValuelessFollower(value)) {
-      this.set(rest, "true");
+      this.set(rest, 'true');
       return index;
     }
 
@@ -142,7 +142,7 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
     if (this.foldedSwitchMappings.has(token.toLowerCase())) {
       return true;
     }
-    return token.startsWith("-") && !isNegativeNumber(token);
+    return token.startsWith('-') && !isNegativeNumber(token);
   }
 
   /** Handles a mapped `-x value` / `-x=value` token; returns the new index. */
@@ -151,7 +151,7 @@ export class CommandLineConfigurationProvider extends ConfigurationProvider {
     argv: readonly string[],
     index: number,
   ): number {
-    const eqIndex = token.indexOf("=");
+    const eqIndex = token.indexOf('=');
     const switchName = eqIndex !== -1 ? token.slice(0, eqIndex) : token;
     const mappedKey = this.foldedSwitchMappings.get(switchName.toLowerCase());
 

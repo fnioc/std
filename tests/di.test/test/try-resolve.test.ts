@@ -1,23 +1,23 @@
-import { NoSatisfiableSignatureError, ServiceManifest, UnregisteredTokenError } from "@rhombus-std/di";
-import { expect, test } from "bun:test";
-import { defineDeps, OneDep, T, ZeroArg } from "./fixtures.js";
+import { NoSatisfiableSignatureError, ServiceManifest, UnregisteredTokenError } from '@rhombus-std/di';
+import { expect, test } from 'bun:test';
+import { defineDeps, OneDep, T, ZeroArg } from './fixtures.js';
 
 // tryResolve<T>() — the non-throwing counterpart to resolve<T>() (#25). Returns
 // the instance for a registered token, `undefined` for an unregistered one, and
 // re-throws for a REGISTERED token whose construction fails for another reason.
 
-test("tryResolve returns the resolved instance for a registered token", () => {
-  const services = new ServiceManifest<"singleton">();
+test('tryResolve returns the resolved instance for a registered token', () => {
+  const services = new ServiceManifest<'singleton'>();
   services.add(T.Service, ZeroArg);
   const provider = services.build();
 
   const instance = provider.tryResolve<ZeroArg>(T.Service);
   expect(instance).toBeInstanceOf(ZeroArg);
-  expect(instance?.tag).toBe("zero");
+  expect(instance?.tag).toBe('zero');
 });
 
-test("tryResolve returns undefined for an unregistered token (no throw)", () => {
-  const services = new ServiceManifest<"singleton">();
+test('tryResolve returns undefined for an unregistered token (no throw)', () => {
+  const services = new ServiceManifest<'singleton'>();
   const provider = services.build();
 
   expect(provider.tryResolve(T.Service)).toBeUndefined();
@@ -28,7 +28,7 @@ test("tryResolve returns undefined for an unregistered token (no throw)", () => 
 test("tryResolve re-throws when a REGISTERED token's dependency is unregistered", () => {
   // OneDep is registered but its sole dependency (T.Db) is not — a construction
   // failure, not a registration miss. tryResolve softens only the top-level miss.
-  const services = new ServiceManifest<"singleton">();
+  const services = new ServiceManifest<'singleton'>();
   defineDeps(OneDep, [[T.Db]]);
   services.add(T.Service, OneDep);
   const provider = services.build();
@@ -38,11 +38,11 @@ test("tryResolve re-throws when a REGISTERED token's dependency is unregistered"
   expect(() => provider.tryResolve(T.Service)).toThrow(NoSatisfiableSignatureError);
 });
 
-test("tryResolve without a token throws the transformer-plugin hint", () => {
-  const services = new ServiceManifest<"singleton">();
+test('tryResolve without a token throws the transformer-plugin hint', () => {
+  const services = new ServiceManifest<'singleton'>();
   const provider = services.build();
 
-  expect(() => (provider as { tryResolve: () => unknown }).tryResolve()).toThrow(
+  expect(() => (provider as { tryResolve: () => unknown; }).tryResolve()).toThrow(
     /requires the @rhombus-std\/di\.transformer plugin/,
   );
 });

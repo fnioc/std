@@ -4,9 +4,9 @@
 // composite `Logger` by running every provider's `LoggerInformation` through
 // `LoggerRuleSelector`; the composite consults them at log time.
 
-import type { IExternalScopeProvider, ILogger, ILoggerProvider, LogLevel } from "@rhombus-std/logging.core";
-import type { Func } from "@rhombus-toolkit/func";
-import { isSupportExternalScope } from "./support-external-scope-guard";
+import type { IExternalScopeProvider, ILogger, ILoggerProvider, LogLevel } from '@rhombus-std/logging.core';
+import type { Func } from '@rhombus-toolkit/func';
+import { isSupportExternalScope } from './support-external-scope-guard';
 
 /** The filter delegate shape: `(providerName, categoryName, level) => enabled`. */
 export type LoggerFilterDelegate = Func<[string | undefined, string | undefined, LogLevel], boolean>;

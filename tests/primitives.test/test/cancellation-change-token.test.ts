@@ -1,11 +1,11 @@
 // Behavior tests for CancellationChangeToken -- backed by AbortSignal rather
 // than .NET's CancellationToken (see src/cancellation-change-token.ts).
 
-import { CancellationChangeToken } from "@rhombus-std/primitives/internal/CancellationChangeToken";
-import { describe, expect, test } from "bun:test";
+import { CancellationChangeToken } from '@rhombus-std/primitives/internal/CancellationChangeToken';
+import { describe, expect, test } from 'bun:test';
 
-describe("CancellationChangeToken", () => {
-  test("hasChanged reflects signal.aborted", () => {
+describe('CancellationChangeToken', () => {
+  test('hasChanged reflects signal.aborted', () => {
     const controller = new AbortController();
     const token = new CancellationChangeToken(controller.signal);
 
@@ -14,26 +14,26 @@ describe("CancellationChangeToken", () => {
     expect(token.hasChanged).toBe(true);
   });
 
-  test("activeChangeCallbacks is always true", () => {
+  test('activeChangeCallbacks is always true', () => {
     const token = new CancellationChangeToken(new AbortController().signal);
     expect(token.activeChangeCallbacks).toBe(true);
   });
 
-  test("registerChangeCallback fires on abort and passes state through", () => {
+  test('registerChangeCallback fires on abort and passes state through', () => {
     const controller = new AbortController();
     const token = new CancellationChangeToken(controller.signal);
 
     let seen: string | undefined;
     token.registerChangeCallback((state) => {
       seen = state as string;
-    }, "payload");
+    }, 'payload');
 
     expect(seen).toBeUndefined();
     controller.abort();
-    expect(seen).toBe("payload");
+    expect(seen).toBe('payload');
   });
 
-  test("registerChangeCallback fires synchronously if already aborted", () => {
+  test('registerChangeCallback fires synchronously if already aborted', () => {
     const controller = new AbortController();
     controller.abort();
     const token = new CancellationChangeToken(controller.signal);
@@ -46,7 +46,7 @@ describe("CancellationChangeToken", () => {
     expect(called).toBe(true);
   });
 
-  test("disposing the registration removes the listener before abort fires", () => {
+  test('disposing the registration removes the listener before abort fires', () => {
     const controller = new AbortController();
     const token = new CancellationChangeToken(controller.signal);
 

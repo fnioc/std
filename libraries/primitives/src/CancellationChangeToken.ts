@@ -10,9 +10,9 @@
 // (ME's variant that flips it to `false` only handles a token that can never
 // be canceled, which has no analog here).
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
-import type { AbortSignal, IChangeToken } from "./index.js";
+import type { AbortSignal, IChangeToken } from './index.js';
 
 /**
  * An {@link IChangeToken} implementation backed by an `AbortSignal`.
@@ -45,9 +45,9 @@ export class CancellationChangeToken implements IChangeToken {
     }
 
     const listener = () => callback(state);
-    this.#signal.addEventListener("abort", listener, { once: true });
+    this.#signal.addEventListener('abort', listener, { once: true });
     return {
-      [Symbol.dispose]: () => this.#signal.removeEventListener("abort", listener),
+      [Symbol.dispose]: () => this.#signal.removeEventListener('abort', listener),
     };
   }
 }

@@ -3,5 +3,5 @@
 // Unlike memory/ and chained/, this barrel is side-effect free: the bases
 // carry no augmentation of their own.
 
-export { StreamConfigurationProvider } from "./StreamConfigurationProvider";
-export { StreamConfigurationSource, type StreamPayload } from "./StreamConfigurationSource";
+export { StreamConfigurationProvider } from './StreamConfigurationProvider';
+export { StreamConfigurationSource, type StreamPayload } from './StreamConfigurationSource';

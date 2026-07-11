@@ -10,40 +10,23 @@
 // eagerly in the constructor but `HostOptions` is folded from the configuration
 // at `build()` time (in the composition tail), once every source is present.
 
-import { ConfigurationManager } from "@rhombus-std/config";
-import type { IConfigurationManager } from "@rhombus-std/config.core";
-import { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProviderFactory, ServiceProviderOptions } from "@rhombus-std/di.core";
-import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import {
-  type HostBuilderContext,
-  HostDefaults,
-  type IHost,
-  type IHostApplicationBuilder,
-  type IHostBuilder,
-  type IHostEnvironment,
-} from "@rhombus-std/hosting.core";
-import { LoggingBuilder } from "@rhombus-std/logging";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import type { Action } from "@rhombus-toolkit/func";
-import {
-  addCommandLineConfig,
-  addDefaultServices,
-  applyDefaultAppConfiguration,
-  createDefaultServiceProviderOptions,
-  HOST_ENVIRONMENT_VARIABLE_PREFIX,
-  setDefaultContentRoot,
-} from "./default-configuration";
-import {
-  createFrameworkServices,
-  createHostingEnvironment,
-  type FrameworkServices,
-  populateFrameworkServices,
-  resolveHost,
-} from "./host-composition";
-import { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
-import { HostBuilderAdapter } from "./internal/HostBuilderAdapter";
-import { MetricsBuilder } from "./MetricsBuilder";
+import { ConfigurationManager } from '@rhombus-std/config';
+import type { IConfigurationManager } from '@rhombus-std/config.core';
+import { ServiceManifest } from '@rhombus-std/di';
+import type { ServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
+import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
+  type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { LoggingBuilder } from '@rhombus-std/logging';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import type { Action } from '@rhombus-toolkit/func';
+import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfiguration, createDefaultServiceProviderOptions,
+  HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-configuration';
+import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices,
+  resolveHost } from './host-composition';
+import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
+import { HostBuilderAdapter } from './internal/HostBuilderAdapter';
+import { MetricsBuilder } from './MetricsBuilder';
 
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */
 export class HostApplicationBuilder implements IHostApplicationBuilder {
@@ -184,7 +167,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   /** Builds the host. Can only be called once. */
   public build(): IHost {
     if (this.#hostBuilt) {
-      throw new Error("Build can only be called once.");
+      throw new Error('Build can only be called once.');
     }
     this.#hostBuilt = true;
     // Replay any classic-builder delegates accumulated through `asHostBuilder()`

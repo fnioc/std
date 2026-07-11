@@ -2,8 +2,8 @@
 // directly into `@rhombus-std/config` (not a separate provider package) --
 // an in-memory source is a core building block, not an optional add-on.
 
-import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { MemoryConfigurationProvider } from "./MemoryConfigurationProvider";
+import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from '@rhombus-std/config.core';
+import { MemoryConfigurationProvider } from './MemoryConfigurationProvider';
 
 /**
  * In-memory initial data: either an iterable of `[key, value]` pairs (a `Map`,
@@ -26,7 +26,7 @@ export class MemoryConfigurationSource implements IConfigurationSource {
   /** The initial data to seed the provider with. */
   public initialData?: ConfigurationData;
 
-  public constructor(options?: { initialData?: ConfigurationData }) {
+  public constructor(options?: { initialData?: ConfigurationData; }) {
     this.initialData = options?.initialData;
   }
 

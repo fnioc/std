@@ -5,15 +5,11 @@
 // dictionary the abstract ConfigurationProvider base provides, so extending
 // that base would only add an unused store.
 
-import type {
-  IConfiguration,
-  IConfigurationProvider,
-  IConfigurationRoot,
-  ITryGetResult,
-} from "@rhombus-std/config.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
-import { compareConfigurationKeys } from "../configuration-key-comparer";
-import type { ChainedConfigurationSource } from "./ChainedConfigurationSource";
+import type { IConfiguration, IConfigurationProvider, IConfigurationRoot,
+  ITryGetResult } from '@rhombus-std/config.core';
+import type { IChangeToken } from '@rhombus-std/primitives';
+import { compareConfigurationKeys } from '../configuration-key-comparer';
+import type { ChainedConfigurationSource } from './ChainedConfigurationSource';
 
 /**
  * Duck-types `config` as an {@link IConfigurationRoot}: TS interfaces have no
@@ -22,7 +18,7 @@ import type { ChainedConfigurationSource } from "./ChainedConfigurationSource";
  * reference's `_config is IConfigurationRoot` type test.
  */
 function isConfigurationRoot(config: IConfiguration): config is IConfigurationRoot {
-  return typeof (config as Partial<IConfigurationRoot>).reload === "function";
+  return typeof (config as Partial<IConfigurationRoot>).reload === 'function';
 }
 
 /** A provider that presents an existing {@link IConfiguration} as a chained source. */
@@ -44,7 +40,7 @@ export class ChainedConfigurationProvider implements IConfigurationProvider, Dis
 
   /** Writes through to the chained configuration. */
   public set(key: string, value?: string): void {
-    this.#config.set(key, value ?? "");
+    this.#config.set(key, value ?? '');
   }
 
   /** The chained configuration's own reload token. */

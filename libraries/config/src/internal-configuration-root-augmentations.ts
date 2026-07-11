@@ -18,10 +18,10 @@
 //     `ConfigurationRoot.get`, whose private `#rawGet` IS that reverse scan, so
 //     a second copy here would have no call site.
 
-import type { IConfigurationRoot, IConfigurationSection } from "@rhombus-std/config.core";
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { combine } from "./abstractions/configuration-path";
-import { foldKey } from "./fold-key";
+import type { IConfigurationRoot, IConfigurationSection } from '@rhombus-std/config.core';
+import type { AugmentationSet } from '@rhombus-std/primitives';
+import { combine } from './abstractions/configuration-path';
+import { foldKey } from './fold-key';
 
 /**
  * One named object literal mirroring the reference

@@ -15,15 +15,15 @@ npm install @rhombus-std/config @rhombus-std/config.json
 ## Basic usage
 
 ```ts
-import "@rhombus-std/config.json"; // unlocks .addJsonFile() on ConfigurationBuilder
-import { ConfigurationBuilder } from "@rhombus-std/config";
+import '@rhombus-std/config.json'; // unlocks .addJsonFile() on ConfigurationBuilder
+import { ConfigurationBuilder } from '@rhombus-std/config';
 
 const config = new ConfigurationBuilder()
-  .addJsonFile("appsettings.json")
-  .addJsonFile("appsettings.local.json", { optional: true })
+  .addJsonFile('appsettings.json')
+  .addJsonFile('appsettings.local.json', { optional: true })
   .build();
 
-config.get("Server:Port");
+config.get('Server:Port');
 ```
 
 `optional: true` makes a missing file resolve to an empty provider instead of
@@ -41,5 +41,5 @@ to load this package's module — you must import it for its side effect
 explicitly:
 
 ```ts
-import "@rhombus-std/config.json"; // unlocks .addJsonFile() on ConfigurationBuilder
+import '@rhombus-std/config.json'; // unlocks .addJsonFile() on ConfigurationBuilder
 ```

@@ -9,14 +9,14 @@
 // When @types/node happens to be in a consumer program the declarations merge
 // as extra overloads -- legal and inert.
 
-declare module "node:fs" {
-  export function readFileSync(path: string, encoding: "utf-8"): string;
+declare module 'node:fs' {
+  export function readFileSync(path: string, encoding: 'utf-8'): string;
 }
-declare module "node:path" {
+declare module 'node:path' {
   export function resolve(...paths: string[]): string;
   export function isAbsolute(path: string): boolean;
 }
-declare module "node:async_hooks" {
+declare module 'node:async_hooks' {
   export class AsyncLocalStorage<T> {
     getStore(): T | undefined;
     enterWith(store: T): void;

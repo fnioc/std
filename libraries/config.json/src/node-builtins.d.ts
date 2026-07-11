@@ -6,9 +6,9 @@
 // shipped. When @types/node happens to be in a consumer program the
 // declarations merge as extra overloads -- legal and inert.
 
-declare module "node:fs" {
-  export function readFileSync(path: string, encoding: "utf-8"): string;
+declare module 'node:fs' {
+  export function readFileSync(path: string, encoding: 'utf-8'): string;
 }
-declare module "node:path" {
+declare module 'node:path' {
   export function resolve(...paths: string[]): string;
 }

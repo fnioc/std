@@ -31,19 +31,19 @@
 // Side-effect + merge: installs `addOptions`/`configure` (the options pipeline
 // verbs) onto di.core's ServiceManifest, and brings the interface merge that
 // types `manifest.addOptions(...)` below into the program.
-import "@rhombus-std/options.augmentations";
+import '@rhombus-std/options.augmentations';
 
-import { closeToken, type ServiceManifest, type ServiceManifestClass, typeArg } from "@rhombus-std/di.core";
-import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from "@rhombus-std/logging.core";
-import { configureStepToken } from "@rhombus-std/options.augmentations";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { DefaultLoggerLevelConfigureOptions } from "./default-logger-level-configure-options";
-import { LoggerFilterOptions } from "./logger-filter-options";
-import { LoggerFactory } from "./LoggerFactory";
-import { LoggingBuilder } from "./LoggingBuilder";
-import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from "./tokens";
+import { closeToken, type ServiceManifest, type ServiceManifestClass, typeArg } from '@rhombus-std/di.core';
+import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
+import { configureStepToken } from '@rhombus-std/options.augmentations';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { DefaultLoggerLevelConfigureOptions } from './default-logger-level-configure-options';
+import { LoggerFilterOptions } from './logger-filter-options';
+import { LoggerFactory } from './LoggerFactory';
+import { LoggingBuilder } from './LoggingBuilder';
+import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 
 // The base of the open `ILogger<$1>` service token — byte-identical to the base
 // a transformer consumer's `nameof<ILogger<TCategory>>()` derives. Hardcoded
@@ -54,7 +54,7 @@ import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKE
 // `"…:ILogger<pkg:Foo>"` off this same base, so the open template matches. A
 // no-transformer consumer writes this literal directly (docs §40); mirrors
 // logging.configuration's `LOGGER_PROVIDER_CONFIGURATION_BASE`.
-const ILOGGER_TOKEN_BASE = "@rhombus-std/logging.core:ILogger";
+const ILOGGER_TOKEN_BASE = '@rhombus-std/logging.core:ILogger';
 
 // `addLogging` is a BRAND-NEW method name, so it must merge onto BOTH the
 // `ServiceManifestBase` interface (the surface the public `ServiceManifest` type
@@ -63,8 +63,8 @@ const ILOGGER_TOKEN_BASE = "@rhombus-std/logging.core:ILogger";
 // interface — exactly as @rhombus-std/options.augmentations does. Type-parameter
 // lists MUST match each target's declaration (TS2428): `ServiceManifestBase`
 // takes `<Scopes, Provider>`, `ServiceManifestClass` takes `<Scopes>`.
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers the logging services and runs the optional {@link ILoggingBuilder}
      * configuration delegate. Returns `this` for chaining.
@@ -72,7 +72,7 @@ declare module "@rhombus-std/di.core" {
     addLogging(configure?: Func<[ILoggingBuilder], void>): this;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addLogging(configure?: Func<[ILoggingBuilder], void>): this;
   }
 }
@@ -89,7 +89,7 @@ export const LoggingServiceCollectionExtensions = {
   ): ServiceManifestClass<string> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
     manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions())
-      .as("singleton");
+      .as('singleton');
     manifest.addValue(
       configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
       new DefaultLoggerLevelConfigureOptions(LogLevel.Information),
@@ -100,16 +100,16 @@ export const LoggingServiceCollectionExtensions = {
     manifest.add(
       LOGGER_FACTORY_TOKEN,
       LoggerFactory,
-      [[closeToken("Array", LOGGER_PROVIDER_TOKEN), LOGGER_FILTER_OPTIONS_TOKEN]],
-    ).as("singleton");
+      [[closeToken('Array', LOGGER_PROVIDER_TOKEN), LOGGER_FILTER_OPTIONS_TOKEN]],
+    ).as('singleton');
 
     // The open ILogger<$1> -> Logger<$1> registration: the closing type's token
     // flows in through typeArg(1), from which Logger<T> derives its category.
     manifest.add(
-      closeToken(ILOGGER_TOKEN_BASE, "$1"),
+      closeToken(ILOGGER_TOKEN_BASE, '$1'),
       LoggerOfT,
       [[LOGGER_FACTORY_TOKEN, typeArg(1)]],
-    ).as("singleton");
+    ).as('singleton');
 
     // `manifest` is the widened ServiceManifestClass<string> (see the
     // declare-module note above), whereas ILoggingBuilder.services is the

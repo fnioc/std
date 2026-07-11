@@ -19,16 +19,16 @@
 // either disqualifies the page from the back/forward cache, so this package
 // must never be able to name them.
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
 /** The `document.visibilityState` values. */
-export type DocumentVisibilityState = "visible" | "hidden";
+export type DocumentVisibilityState = 'visible' | 'hidden';
 
 /** The page-lifecycle events dispatched on `document`. */
-export type DocumentLifecycleEventType = "visibilitychange" | "freeze" | "resume";
+export type DocumentLifecycleEventType = 'visibilitychange' | 'freeze' | 'resume';
 
 /** The page-lifecycle events dispatched on `window`. */
-export type WindowLifecycleEventType = "pagehide" | "pageshow";
+export type WindowLifecycleEventType = 'pagehide' | 'pageshow';
 
 /**
  * Structural counterpart of the platform `PageTransitionEvent` —
@@ -74,8 +74,8 @@ export function defaultPageContext(): PageContext {
   };
   if (document === undefined || window === undefined) {
     throw new Error(
-      "@rhombus-std/hosting.browser requires a browser page context (document/window); "
-        + "pass an explicit PageContext to run anywhere else.",
+      '@rhombus-std/hosting.browser requires a browser page context (document/window); '
+        + 'pass an explicit PageContext to run anywhere else.',
     );
   }
   return { document, window };

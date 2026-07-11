@@ -25,19 +25,19 @@
 // `MemoryCacheEntryOptions` now lives in caching.core (as ME has it), so the
 // options TYPE is in scope here.
 
-import { type AugmentationSet, type IChangeToken, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { CacheEntryExtensions } from "./cache-entry-augmentations";
-import type { ICacheEntry } from "./ICacheEntry";
-import type { IMemoryCache } from "./memory-cache";
-import type { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
+import { type AugmentationSet, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { CacheEntryExtensions } from './cache-entry-augmentations';
+import type { ICacheEntry } from './ICacheEntry';
+import type { IMemoryCache } from './memory-cache';
+import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 
 /** Narrows the `expiration` union: an `IChangeToken` (not a `Date`/`number`). */
 function isChangeToken(value: unknown): value is IChangeToken {
-  return typeof value === "object"
+  return typeof value === 'object'
     && value !== null
-    && typeof (value as IChangeToken).registerChangeCallback === "function";
+    && typeof (value as IChangeToken).registerChangeCallback === 'function';
 }
 
 /** The `CacheExtensions` augmentation set for {@link IMemoryCache} (docs §28/§38). */
@@ -83,7 +83,7 @@ export const CacheExtensions = {
     try {
       if (expiration instanceof Date) {
         entry.absoluteExpiration = expiration;
-      } else if (typeof expiration === "number") {
+      } else if (typeof expiration === 'number') {
         entry.absoluteExpirationRelativeToNow = expiration;
       } else if (isChangeToken(expiration)) {
         entry.expirationTokens.push(expiration);
@@ -220,7 +220,7 @@ export const CacheExtensions = {
 // MemoryCache downstream is decorated `@augment(nameof<IMemoryCache>())` and pulls
 // these onto its prototype. `tryGetValue` is absent -- IMemoryCache already
 // declares it (the primitive the wrapper builds on); see the registration below.
-declare module "./memory-cache" {
+declare module './memory-cache' {
   interface IMemoryCache {
     get<T = unknown>(key: unknown): T | undefined;
     set<T>(key: unknown, value: T): T;

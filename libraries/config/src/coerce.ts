@@ -7,14 +7,14 @@
 // never drift apart. The discriminated `ParseResult` lets each consumer pick
 // its own failure mode.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import { assertNever } from "@rhombus-toolkit/type-guards";
-import { exists } from "./configuration-augmentations";
-import { OPTIONAL, type Schema } from "./schema";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import { exists } from './configuration-augmentations';
+import { OPTIONAL, type Schema } from './schema';
 
 export type ParseResult<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly reason: string };
+  | { readonly ok: true; readonly value: T; }
+  | { readonly ok: false; readonly reason: string; };
 
 /**
  * Coerces `raw` to a finite number. Rejects blank explicitly (`Number("")` and
@@ -23,7 +23,7 @@ export type ParseResult<T> =
  * `Infinity`) are rejected too.
  */
 export function parseNumber(raw: string): ParseResult<number> {
-  if (raw.trim() === "") {
+  if (raw.trim() === '') {
     return { ok: false, reason: `not a number: ${JSON.stringify(raw)}` };
   }
   const n = Number(raw);
@@ -41,10 +41,10 @@ export function parseNumber(raw: string): ParseResult<number> {
  */
 export function parseBoolean(raw: string): ParseResult<boolean> {
   const s = raw.trim().toLowerCase();
-  if (s === "true" || s === "1" || s === "yes" || s === "on") {
+  if (s === 'true' || s === '1' || s === 'yes' || s === 'on') {
     return { ok: true, value: true };
   }
-  if (s === "false" || s === "0" || s === "no" || s === "off") {
+  if (s === 'false' || s === '0' || s === 'no' || s === 'off') {
     return { ok: true, value: false };
   }
   return { ok: false, reason: `not a boolean: ${JSON.stringify(raw)}` };
@@ -60,18 +60,18 @@ export class SchemaCoercionError extends Error {
   public readonly issues: readonly string[];
 
   public constructor(issues: readonly string[]) {
-    super(issues.join("; "));
-    this.name = "SchemaCoercionError";
+    super(issues.join('; '));
+    this.name = 'SchemaCoercionError';
     this.issues = issues;
   }
 }
 
-function isLeaf(s: Schema): s is "string" | "number" | "boolean" {
-  return s === "string" || s === "number" || s === "boolean";
+function isLeaf(s: Schema): s is 'string' | 'number' | 'boolean' {
+  return s === 'string' || s === 'number' || s === 'boolean';
 }
 
-function isOptional(s: Schema): s is { readonly [OPTIONAL]: Schema } {
-  return typeof s === "object" && s !== null && OPTIONAL in s;
+function isOptional(s: Schema): s is { readonly [OPTIONAL]: Schema; } {
+  return typeof s === 'object' && s !== null && OPTIONAL in s;
 }
 
 function present(node: IConfiguration, inner: Schema, key: string): boolean {
@@ -85,7 +85,7 @@ function walkRequired(
   path: readonly string[],
   issues: string[],
 ): unknown {
-  const fullPath = [...path, key].join(":");
+  const fullPath = [...path, key].join(':');
 
   if (isLeaf(schema)) {
     const raw = node.get(key);
@@ -94,9 +94,9 @@ function walkRequired(
       return undefined;
     }
     switch (schema) {
-      case "string":
+      case 'string':
         return raw;
-      case "number": {
+      case 'number': {
         const r = parseNumber(raw);
         if (!r.ok) {
           issues.push(`invalid number for "${fullPath}": ${JSON.stringify(raw)}`);
@@ -104,7 +104,7 @@ function walkRequired(
         }
         return r.value;
       }
-      case "boolean": {
+      case 'boolean': {
         const r = parseBoolean(raw);
         if (!r.ok) {
           issues.push(`invalid boolean for "${fullPath}": ${JSON.stringify(raw)}`);

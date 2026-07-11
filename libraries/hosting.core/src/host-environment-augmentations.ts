@@ -11,15 +11,15 @@
 // `@augment(nameof<IHostEnvironment>())` and pulls this bag onto its
 // prototype; the class-side merge stays downstream next to that class.
 
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { Environments } from "./environments";
-import type { IHostEnvironment } from "./IHostEnvironment";
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { Environments } from './environments';
+import type { IHostEnvironment } from './IHostEnvironment';
 
 // The interface-side merge for the `IHostEnvironment` augmentation members lives
 // HERE, beside the const (rule 0.6). The runtime install onto the concrete
 // `HostingEnvironment` (and its class-side merge) live downstream.
-declare module "./IHostEnvironment" {
+declare module './IHostEnvironment' {
   interface IHostEnvironment {
     isEnvironment(environmentName: string): boolean;
     isDevelopment(): boolean;

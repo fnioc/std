@@ -19,23 +19,23 @@
 // `ConfigurationManager`, not something flowing through this interface
 // boundary -- DOES use it, for `addConfiguration`; see host-builder.ts.)
 
-import { MemoryConfigurationSource } from "@rhombus-std/config";
-import { CommandLineConfigurationSource } from "@rhombus-std/config.commandline";
-import type { IConfigurationBuilder } from "@rhombus-std/config.core";
-import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
-import { JsonConfigurationSource } from "@rhombus-std/config.json";
-import { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProviderOptions } from "@rhombus-std/di.core";
-import { HostDefaults, HostEnvironmentEnvExtensions, type IHostEnvironment } from "@rhombus-std/hosting.core";
-import { LoggingBuilder, LoggingBuilderExtensions } from "@rhombus-std/logging";
-import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
-import { process } from "@rhombus-std/primitives";
+import { MemoryConfigurationSource } from '@rhombus-std/config';
+import { CommandLineConfigurationSource } from '@rhombus-std/config.commandline';
+import type { IConfigurationBuilder } from '@rhombus-std/config.core';
+import { EnvironmentVariablesConfigurationSource } from '@rhombus-std/config.env';
+import { JsonConfigurationSource } from '@rhombus-std/config.json';
+import { ServiceManifest } from '@rhombus-std/di';
+import type { ServiceProviderOptions } from '@rhombus-std/di.core';
+import { HostDefaults, HostEnvironmentEnvExtensions, type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { LoggingBuilder, LoggingBuilderExtensions } from '@rhombus-std/logging';
+import { ConsoleLoggerProvider } from '@rhombus-std/logging.console';
+import { process } from '@rhombus-std/primitives';
 
 /**
  * The environment-variable prefix the host configuration is seeded from. The
  * neutral in-repo analog of the reference's vendor-prefixed host env variables.
  */
-export const HOST_ENVIRONMENT_VARIABLE_PREFIX = "RHOMBUS_";
+export const HOST_ENVIRONMENT_VARIABLE_PREFIX = 'RHOMBUS_';
 
 /** Adds a command-line source over `args` when non-empty. */
 export function addCommandLineConfig(builder: IConfigurationBuilder, args?: readonly string[]): void {
@@ -74,7 +74,7 @@ export function applyDefaultAppConfiguration(
   environment: IHostEnvironment,
   args?: readonly string[],
 ): void {
-  builder.add(new JsonConfigurationSource("appsettings.json", { optional: true }));
+  builder.add(new JsonConfigurationSource('appsettings.json', { optional: true }));
   builder.add(new JsonConfigurationSource(`appsettings.${environment.environmentName}.json`, { optional: true }));
   builder.add(new EnvironmentVariablesConfigurationSource());
   addCommandLineConfig(builder, args);

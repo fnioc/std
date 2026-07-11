@@ -37,14 +37,14 @@
 //   | di.transformer     | inline: [primitives.transformer, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
 //   | config.transformer | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
 
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { buildPackage } from "./build-package";
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { buildPackage } from './build-package';
 
 interface RhombusBuild {
   /** Disambiguates the lowering engine when both twin configs exist (§41 pilot). */
-  readonly lowering?: "tspc" | "ttsc";
+  readonly lowering?: 'tspc' | 'ttsc';
   /** Pure-types package: emit no JS bundle and assert none appears (§40). */
   readonly typesOnly?: boolean;
   /** Names subtracted from the derived external set (bundled despite being deps). */
@@ -62,14 +62,14 @@ interface Manifest {
 }
 
 const dir = process.cwd();
-const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as Manifest;
+const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as Manifest;
 const overrides = manifest.rhombusBuild ?? {};
 
 // Typecheck gate first -- the publish pipeline never runs tsc itself
 // (bun build + rollup-plugin-dts), so this is where type errors fail the build.
-const typecheck = spawnSync("bun", ["x", "tsc", "--noEmit", "-p", "tsconfig.json"], {
+const typecheck = spawnSync('bun', ['x', 'tsc', '--noEmit', '-p', 'tsconfig.json'], {
   cwd: dir,
-  stdio: "inherit",
+  stdio: 'inherit',
 });
 if (typecheck.status !== 0) {
   process.exit(typecheck.status ?? 1);
@@ -78,13 +78,13 @@ if (typecheck.status !== 0) {
 // Entrypoints: src/index.ts + every exports subpath whose `import` condition
 // is a non-index dist/*.js. (`internal/*`, `./ttsc`, and bun-only subpaths all
 // fail the test and are correctly ignored.)
-const entrypoints = ["src/index.ts"];
-const dtsConfigs = ["rollup.dts.mjs"];
+const entrypoints = ['src/index.ts'];
+const dtsConfigs = ['rollup.dts.mjs'];
 for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
-  if (subpath === "." || typeof target === "string") {
+  if (subpath === '.' || typeof target === 'string') {
     continue;
   }
-  const match = /^\.\/dist\/(?!index\.js$)(.+)\.js$/.exec(target.import ?? "");
+  const match = /^\.\/dist\/(?!index\.js$)(.+)\.js$/.exec(target.import ?? '');
   if (!match) {
     continue;
   }
@@ -108,7 +108,7 @@ for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
 // safe: its exports are pure stateless functions (assertNever, the is*
 // guards), so a private copy forks no identity. The manifest keeps the
 // dependency entry for the type-level surface.
-const inline = new Set(["@rhombus-toolkit/type-guards", ...(overrides.inline ?? [])]);
+const inline = new Set(['@rhombus-toolkit/type-guards', ...(overrides.inline ?? [])]);
 const external = [
   ...new Set([
     ...Object.keys(manifest.dependencies ?? {}),
@@ -117,8 +117,8 @@ const external = [
 ].filter((name) => !inline.has(name));
 
 // Lowering engine: by twin-config existence, disambiguated by the marker.
-const hasTspc = existsSync(join(dir, "tsconfig.build.json"));
-const hasTtsc = existsSync(join(dir, "tsconfig.ttsc.json"));
+const hasTspc = existsSync(join(dir, 'tsconfig.build.json'));
+const hasTtsc = existsSync(join(dir, 'tsconfig.ttsc.json'));
 let tspcProject: string | undefined;
 let ttscProject: string | undefined;
 if (hasTspc && hasTtsc) {
@@ -127,15 +127,15 @@ if (hasTspc && hasTtsc) {
       `${manifest.name}: both tsconfig.build.json and tsconfig.ttsc.json exist -- set rhombusBuild.lowering`,
     );
   }
-  if (overrides.lowering === "ttsc") {
-    ttscProject = "tsconfig.ttsc.json";
+  if (overrides.lowering === 'ttsc') {
+    ttscProject = 'tsconfig.ttsc.json';
   } else {
-    tspcProject = "tsconfig.build.json";
+    tspcProject = 'tsconfig.build.json';
   }
 } else if (hasTtsc) {
-  ttscProject = "tsconfig.ttsc.json";
+  ttscProject = 'tsconfig.ttsc.json';
 } else if (hasTspc) {
-  tspcProject = "tsconfig.build.json";
+  tspcProject = 'tsconfig.build.json';
 }
 
 await buildPackage({
@@ -156,13 +156,13 @@ await buildPackage({
 // and since forbidden specifiers are peers (hence external), a real import
 // SURVIVES bundling and is caught here instead of being silently inlined.
 for (const specifier of overrides.forbidImports ?? []) {
-  const bundle = readFileSync(join(dir, "dist", "index.js"), "utf8");
-  const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const bundle = readFileSync(join(dir, 'dist', 'index.js'), 'utf8');
+  const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const realImport = new RegExp(`(^|\\n)\\s*import[^\\n]*from\\s*["']${escaped}`);
   if (realImport.test(bundle)) {
     throw new Error(
       `${manifest.name}: dist/index.js contains a real ESM import from ${specifier} -- `
-        + "the runtime bundle must not import it (only reference it as a string).",
+        + 'the runtime bundle must not import it (only reference it as a string).',
     );
   }
 }

@@ -13,11 +13,11 @@
 // `setAbsoluteExpiration` discriminated by `number` (ms relative) vs `Date`
 // (absolute), exactly as `CacheEntryExtensions` collapses the same pair.
 
-import { applyAugmentations, type AugmentationSet, type IChangeToken } from "@rhombus-std/primitives";
-import type { CacheItemPriority } from "./CacheItemPriority";
-import { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
-import { PostEvictionCallbackRegistration } from "./PostEvictionCallbackRegistration";
-import type { PostEvictionDelegate } from "./PostEvictionDelegate";
+import { applyAugmentations, type AugmentationSet, type IChangeToken } from '@rhombus-std/primitives';
+import type { CacheItemPriority } from './CacheItemPriority';
+import { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
+import { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
+import type { PostEvictionDelegate } from './PostEvictionDelegate';
 
 /** The `MemoryCacheEntryExtensions` augmentation set for {@link MemoryCacheEntryOptions} (docs §28). */
 export const MemoryCacheEntryExtensions = {
@@ -76,7 +76,7 @@ export const MemoryCacheEntryExtensions = {
 } satisfies AugmentationSet<MemoryCacheEntryOptions>;
 
 // The method-form surface merged onto the MemoryCacheEntryOptions class (docs §28).
-declare module "./MemoryCacheEntryOptions" {
+declare module './MemoryCacheEntryOptions' {
   interface MemoryCacheEntryOptions {
     setPriority(priority: CacheItemPriority): this;
     setSize(size: number): this;

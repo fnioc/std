@@ -20,13 +20,13 @@
 
 // Side-effect + standalone surface: registers the `addConfiguration`
 // augmentation against the logging-builder token and exports the set (docs §38).
-export { LoggingBuilderExtensions } from "./add-configuration";
-export { type ILoggerProviderConfiguration, loggerProviderConfigurationToken } from "./ILoggerProviderConfiguration";
-export type { ILoggerProviderConfigurationFactory } from "./ILoggerProviderConfigurationFactory";
-export { LoggerFilterConfigureOptions } from "./LoggerFilterConfigureOptions";
-export { LoggerProviderConfiguration } from "./LoggerProviderConfiguration";
-export { LoggerProviderConfigurationFactory } from "./LoggerProviderConfigurationFactory";
-export { LoggerProviderConfigureOptions } from "./LoggerProviderConfigureOptions";
-export { LoggerProviderOptions } from "./LoggerProviderOptions";
-export { LoggerProviderOptionsChangeTokenSource } from "./LoggerProviderOptionsChangeTokenSource";
-export { LoggingConfiguration } from "./LoggingConfiguration";
+export { LoggingBuilderExtensions } from './add-configuration';
+export { type ILoggerProviderConfiguration, loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
+export type { ILoggerProviderConfigurationFactory } from './ILoggerProviderConfigurationFactory';
+export { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
+export { LoggerProviderConfiguration } from './LoggerProviderConfiguration';
+export { LoggerProviderConfigurationFactory } from './LoggerProviderConfigurationFactory';
+export { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
+export { LoggerProviderOptions } from './LoggerProviderOptions';
+export { LoggerProviderOptionsChangeTokenSource } from './LoggerProviderOptionsChangeTokenSource';
+export { LoggingConfiguration } from './LoggingConfiguration';

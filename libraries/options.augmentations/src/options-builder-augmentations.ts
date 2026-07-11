@@ -20,18 +20,13 @@
 // built-in {@link StartupValidator} under `nameof<IStartupValidator>()`. The host
 // resolves that (optionally) and calls `validate()`.
 
-import {
-  type Resolver,
-  RESOLVER_TOKEN,
-  type ServiceManifest,
-  ServiceManifestClass,
-  type Token,
-} from "@rhombus-std/di.core";
-import { type IStartupValidator, StartupValidator } from "@rhombus-std/options";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import { type Resolver, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass,
+  type Token } from '@rhombus-std/di.core';
+import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
-import { collectionToken, startupValidationTargetToken } from "./option-tokens.js";
+import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
 
 // `validateOnStart` is a BRAND-NEW method name, so it must merge onto BOTH the
 // `ServiceManifestBase` interface (the surface the public `ServiceManifest` type
@@ -39,8 +34,8 @@ import { collectionToken, startupValidationTargetToken } from "./option-tokens.j
 // SATISFIES `implements ServiceManifestBase` once the new name is on the
 // interface -- exactly as the other verbs in this package do. Type-parameter
 // lists MUST match each target's declaration (TS2428).
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Marks the options registered at `token` for eager validation at host
      * startup: the host forces the registration's evaluation (running its
@@ -54,7 +49,7 @@ declare module "@rhombus-std/di.core" {
     validateOnStart(token: Token): this;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     validateOnStart(token: Token): this;
   }
 }

@@ -6,7 +6,7 @@
 // exported here so a plugin-less consumer wiring the config path by hand can
 // register one directly.
 
-import type { IConfiguration } from "@rhombus-std/config";
+import type { IConfiguration } from '@rhombus-std/config';
 
 /** Marks an {@link IConfiguration} as bound to metrics via `addMetricsConfiguration`. */
 export class MetricsConfiguration {

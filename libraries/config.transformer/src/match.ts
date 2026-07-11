@@ -8,10 +8,10 @@
 // user-defined method of the same name on a ConfigurationBuilder-symboled type
 // is expected to be config's `withType`.
 
-import ts from "typescript";
+import ts from 'typescript';
 
-const WITH_TYPE_NAME = "withType";
-const BUILDER_NAME = "ConfigurationBuilder";
+const WITH_TYPE_NAME = 'withType';
+const BUILDER_NAME = 'ConfigurationBuilder';
 
 /**
  * True when `call` is a `<receiver>.withType<T>()` call whose receiver's type

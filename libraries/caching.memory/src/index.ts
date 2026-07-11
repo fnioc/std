@@ -33,30 +33,30 @@
 
 // Installs the options-pipeline verbs (`addOptions`/`configure`) onto di.core's
 // ServiceManifest and brings their interface merges into the program.
-import "@rhombus-std/options.augmentations";
+import '@rhombus-std/options.augmentations';
 
 // `MemoryCacheOptions` is a named import so its unqualified name resolves
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
-import type { Resolver, ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
-import { RESOLVER_TOKEN } from "@rhombus-std/di.core";
-import type { ILoggerFactory } from "@rhombus-std/logging.core";
-import type { Options } from "@rhombus-std/options";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
+import type { Resolver, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
+import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
+import type { ILoggerFactory } from '@rhombus-std/logging.core';
+import type { Options } from '@rhombus-std/options';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
 // Brings the class-side type merges for the IMemoryCache/ICacheEntry convenience
 // wrappers into the program. The runtime install is the registry path (docs §38):
 // caching.core registers CacheExtensions/CacheEntryExtensions against the
 // `IMemoryCache`/`ICacheEntry` tokens, and the `@augment(nameof<…>())` decoration
 // beside MemoryCache/CacheEntry pulls them onto the prototypes.
-import "./cache-augmentations";
-import { DISTRIBUTED_CACHE_TOKEN } from "./distributed-cache-token";
-import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN } from "./memory-cache-options-token";
-import { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
-import { MemoryCache } from "./MemoryCache";
-import { MemoryCacheOptions } from "./MemoryCacheOptions";
-import { MemoryDistributedCache } from "./MemoryDistributedCache";
-import { MemoryDistributedCacheOptions } from "./MemoryDistributedCacheOptions";
+import './cache-augmentations';
+import { DISTRIBUTED_CACHE_TOKEN } from './distributed-cache-token';
+import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN } from './memory-cache-options-token';
+import { MEMORY_CACHE_TOKEN } from './memory-cache-token';
+import { MemoryCache } from './MemoryCache';
+import { MemoryCacheOptions } from './MemoryCacheOptions';
+import { MemoryDistributedCache } from './MemoryDistributedCache';
+import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // The registration token @rhombus-std/logging's `addLogging` binds the
 // `ILoggerFactory` singleton at -- written LITERALLY (§40's no-transformer
@@ -65,15 +65,15 @@ import { MemoryDistributedCacheOptions } from "./MemoryDistributedCacheOptions";
 // doesn't have (ME.Caching.Memory references Logging.Abstractions only) and
 // one whose barrel import would drag logging's side-effect registrations into
 // every caching consumer.
-const LOGGER_FACTORY_TOKEN = "@rhombus-std/logging:ILoggerFactory";
+const LOGGER_FACTORY_TOKEN = '@rhombus-std/logging:ILoggerFactory';
 
 // Merge `addMemoryCache` onto core's `ServiceManifestBase` interface (the
 // surface a consumer holding `ServiceManifest<S>` resolves to) AND onto the
 // concrete `ServiceManifestClass` (so the class still SATISFIES the interface
 // once this new method name is on it). `Provider` is defaulted so each merge
 // matches its target's type-parameter list (TS2428 requires identical params).
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers a singleton {@link MemoryCache} as `IMemoryCache` (resolvable
      * at {@link MEMORY_CACHE_TOKEN}), assembled from the
@@ -98,7 +98,7 @@ declare module "@rhombus-std/di.core" {
     addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): this;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
     addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): this;
   }
@@ -117,7 +117,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     // The reference `AddOptions()` analog: register the Options<T> assembly
     // for the options token (§14/§15). Singleton, like every registration the
     // reference makes here.
-    manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions()).as("singleton");
+    manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions()).as('singleton');
     if (setup !== undefined) {
       // The reference `Configure(setupAction)` analog: a LAZY code configure
       // step run by the assembly when the options resolve.
@@ -135,7 +135,7 @@ export const MemoryCacheServiceCollectionExtensions = {
           resolver.resolve<Options<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
         ), [[RESOLVER_TOKEN]])
-      .as("singleton");
+      .as('singleton');
     return manifest;
   },
 
@@ -148,7 +148,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     // own private MemoryCache.
     manifest
       .addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, () => new MemoryDistributedCacheOptions())
-      .as("singleton");
+      .as('singleton');
     if (setup !== undefined) {
       manifest.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, setup);
     }
@@ -158,21 +158,21 @@ export const MemoryCacheServiceCollectionExtensions = {
           resolver.resolve<Options<MemoryDistributedCacheOptions>>(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
         ), [[RESOLVER_TOKEN]])
-      .as("singleton");
+      .as('singleton');
     return manifest;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
 registerAugmentations(nameof<ServiceManifest>(), MemoryCacheServiceCollectionExtensions);
 
-export { MemoryCache } from "./MemoryCache";
+export { MemoryCache } from './MemoryCache';
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in
 // Abstractions); re-exported here for source compatibility.
-export { MemoryCacheEntryOptions } from "@rhombus-std/caching.core";
-export { DISTRIBUTED_CACHE_TOKEN } from "./distributed-cache-token";
-export type { ISystemClock } from "./ISystemClock";
-export { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN } from "./memory-cache-options-token";
-export { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
-export { MemoryCacheOptions } from "./MemoryCacheOptions";
-export { MemoryDistributedCache } from "./MemoryDistributedCache";
-export { MemoryDistributedCacheOptions } from "./MemoryDistributedCacheOptions";
+export { MemoryCacheEntryOptions } from '@rhombus-std/caching.core';
+export { DISTRIBUTED_CACHE_TOKEN } from './distributed-cache-token';
+export type { ISystemClock } from './ISystemClock';
+export { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN } from './memory-cache-options-token';
+export { MEMORY_CACHE_TOKEN } from './memory-cache-token';
+export { MemoryCacheOptions } from './MemoryCacheOptions';
+export { MemoryDistributedCache } from './MemoryDistributedCache';
+export { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';

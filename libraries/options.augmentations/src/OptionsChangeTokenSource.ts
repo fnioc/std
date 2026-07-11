@@ -3,7 +3,7 @@
 // distinct registrations here, so a source is tied to the one options
 // registration it was added for -- see docs/decisions.md §4.2).
 
-import type { IChangeToken } from "@rhombus-std/primitives";
+import type { IChangeToken } from '@rhombus-std/primitives';
 
 /**
  * A source of {@link IChangeToken}s that notify when the value backing an

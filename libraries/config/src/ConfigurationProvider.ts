@@ -7,12 +7,12 @@
 // casing keeps the casing it was first stored with).
 // load() is a no-op by default -- concrete providers override it.
 
-import type { IConfigurationProvider, ITryGetResult } from "@rhombus-std/config.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
-import { KeyDelimiter } from "./abstractions/configuration-path";
-import { compareConfigurationKeys } from "./configuration-key-comparer";
-import { ConfigurationReloadToken } from "./ConfigurationReloadToken";
-import { foldKey } from "./fold-key";
+import type { IConfigurationProvider, ITryGetResult } from '@rhombus-std/config.core';
+import type { IChangeToken } from '@rhombus-std/primitives';
+import { KeyDelimiter } from './abstractions/configuration-path';
+import { compareConfigurationKeys } from './configuration-key-comparer';
+import { ConfigurationReloadToken } from './ConfigurationReloadToken';
+import { foldKey } from './fold-key';
 
 /**
  * Returns the configuration segment of `key` starting at `prefixLength`, up
@@ -68,7 +68,7 @@ export abstract class ConfigurationProvider implements IConfigurationProvider {
   public set(key: string, value?: string): void {
     const folded = foldKey(key);
     const existing = this.data.get(folded);
-    this.data.set(folded, [existing?.[0] ?? key, value ?? ""]);
+    this.data.set(folded, [existing?.[0] ?? key, value ?? '']);
   }
 
   /** No-op by default; concrete providers load their source here. */

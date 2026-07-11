@@ -64,7 +64,7 @@ export class DistributedCacheEntryOptions {
 
   #throwIfFrozen(): void {
     if (frozenInstances.has(this)) {
-      throw new Error("This DistributedCacheEntryOptions instance has been frozen and cannot be mutated.");
+      throw new Error('This DistributedCacheEntryOptions instance has been frozen and cannot be mutated.');
     }
   }
 }

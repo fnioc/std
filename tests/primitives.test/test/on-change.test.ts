@@ -2,9 +2,9 @@
 // load-bearing part: a fired token must produce a fresh registration, and
 // state must flow through untouched.
 
-import type { IChangeToken } from "@rhombus-std/primitives/internal/IChangeToken";
-import { ChangeToken } from "@rhombus-std/primitives/internal/on-change";
-import { describe, expect, test } from "bun:test";
+import type { IChangeToken } from '@rhombus-std/primitives/internal/IChangeToken';
+import { ChangeToken } from '@rhombus-std/primitives/internal/on-change';
+import { describe, expect, test } from 'bun:test';
 
 // A minimal, mutable IChangeToken stub -- fires every registered callback
 // once, then sets hasChanged, matching the "hasChanged MUST be set before
@@ -47,8 +47,8 @@ class TestChangeToken implements IChangeToken {
   }
 }
 
-describe("ChangeToken.onChange", () => {
-  test("fires the consumer on token change and re-subscribes for the next change", () => {
+describe('ChangeToken.onChange', () => {
+  test('fires the consumer on token change and re-subscribes for the next change', () => {
     const tokens: TestChangeToken[] = [];
     const produceToken = () => {
       const token = new TestChangeToken();
@@ -74,7 +74,7 @@ describe("ChangeToken.onChange", () => {
     disposable[Symbol.dispose]();
   });
 
-  test("passes state through to the consumer", () => {
+  test('passes state through to the consumer', () => {
     // produceToken must hand back a FRESH token on each call (mirroring real
     // usage) -- reusing an already-fired token here would re-fire
     // synchronously forever, since registerChangeCallback on a changed token
@@ -88,13 +88,13 @@ describe("ChangeToken.onChange", () => {
 
     ChangeToken.onChange(produceToken, (state) => {
       seen = state;
-    }, "hello");
+    }, 'hello');
 
     produced!.fire();
-    expect(seen).toBe("hello");
+    expect(seen).toBe('hello');
   });
 
-  test("disposing before any change unregisters the callback", () => {
+  test('disposing before any change unregisters the callback', () => {
     const token = new TestChangeToken();
     let calls = 0;
 
@@ -107,7 +107,7 @@ describe("ChangeToken.onChange", () => {
     expect(calls).toBe(0);
   });
 
-  test("a producer that returns nothing simply skips registration", () => {
+  test('a producer that returns nothing simply skips registration', () => {
     let calls = 0;
     const disposable = ChangeToken.onChange(() => undefined, () => {
       calls++;
@@ -117,7 +117,7 @@ describe("ChangeToken.onChange", () => {
     disposable[Symbol.dispose]();
   });
 
-  test("a synchronous throw from the consumer propagates to the trigger and still re-subscribes", () => {
+  test('a synchronous throw from the consumer propagates to the trigger and still re-subscribes', () => {
     const tokens: TestChangeToken[] = [];
     const produceToken = () => {
       const token = new TestChangeToken();
@@ -128,21 +128,21 @@ describe("ChangeToken.onChange", () => {
     let calls = 0;
     const disposable = ChangeToken.onChange(produceToken, () => {
       calls++;
-      throw new Error("consumer boom");
+      throw new Error('consumer boom');
     });
 
-    expect(() => tokens[0]!.fire()).toThrow("consumer boom");
+    expect(() => tokens[0]!.fire()).toThrow('consumer boom');
     expect(calls).toBe(1);
     expect(tokens).toHaveLength(2); // re-subscribed despite the throw
 
-    expect(() => tokens[1]!.fire()).toThrow("consumer boom");
+    expect(() => tokens[1]!.fire()).toThrow('consumer boom');
     expect(calls).toBe(2);
 
     disposable[Symbol.dispose]();
   });
 });
 
-describe("ChangeToken.onChange (async consumer)", () => {
+describe('ChangeToken.onChange (async consumer)', () => {
   test("re-subscribes only once the consumer's promise resolves", async () => {
     const tokens: TestChangeToken[] = [];
     const produceToken = () => {
@@ -180,7 +180,7 @@ describe("ChangeToken.onChange (async consumer)", () => {
     disposable[Symbol.dispose]();
   });
 
-  test("a change during the async gap is processed upon re-subscription", async () => {
+  test('a change during the async gap is processed upon re-subscription', async () => {
     const tokens: TestChangeToken[] = [];
     const produceToken = () => {
       const token = new TestChangeToken();
@@ -216,7 +216,7 @@ describe("ChangeToken.onChange (async consumer)", () => {
     disposable[Symbol.dispose]();
   });
 
-  test("a rejected consumer promise is left unobserved and still re-subscribes", async () => {
+  test('a rejected consumer promise is left unobserved and still re-subscribes', async () => {
     const tokens: TestChangeToken[] = [];
     const produceToken = () => {
       const token = new TestChangeToken();
@@ -227,7 +227,7 @@ describe("ChangeToken.onChange (async consumer)", () => {
     let calls = 0;
     const disposable = ChangeToken.onChange(produceToken, () => {
       calls++;
-      return Promise.reject(new Error("async boom"));
+      return Promise.reject(new Error('async boom'));
     });
 
     tokens[0]!.fire();
@@ -244,7 +244,7 @@ describe("ChangeToken.onChange (async consumer)", () => {
     disposable[Symbol.dispose]();
   });
 
-  test("disposing during the async gap prevents re-subscription", async () => {
+  test('disposing during the async gap prevents re-subscription', async () => {
     const tokens: TestChangeToken[] = [];
     const produceToken = () => {
       const token = new TestChangeToken();

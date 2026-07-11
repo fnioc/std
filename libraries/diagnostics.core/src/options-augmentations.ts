@@ -13,23 +13,23 @@
 // methods, so the receiver reads `options.enableMetrics(...)` just like every other
 // dual-export member.
 
-import { applyAugmentations } from "@rhombus-std/primitives";
+import { applyAugmentations } from '@rhombus-std/primitives';
 
-import type { MeterScope } from "./metrics/meter-scope";
-import { MetricsOptionsExtensions } from "./metrics/metrics-builder-augmentations";
-import { MetricsOptions } from "./metrics/MetricsOptions";
-import type { ActivitySourceScopes } from "./tracing/activity-source-scopes";
-import { TracingOptionsExtensions } from "./tracing/tracing-builder-augmentations";
-import { TracingOptions } from "./tracing/TracingOptions";
+import type { MeterScope } from './metrics/meter-scope';
+import { MetricsOptionsExtensions } from './metrics/metrics-builder-augmentations';
+import { MetricsOptions } from './metrics/MetricsOptions';
+import type { ActivitySourceScopes } from './tracing/activity-source-scopes';
+import { TracingOptionsExtensions } from './tracing/tracing-builder-augmentations';
+import { TracingOptions } from './tracing/TracingOptions';
 
-declare module "./metrics/MetricsOptions" {
+declare module './metrics/MetricsOptions' {
   interface MetricsOptions {
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
   }
 }
 
-declare module "./tracing/TracingOptions" {
+declare module './tracing/TracingOptions' {
   interface TracingOptions {
     enableTracing(
       sourceName?: string,

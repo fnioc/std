@@ -4,8 +4,8 @@
 // method form must be behaviour-equivalent to calling the object-literal member
 // directly.
 
-import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
-import { describe, expect, test } from "bun:test";
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
 
 class Box {
   value = 0;
@@ -32,21 +32,21 @@ const BoxExtensions = {
 // module-import time).
 applyAugmentations(Box, BoxExtensions);
 
-describe("applyAugmentations", () => {
-  test("forwards the receiver as the first argument", () => {
+describe('applyAugmentations', () => {
+  test('forwards the receiver as the first argument', () => {
     const box = new Box();
     box.add(5);
     expect(box.value).toBe(5);
   });
 
-  test("preserves the return value (fluent chaining survives)", () => {
+  test('preserves the return value (fluent chaining survives)', () => {
     const box = new Box();
     const returned = box.add(2).add(3);
     expect(returned).toBe(box);
     expect(box.value).toBe(5);
   });
 
-  test("the method form equals the object-literal member form", () => {
+  test('the method form equals the object-literal member form', () => {
     const viaMethod = new Box();
     const viaMember = new Box();
 
@@ -57,8 +57,8 @@ describe("applyAugmentations", () => {
     expect(viaMethod.value).toBe(viaMember.value);
   });
 
-  test("the augmentation set is a plain object of receiver-first functions", () => {
+  test('the augmentation set is a plain object of receiver-first functions', () => {
     expect(BoxExtensions.add).toBeInstanceOf(Function);
-    expect(Object.keys(BoxExtensions).sort()).toEqual(["add", "read"]);
+    expect(Object.keys(BoxExtensions).sort()).toEqual(['add', 'read']);
   });
 });

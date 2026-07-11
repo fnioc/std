@@ -37,9 +37,9 @@
 // standalone call surface; slots are authored as plain `DepSlot` data literals
 // either way.
 
-import type { Ctor, Func } from "@rhombus-toolkit/func";
-import type { ServiceProviderOptions } from "./service-provider-options.js";
-import type { DepSlot, Token } from "./types.js";
+import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { ServiceProviderOptions } from './service-provider-options.js';
+import type { DepSlot, Token } from './types.js';
 
 /**
  * The continuation returned by a class `ServiceManifest.add`. Carries the just-added
@@ -88,7 +88,7 @@ export interface AddBuilder<Scopes extends string> {
  * types-only substrate without referencing di's runtime provider type.
  */
 export interface ServiceManifestBase<
-  Scopes extends string = "singleton",
+  Scopes extends string = 'singleton',
   Provider = unknown,
 > {
   /**

@@ -2,7 +2,7 @@
 // PostEvictionCallbackRegistration. Pairs a PostEvictionDelegate with the
 // state to hand it.
 
-import type { PostEvictionDelegate } from "./PostEvictionDelegate";
+import type { PostEvictionDelegate } from './PostEvictionDelegate';
 
 /** Pairs a {@link PostEvictionDelegate} with the state passed to it on eviction. */
 export class PostEvictionCallbackRegistration {

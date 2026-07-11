@@ -13,8 +13,8 @@
 // ConfigurationKeyComparer.Compare / SkipAheadOnDelimiter span-walk rather than
 // a naive split(':'), which would order delimiter-run keys differently.
 
-import { KeyDelimiter } from "./abstractions/configuration-path";
-import { foldKey } from "./fold-key";
+import { KeyDelimiter } from './abstractions/configuration-path';
+import { foldKey } from './fold-key';
 
 /**
  * Parses a base-10 integer, accepting optional surrounding whitespace and an

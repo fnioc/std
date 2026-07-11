@@ -7,7 +7,7 @@
 // `indentSize`. The reference struct's `Encoder`, `MaxDepth`, and
 // `SkipValidation` have no `JSON.stringify` analog and are left out.
 
-import { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
+import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
 
 /**
  * Controls how the JSON console formatter serializes each entry — the

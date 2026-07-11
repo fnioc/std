@@ -10,9 +10,9 @@
 // `package.json` files, so token generation (package-public vs app-internal)
 // can be exercised deterministically without touching real `node_modules`.
 
-import type { Diagnostic } from "@rhombus-std/di.transformer/internal/diagnostics";
-import { createTransformerFactory } from "@rhombus-std/di.transformer/internal/transformer";
-import ts from "typescript";
+import type { Diagnostic } from '@rhombus-std/di.transformer/internal/diagnostics';
+import { createTransformerFactory } from '@rhombus-std/di.transformer/internal/transformer';
+import ts from 'typescript';
 
 /** A virtual filesystem: absolute POSIX path → file contents. */
 export type VirtualFiles = Record<string, string>;
@@ -26,7 +26,7 @@ export interface TransformResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-const DEFAULT_ROOT = "/virtual";
+const DEFAULT_ROOT = '/virtual';
 
 export interface TransformOptions {
   /** Entry files to transform (absolute virtual paths). Defaults to all `.ts`. */
@@ -47,7 +47,7 @@ export function transform(
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    lib: ["lib.es2022.d.ts"],
+    lib: ['lib.es2022.d.ts'],
     strict: true,
     skipLibCheck: true,
     noEmitOnError: false,
@@ -61,16 +61,18 @@ export function transform(
   const host: ts.CompilerHost = {
     getSourceFile(fileName, languageVersion) {
       const text = readVirtualOrReal(files, fileName, libFileName, libSourcePath);
-      if (text === undefined) { return undefined; }
+      if (text === undefined) {
+        return undefined;
+      }
       return ts.createSourceFile(fileName, text, languageVersion, true);
     },
     getDefaultLibFileName: () => libFileName,
-    getDefaultLibLocation: () => libSourcePath.replace(/[^/\\]+$/, ""),
+    getDefaultLibLocation: () => libSourcePath.replace(/[^/\\]+$/, ''),
     writeFile: () => undefined,
     getCurrentDirectory: () => DEFAULT_ROOT,
     getCanonicalFileName: (f) => f,
     useCaseSensitiveFileNames: () => true,
-    getNewLine: () => "\n",
+    getNewLine: () => '\n',
     fileExists(fileName) {
       return (
         Object.prototype.hasOwnProperty.call(files, fileName)
@@ -83,7 +85,9 @@ export function transform(
       return readVirtualOrReal(files, fileName, libFileName, libSourcePath);
     },
     directoryExists(dirName) {
-      if (anyFileUnder(files, dirName)) { return true; }
+      if (anyFileUnder(files, dirName)) {
+        return true;
+      }
       return ts.sys.directoryExists?.(dirName) ?? false;
     },
     getDirectories(dirName) {
@@ -93,7 +97,7 @@ export function transform(
   };
 
   const entry = options.entry
-    ?? Object.keys(files).filter((f) => f.endsWith(".ts") && !f.endsWith(".d.ts"));
+    ?? Object.keys(files).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
 
   const program = ts.createProgram(entry.slice(), compilerOptions, host);
 
@@ -121,7 +125,9 @@ export function transform(
 
   for (const fileName of entry) {
     const sourceFile = program.getSourceFile(fileName);
-    if (!sourceFile) { throw new Error(`entry file not in program: ${fileName}`); }
+    if (!sourceFile) {
+      throw new Error(`entry file not in program: ${fileName}`);
+    }
     const result = ts.transform(sourceFile, [factory], compilerOptions);
     const transformed = result.transformed[0]!;
     outputs[fileName] = printer.printFile(transformed as ts.SourceFile);
@@ -130,7 +136,7 @@ export function transform(
 
   return {
     outputs,
-    output: outputs[entry[0]!] ?? "",
+    output: outputs[entry[0]!] ?? '',
     diagnostics,
   };
 }
@@ -152,12 +158,12 @@ function readVirtualOrReal(
 }
 
 function anyFileUnder(files: VirtualFiles, dir: string): boolean {
-  const normalized = dir.endsWith("/") ? dir : dir + "/";
+  const normalized = dir.endsWith('/') ? dir : dir + '/';
   return Object.keys(files).some((f) => f.startsWith(normalized));
 }
 
 /** Convenience: build a one-file fixture under the default virtual root. */
-export function fixture(source: string, name = "app.ts"): VirtualFiles {
+export function fixture(source: string, name = 'app.ts'): VirtualFiles {
   return { [`${DEFAULT_ROOT}/${name}`]: source };
 }
 
@@ -170,24 +176,30 @@ export function fixture(source: string, name = "app.ts"): VirtualFiles {
 export function depsArrayFor(output: string, ctor: string): string {
   const marker = `, ${ctor}, `;
   const at = output.indexOf(marker);
-  if (at < 0) { throw new Error(`no inline signature for ${ctor} in:\n${output}`); }
-  const start = output.indexOf("[", at + marker.length);
-  if (start < 0) { throw new Error(`no signature array for ${ctor} in:\n${output}`); }
+  if (at < 0) {
+    throw new Error(`no inline signature for ${ctor} in:\n${output}`);
+  }
+  const start = output.indexOf('[', at + marker.length);
+  if (start < 0) {
+    throw new Error(`no signature array for ${ctor} in:\n${output}`);
+  }
   let depth = 0;
   for (let i = start; i < output.length; i++) {
     const ch = output[i];
-    if (ch === "[") {
+    if (ch === '[') {
       depth += 1;
-    } else if (ch === "]") {
+    } else if (ch === ']') {
       depth -= 1;
-      if (depth === 0) { return output.slice(start, i + 1); }
+      if (depth === 0) {
+        return output.slice(start, i + 1);
+      }
     }
   }
   throw new Error(`unbalanced signature array for ${ctor} in:\n${output}`);
 }
 
 /** The virtual entry path a {@link withCoreBrand} fixture places `appSource` at. */
-export const CORE_BRAND_APP = "/proj/src/app.ts";
+export const CORE_BRAND_APP = '/proj/src/app.ts';
 
 /**
  * Build a multi-file fixture backed by a virtual `@rhombus-std/di.core` package that
@@ -197,13 +209,13 @@ export const CORE_BRAND_APP = "/proj/src/app.ts";
  */
 export function withCoreBrand(appSource: string): VirtualFiles {
   return {
-    "/proj/node_modules/@rhombus-std/di.core/package.json": JSON.stringify({
-      name: "@rhombus-std/di.core",
-      version: "1.0.0",
-      exports: { ".": "./index.js" },
+    '/proj/node_modules/@rhombus-std/di.core/package.json': JSON.stringify({
+      name: '@rhombus-std/di.core',
+      version: '1.0.0',
+      exports: { '.': './index.js' },
     }),
-    "/proj/node_modules/@rhombus-std/di.core/index.d.ts": "declare const TOK: unique symbol;\n"
-      + "export type Inject<T, K extends string> = T & { readonly [TOK]?: K };\n",
+    '/proj/node_modules/@rhombus-std/di.core/index.d.ts': 'declare const TOK: unique symbol;\n'
+      + 'export type Inject<T, K extends string> = T & { readonly [TOK]?: K };\n',
     [CORE_BRAND_APP]: appSource,
   };
 }

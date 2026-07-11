@@ -4,7 +4,7 @@
 // TS/ESNext analog -- `tsconfig.base.json` already includes lib
 // "ESNext.Disposable" for every package in this monorepo.
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * Propagates notifications that a change has occurred.

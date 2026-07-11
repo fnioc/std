@@ -4,14 +4,9 @@
 // install; call sites use `TextWriterExtensions.writeColoredMessage(writer, …)`.
 // Not exported from the package barrel.
 
-import {
-  type ConsoleColor,
-  DEFAULT_BACKGROUND_COLOR,
-  DEFAULT_FOREGROUND_COLOR,
-  getBackgroundColorEscapeCode,
-  getForegroundColorEscapeCode,
-} from "./AnsiParser";
-import type { TextWriter } from "./text-writer";
+import { type ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
+  getForegroundColorEscapeCode } from './AnsiParser';
+import type { TextWriter } from './text-writer';
 
 export const TextWriterExtensions = {
   /**

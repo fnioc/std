@@ -3,9 +3,9 @@
 // The payload/once-only handling all lives on the abstract stream bases in
 // @rhombus-std/config -- this class only picks the concrete provider.
 
-import { StreamConfigurationSource } from "@rhombus-std/config";
-import type { IConfigurationBuilder, IConfigurationProvider } from "@rhombus-std/config.core";
-import { JsonStreamConfigurationProvider } from "./JsonStreamConfigurationProvider";
+import { StreamConfigurationSource } from '@rhombus-std/config';
+import type { IConfigurationBuilder, IConfigurationProvider } from '@rhombus-std/config.core';
+import { JsonStreamConfigurationProvider } from './JsonStreamConfigurationProvider';
 
 /** Represents an in-memory JSON payload as an {@link IConfigurationSource}. */
 export class JsonStreamConfigurationSource extends StreamConfigurationSource {

@@ -6,7 +6,7 @@
 // stable codes so tests can assert on category + code without matching message
 // text.
 
-import ts from "typescript";
+import ts from 'typescript';
 
 /** A diagnostic the transformer raises. Alias kept for call-site clarity. */
 export type Diagnostic = ts.Diagnostic;
@@ -62,7 +62,7 @@ export enum DiagnosticCode {
   UnresolvableOverrideElement = 990011,
 }
 
-const SOURCE = "@rhombus-std/di.transformer";
+const SOURCE = '@rhombus-std/di.transformer';
 
 /** Build a diagnostic of `category` anchored at `node` in `file`. */
 function diagnostic(

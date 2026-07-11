@@ -16,17 +16,17 @@
 // runtime members in ./builder-augmentations, IHostEnvironment in
 // hosting.core/host-environment-augmentations.)
 
-import type { ServiceProviderOptions } from "@rhombus-std/di.core";
-import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import type { HostBuilderContext, IHost } from "@rhombus-std/hosting.core";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import type { AbortSignal } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
+import type { HostBuilderContext, IHost } from '@rhombus-std/hosting.core';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import type { AbortSignal } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
-import type { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
-import type { HostOptions } from "./HostOptions";
+import type { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
+import type { HostOptions } from './HostOptions';
 
-declare module "./internal/Host" {
+declare module './internal/Host' {
   interface Host {
     run(abortSignal?: AbortSignal): Promise<void>;
     runAsync(abortSignal?: AbortSignal): Promise<void>;
@@ -35,7 +35,7 @@ declare module "./internal/Host" {
   }
 }
 
-declare module "./HostBuilder" {
+declare module './HostBuilder' {
   interface HostBuilder {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
     configureDefaults(args?: readonly string[]): this;
@@ -56,7 +56,7 @@ declare module "./HostBuilder" {
   }
 }
 
-declare module "./internal/HostingEnvironment" {
+declare module './internal/HostingEnvironment' {
   interface HostingEnvironment {
     isEnvironment(environmentName: string): boolean;
     isDevelopment(): boolean;
@@ -68,7 +68,7 @@ declare module "./internal/HostingEnvironment" {
 // The internal HostBuilderAdapter is also an `IHostBuilder`, decorated
 // `@augment(nameof<IHostBuilder>())`, so it pulls the same registered bag as the
 // concrete `HostBuilder`. Its class-side merge is therefore identical.
-declare module "./internal/HostBuilderAdapter" {
+declare module './internal/HostBuilderAdapter' {
   interface HostBuilderAdapter {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
     configureDefaults(args?: readonly string[]): this;

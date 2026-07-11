@@ -18,11 +18,11 @@
 // partial). After the walk, an `OPTIONAL` import is injected if any optional
 // field lowered to a wrapper.
 
-import ts from "typescript";
-import { type CodegenContext, schemaLiteralForTypeNode } from "./codegen.js";
-import type { DiagnosticSink } from "./diagnostics.js";
-import { ensureOptionalImport, type OptionalRef, resolveOptionalBinding } from "./inject.js";
-import { isWithTypeCall } from "./match.js";
+import ts from 'typescript';
+import { type CodegenContext, schemaLiteralForTypeNode } from './codegen.js';
+import type { DiagnosticSink } from './diagnostics.js';
+import { ensureOptionalImport, type OptionalRef, resolveOptionalBinding } from './inject.js';
+import { isWithTypeCall } from './match.js';
 
 /**
  * Create the `ts.TransformerFactory` that rewrites a SourceFile. Exposed so the
@@ -80,7 +80,7 @@ function rewriteWithType(
 
   return ctx.factory.updateCallExpression(
     call,
-    ctx.factory.createPropertyAccessExpression(callee.expression, "withSchema"),
+    ctx.factory.createPropertyAccessExpression(callee.expression, 'withSchema'),
     // Drop the `<T>` type argument.
     undefined,
     [result.literal],
@@ -117,7 +117,7 @@ export function transform(
   program: ts.Program,
   _config: unknown,
   extras: ProgramTransformerExtras,
-): { before: ts.TransformerFactory<ts.SourceFile> } {
+): { before: ts.TransformerFactory<ts.SourceFile>; } {
   const sink: DiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };

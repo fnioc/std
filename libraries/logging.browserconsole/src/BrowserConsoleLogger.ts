@@ -6,14 +6,14 @@
 // console argument so devtools render its stack interactively instead of a
 // flattened string.
 
-import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import type { ConsoleLike } from "./console-global";
+import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from '@rhombus-std/logging.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import type { ConsoleLike } from './console-global';
 
 /** The console method a {@link LogLevel} maps to. */
-export type ConsoleMethod = "error" | "warn" | "info" | "debug";
+export type ConsoleMethod = 'error' | 'warn' | 'info' | 'debug';
 
 /**
  * Maps a writable {@link LogLevel} onto its console method: Trace/Debug ->
@@ -25,20 +25,20 @@ export function consoleMethodFor(logLevel: LogLevel): ConsoleMethod {
   switch (logLevel) {
     case LogLevel.Trace:
     case LogLevel.Debug: {
-      return "debug";
+      return 'debug';
     }
     case LogLevel.Information: {
-      return "info";
+      return 'info';
     }
     case LogLevel.Warning: {
-      return "warn";
+      return 'warn';
     }
     case LogLevel.Error:
     case LogLevel.Critical: {
-      return "error";
+      return 'error';
     }
     case LogLevel.None: {
-      throw new RangeError("LogLevel.None is not a writable level.");
+      throw new RangeError('LogLevel.None is not a writable level.');
     }
   }
 }

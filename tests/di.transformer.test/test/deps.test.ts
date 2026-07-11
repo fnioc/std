@@ -1,6 +1,6 @@
-import { DiagnosticCode } from "@rhombus-std/di.transformer/internal/index";
-import { describe, expect, test } from "bun:test";
-import { depsArrayFor, fixture, transform } from "./harness.js";
+import { DiagnosticCode } from '@rhombus-std/di.transformer/internal/index';
+import { describe, expect, test } from 'bun:test';
+import { depsArrayFor, fixture, transform } from './harness.js';
 
 // Dependency extraction → defineDeps emission (PRD §8). The emitted shape is the
 // ABI `Token[][]`: an array of signatures, each a positional array of
@@ -11,8 +11,8 @@ import { depsArrayFor, fixture, transform } from "./harness.js";
 // NOT a compile error. ONLY an anonymous inline structure (a `__type`/nameless
 // non-intrinsic) still produces the hard UnderivableToken diagnostic.
 
-describe("dependency extraction", () => {
-  test("primitive parameter types tokenize by their keyword (Rule 1, no diagnostics)", () => {
+describe('dependency extraction', () => {
+  test('primitive parameter types tokenize by their keyword (Rule 1, no diagnostics)', () => {
     // Rule 1: every named type — including the intrinsics — tokenizes by its
     // name. `string`/`number`/`boolean` are NOT a compile error; they become the
     // bare tokens "string"/"number"/"boolean" and simply miss at runtime when
@@ -33,10 +33,10 @@ describe("dependency extraction", () => {
     expect(
       diagnostics.filter((d) => d.code === DiagnosticCode.UnderivableToken).length,
     ).toBe(0);
-    expect(depsArrayFor(output, "Prims")).toBe("[[\"string\", \"number\", \"boolean\"]]");
+    expect(depsArrayFor(output, 'Prims')).toBe('[["string", "number", "boolean"]]');
   });
 
-  test("any / unknown tokenize (Rule 1); void supplies undefined (Rule 2)", () => {
+  test('any / unknown tokenize (Rule 1); void supplies undefined (Rule 2)', () => {
     // any / unknown tokenize by keyword. `void` is a singleton type (one
     // inhabitant), so it supplies `undefined` directly as a LiteralRef — NOT a
     // token. `void` is not `| undefined` (no Undefined flag), so it is not an
@@ -53,12 +53,12 @@ describe("dependency extraction", () => {
     expect(
       diagnostics.filter((d) => d.code === DiagnosticCode.UnderivableToken).length,
     ).toBe(0);
-    expect(depsArrayFor(output, "Tops")).toBe(
-      "[[\"any\", \"unknown\", { value: void 0 }]]",
+    expect(depsArrayFor(output, 'Tops')).toBe(
+      '[["any", "unknown", { value: void 0 }]]',
     );
   });
 
-  test("whole-type undefined / null params supply their value (Rule 2)", () => {
+  test('whole-type undefined / null params supply their value (Rule 2)', () => {
     const src = `
       interface IMarker {}
       class Nullish implements IMarker {
@@ -75,12 +75,12 @@ describe("dependency extraction", () => {
     // optional (null ≠ undefined), so `a: undefined` is interior. An interior
     // whole-type `undefined` is still a singleton LiteralRef (Rule 2), and `b:
     // null` supplies null. Neither earns an overload drop (b is required).
-    expect(depsArrayFor(output, "Nullish")).toBe(
-      "[[{ value: void 0 }, { value: null }]]",
+    expect(depsArrayFor(output, 'Nullish')).toBe(
+      '[[{ value: void 0 }, { value: null }]]',
     );
   });
 
-  test("anonymous inline structure STILL hard-errors (Rule 1 exception)", () => {
+  test('anonymous inline structure STILL hard-errors (Rule 1 exception)', () => {
     // The ONLY remaining UnderivableToken case: an anonymous structural type with
     // no name (a `__type` symbol). It has no token, so it is a hard error.
     const src = `
@@ -97,7 +97,7 @@ describe("dependency extraction", () => {
     expect(errs[0]!.category).toBe(1 /* ts.DiagnosticCategory.Error */);
   });
 
-  test("tokens for interface parameters", () => {
+  test('tokens for interface parameters', () => {
     const src = `
       interface ILogger {}
       interface IDb {}
@@ -109,10 +109,10 @@ describe("dependency extraction", () => {
       services.add<IMarker>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe("[[\"./app:ILogger\", \"./app:IDb\"]]");
+    expect(depsArrayFor(output, 'Svc')).toBe('[["./app:ILogger", "./app:IDb"]]');
   });
 
-  test("mixed multi-param ctor: every param tokenizes, including the `string` (Rule 1)", () => {
+  test('mixed multi-param ctor: every param tokenizes, including the `string` (Rule 1)', () => {
     const src = `
       interface ILogger {}
       interface IDbConnection {}
@@ -128,12 +128,12 @@ describe("dependency extraction", () => {
     expect(
       diagnostics.filter((d) => d.code === DiagnosticCode.UnderivableToken).length,
     ).toBe(0);
-    expect(depsArrayFor(output, "SqlUserRepo")).toBe(
-      "[[\"./app:ILogger\", \"./app:IDbConnection\", \"string\"]]",
+    expect(depsArrayFor(output, 'SqlUserRepo')).toBe(
+      '[["./app:ILogger", "./app:IDbConnection", "string"]]',
     );
   });
 
-  test("class is registered, emits exactly one signature (array-of-one)", () => {
+  test('class is registered, emits exactly one signature (array-of-one)', () => {
     const src = `
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
@@ -141,12 +141,12 @@ describe("dependency extraction", () => {
       services.add<IFoo>(Foo).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    const arr = depsArrayFor(output, "Foo");
+    const arr = depsArrayFor(output, 'Foo');
     // Outer array has exactly one element (one signature), empty (no params).
-    expect(arr).toBe("[[]]");
+    expect(arr).toBe('[[]]');
   });
 
-  test("class type parameter resolves to a token (not a hole)", () => {
+  test('class type parameter resolves to a token (not a hole)', () => {
     // A concrete class (not an interface) used as a ctor param type is still a
     // resolvable token.
     const src = `
@@ -159,22 +159,22 @@ describe("dependency extraction", () => {
       services.add<IMarker>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe("[[\"./app:Logger\"]]");
+    expect(depsArrayFor(output, 'Svc')).toBe('[["./app:Logger"]]');
   });
 
-  test("a `Resolver`-typed param emits the intrinsic provider token, not a scope slot", () => {
+  test('a `Resolver`-typed param emits the intrinsic provider token, not a scope slot', () => {
     // The provider is a normally-resolvable type now: a `Resolver` parameter
     // tokenizes like any other named type (no dedicated `{ scope: true }` slot).
     // The derived token is the one the engine recognizes as the provider.
     const files = {
-      "/proj/node_modules/@rhombus-std/di.core/package.json": JSON.stringify({
-        name: "@rhombus-std/di.core",
-        version: "1.0.0",
-        exports: { ".": "./index.js" },
+      '/proj/node_modules/@rhombus-std/di.core/package.json': JSON.stringify({
+        name: '@rhombus-std/di.core',
+        version: '1.0.0',
+        exports: { '.': './index.js' },
       }),
-      "/proj/node_modules/@rhombus-std/di.core/index.d.ts":
-        "export interface Resolver { resolve<T>(token: string): T; }\n",
-      "/proj/src/app.ts": `
+      '/proj/node_modules/@rhombus-std/di.core/index.d.ts':
+        'export interface Resolver { resolve<T>(token: string): T; }\n',
+      '/proj/src/app.ts': `
         import type { Resolver } from "@rhombus-std/di.core";
         interface IMarker {}
         class Svc implements IMarker {
@@ -184,9 +184,9 @@ describe("dependency extraction", () => {
         services.add<IMarker>(Svc).as<"singleton">();
       `,
     };
-    const { outputs } = transform(files, { entry: ["/proj/src/app.ts"] });
-    const out = outputs["/proj/src/app.ts"]!;
-    expect(depsArrayFor(out, "Svc")).toBe("[[\"@rhombus-std/di.core:Resolver\"]]");
-    expect(out).not.toContain("scope: true");
+    const { outputs } = transform(files, { entry: ['/proj/src/app.ts'] });
+    const out = outputs['/proj/src/app.ts']!;
+    expect(depsArrayFor(out, 'Svc')).toBe('[["@rhombus-std/di.core:Resolver"]]');
+    expect(out).not.toContain('scope: true');
   });
 });

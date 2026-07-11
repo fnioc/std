@@ -34,15 +34,11 @@
 // This class is internal -- reachable only through the `internal/*` export
 // subpath, not the package barrel.
 
-import {
-  CacheItemPriority,
-  EvictionReason,
-  type ICacheEntry,
-  type PostEvictionCallbackRegistration,
-} from "@rhombus-std/caching.core";
-import { type ILogger, logError } from "@rhombus-std/logging.core";
-import { augment, type IChangeToken } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import { CacheItemPriority, EvictionReason, type ICacheEntry,
+  type PostEvictionCallbackRegistration } from '@rhombus-std/caching.core';
+import { type ILogger, logError } from '@rhombus-std/logging.core';
+import { augment, type IChangeToken } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 /**
  * The owning-cache surface a {@link CacheEntry} needs. {@link MemoryCache}
@@ -378,7 +374,7 @@ export class CacheEntry implements ICacheEntry {
         logError(
           this.#host.logger,
           error instanceof Error ? error : new Error(String(error)),
-          "EvictionCallback invoked failed",
+          'EvictionCallback invoked failed',
         );
       }
     }

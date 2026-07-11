@@ -22,17 +22,13 @@
 // consumers program against the class for the typed path. Sources still expect
 // an IConfigurationBuilder, so `this` is cast at the one call site.
 
-import type {
-  IConfigurationBuilder,
-  IConfigurationProvider,
-  IConfigurationSource,
-  IndexedSection,
-} from "@rhombus-std/config.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { coerceBySchema } from "./coerce";
-import { ConfigurationRoot } from "./ConfigurationRoot";
-import type { Infer, ObjectSchema, Schema } from "./schema";
+import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource,
+  IndexedSection } from '@rhombus-std/config.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { coerceBySchema } from './coerce';
+import { ConfigurationRoot } from './ConfigurationRoot';
+import type { Infer, ObjectSchema, Schema } from './schema';
 
 /**
  * `@augment` decorates the concrete builder for the OPEN IConfigurationBuilder

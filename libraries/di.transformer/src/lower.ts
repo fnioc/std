@@ -16,31 +16,14 @@
 // A dynamic arg with no statically derivable signature gets no signature array —
 // the runtime throws with guidance if it needs metadata (a nonzero-arg ctor).
 
-import {
-  deriveToken,
-  isOpenToken,
-  type LiteralValue,
-  parseToken,
-  type TokenContext,
-} from "@rhombus-std/primitives.transformer";
-import ts from "typescript";
-import { type CheckContext, checkExtractedRegistration } from "./checks.js";
-import {
-  type ConstructorExtraction,
-  type DepContext,
-  extractCtorReferenceSignature,
-  extractFactoryReferenceSignature,
-  extractFromExpression,
-  extractInstantiatedSignature,
-  extractSignatureFromFunction,
-  isFactorySlot,
-  isLiteralSlot,
-  isTypeArgSlot,
-  isUnionSlot,
-  type Signature,
-  type Slot,
-} from "./deps.js";
-import { DiagnosticCode, type DiagnosticSink, error, warning } from "./diagnostics.js";
+import { deriveToken, isOpenToken, type LiteralValue, parseToken,
+  type TokenContext } from '@rhombus-std/primitives.transformer';
+import ts from 'typescript';
+import { type CheckContext, checkExtractedRegistration } from './checks.js';
+import { type ConstructorExtraction, type DepContext, extractCtorReferenceSignature, extractFactoryReferenceSignature,
+  extractFromExpression, extractInstantiatedSignature, extractSignatureFromFunction, isFactorySlot, isLiteralSlot,
+  isTypeArgSlot, isUnionSlot, type Signature, type Slot } from './deps.js';
+import { DiagnosticCode, type DiagnosticSink, error, warning } from './diagnostics.js';
 
 export interface LowerContext extends CheckContext, DepContext {
   readonly factory: ts.NodeFactory;
@@ -49,7 +32,7 @@ export interface LowerContext extends CheckContext, DepContext {
 }
 
 /** A method that the transformer lowers, keyed by its callee name. */
-type RegMethod = "add" | "addValue" | "addFactory";
+type RegMethod = 'add' | 'addValue' | 'addFactory';
 
 /** What `registrationMethod` matched: the canonical lowered method (`add` / `addValue`). */
 interface MatchedMethod {
@@ -79,7 +62,7 @@ interface RegPlan {
   /** The derived token (undefined when the type yields none → emit `null`). */
   readonly token: string | undefined;
   /** The runtime method to emit (`add` may be rewritten from an `add<I>(fn)`). */
-  readonly calleeMethod: "add" | "addFactory" | "addValue";
+  readonly calleeMethod: 'add' | 'addFactory' | 'addValue';
   /**
    * When set, the registration's value arg becomes this expression — the plain
    * ctor of an instantiation expression (`SqlRepository<$<1>>` → `SqlRepository`,
@@ -104,22 +87,26 @@ export function lowerStatement(
   statement: ts.Statement,
   ctx: LowerContext,
 ): ts.Statement[] | undefined {
-  if (!ts.isExpressionStatement(statement)) { return undefined; }
+  if (!ts.isExpressionStatement(statement)) {
+    return undefined;
+  }
 
   const registrations = findRegistrationCalls(statement.expression);
-  if (!registrations.length) { return undefined; }
+  if (!registrations.length) {
+    return undefined;
+  }
 
   const plans = new Map<ts.CallExpression, RegPlan>();
 
   for (const reg of registrations) {
     const token = tokenForReg(reg, ctx);
-    if (reg.method === "addValue") {
+    if (reg.method === 'addValue') {
       // Value: just a token prepend — no deps, no hoist (single use). An open
       // template token is a hard error — a value has no per-closing construction.
       if (token !== undefined && isOpenToken(token)) {
-        emitOpenTokenError(token, "addValue", reg, ctx);
+        emitOpenTokenError(token, 'addValue', reg, ctx);
       }
-      plans.set(reg.call, { token, calleeMethod: "addValue" });
+      plans.set(reg.call, { token, calleeMethod: 'addValue' });
       continue;
     }
     // v1 open-service restriction: every type arg of an open service token must
@@ -133,8 +120,8 @@ export function lowerStatement(
           reg.typeArg ?? reg.call,
           DiagnosticCode.MixedServiceTokenArgs,
           `open service token "${token}" mixes holes and concrete type args — `
-            + "every type arg of an open service token must be a hole "
-            + "(`IFoo<$<1>,$<2>>`); close the token fully or open it fully",
+            + 'every type arg of an open service token must be a hole '
+            + '(`IFoo<$<1>,$<2>>`); close the token fully or open it fully',
         ),
       );
     }
@@ -176,31 +163,41 @@ export function lowerStatement(
  */
 function registrationMethod(call: ts.CallExpression): MatchedMethod | undefined {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) { return undefined; }
-  if (call.typeArguments && call.typeArguments.length > 1) { return undefined; }
+  if (!ts.isPropertyAccessExpression(callee)) {
+    return undefined;
+  }
+  if (call.typeArguments && call.typeArguments.length > 1) {
+    return undefined;
+  }
   const name = callee.name.text;
 
   // `addFactory<I>(fn)` — the explicit tokenless factory authoring form. EXACTLY
   // one value argument (the factory function); the token rides on `<I>`. The
   // two-or-three-arg runtime form (`addFactory("token", fn, signatures?)`, a
   // STRING first) is already lowered and passes through untouched.
-  if (name === "addFactory") {
-    return call.arguments.length === 1 ? { method: "addFactory" } : undefined;
+  if (name === 'addFactory') {
+    return call.arguments.length === 1 ? { method: 'addFactory' } : undefined;
   }
 
-  if (name !== "add" && name !== "addValue") { return undefined; }
+  if (name !== 'add' && name !== 'addValue') {
+    return undefined;
+  }
   // addValue only accepts exactly one value arg.
-  if (name === "addValue") {
-    return call.arguments.length === 1 ? { method: "addValue" } : undefined;
+  if (name === 'addValue') {
+    return call.arguments.length === 1 ? { method: 'addValue' } : undefined;
   }
   // add: accept 1 arg (standard form) or 2 args (override-array form).
-  if (call.arguments.length === 1) { return { method: "add" }; }
+  if (call.arguments.length === 1) {
+    return { method: 'add' };
+  }
   if (call.arguments.length === 2) {
     // Two-arg form is only type-driven when there IS a type argument.
     // Without a type arg + two value args → already-lowered explicit form,
     // or the string-first explicit form → leave untouched.
-    if (!call.typeArguments || !call.typeArguments.length) { return undefined; }
-    return { method: "add" };
+    if (!call.typeArguments || !call.typeArguments.length) {
+      return undefined;
+    }
+    return { method: 'add' };
   }
   return undefined;
 }
@@ -208,9 +205,15 @@ function registrationMethod(call: ts.CallExpression): MatchedMethod | undefined 
 /** True when `call` is a `*.as<"x">()` fluent scope tag. */
 function isAsCall(call: ts.CallExpression): boolean {
   const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) { return false; }
-  if (callee.name.text !== "as") { return false; }
-  if (!call.typeArguments || call.typeArguments.length !== 1) { return false; }
+  if (!ts.isPropertyAccessExpression(callee)) {
+    return false;
+  }
+  if (callee.name.text !== 'as') {
+    return false;
+  }
+  if (!call.typeArguments || call.typeArguments.length !== 1) {
+    return false;
+  }
   return true;
 }
 
@@ -260,14 +263,20 @@ function applyOverrides(
   overrideNode: ts.Expression,
   ctx: LowerContext,
 ): Signature | undefined {
-  if (!ts.isArrayLiteralExpression(overrideNode)) { return undefined; }
+  if (!ts.isArrayLiteralExpression(overrideNode)) {
+    return undefined;
+  }
   const overrides = overrideNode.elements;
   const result: Slot[] = baseSignature.slice();
   for (let i = 0; i < overrides.length; i++) {
     const elem = overrides[i]!;
     // OmittedExpression (elision) or `undefined` literal → keep derived.
-    if (ts.isOmittedExpression(elem)) { continue; }
-    if (ts.isIdentifier(elem) && elem.text === "undefined") { continue; }
+    if (ts.isOmittedExpression(elem)) {
+      continue;
+    }
+    if (ts.isIdentifier(elem) && elem.text === 'undefined') {
+      continue;
+    }
     // A string literal is the documented common case: a token override.
     if (ts.isStringLiteralLike(elem)) {
       result[i] = elem.text;
@@ -282,9 +291,9 @@ function applyOverrides(
         elem,
         DiagnosticCode.UnresolvableOverrideElement,
         `override element at position ${i} is not a string-literal token; the `
-          + "transformer cannot resolve it statically, so the derived token is "
-          + "kept. Use a string-literal token (or `undefined` to keep the derived "
-          + "token).",
+          + 'transformer cannot resolve it statically, so the derived token is '
+          + 'kept. Use a string-literal token (or `undefined` to keep the derived '
+          + 'token).',
       ),
     );
   }
@@ -307,7 +316,9 @@ interface ServiceTokenShape {
 function classifyServiceToken(token: string | undefined): ServiceTokenShape {
   const holes = new Set<number>();
   const parsed = token === undefined ? undefined : parseToken(token);
-  if (!parsed) { return { holes, mixed: false }; }
+  if (!parsed) {
+    return { holes, mixed: false };
+  }
   let sawConcrete = false;
   let sawHole = false;
   for (const arg of parsed.args) {
@@ -319,7 +330,9 @@ function classifyServiceToken(token: string | undefined): ServiceTokenShape {
       sawConcrete = true;
       // A nested hole (`IFoo<IBar<$<1>>>`) opens the token without being a
       // top-level hole — that counts as mixed too.
-      if (isOpenToken(arg)) { sawHole = true; }
+      if (isOpenToken(arg)) {
+        sawHole = true;
+      }
     }
   }
   return { holes, mixed: sawHole && sawConcrete };
@@ -336,13 +349,17 @@ function* tokenHoles(token: string): Generator<number> {
     return;
   }
   const parsed = parseToken(token);
-  if (!parsed) { return; }
-  for (const arg of parsed.args) { yield* tokenHoles(arg); }
+  if (!parsed) {
+    return;
+  }
+  for (const arg of parsed.args) {
+    yield* tokenHoles(arg);
+  }
 }
 
 /** Hole numbers referenced anywhere in a dep slot (recursive over unions). */
 function* slotHoles(slot: Slot): Generator<number> {
-  if (typeof slot === "string") {
+  if (typeof slot === 'string') {
     yield* tokenHoles(slot);
     return;
   }
@@ -352,11 +369,15 @@ function* slotHoles(slot: Slot): Generator<number> {
   }
   if (isFactorySlot(slot)) {
     yield* tokenHoles(slot.type);
-    for (const p of slot.params ?? []) { yield* tokenHoles(p); }
+    for (const p of slot.params ?? []) {
+      yield* tokenHoles(p);
+    }
     return;
   }
   if (isUnionSlot(slot)) {
-    for (const member of slot.union) { yield* slotHoles(member); }
+    for (const member of slot.union) {
+      yield* slotHoles(member);
+    }
   }
   // Scope / literal slots carry no holes.
 }
@@ -374,20 +395,26 @@ function checkDepHoles(
   anchor: ts.Node,
   ctx: LowerContext,
 ): void {
-  if (shape.mixed) { return; }
+  if (shape.mixed) {
+    return;
+  }
   const orphans = new Set<number>();
   for (const sig of signatures) {
     for (const slot of sig) {
       for (const n of slotHoles(slot)) {
-        if (!shape.holes.has(n)) { orphans.add(n); }
+        if (!shape.holes.has(n)) {
+          orphans.add(n);
+        }
       }
     }
   }
-  if (!orphans.size) { return; }
+  if (!orphans.size) {
+    return;
+  }
   const list = [...orphans]
     .sort((a, b) => a - b)
     .map((n) => `$${n}`)
-    .join(", ");
+    .join(', ');
   ctx.sink.addDiagnostic(
     error(
       ctx.sourceFile,
@@ -403,7 +430,7 @@ function checkDepHoles(
 /** Emit the 990009 error: an open template token on a value/factory registration. */
 function emitOpenTokenError(
   token: string,
-  method: "addValue" | "addFactory",
+  method: 'addValue' | 'addFactory',
   reg: FoundReg,
   ctx: LowerContext,
 ): void {
@@ -413,8 +440,8 @@ function emitOpenTokenError(
       reg.typeArg ?? reg.call,
       DiagnosticCode.OpenTokenOnValueOrFactory,
       `open template token "${token}" on ${method} — open registrations are `
-        + "class registrations only; register a class implementation or close "
-        + "the token",
+        + 'class registrations only; register a class implementation or close '
+        + 'the token',
     ),
   );
 }
@@ -445,21 +472,27 @@ function planAddRegistration(
   // arrow / function expression reads its parameters directly; a factory reference
   // resolves through its call signature. The augment type constrains the arg to
   // `Func`, so a class / instantiation arg can never reach here.
-  if (reg.method === "addFactory") {
-    if (openToken) { emitOpenTokenError(token, "addFactory", reg, ctx); }
+  if (reg.method === 'addFactory') {
+    if (openToken) {
+      emitOpenTokenError(token, 'addFactory', reg, ctx);
+    }
     const signatures = isFactoryArg(arg)
       ? extractSignatureFromFunction(arg, ctx)
       : extractFactoryReferenceSignature(arg, ctx);
-    if (signatures) { checkDepHoles(signatures, token, shape, arg, ctx); }
-    return { token, calleeMethod: "addFactory", signatures: signatures ?? undefined };
+    if (signatures) {
+      checkDepHoles(signatures, token, shape, arg, ctx);
+    }
+    return { token, calleeMethod: 'addFactory', signatures: signatures ?? undefined };
   }
 
   // Inline factory literal — signatures read straight off its parameters.
   if (isFactoryArg(arg)) {
-    if (openToken) { emitOpenTokenError(token, "addFactory", reg, ctx); }
+    if (openToken) {
+      emitOpenTokenError(token, 'addFactory', reg, ctx);
+    }
     const signatures = extractSignatureFromFunction(arg, ctx);
     checkDepHoles(signatures, token, shape, arg, ctx);
-    return { token, calleeMethod: "addFactory", signatures };
+    return { token, calleeMethod: 'addFactory', signatures };
   }
 
   // Instantiation expression (TS 4.7+): a generic impl, open or closed. The
@@ -472,7 +505,7 @@ function planAddRegistration(
       checkDepHoles(signatures, token, shape, arg, ctx);
       return {
         token,
-        calleeMethod: "add",
+        calleeMethod: 'add',
         valueOverride: arg.expression,
         signatures,
       };
@@ -501,22 +534,24 @@ function planAddRegistration(
     if (signatures) {
       checkDepHoles(signatures, token, shape, arg, ctx);
     }
-    return { token, calleeMethod: "add", signatures: signatures ?? undefined };
+    return { token, calleeMethod: 'add', signatures: signatures ?? undefined };
   }
 
   // Callable (not constructable) → a factory.
   if (type.getCallSignatures().length) {
-    if (openToken) { emitOpenTokenError(token, "addFactory", reg, ctx); }
+    if (openToken) {
+      emitOpenTokenError(token, 'addFactory', reg, ctx);
+    }
     const signatures = extractFactoryReferenceSignature(arg, ctx);
     if (signatures) {
       checkDepHoles(signatures, token, shape, arg, ctx);
     }
-    return { token, calleeMethod: "addFactory", signatures: signatures ?? undefined };
+    return { token, calleeMethod: 'addFactory', signatures: signatures ?? undefined };
   }
 
   // Neither callable nor constructable (a dynamic / opaque value): assume a
   // class. No signature array — the runtime throws with guidance if it has params.
-  return { token, calleeMethod: "add" };
+  return { token, calleeMethod: 'add' };
 }
 
 /**
@@ -562,7 +597,7 @@ function slotLiteral(slot: Slot, factory: ts.NodeFactory): ts.Expression {
     return factory.createObjectLiteralExpression(
       [
         factory.createPropertyAssignment(
-          "typeArg",
+          'typeArg',
           factory.createNumericLiteral(slot.typeArg),
         ),
       ],
@@ -574,7 +609,7 @@ function slotLiteral(slot: Slot, factory: ts.NodeFactory): ts.Expression {
     return factory.createObjectLiteralExpression(
       [
         factory.createPropertyAssignment(
-          "union",
+          'union',
           factory.createArrayLiteralExpression(memberExprs, false),
         ),
       ],
@@ -583,21 +618,21 @@ function slotLiteral(slot: Slot, factory: ts.NodeFactory): ts.Expression {
   }
   if (isLiteralSlot(slot)) {
     return factory.createObjectLiteralExpression(
-      [factory.createPropertyAssignment("value", literalExpression(slot.value, factory))],
+      [factory.createPropertyAssignment('value', literalExpression(slot.value, factory))],
       false,
     );
   }
   if (isFactorySlot(slot)) {
     const props: ts.ObjectLiteralElementLike[] = [
       factory.createPropertyAssignment(
-        "type",
+        'type',
         factory.createStringLiteral(slot.type),
       ),
     ];
     if (slot.params && slot.params.length) {
       props.push(
         factory.createPropertyAssignment(
-          "params",
+          'params',
           factory.createArrayLiteralExpression(
             slot.params.map((p) => factory.createStringLiteral(p)),
             false,
@@ -624,12 +659,16 @@ export function literalExpression(
   if (value === undefined) {
     return factory.createVoidExpression(factory.createNumericLiteral(0));
   }
-  if (value === null) { return factory.createNull(); }
-  if (typeof value === "string") { return factory.createStringLiteral(value); }
-  if (typeof value === "boolean") {
+  if (value === null) {
+    return factory.createNull();
+  }
+  if (typeof value === 'string') {
+    return factory.createStringLiteral(value);
+  }
+  if (typeof value === 'boolean') {
     return value ? factory.createTrue() : factory.createFalse();
   }
-  if (typeof value === "bigint") {
+  if (typeof value === 'bigint') {
     const negative = value < 0n;
     const literal = factory.createBigIntLiteral(`${negative ? -value : value}n`);
     return negative
@@ -746,10 +785,16 @@ function tokenForReg(reg: FoundReg, ctx: LowerContext): string | undefined {
 /** The type the matched overload binds to `T` for a no-type-arg registration. */
 function inferredRegType(reg: FoundReg, ctx: LowerContext): ts.Type {
   const type = ctx.checker.getTypeAtLocation(reg.arg);
-  if (reg.method === "addValue") { return type; }
+  if (reg.method === 'addValue') {
+    return type;
+  }
   const ctorSigs = type.getConstructSignatures();
-  if (ctorSigs.length) { return ctorSigs[0]!.getReturnType(); }
+  if (ctorSigs.length) {
+    return ctorSigs[0]!.getReturnType();
+  }
   const callSigs = type.getCallSignatures();
-  if (callSigs.length) { return callSigs[0]!.getReturnType(); }
+  if (callSigs.length) {
+    return callSigs[0]!.getReturnType();
+  }
   return type;
 }

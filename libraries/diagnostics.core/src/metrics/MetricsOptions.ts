@@ -5,7 +5,7 @@
 // extension methods and the config-binding step (in @rhombus-std/diagnostics)
 // append rules here.
 
-import type { InstrumentRule } from "./InstrumentRule";
+import type { InstrumentRule } from './InstrumentRule';
 
 /**
  * Options for configuring the metrics system: the set of {@link InstrumentRule}s

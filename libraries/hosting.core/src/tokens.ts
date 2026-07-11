@@ -4,17 +4,17 @@
 // its hosted services and its lifetime) travel through the container via these
 // tokens, so they live here in the abstractions substrate that both depend on.
 
-import type { Token } from "@rhombus-std/di.core";
+import type { Token } from '@rhombus-std/di.core';
 
 /**
  * The shared token every hosted service registers under (repeated `add` calls,
  * #48 collection resolution). The host resolves the whole set in registration
  * order via {@link hostedServiceCollectionToken}.
  */
-export const HOSTED_SERVICE_TOKEN: Token = "@rhombus-std/hosting.core/IHostedService";
+export const HOSTED_SERVICE_TOKEN: Token = '@rhombus-std/hosting.core/IHostedService';
 
 /** The token the host's {@link IHostApplicationLifetime} is registered under. */
-export const HOST_APPLICATION_LIFETIME_TOKEN: Token = "@rhombus-std/hosting.core/IHostApplicationLifetime";
+export const HOST_APPLICATION_LIFETIME_TOKEN: Token = '@rhombus-std/hosting.core/IHostApplicationLifetime';
 
 /**
  * The collection wrapper token the engine recognizes to aggregate every

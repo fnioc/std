@@ -1,4 +1,4 @@
-import type { AbortSignal } from "@rhombus-std/primitives";
+import type { AbortSignal } from '@rhombus-std/primitives';
 
 /** Defines methods for objects that are managed by the host. */
 export interface IHostedService {

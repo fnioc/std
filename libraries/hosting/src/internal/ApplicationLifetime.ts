@@ -7,11 +7,11 @@
 // (idempotent). Errors thrown by abort listeners are caught and logged at
 // critical severity, mirroring the reference's try/catch around `Cancel()`.
 
-import type { IHostApplicationLifetime } from "@rhombus-std/hosting.core";
-import type { ILogger } from "@rhombus-std/logging.core";
-import { AbortController, type AbortSignal } from "@rhombus-std/primitives";
-import { HostingLoggerExtensions } from "./HostingLoggerExtensions";
-import { LoggerEventIds } from "./LoggerEventIds";
+import type { IHostApplicationLifetime } from '@rhombus-std/hosting.core';
+import type { ILogger } from '@rhombus-std/logging.core';
+import { AbortController, type AbortSignal } from '@rhombus-std/primitives';
+import { HostingLoggerExtensions } from './HostingLoggerExtensions';
+import { LoggerEventIds } from './LoggerEventIds';
 
 /** Allows consumers to perform cleanup during a graceful shutdown. */
 export class ApplicationLifetime implements IHostApplicationLifetime {
@@ -50,7 +50,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
       HostingLoggerExtensions.applicationError(
         this.#logger,
         LoggerEventIds.applicationStoppingException,
-        "An error occurred stopping the application",
+        'An error occurred stopping the application',
         error,
       );
     }
@@ -64,7 +64,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
       HostingLoggerExtensions.applicationError(
         this.#logger,
         LoggerEventIds.applicationStartupException,
-        "An error occurred starting the application",
+        'An error occurred starting the application',
         error,
       );
     }
@@ -78,7 +78,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
       HostingLoggerExtensions.applicationError(
         this.#logger,
         LoggerEventIds.applicationStoppedException,
-        "An error occurred stopping the application",
+        'An error occurred stopping the application',
         error,
       );
     }

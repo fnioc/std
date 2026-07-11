@@ -14,23 +14,16 @@
 //     variant with required consumer-convenience members lib.dom lacks, so a
 //     common structural type cannot satisfy it (see primitives/src/streams.ts).
 
-import {
-  clearTimeout,
-  neverSignal,
-  process,
-  type ProcessLike,
-  type ReadableStream,
-  setTimeout,
-  type TimeoutHandle,
-} from "@rhombus-std/primitives";
-import { describe, expect, test } from "bun:test";
+import { clearTimeout, neverSignal, process, type ProcessLike, type ReadableStream, setTimeout,
+  type TimeoutHandle } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
 
-describe("process (owned typings)", () => {
-  test("is the platform global", () => {
+describe('process (owned typings)', () => {
+  test('is the platform global', () => {
     expect(process).toBe(globalThis.process as unknown as ProcessLike);
   });
 
-  test("the platform process satisfies ProcessLike", () => {
+  test('the platform process satisfies ProcessLike', () => {
     // Type test: fails to compile if the platform process stops satisfying
     // the owned member subset.
     const typed: ProcessLike = globalThis.process;
@@ -38,8 +31,8 @@ describe("process (owned typings)", () => {
   });
 });
 
-describe("ReadableStream (owned typings)", () => {
-  test("platform streams assign to the owned type", () => {
+describe('ReadableStream (owned typings)', () => {
+  test('platform streams assign to the owned type', () => {
     const platform = new globalThis.ReadableStream<Uint8Array>();
 
     // Type test: the load-bearing platform -> ours direction.
@@ -49,15 +42,15 @@ describe("ReadableStream (owned typings)", () => {
   });
 });
 
-describe("timers (owned typings)", () => {
-  test("are the platform globals", () => {
+describe('timers (owned typings)', () => {
+  test('are the platform globals', () => {
     // Identity assertions; the casts step around the deliberate typing
     // differences (opaque TimeoutHandle vs bun's number | Timer).
     expect(setTimeout as unknown).toBe(globalThis.setTimeout);
     expect(clearTimeout as unknown).toBe(globalThis.clearTimeout);
   });
 
-  test("a handle round-trips through clearTimeout", () => {
+  test('a handle round-trips through clearTimeout', () => {
     let fired = false;
     const handle: TimeoutHandle = setTimeout(() => {
       fired = true;
@@ -67,17 +60,17 @@ describe("timers (owned typings)", () => {
   });
 });
 
-describe("neverSignal", () => {
-  test("is inert", () => {
+describe('neverSignal', () => {
+  test('is inert', () => {
     expect(neverSignal.aborted).toBe(false);
     expect(neverSignal.reason).toBeUndefined();
-    expect(neverSignal.dispatchEvent(new Event("abort"))).toBe(false);
+    expect(neverSignal.dispatchEvent(new Event('abort'))).toBe(false);
     expect(() => {
       neverSignal.throwIfAborted();
     }).not.toThrow();
 
     let fired = false;
-    neverSignal.addEventListener("abort", () => {
+    neverSignal.addEventListener('abort', () => {
       fired = true;
     });
     expect(fired).toBe(false);

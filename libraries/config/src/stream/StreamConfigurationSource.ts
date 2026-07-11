@@ -11,7 +11,7 @@
 // wrapped in an in-memory stream -- while keeping `load()` synchronous and
 // `addJsonStream` faithful.
 
-import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
+import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from '@rhombus-std/config.core';
 
 /**
  * The in-memory payload a {@link StreamConfigurationSource} reads

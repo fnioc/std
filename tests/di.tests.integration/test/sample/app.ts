@@ -5,28 +5,21 @@
 // repo, a bare zero-arg factory param, the named-callable opt-out, and the
 // async-config value path.
 
-import type { ServiceProvider } from "@rhombus-std/di";
-import type { IConfig } from "./contracts.js";
-import type {
-  ConfigConsumer,
-  ConsoleLogger,
-  ReportService,
-  RequestContext,
-  SqlDb,
-  SqlUserRepo,
-  ThunkConsumer,
-} from "./services.js";
-import { CONFIG_TOKEN, resetConfigFactoryRuns, type SampleScopes, services, THUNK_TOKEN } from "./wiring.js";
+import type { ServiceProvider } from '@rhombus-std/di';
+import type { IConfig } from './contracts.js';
+import type { ConfigConsumer, ConsoleLogger, ReportService, RequestContext, SqlDb, SqlUserRepo,
+  ThunkConsumer } from './services.js';
+import { CONFIG_TOKEN, resetConfigFactoryRuns, type SampleScopes, services, THUNK_TOKEN } from './wiring.js';
 
 const T = {
-  logger: "fnioc-integration-sample/src/sample/contracts:ILogger",
-  db: "fnioc-integration-sample/src/sample/contracts:IDbConnection",
-  repo: "fnioc-integration-sample/src/sample/contracts:IUserRepo",
-  ctx: "fnioc-integration-sample/src/sample/contracts:IRequestContext",
-  report: "fnioc-integration-sample/src/sample/contracts:IReport",
-  reportService: "fnioc-integration-sample/src/sample/contracts:IReportService",
-  thunkConsumer: "fnioc-integration-sample/src/sample/contracts:IThunkConsumer",
-  configConsumer: "fnioc-integration-sample/src/sample/contracts:IConfigConsumer",
+  logger: 'fnioc-integration-sample/src/sample/contracts:ILogger',
+  db: 'fnioc-integration-sample/src/sample/contracts:IDbConnection',
+  repo: 'fnioc-integration-sample/src/sample/contracts:IUserRepo',
+  ctx: 'fnioc-integration-sample/src/sample/contracts:IRequestContext',
+  report: 'fnioc-integration-sample/src/sample/contracts:IReport',
+  reportService: 'fnioc-integration-sample/src/sample/contracts:IReportService',
+  thunkConsumer: 'fnioc-integration-sample/src/sample/contracts:IThunkConsumer',
+  configConsumer: 'fnioc-integration-sample/src/sample/contracts:IConfigConsumer',
   config: CONFIG_TOKEN,
   thunk: THUNK_TOKEN,
 } as const;
@@ -39,7 +32,7 @@ export { resetConfigFactoryRuns, T };
  * here is what lets singleton-tagged registrations cache for the app's lifetime.
  */
 export function rootScope(): ServiceProvider<SampleScopes> {
-  return services.build().createScope("singleton");
+  return services.build().createScope('singleton');
 }
 
 export interface ResolvedGraph {
@@ -62,7 +55,7 @@ export function resolveGraph(): {
   resolved: ResolvedGraph;
 } {
   const root = rootScope();
-  const req = root.createScope("request");
+  const req = root.createScope('request');
   const resolved: ResolvedGraph = {
     logger: root.resolve(T.logger),
     db: root.resolve(T.db),

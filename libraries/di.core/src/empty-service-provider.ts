@@ -28,10 +28,10 @@
 // "unregistered" for a collection token is the honest behavior, so the
 // empty-collection case is intentionally not mirrored.
 
-import { DiError } from "./errors.js";
-import { isProviderToken } from "./provider-token.js";
-import type { ServiceProvider } from "./provider.js";
-import type { Token } from "./types.js";
+import { DiError } from './errors.js';
+import { isProviderToken } from './provider-token.js';
+import type { ServiceProvider } from './provider.js';
+import type { Token } from './types.js';
 
 /** The error a miss on the empty provider raises — every token is unregistered. */
 function unregistered(token: Token): DiError {
@@ -54,7 +54,7 @@ export class EmptyServiceProvider implements ServiceProvider<string> {
 
   /** The empty provider is frameless — it has no open scope, so no name. */
   public get name(): string {
-    throw new TypeError("The EmptyServiceProvider has no scope frame open.");
+    throw new TypeError('The EmptyServiceProvider has no scope frame open.');
   }
 
   public resolve<T>(token: Token): T;

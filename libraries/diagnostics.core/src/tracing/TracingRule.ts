@@ -6,7 +6,7 @@
 // malformed rule surfaces at construction rather than on the hot path -- ported
 // verbatim.
 
-import { ActivitySourceScopes } from "./activity-source-scopes";
+import { ActivitySourceScopes } from './activity-source-scopes';
 
 /**
  * A single tracing enablement rule: determines which activities are enabled for
@@ -45,13 +45,13 @@ export class TracingRule {
     // future StartActivity hot path -- matches the reference's deliberate choice
     // to diverge from the metrics rule's deferred validation.
     if (sourceName) {
-      const firstWildcard = sourceName.indexOf("*");
-      if (firstWildcard >= 0 && sourceName.indexOf("*", firstWildcard + 1) >= 0) {
+      const firstWildcard = sourceName.indexOf('*');
+      if (firstWildcard >= 0 && sourceName.indexOf('*', firstWildcard + 1) >= 0) {
         throw new Error("Only one '*' wildcard is allowed in an activity source name pattern.");
       }
     }
     if (scopes === ActivitySourceScopes.None) {
-      throw new RangeError("The ActivitySourceScopes must be Global, Local, or both.");
+      throw new RangeError('The ActivitySourceScopes must be Global, Local, or both.');
     }
     this.sourceName = sourceName;
     this.operationName = operationName;

@@ -15,8 +15,8 @@
 // for this pass -- see the package tbd notes). The local copy keeps this package's
 // boundaries clean in the meantime (no cross-package internal/* reach).
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * An {@link IChangeToken} over a set of child tokens: {@link hasChanged} when any

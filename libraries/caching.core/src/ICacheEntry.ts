@@ -6,9 +6,9 @@
 // `IDisposable` -> the built-in `Disposable` (`Symbol.dispose`). Disposing the
 // entry COMMITS it to the cache (see @rhombus-std/caching.memory's CacheEntry).
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { CacheItemPriority } from "./CacheItemPriority";
-import type { PostEvictionCallbackRegistration } from "./PostEvictionCallbackRegistration";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { CacheItemPriority } from './CacheItemPriority';
+import type { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
 
 /**
  * Represents an entry in an {@link IMemoryCache}. When disposed, the entry is

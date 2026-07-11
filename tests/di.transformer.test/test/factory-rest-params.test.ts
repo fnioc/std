@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { fixture, transform } from "./harness.js";
+import { describe, expect, test } from 'bun:test';
+import { fixture, transform } from './harness.js';
 
 // Overload-faithful REST-parameter expansion for factory signatures. A factory
 // rest parameter whose type is a TUPLE (`...args: [A, B]`) expands into positional
@@ -8,8 +8,8 @@ import { fixture, transform } from "./harness.js";
 // how an overloaded constructor's shape survives into a factory registration —
 // one signature per constructor overload.
 
-describe("rest-parameter expansion (overload-faithful factory params)", () => {
-  test("rest tuple (...args: [A, B]) expands into a 2-slot signature", () => {
+describe('rest-parameter expansion (overload-faithful factory params)', () => {
+  test('rest tuple (...args: [A, B]) expands into a 2-slot signature', () => {
     const src = `
       interface IA {}
       interface IB {}
@@ -18,10 +18,10 @@ describe("rest-parameter expansion (overload-faithful factory params)", () => {
       services.addFactory<IThing>((...args: [IA, IB]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("[[\"./app:IA\", \"./app:IB\"]]");
+    expect(output).toContain('[["./app:IA", "./app:IB"]]');
   });
 
-  test("labeled tuple elements ([a: A, b: B]) read through transparently", () => {
+  test('labeled tuple elements ([a: A, b: B]) read through transparently', () => {
     const src = `
       interface IA {}
       interface IB {}
@@ -30,10 +30,10 @@ describe("rest-parameter expansion (overload-faithful factory params)", () => {
       services.addFactory<IThing>((...args: [a: IA, b: IB]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("[[\"./app:IA\", \"./app:IB\"]]");
+    expect(output).toContain('[["./app:IA", "./app:IB"]]');
   });
 
-  test("empty tuple (...args: []) expands into a zero-slot signature", () => {
+  test('empty tuple (...args: []) expands into a zero-slot signature', () => {
     const src = `
       interface IThing {}
       declare const services: any;
@@ -41,11 +41,11 @@ describe("rest-parameter expansion (overload-faithful factory params)", () => {
     `;
     const { output } = transform(fixture(src));
     // Zero-slot signature — one empty signature, not a missing one.
-    expect(output).toContain("addFactory(\"./app:IThing\"");
-    expect(output).toContain("[[]]");
+    expect(output).toContain('addFactory("./app:IThing"');
+    expect(output).toContain('[[]]');
   });
 
-  test("union of tuples (...args: [A] | [B, C]) emits ONE signature per member", () => {
+  test('union of tuples (...args: [A] | [B, C]) emits ONE signature per member', () => {
     const src = `
       interface IA {}
       interface IB {}
@@ -56,10 +56,10 @@ describe("rest-parameter expansion (overload-faithful factory params)", () => {
     `;
     const { output } = transform(fixture(src));
     // Two signatures, one per union member tuple.
-    expect(output).toContain("[[\"./app:IA\"], [\"./app:IB\", \"./app:IC\"]]");
+    expect(output).toContain('[["./app:IA"], ["./app:IB", "./app:IC"]]');
   });
 
-  test("leading fixed params precede the expanded rest tail", () => {
+  test('leading fixed params precede the expanded rest tail', () => {
     const src = `
       interface IA {}
       interface IB {}
@@ -70,10 +70,10 @@ describe("rest-parameter expansion (overload-faithful factory params)", () => {
     `;
     const { output } = transform(fixture(src));
     // (a: A, ...args: [B, C]) → [A, B, C] in one signature.
-    expect(output).toContain("[[\"./app:IA\", \"./app:IB\", \"./app:IC\"]]");
+    expect(output).toContain('[["./app:IA", "./app:IB", "./app:IC"]]');
   });
 
-  test("an optional tuple element gains the { value: undefined } fallback", () => {
+  test('an optional tuple element gains the { value: undefined } fallback', () => {
     const src = `
       interface IA {}
       interface IB {}
@@ -84,12 +84,12 @@ describe("rest-parameter expansion (overload-faithful factory params)", () => {
     const { output } = transform(fixture(src));
     // The optional B slot is union(B, undefined-fallback), the LiteralRef last.
     expect(output).toContain(
-      "[[\"./app:IA\", { union: [\"./app:IB\", { value: void 0 }] }]]",
+      '[["./app:IA", { union: ["./app:IB", { value: void 0 }] }]]',
     );
   });
 });
 
-describe("OverloadedConstructorParameters end-to-end", () => {
+describe('OverloadedConstructorParameters end-to-end', () => {
   test("an overloaded ctor's factory lowers to one signature per overload", () => {
     // The shipped `@rhombus-std/di.core` algorithm, inlined so the harness (which cannot
     // resolve a real package) can resolve the type. A factory rest parameter typed
@@ -120,9 +120,9 @@ describe("OverloadedConstructorParameters end-to-end", () => {
       services.addFactory<IThing>((...args: OverloadedConstructorParameters<typeof C>) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("addFactory(\"./app:IThing\"");
+    expect(output).toContain('addFactory("./app:IThing"');
     // Both constructor overloads survive as their own signature.
-    expect(output).toContain("[\"./app:IA\"]");
-    expect(output).toContain("[\"./app:IB\", \"./app:IC\"]");
+    expect(output).toContain('["./app:IA"]');
+    expect(output).toContain('["./app:IB", "./app:IC"]');
   });
 });

@@ -7,7 +7,7 @@
 // configuration section.
 
 /** Token for the `Options<MemoryCacheOptions>` assembly `addMemoryCache` registers. */
-export const MEMORY_CACHE_OPTIONS_TOKEN = "@rhombus-std/caching.memory:MemoryCacheOptions";
+export const MEMORY_CACHE_OPTIONS_TOKEN = '@rhombus-std/caching.memory:MemoryCacheOptions';
 
 /** Token for the `Options<MemoryDistributedCacheOptions>` assembly `addDistributedMemoryCache` registers. */
-export const MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN = "@rhombus-std/caching.memory:MemoryDistributedCacheOptions";
+export const MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN = '@rhombus-std/caching.memory:MemoryDistributedCacheOptions';

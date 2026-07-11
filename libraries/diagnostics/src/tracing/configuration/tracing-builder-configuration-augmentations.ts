@@ -3,19 +3,15 @@
 // MetricsBuilderConfigurationExtensions; authored as a named object literal
 // (docs §28) and installed onto the concrete builder in ./builder-augmentations.
 
-import type { IConfiguration } from "@rhombus-std/config";
-import {
-  type ITracingBuilder,
-  TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
-  TRACING_CONFIGURATION_TOKEN,
-  TRACING_CONFIGURE_TOKEN,
-} from "@rhombus-std/diagnostics.core";
-import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { IConfiguration } from '@rhombus-std/config';
+import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
+  TRACING_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
+import { ConfigurationChangeTokenSource } from '@rhombus-std/options.augmentations';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
-import { TracingConfiguration } from "./TracingConfiguration";
-import { TracingConfigureOptions } from "./TracingConfigureOptions";
+import { TracingConfiguration } from './TracingConfiguration';
+import { TracingConfigureOptions } from './TracingConfigureOptions';
 
 /** The `TracingBuilderConfigurationExtensions` augmentation set for {@link ITracingBuilder} (docs §28). */
 export const TracingBuilderConfigurationExtensions = {
@@ -47,7 +43,7 @@ export const TracingBuilderConfigurationExtensions = {
 // The barrel is publish-resolvable and, shared with diagnostics.core's merge,
 // keeps every site for this interface on one module file (the §38 merge-identity
 // rule), so the concrete builders still satisfy `implements ITracingBuilder`.
-declare module "@rhombus-std/diagnostics.core" {
+declare module '@rhombus-std/diagnostics.core' {
   interface ITracingBuilder {
     addTracingConfiguration(configuration: IConfiguration): this;
   }

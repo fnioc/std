@@ -8,8 +8,8 @@
 // that never raises callbacks. ME's `EmptyDisposable` singleton maps to an
 // inline no-op `Disposable`.
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
 const NO_OP_DISPOSABLE: Disposable = { [Symbol.dispose]() {} };
 

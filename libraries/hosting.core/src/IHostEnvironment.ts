@@ -1,4 +1,4 @@
-import type { IFileProvider } from "@rhombus-std/fileproviders.core";
+import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 
 /** Provides information about the hosting environment an application is running in. */
 export interface IHostEnvironment {

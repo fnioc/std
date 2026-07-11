@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 // Production-path e2e: drives the REAL `tspc` (ts-patch's patched compiler) over
 // a temp project that imports `@rhombus-std/config.transformer` as a ts-patch plugin, then
@@ -15,9 +15,9 @@ import { join, resolve } from "node:path";
 
 // This test package's own root (it carries the `ts-patch` devDep) and the repo
 // root. The linked packages live under `<repo>/libraries/*`.
-const PKG_ROOT = resolve(import.meta.dir, "..");
-const REPO_ROOT = resolve(PKG_ROOT, "..", "..");
-const TSPC = join(PKG_ROOT, "node_modules", "ts-patch", "bin", "tspc.js");
+const PKG_ROOT = resolve(import.meta.dir, '..');
+const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
+const TSPC = join(PKG_ROOT, 'node_modules', 'ts-patch', 'bin', 'tspc.js');
 
 let projDir: string;
 
@@ -30,21 +30,21 @@ function link(target: string, linkPath: string): void {
 }
 
 beforeAll(() => {
-  projDir = mkdtempSync(join(tmpdir(), "config-tsp-e2e-"));
-  const nm = join(projDir, "node_modules");
-  mkdirSync(join(nm, "@rhombus-std"), { recursive: true });
-  mkdirSync(join(projDir, "src"), { recursive: true });
+  projDir = mkdtempSync(join(tmpdir(), 'config-tsp-e2e-'));
+  const nm = join(projDir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  mkdirSync(join(projDir, 'src'), { recursive: true });
 
   // Wire the temp project's node_modules to the real packages + tools.
-  link(join(REPO_ROOT, "node_modules", "typescript"), join(nm, "typescript"));
-  link(join(PKG_ROOT, "node_modules", "ts-patch"), join(nm, "ts-patch"));
-  link(join(REPO_ROOT, "libraries", "config.transformer"), join(nm, "@rhombus-std", "config.transformer"));
-  link(join(REPO_ROOT, "libraries", "config"), join(nm, "@rhombus-std", "config"));
-  link(join(REPO_ROOT, "libraries", "config.core"), join(nm, "@rhombus-std", "config.core"));
-  link(join(REPO_ROOT, "libraries", "primitives"), join(nm, "@rhombus-std", "primitives"));
+  link(join(REPO_ROOT, 'node_modules', 'typescript'), join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ts-patch'), join(nm, 'ts-patch'));
+  link(join(REPO_ROOT, 'libraries', 'config.transformer'), join(nm, '@rhombus-std', 'config.transformer'));
+  link(join(REPO_ROOT, 'libraries', 'config'), join(nm, '@rhombus-std', 'config'));
+  link(join(REPO_ROOT, 'libraries', 'config.core'), join(nm, '@rhombus-std', 'config.core'));
+  link(join(REPO_ROOT, 'libraries', 'primitives'), join(nm, '@rhombus-std', 'primitives'));
 
   writeFileSync(
-    join(projDir, "src", "config.ts"),
+    join(projDir, 'src', 'config.ts'),
     `export interface ServerConfig {
   host: string;
   port: number;
@@ -53,7 +53,7 @@ beforeAll(() => {
 `,
   );
   writeFileSync(
-    join(projDir, "src", "main.ts"),
+    join(projDir, 'src', 'main.ts'),
     `import { ConfigurationBuilder } from "@rhombus-std/config";
 import "@rhombus-std/config/with-type-augment";
 import type { ServerConfig } from "./config.js";
@@ -67,12 +67,12 @@ console.log(JSON.stringify(config));
 `,
   );
   writeFileSync(
-    join(projDir, "tsconfig.json"),
+    join(projDir, 'tsconfig.json'),
     JSON.stringify({
       compilerOptions: {
-        target: "ES2022",
-        module: "ESNext",
-        moduleResolution: "Bundler",
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
         // Previously this tsconfig omitted "lib" entirely, which defaults to
         // DOM + DOM.Iterable + the target's lib (ES2022) -- that default is
         // what made bare `console`/`AbortController` resolve. Now that
@@ -81,21 +81,21 @@ console.log(JSON.stringify(config));
         // ESNext.Disposable has to be added explicitly -- so the previously
         // implicit DOM/DOM.Iterable libs need to be spelled out too, or
         // specifying "lib" at all silently drops them.
-        lib: ["ES2022", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+        lib: ['ES2022', 'DOM', 'DOM.Iterable', 'ESNext.Disposable'],
         strict: true,
-        outDir: "dist",
-        rootDir: "src",
+        outDir: 'dist',
+        rootDir: 'src',
         skipLibCheck: true,
         noEmitOnError: false,
-        plugins: [{ transform: "@rhombus-std/config.transformer", import: "transform" }],
+        plugins: [{ transform: '@rhombus-std/config.transformer', import: 'transform' }],
       },
-      include: ["src/**/*"],
+      include: ['src/**/*'],
     }),
   );
   // Mark the temp project ESM so `node dist/main.js` runs the emitted ESM.
   writeFileSync(
-    join(projDir, "package.json"),
-    JSON.stringify({ name: "config-e2e-fixture", private: true, type: "module" }),
+    join(projDir, 'package.json'),
+    JSON.stringify({ name: 'config-e2e-fixture', private: true, type: 'module' }),
   );
 });
 
@@ -105,22 +105,22 @@ afterAll(() => {
   }
 });
 
-describe("ts-patch production e2e (ESM)", () => {
-  test("tspc compiles and emits the lowered .withSchema contract", () => {
-    const result = spawnSync("node", [TSPC, "-p", "tsconfig.json"], {
+describe('ts-patch production e2e (ESM)', () => {
+  test('tspc compiles and emits the lowered .withSchema contract', () => {
+    const result = spawnSync('node', [TSPC, '-p', 'tsconfig.json'], {
       cwd: projDir,
-      encoding: "utf8",
+      encoding: 'utf8',
     });
     // tspc should run cleanly (status 0); surface its output if not.
     expect(result.status, result.stdout + result.stderr).toBe(0);
 
-    const emitted = readFileSync(join(projDir, "dist", "main.js"), "utf8");
+    const emitted = readFileSync(join(projDir, 'dist', 'main.js'), 'utf8');
 
     // The authored `.withType<ServerConfig>()` is gone, replaced by a generated
     // `.withSchema({...})` runtime schema literal.
-    expect(emitted).not.toContain(".withType(");
-    expect(emitted).not.toContain(".withType<");
-    expect(emitted).toContain(".withSchema(");
+    expect(emitted).not.toContain('.withType(');
+    expect(emitted).not.toContain('.withType<');
+    expect(emitted).toContain('.withSchema(');
     expect(emitted).toContain(`host: "string"`);
     expect(emitted).toContain(`port: "number"`);
     // Optional field wrapper + injected OPTIONAL import.
@@ -128,16 +128,16 @@ describe("ts-patch production e2e (ESM)", () => {
     expect(emitted).toContain(`[OPTIONAL]: "boolean"`);
   }, 30_000);
 
-  test("the emitted program runs and coerces against the generated schema", () => {
-    const compile = spawnSync("node", [TSPC, "-p", "tsconfig.json"], {
+  test('the emitted program runs and coerces against the generated schema', () => {
+    const compile = spawnSync('node', [TSPC, '-p', 'tsconfig.json'], {
       cwd: projDir,
-      encoding: "utf8",
+      encoding: 'utf8',
     });
     expect(compile.status, compile.stdout + compile.stderr).toBe(0);
 
-    const run = spawnSync("node", [join(projDir, "dist", "main.js")], {
+    const run = spawnSync('node', [join(projDir, 'dist', 'main.js')], {
       cwd: projDir,
-      encoding: "utf8",
+      encoding: 'utf8',
     });
     expect(run.status, run.stdout + run.stderr).toBe(0);
     // port is a NUMBER and ssl a BOOLEAN -- proof of runtime-schema-driven

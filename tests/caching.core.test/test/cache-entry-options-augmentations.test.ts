@@ -4,16 +4,11 @@
 // CLOSED-set install merges onto MemoryCacheEntryOptions, plus the end-to-end
 // path: build a bag fluently, apply it to a live entry via `setOptions`.
 
-import {
-  CacheItemPriority,
-  type ICacheEntry,
-  MemoryCacheEntryExtensions,
-  MemoryCacheEntryOptions,
-  type PostEvictionDelegate,
-} from "@rhombus-std/caching.core";
-import { MemoryCache, MemoryCacheOptions } from "@rhombus-std/caching.memory";
-import type { IChangeToken } from "@rhombus-std/primitives";
-import { describe, expect, test } from "bun:test";
+import { CacheItemPriority, type ICacheEntry, MemoryCacheEntryExtensions, MemoryCacheEntryOptions,
+  type PostEvictionDelegate } from '@rhombus-std/caching.core';
+import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
+import type { IChangeToken } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
 
 function makeToken(): IChangeToken {
   return {
@@ -25,12 +20,12 @@ function makeToken(): IChangeToken {
   };
 }
 
-describe("MemoryCacheEntryExtensions — standalone member form", () => {
-  test("each member sets its option and returns the bag for chaining", () => {
+describe('MemoryCacheEntryExtensions — standalone member form', () => {
+  test('each member sets its option and returns the bag for chaining', () => {
     const options = new MemoryCacheEntryOptions();
     const token = makeToken();
     const callback: PostEvictionDelegate = () => {};
-    const state = { tag: "state" };
+    const state = { tag: 'state' };
 
     const chained = MemoryCacheEntryExtensions.registerPostEvictionCallback(
       MemoryCacheEntryExtensions.addExpirationToken(
@@ -57,7 +52,7 @@ describe("MemoryCacheEntryExtensions — standalone member form", () => {
     expect(options.postEvictionCallbacks[0]?.state).toBe(state);
   });
 
-  test("setAbsoluteExpiration discriminates ms-relative from absolute Date", () => {
+  test('setAbsoluteExpiration discriminates ms-relative from absolute Date', () => {
     const relative = MemoryCacheEntryExtensions.setAbsoluteExpiration(new MemoryCacheEntryOptions(), 5_000);
     expect(relative.absoluteExpirationRelativeToNow).toBe(5_000);
     expect(relative.absoluteExpiration).toBeUndefined();
@@ -79,8 +74,8 @@ describe("MemoryCacheEntryExtensions — standalone member form", () => {
   });
 });
 
-describe("MemoryCacheEntryExtensions — method form (CLOSED-set install)", () => {
-  test("fluent method chain equals the standalone member form", () => {
+describe('MemoryCacheEntryExtensions — method form (CLOSED-set install)', () => {
+  test('fluent method chain equals the standalone member form', () => {
     const token = makeToken();
     const callback: PostEvictionDelegate = () => {};
     const when = new Date(Date.now() + 60_000);
@@ -121,8 +116,8 @@ describe("MemoryCacheEntryExtensions — method form (CLOSED-set install)", () =
   });
 });
 
-describe("MemoryCacheEntryExtensions — end-to-end via setOptions", () => {
-  test("a fluently built bag applies to a live cache entry", () => {
+describe('MemoryCacheEntryExtensions — end-to-end via setOptions', () => {
+  test('a fluently built bag applies to a live cache entry', () => {
     const cache = new MemoryCache(new MemoryCacheOptions());
     const token = makeToken();
     const callback: PostEvictionDelegate = () => {};
@@ -134,7 +129,7 @@ describe("MemoryCacheEntryExtensions — end-to-end via setOptions", () => {
       .addExpirationToken(token)
       .registerPostEvictionCallback(callback);
 
-    const entry: ICacheEntry = cache.createEntry("key").setOptions(options);
+    const entry: ICacheEntry = cache.createEntry('key').setOptions(options);
 
     expect(entry.priority).toBe(CacheItemPriority.NeverRemove);
     expect(entry.size).toBe(3);

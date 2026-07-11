@@ -5,10 +5,10 @@
 // per-operation bool leaves, with "Default" as the match-all synonym -- so the
 // tree-walking primitives live here once.
 
-import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config";
+import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config';
 
 /** The match-all key used at meter/instrument and source/operation levels. */
-export const DEFAULT_KEY = "Default";
+export const DEFAULT_KEY = 'Default';
 
 /** Case-insensitive string equality (ordinal). */
 export function equalsIgnoreCase(a: string, b: string): boolean {
@@ -26,10 +26,10 @@ export function parseBool(value: string | undefined): boolean | undefined {
     return undefined;
   }
   const normalized = value.trim().toLowerCase();
-  if (normalized === "true") {
+  if (normalized === 'true') {
     return true;
   }
-  if (normalized === "false") {
+  if (normalized === 'false') {
     return false;
   }
   return undefined;

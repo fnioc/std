@@ -12,8 +12,8 @@
 // resolved hosting environment) can be computed once the context exists. Last
 // write wins, mirroring the reference's last-`UseServiceProviderFactory`.
 
-import type { ServiceProviderOptions } from "@rhombus-std/di.core";
-import type { HostBuilderContext, IHostBuilder } from "@rhombus-std/hosting.core";
+import type { ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { HostBuilderContext, IHostBuilder } from '@rhombus-std/hosting.core';
 
 /** Produces the {@link ServiceProviderOptions} from the fully-resolved build context. */
 export type ServiceProviderOptionsFactory = (context: HostBuilderContext) => ServiceProviderOptions;

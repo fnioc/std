@@ -5,7 +5,7 @@
 // text. The code sits in the same 9900xx band the di transformer uses, offset
 // clear of TypeScript's own space and of di.transformer's own codes.
 
-import ts from "typescript";
+import ts from 'typescript';
 
 /** A diagnostic the transformer raises. */
 export type Diagnostic = ts.Diagnostic;
@@ -26,7 +26,7 @@ export enum DiagnosticCode {
   UnlowerableAddOptions = 990020,
 }
 
-const SOURCE = "@rhombus-std/di.transformer.options";
+const SOURCE = '@rhombus-std/di.transformer.options';
 
 /** Build an error diagnostic anchored at `node` in `file`. */
 export function error(

@@ -8,8 +8,8 @@
 // producer, so the sources' tokens compose into one token that has changed when
 // any child has, and registers a callback against every child.
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * An {@link IChangeToken} over a set of child tokens: it {@link hasChanged}

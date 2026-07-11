@@ -18,7 +18,7 @@ export interface TextWriter {
  * the reference `StringWriter` the console logger renders each entry through.
  */
 export class StringWriter implements TextWriter {
-  #buffer = "";
+  #buffer = '';
 
   public write(value: string): void {
     this.#buffer += value;
@@ -36,6 +36,6 @@ export class StringWriter implements TextWriter {
 
   /** Resets the writer for reuse (the reference `StringBuilder.Clear`). */
   public clear(): void {
-    this.#buffer = "";
+    this.#buffer = '';
   }
 }

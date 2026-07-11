@@ -22,10 +22,10 @@
 export function nameof<T>(): string {
   void (0 as unknown as T);
   throw new Error(
-    "nameof<T>() requires the @rhombus-std/di.transformer plugin. Add { \"transform\": "
-      + "\"@rhombus-std/di.transformer\" } to your tsconfig \"plugins\", or pass a token string.",
+    'nameof<T>() requires the @rhombus-std/di.transformer plugin. Add { "transform": '
+      + '"@rhombus-std/di.transformer" } to your tsconfig "plugins", or pass a token string.',
   );
 }
 
 /** The exported identifier name the transformer recognizes as `nameof`. */
-export const NAMEOF_NAME = "nameof";
+export const NAMEOF_NAME = 'nameof';

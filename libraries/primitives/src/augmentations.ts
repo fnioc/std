@@ -27,7 +27,7 @@
 // the config-provider packages would then need a config→di edge just to
 // reach the installer.
 
-import type { Ctor, Func } from "@rhombus-toolkit/func";
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 /** An object literal of receiver-first augmentation functions all sharing receiver type R. */
 export type AugmentationSet<R> = Record<string, Func<[receiver: R, ...args: any[]], unknown>>;

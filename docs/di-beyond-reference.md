@@ -17,16 +17,16 @@ value at all — it's simply the absence of `.as(...)`. A tag whose frame is nev
 anywhere still resolves; it just does so transiently instead of throwing.
 
 ```ts
-const services = new ServiceManifest<"singleton" | "request" | "transaction">();
+const services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
 
-services.add<ILogger>(ConsoleLogger).as<"singleton">();
-services.add<IRepo>(SqlRepo).as<"request">();
-services.add<IUnitOfWork>(UnitOfWork).as<"transaction">(); // nests deeper than "request"
+services.add<ILogger>(ConsoleLogger).as<'singleton'>();
+services.add<IRepo>(SqlRepo).as<'request'>();
+services.add<IUnitOfWork>(UnitOfWork).as<'transaction'>(); // nests deeper than "request"
 services.add<IAuditor>(Auditor); // no .as() at all — transient, never cached
 
-const app = services.build().createScope("singleton");
-const req = app.createScope("request");
-const tx = req.createScope("transaction"); // any depth, any name you declared
+const app = services.build().createScope('singleton');
+const req = app.createScope('request');
+const tx = req.createScope('transaction'); // any depth, any name you declared
 ```
 
 If nothing ever calls `createScope("transaction")`, `IUnitOfWork` still resolves — just as
@@ -42,12 +42,12 @@ asking it for the `Promise<T>` type itself hands back the raw, un-awaited promis
 value. Disposal gets the matching split.
 
 ```ts
-services.addFactory<Promise<IBanner>>(fetchBanner).as<"singleton">();
+services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
 
 const banner = await resolver.resolveAsync<IBanner>(); // awaits the Promise<T> registration
 const pending = resolver.resolve<Promise<IBanner>>(); // same registration, un-awaited
 
-await using scope = provider.createScope("request"); // disposeAsync() awaits owned pendings
+await using scope = provider.createScope('request'); // disposeAsync() awaits owned pendings
 ```
 
 ## 3. Collection resolution
@@ -59,8 +59,8 @@ honoring its own registration's lifetime. An unregistered element type aggregate
 empty collection; the bare element token still throws.
 
 ```ts
-services.add<IGreeting>(FormalGreeting).as<"singleton">();
-services.add<IGreeting>(CasualGreeting).as<"singleton">();
+services.add<IGreeting>(FormalGreeting).as<'singleton'>();
+services.add<IGreeting>(CasualGreeting).as<'singleton'>();
 
 resolver.resolve<IGreeting[]>(); // [formal, casual] — registration order
 resolver.resolve<Iterable<IGreeting>>(); // distinct wrapper, re-iterable, same elements
@@ -80,13 +80,13 @@ members that throw while building; exhausting every member throws.
 class CacheConsumer {
   constructor(private readonly cache: IRedisCache | IMemoryCache) {}
 }
-services.add<IRedisCache>(RedisCache).as<"singleton">();
-services.add<CacheConsumer>(CacheConsumer).as<"singleton">();
+services.add<IRedisCache>(RedisCache).as<'singleton'>();
+services.add<CacheConsumer>(CacheConsumer).as<'singleton'>();
 // IMemoryCache is never registered — falls through to RedisCache, no error
 
 // manual dialect — the same signature, hand-written:
-services.add("pkg:CacheConsumer", CacheConsumer, [[
-  union("pkg:IRedisCache", "pkg:IMemoryCache"),
+services.add('pkg:CacheConsumer', CacheConsumer, [[
+  union('pkg:IRedisCache', 'pkg:IMemoryCache'),
 ]]);
 ```
 
@@ -100,9 +100,9 @@ always satisfiable. This is also what powers optional parameters: `dep?: IFoo` l
 
 ```ts
 class Environment {
-  constructor(public readonly stage: "prod") {}
+  constructor(public readonly stage: 'prod') {}
 }
-services.add<Environment>(Environment).as<"singleton">();
+services.add<Environment>(Environment).as<'singleton'>();
 // "prod" is supplied directly — no token for it exists anywhere
 ```
 
@@ -117,15 +117,15 @@ counterpart names the hole positionally with `{ typeArg: n }`.
 class Repository<T> {
   constructor(public readonly entityToken: Typeof<T>) {}
 }
-services.add<IRepository<$<1>>>(Repository<$<1>>).as<"request">();
+services.add<IRepository<$<1>>>(Repository<$<1>>).as<'request'>();
 
 // closing IRepository<User> builds a Repository whose entityToken is the
 // literal string "pkg:User" — no reflection, no MakeGenericType
 resolver.resolve<IRepository<User>>().entityToken; // "pkg:User"
 
 // manual dialect:
-services.add("pkg:IRepository<$1>", Repository, [[{ typeArg: 1 }]]).as(
-  "request",
+services.add('pkg:IRepository<$1>', Repository, [[{ typeArg: 1 }]]).as(
+  'request',
 );
 ```
 
@@ -148,9 +148,9 @@ class Report {
 class Printer {
   constructor(private readonly makeReport: (customer: string) => Report) {}
 }
-services.add<ILogger>(ConsoleLogger).as<"singleton">();
-services.add<Report>(Report).as<"singleton">();
-services.add<Printer>(Printer).as<"singleton">();
+services.add<ILogger>(ConsoleLogger).as<'singleton'>();
+services.add<Report>(Report).as<'singleton'>();
+services.add<Printer>(Printer).as<'singleton'>();
 // makeReport("acme") resolves `log` from the container, threads "acme" straight
 // through to the ctor
 
@@ -175,10 +175,10 @@ class RequestContext {
 class Cache {
   constructor(private readonly ctx: RequestContext) {}
 }
-services.add<RequestContext>(RequestContext).as<"request">();
-services.add<Cache>(Cache).as<"singleton">(); // a captive dependency, by the reference's definition
+services.add<RequestContext>(RequestContext).as<'request'>();
+services.add<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
 
-const req = app.createScope("request");
+const req = app.createScope('request');
 const cache = req.resolve<Cache>();
 // Cache is singleton-owned, so its ctx resolves relative to the singleton frame
 // (no enclosing "request" there) — a fresh RequestContext, never req's cached one.
@@ -195,10 +195,10 @@ explicit-token call a plugin-less author would have written, never adding a capa
 
 ```ts
 // tokenless — the transformer expands this at build time
-services.add<ILogger>(ConsoleLogger).as<"singleton">();
+services.add<ILogger>(ConsoleLogger).as<'singleton'>();
 
 // exactly what it lowers to, and what a plugin-less author writes by hand
-services.add("pkg:ILogger", ConsoleLogger, [[]]).as("singleton");
+services.add('pkg:ILogger', ConsoleLogger, [[]]).as('singleton');
 ```
 
 Every feature above has this same relationship: `union(...)`, `{ value }`, `{ typeArg }`,

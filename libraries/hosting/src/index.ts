@@ -19,44 +19,38 @@
 // The hosting ABSTRACTIONS surface (contracts, tokens, host-lifetime + builder
 // augmentation sets, environment predicates, BackgroundService, Environments,
 // HostDefaults) + the `addHostedService` side-effect augmentation.
-export * from "@rhombus-std/hosting.core";
+export * from '@rhombus-std/hosting.core';
 
 // Bring the class-side declaration merges (and the runtime registration of the
 // IHostBuilder set) into the program so the concrete classes SATISFY their
 // augmented interfaces and `HostingHostBuilderExtensions` is registered.
-import "./builder-augmentations";
-import "./host-augmentations";
+import './builder-augmentations';
+import './host-augmentations';
 
 // The builders + factory facade.
-export { Host } from "./host";
-export { HostApplicationBuilder } from "./HostApplicationBuilder";
-export { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
-export { HostBuilder } from "./HostBuilder";
+export { Host } from './host';
+export { HostApplicationBuilder } from './HostApplicationBuilder';
+export { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
+export { HostBuilder } from './HostBuilder';
 
 // Host runtime objects.
-export { BackgroundServiceExceptionBehavior } from "./BackgroundServiceExceptionBehavior";
-export { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
-export { HostOptions } from "./HostOptions";
-export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from "./internal/console-lifetime";
-export { NullLifetime } from "./internal/NullLifetime";
-export { MetricsBuilder } from "./MetricsBuilder";
+export { BackgroundServiceExceptionBehavior } from './BackgroundServiceExceptionBehavior';
+export { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
+export { HostOptions } from './HostOptions';
+export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from './internal/console-lifetime';
+export { NullLifetime } from './internal/NullLifetime';
+export { MetricsBuilder } from './MetricsBuilder';
 
 // The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).
-export { HostingHostBuilderExtensions } from "./builder-augmentations";
+export { HostingHostBuilderExtensions } from './builder-augmentations';
 
 // The provider-construction options `useDefaultServiceProvider` configures
 // (reference ServiceProviderOptions) — re-exported from di.core, which owns it.
-export type { ServiceProviderOptions } from "@rhombus-std/di.core";
+export type { ServiceProviderOptions } from '@rhombus-std/di.core';
 
 // The environment-variable prefix the default host configuration reads.
-export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from "./default-configuration";
+export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-configuration';
 
 // The framework-service DI tokens (a consumer resolves these off `IHost.services`).
-export {
-  CONFIGURATION_TOKEN,
-  CONSOLE_LIFETIME_OPTIONS_TOKEN,
-  HOST_BUILDER_CONTEXT_TOKEN,
-  HOST_ENVIRONMENT_TOKEN,
-  HOST_LIFETIME_TOKEN,
-  HOST_OPTIONS_TOKEN,
-} from "./framework-tokens";
+export { CONFIGURATION_TOKEN, CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN,
+  HOST_LIFETIME_TOKEN, HOST_OPTIONS_TOKEN } from './framework-tokens';
