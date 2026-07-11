@@ -7,20 +7,24 @@
 // @rhombus-std/options.augmentations config-binding pattern: a ConfigureOptions
 // step (the MetricsConfigureOptions parse) plus a ConfigurationChangeTokenSource
 // wired to the configuration's reload token, so the assembled reactive
-// `Options<MetricsOptions>` re-parses on reload. (The reference additionally
-// registers a `MetricsConfiguration` marker singleton consumed by the metrics
-// listener runtime; there is no such runtime here, so it is omitted.)
+// `Options<MetricsOptions>` re-parses on reload. The reference additionally
+// registers a `MetricsConfiguration` marker singleton per call -- mirrored as a
+// METRICS_CONFIGURATION_TOKEN collection value, which the
+// MetricListenerConfigurationFactory `addMetrics` registers enumerates to build
+// each listener's merged configuration view.
 
 import type { IConfiguration } from "@rhombus-std/config";
 import {
   type IMetricsBuilder,
   METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+  METRICS_CONFIGURATION_TOKEN,
   METRICS_CONFIGURE_TOKEN,
 } from "@rhombus-std/diagnostics.core";
 import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
 import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 
+import { MetricsConfiguration } from "./MetricsConfiguration";
 import { MetricsConfigureOptions } from "./MetricsConfigureOptions";
 
 /** The `MetricsBuilderConfigurationExtensions` augmentation set for {@link IMetricsBuilder} (docs §28). */
@@ -33,6 +37,7 @@ export const MetricsBuilderConfigurationExtensions = {
   addMetricsConfiguration(builder: IMetricsBuilder, configuration: IConfiguration): IMetricsBuilder {
     builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(configuration));
     builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigurationChangeTokenSource(configuration));
+    builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfiguration(configuration));
     return builder;
   },
 } satisfies AugmentationSet<IMetricsBuilder>;
