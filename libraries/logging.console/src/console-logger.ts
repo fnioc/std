@@ -1,61 +1,27 @@
-// ConsoleLogger — a minimal port of the reference console provider's logger,
-// writing the simple console format to stdout.
+// ConsoleLogger — the console provider's logger, ported from the reference
+// internal `ConsoleLogger`: renders each entry through its current
+// ConsoleFormatter into a shared StringWriter, then hands the rendered string
+// to the ConsoleLoggerProcessor queue (routed to stderr at/above the options'
+// logToStandardErrorThreshold).
 //
-// The reference logger delegates rendering to a pluggable formatter registry
-// (simple/systemd/json) and hands the rendered entry to a background queue
-// writer. Both are OUT OF SCOPE this pass: this logger renders the simple
-// format inline and writes synchronously to `process.stdout`. The layout
-// mirrors the reference simple format:
-//
-//       info: ConsoleApp.Program[10]
-//             Request received
-//
-// i.e. `<level>: <category>[<eventId>]`, then the message on its own
-// padded line (padding = the width of `<level>: `).
+// The reference's `IBufferedLogger` side (`LogRecords`/`BufferedLogRecord`) is
+// NOT ported — those types don't exist in @rhombus-std/logging.core yet
+// (residual, see the package index).
 
 import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
-import { augment, process } from "@rhombus-std/primitives";
+import type { IExternalScopeProvider } from "@rhombus-std/logging.core";
+import { augment } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
-import { assertNever } from "@rhombus-toolkit/type-guards";
+import type { ConsoleFormatter } from "./ConsoleFormatter";
+import type { ConsoleLoggerOptions } from "./ConsoleLoggerOptions";
+import type { ConsoleLoggerProcessor } from "./ConsoleLoggerProcessor";
+import type { LogEntry } from "./LogEntry";
+import { StringWriter } from "./text-writer";
 
-/**
- * The four-character level names of the reference simple console format.
- * Deterministic width keeps the message padding aligned across levels.
- */
-function logLevelString(logLevel: LogLevel): string {
-  switch (logLevel) {
-    case LogLevel.Trace: {
-      return "trce";
-    }
-    case LogLevel.Debug: {
-      return "dbug";
-    }
-    case LogLevel.Information: {
-      return "info";
-    }
-    case LogLevel.Warning: {
-      return "warn";
-    }
-    case LogLevel.Error: {
-      return "fail";
-    }
-    case LogLevel.Critical: {
-      return "crit";
-    }
-    case LogLevel.None: {
-      // A valid enum member that must never reach the formatter -- isEnabled
-      // filters it before log() gets here.
-      throw new RangeError(`Invalid log level: ${logLevel}.`);
-    }
-    default: {
-      assertNever(logLevel);
-    }
-  }
-}
-
-/** Message-line padding: the width of a `<level>: ` prefix (4 + 2). */
-const MESSAGE_PADDING = "      ";
+// The reference renders through a [ThreadStatic] StringWriter; single-threaded
+// runtime → one shared module-level writer.
+const sharedStringWriter = new StringWriter();
 
 // The class-side type merge for the registry-installed `LoggerExtensions`
 // methods (log/logInformation/…). `ILogger` itself gets NO interface merge
@@ -63,13 +29,33 @@ const MESSAGE_PADDING = "      ";
 // `@augment(nameof<ILogger>())` installs it — see @rhombus-std/logging's Logger.
 export interface ConsoleLogger extends LoggerExtensionMethods {}
 
-/** An {@link ILogger} that writes the simple console format to stdout. */
+/** An {@link ILogger} that renders through a {@link ConsoleFormatter} and queues writes. */
 @augment(nameof<ILogger>())
 export class ConsoleLogger implements ILogger {
-  readonly #category: string;
+  readonly #name: string;
+  readonly #queueProcessor: ConsoleLoggerProcessor;
 
-  public constructor(category: string) {
-    this.#category = category;
+  /** The formatter rendering this logger's entries (internal, as upstream: reassigned on options reload). */
+  public formatter: ConsoleFormatter;
+
+  /** The scope provider, or `undefined` when scopes are unsupported (internal, as upstream). */
+  public scopeProvider: IExternalScopeProvider | undefined;
+
+  /** The current options (internal, as upstream: reassigned on options reload). */
+  public options: ConsoleLoggerOptions;
+
+  public constructor(
+    name: string,
+    loggerProcessor: ConsoleLoggerProcessor,
+    formatter: ConsoleFormatter,
+    scopeProvider: IExternalScopeProvider | undefined,
+    options: ConsoleLoggerOptions,
+  ) {
+    this.#name = name;
+    this.#queueProcessor = loggerProcessor;
+    this.formatter = formatter;
+    this.scopeProvider = scopeProvider;
+    this.options = options;
   }
 
   public log<TState>(
@@ -83,13 +69,25 @@ export class ConsoleLogger implements ILogger {
       return;
     }
 
-    let entry = `${logLevelString(logLevel)}: ${this.#category}[${eventId.id}]\n`
-      + `${MESSAGE_PADDING}${formatter(state, error)}\n`;
-    if (error !== undefined) {
-      // The reference appends the exception on its own line after the message.
-      entry += `${MESSAGE_PADDING}${error.stack ?? String(error)}\n`;
+    const logEntry: LogEntry<TState> = {
+      logLevel,
+      category: this.#name,
+      eventId,
+      state,
+      error,
+      formatter,
+    };
+    this.formatter.write(logEntry, this.scopeProvider, sharedStringWriter);
+
+    if (sharedStringWriter.length === 0) {
+      return;
     }
-    process.stdout.write(entry);
+    const computedAnsiString = sharedStringWriter.toString();
+    sharedStringWriter.clear();
+    this.#queueProcessor.enqueueMessage({
+      message: computedAnsiString,
+      logAsError: logLevel >= this.options.logToStandardErrorThreshold,
+    });
   }
 
   /** Every level is enabled except {@link LogLevel.None}; filtering belongs to the factory. */
@@ -97,8 +95,11 @@ export class ConsoleLogger implements ILogger {
     return logLevel !== LogLevel.None;
   }
 
-  /** Scopes are unsupported this pass (no external scope provider yet). */
-  public beginScope<TState>(_state: TState): Disposable | undefined {
-    return undefined;
+  /**
+   * Begins a scope through the provider's scope provider; `undefined` when no
+   * scope provider was supplied (the analog of the reference `NullScope`).
+   */
+  public beginScope<TState>(state: TState): Disposable | undefined {
+    return this.scopeProvider?.push(state);
   }
 }

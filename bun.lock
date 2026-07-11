@@ -429,6 +429,7 @@
       "dependencies": {
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/type-guards": "^1.3.4",
       },
@@ -682,6 +683,18 @@
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
+      },
+    },
+    "tests/logging.console.test": {
+      "name": "@rhombus-std/logging.console.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.console": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/logging.core.test": {
@@ -1148,6 +1161,8 @@
     "@rhombus-std/logging.configuration": ["@rhombus-std/logging.configuration@workspace:libraries/logging.configuration"],
 
     "@rhombus-std/logging.console": ["@rhombus-std/logging.console@workspace:libraries/logging.console"],
+
+    "@rhombus-std/logging.console.test": ["@rhombus-std/logging.console.test@workspace:tests/logging.console.test"],
 
     "@rhombus-std/logging.core": ["@rhombus-std/logging.core@workspace:libraries/logging.core"],
 
