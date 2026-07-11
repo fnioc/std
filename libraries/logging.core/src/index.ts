@@ -1,7 +1,10 @@
 // Public entry point for @rhombus-std/logging.core — the ME.Logging.Abstractions
 // analog. Ships the logging contracts (ILogger/ILoggerFactory/ILoggerProvider/
 // ILoggingBuilder + IExternalScopeProvider), the LogLevel enum, the EventId
-// value type, and the real-runtime convenience wrappers (logInformation/…).
+// value type, the LogEntry record, the IBufferedLogger/BufferedLogRecord
+// buffered-logging capability, the ProviderAlias filtering marker, the
+// LoggerMessage cached-delegate factories, and the real-runtime convenience
+// wrappers (logInformation/…, beginScope).
 //
 // Mirror of the reference edge `Logging.Abstractions -> DependencyInjection.
 // Abstractions`: @rhombus-std/di.core supplies the `ServiceManifest` type that
@@ -30,6 +33,10 @@ export type { ProviderAliased } from "./provider-alias";
 // beside `ILogger` (the reference `IBufferedLogger` + `BufferedLogRecord`).
 export { BufferedLogRecord } from "./buffered-logger";
 export type { IBufferedLogger } from "./buffered-logger";
+
+// The cached-delegate factories (the reference `LoggerMessage` runtime half).
+export { LoggerMessage } from "./logger-message";
+export type { LogDefineOptions } from "./logger-message";
 
 // Deferred message formatting — exported so a provider-side sink can render or
 // structurally destructure a `FormattedLogValues` state (its `[name, value]`
