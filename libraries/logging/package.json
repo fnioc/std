@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*"
   },
   "peerDependencies": {

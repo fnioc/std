@@ -15,12 +15,14 @@ export { LoggingServiceCollectionExtensions } from "./add-logging";
 // LoggingBuilder pulls them onto its prototype, and exports the set (docs §38).
 export { LoggingBuilderExtensions } from "./builder-augmentations";
 // Side-effect + standalone surface: installs the LoggerFilterOptions augmentation
-// (addFilter) directly onto the concrete value object (CLOSED set, #105), and
-// exports the set.
-export { LoggerFilterOptionsExtensions } from "./filter-augmentations";
+// (addFilter) directly onto the concrete value object (CLOSED set, #105), registers
+// the ILoggingBuilder half (the builder-level addFilter, routed through the
+// options-configure pipeline) against the logging-builder token, and exports both
+// sets.
+export { FilterLoggingBuilderExtensions, LoggerFilterOptionsExtensions } from "./filter-augmentations";
 export { Logger } from "./logger";
 export { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
 export { LoggerFactory } from "./LoggerFactory";
 export { LoggingBuilder } from "./LoggingBuilder";
 export { NullLogger, NullLoggerFactory, NullLoggerProvider } from "./null-logger";
-export { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN } from "./tokens";
+export { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from "./tokens";
