@@ -662,6 +662,7 @@
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
       },
     },
     "tests/options.augmentations.test": {
