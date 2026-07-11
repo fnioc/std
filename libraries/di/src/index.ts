@@ -93,10 +93,10 @@ export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteTo
 // engine resolves it to the live provider view.
 export { isProviderToken, RESOLVER_TOKEN } from "@rhombus-std/di.core";
 
-// The activator helper — authored in di.core, re-exported for one-import reach (a
-// di consumer expects `ActivatorUtilities` from the runtime package, as in the
-// reference DI namespace).
-export { ActivatorUtilities } from "@rhombus-std/di.core";
+// The activator helper + the null-object provider — authored in di.core, re-exported
+// for one-import reach (a di consumer expects `ActivatorUtilities` /
+// `EmptyServiceProvider` from the runtime package, as in the reference DI namespace).
+export { ActivatorUtilities, EmptyServiceProvider } from "@rhombus-std/di.core";
 export type { ObjectFactory } from "@rhombus-std/di.core";
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole

@@ -59,6 +59,10 @@ export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteTo
 // the engine resolves it to the live provider view (see `provider-token.ts`).
 export { isProviderToken, RESOLVER_TOKEN } from "./provider-token.js";
 
+// The shared null-object provider singleton (the reference `EmptyServiceProvider`
+// analog) — a `ServiceProvider` with no application services.
+export { EmptyServiceProvider } from "./empty-service-provider.js";
+
 // `ActivatorUtilities` — activate an UNREGISTERED class against a provider,
 // injecting its dependency-signature slots. The reference activator-helper analog.
 export { ActivatorUtilities } from "./activator-utilities.js";
