@@ -148,7 +148,14 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   and no-context convenience overloads on the pure-extension builder members only (the three
   core-interface members keep their single context-taking signature — a TS arity constraint, not
   an omission). The physical file provider and the non-console logging sinks it composes stay
-  deferred at their own families (§18, §20).
+  deferred at their own families (§18, §20). `hosting.browser` (← `hosting` + `hosting.core` +
+  `di.core`) hosts the same runtime in a page: `BrowserLifetime` on the existing
+  `HOST_LIFETIME_TOKEN` (waitForStart immediate, pagehide-not-persisted → best-effort
+  `stopApplication()` only — never a suspend→stop mapping, since `stopApplication` is a terminal
+  one-shot latch and bfcache can resurrect a suspended tab), `PageLifecycleEvents` as the
+  injectable lifecycle bridge (recurring flush-on-hidden as the persistence point, `onRestore` on
+  bfcache pageshow), a browser `IHostEnvironment` + `BrowserHost` facade over
+  `createEmptyApplicationBuilder` (never a fork); no reference-graph counterpart (§69).
 - **`diagnostics`** — `diagnostics.core` (the `IMetricsBuilder`/`ITracingBuilder` abstractions,
   the rule/options data model, `METRICS_*`/`TRACING_*` tokens, `clearMetricsListeners`/
   `clearTracingListeners` via `di.core`'s `removeAll` (§61), and the most-specific-rule-wins
@@ -186,9 +193,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ILoggerProviderConfigurationFactory`/`ILoggerProviderConfiguration<T>` provider-configuration
   plumbing over an open di template, §54; ← `logging` + `logging.core` + `config` + `config.core` +
   `di.core` + `options` + `options.augmentations`). Console/debug/event-log/trace-source providers
-  beyond `logging.console` stay deferred pending a provider design (issue #75); `logging.console`
-  itself is at full reference parity — formatters (`Simple`/`Json`/`Systemd`), ANSI colors, and a
-  microtask-drained background queue in place of the reference's writer thread (§53).
+  beyond `logging.console` and `logging.browserconsole` (the page-hosted sibling — no
+  reference-graph counterpart, §69) stay deferred pending a provider design (issue #75);
+  `logging.console` itself is at full reference parity — formatters (`Simple`/`Json`/`Systemd`),
+  ANSI colors, and a microtask-drained background queue in place of the reference's writer thread
+  (§53).
 - **`caching`** — `caching.core` (`IMemoryCache`/`ICacheEntry` abstractions + the
   `CacheExtensions`/`CacheEntryExtensions` convenience functions, owned outright so no
   augmentation is needed; the `MemoryCacheEntryExtensions` fluent sugar on `MemoryCacheEntryOptions`
@@ -269,7 +278,9 @@ Architecture section above. `decisions.md` is the full record; this file is the 
   - `.transformer` — an authoring-time transformer for a family.
   - Config providers keep their own name instead of a generic qualifier:
     `config.json`, `config.env`, `config.commandline`. Concrete providers in other families
-    follow the same pattern — `logging.console` is the console sink for `logging`.
+    follow the same pattern — `logging.console` and `logging.browserconsole` are the console
+    sinks for `logging`; `.browser` (`hosting.browser`) names a page-hosted runtime target rather
+    than a provider, distinct from the qualifiers above.
 
 ## No-transformer-first
 

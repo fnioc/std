@@ -2349,3 +2349,77 @@ without one).
   direction must preserve §41's byte-parity constraint (the ts-patch and Go/`ttsc` engines lower
   identically, token strings byte-for-byte) — that invariant is not up for renegotiation, only the
   authoring mechanism feeding it.
+
+## 69. Browser hosting: `hosting.browser` + `logging.browserconsole`, runtime kept
+
+A page-hosted (not server-hosted) `Host` is a real, supported target — the reference stack's own
+WASM-hosted shape, not the stripped mobile-shell (builder-only, no `IHost`) shape. This lands the
+runtime version: the Generic Host runs unmodified inside a browser tab, with a browser-specific
+lifetime, a page-lifecycle bridge, and a console log sink, wired through the same
+`useBrowserLifetime`/`addBrowserConsole` augmentation seams every other host composition uses.
+Nothing about `hosting`/`hosting.core`'s existing surface changes; `hosting.browser` and
+`logging.browserconsole` are pure additions.
+
+- **`BrowserLifetime` is the platform seam**, installed onto the existing `HOST_LIFETIME_TOKEN`
+  (imported from `hosting`, never hand-written) via `useBrowserLifetime` on `IHostBuilder`.
+  `waitForStart` resolves immediately — there is no OS-level "ready" signal to wait on in a page.
+  `pagehide` with `persisted === false` is the best-effort stop path: it calls
+  `applicationStopping`'s `stopApplication()` and nothing more, because `stopApplication` is a
+  **terminal one-shot latch** and `Host` is **not restartable** — there is no `Host.start()` after
+  a `stop()`. A `visibilitychange`-to-hidden/suspend signal therefore **never** maps to stop: a
+  suspended (not discarded) tab can be resurrected straight out of bfcache with in-memory state
+  intact, and calling `stopApplication()` on that path would permanently kill a host the page
+  might resume seconds later. Suspend is a _pause_ signal with no accompanying _resume_ — routing
+  it to `stop()` would be a one-way door with no way back. **`unload`/`beforeunload` are never
+  registered anywhere in this surface** — both are bfcache disqualifiers, and a page that
+  registers either loses the fast back/forward cache path entirely, which is the opposite of what
+  a resource-conscious page host wants.
+- **`PageLifecycleEvents` is the injectable bridge** between DOM lifecycle events and application
+  code — a `subscribe`-with-immediate-replay surface over a stable `phase` snapshot, plus a
+  `onFlush` event that recurs on every `visibilitychange`-to-hidden (not one-shot) as the
+  **persistence checkpoint**: the natural place to flush pending state, since `hidden` is the last
+  point at which a page is guaranteed to still be running before either bfcache suspension or
+  outright discard. `onRestore` fires on `pageshow` with `persisted === true` — bfcache
+  resurrection — as its own named event, never inferred from a flag on another callback.
+- **Browser environment + host facade, never a fork.** `createBrowserEnvironment` produces an
+  `@augment`-decorated `IHostEnvironment` (names from settings, `contentRootPath` `"/"`,
+  `NullFileProvider` — there is no filesystem), and `BrowserHost` is a thin facade over
+  `Host.createEmptyApplicationBuilder`, not a parallel builder implementation. The built host is
+  **not container-resolvable** (`hosting`'s `resolveHost` constructs the concrete `Host` after
+  `services.build()` and registers no host token — true in both server and browser composition),
+  so there is no way to have a resolved component reach back in and call `host.stop()`; the
+  one-line `applicationStopping → host.stop()` wiring stays the caller's responsibility in their
+  own entry point, documented rather than hidden behind DI.
+- **`logging.browserconsole` is its own provider package**, sibling to `logging.console`, not a
+  variant folded into it — a page has no stream/TTY concept, so the sink is a direct
+  `console.debug`/`info`/`warn`/`error` dispatch keyed off `LogLevel`, injectable via a structural
+  `ConsoleLike` rather than a hard `console` global reference (keeps the package usable under a
+  non-default global, and honest about what it actually touches).
+- **Monorepo placement, ME-graph divergence flagged.** Both packages sit under the existing
+  `hosting`/`logging` families with no reference-stack counterpart to mirror — the reference graph
+  has no page-hosted target, so this is new-graph-surface, not a mirrored edge. Recorded here
+  explicitly per the family digest's own caveat that graph-fidelity is a starting discipline, not
+  a permanent constraint: this is exactly the disposable-mirror case, taken deliberately rather
+  than forced into a nonexistent reference shape.
+- **Rider: `hosting`'s `node:path` import.** `host-composition.ts`'s content-root path resolution
+  (`isAbsolute`/`resolvePath`) is rewritten as local pure-string helpers instead of importing
+  `node:path`, so hosting's own code no longer forces a node-backed module into a browser bundle
+  graph. This does **not** make the _whole_ public `hosting` entry point browser-bundleable on its
+  own — `default-configuration.ts` still statically pulls in `config.json` (`node:fs` +
+  `node:path`) and `logging` re-exports the `node:async_hooks`-backed external scope provider;
+  retiring those is out of this scope. The regression guard therefore bundles hosting's
+  `host-composition` module in isolation, not the full package entry.
+- **Deferred, explicitly out of v1:**
+  - **`config.fetch`** — an HTTP-fetched JSON configuration source (the natural browser
+    counterpart to `config.json`'s filesystem read, and the reference-WASM precedent for it). No
+    consumer yet; tracked as a follow-up issue rather than spec'd here (YAGNI).
+  - **`di.react` / per-route or per-component scoping** — checklist item 3 of the browser-hosting
+    memo. Blocked on real design work, not busywork: `Resolver` has no `createScope` of its own
+    (that capability lives on `ScopeFactory`, a narrower interface `ServiceProvider` composes),
+    so a React binding has to confront that seam rather than assume every resolver can scope.
+    Tracked as a follow-up issue with the open design questions recorded there.
+  - **SSR/hydration** — explicitly out of scope for v1. `PageLifecycleEvents`' lazy
+    `defaultPageContext()` and the browser environment both assume a live `document`/`window` at
+    module-evaluation-adjacent time; a server target would need those swapped for an injected,
+    request-scoped context before any of this surface could run off the main thread. Not attempted
+    here; tracked as a follow-up issue.
