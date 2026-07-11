@@ -22,6 +22,7 @@ import {
   type ServiceManifest as ServiceManifestInterface,
   ServiceManifestClass,
   type ServiceProvider,
+  type ServiceProviderOptions,
   type Token,
 } from "@rhombus-std/di.core";
 import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
@@ -51,12 +52,17 @@ export type ServiceManifest<S extends string = "singleton"> = ServiceManifestInt
 // `satisfies AugmentationSet<R>`; the exported const is the standalone call
 // surface, and registering it installs the fluent `build()` onto the prototype.
 export const ServiceCollectionContainerBuilderExtensions = {
-  build(manifest: ServiceManifestClass<string>): ServiceProvider<string> {
+  build(
+    manifest: ServiceManifestClass<string>,
+    options?: ServiceProviderOptions,
+  ): ServiceProvider<string> {
     const { registrations, openRegistrations } = manifest.seal();
     return new ServiceProviderClass<string>(
       registrations as ReadonlyMap<Token, Registration[]>,
       openRegistrations as ReadonlyMap<Token, readonly OpenRegistration[]>,
       new Map<Token, Registration>(),
+      undefined,
+      options,
     );
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;

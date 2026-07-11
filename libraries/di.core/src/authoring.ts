@@ -38,6 +38,7 @@
 // either way.
 
 import type { Ctor, Func } from "@rhombus-toolkit/func";
+import type { ServiceProviderOptions } from "./service-provider-options.js";
 import type { DepSlot, Token } from "./types.js";
 
 /**
@@ -111,8 +112,16 @@ export interface ServiceManifestBase<
   ): AddBuilder<Scopes>;
   /** Value registration — an already-built instance, no deps and no lifetime. */
   addValue(token: Token, value: unknown): void;
-  /** Seals the collection and returns the built provider. */
-  build(): Provider;
+  /**
+   * Seals the collection and returns the built provider. `options` configures
+   * the provider's validation behaviors (`validateScopes` / `validateOnBuild`,
+   * both defaulting to `false`) — the reference `BuildServiceProvider(services,
+   * options)` overload collapsed into one optional parameter (the reference's
+   * bare-`bool validateScopes` convenience overload is deliberately not
+   * mirrored: a positional boolean is opaque at the call site; write
+   * `build({ validateScopes: true })`).
+   */
+  build(options?: ServiceProviderOptions): Provider;
 }
 
 // The public authoring INTERFACE `ServiceManifest<S>` — `ServiceManifestBase`

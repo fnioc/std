@@ -159,6 +159,148 @@ describe("sync dispose with a Promise-valued instance", () => {
   });
 });
 
+describe("disposal failure aggregation", () => {
+  // Mirrors the reference scope-disposal policy: a throwing disposable never
+  // aborts its siblings' teardown; ONE collected failure rethrows as itself,
+  // several aggregate into one AggregateError.
+
+  /** A native `Disposable` that logs, then throws. */
+  class ThrowingDisposable implements Disposable {
+    public constructor(
+      public readonly label: string,
+      private readonly log: DisposeLog,
+      private readonly err: Error,
+    ) {}
+    public [Symbol.dispose](): void {
+      this.log.order.push(this.label);
+      throw this.err;
+    }
+  }
+
+  /** A native `AsyncDisposable` that logs, then rejects. */
+  class ThrowingAsyncDisposable implements AsyncDisposable {
+    public constructor(
+      public readonly label: string,
+      private readonly log: DisposeLog,
+      private readonly err: Error,
+    ) {}
+    public async [Symbol.asyncDispose](): Promise<void> {
+      await Promise.resolve();
+      this.log.order.push(this.label);
+      throw this.err;
+    }
+  }
+
+  test("sync: a throwing disposable does not abort its siblings; a single failure rethrows as itself", () => {
+    const log = new DisposeLog();
+    const boom = new Error("boom-B");
+    const services = new ServiceManifest<"singleton">();
+    services.addFactory(T.A, () => new SyncDisposable("A", log)).as("singleton");
+    services.addFactory(T.B, () => new ThrowingDisposable("B", log, boom)).as("singleton");
+    services.addFactory(T.C, () => new SyncDisposable("C", log)).as("singleton");
+
+    const root = services.build().createScope("singleton");
+    root.resolve(T.A);
+    root.resolve(T.B);
+    root.resolve(T.C);
+
+    let caught: unknown;
+    try {
+      root.dispose();
+    } catch (err) {
+      caught = err;
+    }
+    // The single failure surfaces as the ORIGINAL error, not an aggregate...
+    expect(caught).toBe(boom);
+    // ...and every sibling was still disposed, in reverse order.
+    expect(log.order).toEqual(["C", "B", "A"]);
+  });
+
+  test("sync: two failures aggregate into one AggregateError, in disposal order", () => {
+    const log = new DisposeLog();
+    const boomB = new Error("boom-B");
+    const boomC = new Error("boom-C");
+    const services = new ServiceManifest<"singleton">();
+    services.addFactory(T.A, () => new SyncDisposable("A", log)).as("singleton");
+    services.addFactory(T.B, () => new ThrowingDisposable("B", log, boomB)).as("singleton");
+    services.addFactory(T.C, () => new ThrowingDisposable("C", log, boomC)).as("singleton");
+
+    const root = services.build().createScope("singleton");
+    root.resolve(T.A);
+    root.resolve(T.B);
+    root.resolve(T.C);
+
+    let caught: unknown;
+    try {
+      root.dispose();
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(AggregateError);
+    // Reverse construction order: C disposed (and failed) first.
+    expect((caught as AggregateError).errors).toEqual([boomC, boomB]);
+    expect(log.order).toEqual(["C", "B", "A"]);
+  });
+
+  test("sync: the provider is disposed despite the failure — a second dispose is a no-op", () => {
+    const log = new DisposeLog();
+    const services = new ServiceManifest<"singleton">();
+    services.addFactory(T.A, () => new ThrowingDisposable("A", log, new Error("boom"))).as("singleton");
+
+    const root = services.build().createScope("singleton");
+    root.resolve(T.A);
+    expect(() => root.dispose()).toThrow("boom");
+    root.dispose(); // idempotent — nothing rethrown, nothing re-disposed
+    expect(log.order).toEqual(["A"]);
+  });
+
+  test("async: a rejecting asyncDispose does not abort its siblings; failures aggregate", async () => {
+    const log = new DisposeLog();
+    const boomA = new Error("boom-A");
+    const boomC = new Error("boom-C");
+    const services = new ServiceManifest<"singleton">();
+    services.addFactory(T.A, () => new ThrowingAsyncDisposable("A", log, boomA)).as("singleton");
+    services.addFactory(T.B, () => new AsyncDisposableThing("B", log)).as("singleton");
+    services.addFactory(T.C, () => new ThrowingDisposable("C", log, boomC)).as("singleton");
+
+    const root = services.build().createScope("singleton");
+    root.resolve(T.A);
+    root.resolve(T.B);
+    root.resolve(T.C);
+
+    let caught: unknown;
+    try {
+      await root.disposeAsync();
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(AggregateError);
+    expect((caught as AggregateError).errors).toEqual([boomC, boomA]);
+    expect(log.order).toEqual(["C", "B", "A"]);
+  });
+
+  test("async: a single failure rejects with the original error", async () => {
+    const log = new DisposeLog();
+    const boom = new Error("boom-only");
+    const services = new ServiceManifest<"singleton">();
+    services.addFactory(T.A, () => new AsyncDisposableThing("A", log)).as("singleton");
+    services.addFactory(T.B, () => new ThrowingAsyncDisposable("B", log, boom)).as("singleton");
+
+    const root = services.build().createScope("singleton");
+    root.resolve(T.A);
+    root.resolve(T.B);
+
+    let caught: unknown;
+    try {
+      await root.disposeAsync();
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBe(boom);
+    expect(log.order).toEqual(["B", "A"]);
+  });
+});
+
 describe("native using / await using", () => {
   test("using calls Symbol.dispose on block exit", () => {
     const log = new DisposeLog();

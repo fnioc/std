@@ -48,6 +48,10 @@ export type {
 // analog). A single-container no-op here, but named so hosting shares one type.
 export type { ServiceProviderFactory } from "./ServiceProviderFactory.js";
 
+// The provider-construction options `build(options?)` accepts (the reference
+// `ServiceProviderOptions` analog) — pure data; the engine reads the flags.
+export type { ServiceProviderOptions } from "./service-provider-options.js";
+
 // The slot/token ABI runtime helpers. A di consumer reaches these through the
 // re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
 // plain data literals.

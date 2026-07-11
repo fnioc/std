@@ -18,6 +18,7 @@ import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
 import { OpenTokenRegistrationError } from "./errors.js";
 import type { ServiceProvider } from "./provider.js";
 import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from "./registrations.js";
+import type { ServiceProviderOptions } from "./service-provider-options.js";
 import { HOLE_PATTERN, isOpenToken, parseToken } from "./tokens.js";
 import type { DepSlot, Token } from "./types.js";
 
@@ -417,8 +418,11 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
    * yields a transient instance, and an untagged registration is transient as
    * always. Open a scope explicitly with `createScope(name)` when you want a
    * tagged registration to cache.
+   *
+   * `options` configures the provider's validation behaviors
+   * (`validateScopes` / `validateOnBuild`); see `ServiceProviderOptions`.
    */
-  public build(): ServiceProvider<Scopes> {
+  public build(_options?: ServiceProviderOptions): ServiceProvider<Scopes> {
     throw new TypeError(
       "ServiceManifest.build() requires the @rhombus-std/di runtime. Import "
         + "@rhombus-std/di (which constructs the resolution engine) before "

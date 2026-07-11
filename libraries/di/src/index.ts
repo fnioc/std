@@ -63,6 +63,9 @@ export type {
   ServiceProvider,
   // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
   ServiceProviderFactory,
+  // The provider-construction options `build(options?)` accepts (the reference
+  // `ServiceProviderOptions` analog): `validateScopes` / `validateOnBuild`.
+  ServiceProviderOptions,
   ServiceQuery,
 } from "./types.js";
 
@@ -78,6 +81,8 @@ export {
   NoSatisfiableUnionError,
   OpenTokenRegistrationError,
   OpenTokenResolutionError,
+  RegistrationValidationError,
+  ScopeValidationError,
   UnregisteredTokenError,
 } from "./errors.js";
 
