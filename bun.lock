@@ -391,6 +391,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
@@ -517,6 +518,7 @@
         "@rhombus-std/hosting": "workspace:*",
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
       },
