@@ -1,8 +1,10 @@
 // Public entry point for @rhombus-std/caching.memory -- the ME.Caching.Memory
 // analog. Ships the real MemoryCache implementation, its `MemoryCacheOptions`
 // bag (`MemoryCacheEntryOptions` now lives in caching.core, re-exported here),
-// and -- as a side effect -- registers `addMemoryCache` against di.core's
-// `ServiceManifest` augmentation token.
+// the memory-backed MemoryDistributedCache (+ MemoryDistributedCacheOptions),
+// and -- as a side effect -- registers `addMemoryCache` and
+// `addDistributedMemoryCache` against di.core's `ServiceManifest`
+// augmentation token.
 //
 // The augmentation mirrors @rhombus-std/config.json's addJsonFile /
 // @rhombus-std/options.augmentations' addOptions: TS declaration merging plus a
@@ -31,9 +33,12 @@ import type { Func } from "@rhombus-toolkit/func";
 // `IMemoryCache`/`ICacheEntry` tokens, and the `@augment(nameof<…>())` decoration
 // beside MemoryCache/CacheEntry pulls them onto the prototypes.
 import "./cache-augmentations";
+import { DISTRIBUTED_CACHE_TOKEN } from "./distributed-cache-token";
 import { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
 import { MemoryCache } from "./MemoryCache";
 import { MemoryCacheOptions } from "./MemoryCacheOptions";
+import { MemoryDistributedCache } from "./MemoryDistributedCache";
+import { MemoryDistributedCacheOptions } from "./MemoryDistributedCacheOptions";
 
 // Merge `addMemoryCache` onto core's `ServiceManifestBase` interface (the
 // surface a consumer holding `ServiceManifest<S>` resolves to) AND onto the
@@ -49,10 +54,22 @@ declare module "@rhombus-std/di.core" {
      * manifest for chaining.
      */
     addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
+
+    /**
+     * Registers a singleton {@link MemoryDistributedCache} as
+     * `IDistributedCache` (resolvable at {@link DISTRIBUTED_CACHE_TOKEN}) --
+     * a default in-memory implementation frameworks that require a
+     * distributed cache can rely on. Single-server only: items live in this
+     * process's memory. `setup` configures the
+     * {@link MemoryDistributedCacheOptions} eagerly at registration time.
+     * Returns the manifest for chaining.
+     */
+    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): this;
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
     addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
+    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): this;
   }
 }
 
@@ -77,6 +94,25 @@ export const MemoryCacheServiceCollectionExtensions = {
     builder.as("singleton");
     return manifest;
   },
+
+  addDistributedMemoryCache(
+    manifest: ServiceManifestClass<string>,
+    setup?: Func<[MemoryDistributedCacheOptions], void>,
+  ): ServiceManifestClass<string> {
+    const options = new MemoryDistributedCacheOptions();
+    if (setup !== undefined) {
+      setup(options);
+    }
+    // Same shape as addMemoryCache: eager setup, `.as("singleton")` (the
+    // reference registers Singleton). The cache is REGISTERED here but built
+    // lazily on first resolve, over its own private MemoryCache.
+    const builder: AddBuilder<string> = manifest.addFactory(
+      DISTRIBUTED_CACHE_TOKEN,
+      () => new MemoryDistributedCache(options),
+    );
+    builder.as("singleton");
+    return manifest;
+  },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
 registerAugmentations(nameof<ServiceManifest>(), MemoryCacheServiceCollectionExtensions);
@@ -85,6 +121,9 @@ export { MemoryCache } from "./MemoryCache";
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in
 // Abstractions); re-exported here for source compatibility.
 export { MemoryCacheEntryOptions } from "@rhombus-std/caching.core";
+export { DISTRIBUTED_CACHE_TOKEN } from "./distributed-cache-token";
 export type { ISystemClock } from "./ISystemClock";
 export { MEMORY_CACHE_TOKEN } from "./memory-cache-token";
 export { MemoryCacheOptions } from "./MemoryCacheOptions";
+export { MemoryDistributedCache } from "./MemoryDistributedCache";
+export { MemoryDistributedCacheOptions } from "./MemoryDistributedCacheOptions";

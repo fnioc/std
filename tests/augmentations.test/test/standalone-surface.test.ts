@@ -32,7 +32,7 @@ describe("standalone augmentation surface (member-name snapshots)", () => {
     expect(keys(MetricsServiceExtensions)).toEqual(["addMetrics"]);
     expect(keys(TracingServiceExtensions)).toEqual(["addTracing"]);
     expect(keys(LoggingServiceCollectionExtensions)).toEqual(["addLogging"]);
-    expect(keys(MemoryCacheServiceCollectionExtensions)).toEqual(["addMemoryCache"]);
+    expect(keys(MemoryCacheServiceCollectionExtensions)).toEqual(["addDistributedMemoryCache", "addMemoryCache"]);
     expect(keys(OptionsServiceCollectionExtensions)).toEqual(["addOptions", "postConfigure", "validate"]);
     expect(keys(OptionsConfigurationServiceCollectionExtensions)).toEqual(["configure"]);
   });

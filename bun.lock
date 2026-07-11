@@ -532,6 +532,15 @@
         "@rhombus-std/primitives": "workspace:*",
       },
     },
+    "tests/caching.memory.test": {
+      "name": "@rhombus-std/caching.memory.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/caching.core": "workspace:*",
+        "@rhombus-std/caching.memory": "workspace:*",
+        "@rhombus-std/di": "workspace:*",
+      },
+    },
     "tests/config.commandline.test": {
       "name": "@rhombus-std/config.commandline.test",
       "version": "0.0.0",
@@ -1059,6 +1068,8 @@
     "@rhombus-std/caching.core.test": ["@rhombus-std/caching.core.test@workspace:tests/caching.core.test"],
 
     "@rhombus-std/caching.memory": ["@rhombus-std/caching.memory@workspace:libraries/caching.memory"],
+
+    "@rhombus-std/caching.memory.test": ["@rhombus-std/caching.memory.test@workspace:tests/caching.memory.test"],
 
     "@rhombus-std/config": ["@rhombus-std/config@workspace:libraries/config"],
 
