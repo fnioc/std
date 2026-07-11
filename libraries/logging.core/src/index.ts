@@ -16,8 +16,9 @@ export type { ILoggingBuilder } from "./ILoggingBuilder";
 export type { IExternalScopeProvider, ILogger } from "./logger";
 export type { ILoggerFactory, ILoggerProvider } from "./logger-factory";
 
-// Deferred message formatting — exported so a provider-side sink (once
-// providers land) can render or destructure a `FormattedLogValues` state.
+// Deferred message formatting — exported so a provider-side sink can render or
+// structurally destructure a `FormattedLogValues` state (its `[name, value]`
+// pairs plus the `{OriginalFormat}` entry).
 export { formatLogValues, formatMessage, FormattedLogValues } from "./formatted-log-values";
 
 // The real-runtime ILogger convenience wrappers (LoggerExtensions analog):
