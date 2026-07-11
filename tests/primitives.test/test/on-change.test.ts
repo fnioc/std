@@ -33,6 +33,10 @@ class TestChangeToken implements IChangeToken {
     };
   }
 
+  get registeredCallbackCount(): number {
+    return this.#callbacks.length;
+  }
+
   fire(): void {
     this.hasChanged = true;
     const callbacks = this.#callbacks;
@@ -112,4 +116,164 @@ describe("ChangeToken.onChange", () => {
     expect(calls).toBe(0);
     disposable[Symbol.dispose]();
   });
+
+  test("a synchronous throw from the consumer propagates to the trigger and still re-subscribes", () => {
+    const tokens: TestChangeToken[] = [];
+    const produceToken = () => {
+      const token = new TestChangeToken();
+      tokens.push(token);
+      return token;
+    };
+
+    let calls = 0;
+    const disposable = ChangeToken.onChange(produceToken, () => {
+      calls++;
+      throw new Error("consumer boom");
+    });
+
+    expect(() => tokens[0]!.fire()).toThrow("consumer boom");
+    expect(calls).toBe(1);
+    expect(tokens).toHaveLength(2); // re-subscribed despite the throw
+
+    expect(() => tokens[1]!.fire()).toThrow("consumer boom");
+    expect(calls).toBe(2);
+
+    disposable[Symbol.dispose]();
+  });
 });
+
+describe("ChangeToken.onChange (async consumer)", () => {
+  test("re-subscribes only once the consumer's promise resolves", async () => {
+    const tokens: TestChangeToken[] = [];
+    const produceToken = () => {
+      const token = new TestChangeToken();
+      tokens.push(token);
+      return token;
+    };
+
+    let resolveConsumer!: () => void;
+    let calls = 0;
+    const disposable = ChangeToken.onChange(produceToken, () => {
+      calls++;
+      return new Promise<void>((resolve) => {
+        resolveConsumer = resolve;
+      });
+    });
+
+    tokens[0]!.fire();
+    expect(calls).toBe(1);
+    // The NEXT token is produced before the consumer runs, but nothing is
+    // registered on it until the consumer's promise settles...
+    expect(tokens).toHaveLength(2);
+    expect(tokens[1]!.registeredCallbackCount).toBe(0);
+
+    resolveConsumer();
+    await drainMicrotasks();
+
+    // ...and now it is.
+    expect(tokens[1]!.registeredCallbackCount).toBe(1);
+    tokens[1]!.fire();
+    expect(calls).toBe(2);
+
+    resolveConsumer();
+    await drainMicrotasks();
+    disposable[Symbol.dispose]();
+  });
+
+  test("a change during the async gap is processed upon re-subscription", async () => {
+    const tokens: TestChangeToken[] = [];
+    const produceToken = () => {
+      const token = new TestChangeToken();
+      tokens.push(token);
+      return token;
+    };
+
+    const resolvers: (() => void)[] = [];
+    let calls = 0;
+    const disposable = ChangeToken.onChange(produceToken, () => {
+      calls++;
+      return new Promise<void>((resolve) => {
+        resolvers.push(resolve);
+      });
+    });
+
+    tokens[0]!.fire();
+    expect(calls).toBe(1);
+
+    // Fires while the consumer is still pending -- not yet re-subscribed,
+    // so nothing happens immediately...
+    tokens[1]!.fire();
+    expect(calls).toBe(1);
+
+    // ...but re-subscribing against the already-changed token processes the
+    // missed change right away.
+    resolvers[0]!();
+    await drainMicrotasks();
+    expect(calls).toBe(2);
+
+    resolvers[1]!();
+    await drainMicrotasks();
+    disposable[Symbol.dispose]();
+  });
+
+  test("a rejected consumer promise is left unobserved and still re-subscribes", async () => {
+    const tokens: TestChangeToken[] = [];
+    const produceToken = () => {
+      const token = new TestChangeToken();
+      tokens.push(token);
+      return token;
+    };
+
+    let calls = 0;
+    const disposable = ChangeToken.onChange(produceToken, () => {
+      calls++;
+      return Promise.reject(new Error("async boom"));
+    });
+
+    tokens[0]!.fire();
+    expect(calls).toBe(1);
+    await drainMicrotasks();
+
+    // Re-subscribed despite the rejection (and no unhandled rejection --
+    // this test would fail with one).
+    expect(tokens[1]!.registeredCallbackCount).toBe(1);
+    tokens[1]!.fire();
+    expect(calls).toBe(2);
+
+    await drainMicrotasks();
+    disposable[Symbol.dispose]();
+  });
+
+  test("disposing during the async gap prevents re-subscription", async () => {
+    const tokens: TestChangeToken[] = [];
+    const produceToken = () => {
+      const token = new TestChangeToken();
+      tokens.push(token);
+      return token;
+    };
+
+    let resolveConsumer!: () => void;
+    let calls = 0;
+    const disposable = ChangeToken.onChange(produceToken, () => {
+      calls++;
+      return new Promise<void>((resolve) => {
+        resolveConsumer = resolve;
+      });
+    });
+
+    tokens[0]!.fire();
+    expect(calls).toBe(1);
+
+    disposable[Symbol.dispose]();
+    resolveConsumer();
+    await drainMicrotasks();
+
+    expect(tokens[1]!.registeredCallbackCount).toBe(0);
+    tokens[1]!.fire();
+    expect(calls).toBe(1);
+  });
+});
+
+function drainMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
