@@ -12,7 +12,7 @@ import { type DepSlot, DiError, type Token } from "@rhombus-std/di.core";
 // registration builder there). di re-exports them so the whole taxonomy stays
 // reachable through one `@rhombus-std/di` import; the resolution-time errors
 // below extend the shared `DiError` root.
-export { DiError, OpenTokenRegistrationError } from "@rhombus-std/di.core";
+export { ActivationError, DiError, OpenTokenRegistrationError } from "@rhombus-std/di.core";
 
 /**
  * A token was requested but no registration exists for it anywhere in the
