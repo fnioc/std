@@ -11,7 +11,7 @@
 // `unknown` -- there is nothing here that constructs a real listener from it.
 // See the package tbd notes.
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * The user-configurable surface of a tracing listener. Mirrors MED.Tracing's

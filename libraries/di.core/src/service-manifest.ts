@@ -10,17 +10,17 @@
 // statically knows the arg is a function, so the runtime never has to guess
 // class-vs-factory.
 
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
 
-import type { AddBuilder, ServiceManifestBase } from "./authoring.js";
-import { OpenTokenRegistrationError } from "./errors.js";
-import type { ServiceProvider } from "./provider.js";
-import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from "./registrations.js";
-import type { ServiceProviderOptions } from "./service-provider-options.js";
-import { HOLE_PATTERN, isOpenToken, parseToken } from "./tokens.js";
-import type { DepSlot, Token } from "./types.js";
+import type { AddBuilder, ServiceManifestBase } from './authoring.js';
+import { OpenTokenRegistrationError } from './errors.js';
+import type { ServiceProvider } from './provider.js';
+import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
+import type { ServiceProviderOptions } from './service-provider-options.js';
+import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
+import type { DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — `AddBuilder` and the collection interface
 // `ServiceManifestBase` — lives alongside this builder in the abstractions
@@ -74,7 +74,7 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  * this one — is (re)installed onto the prototype (docs/decisions.md §38).
  */
 @augment(nameof<ServiceManifest>())
-export class ServiceManifestClass<Scopes extends string = "singleton">
+export class ServiceManifestClass<Scopes extends string = 'singleton'>
   implements ServiceManifestBase<Scopes, ServiceProvider<Scopes>>
 {
   /**
@@ -124,7 +124,9 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
         // form never executes (the transformer rewrites it first). A no-arg call
         // at runtime leaves the base (transient) registration in place — guard so
         // it is a no-op rather than mutating the registration to a scopeless copy.
-        if (scope === undefined) { return; }
+        if (scope === undefined) {
+          return;
+        }
         applyScope(scope);
       },
     };
@@ -159,7 +161,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
   ): AddBuilder<Scopes> {
     const parsed = parseToken(token);
     if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
-      throw new OpenTokenRegistrationError(token, "add");
+      throw new OpenTokenRegistrationError(token, 'add');
     }
     const base: OpenRegistration = {
       template: token,
@@ -210,11 +212,11 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     // Only the string-token forms reach the engine at runtime. The single-arg
     // authoring overloads never run post-transform; guard defensively so a
     // hand-written type-form call fails loud rather than registering junk.
-    if (args.length === 1 || typeof args[0] !== "string") {
+    if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        "add<I>(ctor) / add<I>(factory) require the @rhombus-std/di.transformer plugin. "
-          + "Without it, register with an explicit token: add(\"my:token\", MyClass) "
-          + "or addFactory(\"my:token\", (scope) => ...).",
+        'add<I>(ctor) / add<I>(factory) require the @rhombus-std/di.transformer plugin. '
+          + 'Without it, register with an explicit token: add("my:token", MyClass) '
+          + 'or addFactory("my:token", (scope) => ...).',
       );
     }
     const [token, ctor, signatures] = args;
@@ -266,17 +268,17 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     // Only the string-token form reaches the engine at runtime. The single-arg
     // `addFactory<I>(fn)` authoring overload never runs post-transform; guard
     // defensively so a hand-written type-form call fails loud.
-    if (args.length === 1 || typeof args[0] !== "string") {
+    if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        "addFactory<I>(fn) requires the @rhombus-std/di.transformer plugin. Without it, "
-          + "register with an explicit token: addFactory(\"my:token\", (scope) => ...).",
+        'addFactory<I>(fn) requires the @rhombus-std/di.transformer plugin. Without it, '
+          + 'register with an explicit token: addFactory("my:token", (scope) => ...).',
       );
     }
     const [token, factory, signatures] = args;
     // Open registrations are class-only: a template must synthesize per-closing
     // class registrations, which a factory/value shape cannot express in v1.
     if (isOpenToken(token)) {
-      throw new OpenTokenRegistrationError(token, "addFactory");
+      throw new OpenTokenRegistrationError(token, 'addFactory');
     }
     // The factory IS the producer. `arity` is 0 so a signature-less factory runs
     // with no injected args (it never trips the missing-metadata signal — only a
@@ -302,15 +304,15 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
   public addValue(
     ...args: [value: unknown] | [token: Token, value: unknown]
   ): void {
-    if (args.length === 1 || typeof args[0] !== "string") {
+    if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        "addValue<I>(value) requires the @rhombus-std/di.transformer plugin. Without it, "
-          + "register with an explicit token: addValue(\"my:token\", value).",
+        'addValue<I>(value) requires the @rhombus-std/di.transformer plugin. Without it, '
+          + 'register with an explicit token: addValue("my:token", value).',
       );
     }
     const [token, value] = args;
     if (isOpenToken(token)) {
-      throw new OpenTokenRegistrationError(token, "addValue");
+      throw new OpenTokenRegistrationError(token, 'addValue');
     }
     // The value collapses to a producer that returns it verbatim. `scope` stays
     // `undefined` (a value is always transient — no ownership/caching), so a
@@ -319,7 +321,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
     this.#append(token, {
       produce: () => value,
       scope: undefined,
-      name: "",
+      name: '',
       arity: 0,
     });
   }
@@ -424,9 +426,9 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
    */
   public build(_options?: ServiceProviderOptions): ServiceProvider<Scopes> {
     throw new TypeError(
-      "ServiceManifest.build() requires the @rhombus-std/di runtime. Import "
-        + "@rhombus-std/di (which constructs the resolution engine) before "
-        + "calling build() — di.core ships only the registration collection.",
+      'ServiceManifest.build() requires the @rhombus-std/di runtime. Import '
+        + '@rhombus-std/di (which constructs the resolution engine) before '
+        + 'calling build() — di.core ships only the registration collection.',
     );
   }
 }
@@ -444,7 +446,7 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
  * `ServiceManifest` VALUE live in `@rhombus-std/di`, alongside the `build()`
  * prototype-patch that makes `new ServiceManifest().build()` produce a provider.
  */
-export type ServiceManifest<S extends string = "singleton"> = ServiceManifestBase<
+export type ServiceManifest<S extends string = 'singleton'> = ServiceManifestBase<
   S,
   ServiceProvider<S>
 >;

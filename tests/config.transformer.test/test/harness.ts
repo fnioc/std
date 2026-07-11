@@ -12,9 +12,9 @@
 // affects printed text (what the injection tests assert); `ts.transform` prints
 // without re-checking, so the unresolved specifier is fine.
 
-import type { Diagnostic } from "@rhombus-std/config.transformer/internal/diagnostics";
-import { createTransformerFactory } from "@rhombus-std/config.transformer/internal/transformer";
-import ts from "typescript";
+import type { Diagnostic } from '@rhombus-std/config.transformer/internal/diagnostics';
+import { createTransformerFactory } from '@rhombus-std/config.transformer/internal/transformer';
+import ts from 'typescript';
 
 /** A virtual filesystem: absolute POSIX path -> file contents. */
 export type VirtualFiles = Record<string, string>;
@@ -28,7 +28,7 @@ export interface TransformResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-const DEFAULT_ROOT = "/virtual";
+const DEFAULT_ROOT = '/virtual';
 
 export interface TransformOptions {
   /** Entry files to transform (absolute virtual paths). Defaults to all `.ts`. */
@@ -64,7 +64,7 @@ export function transform(
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    lib: ["lib.es2022.d.ts"],
+    lib: ['lib.es2022.d.ts'],
     strict: true,
     skipLibCheck: true,
     noEmitOnError: false,
@@ -84,12 +84,12 @@ export function transform(
       return ts.createSourceFile(fileName, text, languageVersion, true);
     },
     getDefaultLibFileName: () => libFileName,
-    getDefaultLibLocation: () => libSourcePath.replace(/[^/\\]+$/, ""),
+    getDefaultLibLocation: () => libSourcePath.replace(/[^/\\]+$/, ''),
     writeFile: () => undefined,
     getCurrentDirectory: () => DEFAULT_ROOT,
     getCanonicalFileName: (f) => f,
     useCaseSensitiveFileNames: () => true,
-    getNewLine: () => "\n",
+    getNewLine: () => '\n',
     fileExists(fileName) {
       return (
         Object.prototype.hasOwnProperty.call(files, fileName)
@@ -114,7 +114,7 @@ export function transform(
   };
 
   const entry = options.entry
-    ?? Object.keys(files).filter((f) => f.endsWith(".ts") && !f.endsWith(".d.ts"));
+    ?? Object.keys(files).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
 
   const program = ts.createProgram(entry.slice(), compilerOptions, host);
 
@@ -142,7 +142,7 @@ export function transform(
 
   return {
     outputs,
-    output: outputs[entry[0]!] ?? "",
+    output: outputs[entry[0]!] ?? '',
     diagnostics,
   };
 }
@@ -164,7 +164,7 @@ function readVirtualOrReal(
 }
 
 function anyFileUnder(files: VirtualFiles, dir: string): boolean {
-  const normalized = dir.endsWith("/") ? dir : dir + "/";
+  const normalized = dir.endsWith('/') ? dir : dir + '/';
   return Object.keys(files).some((f) => f.startsWith(normalized));
 }
 
@@ -172,7 +172,7 @@ function anyFileUnder(files: VirtualFiles, dir: string): boolean {
  * Build a one-file fixture under the default virtual root, with the
  * {@link BUILDER_STUB} prepended so `ConfigurationBuilder` resolves.
  */
-export function fixture(source: string, name = "app.ts"): VirtualFiles {
+export function fixture(source: string, name = 'app.ts'): VirtualFiles {
   return { [`${DEFAULT_ROOT}/${name}`]: BUILDER_STUB + source };
 }
 

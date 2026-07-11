@@ -2,7 +2,7 @@
 // runtime's enum of the same name. Selects what the host does when one of its
 // `BackgroundService` instances throws an unhandled exception.
 
-import type { BackgroundService, IHost } from "@rhombus-std/hosting.core";
+import type { BackgroundService, IHost } from '@rhombus-std/hosting.core';
 
 /**
  * Specifies the behavior an {@link IHost} honors when an unhandled exception

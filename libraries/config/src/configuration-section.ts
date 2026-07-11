@@ -13,14 +13,14 @@
 // or any Object.prototype name) is UNREACHABLE via `config.X` -- reach it with
 // `config.getSection("X")` instead.
 
-import type { ConfigObject, IConfiguration, IConfigurationSection, IndexedSection } from "@rhombus-std/config.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
-import { combine, getSectionKey } from "./abstractions/configuration-path";
-import { parseBoolean, parseNumber } from "./coerce";
-import type { ConfigurationRoot } from "./ConfigurationRoot";
-import { InternalConfigurationRootExtensions } from "./internal-configuration-root-augmentations";
+import type { ConfigObject, IConfiguration, IConfigurationSection, IndexedSection } from '@rhombus-std/config.core';
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
+import { combine, getSectionKey } from './abstractions/configuration-path';
+import { parseBoolean, parseNumber } from './coerce';
+import type { ConfigurationRoot } from './ConfigurationRoot';
+import { InternalConfigurationRootExtensions } from './internal-configuration-root-augmentations';
 
 /**
  * A section of configuration values, identified by its full colon-delimited
@@ -125,12 +125,12 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
   protected _getIndex(key: PropertyKey): IndexedSection {
     // Symbol probes (Symbol.iterator/toStringTag/util.inspect.custom, ...)
     // reach here as misses -- never navigate for them.
-    if (typeof key !== "string") {
+    if (typeof key !== 'string') {
       return undefined as unknown as IndexedSection;
     }
     // `getSection` never returns null, so an un-guarded `config.then` would look
     // thenable and corrupt `await config`. Guard it.
-    if (key === "then") {
+    if (key === 'then') {
       return undefined as unknown as IndexedSection;
     }
     return this.getSection(key) as unknown as IndexedSection;
@@ -138,7 +138,7 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
 
   protected _setIndex(_key: PropertyKey, _value: IndexedSection): IndexedSection {
     throw new TypeError(
-      "Configuration is read-only through index access; use set(key, value) or the value setter.",
+      'Configuration is read-only through index access; use set(key, value) or the value setter.',
     );
   }
 }
@@ -156,7 +156,7 @@ export function subtreeToObject(node: IConfiguration): ConfigObject {
       hasChildren = true;
       break;
     }
-    out[child.key] = hasChildren ? child.toObject() : (child.value ?? "");
+    out[child.key] = hasChildren ? child.toObject() : (child.value ?? '');
   }
   return out;
 }

@@ -18,8 +18,8 @@ export class OptionsValidationError extends Error {
 
   constructor(failures: Iterable<string>) {
     const list = [...failures];
-    super(list.join("; "));
-    this.name = "OptionsValidationError";
+    super(list.join('; '));
+    this.name = 'OptionsValidationError';
     this.failures = list;
   }
 }

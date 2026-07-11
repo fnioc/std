@@ -8,7 +8,7 @@
 // and never a silent partial: an unsupported type aborts the whole call rewrite
 // and reports a hard error.
 
-import ts from "typescript";
+import ts from 'typescript';
 
 /** A diagnostic the transformer raises. Alias kept for call-site clarity. */
 export type Diagnostic = ts.Diagnostic;
@@ -40,7 +40,7 @@ export enum DiagnosticCode {
   NonObjectRoot = 992002,
 }
 
-const SOURCE = "@rhombus-std/config.transformer";
+const SOURCE = '@rhombus-std/config.transformer';
 
 /** Build an error diagnostic anchored at `node` in `file`. */
 export function error(

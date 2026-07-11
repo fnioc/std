@@ -3,7 +3,7 @@
 // `@rhombus-std/di`) for ergonomics; a core-only library author authors the same
 // shapes as plain data literals (`{ union: [...] }`, `{ typeArg: n }`).
 
-import type { DepSlot, TypeArgRef, Union } from "./types.js";
+import type { DepSlot, TypeArgRef, Union } from './types.js';
 
 /**
  * Constructs a `Union` slot — a set of alternative dependency slots tried in

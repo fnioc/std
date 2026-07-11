@@ -7,16 +7,16 @@ type-driven `addOptions<T>()` sugar to the explicit, transformer-free verb
 registration builder.
 
 ```ts
-import "@rhombus-std/options.augmentations"; // installs the runtime addOptions verb
+import '@rhombus-std/options.augmentations'; // installs the runtime addOptions verb
 
 // authored:
-services.addOptions<AppOptions>().as("singleton");
+services.addOptions<AppOptions>().as('singleton');
 
 // lowered (compile time):
 services.addOptions(
-  "@rhombus-std/options:Options<app:AppOptions>",
-  "app:AppOptions",
-).as("singleton");
+  '@rhombus-std/options:Options<app:AppOptions>',
+  'app:AppOptions',
+).as('singleton');
 ```
 
 The registration wraps the **already-bound** `AppOptions` (resolved from its own

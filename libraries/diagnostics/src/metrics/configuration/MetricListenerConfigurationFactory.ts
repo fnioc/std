@@ -8,10 +8,10 @@
 // the reference; exported here so a plugin-less consumer can construct one over
 // hand-registered markers.
 
-import { ConfigurationBuilder, type IConfiguration } from "@rhombus-std/config";
+import { ConfigurationBuilder, type IConfiguration } from '@rhombus-std/config';
 
-import type { IMetricListenerConfigurationFactory } from "./IMetricListenerConfigurationFactory";
-import type { MetricsConfiguration } from "./MetricsConfiguration";
+import type { IMetricListenerConfigurationFactory } from './IMetricListenerConfigurationFactory';
+import type { MetricsConfiguration } from './MetricsConfiguration';
 
 /** The concrete {@link IMetricListenerConfigurationFactory}. */
 export class MetricListenerConfigurationFactory implements IMetricListenerConfigurationFactory {

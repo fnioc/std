@@ -26,4 +26,4 @@ export interface ConsoleLike {
  * The platform `console` global, re-typed against {@link ConsoleLike}. No
  * runtime fallback — every browser (and node/bun/deno) supplies it.
  */
-export const console: ConsoleLike = (globalThis as unknown as { console: ConsoleLike }).console;
+export const console: ConsoleLike = (globalThis as unknown as { console: ConsoleLike; }).console;

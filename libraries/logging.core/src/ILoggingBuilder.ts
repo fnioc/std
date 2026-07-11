@@ -6,7 +6,7 @@
 // depends on di.core for this type alone (mirrors the reference edge
 // `Logging.Abstractions -> DependencyInjection.Abstractions`).
 
-import type { ServiceManifest } from "@rhombus-std/di.core";
+import type { ServiceManifest } from '@rhombus-std/di.core';
 
 /** An interface for configuring logging providers. */
 export interface ILoggingBuilder {

@@ -18,39 +18,39 @@
 // in `@rhombus-std/hosting`) pull those bags onto their prototypes via `@augment`.
 
 // Core contracts.
-export type { HostBuilderContext } from "./HostBuilderContext";
-export type { IHost } from "./IHost";
-export type { IHostApplicationBuilder } from "./IHostApplicationBuilder";
-export type { IHostApplicationLifetime } from "./IHostApplicationLifetime";
-export type { IHostBuilder } from "./IHostBuilder";
-export type { IHostedLifecycleService } from "./IHostedLifecycleService";
-export type { IHostedService } from "./IHostedService";
-export type { IHostEnvironment } from "./IHostEnvironment";
-export type { IHostLifetime } from "./IHostLifetime";
+export type { HostBuilderContext } from './HostBuilderContext';
+export type { IHost } from './IHost';
+export type { IHostApplicationBuilder } from './IHostApplicationBuilder';
+export type { IHostApplicationLifetime } from './IHostApplicationLifetime';
+export type { IHostBuilder } from './IHostBuilder';
+export type { IHostedLifecycleService } from './IHostedLifecycleService';
+export type { IHostedService } from './IHostedService';
+export type { IHostEnvironment } from './IHostEnvironment';
+export type { IHostLifetime } from './IHostLifetime';
 
 // Concrete values the reference ships in the abstractions package.
-export { BackgroundService } from "./BackgroundService";
-export { Environments } from "./environments";
-export { HostDefaults } from "./host-defaults";
-export { HostAbortedException } from "./HostAbortedException";
+export { BackgroundService } from './BackgroundService';
+export { Environments } from './environments';
+export { HostDefaults } from './host-defaults';
+export { HostAbortedException } from './HostAbortedException';
 
 // The shared DI-slot token ABI (registration + resolution travel through these),
 // plus the augmentation-registry tokens for the OPEN host/builder/environment
 // receivers (§38).
-export { HOST_APPLICATION_LIFETIME_TOKEN, HOSTED_SERVICE_TOKEN, hostedServiceCollectionToken } from "./tokens";
+export { HOST_APPLICATION_LIFETIME_TOKEN, HOSTED_SERVICE_TOKEN, hostedServiceCollectionToken } from './tokens';
 
 // Host lifetime helpers + builder-start (reference HostingAbstractionsHost*Extensions),
 // authored as object-literal augmentation sets (docs §28/§38) that register
 // against their receiver tokens. Their members are the standalone call surface;
 // the fluent method form is pulled onto the concrete classes downstream via
 // `@augment`.
-export { HostingAbstractionsHostExtensions } from "./host-augmentations";
-export { HostingAbstractionsHostBuilderExtensions } from "./host-builder-augmentations";
+export { HostingAbstractionsHostExtensions } from './host-augmentations';
+export { HostingAbstractionsHostBuilderExtensions } from './host-builder-augmentations';
 
 // Environment predicates (reference HostEnvironmentEnvExtensions).
-export { HostEnvironmentEnvExtensions } from "./host-environment-augmentations";
+export { HostEnvironmentEnvExtensions } from './host-environment-augmentations';
 
 // The `addHostedService` registration augmentation (reference
 // ServiceCollectionHostedServiceExtensions) + its side-effect registration
 // against di.core's ServiceManifest augmentation token.
-export { ServiceCollectionHostedServiceExtensions } from "./hosted-service-augmentations";
+export { ServiceCollectionHostedServiceExtensions } from './hosted-service-augmentations';

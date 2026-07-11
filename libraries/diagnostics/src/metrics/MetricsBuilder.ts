@@ -5,10 +5,10 @@
 // (@rhombus-std/diagnostics.core's addMetricsListener/enableMetrics/... and this
 // package's addMetricsConfiguration).
 
-import type { ServiceManifestBase } from "@rhombus-std/di.core";
-import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 /**
  * The concrete {@link IMetricsBuilder}.

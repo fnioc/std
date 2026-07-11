@@ -14,16 +14,12 @@
 // overwrite the real implementation. The exclusion lives at caching.core's
 // registration; here MemoryCache simply keeps its own `tryGetValue`.
 
-import type {
-  CacheItemPriority,
-  ICacheEntry,
-  MemoryCacheEntryOptions,
-  PostEvictionDelegate,
-} from "@rhombus-std/caching.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { CacheItemPriority, ICacheEntry, MemoryCacheEntryOptions,
+  PostEvictionDelegate } from '@rhombus-std/caching.core';
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
-declare module "./MemoryCache" {
+declare module './MemoryCache' {
   interface MemoryCache {
     get<T = unknown>(key: unknown): T | undefined;
     set<T>(key: unknown, value: T): T;
@@ -46,7 +42,7 @@ declare module "./MemoryCache" {
   }
 }
 
-declare module "./cache-entry" {
+declare module './cache-entry' {
   interface CacheEntry {
     setPriority(priority: CacheItemPriority): this;
     addExpirationToken(expirationToken: IChangeToken): this;

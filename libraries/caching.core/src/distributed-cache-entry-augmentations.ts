@@ -14,8 +14,8 @@
 // direct `applyAugmentations` install both live here -- no token, no registry
 // (the diagnostics.core MetricsOptions/TracingOptions precedent).
 
-import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
-import { DistributedCacheEntryOptions } from "./DistributedCacheEntryOptions";
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
+import { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 
 /**
  * The `DistributedCacheEntryExtensions` augmentation set for
@@ -49,7 +49,7 @@ export const DistributedCacheEntryExtensions = {
 } satisfies AugmentationSet<DistributedCacheEntryOptions>;
 
 // The method-form surface merged onto the concrete class (docs §28/§38).
-declare module "./DistributedCacheEntryOptions" {
+declare module './DistributedCacheEntryOptions' {
   interface DistributedCacheEntryOptions {
     setAbsoluteExpiration(relativeToNowMs: number): this;
     setAbsoluteExpiration(absolute: Date): this;

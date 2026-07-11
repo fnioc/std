@@ -9,8 +9,8 @@
 // leaves are strings (config carries no type information), so richer coercion
 // is a schema/data-annotations concern deferred to a later satellite (§4.4).
 
-import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config.core";
-import type { ConfigureOptions } from "@rhombus-std/options";
+import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config.core';
+import type { ConfigureOptions } from '@rhombus-std/options';
 
 /**
  * Deep-merges a configuration node's key/value subtree onto `target`, mutating
@@ -25,7 +25,7 @@ function bindSection(config: IConfiguration, target: Record<string, unknown>): v
     const grandchildren = [...section.getChildren()];
     if (grandchildren.length) {
       const existing = target[section.key];
-      const nested = (typeof existing === "object" && existing !== null)
+      const nested = (typeof existing === 'object' && existing !== null)
         ? existing as Record<string, unknown>
         : {};
       target[section.key] = nested;

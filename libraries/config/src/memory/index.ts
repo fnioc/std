@@ -21,19 +21,19 @@
 // one's own concrete return type through the fluent chain (ConfigurationBuilder<T>
 // keeps T; ConfigurationManager stays ConfigurationManager).
 
-import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { ConfigurationBuilder } from "../ConfigurationBuilder";
-import { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { ConfigurationBuilder } from '../ConfigurationBuilder';
+import { type ConfigurationData, MemoryConfigurationSource } from './memory-configuration-source';
 
-export { type ConfigurationData, MemoryConfigurationSource } from "./memory-configuration-source";
-export { MemoryConfigurationProvider } from "./MemoryConfigurationProvider";
+export { type ConfigurationData, MemoryConfigurationSource } from './memory-configuration-source';
+export { MemoryConfigurationProvider } from './MemoryConfigurationProvider';
 
 // The generic arity + default MUST match the class declaration exactly, or
 // declaration merging fails (TS2428). Every augmentation spells `<T =
 // IndexedSection>` and imports the same `IndexedSection` from @rhombus-std/config.core.
-declare module "../ConfigurationBuilder" {
+declare module '../ConfigurationBuilder' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Registers an in-memory configuration source seeded with `initialData`. */
     addInMemoryCollection(initialData?: ConfigurationData): this;
@@ -42,7 +42,7 @@ declare module "../ConfigurationBuilder" {
 
 // ConfigurationManager has no generic type parameter, so there's no TS2428
 // arity concern here the way there is for ConfigurationBuilder<T>.
-declare module "../ConfigurationManager" {
+declare module '../ConfigurationManager' {
   interface ConfigurationManager {
     /** Registers an in-memory configuration source seeded with `initialData`. */
     addInMemoryCollection(initialData?: ConfigurationData): this;
@@ -55,7 +55,7 @@ declare module "../ConfigurationManager" {
 // form. `TBuilder` is bounded by "has an add() that returns itself" rather than
 // pinned to ConfigurationBuilder<T> -- see the module doc comment above.
 export const MemoryConfigurationBuilderExtensions = {
-  addInMemoryCollection<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+  addInMemoryCollection<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
     builder: TBuilder,
     initialData?: ConfigurationData,
   ): TBuilder {

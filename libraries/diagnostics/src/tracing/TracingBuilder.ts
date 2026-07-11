@@ -2,10 +2,10 @@
 // to a consumer's configure callback. Mirrors the reference's private
 // `TracingServiceExtensions.TracingBuilder`.
 
-import type { ServiceManifestBase } from "@rhombus-std/di.core";
-import type { ITracingBuilder } from "@rhombus-std/diagnostics.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 /**
  * The concrete {@link ITracingBuilder}.

@@ -1,4 +1,4 @@
-import type { IHealthCheck } from "@rhombus-std/examples.contracts";
+import type { IHealthCheck } from '@rhombus-std/examples.contracts';
 
 /**
  * The optional health probe only THIS library registers. An app probes for it
@@ -6,6 +6,6 @@ import type { IHealthCheck } from "@rhombus-std/examples.contracts";
  */
 export class HealthCheck implements IHealthCheck {
   public check(): string {
-    return "ok";
+    return 'ok';
   }
 }

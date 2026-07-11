@@ -7,7 +7,7 @@
 // @types/node happens to be in a consumer program the declaration merges as an
 // extra overload -- legal and inert.
 
-declare module "node:async_hooks" {
+declare module 'node:async_hooks' {
   export class AsyncLocalStorage<T> {
     getStore(): T | undefined;
     enterWith(store: T): void;

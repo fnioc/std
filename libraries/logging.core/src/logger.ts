@@ -1,9 +1,9 @@
 // ILogger and the scope-provider contract, ported from
 // ME.Logging.Abstractions' `ILogger` / `IExternalScopeProvider`.
 
-import type { Func } from "@rhombus-toolkit/func";
-import type { EventId } from "./event-id";
-import type { LogLevel } from "./LogLevel";
+import type { Func } from '@rhombus-toolkit/func';
+import type { EventId } from './event-id';
+import type { LogLevel } from './LogLevel';
 
 /**
  * Represents a type used to perform logging.

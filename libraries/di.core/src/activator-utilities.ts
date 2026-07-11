@@ -36,11 +36,11 @@
 //     the `Promise<T>` fallback are engine-only; activation is synchronous, as in
 //     the reference.
 
-import { ActivationError } from "./errors.js";
-import { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from "./guards.js";
-import type { Resolver } from "./provider.js";
-import type { Ctor } from "./registrations.js";
-import type { DepSlot, Token } from "./types.js";
+import { ActivationError } from './errors.js';
+import { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from './guards.js';
+import type { Resolver } from './provider.js';
+import type { Ctor } from './registrations.js';
+import type { DepSlot, Token } from './types.js';
 
 /**
  * A pre-built activator — the reference `ObjectFactory` / `ObjectFactory<T>`
@@ -126,7 +126,7 @@ function buildArguments(
     if (argCursor < args.length) {
       return args[argCursor++];
     }
-    throw new ActivationError(ctor.name, typeof slot === "string" ? slot : undefined);
+    throw new ActivationError(ctor.name, typeof slot === 'string' ? slot : undefined);
   });
 }
 

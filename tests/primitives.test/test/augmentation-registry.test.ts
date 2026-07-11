@@ -7,8 +7,8 @@
 // Each test uses a UNIQUE token string so the module-level bag/bus (a process
 // singleton) does not leak state between cases.
 
-import { augment, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { describe, expect, test } from "bun:test";
+import { augment, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
 
 let counter = 0;
 /** A fresh token per call, so no two tests share a registry bag. */
@@ -17,8 +17,8 @@ function freshToken(): string {
   return `test:token:${counter}`;
 }
 
-describe("register-then-decorate", () => {
-  test("a class decorated after registration gets the methods immediately", () => {
+describe('register-then-decorate', () => {
+  test('a class decorated after registration gets the methods immediately', () => {
     const TOKEN = freshToken();
 
     class Box {
@@ -47,8 +47,8 @@ describe("register-then-decorate", () => {
   });
 });
 
-describe("decorate-then-register (late regobble)", () => {
-  test("a registration AFTER decoration still reaches the prototype", () => {
+describe('decorate-then-register (late regobble)', () => {
+  test('a registration AFTER decoration still reaches the prototype', () => {
     const TOKEN = freshToken();
 
     class Widget {
@@ -62,7 +62,7 @@ describe("decorate-then-register (late regobble)", () => {
     // yet. The listener stays subscribed.
     augment(TOKEN)(Widget);
 
-    const before = new Widget() as Widget & { bump?: unknown };
+    const before = new Widget() as Widget & { bump?: unknown; };
     expect(before.bump).toBeUndefined();
 
     const WidgetExtensions = {
@@ -79,7 +79,7 @@ describe("decorate-then-register (late regobble)", () => {
   });
 });
 
-describe("multi-set merge (two consts, one token)", () => {
+describe('multi-set merge (two consts, one token)', () => {
   test("both sets' members land on the prototype", () => {
     const TOKEN = freshToken();
 
@@ -91,12 +91,12 @@ describe("multi-set merge (two consts, one token)", () => {
 
     const First = {
       a(_svc: Svc): string {
-        return "a";
+        return 'a';
       },
     } satisfies AugmentationSet<Svc>;
     const Second = {
       b(_svc: Svc): string {
-        return "b";
+        return 'b';
       },
     } satisfies AugmentationSet<Svc>;
 
@@ -105,12 +105,12 @@ describe("multi-set merge (two consts, one token)", () => {
     registerAugmentations(TOKEN, Second);
 
     const svc = new Svc();
-    expect(svc.a()).toBe("a");
-    expect(svc.b()).toBe("b");
+    expect(svc.a()).toBe('a');
+    expect(svc.b()).toBe('b');
   });
 });
 
-describe("collision throw", () => {
+describe('collision throw', () => {
   test("registering a member name already in the token's bag throws", () => {
     const TOKEN = freshToken();
 
@@ -128,7 +128,7 @@ describe("collision throw", () => {
   });
 });
 
-describe("fluent-return preservation", () => {
+describe('fluent-return preservation', () => {
   test("the installed method returns the callee's result (chaining survives)", () => {
     const TOKEN = freshToken();
 
@@ -149,13 +149,13 @@ describe("fluent-return preservation", () => {
     registerAugmentations(TOKEN, BuilderExtensions);
     augment(TOKEN)(Builder);
 
-    const built = new Builder().step("one").step("two");
-    expect(built.steps).toEqual(["one", "two"]);
+    const built = new Builder().step('one').step('two');
+    expect(built.steps).toEqual(['one', 'two']);
   });
 });
 
-describe("@augment decorator syntax (TC39 standard class decorator)", () => {
-  test("the decorator form installs the same as the statement form", () => {
+describe('@augment decorator syntax (TC39 standard class decorator)', () => {
+  test('the decorator form installs the same as the statement form', () => {
     const TOKEN = freshToken();
 
     const CounterExtensions = {

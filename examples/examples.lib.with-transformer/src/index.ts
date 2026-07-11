@@ -13,6 +13,6 @@
 // dialect an app is authored in, it registers these building blocks and the
 // lowered `makeServerReport` resolves them by the agreed tokens.
 
-export { fetchBanner } from "./fetch-banner.js";
-export { FormalGreeting } from "./formal-greeting.js";
-export { makeServerReport } from "./server-report.js";
+export { fetchBanner } from './fetch-banner.js';
+export { FormalGreeting } from './formal-greeting.js';
+export { makeServerReport } from './server-report.js';

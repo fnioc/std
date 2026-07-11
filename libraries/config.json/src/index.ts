@@ -15,12 +15,12 @@
 // This package must NOT set `"sideEffects": false` in package.json (would
 // let a bundler tree-shake the augmentation away).
 
-import type { ConfigurationBuilder, StreamPayload } from "@rhombus-std/config";
-import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { JsonConfigurationSource, type JsonConfigurationSourceOptions } from "./json-configuration-source";
-import { JsonStreamConfigurationSource } from "./JsonStreamConfigurationSource";
+import type { ConfigurationBuilder, StreamPayload } from '@rhombus-std/config';
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { JsonConfigurationSource, type JsonConfigurationSourceOptions } from './json-configuration-source';
+import { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
 
 // Augmenting the declaring module ("@rhombus-std/config/configuration-builder"),
 // NOT the barrel ("@rhombus-std/config") -- TS's declaration merging for a class
@@ -29,7 +29,7 @@ import { JsonStreamConfigurationSource } from "./JsonStreamConfigurationSource";
 // phantom second `ConfigurationBuilder` type the moment another augmentation
 // (e.g. core's own addInMemoryCollection) is also in the program. See the
 // "configuration-builder-subpath" note in @rhombus-std/config's package.json.
-declare module "@rhombus-std/config/configuration-builder" {
+declare module '@rhombus-std/config/configuration-builder' {
   // Generic arity + default MUST match the class (TS2428) -- `<T =
   // IndexedSection>`, same IndexedSection imported from @rhombus-std/config.core.
   interface ConfigurationBuilder<T = IndexedSection> {
@@ -44,7 +44,7 @@ declare module "@rhombus-std/config/configuration-builder" {
 // above -- see the "configuration-manager-subpath" note in
 // @rhombus-std/config's package.json. ConfigurationManager has no generic
 // type parameter, so there's no TS2428 arity concern here.
-declare module "@rhombus-std/config/configuration-manager" {
+declare module '@rhombus-std/config/configuration-manager' {
   interface ConfigurationManager {
     /** Registers a {@link JsonConfigurationSource} reading `path` (resolved against `process.cwd()`). */
     addJsonFile(path: string, opts?: JsonConfigurationSourceOptions): this;
@@ -63,14 +63,14 @@ declare module "@rhombus-std/config/configuration-manager" {
 // object literal satisfies `AugmentationSet` for both classes while
 // preserving each receiver's own concrete return type.
 export const JsonConfigurationExtensions = {
-  addJsonFile<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+  addJsonFile<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
     builder: TBuilder,
     path: string,
     opts?: JsonConfigurationSourceOptions,
   ): TBuilder {
     return builder.add(new JsonConfigurationSource(path, opts));
   },
-  addJsonStream<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+  addJsonStream<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
     builder: TBuilder,
     stream: StreamPayload,
   ): TBuilder {
@@ -80,8 +80,8 @@ export const JsonConfigurationExtensions = {
 
 registerAugmentations(nameof<IConfigurationBuilder>(), JsonConfigurationExtensions);
 
-export { JsonConfigurationSource } from "./json-configuration-source";
-export type { JsonConfigurationSourceOptions } from "./json-configuration-source";
-export { JsonConfigurationProvider } from "./JsonConfigurationProvider";
-export { JsonStreamConfigurationProvider } from "./JsonStreamConfigurationProvider";
-export { JsonStreamConfigurationSource } from "./JsonStreamConfigurationSource";
+export { JsonConfigurationSource } from './json-configuration-source';
+export type { JsonConfigurationSourceOptions } from './json-configuration-source';
+export { JsonConfigurationProvider } from './JsonConfigurationProvider';
+export { JsonStreamConfigurationProvider } from './JsonStreamConfigurationProvider';
+export { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';

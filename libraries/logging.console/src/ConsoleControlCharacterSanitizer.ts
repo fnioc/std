@@ -13,7 +13,7 @@
 const CHARS_TO_ESCAPE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g;
 
 function escapeChar(c: string): string {
-  return `\\u${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}`;
+  return `\\u${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
 }
 
 export const ConsoleControlCharacterSanitizer = {
@@ -23,7 +23,7 @@ export const ConsoleControlCharacterSanitizer = {
    * definite string out.
    */
   sanitize: ((value: string | undefined): string | undefined => {
-    if (value === undefined || value === "") {
+    if (value === undefined || value === '') {
       return value;
     }
     return value.replace(CHARS_TO_ESCAPE, escapeChar);

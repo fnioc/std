@@ -13,13 +13,13 @@
 // provider per manifest however many addBrowserConsole calls run, tracked in a
 // WeakMap keyed by `builder.services`.
 
-import { LoggingBuilderExtensions } from "@rhombus-std/logging";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { BrowserConsoleLoggerProvider } from "./BrowserConsoleLoggerProvider";
+import { LoggingBuilderExtensions } from '@rhombus-std/logging';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
-const registrations = new WeakMap<ILoggingBuilder["services"], BrowserConsoleLoggerProvider>();
+const registrations = new WeakMap<ILoggingBuilder['services'], BrowserConsoleLoggerProvider>();
 
 /**
  * The `BrowserConsoleLoggerExtensions` augmentation set for
@@ -49,14 +49,14 @@ export const BrowserConsoleLoggerExtensions = {
 // source is recompiled in this program under source-libs) so it still SATISFIES
 // `implements ILoggingBuilder`. The class-side merge is retired once logging is
 // dist-built (plan section 5).
-declare module "@rhombus-std/logging.core" {
+declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
     /** Instance-method form of {@link BrowserConsoleLoggerExtensions.addBrowserConsole}. */
     addBrowserConsole(): this;
   }
 }
 
-declare module "@rhombus-std/logging/internal/LoggingBuilder" {
+declare module '@rhombus-std/logging/internal/LoggingBuilder' {
   interface LoggingBuilder {
     addBrowserConsole(): this;
   }

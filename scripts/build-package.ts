@@ -18,9 +18,9 @@
 // core is the one exception: it is types-only (emitJs: false) and asserts no
 // runtime .js slips into dist.
 
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 /**
  * Resolve a single, self-consistent Go toolchain for the ttsc sidecar build and
@@ -36,14 +36,14 @@ import { join } from "node:path";
  */
 export function ttscEnv(repoRoot: string): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
-  env.GOTOOLCHAIN = "local";
-  const goTmp = join(repoRoot, "node_modules", ".cache", "ttsc-gobuild");
+  env.GOTOOLCHAIN = 'local';
+  const goTmp = join(repoRoot, 'node_modules', '.cache', 'ttsc-gobuild');
   mkdirSync(goTmp, { recursive: true });
   env.GOTMPDIR = goTmp;
-  let goBin = env.TTSC_GO_BINARY ?? "";
+  let goBin = env.TTSC_GO_BINARY ?? '';
   if (!goBin) {
-    const miseGo = spawnSync("mise", ["which", "go"], { encoding: "utf8" });
-    goBin = miseGo.status === 0 ? miseGo.stdout.trim() : "";
+    const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
+    goBin = miseGo.status === 0 ? miseGo.stdout.trim() : '';
     if (goBin) {
       env.TTSC_GO_BINARY = goBin;
     }
@@ -60,15 +60,15 @@ export function ttscEnv(repoRoot: string): NodeJS.ProcessEnv {
     // cleared to get the binary's own built-in root rather than the stale ambient.
     const probeEnv = { ...process.env } as NodeJS.ProcessEnv;
     delete probeEnv.GOROOT;
-    const goRoot = spawnSync(goBin, ["env", "GOROOT"], {
-      encoding: "utf8",
+    const goRoot = spawnSync(goBin, ['env', 'GOROOT'], {
+      encoding: 'utf8',
       env: probeEnv,
     });
     if (goRoot.status === 0 && goRoot.stdout.trim()) {
       env.GOROOT = goRoot.stdout.trim();
     }
   }
-  env.GOBIN = "";
+  env.GOBIN = '';
   return env;
 }
 
@@ -93,12 +93,12 @@ export async function ttscBunPlugin(
   ttscProject: string,
   transforms?: readonly string[],
 ): Promise<Bun.BunPlugin> {
-  Object.assign(process.env, ttscEnv(join(import.meta.dir, "..")));
-  const adapter = Bun.resolveSync("@ttsc/unplugin/bun", dir);
+  Object.assign(process.env, ttscEnv(join(import.meta.dir, '..')));
+  const adapter = Bun.resolveSync('@ttsc/unplugin/bun', dir);
   const ttscBun = (await import(adapter)).default as (
-    options: { project: string; plugins?: readonly { transform: string }[] },
+    options: { project: string; plugins?: readonly { transform: string; }[]; },
   ) => Bun.BunPlugin;
-  const options: { project: string; plugins?: readonly { transform: string }[] } = {
+  const options: { project: string; plugins?: readonly { transform: string; }[]; } = {
     project: join(dir, ttscProject),
   };
   if (transforms) {
@@ -172,10 +172,10 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   const {
     dir,
     name,
-    entrypoints = ["src/index.ts"],
+    entrypoints = ['src/index.ts'],
     external = [],
     emitJs = true,
-    dtsConfigs = ["rollup.dts.mjs"],
+    dtsConfigs = ['rollup.dts.mjs'],
     assertNoJs = false,
     splitting = entrypoints.length > 1,
     tspcProject,
@@ -186,7 +186,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     throw new Error(`${name}: set only one lowering engine — tspcProject XOR ttscProject`);
   }
 
-  const dist = join(dir, "dist");
+  const dist = join(dir, 'dist');
   rmSync(dist, { recursive: true, force: true });
 
   // The lowering stage. Both engines lower the same authoring sugar to the same
@@ -205,18 +205,18 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   let jsEntrypoints = entrypoints.map((entry) => join(dir, entry));
   let bunPlugins: Bun.BunPlugin[] = [];
   if (emitJs && tspcProject) {
-    stageDir = join(dir, ".tspc-out");
+    stageDir = join(dir, '.tspc-out');
     rmSync(stageDir, { recursive: true, force: true });
     const emit = spawnSync(
-      "bun",
-      ["x", "tspc", "-p", join(dir, tspcProject)],
-      { cwd: dir, stdio: "inherit" },
+      'bun',
+      ['x', 'tspc', '-p', join(dir, tspcProject)],
+      { cwd: dir, stdio: 'inherit' },
     );
     if (emit.status !== 0) {
       throw new Error(`${name}: tspc lowering emit failed (${tspcProject})`);
     }
     // Map each src entrypoint onto its emitted stage file (src/x.ts -> .tspc-out/x.js).
-    jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, "").replace(/\.ts$/, ".js")));
+    jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, '').replace(/\.ts$/, '.js')));
   } else if (emitJs && ttscProject) {
     bunPlugins = [await ttscBunPlugin(dir, ttscProject)];
   }
@@ -225,8 +225,8 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     const js = await Bun.build({
       entrypoints: jsEntrypoints,
       outdir: dist,
-      target: "node",
-      format: "esm",
+      target: 'node',
+      format: 'esm',
       external: [...external],
       splitting,
       plugins: bunPlugins,
@@ -240,22 +240,22 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     if (stageDir) {
       // Keep the per-file lowered emit as the white-box (`internal/*`) runtime
       // surface -- see the `tspcProject` doc above.
-      renameSync(stageDir, join(dist, "internal"));
+      renameSync(stageDir, join(dist, 'internal'));
     }
   }
 
   for (const config of dtsConfigs) {
     const dts = spawnSync(
-      "bun",
-      ["x", "rollup", "-c", join(dir, config)],
-      { cwd: dir, stdio: "inherit" },
+      'bun',
+      ['x', 'rollup', '-c', join(dir, config)],
+      { cwd: dir, stdio: 'inherit' },
     );
     if (dts.status !== 0) {
       throw new Error(`${name}: rollup d.ts bundling failed (${config})`);
     }
   }
 
-  if (assertNoJs && existsSync(join(dist, "index.js"))) {
+  if (assertNoJs && existsSync(join(dist, 'index.js'))) {
     throw new Error(`${name}: unexpected runtime artifact dist/index.js -- this package is types-only`);
   }
 }

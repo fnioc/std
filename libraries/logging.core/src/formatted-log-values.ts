@@ -17,7 +17,7 @@
 // when a message is actually emitted or a structured sink enumerates the state.
 
 /** The synthetic key the reference appends for the raw, unsubstituted template. */
-const ORIGINAL_FORMAT_KEY = "{OriginalFormat}";
+const ORIGINAL_FORMAT_KEY = '{OriginalFormat}';
 
 const NO_NAMES: readonly string[] = [];
 
@@ -28,18 +28,18 @@ const NO_NAMES: readonly string[] = [];
  * string. Single-pass so escapes and holes cannot interfere with each other.
  */
 export function formatMessage(template: string, args: readonly unknown[]): string {
-  let out = "";
+  let out = '';
   let argIndex = 0;
   let i = 0;
   while (i < template.length) {
     const ch = template[i];
-    if (ch === "{") {
-      if (template[i + 1] === "{") {
-        out += "{";
+    if (ch === '{') {
+      if (template[i + 1] === '{') {
+        out += '{';
         i += 2;
         continue;
       }
-      const close = template.indexOf("}", i + 1);
+      const close = template.indexOf('}', i + 1);
       if (close === -1) {
         // No closing brace — emit the rest verbatim.
         out += template.slice(i);
@@ -47,12 +47,12 @@ export function formatMessage(template: string, args: readonly unknown[]): strin
       }
       const value = argIndex < args.length ? args[argIndex] : undefined;
       argIndex += 1;
-      out += value === undefined || value === null ? "" : String(value);
+      out += value === undefined || value === null ? '' : String(value);
       i = close + 1;
       continue;
     }
-    if (ch === "}" && template[i + 1] === "}") {
-      out += "}";
+    if (ch === '}' && template[i + 1] === '}') {
+      out += '}';
       i += 2;
       continue;
     }
@@ -74,12 +74,12 @@ function parseValueNames(template: string): readonly string[] {
   let i = 0;
   while (i < template.length) {
     const ch = template[i];
-    if (ch === "{") {
-      if (template[i + 1] === "{") {
+    if (ch === '{') {
+      if (template[i + 1] === '{') {
         i += 2;
         continue;
       }
-      const close = template.indexOf("}", i + 1);
+      const close = template.indexOf('}', i + 1);
       if (close === -1) {
         break;
       }
@@ -89,7 +89,7 @@ function parseValueNames(template: string): readonly string[] {
       i = close + 1;
       continue;
     }
-    if (ch === "}" && template[i + 1] === "}") {
+    if (ch === '}' && template[i + 1] === '}') {
       i += 2;
       continue;
     }

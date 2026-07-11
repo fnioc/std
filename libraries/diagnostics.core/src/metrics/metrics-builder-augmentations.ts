@@ -22,18 +22,18 @@
 // -- the former `*Rule` suffix, added only to avoid a top-level free-function clash,
 // is dropped (#105).
 
-import type { Ctor, DepSlot, Token } from "@rhombus-std/di.core";
-import type { ConfigureOptions } from "@rhombus-std/options";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { Ctor, DepSlot, Token } from '@rhombus-std/di.core';
+import type { ConfigureOptions } from '@rhombus-std/options';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from "../tokens";
-import type { IMetricsBuilder } from "./IMetricsBuilder";
-import { InstrumentRule } from "./InstrumentRule";
-import { METER_SCOPE_ALL, MeterScope } from "./meter-scope";
-import type { IMetricsListener } from "./metrics-listener";
-import { MetricsOptions } from "./MetricsOptions";
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from '../tokens';
+import type { IMetricsBuilder } from './IMetricsBuilder';
+import { InstrumentRule } from './InstrumentRule';
+import { METER_SCOPE_ALL, MeterScope } from './meter-scope';
+import type { IMetricsListener } from './metrics-listener';
+import { MetricsOptions } from './MetricsOptions';
 
 /**
  * The `MetricsOptions`-targeted rule mutators (docs §28) -- the value-object
@@ -175,7 +175,7 @@ export const MetricsBuilderExtensions = {
 // the one publish-resolvable specifier both the in-package and downstream sites
 // can share (the §38 merge-identity rule needs every site on one module file),
 // so both flip here -- matching di.core's `ServiceManifest` all-barrel pattern.
-declare module "@rhombus-std/diagnostics.core" {
+declare module '@rhombus-std/diagnostics.core' {
   interface IMetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;

@@ -13,19 +13,15 @@
 // MetricListenerConfigurationFactory `addMetrics` registers enumerates to build
 // each listener's merged configuration view.
 
-import type { IConfiguration } from "@rhombus-std/config";
-import {
-  type IMetricsBuilder,
-  METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-  METRICS_CONFIGURATION_TOKEN,
-  METRICS_CONFIGURE_TOKEN,
-} from "@rhombus-std/diagnostics.core";
-import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { IConfiguration } from '@rhombus-std/config';
+import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIGURATION_TOKEN,
+  METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
+import { ConfigurationChangeTokenSource } from '@rhombus-std/options.augmentations';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
-import { MetricsConfiguration } from "./MetricsConfiguration";
-import { MetricsConfigureOptions } from "./MetricsConfigureOptions";
+import { MetricsConfiguration } from './MetricsConfiguration';
+import { MetricsConfigureOptions } from './MetricsConfigureOptions';
 
 /** The `MetricsBuilderConfigurationExtensions` augmentation set for {@link IMetricsBuilder} (docs §28). */
 export const MetricsBuilderConfigurationExtensions = {
@@ -58,7 +54,7 @@ export const MetricsBuilderConfigurationExtensions = {
 // The barrel is publish-resolvable and, shared with diagnostics.core's merge,
 // keeps every site for this interface on one module file (the §38 merge-identity
 // rule), so the concrete builders still satisfy `implements IMetricsBuilder`.
-declare module "@rhombus-std/diagnostics.core" {
+declare module '@rhombus-std/diagnostics.core' {
   interface IMetricsBuilder {
     addMetricsConfiguration(configuration: IConfiguration): this;
   }

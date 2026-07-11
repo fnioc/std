@@ -9,7 +9,7 @@
 // the lazy `#files == null` / `#directories == null` guards carry the same
 // once-only-init intent.
 
-import type { IDirectoryContents, IFileInfo, IFileProvider } from "@rhombus-std/fileproviders.core";
+import type { IDirectoryContents, IFileInfo, IFileProvider } from '@rhombus-std/fileproviders.core';
 
 /**
  * The merged contents of a directory across several {@link IFileProvider}

@@ -11,17 +11,14 @@
 // MemoryCache, so each resolves immediately (the reference's async members
 // likewise wrap their sync twins in a completed Task).
 
-import type {
-  DistributedCacheEntryOptions,
-  DistributedCacheExtensionMethods,
-  IDistributedCache,
-} from "@rhombus-std/caching.core";
-import type { ILoggerFactory } from "@rhombus-std/logging.core";
-import type { Options } from "@rhombus-std/options";
-import { type AbortSignal, augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { MemoryCache } from "./MemoryCache";
-import type { MemoryDistributedCacheOptions } from "./MemoryDistributedCacheOptions";
+import type { DistributedCacheEntryOptions, DistributedCacheExtensionMethods,
+  IDistributedCache } from '@rhombus-std/caching.core';
+import type { ILoggerFactory } from '@rhombus-std/logging.core';
+import type { Options } from '@rhombus-std/options';
+import { type AbortSignal, augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { MemoryCache } from './MemoryCache';
+import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // Class-side type merge for the registry-installed `DistributedCacheExtensions`
 // methods (setString/getString) -- no IDistributedCache interface merge (the

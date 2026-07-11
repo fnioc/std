@@ -4,46 +4,44 @@
 // deliberate, version-bump-gated change, so this test must be updated in the same
 // commit that changes the surface.
 
-import { MemoryCacheServiceCollectionExtensions } from "@rhombus-std/caching.memory";
-import { MemoryConfigurationBuilderExtensions } from "@rhombus-std/config";
-import { CommandLineConfigurationExtensions } from "@rhombus-std/config.commandline";
-import { EnvironmentVariablesExtensions } from "@rhombus-std/config.env";
-import { JsonConfigurationExtensions } from "@rhombus-std/config.json";
-import { MetricsServiceExtensions, TracingServiceExtensions } from "@rhombus-std/diagnostics";
-import { MetricsOptionsExtensions, TracingOptionsExtensions } from "@rhombus-std/diagnostics.core";
-import { LoggerFilterOptionsExtensions, LoggingServiceCollectionExtensions } from "@rhombus-std/logging";
-import {
-  OptionsConfigurationServiceCollectionExtensions,
-  OptionsServiceCollectionExtensions,
-} from "@rhombus-std/options.augmentations";
-import { describe, expect, test } from "bun:test";
+import { MemoryCacheServiceCollectionExtensions } from '@rhombus-std/caching.memory';
+import { MemoryConfigurationBuilderExtensions } from '@rhombus-std/config';
+import { CommandLineConfigurationExtensions } from '@rhombus-std/config.commandline';
+import { EnvironmentVariablesExtensions } from '@rhombus-std/config.env';
+import { JsonConfigurationExtensions } from '@rhombus-std/config.json';
+import { MetricsServiceExtensions, TracingServiceExtensions } from '@rhombus-std/diagnostics';
+import { MetricsOptionsExtensions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
+import { LoggerFilterOptionsExtensions, LoggingServiceCollectionExtensions } from '@rhombus-std/logging';
+import { OptionsConfigurationServiceCollectionExtensions,
+  OptionsServiceCollectionExtensions } from '@rhombus-std/options.augmentations';
+import { describe, expect, test } from 'bun:test';
 
 const keys = (set: object): string[] => Object.keys(set).sort();
 
-describe("standalone augmentation surface (member-name snapshots)", () => {
-  test("config providers", () => {
-    expect(keys(JsonConfigurationExtensions)).toEqual(["addJsonFile", "addJsonStream"]);
-    expect(keys(EnvironmentVariablesExtensions)).toEqual(["addEnvironmentVariables"]);
-    expect(keys(CommandLineConfigurationExtensions)).toEqual(["addCommandLine"]);
-    expect(keys(MemoryConfigurationBuilderExtensions)).toEqual(["addInMemoryCollection"]);
+describe('standalone augmentation surface (member-name snapshots)', () => {
+  test('config providers', () => {
+    expect(keys(JsonConfigurationExtensions)).toEqual(['addJsonFile', 'addJsonStream']);
+    expect(keys(EnvironmentVariablesExtensions)).toEqual(['addEnvironmentVariables']);
+    expect(keys(CommandLineConfigurationExtensions)).toEqual(['addCommandLine']);
+    expect(keys(MemoryConfigurationBuilderExtensions)).toEqual(['addInMemoryCollection']);
   });
 
-  test("ServiceManifest augmentations", () => {
-    expect(keys(MetricsServiceExtensions)).toEqual(["addMetrics"]);
-    expect(keys(TracingServiceExtensions)).toEqual(["addTracing"]);
-    expect(keys(LoggingServiceCollectionExtensions)).toEqual(["addLogging"]);
-    expect(keys(MemoryCacheServiceCollectionExtensions)).toEqual(["addDistributedMemoryCache", "addMemoryCache"]);
-    expect(keys(OptionsServiceCollectionExtensions)).toEqual(["addOptions", "postConfigure", "validate"]);
-    expect(keys(OptionsConfigurationServiceCollectionExtensions)).toEqual(["configure"]);
+  test('ServiceManifest augmentations', () => {
+    expect(keys(MetricsServiceExtensions)).toEqual(['addMetrics']);
+    expect(keys(TracingServiceExtensions)).toEqual(['addTracing']);
+    expect(keys(LoggingServiceCollectionExtensions)).toEqual(['addLogging']);
+    expect(keys(MemoryCacheServiceCollectionExtensions)).toEqual(['addDistributedMemoryCache', 'addMemoryCache']);
+    expect(keys(OptionsServiceCollectionExtensions)).toEqual(['addOptions', 'postConfigure', 'validate']);
+    expect(keys(OptionsConfigurationServiceCollectionExtensions)).toEqual(['configure']);
   });
 
-  test("value-object augmentations (§29/#105)", () => {
-    expect(keys(LoggerFilterOptionsExtensions)).toEqual(["addFilter"]);
-    expect(keys(MetricsOptionsExtensions)).toEqual(["disableMetrics", "enableMetrics"]);
-    expect(keys(TracingOptionsExtensions)).toEqual(["disableTracing", "enableTracing"]);
+  test('value-object augmentations (§29/#105)', () => {
+    expect(keys(LoggerFilterOptionsExtensions)).toEqual(['addFilter']);
+    expect(keys(MetricsOptionsExtensions)).toEqual(['disableMetrics', 'enableMetrics']);
+    expect(keys(TracingOptionsExtensions)).toEqual(['disableTracing', 'enableTracing']);
   });
 
-  test("every member is a receiver-first function", () => {
+  test('every member is a receiver-first function', () => {
     for (
       const set of [
         JsonConfigurationExtensions,

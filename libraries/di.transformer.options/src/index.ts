@@ -21,11 +21,11 @@
 // `@rhombus-std/di.core` (`addOptions<T>()`). Side-effect import: it carries a
 // `declare module "@rhombus-std/di.core"` augmentation that must enter the program
 // of any consumer that references this package's types.
-import "./augment.js";
+import './augment.js';
 
 // ts-patch entry point (default + named `transform`) and the test-drivable factory.
-export { createTransformerFactory, default as transformer, transform } from "./transformer.js";
+export { createTransformerFactory, default as transformer, transform } from './transformer.js';
 
 // Diagnostic surface — exported so downstream tooling (and tests) can assert on
 // the stable code without matching message text.
-export { type Diagnostic, DiagnosticCode, type DiagnosticSink } from "./diagnostics.js";
+export { type Diagnostic, DiagnosticCode, type DiagnosticSink } from './diagnostics.js';

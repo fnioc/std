@@ -4,8 +4,8 @@
 // library, that indirection isn't worth the extra layer, so the path/
 // optionality handling is folded in directly here.
 
-import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { JsonConfigurationProvider } from "./JsonConfigurationProvider";
+import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from '@rhombus-std/config.core';
+import { JsonConfigurationProvider } from './JsonConfigurationProvider';
 
 /** Options accepted by {@link JsonConfigurationSource}'s constructor. */
 export interface JsonConfigurationSourceOptions {

@@ -8,8 +8,8 @@
 // (`...<$1>`) is registered by the no-arg `addConfiguration`, so resolving any
 // closing constructs a `LoggerProviderConfiguration` for that provider.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import { closeToken, type Token } from "@rhombus-std/di.core";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import { closeToken, type Token } from '@rhombus-std/di.core';
 
 /**
  * Allows access to the configuration section associated with a logger
@@ -28,7 +28,7 @@ export interface ILoggerProviderConfiguration<T> {
 // the generic's base for this declaring package. Kept module-local; every
 // external use site goes through the closing helper below (or derives the
 // closed token inline with `nameof`).
-const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = "@rhombus-std/logging.configuration:ILoggerProviderConfiguration";
+const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.configuration:ILoggerProviderConfiguration';
 
 /**
  * The closed di token for {@link ILoggerProviderConfiguration}`<providerType>`

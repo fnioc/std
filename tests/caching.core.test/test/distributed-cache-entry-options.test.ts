@@ -6,20 +6,20 @@
 // singleton -- caching.core is the ttsc build pilot, which does not (yet) emit
 // the `dist/internal` white-box surface (see scripts/build-package.ts).
 
-import { DistributedCacheEntryExtensions, DistributedCacheEntryOptions } from "@rhombus-std/caching.core";
-import { describe, expect, test } from "bun:test";
+import { DistributedCacheEntryExtensions, DistributedCacheEntryOptions } from '@rhombus-std/caching.core';
+import { describe, expect, test } from 'bun:test';
 
-describe("DistributedCacheEntryOptions", () => {
-  test("defaults to everything unset", () => {
+describe('DistributedCacheEntryOptions', () => {
+  test('defaults to everything unset', () => {
     const options = new DistributedCacheEntryOptions();
     expect(options.absoluteExpiration).toBeUndefined();
     expect(options.absoluteExpirationRelativeToNow).toBeUndefined();
     expect(options.slidingExpiration).toBeUndefined();
   });
 
-  test("stores and clears each expiration knob", () => {
+  test('stores and clears each expiration knob', () => {
     const options = new DistributedCacheEntryOptions();
-    const absolute = new Date("2030-01-01T00:00:00Z");
+    const absolute = new Date('2030-01-01T00:00:00Z');
 
     options.absoluteExpiration = absolute;
     options.absoluteExpirationRelativeToNow = 5_000;
@@ -36,7 +36,7 @@ describe("DistributedCacheEntryOptions", () => {
     expect(options.slidingExpiration).toBeUndefined();
   });
 
-  test("rejects non-positive relative and sliding expirations", () => {
+  test('rejects non-positive relative and sliding expirations', () => {
     const options = new DistributedCacheEntryOptions();
     expect(() => {
       options.absoluteExpirationRelativeToNow = 0;
@@ -53,9 +53,9 @@ describe("DistributedCacheEntryOptions", () => {
   });
 });
 
-describe("DistributedCacheEntryExtensions — both forms", () => {
-  test("method form chains and discriminates relative vs absolute", () => {
-    const absolute = new Date("2030-01-01T00:00:00Z");
+describe('DistributedCacheEntryExtensions — both forms', () => {
+  test('method form chains and discriminates relative vs absolute', () => {
+    const absolute = new Date('2030-01-01T00:00:00Z');
     const options = new DistributedCacheEntryOptions()
       .setAbsoluteExpiration(absolute)
       .setSlidingExpiration(2_000);
@@ -67,7 +67,7 @@ describe("DistributedCacheEntryExtensions — both forms", () => {
     expect(relative.absoluteExpiration).toBeUndefined();
   });
 
-  test("standalone member form matches the method form", () => {
+  test('standalone member form matches the method form', () => {
     const viaMember = DistributedCacheEntryExtensions.setSlidingExpiration(
       DistributedCacheEntryExtensions.setAbsoluteExpiration(new DistributedCacheEntryOptions(), 3_000),
       2_000,

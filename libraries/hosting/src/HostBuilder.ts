@@ -9,21 +9,17 @@
 // which side-effect-imports the provider packages). Service registration flows
 // through `@rhombus-std/di`'s `ServiceManifest`.
 
-import { ConfigurationManager } from "@rhombus-std/config";
-import type { IConfigurationBuilder } from "@rhombus-std/config.core";
-import { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProviderFactory } from "@rhombus-std/di.core";
-import type { HostBuilderContext, IHost, IHostBuilder } from "@rhombus-std/hosting.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Action } from "@rhombus-toolkit/func";
-import {
-  createFrameworkServices,
-  createHostingEnvironment,
-  populateFrameworkServices,
-  resolveHost,
-} from "./host-composition";
-import { resolveServiceProviderOptions } from "./service-provider-options-store";
+import { ConfigurationManager } from '@rhombus-std/config';
+import type { IConfigurationBuilder } from '@rhombus-std/config.core';
+import { ServiceManifest } from '@rhombus-std/di';
+import type { ServiceProviderFactory } from '@rhombus-std/di.core';
+import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Action } from '@rhombus-toolkit/func';
+import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices,
+  resolveHost } from './host-composition';
+import { resolveServiceProviderOptions } from './service-provider-options-store';
 
 /** A program initialization utility -- the classic {@link IHostBuilder}. */
 @augment(nameof<IHostBuilder>())
@@ -82,7 +78,7 @@ export class HostBuilder implements IHostBuilder {
   /** Runs the configuration actions and produces an initialized {@link IHost}. */
   public build(): IHost {
     if (this.#hostBuilt) {
-      throw new Error("Build can only be called once.");
+      throw new Error('Build can only be called once.');
     }
     this.#hostBuilt = true;
 

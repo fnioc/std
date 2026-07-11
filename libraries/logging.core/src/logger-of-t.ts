@@ -11,19 +11,19 @@
 // closest analog of the reference's type display name — std tokens are not
 // namespace-qualified, the one divergence from the reference category string.
 
-import type { Typeof } from "@rhombus-std/di.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import type { EventId } from "./event-id";
-import type { ILogger } from "./logger";
-import type { LoggerExtensionMethods } from "./logger-augmentations";
-import type { ILoggerFactory } from "./logger-factory";
-import type { LogLevel } from "./LogLevel";
+import type { Typeof } from '@rhombus-std/di.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import type { EventId } from './event-id';
+import type { ILogger } from './logger';
+import type { LoggerExtensionMethods } from './logger-augmentations';
+import type { ILoggerFactory } from './logger-factory';
+import type { LogLevel } from './LogLevel';
 
 /** The category name carried by a di token — the segment after the first `:`. */
 function categoryFromToken(token: string): string {
-  const separator = token.indexOf(":");
+  const separator = token.indexOf(':');
   return separator === -1 ? token : token.slice(separator + 1);
 }
 

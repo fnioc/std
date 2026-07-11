@@ -3,10 +3,10 @@
 // a hand-built fake Resolver so the unit stays independent of the DI runtime --
 // the augmentation wiring is covered black-box in options.augmentations.test.
 
-import type { Options } from "@rhombus-std/options/internal/options";
-import { OptionsValidationError } from "@rhombus-std/options/internal/OptionsValidationError";
-import { StartupValidator } from "@rhombus-std/options/internal/StartupValidator";
-import { describe, expect, test } from "bun:test";
+import type { Options } from '@rhombus-std/options/internal/options';
+import { OptionsValidationError } from '@rhombus-std/options/internal/OptionsValidationError';
+import { StartupValidator } from '@rhombus-std/options/internal/StartupValidator';
+import { describe, expect, test } from 'bun:test';
 
 // The constructor's first parameter is di.core's `Resolver`; reference it
 // structurally so the test needs no di.core dependency.
@@ -48,8 +48,8 @@ function resolverThrowing(error: unknown): FakeResolver {
   } as unknown as FakeResolver;
 }
 
-describe("StartupValidator.validate", () => {
-  test("all targets pass -> does not throw, forcing each value", () => {
+describe('StartupValidator.validate', () => {
+  test('all targets pass -> does not throw, forcing each value', () => {
     let reads = 0;
     const passing: Options<unknown> = {
       get value(): unknown {
@@ -57,51 +57,51 @@ describe("StartupValidator.validate", () => {
         return { ok: true };
       },
     };
-    const validator = new StartupValidator(resolverOf({ "a": passing, "b": passing }), ["a", "b"]);
+    const validator = new StartupValidator(resolverOf({ a: passing, b: passing }), ['a', 'b']);
 
     expect(() => validator.validate()).not.toThrow();
     expect(reads).toBe(2);
   });
 
-  test("a single failure rethrows that OptionsValidationError as-is", () => {
-    const failure = new OptionsValidationError(["port must be positive"]);
-    const validator = new StartupValidator(resolverOf({ "a": failing(failure) }), ["a"]);
+  test('a single failure rethrows that OptionsValidationError as-is', () => {
+    const failure = new OptionsValidationError(['port must be positive']);
+    const validator = new StartupValidator(resolverOf({ a: failing(failure) }), ['a']);
 
     expect(() => validator.validate()).toThrow(failure);
   });
 
-  test("multiple failures throw one AggregateError carrying each", () => {
-    const first = new OptionsValidationError(["first bad"]);
-    const second = new OptionsValidationError(["second bad"]);
+  test('multiple failures throw one AggregateError carrying each', () => {
+    const first = new OptionsValidationError(['first bad']);
+    const second = new OptionsValidationError(['second bad']);
     const validator = new StartupValidator(
-      resolverOf({ "a": failing(first), "b": failing(second) }),
-      ["a", "b"],
+      resolverOf({ a: failing(first), b: failing(second) }),
+      ['a', 'b'],
     );
 
     try {
       validator.validate();
-      throw new Error("expected validate() to throw");
+      throw new Error('expected validate() to throw');
     } catch (error) {
       expect(error).toBeInstanceOf(AggregateError);
       expect((error as AggregateError).errors).toEqual([first, second]);
     }
   });
 
-  test("a validation error thrown eagerly from resolve() is caught like a .value failure", () => {
-    const failure = new OptionsValidationError(["eager fail"]);
-    const validator = new StartupValidator(resolverThrowing(failure), ["a"]);
+  test('a validation error thrown eagerly from resolve() is caught like a .value failure', () => {
+    const failure = new OptionsValidationError(['eager fail']);
+    const validator = new StartupValidator(resolverThrowing(failure), ['a']);
 
     expect(() => validator.validate()).toThrow(failure);
   });
 
-  test("a non-validation error propagates immediately, unwrapped", () => {
-    const boom = new TypeError("not a validation failure");
-    const validator = new StartupValidator(resolverOf({ "a": failing(boom) }), ["a"]);
+  test('a non-validation error propagates immediately, unwrapped', () => {
+    const boom = new TypeError('not a validation failure');
+    const validator = new StartupValidator(resolverOf({ a: failing(boom) }), ['a']);
 
     expect(() => validator.validate()).toThrow(boom);
   });
 
-  test("duplicate tokens are forced only once", () => {
+  test('duplicate tokens are forced only once', () => {
     let reads = 0;
     const counted: Options<unknown> = {
       get value(): unknown {
@@ -109,7 +109,7 @@ describe("StartupValidator.validate", () => {
         return 1;
       },
     };
-    const validator = new StartupValidator(resolverOf({ "a": counted }), ["a", "a", "a"]);
+    const validator = new StartupValidator(resolverOf({ a: counted }), ['a', 'a', 'a']);
 
     validator.validate();
     expect(reads).toBe(1);

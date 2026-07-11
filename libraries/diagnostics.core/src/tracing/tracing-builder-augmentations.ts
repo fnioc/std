@@ -24,17 +24,17 @@
 // members of the two literals; the former `*Rule` suffix (a free-function-clash
 // workaround) is dropped now that #115 gives each its own literal (#105).
 
-import type { ConfigureOptions } from "@rhombus-std/options";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
+import type { ConfigureOptions } from '@rhombus-std/options';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from "../tokens";
-import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from "./activity-source-scopes";
-import { ActivityListenerBuilder } from "./ActivityListenerBuilder";
-import type { ITracingBuilder } from "./ITracingBuilder";
-import { TracingOptions } from "./TracingOptions";
-import { TracingRule } from "./TracingRule";
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
+import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './activity-source-scopes';
+import { ActivityListenerBuilder } from './ActivityListenerBuilder';
+import type { ITracingBuilder } from './ITracingBuilder';
+import { TracingOptions } from './TracingOptions';
+import { TracingRule } from './TracingRule';
 
 /**
  * The `TracingOptions`-targeted rule mutators (docs §28) -- the value-object overloads
@@ -101,7 +101,7 @@ export const TracingBuilderExtensions = {
     configure: Func<[ActivityListenerBuilder], void>,
   ): ITracingBuilder {
     if (!name) {
-      throw new Error("A tracing listener name must be a non-empty string.");
+      throw new Error('A tracing listener name must be a non-empty string.');
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
@@ -164,7 +164,7 @@ export const TracingBuilderExtensions = {
 // reaches a published consumer if its specifier survives publish. The barrel is
 // the one publish-resolvable specifier both sites can share (the §38
 // merge-identity rule needs every site on one module file), so both flip here.
-declare module "@rhombus-std/diagnostics.core" {
+declare module '@rhombus-std/diagnostics.core' {
   interface ITracingBuilder {
     addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
     clearTracingListeners(): this;

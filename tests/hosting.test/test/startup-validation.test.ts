@@ -9,18 +9,18 @@
 // it. `@rhombus-std/options.augmentations` is a side-effect import so the
 // `addOptions`/`validate`/`validateOnStart` manifest verbs are installed.
 
-import { HostBuilder } from "@rhombus-std/hosting/internal/index";
-import { OptionsValidationError } from "@rhombus-std/options";
-import "@rhombus-std/options.augmentations";
-import { expect, test } from "bun:test";
+import { HostBuilder } from '@rhombus-std/hosting/internal/index';
+import { OptionsValidationError } from '@rhombus-std/options';
+import '@rhombus-std/options.augmentations';
+import { expect, test } from 'bun:test';
 
 interface ServerOptions {
   port: number;
 }
 
-const OPTIONS_TOKEN = "test:ServerOptions";
+const OPTIONS_TOKEN = 'test:ServerOptions';
 
-test("a failing validateOnStart aborts host start before any hosted service runs", async () => {
+test('a failing validateOnStart aborts host start before any hosted service runs', async () => {
   let started = false;
 
   class Worker {
@@ -32,8 +32,8 @@ test("a failing validateOnStart aborts host start before any hosted service runs
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 })).as("singleton");
-    services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, "port must be positive");
+    services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 })).as('singleton');
+    services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services.validateOnStart(OPTIONS_TOKEN);
     services.addHostedService(Worker, [[]]);
   });
@@ -48,7 +48,7 @@ test("a failing validateOnStart aborts host start before any hosted service runs
   host[Symbol.dispose]();
 });
 
-test("valid options let validateOnStart pass and the host starts normally", async () => {
+test('valid options let validateOnStart pass and the host starts normally', async () => {
   let started = false;
 
   class Worker {
@@ -60,8 +60,8 @@ test("valid options let validateOnStart pass and the host starts normally", asyn
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 })).as("singleton");
-    services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, "port must be positive");
+    services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 })).as('singleton');
+    services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services.validateOnStart(OPTIONS_TOKEN);
     services.addHostedService(Worker, [[]]);
   });

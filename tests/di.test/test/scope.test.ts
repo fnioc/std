@@ -1,6 +1,6 @@
-import { ServiceManifest, UnregisteredTokenError } from "@rhombus-std/di";
-import { describe, expect, test } from "bun:test";
-import { defineDeps, T } from "./fixtures.js";
+import { ServiceManifest, UnregisteredTokenError } from '@rhombus-std/di';
+import { describe, expect, test } from 'bun:test';
+import { defineDeps, T } from './fixtures.js';
 
 // ServiceProvider / Scope chain + hierarchical lookup, transient fallback when
 // no matching frame is open, and THE critical rule (§"construct relative to the
@@ -8,32 +8,32 @@ import { defineDeps, T } from "./fixtures.js";
 // redesign — all registrations are sealed on ServiceManifest.build().
 
 class RealDb {
-  public readonly kind = "real";
+  public readonly kind = 'real';
 }
 class FakeDb {
-  public readonly kind = "fake";
+  public readonly kind = 'fake';
 }
 
-describe("scope chain + sealed registration lookup", () => {
-  test("a later builder registration shadows the earlier one (last-wins)", () => {
-    const services = new ServiceManifest<"singleton" | "request">();
-    services.add(T.Db, RealDb).as("request");
+describe('scope chain + sealed registration lookup', () => {
+  test('a later builder registration shadows the earlier one (last-wins)', () => {
+    const services = new ServiceManifest<'singleton' | 'request'>();
+    services.add(T.Db, RealDb).as('request');
     services.addValue(T.Db, new FakeDb());
 
     const root = services.build();
-    const req = root.createScope("request");
+    const req = root.createScope('request');
 
     // addValue was registered last — it wins across all scopes.
     const resolved = req.resolve<RealDb | FakeDb>(T.Db);
-    expect(resolved.kind).toBe("fake");
+    expect(resolved.kind).toBe('fake');
   });
 
-  test("lookup falls through to the builder base map when no override", () => {
-    const services = new ServiceManifest<"singleton" | "request">();
-    services.add(T.Db, RealDb).as("singleton");
+  test('lookup falls through to the builder base map when no override', () => {
+    const services = new ServiceManifest<'singleton' | 'request'>();
+    services.add(T.Db, RealDb).as('singleton');
 
-    const root = services.build().createScope("singleton");
-    const req = root.createScope("request");
+    const root = services.build().createScope('singleton');
+    const req = root.createScope('request');
 
     // No override anywhere — resolves through to the base map, cached on the
     // enclosing singleton frame and shared between the singleton scope and its
@@ -43,15 +43,15 @@ describe("scope chain + sealed registration lookup", () => {
     expect(fromReq).toBe(fromRoot);
   });
 
-  test("resolving an unregistered token throws UnregisteredTokenError", () => {
-    const services = new ServiceManifest<"singleton">();
+  test('resolving an unregistered token throws UnregisteredTokenError', () => {
+    const services = new ServiceManifest<'singleton'>();
     const root = services.build();
     expect(() => root.resolve(T.Db)).toThrow(UnregisteredTokenError);
   });
 
-  test("SEAL-ON-BUILD: builder mutations after build() do not affect the root", () => {
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Db, RealDb).as("singleton");
+  test('SEAL-ON-BUILD: builder mutations after build() do not affect the root', () => {
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Db, RealDb).as('singleton');
     const root = services.build();
 
     // Adding a new registration after build() must not leak into the sealed map.
@@ -59,26 +59,26 @@ describe("scope chain + sealed registration lookup", () => {
 
     // The root still resolves the original class registration.
     const resolved = root.resolve<RealDb | FakeDb>(T.Db);
-    expect(resolved.kind).toBe("real");
+    expect(resolved.kind).toBe('real');
     expect(resolved).toBeInstanceOf(RealDb);
   });
 });
 
-describe("no open frame ⇒ transient (uniform-tag fallback)", () => {
+describe('no open frame ⇒ transient (uniform-tag fallback)', () => {
   // A tagged registration whose frame is not open resolves transiently — a
   // fresh instance, no cache, no error. The construct-relative-to-owner rule
   // still holds, so a longer-lived service never CACHE-captures a shorter-lived
   // dep: with no enclosing frame for that dep, it gets a fresh transient.
   class RequestScoped {
-    public readonly kind = "request-scoped";
+    public readonly kind = 'request-scoped';
   }
   class SingletonNeedingRequest {
     public constructor(public readonly reqDep: RequestScoped) {}
   }
 
   test("(a) provider-level resolve with no scope open ⇒ fresh instance per call, even for 'singleton'-tagged", () => {
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, RequestScoped).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, RequestScoped).as('singleton');
 
     const provider = services.build(); // frameless
 
@@ -87,13 +87,13 @@ describe("no open frame ⇒ transient (uniform-tag fallback)", () => {
   });
 
   test("(b) a 'singleton'-tagged dep resolved inside only a 'request' frame ⇒ transient", () => {
-    const services = new ServiceManifest<"singleton" | "request">();
+    const services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(SingletonNeedingRequest, [[T.Service]]);
-    services.add(T.Service, RequestScoped).as("request");
-    services.add(T.Repo, SingletonNeedingRequest).as("singleton");
+    services.add(T.Service, RequestScoped).as('request');
+    services.add(T.Repo, SingletonNeedingRequest).as('singleton');
 
     // Open ONLY a request frame (no enclosing singleton).
-    const req = services.build().createScope("request");
+    const req = services.build().createScope('request');
 
     // SingletonNeedingRequest is "singleton"-tagged but no singleton frame is
     // open ⇒ it resolves transiently. Its "request"-tagged dep IS enclosed by
@@ -113,13 +113,13 @@ describe("no open frame ⇒ transient (uniform-tag fallback)", () => {
     class SingletonHolder {
       public constructor(public readonly reqDep: RequestScoped) {}
     }
-    const services = new ServiceManifest<"singleton" | "request">();
+    const services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(SingletonHolder, [[T.Service]]);
-    services.add(T.Service, RequestScoped).as("request");
-    services.add(T.Repo, SingletonHolder).as("singleton");
+    services.add(T.Service, RequestScoped).as('request');
+    services.add(T.Repo, SingletonHolder).as('singleton');
 
-    const root = services.build().createScope("singleton");
-    const req = root.createScope("request");
+    const root = services.build().createScope('singleton');
+    const req = root.createScope('request');
 
     // Resolved from the request scope, but the singleton owns SingletonHolder,
     // so its request dep resolves relative to the singleton frame — no enclosing
@@ -129,12 +129,12 @@ describe("no open frame ⇒ transient (uniform-tag fallback)", () => {
     expect(holder.reqDep).not.toBe(req.resolve(T.Service)); // NOT cache-captured
   });
 
-  test("a tag whose frame is never opened anywhere ⇒ transient (never auto-created)", () => {
-    const services = new ServiceManifest<"singleton" | "request" | "transaction">();
-    services.add(T.Db, RealDb).as("transaction"); // never opened
+  test('a tag whose frame is never opened anywhere ⇒ transient (never auto-created)', () => {
+    const services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
+    services.add(T.Db, RealDb).as('transaction'); // never opened
 
-    const root = services.build().createScope("singleton");
-    const req = root.createScope("request");
+    const root = services.build().createScope('singleton');
+    const req = root.createScope('request');
 
     // "transaction" is never opened — resolves transiently, fresh each time.
     expect(req.resolve(T.Db)).not.toBe(req.resolve(T.Db));
@@ -142,7 +142,7 @@ describe("no open frame ⇒ transient (uniform-tag fallback)", () => {
   });
 });
 
-describe("THE critical rule — construct relative to the owning scope", () => {
+describe('THE critical rule — construct relative to the owning scope', () => {
   // request → singleton. A request-scoped service depending on a singleton
   // resolves fine, and the singleton is shared across requests because it is
   // owned by the (shared) enclosing singleton frame.
@@ -153,15 +153,15 @@ describe("THE critical rule — construct relative to the owning scope", () => {
     public constructor(public readonly shared: Singleton) {}
   }
 
-  test("(c) nearest-frame caching works when the right frame is open — shared singleton across requests", () => {
-    const services = new ServiceManifest<"singleton" | "request">();
+  test('(c) nearest-frame caching works when the right frame is open — shared singleton across requests', () => {
+    const services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(RequestService, [[T.Logger]]);
-    services.add(T.Logger, Singleton).as("singleton");
-    services.add(T.Service, RequestService).as("request");
+    services.add(T.Logger, Singleton).as('singleton');
+    services.add(T.Service, RequestService).as('request');
 
-    const root = services.build().createScope("singleton");
-    const reqA = root.createScope("request");
-    const reqB = root.createScope("request");
+    const root = services.build().createScope('singleton');
+    const reqA = root.createScope('request');
+    const reqB = root.createScope('request');
 
     const a = reqA.resolve<RequestService>(T.Service);
     const b = reqB.resolve<RequestService>(T.Service);
@@ -175,18 +175,18 @@ describe("THE critical rule — construct relative to the owning scope", () => {
     // frame. Resolving A from a deep child still constructs B relative to that
     // frame, and B is cached there.
     class B {
-      public readonly id = "B";
+      public readonly id = 'B';
     }
     class A {
       public constructor(public readonly b: B) {}
     }
-    const services = new ServiceManifest<"singleton" | "request">();
+    const services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(A, [[T.B]]);
-    services.add(T.B, B).as("singleton");
-    services.add(T.A, A).as("singleton");
+    services.add(T.B, B).as('singleton');
+    services.add(T.A, A).as('singleton');
 
-    const root = services.build().createScope("singleton");
-    const deepChild = root.createScope("request").createScope("request");
+    const root = services.build().createScope('singleton');
+    const deepChild = root.createScope('request').createScope('request');
 
     const a = deepChild.resolve<A>(T.A);
     const bDirect = root.resolve<B>(T.B);

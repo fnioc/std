@@ -4,8 +4,8 @@
 // ME's `GetEnumerator() => Enumerable.Empty<IFileInfo>()` maps to an empty
 // iterator via a `*[Symbol.iterator]()` generator that yields nothing.
 
-import type { IDirectoryContents } from "./IDirectoryContents.js";
-import type { IFileInfo } from "./IFileInfo.js";
+import type { IDirectoryContents } from './IDirectoryContents.js';
+import type { IFileInfo } from './IFileInfo.js';
 
 /**
  * Represents a nonexistent directory.

@@ -7,7 +7,7 @@
 // stays runtime-free.
 
 /** `token(IGreeting)` — the shared collection element both libraries register at. */
-export const GREETING_TOKEN = "@rhombus-std/examples.contracts:IGreeting";
+export const GREETING_TOKEN = '@rhombus-std/examples.contracts:IGreeting';
 
 /** `token(IHealthCheck)` — the optional service this library alone registers. */
-export const HEALTH_CHECK_TOKEN = "@rhombus-std/examples.contracts:IHealthCheck";
+export const HEALTH_CHECK_TOKEN = '@rhombus-std/examples.contracts:IHealthCheck';

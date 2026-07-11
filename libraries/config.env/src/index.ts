@@ -9,16 +9,14 @@
 // names a runtime symbol from this package (only wants the sugar) needs a bare
 // side-effect import: `import "@rhombus-std/config.env";`.
 
-import type { ConfigurationBuilder } from "@rhombus-std/config";
-import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from "@rhombus-std/config.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import {
-  EnvironmentVariablesConfigurationSource,
-  type EnvironmentVariablesConfigurationSourceOptions,
-} from "./environment-variables-configuration-source";
+import type { ConfigurationBuilder } from '@rhombus-std/config';
+import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { EnvironmentVariablesConfigurationSource,
+  type EnvironmentVariablesConfigurationSourceOptions } from './environment-variables-configuration-source';
 
-declare module "@rhombus-std/config/configuration-builder" {
+declare module '@rhombus-std/config/configuration-builder' {
   // Generic arity + default MUST match the class (TS2428).
   interface ConfigurationBuilder<T = IndexedSection> {
     /**
@@ -32,7 +30,7 @@ declare module "@rhombus-std/config/configuration-builder" {
 
 // Same declare-merge-onto-the-declaring-module reasoning as above -- see the
 // "configuration-manager-subpath" note in @rhombus-std/config's package.json.
-declare module "@rhombus-std/config/configuration-manager" {
+declare module '@rhombus-std/config/configuration-manager' {
   interface ConfigurationManager {
     /**
      * Registers an {@link EnvironmentVariablesConfigurationSource} seeded from
@@ -50,7 +48,7 @@ declare module "@rhombus-std/config/configuration-manager" {
 // that returns itself" rather than pinned to ConfigurationBuilder<T> -- see
 // @rhombus-std/config's memory/index.ts for the full rationale.
 export const EnvironmentVariablesExtensions = {
-  addEnvironmentVariables<TBuilder extends { add(source: IConfigurationSource): TBuilder }>(
+  addEnvironmentVariables<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
     builder: TBuilder,
     options?: EnvironmentVariablesConfigurationSourceOptions,
   ): TBuilder {
@@ -60,10 +58,7 @@ export const EnvironmentVariablesExtensions = {
 
 registerAugmentations(nameof<IConfigurationBuilder>(), EnvironmentVariablesExtensions);
 
-export {
-  colonAndDotVariableNameTransformation,
-  defaultVariableNameTransformation,
-  EnvironmentVariablesConfigurationSource,
-} from "./environment-variables-configuration-source";
-export type { EnvironmentVariablesConfigurationSourceOptions } from "./environment-variables-configuration-source";
-export { EnvironmentVariablesConfigurationProvider } from "./EnvironmentVariablesConfigurationProvider";
+export { colonAndDotVariableNameTransformation, defaultVariableNameTransformation,
+  EnvironmentVariablesConfigurationSource } from './environment-variables-configuration-source';
+export type { EnvironmentVariablesConfigurationSourceOptions } from './environment-variables-configuration-source';
+export { EnvironmentVariablesConfigurationProvider } from './EnvironmentVariablesConfigurationProvider';

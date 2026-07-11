@@ -27,7 +27,7 @@ reload-capable -- a static snapshot has no `subscribe` at all.
 ## Basic usage
 
 ```ts
-import { Options } from "@rhombus-std/options";
+import { Options } from '@rhombus-std/options';
 
 // Static snapshot -- value never changes, no subscribe.
 const options = Options.of({ port: 8080 });
@@ -36,7 +36,7 @@ options.subscribe; // undefined
 
 // Reactive -- value re-reads getValue() on every access; subscribe wires a
 // listener through a change-token producer (see @rhombus-std/primitives).
-import { CancellationChangeToken } from "@rhombus-std/primitives";
+import { CancellationChangeToken } from '@rhombus-std/primitives';
 
 let controller = new AbortController();
 const monitor = Options.watch(
@@ -45,7 +45,7 @@ const monitor = Options.watch(
 );
 
 const registration = monitor.subscribe!((value) =>
-  console.log("changed", value)
+  console.log('changed', value)
 );
 controller.abort(); // logs "changed" with the latest value
 registration[Symbol.dispose]();
@@ -75,9 +75,9 @@ make base -> configure steps -> post-configure steps -> validate -> return
   semantic checks over the post-configured value.
 
 ```ts
-import { OptionsFactory, ValidateOptionsResult } from "@rhombus-std/options";
+import { OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 
-const factory = new OptionsFactory<{ port: number }>(
+const factory = new OptionsFactory<{ port: number; }>(
   () => ({ port: 0 }),
   [{ configure: (o) => (o.port = 8080) }],
   [{ postConfigure: (o) => (o.port = o.port || 80) }],
@@ -85,7 +85,7 @@ const factory = new OptionsFactory<{ port: number }>(
     validate: (o) =>
       o.port > 0
         ? ValidateOptionsResult.success
-        : ValidateOptionsResult.fail("port must be positive"),
+        : ValidateOptionsResult.fail('port must be positive'),
   }],
 );
 

@@ -5,7 +5,7 @@
 // surface `ServiceManifestBase`. Extension methods (AddListener/EnableMetrics)
 // register services against `services`.
 
-import type { ServiceManifestBase } from "@rhombus-std/di.core";
+import type { ServiceManifestBase } from '@rhombus-std/di.core';
 
 /**
  * Configures the metrics system by registering listeners and rules. Mirrors

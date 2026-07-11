@@ -14,9 +14,9 @@
 // `applicationError`, which the reference leaves unguarded; it is unguarded here
 // too.
 
-import { type EventId, formatLogValues, FormattedLogValues, type ILogger, LogLevel } from "@rhombus-std/logging.core";
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import { LoggerEventIds } from "./LoggerEventIds";
+import { type EventId, formatLogValues, FormattedLogValues, type ILogger, LogLevel } from '@rhombus-std/logging.core';
+import type { AugmentationSet } from '@rhombus-std/primitives';
+import { LoggerEventIds } from './LoggerEventIds';
 
 /** Coerces an arbitrary thrown value into an `Error` for the logging sink. */
 function toError(value: unknown): Error | undefined {
@@ -59,33 +59,33 @@ export const HostingLoggerExtensions = {
     logger.log(LogLevel.Critical, eventId, new FormattedLogValues(text, []), coerced, formatLogValues);
   },
   starting(logger: ILogger): void {
-    write(logger, LogLevel.Debug, LoggerEventIds.starting, "Hosting starting");
+    write(logger, LogLevel.Debug, LoggerEventIds.starting, 'Hosting starting');
   },
   started(logger: ILogger): void {
-    write(logger, LogLevel.Debug, LoggerEventIds.started, "Hosting started");
+    write(logger, LogLevel.Debug, LoggerEventIds.started, 'Hosting started');
   },
   stopping(logger: ILogger): void {
-    write(logger, LogLevel.Debug, LoggerEventIds.stopping, "Hosting stopping");
+    write(logger, LogLevel.Debug, LoggerEventIds.stopping, 'Hosting stopping');
   },
   stopped(logger: ILogger): void {
-    write(logger, LogLevel.Debug, LoggerEventIds.stopped, "Hosting stopped");
+    write(logger, LogLevel.Debug, LoggerEventIds.stopped, 'Hosting stopped');
   },
   stoppedWithException(logger: ILogger, error: unknown): void {
-    write(logger, LogLevel.Debug, LoggerEventIds.stoppedWithException, "Hosting shutdown exception", error);
+    write(logger, LogLevel.Debug, LoggerEventIds.stoppedWithException, 'Hosting shutdown exception', error);
   },
   backgroundServiceFaulted(logger: ILogger, error: unknown): void {
-    write(logger, LogLevel.Error, LoggerEventIds.backgroundServiceFaulted, "BackgroundService failed", error);
+    write(logger, LogLevel.Error, LoggerEventIds.backgroundServiceFaulted, 'BackgroundService failed', error);
   },
   backgroundServiceStoppingHost(logger: ILogger, error: unknown): void {
     write(
       logger,
       LogLevel.Critical,
       LoggerEventIds.backgroundServiceStoppingHost,
-      "A BackgroundService has thrown an unhandled exception, and the host is stopping.",
+      'A BackgroundService has thrown an unhandled exception, and the host is stopping.',
       error,
     );
   },
   hostedServiceStartupFaulted(logger: ILogger, error: unknown): void {
-    write(logger, LogLevel.Error, LoggerEventIds.hostedServiceStartupFaulted, "Hosting failed to start", error);
+    write(logger, LogLevel.Error, LoggerEventIds.hostedServiceStartupFaulted, 'Hosting failed to start', error);
   },
 } satisfies AugmentationSet<ILogger>;

@@ -25,23 +25,17 @@
 // parameter, the counter instruments) -- they need a meter/instrument analog
 // the diagnostics family deliberately does not provide (no listener runtime).
 
-import {
-  CacheItemPriority,
-  type CacheTryGetResult,
-  EvictionReason,
-  type ICacheEntry,
-  type IMemoryCache,
-  MemoryCacheStatistics,
-} from "@rhombus-std/caching.core";
-import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
-import type { Options } from "@rhombus-std/options";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { assertNever } from "@rhombus-toolkit/type-guards";
-import { CacheEntry, type IMemoryCacheHost } from "./cache-entry";
-import type { MemoryCacheOptions } from "./MemoryCacheOptions";
-import { NullLogger } from "./null-logger";
+import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache,
+  MemoryCacheStatistics } from '@rhombus-std/caching.core';
+import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
+import type { Options } from '@rhombus-std/options';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import { CacheEntry, type IMemoryCacheHost } from './cache-entry';
+import type { MemoryCacheOptions } from './MemoryCacheOptions';
+import { NullLogger } from './null-logger';
 
 /** A local in-memory cache backed by a `Map`. */
 @augment(nameof<IMemoryCache>())
@@ -75,7 +69,7 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
    */
   public constructor(optionsAccessor: Options<MemoryCacheOptions>, loggerFactory?: ILoggerFactory) {
     this.#options = optionsAccessor.value;
-    this.#logger = loggerFactory ? loggerFactory.createLogger("MemoryCache") : NullLogger;
+    this.#logger = loggerFactory ? loggerFactory.createLogger('MemoryCache') : NullLogger;
     this.#lastExpirationScan = this.#now();
     this.#trackStatistics = this.#options.trackStatistics;
     this.trackLinkedCacheEntries = this.#options.trackLinkedCacheEntries;
@@ -106,7 +100,7 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
 
   #checkDisposed(): void {
     if (this.#disposed) {
-      throw new Error("MemoryCache has been disposed.");
+      throw new Error('MemoryCache has been disposed.');
     }
   }
 

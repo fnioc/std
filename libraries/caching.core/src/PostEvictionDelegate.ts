@@ -4,9 +4,9 @@
 // The reference `object key` / `object? value` map to `unknown`; `object?
 // state` (the state captured at registration) maps to `unknown`.
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
-import type { EvictionReason } from "./EvictionReason";
+import type { EvictionReason } from './EvictionReason';
 
 /**
  * The callback method invoked after a cache entry is evicted.

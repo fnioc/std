@@ -3,17 +3,8 @@
 // plugin-less parity test). Static `built` counters let tests assert lifetime
 // behaviour (one construction for a singleton; fresh for transient / request).
 
-import type {
-  IConfig,
-  IDbConnection,
-  ILogger,
-  IReport,
-  IReportFactory,
-  IReportService,
-  IRequestContext,
-  IThunk,
-  IUserRepo,
-} from "./contracts.js";
+import type { IConfig, IDbConnection, ILogger, IReport, IReportFactory, IReportService, IRequestContext, IThunk,
+  IUserRepo } from './contracts.js';
 
 export class ConsoleLogger implements ILogger {
   public static built = 0;
@@ -56,7 +47,7 @@ export class SqlUserRepo implements IUserRepo {
   }
   public find(id: number): string {
     this.logger.log(`find ${id}`);
-    const from = this.table ?? "users";
+    const from = this.table ?? 'users';
     return this.db.query(`SELECT * FROM ${from} WHERE id=${id}`);
   }
 }

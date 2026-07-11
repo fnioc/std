@@ -3,8 +3,8 @@
 // #46). Lives in config.core alongside the other six IConfiguration* types:
 // the reference source ships it in Abstractions, not the concrete engine.
 
-import type { IConfiguration } from "./IConfiguration";
-import type { IConfigurationBuilder } from "./IConfigurationBuilder";
+import type { IConfiguration } from './IConfiguration';
+import type { IConfigurationBuilder } from './IConfigurationBuilder';
 
 /**
  * Represents a mutable configuration object. It is both an

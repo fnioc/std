@@ -8,9 +8,9 @@
 // `LoggerFilterOptions` assembly's configure pipeline, so it composes with
 // config-bound and `addFilter` steps in registration order.
 
-import type { LogLevel } from "@rhombus-std/logging.core";
-import type { ConfigureOptions } from "@rhombus-std/options";
-import type { LoggerFilterOptions } from "./logger-filter-options";
+import type { LogLevel } from '@rhombus-std/logging.core';
+import type { ConfigureOptions } from '@rhombus-std/options';
+import type { LoggerFilterOptions } from './logger-filter-options';
 
 /** A configure step setting {@link LoggerFilterOptions.minLevel} to a fixed level. */
 export class DefaultLoggerLevelConfigureOptions implements ConfigureOptions<LoggerFilterOptions> {

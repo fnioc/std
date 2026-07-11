@@ -12,9 +12,9 @@
 // derives for the same types — the satellite's `tToken` MUST match the token a
 // `services.add<T>(…)` registration lowered to, or the dependency never resolves.
 
-import type { Func } from "@rhombus-toolkit/func";
-import ts from "typescript";
-import { stripExt, type TokenContext } from "./tokens.js";
+import type { Func } from '@rhombus-toolkit/func';
+import ts from 'typescript';
+import { stripExt, type TokenContext } from './tokens.js';
 
 /** Options for {@link createTokenContext}. */
 export interface TokenContextOptions {
@@ -42,9 +42,9 @@ export function createTokenContext(
   // path) into the declaration file the program loaded (`.d.ts`). Declaration
   // files outrank `.js` at the same stem — that's the module we read exports of.
   const byStem = new Map<string, ts.SourceFile>();
-  const stemRank = (name: string): number => name.endsWith(".d.ts") ? 3 : /\.[mc]?tsx?$/.test(name) ? 2 : 1;
+  const stemRank = (name: string): number => name.endsWith('.d.ts') ? 3 : /\.[mc]?tsx?$/.test(name) ? 2 : 1;
   for (const sf of program.getSourceFiles()) {
-    const stem = stripExt(sf.fileName.replace(/\\/g, "/"));
+    const stem = stripExt(sf.fileName.replace(/\\/g, '/'));
     const existing = byStem.get(stem);
     if (!existing || stemRank(sf.fileName) >= stemRank(existing.fileName)) {
       byStem.set(stem, sf);
@@ -66,7 +66,7 @@ export function createTokenContext(
 function computeProjectRoot(program: ts.Program): string {
   const opts = program.getCompilerOptions();
   if (opts.rootDir) {
-    return opts.rootDir.replace(/\\/g, "/");
+    return opts.rootDir.replace(/\\/g, '/');
   }
   // `getCommonSourceDirectory` exists at runtime but is not in the public
   // typings; fall back to the current directory when unavailable.
@@ -74,5 +74,5 @@ function computeProjectRoot(program: ts.Program): string {
     getCommonSourceDirectory?: Func<[], string>;
   };
   const common = withCommon.getCommonSourceDirectory?.();
-  return (common || program.getCurrentDirectory()).replace(/\\/g, "/");
+  return (common || program.getCurrentDirectory()).replace(/\\/g, '/');
 }

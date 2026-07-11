@@ -17,10 +17,10 @@
 // `colonAndDotVariableNameTransformation` below is a drop-in alternative to
 // the default transform, for names that also want a `.` delimiter.
 
-import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from "@rhombus-std/config.core";
-import { process } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import { EnvironmentVariablesConfigurationProvider } from "./EnvironmentVariablesConfigurationProvider";
+import type { IConfigurationBuilder, IConfigurationProvider, IConfigurationSource } from '@rhombus-std/config.core';
+import { process } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import { EnvironmentVariablesConfigurationProvider } from './EnvironmentVariablesConfigurationProvider';
 
 /** Options accepted by {@link EnvironmentVariablesConfigurationSource}. */
 export interface EnvironmentVariablesConfigurationSourceOptions {
@@ -46,7 +46,7 @@ export interface EnvironmentVariablesConfigurationSourceOptions {
 
 /** Default {@link EnvironmentVariablesConfigurationSourceOptions.variableNameTransformation}: `__` -> `:`. */
 export function defaultVariableNameTransformation(name: string): string {
-  return name.replaceAll("__", ":");
+  return name.replaceAll('__', ':');
 }
 
 /**
@@ -60,7 +60,7 @@ export function defaultVariableNameTransformation(name: string): string {
  * is one triple plus a literal underscore (`._`), not two colons.
  */
 export function colonAndDotVariableNameTransformation(name: string): string {
-  return name.replaceAll("___", ".").replaceAll("__", ":");
+  return name.replaceAll('___', '.').replaceAll('__', ':');
 }
 
 /**

@@ -26,7 +26,7 @@ export class EventId {
    * existing `EventId` returns it unchanged.
    */
   public static from(value: EventId | number): EventId {
-    return typeof value === "number" ? new EventId(value) : value;
+    return typeof value === 'number' ? new EventId(value) : value;
   }
 
   /** Two events are equal when they share the same `id`. */

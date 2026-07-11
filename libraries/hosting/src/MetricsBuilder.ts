@@ -12,16 +12,16 @@
 // satisfying `IMetricsBuilder` once diagnostics.core merges those members onto the
 // interface (rule 0.6).
 
-import type { IConfiguration } from "@rhombus-std/config";
-import type { Ctor, DepSlot, ServiceManifest } from "@rhombus-std/di.core";
-import type { IMetricsBuilder, IMetricsListener, MeterScope } from "@rhombus-std/diagnostics.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { IConfiguration } from '@rhombus-std/config';
+import type { Ctor, DepSlot, ServiceManifest } from '@rhombus-std/di.core';
+import type { IMetricsBuilder, IMetricsListener, MeterScope } from '@rhombus-std/diagnostics.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 // Class-side merge: the metrics augmentation members reach `IMetricsBuilder` via
 // diagnostics.core, so this class must declare them to still SATISFY the
 // interface. Signatures mirror the diagnostics interface-side merge exactly.
-declare module "./MetricsBuilder" {
+declare module './MetricsBuilder' {
   interface MetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;

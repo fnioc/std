@@ -11,7 +11,7 @@
 // The ts-patch path pairs the two `transform` plugins directly (ts-patch supports
 // multiple transformers per program); only the ttsc/Go path needs this aggregate.
 
-import path from "node:path";
+import path from 'node:path';
 
 /**
  * @param {import("ttsc").ITtscPluginFactoryContext} context
@@ -22,13 +22,13 @@ export function createTtscPlugin(context) {
   // (libraries/di.transformer.options); the Go plugin lives at the repo root.
   const source = path.resolve(
     context.dirname,
-    "..",
-    "..",
-    "transforms",
-    "cmd",
-    "ttsc-di-app",
+    '..',
+    '..',
+    'transforms',
+    'cmd',
+    'ttsc-di-app',
   );
-  return { name: "di-app", source };
+  return { name: 'di-app', source };
 }
 
 export default createTtscPlugin;

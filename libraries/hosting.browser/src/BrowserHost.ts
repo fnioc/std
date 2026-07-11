@@ -17,14 +17,14 @@
 // browser lifetime can only REQUEST the stop (stopApplication). main.ts
 // drives the pipeline with one line — see ./browser-lifetime.
 
-import { MemoryConfigurationSource } from "@rhombus-std/config";
-import type { ConfigurationData } from "@rhombus-std/config";
-import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from "@rhombus-std/hosting";
-import { BrowserConsoleLoggerExtensions } from "@rhombus-std/logging.browserconsole";
-import type { Func } from "@rhombus-toolkit/func";
-import { BrowserLifetimeOptions } from "./BrowserLifetimeOptions";
-import type { PageContext } from "./page-context";
-import { registerBrowserLifetime } from "./register-browser-lifetime";
+import { MemoryConfigurationSource } from '@rhombus-std/config';
+import type { ConfigurationData } from '@rhombus-std/config';
+import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from '@rhombus-std/hosting';
+import { BrowserConsoleLoggerExtensions } from '@rhombus-std/logging.browserconsole';
+import type { Func } from '@rhombus-toolkit/func';
+import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
+import type { PageContext } from './page-context';
+import { registerBrowserLifetime } from './register-browser-lifetime';
 
 /** Settings for {@link BrowserHost.createApplicationBuilder}. */
 export interface BrowserHostApplicationBuilderSettings {
@@ -57,7 +57,7 @@ export const BrowserHost = {
     hostSettings.applicationName = settings?.applicationName;
     // An absolute content root short-circuits the environment's process.cwd()
     // lookup — a browser has no process global.
-    hostSettings.contentRootPath = "/";
+    hostSettings.contentRootPath = '/';
     const builder = Host.createEmptyApplicationBuilder(hostSettings);
 
     if (settings?.initialData !== undefined) {

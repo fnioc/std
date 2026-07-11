@@ -22,47 +22,33 @@
 //
 // di and config stay mutually unaware -- the bridge code lives ONLY here (§4.3).
 
-import type { IConfiguration } from "@rhombus-std/config.core";
+import type { IConfiguration } from '@rhombus-std/config.core';
 // `AddBuilder` and `Token` are named imports (not member references inside the
 // augmentation block) because unqualified names in a `declare module` body
 // resolve in THIS file's scope.
-import {
-  type AddBuilder,
-  RESOLVER_TOKEN,
-  type ServiceManifest,
-  ServiceManifestClass,
-  type Token,
-} from "@rhombus-std/di.core";
-import {
-  type ConfigureOptions,
-  Options,
-  type PostConfigureOptions,
-  type ValidateOptions,
-  ValidateOptionsResult,
-} from "@rhombus-std/options";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
+import { type AddBuilder, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass,
+  type Token } from '@rhombus-std/di.core';
+import { type ConfigureOptions, Options, type PostConfigureOptions, type ValidateOptions,
+  ValidateOptionsResult } from '@rhombus-std/options';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
 
-import { assembleOptions } from "./assemble-options.js";
-import { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
-import { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
-import {
-  changeTokenSourceToken,
-  configureStepToken,
-  postConfigureStepToken,
-  validateStepToken,
-} from "./option-tokens.js";
+import { assembleOptions } from './assemble-options.js';
+import { ConfigurationChangeTokenSource } from './ConfigurationChangeTokenSource.js';
+import { ConfigurationConfigureOptions } from './ConfigurationConfigureOptions.js';
+import { changeTokenSourceToken, configureStepToken, postConfigureStepToken,
+  validateStepToken } from './option-tokens.js';
 
 // The reference OptionsBuilder's `DefaultValidationFailureMessage`, used when a
 // `validate` caller supplies no message.
-const DEFAULT_VALIDATION_FAILURE_MESSAGE = "A validation error has occurred.";
+const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
 // A same-length tuple of dependency-token strings, one per entry in `Deps` -- the
 // token list a DI-injected pipeline step (the `configure`/`postConfigure`/
 // `validate` dependency forms below) resolves from the provider before invoking
 // its callback. A typed caller writes `[nameof<Dep1>(), nameof<Dep2>()]`.
-type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token };
+type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token; };
 
 // The authored methods merge onto core's `ServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` (`= ServiceManifestBase<…>`) a consumer
@@ -72,8 +58,8 @@ type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token };
 // methods, so it needs no class-side merge; a brand-new name does.) `Provider`
 // is defaulted so each merge matches its target's type-parameter list (TS2428
 // requires identical parameters).
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers an `Options<T>` at `token` that WRAPS the `T` resolved from
      * `tToken`. The explicit, complete, transformer-free verb (#34): internally
@@ -165,7 +151,7 @@ declare module "@rhombus-std/di.core" {
     ): this;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
     addOptions<T>(token: Token, makeBase: Func<[], T>): AddBuilder<Scopes>;
     configure(token: Token, section: IConfiguration): this;
@@ -211,7 +197,7 @@ export const OptionsServiceCollectionExtensions = {
     //     (#34): `addFactory(token, (t) => Options.of(t), [[tToken]])`.
     //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
     //     (#40) over the steps/sources registered for `token`.
-    if (typeof source === "function") {
+    if (typeof source === 'function') {
       return manifest.addFactory(
         token,
         (resolver) => assembleOptions(resolver, token, source),
@@ -250,7 +236,7 @@ export const OptionsServiceCollectionExtensions = {
     // the token's post-configure slot, which `assembleOptions` reads and runs
     // after every configure step (previously a dead slot -- now reachable).
     const plain = step as PostConfigureOptions<T> | Func<[T], void>;
-    const wrapped: PostConfigureOptions<T> = typeof plain === "function"
+    const wrapped: PostConfigureOptions<T> = typeof plain === 'function'
       ? { postConfigure: plain }
       : plain;
     manifest.addValue(postConfigureStepToken(token), wrapped);
@@ -333,7 +319,7 @@ export const OptionsConfigurationServiceCollectionExtensions = {
     // config-section member absorbs the delegate by arg type -- the same
     // disambiguation precedent `addOptions` uses.
     const configSource = source as IConfiguration | Func<[T], void>;
-    if (typeof configSource === "function") {
+    if (typeof configSource === 'function') {
       manifest.addValue(configureStepToken(token), { configure: configSource });
       return manifest;
     }
@@ -355,10 +341,10 @@ registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceColl
 // the di.core `service-collection-descriptor-augmentations.ts` precedent. The
 // re-export executes that module, so its `registerAugmentations` side effect
 // installs the verb onto the manifest.
-export { OptionsBuilderExtensions } from "./options-builder-augmentations.js";
+export { OptionsBuilderExtensions } from './options-builder-augmentations.js';
 
-export { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
-export { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
+export { ConfigurationChangeTokenSource } from './ConfigurationChangeTokenSource.js';
+export { ConfigurationConfigureOptions } from './ConfigurationConfigureOptions.js';
 // The slot-token grammar is public surface: in the reference stack the
 // per-options configure / post-configure / validate steps and change-token
 // sources are ordinary OPEN service contracts — any downstream package may
@@ -369,11 +355,6 @@ export { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.j
 // appends a step with `services.addValue(configureStepToken(token), step)`
 // (or `add`/`addFactory` for a lazily-constructed step) and the assembly for
 // `token` picks it up like any `configure(...)`-registered one.
-export {
-  changeTokenSourceToken,
-  configureStepToken,
-  postConfigureStepToken,
-  startupValidationTargetToken,
-  validateStepToken,
-} from "./option-tokens.js";
-export type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";
+export { changeTokenSourceToken, configureStepToken, postConfigureStepToken, startupValidationTargetToken,
+  validateStepToken } from './option-tokens.js';
+export type { OptionsChangeTokenSource } from './OptionsChangeTokenSource.js';

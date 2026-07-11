@@ -38,15 +38,15 @@
 // PageLifecycleEvents' flush signal), not this lifetime's stop — see
 // PageLifecycleEvents.
 
-import type { IHostApplicationLifetime, IHostLifetime } from "@rhombus-std/hosting.core";
-import { type ILogger, type ILoggerFactory, logDebug, logInformation } from "@rhombus-std/logging.core";
-import type { AbortSignal } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import type { BrowserLifetimeOptions } from "./BrowserLifetimeOptions";
-import { defaultPageContext, type PageContext, type PageTransitionEventLike } from "./page-context";
+import type { IHostApplicationLifetime, IHostLifetime } from '@rhombus-std/hosting.core';
+import { type ILogger, type ILoggerFactory, logDebug, logInformation } from '@rhombus-std/logging.core';
+import type { AbortSignal } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
+import { defaultPageContext, type PageContext, type PageTransitionEventLike } from './page-context';
 
 /** The logging category the browser lifetime writes its lifecycle messages under. */
-export const BROWSER_LIFETIME_CATEGORY = "Rhombus.Hosting.Lifetime";
+export const BROWSER_LIFETIME_CATEGORY = 'Rhombus.Hosting.Lifetime';
 
 /**
  * An {@link IHostLifetime} driven by the Page Lifecycle API: a terminal
@@ -96,25 +96,25 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
       logDebug(this.#logger, `Page visibility changed: ${document.visibilityState}.`);
     };
     this.#onFreeze = () => {
-      logDebug(this.#logger, "Page frozen.");
+      logDebug(this.#logger, 'Page frozen.');
     };
     this.#onResume = () => {
-      logDebug(this.#logger, "Page resumed.");
+      logDebug(this.#logger, 'Page resumed.');
     };
     this.#onPageHide = (event) => {
       this.#handlePageHide(event);
     };
     this.#onPageShow = (event) => {
       if (event.persisted) {
-        logInformation(this.#logger, "Page restored from the back/forward cache; host continues.");
+        logInformation(this.#logger, 'Page restored from the back/forward cache; host continues.');
       }
     };
 
-    document.addEventListener("visibilitychange", this.#onVisibilityChange);
-    document.addEventListener("freeze", this.#onFreeze);
-    document.addEventListener("resume", this.#onResume);
-    window.addEventListener("pagehide", this.#onPageHide);
-    window.addEventListener("pageshow", this.#onPageShow);
+    document.addEventListener('visibilitychange', this.#onVisibilityChange);
+    document.addEventListener('freeze', this.#onFreeze);
+    document.addEventListener('resume', this.#onResume);
+    window.addEventListener('pagehide', this.#onPageHide);
+    window.addEventListener('pageshow', this.#onPageShow);
 
     // Browser applications start immediately.
     return Promise.resolve();
@@ -135,13 +135,13 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
     if (event.persisted) {
       // Entering the bfcache: the page may be restored, and the host is
       // non-restartable — bridge the event only, never stop.
-      logInformation(this.#logger, "Page entering the back/forward cache; host continues.");
+      logInformation(this.#logger, 'Page entering the back/forward cache; host continues.');
       return;
     }
     if (!this.#options.stopOnPagehide) {
       return;
     }
-    logInformation(this.#logger, "Page terminating; application is shutting down...");
+    logInformation(this.#logger, 'Page terminating; application is shutting down...');
     // The synchronous abort dispatch inside stopApplication runs every
     // applicationStopping listener before this handler returns — the flush
     // backstop. Driving the async stop pipeline is main.ts's one-line wiring
@@ -152,23 +152,23 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
   #detach(): void {
     const { document, window } = this.#context;
     if (this.#onVisibilityChange) {
-      document.removeEventListener("visibilitychange", this.#onVisibilityChange);
+      document.removeEventListener('visibilitychange', this.#onVisibilityChange);
       this.#onVisibilityChange = undefined;
     }
     if (this.#onFreeze) {
-      document.removeEventListener("freeze", this.#onFreeze);
+      document.removeEventListener('freeze', this.#onFreeze);
       this.#onFreeze = undefined;
     }
     if (this.#onResume) {
-      document.removeEventListener("resume", this.#onResume);
+      document.removeEventListener('resume', this.#onResume);
       this.#onResume = undefined;
     }
     if (this.#onPageHide) {
-      window.removeEventListener("pagehide", this.#onPageHide);
+      window.removeEventListener('pagehide', this.#onPageHide);
       this.#onPageHide = undefined;
     }
     if (this.#onPageShow) {
-      window.removeEventListener("pageshow", this.#onPageShow);
+      window.removeEventListener('pageshow', this.#onPageShow);
       this.#onPageShow = undefined;
     }
     // The bridge attaches eagerly and is registered as an unowned value the

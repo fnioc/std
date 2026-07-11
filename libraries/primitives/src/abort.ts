@@ -28,7 +28,7 @@
 // -- native since Node 15, and native in bun/deno/browsers. Shipping a
 // polyfill would be pure YAGNI.
 
-import type { Ctor } from "@rhombus-toolkit/func";
+import type { Ctor } from '@rhombus-toolkit/func';
 
 /**
  * Structural counterpart of the platform `AbortSignal` -- see the module
@@ -40,11 +40,11 @@ export interface AbortSignal {
   onabort: any; // loose: plumbing we never touch
   throwIfAborted(): void;
   addEventListener(
-    type: "abort",
+    type: 'abort',
     listener: (this: AbortSignal, event: any) => void,
-    options?: boolean | { once?: boolean },
+    options?: boolean | { once?: boolean; },
   ): void;
-  removeEventListener(type: "abort", listener: (this: AbortSignal, event: any) => void): void;
+  removeEventListener(type: 'abort', listener: (this: AbortSignal, event: any) => void): void;
   dispatchEvent(event: any): boolean;
 }
 
@@ -73,7 +73,7 @@ export const AbortController: AbortControllerConstructor =
   // Through `unknown`: the bare-lib `typeof globalThis` (no lib.dom /
   // @types/node / bun-types in a library program) genuinely lacks the
   // property, so the direct cast is a TS2352 under the honest program.
-  (globalThis as unknown as { AbortController: AbortControllerConstructor }).AbortController;
+  (globalThis as unknown as { AbortController: AbortControllerConstructor; }).AbortController;
 
 /**
  * A singleton inert signal that never aborts -- the port's analog of the

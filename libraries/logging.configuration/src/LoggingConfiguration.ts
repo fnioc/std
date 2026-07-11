@@ -3,7 +3,7 @@
 // A plain data holder; registered by `addConfiguration` so a downstream
 // consumer can resolve the raw configuration.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
+import type { IConfiguration } from '@rhombus-std/config.core';
 
 export class LoggingConfiguration {
   public readonly configuration: IConfiguration;

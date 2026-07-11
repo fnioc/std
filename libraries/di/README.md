@@ -19,9 +19,9 @@ No decorators. No `reflect-metadata`. No runtime type introspection. Feed it str
 The entry point. `Scopes` is the union of declarable scope-name tags (default `"singleton"`). The tags `.as()` and `createScope()` accept are exactly its members. Transient (no cache, fresh instance on every resolve) is the default — there is no `"transient"` scope; the absence of `.as()`, or the absence of an open frame for a tag, is what makes a registration transient.
 
 ```ts
-import { ServiceManifest } from "@rhombus-std/di";
+import { ServiceManifest } from '@rhombus-std/di';
 
-const services = new ServiceManifest<"singleton" | "request">();
+const services = new ServiceManifest<'singleton' | 'request'>();
 ```
 
 Registration is append-only: each token holds a **list** of registrations in registration order, and resolution picks the most-recent (last) one. A later `add` for the same token therefore overrides an earlier one without deleting it.
@@ -32,14 +32,14 @@ Register a concrete implementation against an interface token. The transformer r
 
 ```ts
 // With transformer (author form):
-services.add<ILogger>(ConsoleLogger).as<"singleton">();
-services.add<IUserRepo>(SqlUserRepo).as<"request">();
+services.add<ILogger>(ConsoleLogger).as<'singleton'>();
+services.add<IUserRepo>(SqlUserRepo).as<'request'>();
 services.add<IRequestId>(UuidRequestId); // no .as() → transient
 
 // Without transformer (lowered form, or plugin-less):
-services.add("pkg:ILogger", ConsoleLogger).as("singleton");
-services.add("pkg:IUserRepo", SqlUserRepo).as("request");
-services.add("pkg:IRequestId", UuidRequestId);
+services.add('pkg:ILogger', ConsoleLogger).as('singleton');
+services.add('pkg:IUserRepo', SqlUserRepo).as('request');
+services.add('pkg:IRequestId', UuidRequestId);
 ```
 
 The type constraint on `Concrete` is `new (...args: any[]) => Interface` — plain `new`, not `abstract new`. Abstract classes are correctly rejected because the container instantiates the concrete.
@@ -51,7 +51,7 @@ The type constraint on `Concrete` is `new (...args: any[]) => Interface` — pla
 For third-party classes (ctor not editable) or generic instantiations the transformer cannot infer, supply a positional override array alongside the class:
 
 ```ts
-add<ICache>(RedisCache, ["pkg:IRedisClient", undefined, "pkg:ILogger"]);
+add<ICache>(RedisCache, ['pkg:IRedisClient', undefined, 'pkg:ILogger']);
 ```
 
 `sig` is `readonly (DepSlot | undefined)[]` — a positional sparse override over the transformer-generated signature. A `DepSlot` at a position overrides the generated token there; `undefined` keeps the generated token. Use explicit `undefined` rather than sparse elision (no-sparse-arrays).
@@ -74,25 +74,25 @@ There is no global, ctor-keyed metadata store — this array **is** the sole sig
 Two more registration surfaces alongside `add` — recommended for test doubles, third-party instances, and plugin-less consumers.
 
 ```ts
-import { RESOLVER_TOKEN } from "@rhombus-std/di";
+import { RESOLVER_TOKEN } from '@rhombus-std/di';
 
 // Factory that wants the live Resolver: declare it as a provider-typed param
 // (its slot is the intrinsic RESOLVER_TOKEN), resolve its own deps by hand.
 services.addFactory(
-  "pkg:IDb",
-  (sp) => new PostgresDb(sp.resolve<IConfig>("pkg:IConfig")),
+  'pkg:IDb',
+  (sp) => new PostgresDb(sp.resolve<IConfig>('pkg:IConfig')),
   [[RESOLVER_TOKEN]],
 )
-  .as("singleton");
+  .as('singleton');
 
 // Factory with a signature: each param is injected by its slot, like `add`.
-services.addFactory("pkg:IDb", (config) => new PostgresDb(config), [[
-  "pkg:IConfig",
+services.addFactory('pkg:IDb', (config) => new PostgresDb(config), [[
+  'pkg:IConfig',
 ]])
-  .as("singleton");
+  .as('singleton');
 
 // Value: a pre-constructed instance (re-used as-is, no lifetime)
-services.addValue("pkg:ICache", new NullCache());
+services.addValue('pkg:ICache', new NullCache());
 ```
 
 `addFactory` returns the `.as(scope?)` continuation, exactly like `add` — `.as("singleton")` caches the result in the nearest enclosing open `"singleton"` frame; no `.as()` call runs the factory fresh on every resolve (transient). A factory that wants the live `Resolver` declares it as an ordinary parameter — the provider is an intrinsically resolvable type (a `Resolver`-typed param derives `RESOLVER_TOKEN`), so "I want the provider" is plain DI. A signature-less factory simply runs with no injected args — nothing is auto-supplied. `addValue` takes no lifetime — the value is always the same reference, and it returns `void`, not a builder.
@@ -107,8 +107,8 @@ Scopes are uniform tags forming a parent-linked chain. There is no root: `build(
 
 ```ts
 const provider = services.build(); // frameless — nothing pre-opened
-const app = provider.createScope("singleton"); // open the app-lifetime frame
-const req = app.createScope("request"); // per HTTP request
+const app = provider.createScope('singleton'); // open the app-lifetime frame
+const req = app.createScope('request'); // per HTTP request
 ```
 
 **Resolution walks the enclosing chain for instance ownership:** the lifetime tag names which enclosing open frame caches the instance. Walk up to the nearest enclosing frame whose name matches the tag and cache there. (Registration lookup is flat — the sealed map is shared across the whole tree.)
@@ -127,16 +127,16 @@ const req = app.createScope("request"); // per HTTP request
 The critical correctness rule: deps are resolved **relative to the frame that will own the instance**, not the frame that triggered the resolve. This is what keeps a longer-lived service from cache-capturing a shorter-lived one.
 
 ```ts
-const services = new ServiceManifest<"singleton" | "request">();
-services.add<ICache>(RedisCache).as<"singleton">();
-services.add<IUserContext>(HttpUserContext).as<"request">();
-services.add<IUserService>(UserService).as<"singleton">();
+const services = new ServiceManifest<'singleton' | 'request'>();
+services.add<ICache>(RedisCache).as<'singleton'>();
+services.add<IUserContext>(HttpUserContext).as<'request'>();
+services.add<IUserService>(UserService).as<'singleton'>();
 // UserService constructor: (cache: ICache, ctx: IUserContext)
 
-const app = services.build().createScope("singleton");
-const req = app.createScope("request");
+const app = services.build().createScope('singleton');
+const req = app.createScope('request');
 
-req.resolve<IUserService>("pkg:IUserService");
+req.resolve<IUserService>('pkg:IUserService');
 // UserService is singleton-owned. Its deps resolve from the singleton frame's
 // chain, which has no ENCLOSING "request" frame (request is a descendant). So
 // IUserContext resolves to a FRESH transient — never the request's cached
@@ -154,7 +154,7 @@ A registration whose service token contains a **hole** (`$1`, `$2`, …) is an _
 
 ```ts
 // Open registration: matches any closing of IRepository<T>, one hole per arg
-services.add<IRepository<$<1>>>(SqlRepository<$<1>>).as<"singleton">();
+services.add<IRepository<$<1>>>(SqlRepository<$<1>>).as<'singleton'>();
 
 // Each closing resolves and caches independently
 const userRepo = scope.resolve<IRepository<User>>(); // "pkg:IRepository<pkg:User>"
@@ -195,17 +195,17 @@ Resolving a token the exact-match map has no entry for falls through, in order:
 No transformer required — template tokens are just strings with `$N` holes, and the grammar helpers are plain functions re-exported from `@rhombus-std/di.core`:
 
 ```ts
-import { closeToken, typeArg } from "@rhombus-std/di";
+import { closeToken, typeArg } from '@rhombus-std/di';
 
 // Template registration — carried signatures include a TypeArgRef via typeArg(1)
 services.add(
-  "app:IRepository<$1>",
+  'app:IRepository<$1>',
   SqlRepository,
-  [["app:IDbConnection", typeArg(1)]],
-).as("singleton");
+  [['app:IDbConnection', typeArg(1)]],
+).as('singleton');
 
 // Resolve closings by hand-closing the token
-const userToken = closeToken("app:IRepository", "app:User"); // "app:IRepository<app:User>"
+const userToken = closeToken('app:IRepository', 'app:User'); // "app:IRepository<app:User>"
 scope.resolve(userToken);
 ```
 
@@ -213,16 +213,16 @@ Because the signature array lives on the **registration**, not on the ctor objec
 
 ```ts
 // SqlRepository backs an open template...
-services.add("app:IRepository<$1>", SqlRepository, [[
-  "app:IDbConnection",
+services.add('app:IRepository<$1>', SqlRepository, [[
+  'app:IDbConnection',
   typeArg(1),
 ]]);
 
 // ...and a second, unrelated open template for a different service base,
 // with its own independent signature array. No collision: each registration
 // owns its own signatures.
-services.add("app:IAuditLog<$1>", SqlRepository, [[
-  "app:IAuditConnection",
+services.add('app:IAuditLog<$1>', SqlRepository, [[
+  'app:IAuditConnection',
   typeArg(1),
 ]]);
 ```
@@ -296,10 +296,10 @@ Instances owned by ancestor scopes are disposed when those scopes close, not whe
 An async dependency is tokenized at its **true** `Promise<X>` type — never unwrapped to `X`. Register the async factory under the `Promise<X>` token directly:
 
 ```ts
-services.addFactory("Promise<pkg:IDb>", async (sp) => {
-  const pool = sp.resolve<IConnectionPool>("pkg:IConnectionPool");
+services.addFactory('Promise<pkg:IDb>', async (sp) => {
+  const pool = sp.resolve<IConnectionPool>('pkg:IConnectionPool');
   return new PostgresDb(await pool.connect());
-}, [[RESOLVER_TOKEN]]).as("singleton");
+}, [[RESOLVER_TOKEN]]).as('singleton');
 ```
 
 - `resolve<Promise<IDb>>("Promise<pkg:IDb>")` returns the **raw promise** — the honest, synchronous view of an async registration.
@@ -313,7 +313,7 @@ class UserRepo {
   }
 }
 
-const repo = await root.resolveAsync<UserRepo>("pkg:UserRepo");
+const repo = await root.resolveAsync<UserRepo>('pkg:UserRepo');
 ```
 
 The container caches whatever a factory returns, verbatim — for an async factory, that's the `Promise` itself. Every resolve of the same cached token gets the same `Promise`; the factory runs exactly once. Single-flight applies across overlapping `resolveAsync` calls: the in-flight promise lands in the cache before it settles, so concurrent resolves for the same singleton share one construction instead of racing to build it twice.
@@ -353,12 +353,12 @@ Resolve a factory callable for the token rather than an instance:
 
 ```ts
 // Without params → strict zero-arg () => T; every slot must resolve from the container
-const makeDb = scope.resolveFactory("pkg:IDb");
+const makeDb = scope.resolveFactory('pkg:IDb');
 const db = makeDb(); // all deps resolved from container
 
 // With params → factory (...params) => T; named tokens filled by caller, rest from container
-const makeRepo = scope.resolveFactory("pkg:IUserRepo", ["app:tableName"]);
-const repo = makeRepo("users"); // tableName filled by caller; ILogger, IDb from container
+const makeRepo = scope.resolveFactory('pkg:IUserRepo', ['app:tableName']);
+const repo = makeRepo('users'); // tableName filled by caller; ILogger, IDb from container
 ```
 
 `params` is the complete authored-order list of caller-supplied token strings, matched by token (first-occurrence, left-to-right). Passing `params` pins the factory's shape — it no longer drifts as registration state changes.
@@ -376,7 +376,7 @@ class RequestHandler {
   constructor(private makeRepo: (tableName: string) => IUserRepo) {}
 
   handle() {
-    const repo = this.makeRepo("users");
+    const repo = this.makeRepo('users');
     // At call time: new UserRepo(resolve(ILogger), "users", resolve(IDb))
   }
 }
@@ -430,11 +430,11 @@ Note: `FactoryTargetError` is thrown when the factory callable is constructed (a
 A `Union` dep slot tries each member in declaration order and resolves to the first registered one. A member that is statically resolvable but throws at build time (a cycle, an unresolvable nested dep) falls through to the next. Throw if none resolves.
 
 ```ts
-import { union } from "@rhombus-std/di";
+import { union } from '@rhombus-std/di';
 
-services.add("pkg:IHandler", Handler, [[
-  union("pkg:IRedis", "pkg:IMemoryCache"),
-  "pkg:ILogger",
+services.add('pkg:IHandler', Handler, [[
+  union('pkg:IRedis', 'pkg:IMemoryCache'),
+  'pkg:ILogger',
 ]]);
 ```
 

@@ -8,8 +8,8 @@
 // docs/decisions.md §4.2), so the parameter survives only to mirror the
 // reference signature.
 
-import { ConfigurationChangeTokenSource } from "@rhombus-std/options.augmentations";
-import type { ILoggerProviderConfiguration } from "./ILoggerProviderConfiguration";
+import { ConfigurationChangeTokenSource } from '@rhombus-std/options.augmentations';
+import type { ILoggerProviderConfiguration } from './ILoggerProviderConfiguration';
 
 /**
  * A change-token source wired to provider `TProvider`'s configuration section,

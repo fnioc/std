@@ -18,11 +18,11 @@
 // (`Options.watch`) registration -- either shape throws OptionsValidationError on
 // a failed validate step, which is exactly what forcing is for.
 
-import type { Resolver, Token } from "@rhombus-std/di.core";
+import type { Resolver, Token } from '@rhombus-std/di.core';
 
-import type { IStartupValidator } from "./IStartupValidator.js";
-import type { Options } from "./options.js";
-import { OptionsValidationError } from "./OptionsValidationError.js";
+import type { IStartupValidator } from './IStartupValidator.js';
+import type { Options } from './options.js';
+import { OptionsValidationError } from './OptionsValidationError.js';
 
 /**
  * The built-in {@link IStartupValidator}: forces evaluation of every options
@@ -69,7 +69,7 @@ export class StartupValidator implements IStartupValidator {
       throw failures[0];
     }
     if (failures.length > 1) {
-      throw new AggregateError(failures, "One or more options failed validation on startup.");
+      throw new AggregateError(failures, 'One or more options failed validation on startup.');
     }
   }
 }

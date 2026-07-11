@@ -3,33 +3,29 @@
 // the registry-installed method form (docs §38), and the resolved singleton's
 // end-to-end behavior.
 
-import {
-  DISTRIBUTED_CACHE_TOKEN,
-  MemoryCacheServiceCollectionExtensions,
-  MemoryDistributedCache,
-  MemoryDistributedCacheOptions,
-} from "@rhombus-std/caching.memory";
-import { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di";
-import { describe, expect, test } from "bun:test";
+import { DISTRIBUTED_CACHE_TOKEN, MemoryCacheServiceCollectionExtensions, MemoryDistributedCache,
+  MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';
+import { ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
+import { describe, expect, test } from 'bun:test';
 
-describe("addDistributedMemoryCache", () => {
-  test("method form registers a resolvable IDistributedCache singleton", async () => {
-    const services = new ServiceManifest<"singleton">();
+describe('addDistributedMemoryCache', () => {
+  test('method form registers a resolvable IDistributedCache singleton', async () => {
+    const services = new ServiceManifest<'singleton'>();
 
     expect(services.addDistributedMemoryCache()).toBe(services); // chains
 
-    const scope = services.build().createScope("singleton");
+    const scope = services.build().createScope('singleton');
     const cache = scope.resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     // Singleton: the same instance on every resolve.
     expect(scope.resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN)).toBe(cache);
 
     // The resolved cache actually works.
-    await cache.setString("key", "value");
-    expect(await cache.getString("key")).toBe("value");
+    await cache.setString('key', 'value');
+    expect(await cache.getString('key')).toBe('value');
   });
 
-  test("standalone member form matches, and setup joins the options pipeline lazily", () => {
+  test('standalone member form matches, and setup joins the options pipeline lazily', () => {
     // The standalone member's receiver is the concrete, scope-generic
     // ServiceManifestClass<string> (the public `ServiceManifest` value IS that
     // class, but its constructor types instances as the base interface).
@@ -45,7 +41,7 @@ describe("addDistributedMemoryCache", () => {
     // configure step runs when the options resolve, not at registration.
     expect(seen).toBeUndefined();
 
-    const cache = services.build().createScope("singleton").resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN);
+    const cache = services.build().createScope('singleton').resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
   });

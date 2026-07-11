@@ -15,15 +15,15 @@ npm install @rhombus-std/config @rhombus-std/config.env
 ## Basic usage
 
 ```ts
-import "@rhombus-std/config.env"; // unlocks .addEnvironmentVariables() on ConfigurationBuilder
-import { ConfigurationBuilder } from "@rhombus-std/config";
+import '@rhombus-std/config.env'; // unlocks .addEnvironmentVariables() on ConfigurationBuilder
+import { ConfigurationBuilder } from '@rhombus-std/config';
 
 const config = new ConfigurationBuilder()
-  .addEnvironmentVariables({ prefix: "APP_" })
+  .addEnvironmentVariables({ prefix: 'APP_' })
   .build();
 
 // APP_SERVER__PORT=8080 in the environment resolves as:
-config.get("Server:Port"); // "8080"
+config.get('Server:Port'); // "8080"
 ```
 
 Variable names are normalized (`__` → `:`) before prefix matching, and the
@@ -40,5 +40,5 @@ nothing forcing it to load this package's module — you must import it for
 its side effect explicitly:
 
 ```ts
-import "@rhombus-std/config.env"; // unlocks .addEnvironmentVariables() on ConfigurationBuilder
+import '@rhombus-std/config.env'; // unlocks .addEnvironmentVariables() on ConfigurationBuilder
 ```

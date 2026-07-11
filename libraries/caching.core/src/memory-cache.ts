@@ -13,8 +13,8 @@
 // meaning in JS (there is no non-string char-span representation to avoid
 // allocating from).
 
-import type { ICacheEntry } from "./ICacheEntry";
-import type { MemoryCacheStatistics } from "./MemoryCacheStatistics";
+import type { ICacheEntry } from './ICacheEntry';
+import type { MemoryCacheStatistics } from './MemoryCacheStatistics';
 
 /**
  * The result of {@link IMemoryCache.tryGetValue}: `[false]` on a miss,

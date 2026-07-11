@@ -9,9 +9,9 @@
 // mechanism — there is no non-ANSI color API to translate to — so the parsing
 // console is meaningless here.
 
-import type { ConsoleStream } from "./ConsoleUtils";
-import { stderr, stdout } from "./ConsoleUtils";
-import type { IConsole } from "./IConsole";
+import type { ConsoleStream } from './ConsoleUtils';
+import { stderr, stdout } from './ConsoleUtils';
+import type { IConsole } from './IConsole';
 
 /** An {@link IConsole} that writes messages (ANSI codes included) to a standard stream. */
 export class AnsiLogConsole implements IConsole {

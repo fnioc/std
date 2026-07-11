@@ -47,15 +47,15 @@
 // drainer (Ctrl-C / SIGINT) terminates any in-flight workers. A clean stop is
 // Ctrl-C when nothing is active.
 
-import { execFile, spawn } from "node:child_process";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
+import { execFile, spawn } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
 // scripts/plan-doc/ -> repo root two levels up. Workers spawn with this cwd.
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const POLL_MS = 60_000;
 // Per-worker turn cap -- the runaway backstop. `claude -p --max-turns N` is a
@@ -69,8 +69,8 @@ const MAX_TURNS = Number(process.env.DRAIN_MAX_TURNS) || 200;
 // eligible only if its `labels` intersect this set (any-match). Empty => no
 // filter, every ready issue is eligible.
 const LABEL_FILTER = new Set(
-  (process.argv[2] ?? "")
-    .split(",")
+  (process.argv[2] ?? '')
+    .split(',')
     .map((label) => label.trim())
     .filter((label) => label.length > 0),
 );
@@ -132,7 +132,7 @@ function workerLog(n, msg) {
 }
 
 function collapse(s) {
-  return String(s ?? "").replace(/\s+/g, " ").trim();
+  return String(s ?? '').replace(/\s+/g, ' ').trim();
 }
 
 function clip(s, max) {
@@ -140,28 +140,28 @@ function clip(s, max) {
 }
 
 function firstLine(s) {
-  return collapse(String(s ?? "").split("\n")[0]);
+  return collapse(String(s ?? '').split('\n')[0]);
 }
 
 /** A short human summary of a tool_use block's target, per tool. */
 function toolArg(block) {
   const input = block.input ?? {};
   switch (block.name) {
-    case "Bash":
+    case 'Bash':
       return clip(firstLine(input.command), 100);
-    case "Edit":
-    case "Write":
-    case "Read":
-    case "NotebookEdit":
+    case 'Edit':
+    case 'Write':
+    case 'Read':
+    case 'NotebookEdit':
       return clip(collapse(input.file_path), 100);
-    case "Task": {
-      const who = input.subagent_type ? `(${input.subagent_type}) ` : "";
+    case 'Task': {
+      const who = input.subagent_type ? `(${input.subagent_type}) ` : '';
       return clip(who + collapse(input.description), 100);
     }
-    case "Workflow":
+    case 'Workflow':
       return clip(collapse(input.description ?? input.prompt), 100);
     default:
-      return "";
+      return '';
   }
 }
 
@@ -171,33 +171,33 @@ function toolArg(block) {
  * console narration. system/rate_limit/thinking blocks are intentionally silent.
  */
 function narrateEvent(n, ev) {
-  if (ev.type === "assistant") {
+  if (ev.type === 'assistant') {
     const content = ev.message?.content;
     if (!Array.isArray(content)) {
       return;
     }
     for (const block of content) {
-      if (block.type === "text") {
+      if (block.type === 'text') {
         const text = clip(collapse(block.text), 118);
         if (text) {
           workerLog(n, text);
         }
-      } else if (block.type === "tool_use") {
+      } else if (block.type === 'tool_use') {
         const arg = toolArg(block);
-        workerLog(n, `→ ${block.name}${arg ? ` ${arg}` : ""}`);
+        workerLog(n, `→ ${block.name}${arg ? ` ${arg}` : ''}`);
       }
     }
     return;
   }
-  if (ev.type === "user") {
+  if (ev.type === 'user') {
     const content = ev.message?.content;
     if (!Array.isArray(content)) {
       return;
     }
     for (const block of content) {
       // Only surface tool FAILURES; successful results would be pure noise.
-      if (block.type === "tool_result" && block.is_error) {
-        workerLog(n, "  ✗ tool error");
+      if (block.type === 'tool_result' && block.is_error) {
+        workerLog(n, '  ✗ tool error');
       }
     }
   }
@@ -205,17 +205,17 @@ function narrateEvent(n, ev) {
 
 /** Format a result's cost as `$x.xxxx` or `n/a`. */
 function fmtCost(result) {
-  return result && typeof result.total_cost_usd === "number"
+  return result && typeof result.total_cost_usd === 'number'
     ? `$${result.total_cost_usd.toFixed(4)}`
-    : "n/a";
+    : 'n/a';
 }
 
 /** Decide outcome from the terminal `result` event. */
 function settleFromResult(n, result) {
   const cost = fmtCost(result);
-  const subtype = typeof result.subtype === "string" ? result.subtype : "(missing subtype)";
+  const subtype = typeof result.subtype === 'string' ? result.subtype : '(missing subtype)';
 
-  if (subtype === "success") {
+  if (subtype === 'success') {
     // Success: hold the issue in `handled` until its line clears from the queue,
     // so the propagation lag doesn't relaunch a completed worker.
     handled.add(n);
@@ -227,7 +227,7 @@ function settleFromResult(n, result) {
   // the raw result on an unexpected subtype so a new CLI shape is diagnosable.
   quarantined.add(n);
   workerLog(n, `✗ ${subtype} (cost ${cost}); QUARANTINED (no relaunch this session)`);
-  if (!subtype.startsWith("error")) {
+  if (!subtype.startsWith('error')) {
     log(`  #${n} unrecognized result shape: ${JSON.stringify(result).slice(-2000)}`);
   }
 }
@@ -239,19 +239,19 @@ function spawnWorker(n) {
     + `Do the work autonomously; do not ask questions.`;
 
   const child = spawn(
-    "claude",
+    'claude',
     [
-      "-p",
+      '-p',
       prompt,
-      "--permission-mode",
-      "bypassPermissions",
-      "--output-format",
-      "stream-json",
-      "--verbose",
-      "--max-turns",
+      '--permission-mode',
+      'bypassPermissions',
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--max-turns',
       String(MAX_TURNS),
     ],
-    { cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"] },
+    { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] },
   );
 
   active.set(n, child);
@@ -260,8 +260,8 @@ function spawnWorker(n) {
 
   // Line-buffered newline-delimited JSON: events can span chunk boundaries, so
   // hold a partial-line buffer and only dispatch complete lines.
-  let buf = "";
-  let stderr = "";
+  let buf = '';
+  let stderr = '';
   let resultSeen = false;
 
   const handleLine = (line) => {
@@ -275,7 +275,7 @@ function spawnWorker(n) {
     } catch {
       return;
     }
-    if (ev.type === "result") {
+    if (ev.type === 'result') {
       resultSeen = true;
       settleFromResult(n, ev);
       return;
@@ -283,24 +283,24 @@ function spawnWorker(n) {
     narrateEvent(n, ev);
   };
 
-  child.stdout.on("data", (chunk) => {
+  child.stdout.on('data', (chunk) => {
     buf += chunk;
     let idx;
-    while ((idx = buf.indexOf("\n")) >= 0) {
+    while ((idx = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, idx);
       buf = buf.slice(idx + 1);
       handleLine(line);
     }
   });
-  child.stderr.on("data", (chunk) => {
+  child.stderr.on('data', (chunk) => {
     stderr += chunk;
   });
 
-  child.on("exit", (code) => {
+  child.on('exit', (code) => {
     // Flush any trailing partial line (a final event without a newline).
     if (buf.trim()) {
       handleLine(buf);
-      buf = "";
+      buf = '';
     }
     active.delete(n);
     // A stream that ended without a terminal result event is a crash/kill,
@@ -316,7 +316,7 @@ function spawnWorker(n) {
     releaseColor(n);
   });
 
-  child.on("error", (err) => {
+  child.on('error', (err) => {
     active.delete(n);
     quarantined.add(n);
     log(`worker for #${n} failed to start: ${err.message}; QUARANTINED (no relaunch this session)`);
@@ -332,10 +332,10 @@ function spawnWorker(n) {
  */
 async function readQueue() {
   try {
-    await execFileAsync("git", ["fetch", "origin", "bot/plan-doc", "-q"], { cwd: REPO_ROOT });
+    await execFileAsync('git', ['fetch', 'origin', 'bot/plan-doc', '-q'], { cwd: REPO_ROOT });
     const { stdout } = await execFileAsync(
-      "git",
-      ["show", "origin/bot/plan-doc:ready.json"],
+      'git',
+      ['show', 'origin/bot/plan-doc:ready.json'],
       { cwd: REPO_ROOT, maxBuffer: 16 * 1024 * 1024 },
     );
     const parsed = JSON.parse(stdout);
@@ -376,17 +376,17 @@ async function cycle() {
   }
 }
 
-process.on("SIGINT", () => {
+process.on('SIGINT', () => {
   const inflight = [...active.keys()];
   if (inflight.length) {
-    log(`SIGINT: terminating ${inflight.length} in-flight worker(s): ${inflight.map((n) => `#${n}`).join(", ")}`);
+    log(`SIGINT: terminating ${inflight.length} in-flight worker(s): ${inflight.map((n) => `#${n}`).join(', ')}`);
   } else {
-    log("SIGINT: no active workers; exiting cleanly");
+    log('SIGINT: no active workers; exiting cleanly');
   }
   process.exit(0);
 });
 
-const filterBanner = LABEL_FILTER.size > 0 ? [...LABEL_FILTER].join(",") : "none";
+const filterBanner = LABEL_FILTER.size > 0 ? [...LABEL_FILTER].join(',') : 'none';
 log(
   `plan-queue-drainer watching origin/bot/plan-doc:ready.json every ${POLL_MS / 1000}s, `
     + `unbounded fan-out, ${MAX_TURNS} turns/worker | label filter: ${filterBanner}. `

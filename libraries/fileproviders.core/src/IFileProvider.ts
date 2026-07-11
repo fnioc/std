@@ -1,8 +1,8 @@
 // IFileProvider -- ported from ME.FileProviders.IFileProvider.
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { IDirectoryContents } from "./IDirectoryContents.js";
-import type { IFileInfo } from "./IFileInfo.js";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { IDirectoryContents } from './IDirectoryContents.js';
+import type { IFileInfo } from './IFileInfo.js';
 
 /**
  * A read-only file provider abstraction.

@@ -26,4 +26,4 @@ export type {
   ServiceProviderOptions,
   ServiceQuery,
   Union,
-} from "@rhombus-std/di.core";
+} from '@rhombus-std/di.core';

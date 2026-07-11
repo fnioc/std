@@ -16,19 +16,12 @@
 // import-time side effect. The core `build()` interface member already exists —
 // this only supplies the runtime.
 
-import {
-  type OpenRegistration,
-  type Registration,
-  type ServiceManifest as ServiceManifestInterface,
-  ServiceManifestClass,
-  type ServiceProvider,
-  type ServiceProviderOptions,
-  type Token,
-} from "@rhombus-std/di.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import { type OpenRegistration, type Registration, type ServiceManifest as ServiceManifestInterface,
+  ServiceManifestClass, type ServiceProvider, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
-import { ServiceProviderClass } from "./ServiceProviderClass.js";
+import { ServiceProviderClass } from './ServiceProviderClass.js';
 
 /**
  * The public authoring INTERFACE a `@rhombus-std/di` consumer holds — di.core's
@@ -37,7 +30,7 @@ import { ServiceProviderClass } from "./ServiceProviderClass.js";
  * barrel). The `@rhombus-std/di.transformer` augmentation surfaces through it: it
  * merges onto `ServiceManifestBase`, which this resolves to.
  */
-export type ServiceManifest<S extends string = "singleton"> = ServiceManifestInterface<S>;
+export type ServiceManifest<S extends string = 'singleton'> = ServiceManifestInterface<S>;
 
 // The engine-constructing half of `build()`: seal the registrations (the
 // collection's own half, done in di.core) and hand the frozen snapshot to the
@@ -76,7 +69,7 @@ registerAugmentations(nameof<ServiceManifestInterface>(), ServiceCollectionConta
  * `build()` runtime this module has registered against the augmentation token).
  */
 export interface ServiceManifestCtor {
-  new<S extends string = "singleton">(): ServiceManifest<S>;
+  new<S extends string = 'singleton'>(): ServiceManifest<S>;
 }
 
 /** The public registration-builder VALUE. It IS `ServiceManifestClass`. */

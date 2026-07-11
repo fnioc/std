@@ -2,8 +2,8 @@
 // concrete record supplies the three required members and inherits the optional
 // defaults unless it overrides them; a buffered logger receives a batch.
 
-import { BufferedLogRecord, EventId, type IBufferedLogger, LogLevel } from "@rhombus-std/logging.core";
-import { describe, expect, test } from "bun:test";
+import { BufferedLogRecord, EventId, type IBufferedLogger, LogLevel } from '@rhombus-std/logging.core';
+import { describe, expect, test } from 'bun:test';
 
 /** A minimal record: only the three required members, everything else defaulted. */
 class MinimalRecord extends BufferedLogRecord {
@@ -14,7 +14,7 @@ class MinimalRecord extends BufferedLogRecord {
     return LogLevel.Information;
   }
   public override get eventId(): EventId {
-    return new EventId(7, "started");
+    return new EventId(7, 'started');
   }
 }
 
@@ -30,18 +30,18 @@ class RichRecord extends BufferedLogRecord {
     return new EventId(9);
   }
   public override get formattedMessage(): string | undefined {
-    return "disk almost full";
+    return 'disk almost full';
   }
   public override get messageTemplate(): string | undefined {
-    return "disk almost full";
+    return 'disk almost full';
   }
   public override get attributes(): readonly (readonly [string, unknown])[] {
-    return [["Free", 12]];
+    return [['Free', 12]];
   }
 }
 
-describe("BufferedLogRecord", () => {
-  test("exposes the required members and defaults the optional ones to absent/empty", () => {
+describe('BufferedLogRecord', () => {
+  test('exposes the required members and defaults the optional ones to absent/empty', () => {
     const record = new MinimalRecord();
     expect(record.timestamp).toEqual(new Date(0));
     expect(record.logLevel).toBe(LogLevel.Information);
@@ -56,15 +56,15 @@ describe("BufferedLogRecord", () => {
     expect(record.attributes).toEqual([]);
   });
 
-  test("a subclass can override the optional members", () => {
+  test('a subclass can override the optional members', () => {
     const record = new RichRecord();
-    expect(record.formattedMessage).toBe("disk almost full");
-    expect(record.attributes).toEqual([["Free", 12]]);
+    expect(record.formattedMessage).toBe('disk almost full');
+    expect(record.attributes).toEqual([['Free', 12]]);
   });
 });
 
-describe("IBufferedLogger", () => {
-  test("receives a batch of records", () => {
+describe('IBufferedLogger', () => {
+  test('receives a batch of records', () => {
     const delivered: BufferedLogRecord[] = [];
     const logger: IBufferedLogger = {
       logRecords(records: Iterable<BufferedLogRecord>): void {

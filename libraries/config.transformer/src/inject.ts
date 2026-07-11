@@ -16,10 +16,10 @@
 // "From @rhombus-std/config" means the barrel specifier EXACTLY; the subpath
 // ".../with-type-augment" does not export OPTIONAL.
 
-import ts from "typescript";
+import ts from 'typescript';
 
-const CONFIG_BARREL = "@rhombus-std/config";
-const OPTIONAL_NAME = "OPTIONAL";
+const CONFIG_BARREL = '@rhombus-std/config';
+const OPTIONAL_NAME = 'OPTIONAL';
 
 /**
  * How to reference the OPTIONAL symbol in a given source file, and whether a

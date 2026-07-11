@@ -21,11 +21,11 @@
 // registered against the `IDistributedCache` token so every concrete class
 // decorated `@augment(nameof<IDistributedCache>())` gains the method form.
 
-import { type AbortSignal, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Ctor } from "@rhombus-toolkit/func";
-import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from "./DistributedCacheEntryOptions";
-import type { IDistributedCache } from "./IDistributedCache";
+import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Ctor } from '@rhombus-toolkit/func';
+import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
+import type { IDistributedCache } from './IDistributedCache';
 
 // Structural typings for the platform's UTF-8 codec globals (native in
 // node/bun/deno/browsers), local to this module: the zero-ambient-types

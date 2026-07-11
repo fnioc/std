@@ -2,13 +2,13 @@
 //
 // An empty provider: every lookup misses, and Watch monitors nothing.
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { IDirectoryContents } from "./IDirectoryContents.js";
-import type { IFileInfo } from "./IFileInfo.js";
-import type { IFileProvider } from "./IFileProvider.js";
-import { NotFoundDirectoryContents } from "./NotFoundDirectoryContents.js";
-import { NotFoundFileInfo } from "./NotFoundFileInfo.js";
-import { NullChangeToken } from "./NullChangeToken.js";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { IDirectoryContents } from './IDirectoryContents.js';
+import type { IFileInfo } from './IFileInfo.js';
+import type { IFileProvider } from './IFileProvider.js';
+import { NotFoundDirectoryContents } from './NotFoundDirectoryContents.js';
+import { NotFoundFileInfo } from './NotFoundFileInfo.js';
+import { NullChangeToken } from './NullChangeToken.js';
 
 /**
  * An empty file provider with no contents.

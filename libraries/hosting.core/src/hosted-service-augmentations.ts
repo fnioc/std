@@ -24,27 +24,21 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
 // importable here.
-import {
-  type AddBuilder,
-  type DepSlot,
-  type Resolver,
-  RESOLVER_TOKEN,
-  type ServiceManifest,
-  type ServiceManifestClass,
-} from "@rhombus-std/di.core";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Ctor, Func } from "@rhombus-toolkit/func";
-import type { IHostedService } from "./IHostedService";
-import { HOSTED_SERVICE_TOKEN } from "./tokens";
+import { type AddBuilder, type DepSlot, type Resolver, RESOLVER_TOKEN, type ServiceManifest,
+  type ServiceManifestClass } from '@rhombus-std/di.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { IHostedService } from './IHostedService';
+import { HOSTED_SERVICE_TOKEN } from './tokens';
 
 // The authored method merges onto core's `ServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` resolves to -- AND onto the concrete
 // `ServiceManifestClass`, so the class still SATISFIES the interface once the new
 // name is on it. `Provider` is defaulted so the merge matches the target's
 // type-parameter list (TS2428 requires identical parameters).
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers a factory as an {@link IHostedService} — the reference's
      * `AddHostedService(Func<IServiceProvider, THostedService>)` overload. Use it
@@ -68,7 +62,7 @@ declare module "@rhombus-std/di.core" {
     addHostedService(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addHostedService(implementationFactory: Func<[Resolver], IHostedService>): this;
     addHostedService(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
   }
@@ -103,7 +97,7 @@ export const ServiceCollectionHostedServiceExtensions = {
     const builder: AddBuilder<string> = isConstructor(target)
       ? manifest.add(HOSTED_SERVICE_TOKEN, target, signatures)
       : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]]);
-    builder.as("singleton");
+    builder.as('singleton');
     return manifest;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;

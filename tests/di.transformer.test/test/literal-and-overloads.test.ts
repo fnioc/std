@@ -1,6 +1,6 @@
-import { DiagnosticCode } from "@rhombus-std/di.transformer/internal/index";
-import { describe, expect, test } from "bun:test";
-import { depsArrayFor, fixture, transform } from "./harness.js";
+import { DiagnosticCode } from '@rhombus-std/di.transformer/internal/index';
+import { describe, expect, test } from 'bun:test';
+import { depsArrayFor, fixture, transform } from './harness.js';
 
 // Rule 2 (LiteralRef value supply) + the union-unified optional handling +
 // declared-overload signatures + the wide-primitive (WP) tokenization rules.
@@ -14,7 +14,7 @@ import { depsArrayFor, fixture, transform } from "./harness.js";
 //   - a pure-literal union `"a" | "b"`  →  one sorted token (NOT a union slot)
 //   - every intrinsic     →  its keyword token (Rule 1); `boolean` from `true|false`
 
-function emitFor(ctorBody: string, extra = ""): string {
+function emitFor(ctorBody: string, extra = ''): string {
   const src = `
     ${extra}
     interface IMarker {}
@@ -28,172 +28,172 @@ function emitFor(ctorBody: string, extra = ""): string {
   expect(
     diagnostics.filter((d) => d.code === DiagnosticCode.UnderivableToken).length,
   ).toBe(0);
-  return depsArrayFor(output, "C");
+  return depsArrayFor(output, 'C');
 }
 
 // ── Rule 2: singular literals supply their value (LiteralRef emission) ────────
 
-describe("LiteralRef emission — singular literals (Rule 2)", () => {
-  test("string / number / boolean / bigint literals each emit { value }", () => {
+describe('LiteralRef emission — singular literals (Rule 2)', () => {
+  test('string / number / boolean / bigint literals each emit { value }', () => {
     expect(emitFor(`constructor(a: "dev", b: 42, c: true, d: 1n) {}`)).toBe(
-      "[[{ value: \"dev\" }, { value: 42 }, { value: true }, { value: 1n }]]",
+      '[[{ value: "dev" }, { value: 42 }, { value: true }, { value: 1n }]]',
     );
   });
 
-  test("negative number and negative bigint round-trip as unary-minus literals", () => {
+  test('negative number and negative bigint round-trip as unary-minus literals', () => {
     expect(emitFor(`constructor(a: -7, b: -3n) {}`)).toBe(
-      "[[{ value: -7 }, { value: -3n }]]",
+      '[[{ value: -7 }, { value: -3n }]]',
     );
   });
 
-  test("false literal emits { value: false }", () => {
-    expect(emitFor(`constructor(a: false) {}`)).toBe("[[{ value: false }]]");
+  test('false literal emits { value: false }', () => {
+    expect(emitFor(`constructor(a: false) {}`)).toBe('[[{ value: false }]]');
   });
 });
 
 // ── Rule 2: whole-type void / undefined / null singletons ────────────────────
 
-describe("LiteralRef emission — void / undefined / null singletons (Rule 2)", () => {
-  test("a `void` param supplies undefined (not a token, no overload)", () => {
-    expect(emitFor(`constructor(a: void) {}`)).toBe("[[{ value: void 0 }]]");
+describe('LiteralRef emission — void / undefined / null singletons (Rule 2)', () => {
+  test('a `void` param supplies undefined (not a token, no overload)', () => {
+    expect(emitFor(`constructor(a: void) {}`)).toBe('[[{ value: void 0 }]]');
   });
 
-  test("whole-type undefined and null supply their values", () => {
+  test('whole-type undefined and null supply their values', () => {
     expect(emitFor(`constructor(a: undefined, b: null) {}`)).toBe(
-      "[[{ value: void 0 }, { value: null }]]",
+      '[[{ value: void 0 }, { value: null }]]',
     );
   });
 
-  test("`never` is NOT a singleton — it stays the Rule-1 token", () => {
-    expect(emitFor(`constructor(a: never) {}`)).toBe("[[\"never\"]]");
+  test('`never` is NOT a singleton — it stays the Rule-1 token', () => {
+    expect(emitFor(`constructor(a: never) {}`)).toBe('[["never"]]');
   });
 });
 
 // ── Rule 1: WP-series — primitives tokenize by keyword ───────────────────────
 
-describe("WP-series — wide primitives tokenize by keyword (Rule 1)", () => {
-  test("WP-1/2/3: standalone string / number / boolean → bare keyword token", () => {
+describe('WP-series — wide primitives tokenize by keyword (Rule 1)', () => {
+  test('WP-1/2/3: standalone string / number / boolean → bare keyword token', () => {
     expect(emitFor(`constructor(a: string, b: number, c: boolean) {}`)).toBe(
-      "[[\"string\", \"number\", \"boolean\"]]",
+      '[["string", "number", "boolean"]]',
     );
   });
 
-  test("WP-4/5/6: primitives inside a union → bare keyword members", () => {
+  test('WP-4/5/6: primitives inside a union → bare keyword members', () => {
     expect(
-      emitFor(`constructor(a: string | IFoo) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [\"string\", \"./app:IFoo\"] }]]");
+      emitFor(`constructor(a: string | IFoo) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: ["string", "./app:IFoo"] }]]');
     expect(
-      emitFor(`constructor(a: number | IFoo) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [\"number\", \"./app:IFoo\"] }]]");
+      emitFor(`constructor(a: number | IFoo) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: ["number", "./app:IFoo"] }]]');
   });
 
   test("WP-7: `true | false` is the wide boolean type → bare token 'boolean'", () => {
-    expect(emitFor(`constructor(a: true | false) {}`)).toBe("[[\"boolean\"]]");
+    expect(emitFor(`constructor(a: true | false) {}`)).toBe('[["boolean"]]');
   });
 
-  test("WP-8: symbol tokenizes by keyword", () => {
-    expect(emitFor(`constructor(a: symbol) {}`)).toBe("[[\"symbol\"]]");
+  test('WP-8: symbol tokenizes by keyword', () => {
+    expect(emitFor(`constructor(a: symbol) {}`)).toBe('[["symbol"]]');
   });
 
-  test("WP-9: any / unknown tokenize; bigint tokenizes by keyword", () => {
+  test('WP-9: any / unknown tokenize; bigint tokenizes by keyword', () => {
     expect(emitFor(`constructor(a: any, b: unknown, c: bigint) {}`)).toBe(
-      "[[\"any\", \"unknown\", \"bigint\"]]",
+      '[["any", "unknown", "bigint"]]',
     );
   });
 
-  test("WP-10: a singular `\"hello\"` literal supplies its value (Rule 2), not a token", () => {
+  test('WP-10: a singular `"hello"` literal supplies its value (Rule 2), not a token', () => {
     expect(emitFor(`constructor(mode: "hello") {}`)).toBe(
-      "[[{ value: \"hello\" }]]",
+      '[[{ value: "hello" }]]',
     );
   });
 });
 
 // ── Optional handling unified on union (no overload expansion) ───────────────
 
-describe("optional params lower to union(<non-nullish>, { value: undefined })", () => {
-  test("`dep?: IFoo` → single signature with a union fallback", () => {
+describe('optional params lower to union(<non-nullish>, { value: undefined })', () => {
+  test('`dep?: IFoo` → single signature with a union fallback', () => {
     expect(
-      emitFor(`constructor(dep?: IFoo) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [\"./app:IFoo\", { value: void 0 }] }]]");
+      emitFor(`constructor(dep?: IFoo) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: ["./app:IFoo", { value: void 0 }] }]]');
   });
 
-  test("`dep: IFoo | undefined` → identical union fallback", () => {
+  test('`dep: IFoo | undefined` → identical union fallback', () => {
     expect(
-      emitFor(`constructor(dep: IFoo | undefined) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [\"./app:IFoo\", { value: void 0 }] }]]");
+      emitFor(`constructor(dep: IFoo | undefined) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: ["./app:IFoo", { value: void 0 }] }]]');
   });
 
   test("`p: string = 'x'` default initializer → union('string', { value: undefined })", () => {
     expect(
-      emitFor(`constructor(a: IFoo, p: string = "x") {}`, "interface IFoo {}"),
-    ).toBe("[[\"./app:IFoo\", { union: [\"string\", { value: void 0 }] }]]");
+      emitFor(`constructor(a: IFoo, p: string = "x") {}`, 'interface IFoo {}'),
+    ).toBe('[["./app:IFoo", { union: ["string", { value: void 0 }] }]]');
   });
 
-  test("interior `a: IFoo | undefined, b: IBar` keeps b (union fallback expresses it)", () => {
+  test('interior `a: IFoo | undefined, b: IBar` keeps b (union fallback expresses it)', () => {
     // Overload-dropping could not represent this; the per-param union does.
     expect(
       emitFor(
         `constructor(a: IFoo | undefined, b: IBar) {}`,
-        "interface IFoo {} interface IBar {}",
+        'interface IFoo {} interface IBar {}',
       ),
     ).toBe(
-      "[[{ union: [\"./app:IFoo\", { value: void 0 }] }, \"./app:IBar\"]]",
+      '[[{ union: ["./app:IFoo", { value: void 0 }] }, "./app:IBar"]]',
     );
   });
 
-  test("`dep?: IFoo | IBar` → ONE signature union(IFoo, IBar, { value: undefined }) (GAP9)", () => {
+  test('`dep?: IFoo | IBar` → ONE signature union(IFoo, IBar, { value: undefined }) (GAP9)', () => {
     // Under union unification this is a single signature, NOT two overloads.
     expect(
       emitFor(
         `constructor(dep?: IFoo | IBar) {}`,
-        "interface IFoo {} interface IBar {}",
+        'interface IFoo {} interface IBar {}',
       ),
     ).toBe(
-      "[[{ union: [\"./app:IFoo\", \"./app:IBar\", { value: void 0 }] }]]",
+      '[[{ union: ["./app:IFoo", "./app:IBar", { value: void 0 }] }]]',
     );
   });
 
-  test("`X | null` → union(X, { value: null })", () => {
+  test('`X | null` → union(X, { value: null })', () => {
     expect(
-      emitFor(`constructor(a: IFoo | null) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [\"./app:IFoo\", { value: null }] }]]");
+      emitFor(`constructor(a: IFoo | null) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: ["./app:IFoo", { value: null }] }]]');
   });
 
-  test("optional pure-literal union `mode?: \"a\" | \"b\"` keeps the sorted literal token", () => {
+  test('optional pure-literal union `mode?: "a" | "b"` keeps the sorted literal token', () => {
     expect(emitFor(`constructor(mode?: "a" | "b") {}`)).toBe(
-      "[[{ union: [\"\\\"a\\\" | \\\"b\\\"\", { value: void 0 }] }]]",
+      '[[{ union: ["\\"a\\" | \\"b\\"", { value: void 0 }] }]]',
     );
   });
 });
 
 // ── Inline non-literal unions + GAP10/11 ─────────────────────────────────────
 
-describe("inline union slots (GAP10/11)", () => {
-  test("GAP11: declaration order preserved, non-alphabetical IBeta | IAlpha", () => {
+describe('inline union slots (GAP10/11)', () => {
+  test('GAP11: declaration order preserved, non-alphabetical IBeta | IAlpha', () => {
     expect(
-      emitFor(`constructor(dep: IBeta | IAlpha) {}`, "interface IAlpha {} interface IBeta {}"),
-    ).toBe("[[{ union: [\"./app:IBeta\", \"./app:IAlpha\"] }]]");
+      emitFor(`constructor(dep: IBeta | IAlpha) {}`, 'interface IAlpha {} interface IBeta {}'),
+    ).toBe('[[{ union: ["./app:IBeta", "./app:IAlpha"] }]]');
   });
 
-  test("GAP10: pure literal union is NOT a union slot — one sorted literal token", () => {
-    expect(emitFor(`constructor(dep: "a" | "b") {}`)).toBe("[[\"\\\"a\\\" | \\\"b\\\"\"]]");
+  test('GAP10: pure literal union is NOT a union slot — one sorted literal token', () => {
+    expect(emitFor(`constructor(dep: "a" | "b") {}`)).toBe('[["\\"a\\" | \\"b\\""]]');
   });
 
-  test("pure number literal union → one sorted token", () => {
-    expect(emitFor(`constructor(dep: 2 | 1) {}`)).toBe("[[\"1 | 2\"]]");
+  test('pure number literal union → one sorted token', () => {
+    expect(emitFor(`constructor(dep: 2 | 1) {}`)).toBe('[["1 | 2"]]');
   });
 
-  test("mixed literal + interface union → real union with a LiteralRef member", () => {
+  test('mixed literal + interface union → real union with a LiteralRef member', () => {
     expect(
-      emitFor(`constructor(dep: "dev" | IFoo) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [{ value: \"dev\" }, \"./app:IFoo\"] }]]");
+      emitFor(`constructor(dep: "dev" | IFoo) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: [{ value: "dev" }, "./app:IFoo"] }]]');
   });
 });
 
 // ── Declared constructor overloads ───────────────────────────────────────────
 
-describe("declared constructor overloads → one signature each (impl ignored)", () => {
-  test("two declared overloads emit two signatures; the impl is ignored", () => {
+describe('declared constructor overloads → one signature each (impl ignored)', () => {
+  test('two declared overloads emit two signatures; the impl is ignored', () => {
     const src = `
       interface IFoo {}
       interface IBar {}
@@ -211,12 +211,12 @@ describe("declared constructor overloads → one signature each (impl ignored)",
       diagnostics.filter((d) => d.code === DiagnosticCode.UnderivableToken).length,
     ).toBe(0);
     // Exactly two signatures (one per declared overload); NO third from the impl.
-    expect(depsArrayFor(output, "C")).toBe(
-      "[[\"./app:IFoo\"], [\"./app:IFoo\", \"./app:IBar\"]]",
+    expect(depsArrayFor(output, 'C')).toBe(
+      '[["./app:IFoo"], ["./app:IFoo", "./app:IBar"]]',
     );
   });
 
-  test("an optional param INSIDE a declared overload gets the union fallback", () => {
+  test('an optional param INSIDE a declared overload gets the union fallback', () => {
     const src = `
       interface IFoo {}
       interface IBar {}
@@ -231,8 +231,8 @@ describe("declared constructor overloads → one signature each (impl ignored)",
     `;
     const { output } = transform(fixture(src));
     // Second overload's optional b → union(IBar, { value: undefined }), one sig each.
-    expect(depsArrayFor(output, "C")).toBe(
-      "[[\"./app:IFoo\"], [\"./app:IFoo\", { union: [\"./app:IBar\", { value: void 0 }] }]]",
+    expect(depsArrayFor(output, 'C')).toBe(
+      '[["./app:IFoo"], ["./app:IFoo", { union: ["./app:IBar", { value: void 0 }] }]]',
     );
   });
 });
@@ -245,21 +245,21 @@ describe("optional wide-boolean emits the 'boolean' token (Fix 1)", () => {
     // `| undefined`, both BooleanLiteral survivors form the wide boolean scalar —
     // they must NOT be rendered as the literal-union token "false | true".
     expect(emitFor(`constructor(flag?: boolean) {}`)).toBe(
-      "[[{ union: [\"boolean\", { value: void 0 }] }]]",
+      '[[{ union: ["boolean", { value: void 0 }] }]]',
     );
   });
 
-  test("`flag: boolean | undefined` → identical union fallback", () => {
+  test('`flag: boolean | undefined` → identical union fallback', () => {
     expect(emitFor(`constructor(flag: boolean | undefined) {}`)).toBe(
-      "[[{ union: [\"boolean\", { value: void 0 }] }]]",
+      '[[{ union: ["boolean", { value: void 0 }] }]]',
     );
   });
 
-  test("`flag?: true` (single literal) still emits { value: true } fallback", () => {
+  test('`flag?: true` (single literal) still emits { value: true } fallback', () => {
     // A SINGLE boolean literal must not be treated as the wide boolean — only
     // the case where BOTH true and false survive the nullish strip is excluded.
     expect(emitFor(`constructor(flag?: true) {}`)).toBe(
-      "[[{ union: [{ value: true }, { value: void 0 }] }]]",
+      '[[{ union: [{ value: true }, { value: void 0 }] }]]',
     );
   });
 
@@ -267,36 +267,36 @@ describe("optional wide-boolean emits the 'boolean' token (Fix 1)", () => {
     // Explicit `true | false | undefined` annotation is an inline UnionTypeNode;
     // the non-nullish members `true` and `false` together are the wide boolean.
     expect(emitFor(`constructor(flag: true | false | undefined) {}`)).toBe(
-      "[[{ union: [\"boolean\", { value: void 0 }] }]]",
+      '[[{ union: ["boolean", { value: void 0 }] }]]',
     );
   });
 });
 
 // ── WP extended: wide primitive in a union ────────────────────────────────────
 
-describe("wide primitive in a required union", () => {
+describe('wide primitive in a required union', () => {
   test("`boolean | IFoo` → union(['boolean', './app:IFoo'])", () => {
     // A required (non-optional) union that contains the wide boolean: the
     // `boolean` member must survive as the bare keyword token, not be broken
     // into false/true literal members.
     expect(
-      emitFor(`constructor(a: boolean | IFoo) {}`, "interface IFoo {}"),
-    ).toBe("[[{ union: [\"boolean\", \"./app:IFoo\"] }]]");
+      emitFor(`constructor(a: boolean | IFoo) {}`, 'interface IFoo {}'),
+    ).toBe('[[{ union: ["boolean", "./app:IFoo"] }]]');
   });
 });
 
 // ── Regression pins: index-access types + unique symbol ───────────────────────
 
-describe("index-access types and unique symbol (regression pins)", () => {
+describe('index-access types and unique symbol (regression pins)', () => {
   test("index-access `Shape['bar']` resolves to the named type token", () => {
     // An indexed-access type whose resolved type is a named interface derives the
     // interface's token, not the index expression text.
     expect(
       emitFor(
         `constructor(dep: Shape["bar"]) {}`,
-        "interface IBar {} type Shape = { bar: IBar; mode: \"dev\" }",
+        'interface IBar {} type Shape = { bar: IBar; mode: "dev" }',
       ),
-    ).toBe("[[\"./app:IBar\"]]");
+    ).toBe('[["./app:IBar"]]');
   });
 
   test("index-access `Shape['mode']` resolves to a LiteralRef (Rule 2)", () => {
@@ -304,68 +304,68 @@ describe("index-access types and unique symbol (regression pins)", () => {
     expect(
       emitFor(
         `constructor(dep: Shape["mode"]) {}`,
-        "type Shape = { mode: \"dev\" }",
+        'type Shape = { mode: "dev" }',
       ),
-    ).toBe("[[{ value: \"dev\" }]]");
+    ).toBe('[[{ value: "dev" }]]');
   });
 
-  test("wide `symbol` tokenizes by keyword (WP-8 extension)", () => {
-    expect(emitFor(`constructor(a: symbol) {}`)).toBe("[[\"symbol\"]]");
+  test('wide `symbol` tokenizes by keyword (WP-8 extension)', () => {
+    expect(emitFor(`constructor(a: symbol) {}`)).toBe('[["symbol"]]');
   });
 
-  test("`unique symbol` tokenizes by its declared name, not the keyword", () => {
+  test('`unique symbol` tokenizes by its declared name, not the keyword', () => {
     // A `unique symbol` carries its own identity via its declaration symbol —
     // it is NOT the same as the wide `symbol` scalar.
     expect(
       emitFor(
         `constructor(a: MySym) {}`,
-        "declare const MySym: unique symbol; type MySym = typeof MySym;",
+        'declare const MySym: unique symbol; type MySym = typeof MySym;',
       ),
-    ).toBe("[[\"./app:MySym\"]]");
+    ).toBe('[["./app:MySym"]]');
   });
 });
 
 // ── resolve<T>() lowering (Rule 2) ───────────────────────────────────────────
 
-describe("resolve<T>() singular-literal lowering (Rule 2)", () => {
+describe('resolve<T>() singular-literal lowering (Rule 2)', () => {
   function resolveEmit(typeArg: string): string {
     const src = `declare const scope: any; const x = scope.resolve<${typeArg}>();`;
     const { output } = transform(fixture(src));
     return output.match(/const x = (.*);/)![1]!;
   }
 
-  test("resolve<\"dev\">() lowers to the value expression \"dev\" (no resolve call)", () => {
-    expect(resolveEmit(`"dev"`)).toBe("\"dev\"");
+  test('resolve<"dev">() lowers to the value expression "dev" (no resolve call)', () => {
+    expect(resolveEmit(`"dev"`)).toBe('"dev"');
   });
 
-  test("resolve<42>() / resolve<true>() / resolve<1n>() supply the value", () => {
-    expect(resolveEmit("42")).toBe("42");
-    expect(resolveEmit("true")).toBe("true");
-    expect(resolveEmit("1n")).toBe("1n");
+  test('resolve<42>() / resolve<true>() / resolve<1n>() supply the value', () => {
+    expect(resolveEmit('42')).toBe('42');
+    expect(resolveEmit('true')).toBe('true');
+    expect(resolveEmit('1n')).toBe('1n');
   });
 
-  test("resolve<void>() / resolve<undefined>() lower to `void 0`; resolve<null>() to `null`", () => {
-    expect(resolveEmit("void")).toBe("void 0");
-    expect(resolveEmit("undefined")).toBe("void 0");
-    expect(resolveEmit("null")).toBe("null");
+  test('resolve<void>() / resolve<undefined>() lower to `void 0`; resolve<null>() to `null`', () => {
+    expect(resolveEmit('void')).toBe('void 0');
+    expect(resolveEmit('undefined')).toBe('void 0');
+    expect(resolveEmit('null')).toBe('null');
   });
 
-  test("resolve<\"a\" | \"b\">() (a literal UNION) stays a token resolve call", () => {
-    expect(resolveEmit(`"a" | "b"`)).toBe("scope.resolve(\"\\\"a\\\" | \\\"b\\\"\")");
+  test('resolve<"a" | "b">() (a literal UNION) stays a token resolve call', () => {
+    expect(resolveEmit(`"a" | "b"`)).toBe('scope.resolve("\\"a\\" | \\"b\\"")');
   });
 });
 
 // ── resolveAsync<T>() lowering (parity with resolve<T>()) ────────────────────
 
-describe("resolveAsync<T>() tokenless lowering (parity)", () => {
-  test("bare-T: resolveAsync<IFoo>() lowers to resolveAsync(\"token\") exactly as resolve<IFoo>() would", () => {
+describe('resolveAsync<T>() tokenless lowering (parity)', () => {
+  test('bare-T: resolveAsync<IFoo>() lowers to resolveAsync("token") exactly as resolve<IFoo>() would', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
       const x = scope.resolveAsync<IFoo>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.resolveAsync(\"./app:IFoo\")");
+    expect(output).toContain('scope.resolveAsync("./app:IFoo")');
     // The lowered token is identical to the sync form's — same derivation rule.
     const syncSrc = `
       interface IFoo {}
@@ -373,7 +373,7 @@ describe("resolveAsync<T>() tokenless lowering (parity)", () => {
       const y = scope.resolve<IFoo>();
     `;
     const { output: syncOutput } = transform(fixture(syncSrc));
-    expect(syncOutput).toContain("scope.resolve(\"./app:IFoo\")");
+    expect(syncOutput).toContain('scope.resolve("./app:IFoo")');
   });
 
   test("Promise<T>-fallback recursion case: a dependent's own resolveAsync<T>() call lowers independently of the Promise-typed registration it recurses through", () => {
@@ -391,11 +391,11 @@ describe("resolveAsync<T>() tokenless lowering (parity)", () => {
       const remoteConfigConsumer = await root.resolveAsync<IRemoteConfigConsumer>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("await root.resolveAsync(\"./app:IRemoteConfig\")");
-    expect(output).toContain("await root.resolveAsync(\"./app:IRemoteConfigConsumer\")");
+    expect(output).toContain('await root.resolveAsync("./app:IRemoteConfig")');
+    expect(output).toContain('await root.resolveAsync("./app:IRemoteConfigConsumer")');
   });
 
-  test("nested resolveAsync<T>() (inside a function body) is still rewritten — not confined to top-level statements", () => {
+  test('nested resolveAsync<T>() (inside a function body) is still rewritten — not confined to top-level statements', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
@@ -404,21 +404,21 @@ describe("resolveAsync<T>() tokenless lowering (parity)", () => {
       }
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.resolveAsync(\"./app:IFoo\")");
+    expect(output).toContain('scope.resolveAsync("./app:IFoo")');
   });
 });
 
 // ── tryResolve<T>() lowering (parity with resolve<T>()) ──────────────────────
 
-describe("tryResolve<T>() tokenless lowering (parity)", () => {
-  test("bare-T: tryResolve<IFoo>() lowers to tryResolve(\"token\") exactly as resolve<IFoo>() would", () => {
+describe('tryResolve<T>() tokenless lowering (parity)', () => {
+  test('bare-T: tryResolve<IFoo>() lowers to tryResolve("token") exactly as resolve<IFoo>() would', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
       const x = scope.tryResolve<IFoo>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.tryResolve(\"./app:IFoo\")");
+    expect(output).toContain('scope.tryResolve("./app:IFoo")');
     // Same token derivation as the throwing form — only the method name differs.
     const syncSrc = `
       interface IFoo {}
@@ -426,10 +426,10 @@ describe("tryResolve<T>() tokenless lowering (parity)", () => {
       const y = scope.resolve<IFoo>();
     `;
     const { output: syncOutput } = transform(fixture(syncSrc));
-    expect(syncOutput).toContain("scope.resolve(\"./app:IFoo\")");
+    expect(syncOutput).toContain('scope.resolve("./app:IFoo")');
   });
 
-  test("nested tryResolve<T>() (inside a function body) is still rewritten", () => {
+  test('nested tryResolve<T>() (inside a function body) is still rewritten', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
@@ -438,10 +438,10 @@ describe("tryResolve<T>() tokenless lowering (parity)", () => {
       }
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.tryResolve(\"./app:IFoo\")");
+    expect(output).toContain('scope.tryResolve("./app:IFoo")');
   });
 
-  test("explicit tryResolve<T>(token) with a value arg is left untouched", () => {
+  test('explicit tryResolve<T>(token) with a value arg is left untouched', () => {
     // A value argument means it is NOT the tokenless form — the type argument is
     // preserved verbatim, exactly as the explicit resolve<T>(token) form is.
     const src = `
@@ -450,24 +450,24 @@ describe("tryResolve<T>() tokenless lowering (parity)", () => {
       const x = scope.tryResolve<IFoo>("./app:IFoo");
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.tryResolve<IFoo>(\"./app:IFoo\")");
+    expect(output).toContain('scope.tryResolve<IFoo>("./app:IFoo")');
   });
 });
 
 // ── isService<T>() lowering (token-based predicate) ──────────────────────────
 
-describe("isService<T>() tokenless lowering", () => {
-  test("bare-T: isService<IFoo>() lowers to isService(\"token\")", () => {
+describe('isService<T>() tokenless lowering', () => {
+  test('bare-T: isService<IFoo>() lowers to isService("token")', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
       const ok = scope.isService<IFoo>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.isService(\"./app:IFoo\")");
+    expect(output).toContain('scope.isService("./app:IFoo")');
   });
 
-  test("nested isService<T>() (inside a function body) is still rewritten", () => {
+  test('nested isService<T>() (inside a function body) is still rewritten', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
@@ -476,16 +476,16 @@ describe("isService<T>() tokenless lowering", () => {
       }
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.isService(\"./app:IFoo\")");
+    expect(output).toContain('scope.isService("./app:IFoo")');
   });
 
-  test("explicit isService<T>(token) with a value arg is left untouched", () => {
+  test('explicit isService<T>(token) with a value arg is left untouched', () => {
     const src = `
       interface IFoo {}
       declare const scope: any;
       const ok = scope.isService<IFoo>("./app:IFoo");
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("scope.isService<IFoo>(\"./app:IFoo\")");
+    expect(output).toContain('scope.isService<IFoo>("./app:IFoo")');
   });
 });

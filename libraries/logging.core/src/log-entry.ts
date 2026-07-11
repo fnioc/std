@@ -8,10 +8,10 @@
 // no value over the interface. Adapted like the rest of the logging surface:
 // the reference `Exception? exception` becomes `error: Error | undefined`.
 
-import type { Func } from "@rhombus-toolkit/func";
-import type { EventId } from "./event-id";
-import type { ILogger } from "./logger";
-import type { LogLevel } from "./LogLevel";
+import type { Func } from '@rhombus-toolkit/func';
+import type { EventId } from './event-id';
+import type { ILogger } from './logger';
+import type { LogLevel } from './LogLevel';
 
 /** Holds the information for a single log entry — the deconstructed {@link ILogger.log} call. */
 export interface LogEntry<TState> {

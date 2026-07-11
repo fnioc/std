@@ -4,16 +4,16 @@
 // (also used by JsonStreamConfigurationProvider) -- see that module's header
 // for the null/empty-leaf semantics.
 
-import { ConfigurationProvider } from "@rhombus-std/config";
-import { process } from "@rhombus-std/primitives";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { JsonConfigurationFileParser } from "./json-configuration-file-parser";
-import type { JsonConfigurationSource } from "./json-configuration-source";
+import { ConfigurationProvider } from '@rhombus-std/config';
+import { process } from '@rhombus-std/primitives';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { JsonConfigurationFileParser } from './json-configuration-file-parser';
+import type { JsonConfigurationSource } from './json-configuration-source';
 
 /** Whether `err` is a Node `ENOENT` (file-not-found) error. */
 function isFileNotFound(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: string }).code === "ENOENT";
+  return typeof err === 'object' && err !== null && (err as { code?: string; }).code === 'ENOENT';
 }
 
 export class JsonConfigurationProvider extends ConfigurationProvider {
@@ -26,7 +26,7 @@ export class JsonConfigurationProvider extends ConfigurationProvider {
 
   /** Includes the file path and required/optional flag, matching the reference file provider's label. */
   public override toString(): string {
-    return `${this.constructor.name} for '${this.source.path}' (${this.source.optional ? "Optional" : "Required"})`;
+    return `${this.constructor.name} for '${this.source.path}' (${this.source.optional ? 'Optional' : 'Required'})`;
   }
 
   public override load(): void {
@@ -42,7 +42,7 @@ export class JsonConfigurationProvider extends ConfigurationProvider {
     // read error rethrows.
     let raw: string;
     try {
-      raw = readFileSync(resolvedPath, "utf-8");
+      raw = readFileSync(resolvedPath, 'utf-8');
     } catch (err) {
       if (isFileNotFound(err)) {
         if (this.source.optional) {

@@ -2,8 +2,8 @@
 // bound log action; `defineScope` returns a scope-opening action. Black-box via
 // the public logging.core surface.
 
-import { EventId, type ILogger, LoggerMessage, LogLevel } from "@rhombus-std/logging.core";
-import { describe, expect, test } from "bun:test";
+import { EventId, type ILogger, LoggerMessage, LogLevel } from '@rhombus-std/logging.core';
+import { describe, expect, test } from 'bun:test';
 
 interface Written {
   readonly logLevel: LogLevel;
@@ -13,7 +13,7 @@ interface Written {
 }
 
 /** A logger that records each `log` call (rendering the state) and each scope. */
-function recordingLogger(enabled = true): { logger: ILogger; written: Written[]; scopes: unknown[] } {
+function recordingLogger(enabled = true): { logger: ILogger; written: Written[]; scopes: unknown[]; } {
   const written: Written[] = [];
   const scopes: unknown[] = [];
   const logger: ILogger = {
@@ -37,57 +37,57 @@ function recordingLogger(enabled = true): { logger: ILogger; written: Written[];
   return { logger, written, scopes };
 }
 
-describe("LoggerMessage.define", () => {
-  test("binds level/event/template and renders the message with no args", () => {
+describe('LoggerMessage.define', () => {
+  test('binds level/event/template and renders the message with no args', () => {
     const { logger, written } = recordingLogger();
-    const logStarted = LoggerMessage.define(LogLevel.Information, 1, "Application started");
+    const logStarted = LoggerMessage.define(LogLevel.Information, 1, 'Application started');
 
     logStarted(logger, undefined);
 
     expect(written).toHaveLength(1);
     expect(written[0]?.logLevel).toBe(LogLevel.Information);
     expect(written[0]?.eventId.id).toBe(1);
-    expect(written[0]?.message).toBe("Application started");
+    expect(written[0]?.message).toBe('Application started');
     expect(written[0]?.error).toBeUndefined();
   });
 
-  test("substitutes typed args into the template in order", () => {
+  test('substitutes typed args into the template in order', () => {
     const { logger, written } = recordingLogger();
     const logConnected = LoggerMessage.define<string, number>(
       LogLevel.Warning,
       new EventId(2),
-      "Connected to {Host} on attempt {Attempt}",
+      'Connected to {Host} on attempt {Attempt}',
     );
 
-    logConnected(logger, "db-primary", 3, undefined);
+    logConnected(logger, 'db-primary', 3, undefined);
 
     expect(written[0]?.logLevel).toBe(LogLevel.Warning);
-    expect(written[0]?.message).toBe("Connected to db-primary on attempt 3");
+    expect(written[0]?.message).toBe('Connected to db-primary on attempt 3');
   });
 
-  test("passes the trailing error through", () => {
+  test('passes the trailing error through', () => {
     const { logger, written } = recordingLogger();
-    const logFailed = LoggerMessage.define<string>(LogLevel.Error, 3, "Job {Job} failed");
-    const boom = new Error("boom");
+    const logFailed = LoggerMessage.define<string>(LogLevel.Error, 3, 'Job {Job} failed');
+    const boom = new Error('boom');
 
-    logFailed(logger, "reindex", boom);
+    logFailed(logger, 'reindex', boom);
 
-    expect(written[0]?.message).toBe("Job reindex failed");
+    expect(written[0]?.message).toBe('Job reindex failed');
     expect(written[0]?.error).toBe(boom);
   });
 
-  test("skips writing when the level is disabled", () => {
+  test('skips writing when the level is disabled', () => {
     const { logger, written } = recordingLogger(false);
-    const logStarted = LoggerMessage.define(LogLevel.Information, 1, "Application started");
+    const logStarted = LoggerMessage.define(LogLevel.Information, 1, 'Application started');
 
     logStarted(logger, undefined);
 
     expect(written).toHaveLength(0);
   });
 
-  test("skipEnabledCheck writes even when the level is disabled", () => {
+  test('skipEnabledCheck writes even when the level is disabled', () => {
     const { logger, written } = recordingLogger(false);
-    const logStarted = LoggerMessage.define(LogLevel.Information, 1, "Application started", {
+    const logStarted = LoggerMessage.define(LogLevel.Information, 1, 'Application started', {
       skipEnabledCheck: true,
     });
 
@@ -97,15 +97,15 @@ describe("LoggerMessage.define", () => {
   });
 });
 
-describe("LoggerMessage.defineScope", () => {
-  test("opens a scope whose state renders the templated message", () => {
+describe('LoggerMessage.defineScope', () => {
+  test('opens a scope whose state renders the templated message', () => {
     const { logger, scopes } = recordingLogger();
-    const requestScope = LoggerMessage.defineScope<number>("Request {Id}");
+    const requestScope = LoggerMessage.defineScope<number>('Request {Id}');
 
     const scope = requestScope(logger, 42);
 
     expect(scope).toBeDefined();
     expect(scopes).toHaveLength(1);
-    expect(String(scopes[0])).toBe("Request 42");
+    expect(String(scopes[0])).toBe('Request 42');
   });
 });

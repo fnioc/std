@@ -14,8 +14,8 @@
 // monitor — collapses to `Options.of` from @rhombus-std/options and needs no
 // port.)
 
-import type { Options } from "@rhombus-std/options";
-import type { Func } from "@rhombus-toolkit/func";
+import type { Options } from '@rhombus-std/options';
+import type { Func } from '@rhombus-toolkit/func';
 
 /** A mutable {@link Options} whose {@link reload} notifies subscribers. */
 export class ReloadableOptions<T> implements Options<T> {

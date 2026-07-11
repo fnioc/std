@@ -18,9 +18,9 @@
 // getter (§44 — a real node builtin, typed by the compile-scope
 // `node-builtins.d.ts`).
 
-import type { IExternalScopeProvider } from "@rhombus-std/logging.core";
-import type { Func } from "@rhombus-toolkit/func";
-import { AsyncLocalStorage } from "node:async_hooks";
+import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
+import type { Func } from '@rhombus-toolkit/func';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 /**
  * One node of the ambient scope stack: its state plus a link to its parent. On
@@ -37,7 +37,7 @@ class Scope implements Disposable {
   ) {}
 
   public toString(): string {
-    return this.state === undefined || this.state === null ? "" : String(this.state);
+    return this.state === undefined || this.state === null ? '' : String(this.state);
   }
 
   public [Symbol.dispose](): void {

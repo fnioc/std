@@ -1,8 +1,8 @@
 // SimpleConsoleFormatterOptions — options for the default ("simple") console
 // formatter, ported from the reference `SimpleConsoleFormatterOptions`.
 
-import { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
-import { LoggerColorBehavior } from "./LoggerColorBehavior";
+import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
+import { LoggerColorBehavior } from './LoggerColorBehavior';
 
 /** Options for the built-in default console log formatter. */
 export class SimpleConsoleFormatterOptions extends ConsoleFormatterOptions {

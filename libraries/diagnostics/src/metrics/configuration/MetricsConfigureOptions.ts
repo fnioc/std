@@ -11,22 +11,16 @@
 // `Default` at either level is the match-all synonym (a `null` meter/instrument
 // name). Non-bool values are skipped.
 
-import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config";
-import { InstrumentRule, METER_SCOPE_ALL, MeterScope, MetricsOptions } from "@rhombus-std/diagnostics.core";
-import type { ConfigureOptions } from "@rhombus-std/options";
+import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config';
+import { InstrumentRule, METER_SCOPE_ALL, MeterScope, MetricsOptions } from '@rhombus-std/diagnostics.core';
+import type { ConfigureOptions } from '@rhombus-std/options';
 
-import {
-  DEFAULT_KEY,
-  equalsIgnoreCase,
-  flattenLeaves,
-  hasChildren,
-  parseBool,
-  sectionExists,
-} from "../../config-rule-parsing";
+import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool,
+  sectionExists } from '../../config-rule-parsing';
 
-const ENABLED_METRICS_KEY = "EnabledMetrics";
-const ENABLED_GLOBAL_METRICS_KEY = "EnabledGlobalMetrics";
-const ENABLED_LOCAL_METRICS_KEY = "EnabledLocalMetrics";
+const ENABLED_METRICS_KEY = 'EnabledMetrics';
+const ENABLED_GLOBAL_METRICS_KEY = 'EnabledGlobalMetrics';
+const ENABLED_LOCAL_METRICS_KEY = 'EnabledLocalMetrics';
 
 /** Appends per-instrument rules from an object of `{InstrumentName} = bool` leaves. */
 function loadInstrumentRules(

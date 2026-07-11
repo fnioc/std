@@ -170,7 +170,7 @@ export interface DepRecord {
 The dep-metadata store is a plain `Map<DepTarget, DepRecord>` anchored on `globalThis` under a fixed `Symbol.for` key:
 
 ```typescript
-const KEY: unique symbol = Symbol.for("fnioc:deps");
+const KEY: unique symbol = Symbol.for('fnioc:deps');
 // Using Symbol.for (never Symbol()) — the registry is global, so two bundles
 // share the same key and thus the same Map.
 const store: Map<DepTarget, DepRecord> = (globalThis as any)[KEY] ??= new Map();
@@ -258,8 +258,8 @@ For classes you don't own or when you prefer not to decorate:
 ```typescript
 // Third-party class; annotate without touching its source
 forCtor(ThirdPartyService)
-  .signature("pkg:IDb")
-  .signature("pkg:ILogger", "pkg:IDb"); // second overload
+  .signature('pkg:IDb')
+  .signature('pkg:ILogger', 'pkg:IDb'); // second overload
 ```
 
 The verb `signature` is used consistently: the ABI field is `signatures`, the decorator is `@signature`, and the fluent method is `.signature()`. One word, one concept, end to end.
@@ -306,7 +306,7 @@ class DevLogger {
 **`resolve<T>()` for a singular `T` lowers to the value expression itself**, not to a `resolve` call — there is no container round-trip:
 
 ```typescript
-scope.resolve<"dev">(); // lowers to:  "dev"
+scope.resolve<'dev'>(); // lowers to:  "dev"
 scope.resolve<42>(); // lowers to:  42
 scope.resolve<1n>(); // lowers to:  1n
 scope.resolve<void>(); // lowers to:  void 0
@@ -340,10 +340,10 @@ This is strictly more expressive than trailing-overload expansion: it can repres
 **Author code (with transformer):**
 
 ```typescript
-const services = new DiBuilder<"singleton" | "request">();
+const services = new DiBuilder<'singleton' | 'request'>();
 
-services.add<ILogger>(ConsoleLogger).as<"singleton">();
-services.add<IUserRepo>(SqlUserRepo).as<"request">();
+services.add<ILogger>(ConsoleLogger).as<'singleton'>();
+services.add<IUserRepo>(SqlUserRepo).as<'request'>();
 // SqlUserRepo ctor: constructor(log: ILogger, db: IDbConnection, table?: string)
 // 'table' is optional → its slot is union("string", { value: undefined }).
 // One signature, no expansion. Runtime: "string" wins if registered, else the
@@ -357,16 +357,16 @@ const services = new DiBuilder();
 
 const ɵreg0 = ConsoleLogger; // hoisted — defineDeps and add share the same reference
 defineDeps(ɵreg0, [[]]); // zero-arg class: single empty signature
-services.add("pkg:ILogger", ɵreg0).as("singleton");
+services.add('pkg:ILogger', ɵreg0).as('singleton');
 
 const ɵreg1 = SqlUserRepo;
 defineDeps(ɵreg1, [
   // one signature; the optional `table` is a union slot with an undefined fallback
-  ["pkg:ILogger", "pkg:IDbConnection", {
-    union: ["string", { value: void 0 }],
+  ['pkg:ILogger', 'pkg:IDbConnection', {
+    union: ['string', { value: void 0 }],
   }],
 ]);
-services.add("pkg:IUserRepo", ɵreg1).as("request");
+services.add('pkg:IUserRepo', ɵreg1).as('request');
 ```
 
 The lowered form is the ABI contract. Libraries publish this form. Consumers without the transformer use it directly. The emitted-call format is kept backward-compatible across `core` semver minors.
@@ -380,17 +380,17 @@ The lowered form is the ABI contract. Libraries publish this form. Consumers wit
 Three registration methods on `DiBuilder`, each with a transformer-authored form and an explicit-token form:
 
 ```typescript
-const services = new DiBuilder<"singleton" | "request">();
+const services = new DiBuilder<'singleton' | 'request'>();
 
 // Transformer-authored (type-driven):
-services.add<ILogger>(ConsoleLogger).as<"singleton">(); // class: token from ILogger
-services.add<IUserRepo>(SqlUserRepo).as<"request">(); // class: token from IUserRepo
+services.add<ILogger>(ConsoleLogger).as<'singleton'>(); // class: token from ILogger
+services.add<IUserRepo>(SqlUserRepo).as<'request'>(); // class: token from IUserRepo
 services.addValue<IConfig>(configInstance); // value: token from IConfig
 
 // Explicit-token (plugin-less / lowered form):
-services.add("pkg:ILogger", ConsoleLogger).as("singleton"); // class
-services.addFactory("pkg:IDb", (scope) => new PgDb(scope)).as("singleton"); // factory
-services.addValue("pkg:IConfig", configInstance); // value
+services.add('pkg:ILogger', ConsoleLogger).as('singleton'); // class
+services.addFactory('pkg:IDb', (scope) => new PgDb(scope)).as('singleton'); // factory
+services.addValue('pkg:IConfig', configInstance); // value
 ```
 
 - `add(token, Ctor)` — class registration. The concrete is instantiated by the engine with injected deps.
@@ -405,7 +405,7 @@ services.addValue("pkg:IConfig", configInstance); // value
 
 ```typescript
 // User supplies their own scope-name union. Transient is implied by omission.
-const services = new DiBuilder<"singleton" | "request">();
+const services = new DiBuilder<'singleton' | 'request'>();
 ```
 
 `"transient"` is not a scope name in this system — it is the default absence-of-a-tag behavior. A registration without a lifetime tag is never cached; there is no scope object for transients to live in.
@@ -416,9 +416,9 @@ Scopes are uniform tags forming a parent chain. There is no root: `build()` retu
 
 ```typescript
 const provider = services.build(); // frameless — no scope pre-opened
-const app = provider.createScope("singleton"); // open the app-lifetime frame
-const req = app.createScope("request"); // created per HTTP request (for example)
-const reqChild = req.createScope("request"); // nested if needed
+const app = provider.createScope('singleton'); // open the app-lifetime frame
+const req = app.createScope('request'); // created per HTTP request (for example)
+const reqChild = req.createScope('request'); // nested if needed
 ```
 
 **Resolution walks UP the parent chain for instance ownership:** the lifetime tag names which enclosing open frame owns and caches the instance. Walk up to the nearest enclosing frame whose name matches the registration's tag. (Registration lookup is flat — the sealed map is shared across the whole tree; scope-local registration was removed in the container redesign.)
@@ -480,10 +480,10 @@ The container never awaits. Async is expressed as `Promise<T>` values flowing th
 
 ```typescript
 // An async factory returns Promise<IDb>
-services.addFactory("pkg:IDb", async (scope) => {
-  const pool = scope.resolve<IConnectionPool>("pkg:IConnectionPool");
+services.addFactory('pkg:IDb', async (scope) => {
+  const pool = scope.resolve<IConnectionPool>('pkg:IConnectionPool');
   return new PostgresDb(await pool.connect());
-}).as("singleton");
+}).as('singleton');
 
 // A service that needs IDb declares the dep as Promise<IDb> and awaits itself
 class UserRepo {
@@ -551,12 +551,12 @@ The recommended plugin-less registration mechanism. No dep array, no decorator, 
 // addFactory: a factory function called with the live scope (no defineDeps record
 // → scope-based escape hatch); or a pre-annotated factory whose deps are injected.
 services.addFactory(
-  "pkg:IFoo",
-  (scope) => new TheirFoo(scope.resolve<IBar>("pkg:IBar")),
-).as("singleton");
+  'pkg:IFoo',
+  (scope) => new TheirFoo(scope.resolve<IBar>('pkg:IBar')),
+).as('singleton');
 
 // addValue: an already-built instance, no lifetime (values are always immediate).
-services.addValue("pkg:IFoo", cachedFooInstance);
+services.addValue('pkg:IFoo', cachedFooInstance);
 ```
 
 **Last registration wins** — a later `add` / `addFactory` / `addValue` for the same token shadows all earlier ones, so any form can override any other. No separate "override" mechanism: overrides are just registrations that happen after the baseline.
@@ -614,16 +614,16 @@ The lowered form is a contract. Libraries compile with the transformer and publi
 
 ```typescript
 // Author code — `table?: string` is optional → union-with-fallback, one signature
-services.add<IUserRepo>(SqlUserRepo).as<"request">();
+services.add<IUserRepo>(SqlUserRepo).as<'request'>();
 
 // Lowered (transformer emits) — the class is hoisted; ONE signature emitted
 const ɵreg0 = SqlUserRepo;
 defineDeps(ɵreg0, [
-  ["pkg:ILogger", "pkg:IDbConnection", {
-    union: ["string", { value: void 0 }],
+  ['pkg:ILogger', 'pkg:IDbConnection', {
+    union: ['string', { value: void 0 }],
   }],
 ]);
-services.add("pkg:IUserRepo", ɵreg0).as("request");
+services.add('pkg:IUserRepo', ɵreg0).as('request');
 // On resolve: the union tries "string" first; if it is not registered, the
 // always-satisfiable { value: void 0 } member supplies undefined, and `table`
 // takes its default. The optional param never makes the signature unsatisfiable.

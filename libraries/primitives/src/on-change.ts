@@ -11,9 +11,9 @@
 // `disposed` boolean. The re-subscription loop itself (the load-bearing
 // part) is otherwise mirrored exactly.
 
-import type { Func } from "@rhombus-toolkit/func";
+import type { Func } from '@rhombus-toolkit/func';
 
-import type { IChangeToken } from "./IChangeToken.js";
+import type { IChangeToken } from './IChangeToken.js';
 
 /**
  * Produces an {@link IChangeToken}. `null`/`undefined` means "no token to
@@ -37,7 +37,7 @@ export type ChangeTokenConsumer<TState> =
   | Func<[state: TState], PromiseLike<void>>;
 
 function isThenable(value: void | PromiseLike<void>): value is PromiseLike<void> {
-  return typeof (value as PromiseLike<void> | undefined)?.then === "function";
+  return typeof (value as PromiseLike<void> | undefined)?.then === 'function';
 }
 
 class ChangeTokenRegistration<TState> {

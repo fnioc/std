@@ -6,10 +6,10 @@
 // ME.FileProviders.Abstractions defines NO extension methods against these
 // interfaces (no *Extensions type in its src), so none are ported here.
 
-export type { IDirectoryContents } from "./IDirectoryContents.js";
-export type { IFileInfo } from "./IFileInfo.js";
-export type { IFileProvider } from "./IFileProvider.js";
-export { NotFoundDirectoryContents } from "./NotFoundDirectoryContents.js";
-export { NotFoundFileInfo } from "./NotFoundFileInfo.js";
-export { NullChangeToken } from "./NullChangeToken.js";
-export { NullFileProvider } from "./NullFileProvider.js";
+export type { IDirectoryContents } from './IDirectoryContents.js';
+export type { IFileInfo } from './IFileInfo.js';
+export type { IFileProvider } from './IFileProvider.js';
+export { NotFoundDirectoryContents } from './NotFoundDirectoryContents.js';
+export { NotFoundFileInfo } from './NotFoundFileInfo.js';
+export { NullChangeToken } from './NullChangeToken.js';
+export { NullFileProvider } from './NullFileProvider.js';

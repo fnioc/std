@@ -1,8 +1,8 @@
 // ConsoleFormatter — the pluggable log-message formatter abstraction, ported
 // from the reference console-logging package's `ConsoleFormatter`.
 
-import type { IExternalScopeProvider, LogEntry } from "@rhombus-std/logging.core";
-import type { TextWriter } from "./text-writer";
+import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
+import type { TextWriter } from './text-writer';
 
 /** Allows custom log message formatting. */
 export abstract class ConsoleFormatter {

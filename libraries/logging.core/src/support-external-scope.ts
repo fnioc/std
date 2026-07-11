@@ -3,7 +3,7 @@
 // factory-supplied ambient scope source, so scopes opened on the outer
 // composite logger are visible to the provider's own sinks.
 
-import type { IExternalScopeProvider } from "./logger";
+import type { IExternalScopeProvider } from './logger';
 
 /**
  * Represents an {@link import("./logger-factory").ILoggerProvider} that is able

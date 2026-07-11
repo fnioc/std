@@ -7,7 +7,7 @@
 // this platform ANSI escape sequences are the native console color mechanism,
 // so nothing needs them parsed away (see ./AnsiLogConsole).
 
-import { assertNever } from "@rhombus-toolkit/type-guards";
+import { assertNever } from '@rhombus-toolkit/type-guards';
 
 /**
  * The 16 console colors of the reference platform's console color model. The
@@ -33,58 +33,58 @@ export enum ConsoleColor {
 }
 
 /** Resets to the default foreground color (and normal intensity). */
-export const DEFAULT_FOREGROUND_COLOR = "\x1b[39m\x1b[22m";
+export const DEFAULT_FOREGROUND_COLOR = '\x1b[39m\x1b[22m';
 
 /** Resets to the default background color. */
-export const DEFAULT_BACKGROUND_COLOR = "\x1b[49m";
+export const DEFAULT_BACKGROUND_COLOR = '\x1b[49m';
 
 /** The ANSI escape sequence selecting `color` as the foreground. */
 export function getForegroundColorEscapeCode(color: ConsoleColor): string {
   switch (color) {
     case ConsoleColor.Black: {
-      return "\x1b[30m";
+      return '\x1b[30m';
     }
     case ConsoleColor.DarkRed: {
-      return "\x1b[31m";
+      return '\x1b[31m';
     }
     case ConsoleColor.DarkGreen: {
-      return "\x1b[32m";
+      return '\x1b[32m';
     }
     case ConsoleColor.DarkYellow: {
-      return "\x1b[33m";
+      return '\x1b[33m';
     }
     case ConsoleColor.DarkBlue: {
-      return "\x1b[34m";
+      return '\x1b[34m';
     }
     case ConsoleColor.DarkMagenta: {
-      return "\x1b[35m";
+      return '\x1b[35m';
     }
     case ConsoleColor.DarkCyan: {
-      return "\x1b[36m";
+      return '\x1b[36m';
     }
     case ConsoleColor.Gray: {
-      return "\x1b[37m";
+      return '\x1b[37m';
     }
     case ConsoleColor.Red: {
-      return "\x1b[1m\x1b[31m";
+      return '\x1b[1m\x1b[31m';
     }
     case ConsoleColor.Green: {
-      return "\x1b[1m\x1b[32m";
+      return '\x1b[1m\x1b[32m';
     }
     case ConsoleColor.Yellow: {
-      return "\x1b[1m\x1b[33m";
+      return '\x1b[1m\x1b[33m';
     }
     case ConsoleColor.Blue: {
-      return "\x1b[1m\x1b[34m";
+      return '\x1b[1m\x1b[34m';
     }
     case ConsoleColor.Magenta: {
-      return "\x1b[1m\x1b[35m";
+      return '\x1b[1m\x1b[35m';
     }
     case ConsoleColor.Cyan: {
-      return "\x1b[1m\x1b[36m";
+      return '\x1b[1m\x1b[36m';
     }
     case ConsoleColor.White: {
-      return "\x1b[1m\x1b[37m";
+      return '\x1b[1m\x1b[37m';
     }
     case ConsoleColor.DarkGray: {
       // No dedicated code in the reference table either — fall back to default.
@@ -100,28 +100,28 @@ export function getForegroundColorEscapeCode(color: ConsoleColor): string {
 export function getBackgroundColorEscapeCode(color: ConsoleColor): string {
   switch (color) {
     case ConsoleColor.Black: {
-      return "\x1b[40m";
+      return '\x1b[40m';
     }
     case ConsoleColor.DarkRed: {
-      return "\x1b[41m";
+      return '\x1b[41m';
     }
     case ConsoleColor.DarkGreen: {
-      return "\x1b[42m";
+      return '\x1b[42m';
     }
     case ConsoleColor.DarkYellow: {
-      return "\x1b[43m";
+      return '\x1b[43m';
     }
     case ConsoleColor.DarkBlue: {
-      return "\x1b[44m";
+      return '\x1b[44m';
     }
     case ConsoleColor.DarkMagenta: {
-      return "\x1b[45m";
+      return '\x1b[45m';
     }
     case ConsoleColor.DarkCyan: {
-      return "\x1b[46m";
+      return '\x1b[46m';
     }
     case ConsoleColor.Gray: {
-      return "\x1b[47m";
+      return '\x1b[47m';
     }
     case ConsoleColor.DarkGray:
     case ConsoleColor.Blue:

@@ -5,14 +5,14 @@
 // written for a human reading a stack trace at the moment a graph fails to
 // resolve.
 
-import { type DepSlot, DiError, type Token } from "@rhombus-std/di.core";
+import { type DepSlot, DiError, type Token } from '@rhombus-std/di.core';
 
 // The error-taxonomy root `DiError` and the registration-time
 // `OpenTokenRegistrationError` live in `@rhombus-std/di.core` (raised by the
 // registration builder there). di re-exports them so the whole taxonomy stays
 // reachable through one `@rhombus-std/di` import; the resolution-time errors
 // below extend the shared `DiError` root.
-export { ActivationError, DiError, OpenTokenRegistrationError } from "@rhombus-std/di.core";
+export { ActivationError, DiError, OpenTokenRegistrationError } from '@rhombus-std/di.core';
 
 /**
  * A token was requested but no registration exists for it anywhere in the
@@ -65,9 +65,9 @@ export class NoSatisfiableSignatureError extends DiError {
           ? `; unsatisfiable tokens: ${
             unsatisfiable
               .map((t) => `"${t}"`)
-              .join(", ")
+              .join(', ')
           }`
-          : "")
+          : '')
         + `. Register the missing dependencies, or provide a useFactory `
         + `override.`,
     );
@@ -80,7 +80,7 @@ export class NoSatisfiableSignatureError extends DiError {
  */
 export class CircularDependencyError extends DiError {
   public constructor(public readonly path: readonly Token[]) {
-    super(`Circular dependency detected:\n  ${path.join(" → ")}`);
+    super(`Circular dependency detected:\n  ${path.join(' → ')}`);
   }
 }
 
@@ -94,10 +94,10 @@ export class CircularDependencyError extends DiError {
 export class FactoryTargetError extends DiError {
   public constructor(
     public readonly factoryToken: Token,
-    public readonly reason: "unregistered" | "not-a-class",
+    public readonly reason: 'unregistered' | 'not-a-class',
   ) {
     super(
-      reason === "unregistered"
+      reason === 'unregistered'
         ? `Cannot inject a factory for "${factoryToken}": no registration `
           + `found for it. A factory parameter (typed \`() => IFoo\`) needs `
           + `the target registered as a class with `
@@ -118,8 +118,8 @@ export class FactoryTargetError extends DiError {
 export class NoSatisfiableUnionError extends DiError {
   public constructor(public readonly members: readonly DepSlot[]) {
     const memberList = members
-      .map((m) => (typeof m === "string" ? `"${m}"` : JSON.stringify(m)))
-      .join(", ");
+      .map((m) => (typeof m === 'string' ? `"${m}"` : JSON.stringify(m)))
+      .join(', ');
     super(
       `No satisfiable union member found. Tried: [${memberList}]. `
         + `Register at least one of the union members before resolving.`,
@@ -171,7 +171,7 @@ export class ScopeValidationError extends DiError {
      * its token and the scope owning it — when the violation happened inside
      * a construction: the reference validator's "singleton" party.
      */
-    public readonly consumer?: { readonly token: Token; readonly scope: string },
+    public readonly consumer?: { readonly token: Token; readonly scope: string; },
     /** The token the triggering `resolve()` call originally requested. */
     public readonly requested?: Token,
   ) {

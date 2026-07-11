@@ -15,8 +15,8 @@
 // A hole is a token node that is exactly `$N` (decimal N ≥ 1); a token
 // containing a hole in any arg position is an *open template*.
 
-import { isFactoryRef, isTypeArgRef, isUnionSlot } from "./guards.js";
-import type { DepSlot, ParsedToken, Token } from "./types.js";
+import { isFactoryRef, isTypeArgRef, isUnionSlot } from './guards.js';
+import type { DepSlot, ParsedToken, Token } from './types.js';
 
 /**
  * A token node that is exactly a hole: `$N`, decimal N ≥ 1. The single source of
@@ -33,7 +33,7 @@ export function closeToken(base: Token, ...args: Token[]): Token {
   if (!args.length) {
     return base;
   }
-  return `${base}<${args.join(",")}>`;
+  return `${base}<${args.join(',')}>`;
 }
 
 /**
@@ -49,13 +49,13 @@ export function closeToken(base: Token, ...args: Token[]): Token {
  * correctly.
  */
 export function parseToken(token: Token): ParsedToken | undefined {
-  const open = token.indexOf("<");
+  const open = token.indexOf('<');
   if (open <= 0) {
     // No `<` at all (not generic), or `<` first (empty base — malformed).
     return undefined;
   }
   const base = token.slice(0, open);
-  if (base.includes(">") || base.includes("\"")) {
+  if (base.includes('>') || base.includes('"')) {
     return undefined;
   }
   const args: Token[] = [];
@@ -65,18 +65,18 @@ export function parseToken(token: Token): ParsedToken | undefined {
   for (let i = open + 1; i < token.length; i++) {
     const ch = token[i];
     if (inQuote) {
-      if (ch === "\\") {
+      if (ch === '\\') {
         i++;
-      } else if (ch === "\"") {
+      } else if (ch === '"') {
         inQuote = false;
       }
       continue;
     }
-    if (ch === "\"") {
+    if (ch === '"') {
       inQuote = true;
-    } else if (ch === "<") {
+    } else if (ch === '<') {
       depth++;
-    } else if (ch === ">") {
+    } else if (ch === '>') {
       depth--;
       if (!depth) {
         // The closing `>` must be the last character.
@@ -90,7 +90,7 @@ export function parseToken(token: Token): ParsedToken | undefined {
         args.push(last);
         return { base, args };
       }
-    } else if (ch === "," && depth === 1) {
+    } else if (ch === ',' && depth === 1) {
       const arg = token.slice(argStart, i);
       if (!arg) {
         return undefined;
@@ -160,7 +160,7 @@ export function substituteSignatures(
 
 /** Slot-level dispatch for `substituteSignatures`. */
 function substituteSlot(slot: DepSlot, args: readonly Token[]): DepSlot {
-  if (typeof slot === "string") {
+  if (typeof slot === 'string') {
     return substituteToken(slot, args);
   }
   if (isTypeArgRef(slot)) {

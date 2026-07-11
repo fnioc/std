@@ -11,7 +11,7 @@
 // verbs operate on this family's own {@link ValidateOptionsResult} (the reference
 // has that overload too, alongside the DataAnnotations ones this drops).
 
-import { ValidateOptionsResult } from "./ValidateOptionsResult.js";
+import { ValidateOptionsResult } from './ValidateOptionsResult.js';
 
 /**
  * Builds a {@link ValidateOptionsResult} from multiple accumulated failures.
@@ -21,7 +21,7 @@ import { ValidateOptionsResult } from "./ValidateOptionsResult.js";
  */
 export class ValidateOptionsResultBuilder {
   /** The prefix `addError` applies when a property name is supplied. */
-  static readonly #propertyPrefix = "Property ";
+  static readonly #propertyPrefix = 'Property ';
 
   readonly #errors: string[] = [];
 

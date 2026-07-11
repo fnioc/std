@@ -1,5 +1,5 @@
-import type { AbortSignal } from "@rhombus-std/primitives";
-import type { IHostedService } from "./IHostedService";
+import type { AbortSignal } from '@rhombus-std/primitives';
+import type { IHostedService } from './IHostedService';
 
 /**
  * Defines methods that are run before or after {@link IHostedService.start} and

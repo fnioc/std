@@ -12,24 +12,24 @@
 // see the package index). The Android/mobile color suppression is skipped: a
 // platform condition with no analog here.
 
-import type { IExternalScopeProvider, LogEntry } from "@rhombus-std/logging.core";
-import { LogLevel } from "@rhombus-std/logging.core";
-import type { Options } from "@rhombus-std/options";
-import { assertNever } from "@rhombus-toolkit/type-guards";
-import { ConsoleColor } from "./AnsiParser";
-import { ConsoleControlCharacterSanitizer } from "./ConsoleControlCharacterSanitizer";
-import { ConsoleFormatter } from "./ConsoleFormatter";
-import { ConsoleFormatterNames } from "./ConsoleFormatterNames";
-import { emitAnsiColorCodes } from "./ConsoleUtils";
-import { formatTimestamp } from "./date-format";
-import { LoggerColorBehavior } from "./LoggerColorBehavior";
-import type { SimpleConsoleFormatterOptions } from "./SimpleConsoleFormatterOptions";
-import type { TextWriter } from "./text-writer";
-import { TextWriterExtensions } from "./TextWriterExtensions";
+import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
+import { LogLevel } from '@rhombus-std/logging.core';
+import type { Options } from '@rhombus-std/options';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import { ConsoleColor } from './AnsiParser';
+import { ConsoleControlCharacterSanitizer } from './ConsoleControlCharacterSanitizer';
+import { ConsoleFormatter } from './ConsoleFormatter';
+import { ConsoleFormatterNames } from './ConsoleFormatterNames';
+import { emitAnsiColorCodes } from './ConsoleUtils';
+import { formatTimestamp } from './date-format';
+import { LoggerColorBehavior } from './LoggerColorBehavior';
+import type { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
+import type { TextWriter } from './text-writer';
+import { TextWriterExtensions } from './TextWriterExtensions';
 
-const LOGLEVEL_PADDING = ": ";
+const LOGLEVEL_PADDING = ': ';
 /** Width of `info: ` — every level string is 4 characters. */
-const MESSAGE_PADDING = " ".repeat(4 + LOGLEVEL_PADDING.length);
+const MESSAGE_PADDING = ' '.repeat(4 + LOGLEVEL_PADDING.length);
 const NEWLINE_WITH_MESSAGE_PADDING = `\n${MESSAGE_PADDING}`;
 
 interface ConsoleColors {
@@ -42,22 +42,22 @@ const NO_COLORS: ConsoleColors = { foreground: undefined, background: undefined 
 function getLogLevelString(logLevel: LogLevel): string {
   switch (logLevel) {
     case LogLevel.Trace: {
-      return "trce";
+      return 'trce';
     }
     case LogLevel.Debug: {
-      return "dbug";
+      return 'dbug';
     }
     case LogLevel.Information: {
-      return "info";
+      return 'info';
     }
     case LogLevel.Warning: {
-      return "warn";
+      return 'warn';
     }
     case LogLevel.Error: {
-      return "fail";
+      return 'fail';
     }
     case LogLevel.Critical: {
-      return "crit";
+      return 'crit';
     }
     case LogLevel.None: {
       // A valid enum member that must never reach the formatter — isEnabled
@@ -144,11 +144,11 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     // category and event id
     textWriter.write(LOGLEVEL_PADDING);
     textWriter.write(category);
-    textWriter.write("[");
+    textWriter.write('[');
     textWriter.write(String(eventId));
-    textWriter.write("]");
+    textWriter.write(']');
     if (!singleLine) {
-      textWriter.write("\n");
+      textWriter.write('\n');
     }
 
     // scope information
@@ -162,21 +162,21 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
       SimpleConsoleFormatter.#writeMessage(textWriter, exception, singleLine);
     }
     if (singleLine) {
-      textWriter.write("\n");
+      textWriter.write('\n');
     }
   }
 
   static #writeMessage(textWriter: TextWriter, message: string, singleLine: boolean): void {
-    if (message === "") {
+    if (message === '') {
       return;
     }
     if (singleLine) {
-      textWriter.write(" ");
-      textWriter.write(message.replaceAll("\n", " "));
+      textWriter.write(' ');
+      textWriter.write(message.replaceAll('\n', ' '));
     } else {
       textWriter.write(MESSAGE_PADDING);
-      textWriter.write(message.replaceAll("\n", NEWLINE_WITH_MESSAGE_PADDING));
-      textWriter.write("\n");
+      textWriter.write(message.replaceAll('\n', NEWLINE_WITH_MESSAGE_PADDING));
+      textWriter.write('\n');
     }
   }
 
@@ -229,15 +229,15 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
       if (paddingNeeded) {
         paddingNeeded = false;
         state.write(MESSAGE_PADDING);
-        state.write("=> ");
+        state.write('=> ');
       } else {
-        state.write(" => ");
+        state.write(' => ');
       }
       state.write(ConsoleControlCharacterSanitizer.sanitize(String(scope)));
     }, textWriter);
 
     if (!paddingNeeded && !singleLine) {
-      textWriter.write("\n");
+      textWriter.write('\n');
     }
   }
 }

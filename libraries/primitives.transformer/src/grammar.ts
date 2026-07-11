@@ -26,12 +26,12 @@ export interface ParsedToken {
  * honored), so literal-type args like `"a,b" | "<c>"` split correctly.
  */
 export function parseToken(token: string): ParsedToken | undefined {
-  const open = token.indexOf("<");
+  const open = token.indexOf('<');
   if (open <= 0) {
     return undefined;
   }
   const base = token.slice(0, open);
-  if (base.includes(">") || base.includes("\"")) {
+  if (base.includes('>') || base.includes('"')) {
     return undefined;
   }
   const args: string[] = [];
@@ -41,18 +41,18 @@ export function parseToken(token: string): ParsedToken | undefined {
   for (let i = open + 1; i < token.length; i++) {
     const ch = token[i];
     if (inQuote) {
-      if (ch === "\\") {
+      if (ch === '\\') {
         i++;
-      } else if (ch === "\"") {
+      } else if (ch === '"') {
         inQuote = false;
       }
       continue;
     }
-    if (ch === "\"") {
+    if (ch === '"') {
       inQuote = true;
-    } else if (ch === "<") {
+    } else if (ch === '<') {
       depth++;
-    } else if (ch === ">") {
+    } else if (ch === '>') {
       depth--;
       if (!depth) {
         if (i !== token.length - 1) {
@@ -65,7 +65,7 @@ export function parseToken(token: string): ParsedToken | undefined {
         args.push(last);
         return { base, args };
       }
-    } else if (ch === "," && depth === 1) {
+    } else if (ch === ',' && depth === 1) {
       const arg = token.slice(argStart, i);
       if (!arg) {
         return undefined;

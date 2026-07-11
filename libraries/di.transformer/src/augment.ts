@@ -31,11 +31,11 @@
 // (it is `import`ed for its side effect from `./index.ts`) so that a consumer
 // referencing `@rhombus-std/di.transformer` pulls the augmentation into its program.
 
-import type { Ctor, Func } from "@rhombus-toolkit/func";
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 // The `AddBuilder<Scopes>` continuation type the registration forms return. A
 // named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
-import type { AddBuilder } from "@rhombus-std/di.core";
+import type { AddBuilder } from '@rhombus-std/di.core';
 
 // Re-export the authoring brand types so transformer consumers can use
 // `Inject<T, "tok">`, the open-generics placeholders (`Hole<N, C>`, `$<N>`)
@@ -44,21 +44,15 @@ import type { AddBuilder } from "@rhombus-std/di.core";
 // ride along too — they type a factory rest parameter so an overloaded ctor
 // lowers to one dep signature per overload. A single import of
 // `@rhombus-std/di.transformer` brings both the transformer plugin and these types into scope.
-export type {
-  $,
-  Hole,
-  Inject,
-  OverloadedConstructorParameters,
-  OverloadedParameters,
-  Typeof,
-} from "@rhombus-std/di.core";
+export type { $, Hole, Inject, OverloadedConstructorParameters, OverloadedParameters,
+  Typeof } from '@rhombus-std/di.core';
 
-declare module "@rhombus-std/di.core" {
+declare module '@rhombus-std/di.core' {
   // The type-driven registration forms merge onto core's `ServiceManifestBase`
   // interface — which the public `ServiceManifest` (`= ServiceManifestBase<…>`) a
   // consumer holds resolves to. `Provider` is defaulted so the merge matches the
   // interface's type-parameter list.
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Type-driven class authoring — lowers to `add("token", C)`. The ctor is
      * typed `Ctor<any[], I>` (a plain construct signature, so an abstract class

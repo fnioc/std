@@ -74,11 +74,11 @@ The transformer walks up to the nearest `package.json` to identify the owning pa
 To pin a specific token for one constructor or factory parameter, use the `Inject` brand (re-exported from `@rhombus-std/di.transformer`, zero runtime):
 
 ```ts
-import type { Inject } from "@rhombus-std/di.transformer";
+import type { Inject } from '@rhombus-std/di.transformer';
 
 class Handler {
   constructor(
-    cache: Inject<ICache, "pkg:redis-cache">, // pinned token
+    cache: Inject<ICache, 'pkg:redis-cache'>, // pinned token
     log: ILogger, // derived normally
   ) {}
 }
@@ -93,7 +93,7 @@ Works in any type position the transformer reads: class ctor params, inline fact
 The transformer provides a compile-time token helper. Each `nameof<IFoo>()` call in source is rewritten to the derived string token at build time — callers never ship the generation logic at runtime.
 
 ```ts
-import { nameof } from "@rhombus-std/di.transformer";
+import { nameof } from '@rhombus-std/di.transformer';
 
 const token = nameof<IUserRepo>();
 // → "your-pkg/contracts:IUserRepo" at compile time
@@ -140,7 +140,7 @@ pkg:IFoo<pkg:IBar<./src/Baz>>
 Author an open registration by writing a hole in place of a type argument, both on the service token and the implementation:
 
 ```ts
-import type { $ } from "@rhombus-std/di.transformer";
+import type { $ } from '@rhombus-std/di.transformer';
 
 class SqlRepository<T> implements IRepository<T> {
   constructor(private db: IDbConnection) {}
@@ -215,8 +215,8 @@ Every registration's dependency signature — generic or not — rides directly 
 services.add<IRepository<$<1>>>(SqlRepository<$<1>>);
 
 // Lowered — the signature rides inline on the registration
-services.add("pkg:IRepository<$1>", SqlRepository, [
-  ["pkg:IDbConnection", { typeArg: 1 }],
+services.add('pkg:IRepository<$1>', SqlRepository, [
+  ['pkg:IDbConnection', { typeArg: 1 }],
 ]);
 ```
 
@@ -225,8 +225,8 @@ services.add("pkg:IRepository<$1>", SqlRepository, [
 services.add<IRepository<User>>(SqlRepository<User>);
 
 // Lowered — Typeof<T> binds concrete, so the slot is a literal value
-services.add("pkg:IRepository<pkg:User>", SqlRepository, [
-  ["pkg:IDbConnection", { value: "pkg:User" }],
+services.add('pkg:IRepository<pkg:User>', SqlRepository, [
+  ['pkg:IDbConnection', { value: 'pkg:User' }],
 ]);
 ```
 
@@ -250,15 +250,15 @@ For each `services.add<IFoo>(Foo).as<"scope">()` call the transformer finds, it:
 
 ```ts
 // Author code
-services.add<IUserRepo>(SqlUserRepo).as<"request">();
+services.add<IUserRepo>(SqlUserRepo).as<'request'>();
 // SqlUserRepo constructor: (log: ILogger, db: IDbConnection, table: string)
 // 'table' has type string → token "string" (runtime miss if "string" is unregistered)
 // use Inject<string, "app:tableName"> to pin a custom token, or supply a registration override
 
 // Lowered output (with table branded as Inject<string, "app:tableName">)
-services.add("pkg:IUserRepo", SqlUserRepo, [
-  ["pkg:ILogger", "pkg:IDbConnection", "app:tableName"],
-]).as("request");
+services.add('pkg:IUserRepo', SqlUserRepo, [
+  ['pkg:ILogger', 'pkg:IDbConnection', 'app:tableName'],
+]).as('request');
 ```
 
 For a class with a single constructor, the transformer emits exactly one signature. For a class with declared overloads, it emits one signature per bodyless overload declaration in order — the implementation signature is ignored (it is not caller-visible).
@@ -299,8 +299,8 @@ class RequestHandler {
 }
 
 // Lowered output — the signature rides on the registration itself
-services.add("pkg:RequestHandler", RequestHandler, [
-  ["pkg:ILogger", { type: "pkg:IDb" }],
+services.add('pkg:RequestHandler', RequestHandler, [
+  ['pkg:ILogger', { type: 'pkg:IDb' }],
 ]);
 ```
 
@@ -316,8 +316,8 @@ class RequestHandler {
 }
 
 // Lowered output — params lists the caller-supplied token(s)
-services.add("pkg:RequestHandler", RequestHandler, [
-  ["pkg:ILogger", { type: "pkg:IUserRepo", params: ["app:tableName"] }],
+services.add('pkg:RequestHandler', RequestHandler, [
+  ['pkg:ILogger', { type: 'pkg:IUserRepo', params: ['app:tableName'] }],
 ]);
 ```
 

@@ -17,23 +17,23 @@
 //     `NullExternalScopeProvider` default collapses to `undefined` (the
 //     loggers and formatters accept an absent scope provider).
 
-import type { ILogger, ILoggerProvider } from "@rhombus-std/logging.core";
-import type { IExternalScopeProvider } from "@rhombus-std/logging.core";
-import { Options } from "@rhombus-std/options";
-import { AnsiLogConsole } from "./AnsiLogConsole";
-import { ConsoleLogger } from "./console-logger";
-import { ConsoleFormatter } from "./ConsoleFormatter";
-import { ConsoleFormatterNames } from "./ConsoleFormatterNames";
-import { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
-import { ConsoleLoggerFormat } from "./ConsoleLoggerFormat";
-import { ConsoleLoggerOptions } from "./ConsoleLoggerOptions";
-import { ConsoleLoggerProcessor } from "./ConsoleLoggerProcessor";
-import { JsonConsoleFormatter } from "./JsonConsoleFormatter";
-import { JsonConsoleFormatterOptions } from "./JsonConsoleFormatterOptions";
-import { LoggerColorBehavior } from "./LoggerColorBehavior";
-import { SimpleConsoleFormatter } from "./SimpleConsoleFormatter";
-import { SimpleConsoleFormatterOptions } from "./SimpleConsoleFormatterOptions";
-import { SystemdConsoleFormatter } from "./SystemdConsoleFormatter";
+import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
+import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
+import { Options } from '@rhombus-std/options';
+import { AnsiLogConsole } from './AnsiLogConsole';
+import { ConsoleLogger } from './console-logger';
+import { ConsoleFormatter } from './ConsoleFormatter';
+import { ConsoleFormatterNames } from './ConsoleFormatterNames';
+import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
+import { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
+import { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
+import { ConsoleLoggerProcessor } from './ConsoleLoggerProcessor';
+import { JsonConsoleFormatter } from './JsonConsoleFormatter';
+import { JsonConsoleFormatterOptions } from './JsonConsoleFormatterOptions';
+import { LoggerColorBehavior } from './LoggerColorBehavior';
+import { SimpleConsoleFormatter } from './SimpleConsoleFormatter';
+import { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
+import { SystemdConsoleFormatter } from './SystemdConsoleFormatter';
 
 /** The reference formatter registry is name-keyed case-insensitively. */
 function normalizeName(name: string): string {

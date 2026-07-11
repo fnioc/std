@@ -1,9 +1,9 @@
-import type { IConfigurationManager } from "@rhombus-std/config.core";
-import type { ServiceManifest, ServiceProviderFactory } from "@rhombus-std/di.core";
-import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import type { Action } from "@rhombus-toolkit/func";
-import type { IHostEnvironment } from "./IHostEnvironment";
+import type { IConfigurationManager } from '@rhombus-std/config.core';
+import type { ServiceManifest, ServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import type { Action } from '@rhombus-toolkit/func';
+import type { IHostEnvironment } from './IHostEnvironment';
 
 /**
  * A hosted applications and services builder that helps manage configuration,

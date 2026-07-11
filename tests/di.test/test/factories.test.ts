@@ -1,7 +1,7 @@
-import { closeToken, FactoryTargetError, ServiceManifest } from "@rhombus-std/di";
-import type { FactoryRef, Token } from "@rhombus-std/di.core";
-import { describe, expect, test } from "bun:test";
-import { defineDeps, T } from "./fixtures.js";
+import { closeToken, FactoryTargetError, ServiceManifest } from '@rhombus-std/di';
+import type { FactoryRef, Token } from '@rhombus-std/di.core';
+import { describe, expect, test } from 'bun:test';
+import { defineDeps, T } from './fixtures.js';
 
 // Factory injection + caller-supplied params.
 //
@@ -22,10 +22,10 @@ function factoryOf(token: string, params?: readonly string[]): FactoryRef {
 }
 
 // Tokens for caller-supplied slots (never registered in the container).
-const T_NAME = "test:name" as const;
-const T_B2 = "test:B2" as const;
-const T_D4 = "test:D4" as const;
-const T_EXTRA = "test:extra" as const;
+const T_NAME = 'test:name' as const;
+const T_B2 = 'test:B2' as const;
+const T_D4 = 'test:D4' as const;
+const T_EXTRA = 'test:extra' as const;
 
 // ── Targets ───────────────────────────────────────────────────────────────
 
@@ -41,10 +41,10 @@ class Foo {
 
 /** A registered dependency the partition resolves rather than asks the caller for. */
 class Dep {
-  public readonly kind = "dep";
+  public readonly kind = 'dep';
 }
 
-describe("bare zero-arg factory", () => {
+describe('bare zero-arg factory', () => {
   test("respects a singleton target's lifetime — same instance every call", () => {
     Foo.built = 0;
     // Holder ctor: (makeFoo: () => Foo). The slot is a FactoryRef of Foo.
@@ -53,11 +53,11 @@ describe("bare zero-arg factory", () => {
     }
     defineDeps(Holder, [[factoryOf(T.Service)]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Service, Foo).as("singleton"); // Foo is a singleton
-    services.add(T.Repo, Holder).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Service, Foo).as('singleton'); // Foo is a singleton
+    services.add(T.Repo, Holder).as('singleton');
 
-    const holder = services.build().createScope("singleton").resolve<Holder>(T.Repo);
+    const holder = services.build().createScope('singleton').resolve<Holder>(T.Repo);
 
     const a = holder.makeFoo();
     const b = holder.makeFoo();
@@ -66,16 +66,16 @@ describe("bare zero-arg factory", () => {
     expect(Foo.built).toBe(1);
   });
 
-  test("yields a fresh instance each call for a transient target", () => {
+  test('yields a fresh instance each call for a transient target', () => {
     Foo.built = 0;
     class Holder {
       public constructor(public readonly makeFoo: () => Foo) {}
     }
     defineDeps(Holder, [[factoryOf(T.Service)]]);
 
-    const services = new ServiceManifest<"singleton">();
+    const services = new ServiceManifest<'singleton'>();
     services.add(T.Service, Foo); // untagged ⇒ transient
-    services.add(T.Repo, Holder).as("singleton");
+    services.add(T.Repo, Holder).as('singleton');
 
     const holder = services.build().resolve<Holder>(T.Repo);
 
@@ -86,8 +86,8 @@ describe("bare zero-arg factory", () => {
   });
 });
 
-describe("parameterized factory", () => {
-  test("fills caller-supplied params by token and builds a fresh instance per call", () => {
+describe('parameterized factory', () => {
+  test('fills caller-supplied params by token and builds a fresh instance per call', () => {
     // Target ctor: (dep: Dep, name: string). T_NAME is caller-supplied via params.
     class Greeter {
       public static built = 0;
@@ -107,25 +107,25 @@ describe("parameterized factory", () => {
     // FactoryRef with params — the factory exposes T_NAME as its single arg.
     defineDeps(Holder, [[factoryOf(T.Service, [T_NAME])]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.A, Dep).as("singleton");
-    services.add(T.Service, Greeter).as("singleton"); // tag irrelevant — parameterized bypasses cache
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.A, Dep).as('singleton');
+    services.add(T.Service, Greeter).as('singleton'); // tag irrelevant — parameterized bypasses cache
     // T_NAME deliberately NOT registered; it is caller-supplied.
-    services.add(T.Repo, Holder).as("singleton");
+    services.add(T.Repo, Holder).as('singleton');
 
     const holder = services.build().resolve<Holder>(T.Repo);
 
-    const ann = holder.make("ann");
-    const bob = holder.make("bob");
+    const ann = holder.make('ann');
+    const bob = holder.make('bob');
 
     expect(ann.dep).toBeInstanceOf(Dep);
-    expect(ann.name).toBe("ann");
-    expect(bob.name).toBe("bob");
+    expect(ann.name).toBe('ann');
+    expect(bob.name).toBe('bob');
     expect(ann).not.toBe(bob); // fresh per call despite the singleton tag
     expect(Greeter.built).toBe(2);
   });
 
-  test("mixed registered+caller-supplied params keeps args in authored order", () => {
+  test('mixed registered+caller-supplied params keeps args in authored order', () => {
     // Target ctor: (a: IA, b: B2, c: IC, d: D4, e: IE). IA/IC/IE registered;
     // T_B2 and T_D4 are caller-supplied via params. The factory exposes them in
     // authored order: (b, d). At call: new T(resolve(A), b, resolve(C), d, resolve(E)).
@@ -145,26 +145,26 @@ describe("parameterized factory", () => {
     // Factory params list = [T_B2, T_D4] — authored order is the call arg order.
     defineDeps(Holder, [[factoryOf(T.Service, [T_B2, T_D4])]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.A, class A {}).as("singleton");
-    services.add(T.B, class B {}).as("singleton");
-    services.add(T.C, class C {}).as("singleton");
-    services.add(T.Service, Wide).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.A, class A {}).as('singleton');
+    services.add(T.B, class B {}).as('singleton');
+    services.add(T.C, class C {}).as('singleton');
+    services.add(T.Service, Wide).as('singleton');
     // T_B2 and T_D4 NOT registered — caller-supplied.
-    services.add(T.Repo, Holder).as("singleton");
+    services.add(T.Repo, Holder).as('singleton');
 
     const holder = services.build().resolve<Holder>(T.Repo);
-    const w = holder.make("BB", "DD");
+    const w = holder.make('BB', 'DD');
 
     expect(w.args).toHaveLength(5);
-    expect((w.args[0] as { constructor: { name: string } }).constructor.name).toBe("A");
-    expect(w.args[1]).toBe("BB"); // first caller param ⇐ first call arg
-    expect((w.args[2] as { constructor: { name: string } }).constructor.name).toBe("B");
-    expect(w.args[3]).toBe("DD"); // second caller param ⇐ second call arg
-    expect((w.args[4] as { constructor: { name: string } }).constructor.name).toBe("C");
+    expect((w.args[0] as { constructor: { name: string; }; }).constructor.name).toBe('A');
+    expect(w.args[1]).toBe('BB'); // first caller param ⇐ first call arg
+    expect((w.args[2] as { constructor: { name: string; }; }).constructor.name).toBe('B');
+    expect(w.args[3]).toBe('DD'); // second caller param ⇐ second call arg
+    expect((w.args[4] as { constructor: { name: string; }; }).constructor.name).toBe('C');
   });
 
-  test("a caller param that is also registered — caller wins (override)", () => {
+  test('a caller param that is also registered — caller wins (override)', () => {
     // T.A is registered, but T.A is also named in params — caller wins.
     class Pair {
       public constructor(
@@ -180,22 +180,22 @@ describe("parameterized factory", () => {
     // Both T.A and T_EXTRA are listed as caller params.
     defineDeps(Holder, [[factoryOf(T.Service, [T.A, T_EXTRA])]]);
 
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.A, Dep).as("singleton"); // registered, but params claim it
-    services.add(T.Service, Pair).as("singleton");
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.A, Dep).as('singleton'); // registered, but params claim it
+    services.add(T.Service, Pair).as('singleton');
     // T_EXTRA NOT registered.
-    services.add(T.Repo, Holder).as("singleton");
+    services.add(T.Repo, Holder).as('singleton');
 
     const holder = services.build().resolve<Holder>(T.Repo);
-    const p = holder.make("caller-dep", "caller-extra");
+    const p = holder.make('caller-dep', 'caller-extra');
 
     // T.A is in params → caller-supplied, not resolved from container.
-    expect(p.dep).toBe("caller-dep");
-    expect(p.extra).toBe("caller-extra");
+    expect(p.dep).toBe('caller-dep');
+    expect(p.extra).toBe('caller-extra');
   });
 });
 
-describe("transformer-emitted params: declared named-service param → caller wins", () => {
+describe('transformer-emitted params: declared named-service param → caller wins', () => {
   // ILogger IS registered in the container. The ctor takes (log: ILogger, table: string).
   // The factory is declared (log: ILogger) => IRepo, so the transformer emits
   // params: [T_LOGGER] meaning the caller supplies the logger even though it is registered.
@@ -203,9 +203,9 @@ describe("transformer-emitted params: declared named-service param → caller wi
   // so the runtime resolves it... which fails unless it is registered. To keep the test
   // self-contained, we use a ctor where the covered+registered slot is the only slot.
 
-  const T_LOGGER = "test:tf:ILogger" as const;
-  const T_REPO = "test:tf:IRepo" as const;
-  const T_HOLDER = "test:tf:IHolder" as const;
+  const T_LOGGER = 'test:tf:ILogger' as const;
+  const T_REPO = 'test:tf:IRepo' as const;
+  const T_HOLDER = 'test:tf:IHolder' as const;
 
   class Logger {
     public readonly id: string;
@@ -221,7 +221,7 @@ describe("transformer-emitted params: declared named-service param → caller wi
     }
   }
 
-  test("declared (log: ILogger) => IRepo uses caller logger over registered one", () => {
+  test('declared (log: ILogger) => IRepo uses caller logger over registered one', () => {
     Repo.built = 0;
     defineDeps(Repo, [[T_LOGGER]]);
 
@@ -233,29 +233,29 @@ describe("transformer-emitted params: declared named-service param → caller wi
     // Transformer would emit: { type: T_REPO, params: [T_LOGGER] }
     defineDeps(Holder, [[factoryOf(T_REPO, [T_LOGGER])]]);
 
-    const registeredLogger = new Logger("registered");
-    const services = new ServiceManifest<"singleton">();
+    const registeredLogger = new Logger('registered');
+    const services = new ServiceManifest<'singleton'>();
     services.addValue(T_LOGGER, registeredLogger); // registered, but params claim it
-    services.add(T_REPO, Repo).as("singleton");
-    services.add(T_HOLDER, Holder).as("singleton");
+    services.add(T_REPO, Repo).as('singleton');
+    services.add(T_HOLDER, Holder).as('singleton');
 
     const holder = services.build().resolve<Holder>(T_HOLDER);
 
-    const callerLogger = new Logger("caller");
+    const callerLogger = new Logger('caller');
     const r1 = holder.make(callerLogger);
     const r2 = holder.make(callerLogger);
 
     // Caller-supplied logger used, NOT the registered one.
     expect(r1.log).toBe(callerLogger);
-    expect(r1.log.id).toBe("caller");
+    expect(r1.log.id).toBe('caller');
     // Parameterized factory builds a fresh instance every call (bypasses cache).
     expect(r1).not.toBe(r2);
     expect(Repo.built).toBe(2);
   });
 });
 
-describe("§5.4 — owning-scope rule holds for factory targets", () => {
-  test("a singleton-held factory of a request-scoped target builds a fresh transient (no enclosing request frame)", () => {
+describe('§5.4 — owning-scope rule holds for factory targets', () => {
+  test('a singleton-held factory of a request-scoped target builds a fresh transient (no enclosing request frame)', () => {
     // Foo is request-scoped. Holder is a singleton, so it OWNS its factory; the
     // factory builds Foo relative to the singleton's chain, which has no
     // ENCLOSING request frame ⇒ Foo resolves transiently (fresh each call). The
@@ -267,12 +267,12 @@ describe("§5.4 — owning-scope rule holds for factory targets", () => {
     }
     defineDeps(Holder, [[factoryOf(T.Service)]]);
 
-    const services = new ServiceManifest<"singleton" | "request">();
-    services.add(T.Service, Foo).as("request"); // request-scoped target
-    services.add(T.Repo, Holder).as("singleton"); // singleton holds the factory
+    const services = new ServiceManifest<'singleton' | 'request'>();
+    services.add(T.Service, Foo).as('request'); // request-scoped target
+    services.add(T.Repo, Holder).as('singleton'); // singleton holds the factory
 
-    const root = services.build().createScope("singleton");
-    const req = root.createScope("request");
+    const root = services.build().createScope('singleton');
+    const req = root.createScope('request');
 
     // Resolve the holder FROM a request scope — but the holder is a singleton,
     // owned by the singleton frame. Its factory captures the singleton scope,
@@ -287,18 +287,18 @@ describe("§5.4 — owning-scope rule holds for factory targets", () => {
     expect(a).not.toBe(req.resolve(T.Service)); // not the request's cached instance
   });
 
-  test("a request-held factory of a request-scoped target resolves fine", () => {
+  test('a request-held factory of a request-scoped target resolves fine', () => {
     Foo.built = 0;
     class Holder {
       public constructor(public readonly makeFoo: () => Foo) {}
     }
     defineDeps(Holder, [[factoryOf(T.Service)]]);
 
-    const services = new ServiceManifest<"singleton" | "request">();
-    services.add(T.Service, Foo).as("request");
-    services.add(T.Repo, Holder).as("request"); // holder is request-scoped now
+    const services = new ServiceManifest<'singleton' | 'request'>();
+    services.add(T.Service, Foo).as('request');
+    services.add(T.Repo, Holder).as('request'); // holder is request-scoped now
 
-    const req = services.build().createScope("request");
+    const req = services.build().createScope('request');
     const holder = req.resolve<Holder>(T.Repo);
 
     const a = holder.makeFoo();
@@ -306,16 +306,16 @@ describe("§5.4 — owning-scope rule holds for factory targets", () => {
   });
 });
 
-describe("factory target errors", () => {
-  test("clear error when the factory token is unregistered", () => {
+describe('factory target errors', () => {
+  test('clear error when the factory token is unregistered', () => {
     class Holder {
       public constructor(public readonly makeFoo: () => Foo) {}
     }
     defineDeps(Holder, [[factoryOf(T.Service)]]);
 
-    const services = new ServiceManifest<"singleton">();
+    const services = new ServiceManifest<'singleton'>();
     // T.Service (the factory target) deliberately NOT registered.
-    services.add(T.Repo, Holder).as("singleton");
+    services.add(T.Repo, Holder).as('singleton');
 
     const root = services.build();
     expect(() => root.resolve<Holder>(T.Repo)).toThrow(FactoryTargetError);
@@ -324,11 +324,11 @@ describe("factory target errors", () => {
     } catch (err) {
       const e = err as FactoryTargetError;
       expect(e.factoryToken).toBe(T.Service);
-      expect(e.reason).toBe("unregistered");
+      expect(e.reason).toBe('unregistered');
     }
   });
 
-  test("a FactoryRef targeting a value registration yields a thunk returning the value", () => {
+  test('a FactoryRef targeting a value registration yields a thunk returning the value', () => {
     // Semantic change: the old engine threw FactoryTargetError("not-a-class") for
     // a value target. The new engine treats a value target as a zero-arg factory
     // that resolves and returns the stored instance — same identity every call.
@@ -338,9 +338,9 @@ describe("factory target errors", () => {
     }
     defineDeps(Holder, [[factoryOf(T.Service)]]);
 
-    const services = new ServiceManifest<"singleton">();
+    const services = new ServiceManifest<'singleton'>();
     services.addValue(T.Service, storedFoo);
-    services.add(T.Repo, Holder).as("singleton");
+    services.add(T.Repo, Holder).as('singleton');
 
     const root = services.build();
     const holder = root.resolve<Holder>(T.Repo);
@@ -355,9 +355,9 @@ describe("factory target errors", () => {
 // tests above: here the container SLOT-INJECTS the factory's own params from the
 // signature and invokes `factory(...resolvedArgs)` — the factory is NOT handed a
 // provider view (that is only the signature-less escape hatch).
-describe("factory registration carrying a signature (inline addFactory 3rd arg)", () => {
+describe('factory registration carrying a signature (inline addFactory 3rd arg)', () => {
   class Logger {
-    public readonly tag = "logger";
+    public readonly tag = 'logger';
   }
 
   class Report {
@@ -366,12 +366,12 @@ describe("factory registration carrying a signature (inline addFactory 3rd arg)"
 
   /** The honest `Promise<T>` token — where an async-only registration lives. */
   function promiseOf(token: Token): Token {
-    return closeToken("Promise", token);
+    return closeToken('Promise', token);
   }
 
-  test("sync fast path: the factory receives the resolved slot instance, not a provider view", () => {
-    const services = new ServiceManifest<"singleton">();
-    services.add(T.Logger, Logger).as("singleton");
+  test('sync fast path: the factory receives the resolved slot instance, not a provider view', () => {
+    const services = new ServiceManifest<'singleton'>();
+    services.add(T.Logger, Logger).as('singleton');
     // Real 3-arg addFactory — a NON-empty signature, so the single param is
     // slot-injected from T.Logger.
     services
@@ -380,38 +380,38 @@ describe("factory registration carrying a signature (inline addFactory 3rd arg)"
         (log: unknown) => new Report(log),
         [[T.Logger]],
       )
-      .as("singleton");
+      .as('singleton');
 
     const report = services
       .build()
-      .createScope("singleton")
+      .createScope('singleton')
       .resolve<Report>(T.Repo);
 
     expect(report).toBeInstanceOf(Report);
     // The slot was resolved to the actual Logger instance...
     expect(report.log).toBeInstanceOf(Logger);
     // ...NOT the live provider view (which would carry a `resolve` method).
-    expect((report.log as { resolve?: unknown }).resolve).toBeUndefined();
+    expect((report.log as { resolve?: unknown; }).resolve).toBeUndefined();
   });
 
-  test("async slow path: a pending slot arg settles before the factory is invoked", async () => {
+  test('async slow path: a pending slot arg settles before the factory is invoked', async () => {
     class AsyncReport {
-      public constructor(public readonly config: { n: number }) {}
+      public constructor(public readonly config: { n: number; }) {}
     }
 
-    const services = new ServiceManifest<"singleton">();
+    const services = new ServiceManifest<'singleton'>();
     // The slot's dep resolves ONLY via the async Promise<T> fallback, so under
     // resolveAsync it arrives as a Pending → the factory build takes the slow path.
     services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 42 }));
     services
       .addFactory(
         T.Repo,
-        (config: { n: number }) => new AsyncReport(config),
+        (config: { n: number; }) => new AsyncReport(config),
         [[T.Config]],
       )
-      .as("singleton");
+      .as('singleton');
 
-    const scope = services.build().createScope("singleton");
+    const scope = services.build().createScope('singleton');
 
     // Sync cannot settle the pending slot — no satisfiable signature.
     expect(() => scope.resolve(T.Repo)).toThrow();

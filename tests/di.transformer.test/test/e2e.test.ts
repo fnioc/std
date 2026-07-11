@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 // Production-path e2e: drives the REAL `tspc` (ts-patch's patched compiler) over
 // a temp project that imports `@rhombus-std/di.transformer` as a ts-patch plugin, then
@@ -12,10 +12,10 @@ import { join, resolve } from "node:path";
 // works end-to-end (not just the in-memory harness). Tested pair: the package's
 // pinned `ts-patch@^3.3.0` against the repo's `typescript@^5.9`.
 
-const PKG_ROOT = resolve(import.meta.dir, "..");
-const REPO_ROOT = resolve(PKG_ROOT, "..", "..");
-const TRANSFORMER_ROOT = join(REPO_ROOT, "libraries", "di.transformer");
-const TSPC = join(PKG_ROOT, "node_modules", "ts-patch", "bin", "tspc.js");
+const PKG_ROOT = resolve(import.meta.dir, '..');
+const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
+const TRANSFORMER_ROOT = join(REPO_ROOT, 'libraries', 'di.transformer');
+const TSPC = join(PKG_ROOT, 'node_modules', 'ts-patch', 'bin', 'tspc.js');
 
 let projDir: string;
 
@@ -28,19 +28,19 @@ function link(target: string, linkPath: string): void {
 }
 
 beforeAll(() => {
-  projDir = mkdtempSync(join(tmpdir(), "fnioc-tsp-e2e-"));
-  const nm = join(projDir, "node_modules");
-  mkdirSync(join(nm, "@rhombus-std"), { recursive: true });
-  mkdirSync(join(projDir, "src"), { recursive: true });
+  projDir = mkdtempSync(join(tmpdir(), 'fnioc-tsp-e2e-'));
+  const nm = join(projDir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  mkdirSync(join(projDir, 'src'), { recursive: true });
 
   // Wire the temp project's node_modules to the real packages + tools.
-  link(join(REPO_ROOT, "node_modules", "typescript"), join(nm, "typescript"));
-  link(join(PKG_ROOT, "node_modules", "ts-patch"), join(nm, "ts-patch"));
-  link(TRANSFORMER_ROOT, join(nm, "@rhombus-std", "di.transformer"));
-  link(join(REPO_ROOT, "libraries", "di.core"), join(nm, "@rhombus-std", "di.core"));
+  link(join(REPO_ROOT, 'node_modules', 'typescript'), join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ts-patch'), join(nm, 'ts-patch'));
+  link(TRANSFORMER_ROOT, join(nm, '@rhombus-std', 'di.transformer'));
+  link(join(REPO_ROOT, 'libraries', 'di.core'), join(nm, '@rhombus-std', 'di.core'));
 
   writeFileSync(
-    join(projDir, "src", "services.ts"),
+    join(projDir, 'src', 'services.ts'),
     `
 export interface ILogger {}
 export interface IDbConnection {}
@@ -56,7 +56,7 @@ export class WidgetHost implements IWidget {
 `,
   );
   writeFileSync(
-    join(projDir, "src", "main.ts"),
+    join(projDir, 'src', 'main.ts'),
     `
 import { SqlUserRepo, ConsoleLogger, WidgetHost, ILogger, IUserRepo, IWidget } from "./services.js";
 declare const services: {
@@ -71,7 +71,7 @@ services.add<IWidget>(WidgetHost).as<"singleton">();
   // stays byte-identical): a generic impl authored with the real @rhombus-std/di.core
   // placeholder types, registered open (holes) and closed (concrete args).
   writeFileSync(
-    join(projDir, "src", "generics.ts"),
+    join(projDir, 'src', 'generics.ts'),
     `
 import type { Typeof } from "@rhombus-std/di.core";
 import { ILogger } from "./services.js";
@@ -83,7 +83,7 @@ export class SqlRepository<T> implements IRepository<T> {
 `,
   );
   writeFileSync(
-    join(projDir, "src", "wiring-generics.ts"),
+    join(projDir, 'src', 'wiring-generics.ts'),
     `
 import type { $ } from "@rhombus-std/di.core";
 import { SqlRepository, IRepository, User } from "./generics.js";
@@ -95,91 +95,93 @@ services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
 `,
   );
   writeFileSync(
-    join(projDir, "tsconfig.json"),
+    join(projDir, 'tsconfig.json'),
     JSON.stringify({
       compilerOptions: {
-        target: "ES2022",
-        module: "ESNext",
-        moduleResolution: "Bundler",
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
         // ESNext.Disposable supplies the global `Disposable`/`AsyncDisposable`
         // the `@rhombus-std/di.core` `ServiceProvider` interface extends — this
         // temp project compiles core's source, so it needs the lib. DOM supplies
         // `EventTarget`/`Event`/`AbortSignal` for @rhombus-std/primitives, whose
         // source the program now also compiles (di.core imports the augmentation
         // registry from it).
-        lib: ["ES2022", "DOM", "ESNext.Disposable"],
+        lib: ['ES2022', 'DOM', 'ESNext.Disposable'],
         strict: true,
-        outDir: "dist",
-        rootDir: "src",
+        outDir: 'dist',
+        rootDir: 'src',
         skipLibCheck: true,
         noEmitOnError: false,
-        plugins: [{ transform: "@rhombus-std/di.transformer", import: "transform" }],
+        plugins: [{ transform: '@rhombus-std/di.transformer', import: 'transform' }],
       },
-      include: ["src/**/*"],
+      include: ['src/**/*'],
     }),
   );
 });
 
 afterAll(() => {
-  if (projDir) { rmSync(projDir, { recursive: true, force: true }); }
+  if (projDir) {
+    rmSync(projDir, { recursive: true, force: true });
+  }
 });
 
-describe("ts-patch production e2e (ESM)", () => {
-  test("tspc compiles and emits the PRD §8 lowered contract", () => {
-    const result = spawnSync("node", [TSPC, "-p", "tsconfig.json"], {
+describe('ts-patch production e2e (ESM)', () => {
+  test('tspc compiles and emits the PRD §8 lowered contract', () => {
+    const result = spawnSync('node', [TSPC, '-p', 'tsconfig.json'], {
       cwd: projDir,
-      encoding: "utf8",
+      encoding: 'utf8',
     });
     // tspc should run cleanly (status 0); surface its output if not.
     expect(result.status, result.stdout + result.stderr).toBe(0);
 
-    const emitted = readFileSync(join(projDir, "dist", "main.js"), "utf8");
+    const emitted = readFileSync(join(projDir, 'dist', 'main.js'), 'utf8');
 
     // Signatures ride INLINE as the third `add` argument (ESM contract) — no
     // injected import, no hoisted const, no `defineDeps` prelude.
-    expect(emitted).not.toContain("defineDeps");
-    expect(emitted).not.toContain("ɵreg");
+    expect(emitted).not.toContain('defineDeps');
+    expect(emitted).not.toContain('ɵreg');
     expect(emitted).toContain(
-      "services.add(\"./services:ILogger\", ConsoleLogger, [[]]).as(\"singleton\");",
+      'services.add("./services:ILogger", ConsoleLogger, [[]]).as("singleton");',
     );
     expect(emitted).toContain(
-      "services.add(\"./services:IUserRepo\", SqlUserRepo, "
-        + "[[\"./services:ILogger\", \"./services:IDbConnection\"]]).as(\"request\");",
+      'services.add("./services:IUserRepo", SqlUserRepo, '
+        + '[["./services:ILogger", "./services:IDbConnection"]]).as("request");',
     );
 
     // An inline `() => IUserRepo` ctor param lowers to a FactoryRef slot keyed
     // on the return type's token (PRD §7). Field renamed: `type` (was `factory`).
     expect(emitted).toContain(
-      "services.add(\"./services:IWidget\", WidgetHost, "
-        + "[[{ type: \"./services:IUserRepo\" }]]).as(\"singleton\");",
+      'services.add("./services:IWidget", WidgetHost, '
+        + '[[{ type: "./services:IUserRepo" }]]).as("singleton");',
     );
   }, 30_000);
 
-  test("placeholder authoring form: open + closed generic registrations carry signatures", () => {
-    const result = spawnSync("node", [TSPC, "-p", "tsconfig.json"], {
+  test('placeholder authoring form: open + closed generic registrations carry signatures', () => {
+    const result = spawnSync('node', [TSPC, '-p', 'tsconfig.json'], {
       cwd: projDir,
-      encoding: "utf8",
+      encoding: 'utf8',
     });
     expect(result.status, result.stdout + result.stderr).toBe(0);
 
     const emitted = readFileSync(
-      join(projDir, "dist", "wiring-generics.js"),
-      "utf8",
+      join(projDir, 'dist', 'wiring-generics.js'),
+      'utf8',
     );
 
     // Open template: type args stripped from the emitted ctor, dep signatures
     // carried as the third `add()` argument (no defineDeps, no hoist), the
     // Typeof param an open `{ typeArg: 1 }` slot.
     expect(emitted).toContain(
-      "services.add(\"./generics:IRepository<$1>\", SqlRepository, "
-        + "[[\"./services:ILogger\", { typeArg: 1 }]]).as(\"singleton\");",
+      'services.add("./generics:IRepository<$1>", SqlRepository, '
+        + '[["./services:ILogger", { typeArg: 1 }]]).as("singleton");',
     );
     // Closed instantiation: concrete closed token + the witness closed to a
     // literal value slot carrying the arg's token.
     expect(emitted).toContain(
-      "services.add(\"./generics:IRepository<./generics:User>\", SqlRepository, "
-        + "[[\"./services:ILogger\", { value: \"./generics:User\" }]]).as(\"singleton\");",
+      'services.add("./generics:IRepository<./generics:User>", SqlRepository, '
+        + '[["./services:ILogger", { value: "./generics:User" }]]).as("singleton");',
     );
-    expect(emitted).not.toContain("defineDeps");
+    expect(emitted).not.toContain('defineDeps');
   }, 30_000);
 });

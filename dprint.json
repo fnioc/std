@@ -6,7 +6,12 @@
     "https://plugins.dprint.dev/markdown-0.22.1.wasm"
   ],
   "typescript": {
-    "useBraces": "always"
+    "useBraces": "always",
+    "quoteStyle": "preferSingle",
+    "quoteProps": "asNeeded",
+    "semiColons": "always",
+    "singleBodyPosition": "nextLine",
+    "preferHanging": true
   },
   "json": {},
   "markdown": {},

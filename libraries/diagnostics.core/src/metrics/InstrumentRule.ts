@@ -5,7 +5,7 @@
 // (`undefined`) name fields match anything. This ports cleanly with no
 // metrics runtime behind it -- it is only strings + a scope enum + a boolean.
 
-import { MeterScope } from "./meter-scope";
+import { MeterScope } from './meter-scope';
 
 /**
  * A single metrics enablement rule: determines which instruments are enabled
@@ -39,7 +39,7 @@ export class InstrumentRule {
     enable: boolean,
   ) {
     if (scopes === MeterScope.None) {
-      throw new RangeError("The MeterScope must be Global, Local, or both.");
+      throw new RangeError('The MeterScope must be Global, Local, or both.');
     }
     this.meterName = meterName;
     this.instrumentName = instrumentName;

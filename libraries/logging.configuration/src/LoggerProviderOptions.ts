@@ -30,12 +30,12 @@
 //     this twice for one (options, provider) pair appends the step twice
 //     (an idempotent re-bind — harmless, but not deduped).
 
-import type { ServiceManifest, Token, Typeof } from "@rhombus-std/di.core";
-import type { Options } from "@rhombus-std/options";
-import { changeTokenSourceToken, configureStepToken } from "@rhombus-std/options.augmentations";
-import { loggerProviderConfigurationToken } from "./ILoggerProviderConfiguration";
-import { LoggerProviderConfigureOptions } from "./LoggerProviderConfigureOptions";
-import { LoggerProviderOptionsChangeTokenSource } from "./LoggerProviderOptionsChangeTokenSource";
+import type { ServiceManifest, Token, Typeof } from '@rhombus-std/di.core';
+import type { Options } from '@rhombus-std/options';
+import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
+import { loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
+import { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
+import { LoggerProviderOptionsChangeTokenSource } from './LoggerProviderOptionsChangeTokenSource';
 
 /**
  * Helpers to initialize options objects from logger provider configuration —
@@ -62,9 +62,9 @@ export const LoggerProviderOptions = {
     const providerConfiguration: Token = loggerProviderConfigurationToken(providerType);
     services
       .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfiguration]])
-      .as("singleton");
+      .as('singleton');
     services
       .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfiguration]])
-      .as("singleton");
+      .as('singleton');
   },
 };

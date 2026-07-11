@@ -5,8 +5,8 @@
 // abstract overload with a concrete implementation of the other arity, so the
 // payload-taking half is named `loadStream` here.
 
-import { ConfigurationProvider } from "../ConfigurationProvider";
-import type { StreamConfigurationSource, StreamPayload } from "./StreamConfigurationSource";
+import { ConfigurationProvider } from '../ConfigurationProvider';
+import type { StreamConfigurationSource, StreamPayload } from './StreamConfigurationSource';
 
 /**
  * Defines the core behavior of stream-based configuration providers and
@@ -33,7 +33,7 @@ export abstract class StreamConfigurationProvider extends ConfigurationProvider 
    */
   public override load(): void {
     if (this.#loaded) {
-      throw new Error("StreamConfigurationProvider: a stream configuration provider cannot be loaded more than once.");
+      throw new Error('StreamConfigurationProvider: a stream configuration provider cannot be loaded more than once.');
     }
     const stream = this.source.stream;
     if (stream === undefined) {

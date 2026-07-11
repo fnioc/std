@@ -27,11 +27,11 @@
 // the same subscription auth the drainer workers use). The raw API 429s that
 // token; `claude -p` accepts it.
 
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-const GRAPH_FILE = "graph.json";
-const ISSUE_FIELDS = "number,title,body,state,labels,url";
+const GRAPH_FILE = 'graph.json';
+const ISSUE_FIELDS = 'number,title,body,state,labels,url';
 
 // An issue reaches the ready list only if it carries BOTH of these -- the
 // repo's coding gate (CLAUDE.md): `signoff` (owner's go-ahead) and
@@ -39,20 +39,20 @@ const ISSUE_FIELDS = "number,title,body,state,labels,url";
 // how a worker takes a blocked issue back off the list without touching the
 // graph. This is the one whitelist requirement; scope/version labels stay
 // governed by the blacklist below.
-const REQUIRED_LABELS = ["signoff", "claude-ready"];
+const REQUIRED_LABELS = ['signoff', 'claude-ready'];
 
 // Issues carrying any of these labels are never "ready to code" candidates,
 // regardless of what other labels (v0, v1, v2, ...) exist alongside them.
 // Blacklist, not whitelist -- new version/scope labels show up automatically.
 const EXCLUDED_LABELS = new Set([
-  "duplicate",
-  "invalid",
-  "wontfix",
-  "question",
-  "discussion",
-  "needs-triage",
-  "blocked-external",
-  "icebox",
+  'duplicate',
+  'invalid',
+  'wontfix',
+  'question',
+  'discussion',
+  'needs-triage',
+  'blocked-external',
+  'icebox',
 ]);
 
 // One node's derived structure. status "unknown" is the placeholder state for a
@@ -61,23 +61,23 @@ const EXCLUDED_LABELS = new Set([
 // gh data (not the model) so ready.json's EXCLUDED_LABELS filter and label
 // output keep working on the incremental path without re-fetching every issue.
 const NODE_PROPERTIES = {
-  number: { type: "integer" },
-  title: { type: "string" },
-  status: { type: "string", enum: ["open", "closed", "unknown"] },
-  blocked_by: { type: "array", items: { type: "integer" } },
-  conflict_risk_with: { type: "array", items: { type: "integer" } },
-  conflict_reason: { type: "string" },
+  number: { type: 'integer' },
+  title: { type: 'string' },
+  status: { type: 'string', enum: ['open', 'closed', 'unknown'] },
+  blocked_by: { type: 'array', items: { type: 'integer' } },
+  conflict_risk_with: { type: 'array', items: { type: 'integer' } },
+  conflict_reason: { type: 'string' },
 };
 const NODE_ITEM = {
-  type: "object",
+  type: 'object',
   properties: NODE_PROPERTIES,
-  required: ["number", "title", "status", "blocked_by", "conflict_risk_with"],
+  required: ['number', 'title', 'status', 'blocked_by', 'conflict_risk_with'],
   additionalProperties: false,
 };
 const NODES_SCHEMA = {
-  type: "object",
-  properties: { nodes: { type: "array", items: NODE_ITEM } },
-  required: ["nodes"],
+  type: 'object',
+  properties: { nodes: { type: 'array', items: NODE_ITEM } },
+  required: ['nodes'],
   additionalProperties: false,
 };
 
@@ -91,7 +91,7 @@ const JSON_ONLY_INSTRUCTION =
 
 /** Runs `gh` and returns its parsed JSON stdout. */
 function gh(args) {
-  return JSON.parse(execFileSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
+  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
 }
 
 /** Attaches label names from a fetched issue onto its derived node, in place. */
@@ -107,9 +107,9 @@ function attachLabels(node, issue) {
  * the first `{` to the last `}` before parsing.
  */
 function extractJson(result) {
-  const unfenced = result.replace(/```(?:json)?/gi, "").trim();
-  const start = unfenced.indexOf("{");
-  const end = unfenced.lastIndexOf("}");
+  const unfenced = result.replace(/```(?:json)?/gi, '').trim();
+  const start = unfenced.indexOf('{');
+  const end = unfenced.lastIndexOf('}');
   if (start === -1 || end === -1 || end < start) {
     throw new Error(`no JSON object found in model result: ${result.slice(0, 500)}`);
   }
@@ -133,15 +133,15 @@ function extractJson(result) {
  */
 function deriveNodes(promptContent) {
   const stdout = execFileSync(
-    "claude",
-    ["-p", "--output-format", "json", "--permission-mode", "bypassPermissions"],
-    { input: promptContent, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 300000 },
+    'claude',
+    ['-p', '--output-format', 'json', '--permission-mode', 'bypassPermissions'],
+    { input: promptContent, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 300000 },
   );
   const run = JSON.parse(stdout);
-  if (run.is_error || run.subtype !== "success") {
+  if (run.is_error || run.subtype !== 'success') {
     throw new Error(
       `claude -p failed (subtype: ${run.subtype}, is_error: ${run.is_error}): ${
-        run.result ?? run.error ?? "(no error text)"
+        run.result ?? run.error ?? '(no error text)'
       }`,
     );
   }
@@ -150,7 +150,7 @@ function deriveNodes(promptContent) {
 
 /** First-run backfill: fetch every issue and derive the whole graph once. */
 async function bootstrap() {
-  const issues = gh(["issue", "list", "--state", "all", "--limit", "500", "--json", ISSUE_FIELDS]);
+  const issues = gh(['issue', 'list', '--state', 'all', '--limit', '500', '--json', ISSUE_FIELDS]);
   const issueByNumber = new Map(issues.map((i) => [i.number, i]));
   const nodes = deriveNodes(
     `Given these GitHub issues, extract a blocker dependency graph and flag pairs likely to conflict on merge (same files/subsystem implied by the descriptions). ${JSON_ONLY_INSTRUCTION}\n\nIssues:\n\n${
@@ -169,7 +169,7 @@ async function bootstrap() {
  * and merge the result in by number.
  */
 async function incremental(graph, issueNumber) {
-  const issue = gh(["issue", "view", String(issueNumber), "--json", ISSUE_FIELDS]);
+  const issue = gh(['issue', 'view', String(issueNumber), '--json', ISSUE_FIELDS]);
   const returned = deriveNodes(
     `You maintain a persisted blocker dependency graph for a repo's issues. Here is the current graph:\n\n${
       JSON.stringify(graph, null, 2)
@@ -182,7 +182,7 @@ async function incremental(graph, issueNumber) {
   for (const node of returned) {
     const existing = byNumber.get(node.number);
     // Never let a placeholder clobber an already-indexed node.
-    if (node.status === "unknown" && existing) {
+    if (node.status === 'unknown' && existing) {
       continue;
     }
     if (node.number === issue.number) {
@@ -206,10 +206,10 @@ function computeReady({ nodes }) {
   const byNumber = new Map(nodes.map((n) => [n.number, n]));
   const ready = [];
   for (const n of nodes) {
-    if (n.status !== "open") {
+    if (n.status !== 'open') {
       continue;
     }
-    const unresolvedBlockers = n.blocked_by.filter((b) => byNumber.get(b)?.status === "open");
+    const unresolvedBlockers = n.blocked_by.filter((b) => byNumber.get(b)?.status === 'open');
     if (unresolvedBlockers.length) {
       continue;
     }
@@ -226,10 +226,10 @@ function computeReady({ nodes }) {
 }
 
 const graph = existsSync(GRAPH_FILE)
-  ? await incremental(JSON.parse(readFileSync(GRAPH_FILE, "utf8")), process.env.ISSUE_NUMBER)
+  ? await incremental(JSON.parse(readFileSync(GRAPH_FILE, 'utf8')), process.env.ISSUE_NUMBER)
   : { nodes: await bootstrap() };
 
 // Compact JSON -- both files are read by Claude, not skimmed by a human, so the
 // pretty-print whitespace isn't worth its tokens.
 writeFileSync(GRAPH_FILE, JSON.stringify(graph));
-writeFileSync("ready.json", JSON.stringify(computeReady(graph)));
+writeFileSync('ready.json', JSON.stringify(computeReady(graph)));

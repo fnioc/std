@@ -38,24 +38,21 @@
 // docs §40) — the same token the logging family's own consumers derive from
 // the type, with no shared const.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import { closeToken, typeArg } from "@rhombus-std/di.core";
-import { LoggerFilterOptions } from "@rhombus-std/logging";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import type { Options } from "@rhombus-std/options";
-import {
-  changeTokenSourceToken,
-  ConfigurationChangeTokenSource,
-  configureStepToken,
-} from "@rhombus-std/options.augmentations";
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { loggerProviderConfigurationToken } from "./ILoggerProviderConfiguration";
-import type { ILoggerProviderConfigurationFactory } from "./ILoggerProviderConfigurationFactory";
-import { LoggerFilterConfigureOptions } from "./LoggerFilterConfigureOptions";
-import { LoggerProviderConfiguration } from "./LoggerProviderConfiguration";
-import { LoggerProviderConfigurationFactory } from "./LoggerProviderConfigurationFactory";
-import { LoggingConfiguration } from "./LoggingConfiguration";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import { closeToken, typeArg } from '@rhombus-std/di.core';
+import { LoggerFilterOptions } from '@rhombus-std/logging';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import type { Options } from '@rhombus-std/options';
+import { changeTokenSourceToken, ConfigurationChangeTokenSource,
+  configureStepToken } from '@rhombus-std/options.augmentations';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
+import type { ILoggerProviderConfigurationFactory } from './ILoggerProviderConfigurationFactory';
+import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
+import { LoggerProviderConfiguration } from './LoggerProviderConfiguration';
+import { LoggerProviderConfigurationFactory } from './LoggerProviderConfigurationFactory';
+import { LoggingConfiguration } from './LoggingConfiguration';
 
 /**
  * The `LoggingBuilderExtensions` augmentation set for {@link ILoggingBuilder}
@@ -83,16 +80,16 @@ export const LoggingBuilderExtensions = {
       .add(
         nameof<ILoggerProviderConfigurationFactory>(),
         LoggerProviderConfigurationFactory,
-        [[closeToken("Array", nameof<LoggingConfiguration>())]],
+        [[closeToken('Array', nameof<LoggingConfiguration>())]],
       )
-      .as("singleton");
+      .as('singleton');
     builder.services
       .add(
-        loggerProviderConfigurationToken("$1"),
+        loggerProviderConfigurationToken('$1'),
         LoggerProviderConfiguration,
         [[nameof<ILoggerProviderConfigurationFactory>(), typeArg(1)]],
       )
-      .as("singleton");
+      .as('singleton');
 
     if (!rest.length) {
       return builder;
@@ -102,7 +99,7 @@ export const LoggingBuilderExtensions = {
     // ── The LoggerFilterOptions pipeline (the LoggingBuilderExtensions
     // mirror): assembly + custom configure step + reload change-token source.
     const optionsToken = nameof<Options<LoggerFilterOptions>>();
-    builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as("singleton");
+    builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
     builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(configuration));
     builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigurationChangeTokenSource(configuration));
 
@@ -116,7 +113,7 @@ export const LoggingBuilderExtensions = {
 // shared ILoggingBuilder augmentation token so the @augment-decorated
 // LoggingBuilder pulls it onto its prototype. The no-arg overload mirrors the
 // reference's `void` return.
-declare module "@rhombus-std/logging.core" {
+declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
     /** Instance-method form of the no-arg {@link addConfiguration}. */
     addConfiguration(): void;
@@ -131,7 +128,7 @@ declare module "@rhombus-std/logging.core" {
 // (reachable via logging's `internal/*` subpath), not the barrel: a class
 // re-exported through the barrel doesn't merge back onto its own declaring module.
 // Retired once logging is dist-built (plan section 5).
-declare module "@rhombus-std/logging/internal/LoggingBuilder" {
+declare module '@rhombus-std/logging/internal/LoggingBuilder' {
   interface LoggingBuilder {
     addConfiguration(): void;
     addConfiguration(configuration: IConfiguration): this;

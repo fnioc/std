@@ -25,13 +25,13 @@
 // `node:path` import is gone) so it fails if a `node:*` import is
 // re-introduced into hosting itself.
 
-import { expect, test } from "bun:test";
+import { expect, test } from 'bun:test';
 
-const fixture = import.meta.dir + "/fixtures/browser-bundle-entry.ts";
-const compositionTail = import.meta.dir + "/../../../libraries/hosting/dist/internal/host-composition.js";
+const fixture = import.meta.dir + '/fixtures/browser-bundle-entry.ts';
+const compositionTail = import.meta.dir + '/../../../libraries/hosting/dist/internal/host-composition.js';
 
-function bundleForBrowser(entrypoint: string): { exitCode: number; bundle: string; stderr: string } {
-  const result = Bun.spawnSync(["bun", "build", entrypoint, "--target", "browser"]);
+function bundleForBrowser(entrypoint: string): { exitCode: number; bundle: string; stderr: string; } {
+  const result = Bun.spawnSync(['bun', 'build', entrypoint, '--target', 'browser']);
   return {
     exitCode: result.exitCode,
     bundle: result.stdout.toString(),
@@ -39,14 +39,14 @@ function bundleForBrowser(entrypoint: string): { exitCode: number; bundle: strin
   };
 }
 
-test("hosting bundles for a browser target via the empty (defaults-disabled) builder path", () => {
+test('hosting bundles for a browser target via the empty (defaults-disabled) builder path', () => {
   const result = bundleForBrowser(fixture);
 
-  expect(result.stderr).toBe("");
+  expect(result.stderr).toBe('');
   expect(result.exitCode).toBe(0);
 });
 
-test("the hosting composition tail carries no node:* import (browser regression guard)", () => {
+test('the hosting composition tail carries no node:* import (browser regression guard)', () => {
   const result = bundleForBrowser(compositionTail);
 
   expect(result.exitCode).toBe(0);
@@ -55,7 +55,7 @@ test("the hosting composition tail carries no node:* import (browser regression 
   expect(nodeSpecifiers).toEqual([]);
 });
 
-test("the hosting composition tail SOURCE imports no node:* builtin (catches stubbed builtins too)", async () => {
+test('the hosting composition tail SOURCE imports no node:* builtin (catches stubbed builtins too)', async () => {
   // The bundle grep above only catches builtins whose specifier SURVIVES the
   // bundle -- bun's browser target polyfills node:path (specifier survives) but
   // STUBS node:fs / node:async_hooks to empty modules (specifier vanishes), so

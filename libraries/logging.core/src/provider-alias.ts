@@ -23,7 +23,7 @@
  * filtering alias — the decorator-free stand-in for the reference
  * `[ProviderAlias(alias)]` class attribute.
  */
-export const providerAlias: unique symbol = Symbol("@rhombus-std/logging.core:ProviderAlias");
+export const providerAlias: unique symbol = Symbol('@rhombus-std/logging.core:ProviderAlias');
 
 /** A provider class carrying the {@link providerAlias} static marker. */
 export interface ProviderAliased {
@@ -37,5 +37,5 @@ export interface ProviderAliased {
  */
 export function getProviderAlias(providerType: object): string | undefined {
   const alias = (providerType as Partial<ProviderAliased>)[providerAlias];
-  return typeof alias === "string" ? alias : undefined;
+  return typeof alias === 'string' ? alias : undefined;
 }

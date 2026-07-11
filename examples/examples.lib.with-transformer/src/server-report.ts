@@ -13,15 +13,10 @@
 // contracts — tokenlessly or by the same hand-written token strings — satisfies
 // exactly these lookups. That agreement is the interop matrix in one function.
 
-import type { Resolver } from "@rhombus-std/di";
-import type {
-  GreetingPolicy,
-  IGreeting,
-  IHealthCheck,
-  IServerReport,
-  ServerOptions,
-} from "@rhombus-std/examples.contracts";
-import type { Options } from "@rhombus-std/options";
+import type { Resolver } from '@rhombus-std/di';
+import type { GreetingPolicy, IGreeting, IHealthCheck, IServerReport,
+  ServerOptions } from '@rhombus-std/examples.contracts';
+import type { Options } from '@rhombus-std/options';
 
 /**
  * Assembles an {@link IServerReport} from the whole container. `resolver` is the
@@ -44,13 +39,13 @@ export function makeServerReport(resolver: Resolver): IServerReport {
   const lines: string[] = [];
   lines.push(`greetings aggregated from both libraries (${greetings.length}):`);
   for (const greeting of greetings) {
-    lines.push(`  ${greeting.source}: ${greeting.greet("Ada")}${policy.excitement}`);
+    lines.push(`  ${greeting.source}: ${greeting.greet('Ada')}${policy.excitement}`);
   }
   lines.push(
     `server options (live): Host=${server.Host} Port=${server.Port} MaxConnections=${server.MaxConnections}`,
   );
   lines.push(`greeting policy excitement (static wrap): ${JSON.stringify(policy.excitement)}`);
-  lines.push(`health check present: ${hasHealth} (${health ? health.check() : "n/a"})`);
+  lines.push(`health check present: ${hasHealth} (${health ? health.check() : 'n/a'})`);
 
   return { lines };
 }

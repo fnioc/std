@@ -2,10 +2,10 @@
 // internal `LoggingBuilder`. A thin wrapper exposing the registration builder
 // as `.services`, handed to the `configure` delegate by `addLogging`.
 
-import type { ServiceManifest } from "@rhombus-std/di.core";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
+import type { ServiceManifest } from '@rhombus-std/di.core';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 // OPEN receiver (docs §38): decorate the concrete builder with the ILoggingBuilder
 // augmentation token — derived inline by `nameof<ILoggingBuilder>()`, lowered at

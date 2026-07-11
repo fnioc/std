@@ -31,8 +31,8 @@
 // a longer meter name beats a shorter one; on a full tie the LAST rule in the
 // list wins, so later-appended rules override earlier ones.
 
-import type { InstrumentRule } from "./InstrumentRule";
-import { MeterScope } from "./meter-scope";
+import type { InstrumentRule } from './InstrumentRule';
+import { MeterScope } from './meter-scope';
 
 /**
  * A plain-data description of the instrument (and resolving listener) an
@@ -93,13 +93,13 @@ export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRul
   // Meter name: prefix match, with an optional single-`*` prefix+suffix split.
   const meterName = rule.meterName;
   if (meterName !== undefined) {
-    const wildcardIndex = meterName.indexOf("*");
-    if (wildcardIndex >= 0 && meterName.indexOf("*", wildcardIndex + 1) >= 0) {
+    const wildcardIndex = meterName.indexOf('*');
+    if (wildcardIndex >= 0 && meterName.indexOf('*', wildcardIndex + 1) >= 0) {
       throw new Error("Only one '*' wildcard is allowed in a meter name pattern.");
     }
 
     const prefix = wildcardIndex < 0 ? meterName : meterName.slice(0, wildcardIndex);
-    const suffix = wildcardIndex < 0 ? "" : meterName.slice(wildcardIndex + 1);
+    const suffix = wildcardIndex < 0 ? '' : meterName.slice(wildcardIndex + 1);
     const actual = query.meterName.toLowerCase();
     if (!actual.startsWith(prefix.toLowerCase()) || !actual.endsWith(suffix.toLowerCase())) {
       return false;

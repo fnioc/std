@@ -12,7 +12,7 @@ Because the augmentation is installed as a side effect, a consumer who only
 wants the sugar takes a bare side-effect import:
 
 ```ts
-import "@rhombus-std/options.augmentations";
+import '@rhombus-std/options.augmentations';
 ```
 
 This package keeps `"sideEffects": true` so a bundler cannot tree-shake the
@@ -46,32 +46,32 @@ When any change-token source is present the assembly hands back a reactive
 no source it is a static `Options.of` snapshot.
 
 ```ts
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import { ServiceManifest } from "@rhombus-std/di";
-import type { Options } from "@rhombus-std/options";
-import "@rhombus-std/options.augmentations";
+import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ServiceManifest } from '@rhombus-std/di';
+import type { Options } from '@rhombus-std/options';
+import '@rhombus-std/options.augmentations';
 
 interface WidgetOptions {
   Url: string;
 }
 
 const config = new ConfigurationBuilder()
-  .addInMemoryCollection({ "Widget:Url": "http://first" })
+  .addInMemoryCollection({ 'Widget:Url': 'http://first' })
   .build();
 
-const services = new ServiceManifest<"singleton">();
-services.addOptions<WidgetOptions>("app:WidgetOptions", () => ({ Url: "" })).as(
-  "singleton",
+const services = new ServiceManifest<'singleton'>();
+services.addOptions<WidgetOptions>('app:WidgetOptions', () => ({ Url: '' })).as(
+  'singleton',
 );
-services.configure("app:WidgetOptions", config.getSection("Widget"));
+services.configure('app:WidgetOptions', config.getSection('Widget'));
 
-const provider = services.build().createScope("singleton");
-const options = provider.resolve<Options<WidgetOptions>>("app:WidgetOptions");
+const provider = services.build().createScope('singleton');
+const options = provider.resolve<Options<WidgetOptions>>('app:WidgetOptions');
 
 options.value; // { Url: "http://first" }
-options.subscribe!((value) => console.log("changed", value));
+options.subscribe!((value) => console.log('changed', value));
 
-config.set("Widget:Url", "http://second");
+config.set('Widget:Url', 'http://second');
 config.reload(); // logs "changed" { Url: "http://second" }
 ```
 

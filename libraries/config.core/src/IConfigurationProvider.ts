@@ -1,8 +1,8 @@
 // The `IConfigurationProvider` interface -- mirrors MECA's
 // `IConfigurationProvider.cs` one-type-per-file layout (see docs/decisions.md #46).
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { ITryGetResult } from "./types";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { ITryGetResult } from './types';
 
 /** Provides configuration key/values for an application. */
 export interface IConfigurationProvider {

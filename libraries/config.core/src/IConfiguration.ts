@@ -1,10 +1,10 @@
 // The `IConfiguration` interface -- mirrors MECA's `IConfiguration.cs`
 // one-type-per-file layout (see docs/decisions.md #46).
 
-import type { IChangeToken } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import type { IConfigurationSection } from "./IConfigurationSection";
-import type { ConfigObject } from "./types";
+import type { IChangeToken } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import type { IConfigurationSection } from './IConfigurationSection';
+import type { ConfigObject } from './types';
 
 /**
  * A set of key/value application configuration properties. Every value is a

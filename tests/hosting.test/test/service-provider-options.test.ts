@@ -1,6 +1,6 @@
-import { createDefaultServiceProviderOptions } from "@rhombus-std/hosting/internal/default-configuration";
-import { HostBuilder, type IHostEnvironment } from "@rhombus-std/hosting/internal/index";
-import { expect, test } from "bun:test";
+import { createDefaultServiceProviderOptions } from '@rhombus-std/hosting/internal/default-configuration';
+import { HostBuilder, type IHostEnvironment } from '@rhombus-std/hosting/internal/index';
+import { expect, test } from 'bun:test';
 
 function fakeEnvironment(environmentName: string): IHostEnvironment {
   // createDefaultServiceProviderOptions only reads environmentName (through the
@@ -9,23 +9,23 @@ function fakeEnvironment(environmentName: string): IHostEnvironment {
   return { environmentName } as IHostEnvironment;
 }
 
-test("createDefaultServiceProviderOptions enables validation only in Development", () => {
-  expect(createDefaultServiceProviderOptions(fakeEnvironment("Development"))).toEqual({
+test('createDefaultServiceProviderOptions enables validation only in Development', () => {
+  expect(createDefaultServiceProviderOptions(fakeEnvironment('Development'))).toEqual({
     validateScopes: true,
     validateOnBuild: true,
   });
-  expect(createDefaultServiceProviderOptions(fakeEnvironment("Production"))).toEqual({
+  expect(createDefaultServiceProviderOptions(fakeEnvironment('Production'))).toEqual({
     validateScopes: false,
     validateOnBuild: false,
   });
 });
 
-test("useDefaultServiceProvider threads validateOnBuild into the provider build", () => {
+test('useDefaultServiceProvider threads validateOnBuild into the provider build', () => {
   // A registration whose dependency is never registered is unconstructable, so
   // an eager validate-on-build fails the whole build.
   function addBrokenService(builder: HostBuilder): void {
     builder.configureServices((_context, services) => {
-      services.add("test:Broken", class Broken {}, [["test:Missing"]]);
+      services.add('test:Broken', class Broken {}, [['test:Missing']]);
     });
   }
 
@@ -43,7 +43,7 @@ test("useDefaultServiceProvider threads validateOnBuild into the provider build"
   expect(() => validated.build()).toThrow();
 });
 
-test("useDefaultServiceProvider validate-on-build accepts a sound host graph (framework services validate cleanly)", () => {
+test('useDefaultServiceProvider validate-on-build accepts a sound host graph (framework services validate cleanly)', () => {
   const builder = new HostBuilder();
   builder.useDefaultServiceProvider((options) => {
     options.validateScopes = true;
@@ -52,10 +52,10 @@ test("useDefaultServiceProvider validate-on-build accepts a sound host graph (fr
   expect(() => builder.build()).not.toThrow();
 });
 
-test("the last useDefaultServiceProvider call wins", () => {
+test('the last useDefaultServiceProvider call wins', () => {
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services.add("test:Broken", class Broken {}, [["test:Missing"]]);
+    services.add('test:Broken', class Broken {}, [['test:Missing']]);
   });
   // The first call would validate the (broken) graph; the second replaces it with
   // a no-validation options object, so the build stays lazy and does not throw.

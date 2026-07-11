@@ -11,10 +11,10 @@
 //   statically reachable, compare arities and warn on a count mismatch (the
 //   check is arity-only — it does not compare per-position types).
 
-import { intrinsicToken, singletonValue, type TokenContext } from "@rhombus-std/primitives.transformer";
-import ts from "typescript";
-import { classDeclarationOfType, type ConstructorExtraction, findConstructor, slotForParam } from "./deps.js";
-import { DiagnosticCode, type DiagnosticSink, warning } from "./diagnostics.js";
+import { intrinsicToken, singletonValue, type TokenContext } from '@rhombus-std/primitives.transformer';
+import ts from 'typescript';
+import { classDeclarationOfType, type ConstructorExtraction, findConstructor, slotForParam } from './deps.js';
+import { DiagnosticCode, type DiagnosticSink, warning } from './diagnostics.js';
 
 export interface CheckContext extends TokenContext {
   readonly sink: DiagnosticSink;
@@ -34,10 +34,14 @@ export function checkExtractedRegistration(
   const classDecl = extraction.classSymbol
     .getDeclarations()
     ?.find(ts.isClassDeclaration);
-  if (!classDecl) { return; }
+  if (!classDecl) {
+    return;
+  }
 
   const ctor = findConstructor(classDecl);
-  if (!ctor) { return; }
+  if (!ctor) {
+    return;
+  }
 
   for (const param of ctor.parameters) {
     checkFactoryParam(param, ctx);
@@ -63,19 +67,27 @@ function checkFactoryParam(
   ctx: CheckContext,
 ): void {
   const typeNode = param.type;
-  if (!typeNode || !ts.isFunctionTypeNode(typeNode)) { return; }
+  if (!typeNode || !ts.isFunctionTypeNode(typeNode)) {
+    return;
+  }
 
   const signature = ctx.checker.getSignatureFromDeclaration(typeNode);
-  if (!signature) { return; }
+  if (!signature) {
+    return;
+  }
 
   // The produced concrete class (the factory's product). The return type is
   // usually an interface; we can only check when a concrete class is reachable.
   const returnType = ctx.checker.getReturnTypeOfSignature(signature);
   const producedClass = concreteClassFor(returnType, ctx);
-  if (!producedClass) { return; }
+  if (!producedClass) {
+    return;
+  }
 
   const producedCtor = findConstructor(producedClass);
-  if (!producedCtor) { return; }
+  if (!producedCtor) {
+    return;
+  }
 
   // The produced ctor's caller-supplied (hole) params — primitive scalars the
   // container cannot resolve. Under Rule 1 every named type tokenizes, so a
@@ -130,8 +142,12 @@ function isCallerSuppliedParam(
   ctx: CheckContext,
 ): boolean {
   const type = ctx.checker.getTypeAtLocation(param);
-  if (singletonValue(type) !== undefined) { return true; }
-  if (intrinsicToken(type) !== undefined) { return true; }
+  if (singletonValue(type) !== undefined) {
+    return true;
+  }
+  if (intrinsicToken(type) !== undefined) {
+    return true;
+  }
   return slotForParam(param, ctx) === null;
 }
 
@@ -143,12 +159,16 @@ function concreteClassFor(
   ctx: CheckContext,
 ): ts.ClassDeclaration | undefined {
   const direct = classDeclarationOfType(type);
-  if (direct) { return direct; }
+  if (direct) {
+    return direct;
+  }
   // A `Promise<X>` factory product: unwrap and retry on X.
   const symbol = type.getSymbol();
-  if (symbol?.getName() === "Promise") {
+  if (symbol?.getName() === 'Promise') {
     const args = ctx.checker.getTypeArguments(type as ts.TypeReference);
-    if (args.length === 1) { return classDeclarationOfType(args[0]!); }
+    if (args.length === 1) {
+      return classDeclarationOfType(args[0]!);
+    }
   }
   return undefined;
 }

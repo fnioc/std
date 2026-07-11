@@ -4,14 +4,14 @@
 // pattern. Grouped here (rather than split further) because none of these has
 // its own ME source file to mirror -- see docs/decisions.md's split-oracle note.
 
-import type { IConfigurationSection } from "./IConfigurationSection";
+import type { IConfigurationSection } from './IConfigurationSection';
 
 /**
  * A node's subtree as a nested plain string object. A node that has children
  * is a nested record (its own scalar value, if any, is dropped -- see
  * {@link IConfiguration.toObject}); a pure leaf is its string value.
  */
-export type ConfigObject = { readonly [key: string]: string | ConfigObject };
+export type ConfigObject = { readonly [key: string]: string | ConfigObject; };
 
 /**
  * The index-navigable Section type: an {@link IConfigurationSection} whose

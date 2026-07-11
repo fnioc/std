@@ -26,21 +26,21 @@
 
 // LogEntry is re-exported from its reference home (the abstractions package)
 // now that it lives there; the local declaration was retired.
-export type { LogEntry } from "@rhombus-std/logging.core";
-export { ConsoleLogger } from "./console-logger";
-export { ConsoleFormatter } from "./ConsoleFormatter";
-export { ConsoleFormatterNames } from "./ConsoleFormatterNames";
-export { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
+export type { LogEntry } from '@rhombus-std/logging.core';
+export { ConsoleLogger } from './console-logger';
+export { ConsoleFormatter } from './ConsoleFormatter';
+export { ConsoleFormatterNames } from './ConsoleFormatterNames';
+export { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
 // Side-effect + standalone surface: registers the console augmentation set against
 // the logging-builder token and exports the set (docs §38).
-export { ConsoleLoggerExtensions } from "./console-logger-augmentations";
-export { ConsoleLoggerFormat } from "./ConsoleLoggerFormat";
-export { ConsoleLoggerOptions, DEFAULT_MAX_QUEUE_LENGTH } from "./ConsoleLoggerOptions";
-export { ConsoleLoggerProvider } from "./ConsoleLoggerProvider";
-export { ConsoleLoggerQueueFullMode } from "./ConsoleLoggerQueueFullMode";
-export { JsonConsoleFormatterOptions } from "./JsonConsoleFormatterOptions";
-export type { JsonWriterOptions } from "./JsonConsoleFormatterOptions";
-export { LoggerColorBehavior } from "./LoggerColorBehavior";
-export { SimpleConsoleFormatterOptions } from "./SimpleConsoleFormatterOptions";
-export { StringWriter } from "./text-writer";
-export type { TextWriter } from "./text-writer";
+export { ConsoleLoggerExtensions } from './console-logger-augmentations';
+export { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
+export { ConsoleLoggerOptions, DEFAULT_MAX_QUEUE_LENGTH } from './ConsoleLoggerOptions';
+export { ConsoleLoggerProvider } from './ConsoleLoggerProvider';
+export { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';
+export { JsonConsoleFormatterOptions } from './JsonConsoleFormatterOptions';
+export type { JsonWriterOptions } from './JsonConsoleFormatterOptions';
+export { LoggerColorBehavior } from './LoggerColorBehavior';
+export { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
+export { StringWriter } from './text-writer';
+export type { TextWriter } from './text-writer';

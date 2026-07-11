@@ -38,12 +38,12 @@ export const JsonConfigurationFileParser = {
 
     // A JSON document whose root is a scalar or null can't flatten into any
     // key/value pairs -- reject it loudly rather than silently loading nothing.
-    if (typeof parsed !== "object" || parsed === null) {
+    if (typeof parsed !== 'object' || parsed === null) {
       throw new Error(`${origin}: root must be an object or array`);
     }
 
     const pairs: [key: string, value: string][] = [];
-    flatten(parsed, "", pairs);
+    flatten(parsed, '', pairs);
     return pairs;
   },
 };
@@ -56,20 +56,20 @@ function flatten(value: unknown, prefix: string, into: [key: string, value: stri
 
   if (Array.isArray(value)) {
     value.forEach((item, index) => {
-      flatten(item, prefix === "" ? String(index) : `${prefix}:${index}`, into);
+      flatten(item, prefix === '' ? String(index) : `${prefix}:${index}`, into);
     });
     return;
   }
 
-  if (typeof value === "object") {
+  if (typeof value === 'object') {
     for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-      flatten(child, prefix === "" ? key : `${prefix}:${key}`, into);
+      flatten(child, prefix === '' ? key : `${prefix}:${key}`, into);
     }
     return;
   }
 
   // Scalar leaf (string, number, or boolean): string-convert it.
-  if (prefix !== "") {
+  if (prefix !== '') {
     into.push([prefix, String(value)]);
   }
 }

@@ -20,12 +20,12 @@
 // event id and a message string are ambiguous at runtime; a caller that needs
 // an explicit event id calls `logger.log(level, EventId.from(n), …)` directly.
 
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { EventId } from "./event-id";
-import { formatLogValues, FormattedLogValues } from "./formatted-log-values";
-import type { ILogger } from "./logger";
-import { LogLevel } from "./LogLevel";
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { EventId } from './event-id';
+import { formatLogValues, FormattedLogValues } from './formatted-log-values';
+import type { ILogger } from './logger';
+import { LogLevel } from './LogLevel';
 
 /** Routes a wrapper call to the primitive `ILogger.log`, splitting the optional leading error. */
 function emit(logger: ILogger, logLevel: LogLevel, first: string | Error, rest: readonly unknown[]): void {
@@ -34,7 +34,7 @@ function emit(logger: ILogger, logLevel: LogLevel, first: string | Error, rest: 
   let args: readonly unknown[];
   if (first instanceof Error) {
     error = first;
-    message = typeof rest[0] === "string" ? rest[0] : "";
+    message = typeof rest[0] === 'string' ? rest[0] : '';
     args = rest.slice(1);
   } else {
     error = undefined;

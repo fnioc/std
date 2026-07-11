@@ -9,8 +9,8 @@
 // whole point of deriving both through di.transformer's shared machinery. A
 // mismatch would surface here as an unregistered-token throw.
 
-import { afterEach, expect, test } from "bun:test";
-import { type CompiledProject, compileWithTransformer } from "./harness";
+import { afterEach, expect, test } from 'bun:test';
+import { type CompiledProject, compileWithTransformer } from './harness';
 
 // Registrations are at module scope: di.transformer lowers registration
 // statements at TOP LEVEL only (a nested `resolve<T>()` still lowers anywhere).
@@ -43,25 +43,25 @@ afterEach(() => {
   project = undefined;
 });
 
-test("addOptions<T>() lowers, and the wrapper resolves an Options<T> over the bound T", async () => {
-  project = compileWithTransformer({ "app.ts": SAMPLE });
+test('addOptions<T>() lowers, and the wrapper resolves an Options<T> over the bound T', async () => {
+  project = compileWithTransformer({ 'app.ts': SAMPLE });
 
   // The sugar lowered to the explicit two-token verb; the wrapper is the closed
   // Options<> token, the element the plain AppOptions token.
-  const emitted = project.emitted("app.js");
+  const emitted = project.emitted('app.js');
   expect(emitted).toMatch(
     /addOptions\(\s*"@rhombus-std\/options:Options<[^"]*AppOptions>"\s*,\s*"[^"]*AppOptions"\s*\)/,
   );
-  expect(emitted).not.toContain("addOptions<");
+  expect(emitted).not.toContain('addOptions<');
 
-  const mod = await project.load("app");
+  const mod = await project.load('app');
   const run = mod.run as () => {
-    value: { host: string; port: number };
+    value: { host: string; port: number; };
     sameInstance: boolean;
   };
   const result = run();
 
-  expect(result.value).toEqual({ host: "localhost", port: 8080 });
+  expect(result.value).toEqual({ host: 'localhost', port: 8080 });
   expect(result.sameInstance).toBe(true);
 }, 60_000); // tspc compiles a real program (pulling the options + config sources);
 // generous timeout so it survives parallel-suite contention.

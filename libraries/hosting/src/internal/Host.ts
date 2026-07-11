@@ -12,39 +12,32 @@
 // resolves the hosted services from THAT scope, and `stop` disposes it -- that
 // scope is what gives singleton semantics and deterministic disposal.
 
-import type { Resolver, ServiceProvider } from "@rhombus-std/di.core";
-import {
-  BackgroundService,
-  hostedServiceCollectionToken,
-  type IHost,
-  type IHostApplicationLifetime,
-  type IHostedLifecycleService,
-  type IHostedService,
-  type IHostLifetime,
-} from "@rhombus-std/hosting.core";
-import type { ILogger } from "@rhombus-std/logging.core";
-import type { IStartupValidator } from "@rhombus-std/options";
-import { type AbortSignal, augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { BackgroundServiceExceptionBehavior } from "../BackgroundServiceExceptionBehavior";
-import type { HostOptions } from "../HostOptions";
-import { linkSignals, whenAborted } from "../signal-linking";
-import { ApplicationLifetime } from "./ApplicationLifetime";
-import { HostingLoggerExtensions } from "./HostingLoggerExtensions";
+import type { Resolver, ServiceProvider } from '@rhombus-std/di.core';
+import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
+  type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
+import type { ILogger } from '@rhombus-std/logging.core';
+import type { IStartupValidator } from '@rhombus-std/options';
+import { type AbortSignal, augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { BackgroundServiceExceptionBehavior } from '../BackgroundServiceExceptionBehavior';
+import type { HostOptions } from '../HostOptions';
+import { linkSignals, whenAborted } from '../signal-linking';
+import { ApplicationLifetime } from './ApplicationLifetime';
+import { HostingLoggerExtensions } from './HostingLoggerExtensions';
 
 // Re-export the shared hosted-service token so a white-box consumer can reach it
 // alongside the host. The value is hosting.core's token (the one
 // `addHostedService` registers under) so registration and resolution agree.
-export { HOSTED_SERVICE_TOKEN } from "@rhombus-std/hosting.core";
+export { HOSTED_SERVICE_TOKEN } from '@rhombus-std/hosting.core';
 
 /** Structural test for {@link IHostedLifecycleService}. */
 function isHostedLifecycleService(service: IHostedService): service is IHostedLifecycleService {
   const candidate = service as Partial<IHostedLifecycleService>;
-  return typeof candidate.starting === "function"
-    && typeof candidate.started === "function"
-    && typeof candidate.stopping === "function"
-    && typeof candidate.stopped === "function";
+  return typeof candidate.starting === 'function'
+    && typeof candidate.started === 'function'
+    && typeof candidate.stopping === 'function'
+    && typeof candidate.stopped === 'function';
 }
 
 /** Collects the hosted services that also implement the lifecycle interface. */
@@ -76,7 +69,7 @@ async function foreachService<T>(
   if (concurrent) {
     const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
-      if (result.status === "rejected") {
+      if (result.status === 'rejected') {
         exceptions.push(result.reason);
       }
     }
@@ -124,7 +117,7 @@ export class Host implements IHost, AsyncDisposable {
     options: HostOptions,
   ) {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
-      throw new Error("Replacing IHostApplicationLifetime is not supported.");
+      throw new Error('Replacing IHostApplicationLifetime is not supported.');
     }
     this.#services = services;
     this.#applicationLifetime = applicationLifetime;
@@ -165,13 +158,13 @@ export class Host implements IHost, AsyncDisposable {
         if (!exceptions.length) {
           return;
         }
-        const error = aggregate(exceptions, "One or more hosted services failed to start.");
+        const error = aggregate(exceptions, 'One or more hosted services failed to start.');
         HostingLoggerExtensions.hostedServiceStartupFaulted(this.#logger, error);
         throw error;
       };
 
       // Open the singleton scope and resolve the hosted services from it.
-      this.#singletonScope = this.#services.createScope("singleton");
+      this.#singletonScope = this.#services.createScope('singleton');
       const singletonScope = this.#singletonScope;
       this.#hostedServices = singletonScope.resolve<IHostedService[]>(hostedServiceCollectionToken());
       this.#hostedLifecycleServices = getHostLifecycles(this.#hostedServices);
@@ -324,7 +317,7 @@ export class Host implements IHost, AsyncDisposable {
       if (exceptions.length) {
         const error = aggregate(
           exceptions,
-          "One or more hosted services failed to stop, or a background service threw an exception.",
+          'One or more hosted services failed to stop, or a background service threw an exception.',
         );
         HostingLoggerExtensions.stoppedWithException(this.#logger, error);
         throw error;

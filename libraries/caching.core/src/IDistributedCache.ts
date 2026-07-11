@@ -10,8 +10,8 @@
 //   - The reference `CancellationToken token = default` parameters map to an
 //     optional {@link AbortSignal} (docs §39).
 
-import type { AbortSignal } from "@rhombus-std/primitives";
-import type { DistributedCacheEntryOptions } from "./DistributedCacheEntryOptions";
+import type { AbortSignal } from '@rhombus-std/primitives';
+import type { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 
 /** Represents a distributed cache of serialized values. */
 export interface IDistributedCache {

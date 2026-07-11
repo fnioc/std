@@ -16,17 +16,13 @@
 // merges stay downstream next to each concrete class. These merges are retired once
 // diagnostics converts to a dist build -- section 5.)
 
-import type { IConfiguration } from "@rhombus-std/config";
-import type { Ctor, DepSlot } from "@rhombus-std/di.core";
-import type {
-  ActivityListenerBuilder,
-  ActivitySourceScopes,
-  IMetricsListener,
-  MeterScope,
-} from "@rhombus-std/diagnostics.core";
-import type { Func } from "@rhombus-toolkit/func";
+import type { IConfiguration } from '@rhombus-std/config';
+import type { Ctor, DepSlot } from '@rhombus-std/di.core';
+import type { ActivityListenerBuilder, ActivitySourceScopes, IMetricsListener,
+  MeterScope } from '@rhombus-std/diagnostics.core';
+import type { Func } from '@rhombus-toolkit/func';
 
-declare module "./metrics/MetricsBuilder" {
+declare module './metrics/MetricsBuilder' {
   interface MetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
@@ -37,7 +33,7 @@ declare module "./metrics/MetricsBuilder" {
   }
 }
 
-declare module "./tracing/TracingBuilder" {
+declare module './tracing/TracingBuilder' {
   interface TracingBuilder {
     addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
     clearTracingListeners(): this;

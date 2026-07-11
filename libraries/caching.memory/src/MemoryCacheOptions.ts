@@ -10,8 +10,8 @@
 // The obsolete `CompactOnMemoryPressure` is dropped -- the reference marks it
 // `Obsolete(error: true)`.
 
-import type { Options } from "@rhombus-std/options";
-import type { ISystemClock } from "./ISystemClock";
+import type { Options } from '@rhombus-std/options';
+import type { ISystemClock } from './ISystemClock';
 
 /** Options controlling a {@link MemoryCache}. */
 export class MemoryCacheOptions implements Options<MemoryCacheOptions> {
@@ -50,7 +50,7 @@ export class MemoryCacheOptions implements Options<MemoryCacheOptions> {
    * meter/instrument analog exists in the diagnostics family), so the name is
    * carried for parity but nothing consumes it yet.
    */
-  public name = "Default";
+  public name = 'Default';
 
   /**
    * The maximum total size of the cache (arbitrary units; each entry supplies

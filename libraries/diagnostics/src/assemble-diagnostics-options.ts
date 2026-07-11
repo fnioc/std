@@ -10,13 +10,13 @@
 // change-token source is present -- so a config reload re-runs the parse -- or a
 // static snapshot (Options.of) otherwise.
 
-import type { Resolver, Token } from "@rhombus-std/di.core";
-import { collectionToken } from "@rhombus-std/diagnostics.core";
-import { type ConfigureOptions, Options } from "@rhombus-std/options";
-import type { OptionsChangeTokenSource } from "@rhombus-std/options.augmentations";
-import type { Func } from "@rhombus-toolkit/func";
+import type { Resolver, Token } from '@rhombus-std/di.core';
+import { collectionToken } from '@rhombus-std/diagnostics.core';
+import { type ConfigureOptions, Options } from '@rhombus-std/options';
+import type { OptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
+import type { Func } from '@rhombus-toolkit/func';
 
-import { CompositeChangeToken } from "./composite-change-token";
+import { CompositeChangeToken } from './composite-change-token';
 
 /**
  * Assembles the `Options<T>` for a diagnostics options type from the configure

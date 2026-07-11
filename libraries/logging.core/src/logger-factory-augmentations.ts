@@ -25,10 +25,10 @@
 // and the `log` wrapper (§40) — and since this set has no other member, there
 // is nothing to register at all.
 
-import type { AugmentationSet } from "@rhombus-std/primitives";
-import type { AbstractCtor } from "@rhombus-toolkit/func";
-import type { ILogger } from "./logger";
-import type { ILoggerFactory } from "./logger-factory";
+import type { AugmentationSet } from '@rhombus-std/primitives';
+import type { AbstractCtor } from '@rhombus-toolkit/func';
+import type { ILogger } from './logger';
+import type { ILoggerFactory } from './logger-factory';
 
 /**
  * The `LoggerFactoryExtensions` augmentation set for {@link ILoggerFactory}

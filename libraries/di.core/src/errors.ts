@@ -4,7 +4,7 @@
 // share one root — a consumer can `catch (e) { if (e instanceof DiError) … }`
 // across the whole surface. Resolution-time errors live with the engine.
 
-import type { Token } from "./types.js";
+import type { Token } from './types.js';
 
 /** Base class for every error the container raises. */
 export class DiError extends Error {
@@ -47,10 +47,10 @@ export class ActivationError extends DiError {
 export class OpenTokenRegistrationError extends DiError {
   public constructor(
     public readonly token: Token,
-    public readonly method: "add" | "addFactory" | "addValue",
+    public readonly method: 'add' | 'addFactory' | 'addValue',
   ) {
     super(
-      method === "add"
+      method === 'add'
         ? `Cannot register open template "${token}": every type argument of `
           + `an open service token must be a hole ($N). Make every argument `
           + `a hole, or close the token fully.`

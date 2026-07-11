@@ -19,32 +19,32 @@
 // external std dependency is @rhombus-std/primitives -- the `IChangeToken`/
 // `AbortSignal`/`Token` types plus the augmentation registry runtime.
 
-export { CacheItemPriority } from "./CacheItemPriority";
-export { EvictionReason } from "./EvictionReason";
-export { PostEvictionCallbackRegistration } from "./PostEvictionCallbackRegistration";
-export type { PostEvictionDelegate } from "./PostEvictionDelegate";
+export { CacheItemPriority } from './CacheItemPriority';
+export { EvictionReason } from './EvictionReason';
+export { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
+export type { PostEvictionDelegate } from './PostEvictionDelegate';
 
-export type { ICacheEntry } from "./ICacheEntry";
-export type { CacheTryGetResult, IMemoryCache } from "./memory-cache";
-export { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
-export { MemoryCacheStatistics } from "./MemoryCacheStatistics";
+export type { ICacheEntry } from './ICacheEntry';
+export type { CacheTryGetResult, IMemoryCache } from './memory-cache';
+export { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
+export { MemoryCacheStatistics } from './MemoryCacheStatistics';
 
-export { CacheExtensions } from "./cache-augmentations";
-export { CacheEntryExtensions } from "./cache-entry-augmentations";
-export { MemoryCacheEntryExtensions } from "./cache-entry-options-augmentations";
+export { CacheExtensions } from './cache-augmentations';
+export { CacheEntryExtensions } from './cache-entry-augmentations';
+export { MemoryCacheEntryExtensions } from './cache-entry-options-augmentations';
 
 // The distributed-cache surface. `freezeDistributedCacheEntryOptions` is
 // deliberately NOT re-exported (it mirrors the reference's internal Freeze).
-export { type DistributedCacheExtensionMethods, DistributedCacheExtensions } from "./distributed-cache-augmentations";
-export { DistributedCacheEntryExtensions } from "./distributed-cache-entry-augmentations";
-export { DistributedCacheEntryOptions } from "./DistributedCacheEntryOptions";
-export type { IDistributedCache } from "./IDistributedCache";
+export { type DistributedCacheExtensionMethods, DistributedCacheExtensions } from './distributed-cache-augmentations';
+export { DistributedCacheEntryExtensions } from './distributed-cache-entry-augmentations';
+export { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
+export type { IDistributedCache } from './IDistributedCache';
 
 // The hybrid-cache surface. `toDistributedCacheEntryOptions` is deliberately
 // NOT re-exported (it mirrors the reference's internal
 // ToDistributedCacheEntryOptions).
-export { HybridCache } from "./hybrid/HybridCache";
-export { HybridCacheEntryFlags } from "./hybrid/HybridCacheEntryFlags";
-export { HybridCacheEntryOptions } from "./hybrid/HybridCacheEntryOptions";
-export type { IHybridCacheSerializer } from "./hybrid/IHybridCacheSerializer";
-export type { IHybridCacheSerializerFactory } from "./hybrid/IHybridCacheSerializerFactory";
+export { HybridCache } from './hybrid/HybridCache';
+export { HybridCacheEntryFlags } from './hybrid/HybridCacheEntryFlags';
+export { HybridCacheEntryOptions } from './hybrid/HybridCacheEntryOptions';
+export type { IHybridCacheSerializer } from './hybrid/IHybridCacheSerializer';
+export type { IHybridCacheSerializerFactory } from './hybrid/IHybridCacheSerializerFactory';

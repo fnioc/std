@@ -1,6 +1,6 @@
-import { DiagnosticCode } from "@rhombus-std/di.transformer/internal/index";
-import { describe, expect, test } from "bun:test";
-import { fixture, transform, type VirtualFiles } from "./harness.js";
+import { DiagnosticCode } from '@rhombus-std/di.transformer/internal/index';
+import { describe, expect, test } from 'bun:test';
+import { fixture, transform, type VirtualFiles } from './harness.js';
 
 // Open generics (spec v1): closed-generic token derivation (`base<arg1,arg2>`),
 // hole placeholders (`$N` via the `Hole<N, C>` brand), instantiation-expression
@@ -20,12 +20,12 @@ const BRANDS = `
   type Typeof<T> = string & { readonly [ARG]?: T };
 `;
 
-function codes(diags: readonly { code: number }[]): number[] {
+function codes(diags: readonly { code: number; }[]): number[] {
   return diags.map((d) => d.code);
 }
 
-describe("closed-generic token derivation", () => {
-  test("closed generic reference → base<arg> (app-internal base + arg)", () => {
+describe('closed-generic token derivation', () => {
+  test('closed generic reference → base<arg> (app-internal base + arg)', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
@@ -36,24 +36,24 @@ describe("closed-generic token derivation", () => {
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IRepo<./app:User>\", UserRepo, [[]]).as(\"singleton\");",
+      'services.add("./app:IRepo<./app:User>", UserRepo, [[]]).as("singleton");',
     );
     // Signatures ride inline on the registration — no hoist, no defineDeps.
-    expect(output).not.toContain("ɵreg");
-    expect(output).not.toContain("defineDeps");
+    expect(output).not.toContain('ɵreg');
+    expect(output).not.toContain('defineDeps');
   });
 
-  test("package-public type arg → base<importSpecifier:Symbol>", () => {
+  test('package-public type arg → base<importSpecifier:Symbol>', () => {
     const files: VirtualFiles = {
-      "/proj/node_modules/your-lib/package.json": JSON.stringify({
-        name: "your-lib",
-        version: "3.4.5",
-        exports: { ".": "./index.js", "./contracts": "./contracts/index.js" },
+      '/proj/node_modules/your-lib/package.json': JSON.stringify({
+        name: 'your-lib',
+        version: '3.4.5',
+        exports: { '.': './index.js', './contracts': './contracts/index.js' },
       }),
-      "/proj/node_modules/your-lib/contracts/index.d.ts": `
+      '/proj/node_modules/your-lib/contracts/index.d.ts': `
         export interface IFoo {}
       `,
-      "/proj/src/app.ts": `
+      '/proj/src/app.ts': `
         import { IFoo } from "your-lib/contracts";
         interface IWrap<T> {}
         class Wrap implements IWrap<IFoo> { constructor() {} }
@@ -62,16 +62,16 @@ describe("closed-generic token derivation", () => {
       `,
     };
     const { outputs, diagnostics } = transform(files, {
-      entry: ["/proj/src/app.ts"],
-      compilerOptions: { rootDir: "/proj" },
+      entry: ['/proj/src/app.ts'],
+      compilerOptions: { rootDir: '/proj' },
     });
     expect(codes(diagnostics)).toEqual([]);
-    expect(outputs["/proj/src/app.ts"]!).toContain(
-      "services.add(\"./src/app:IWrap<your-lib/contracts:IFoo>\", Wrap, ",
+    expect(outputs['/proj/src/app.ts']!).toContain(
+      'services.add("./src/app:IWrap<your-lib/contracts:IFoo>", Wrap, ',
     );
   });
 
-  test("nested generic args recurse: IRepo<IBox<User>>", () => {
+  test('nested generic args recurse: IRepo<IBox<User>>', () => {
     const src = `
       interface User {}
       interface IBox<T> {}
@@ -80,20 +80,20 @@ describe("closed-generic token derivation", () => {
       const t = nameof<IRepo<IBox<User>>>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("\"./app:IRepo<./app:IBox<./app:User>>\"");
+    expect(output).toContain('"./app:IRepo<./app:IBox<./app:User>>"');
   });
 
-  test("type-parameter defaults arrive fully applied: bare IFoo<T = string>", () => {
+  test('type-parameter defaults arrive fully applied: bare IFoo<T = string>', () => {
     const src = `
       interface ICfg<T = string> {}
       declare function nameof<T>(): string;
       const t = nameof<ICfg>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("\"./app:ICfg<string>\"");
+    expect(output).toContain('"./app:ICfg<string>"');
   });
 
-  test("alias-wins regression: a named alias of a closed generic stays the bare alias token", () => {
+  test('alias-wins regression: a named alias of a closed generic stays the bare alias token', () => {
     const src = `
       interface User {}
       interface IRepository<T> {}
@@ -103,11 +103,11 @@ describe("closed-generic token derivation", () => {
       services.add<UserRepoAlias>(SqlUserRepo).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("services.add(\"./app:UserRepoAlias\", SqlUserRepo, ");
-    expect(output).not.toContain("UserRepoAlias<");
+    expect(output).toContain('services.add("./app:UserRepoAlias", SqlUserRepo, ');
+    expect(output).not.toContain('UserRepoAlias<');
   });
 
-  test("generic alias APPLIED recurses through the alias name: Wrap<User>", () => {
+  test('generic alias APPLIED recurses through the alias name: Wrap<User>', () => {
     const src = `
       interface User {}
       interface IBox<T> {}
@@ -116,10 +116,10 @@ describe("closed-generic token derivation", () => {
       const t = nameof<Wrap<User>>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("\"./app:Wrap<./app:User>\"");
+    expect(output).toContain('"./app:Wrap<./app:User>"');
   });
 
-  test("Promise<X> ctor param → the honest closed-generic token Promise<X>", () => {
+  test('Promise<X> ctor param → the honest closed-generic token Promise<X>', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
@@ -133,11 +133,11 @@ describe("closed-generic token derivation", () => {
     // Honest token-split: Promise<IRepo<User>> is NOT stripped — it derives the
     // closed-generic token `Promise<./app:IRepo<./app:User>>`.
     expect(output).toContain(
-      "Svc, [[\"Promise<./app:IRepo<./app:User>>\"]]",
+      'Svc, [["Promise<./app:IRepo<./app:User>>"]]',
     );
   });
 
-  test("Promise applied INSIDE a type arg does not unwrap — default-lib bare name", () => {
+  test('Promise applied INSIDE a type arg does not unwrap — default-lib bare name', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
@@ -145,22 +145,22 @@ describe("closed-generic token derivation", () => {
       const t = nameof<IRepo<Promise<User>>>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("\"./app:IRepo<Promise<./app:User>>\"");
+    expect(output).toContain('"./app:IRepo<Promise<./app:User>>"');
   });
 
-  test("default-lib generics tokenize by bare symbol name: Map<string, User>", () => {
+  test('default-lib generics tokenize by bare symbol name: Map<string, User>', () => {
     const src = `
       interface User {}
       declare function nameof<T>(): string;
       const t = nameof<Map<string, User>>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("\"Map<string,./app:User>\"");
+    expect(output).toContain('"Map<string,./app:User>"');
   });
 });
 
-describe("hole derivation ($N via the Hole brand)", () => {
-  test("$<1> / $<2> / $<9> sugar aliases derive $N", () => {
+describe('hole derivation ($N via the Hole brand)', () => {
+  test('$<1> / $<2> / $<9> sugar aliases derive $N', () => {
     const src = `
       ${BRANDS}
       interface IPair<A, B> {}
@@ -171,11 +171,11 @@ describe("hole derivation ($N via the Hole brand)", () => {
     `;
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
-    expect(output).toContain("\"./app:IRepo<$1>\"");
-    expect(output).toContain("\"./app:IPair<$2,$9>\"");
+    expect(output).toContain('"./app:IRepo<$1>"');
+    expect(output).toContain('"./app:IPair<$2,$9>"');
   });
 
-  test("unbounded $<N> sugar derives the $N hole token identically to Hole<N>", () => {
+  test('unbounded $<N> sugar derives the $N hole token identically to Hole<N>', () => {
     // Hole detection is brand-based (the HOLE brand), NOT alias-name-based, so
     // the collapsed generic sugar `$<N>` = `Hole<N>` derives the same token.
     const src = `
@@ -187,11 +187,11 @@ describe("hole derivation ($N via the Hole brand)", () => {
     `;
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
-    expect(output).toContain("const a = \"./app:IRepo<$1>\";");
-    expect(output).toContain("const b = \"./app:IRepo<$1>\";");
+    expect(output).toContain('const a = "./app:IRepo<$1>";');
+    expect(output).toContain('const b = "./app:IRepo<$1>";');
   });
 
-  test("constrained Hole<N, C> derives $N, not the constraint or an alias token", () => {
+  test('constrained Hole<N, C> derives $N, not the constraint or an alias token', () => {
     const src = `
       ${BRANDS}
       interface Entity {}
@@ -203,14 +203,14 @@ describe("hole derivation ($N via the Hole brand)", () => {
     `;
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
-    expect(output).toContain("const a = \"./app:IRepo<$1>\";");
-    expect(output).toContain("const b = \"./app:IRepo<$2>\";");
-    expect(output).not.toContain("\"./app:H2\"");
+    expect(output).toContain('const a = "./app:IRepo<$1>";');
+    expect(output).toContain('const b = "./app:IRepo<$2>";');
+    expect(output).not.toContain('"./app:H2"');
   });
 });
 
-describe("instantiation-expression lowering (registration-carried deps)", () => {
-  test("open template: add<IRepo<$<1>>>(SqlRepo<$<1>>) — signatures as third arg, no hoist, no defineDeps", () => {
+describe('instantiation-expression lowering (registration-carried deps)', () => {
+  test('open template: add<IRepo<$<1>>>(SqlRepo<$<1>>) — signatures as third arg, no hoist, no defineDeps', () => {
     const src = `
       ${BRANDS}
       interface IDb {}
@@ -224,14 +224,14 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IRepo<$1>\", SqlRepo, [[\"./app:IDb\", \"$1\"]]).as(\"singleton\");",
+      'services.add("./app:IRepo<$1>", SqlRepo, [["./app:IDb", "$1"]]).as("singleton");',
     );
     // Registration-carried deps: no ctor-keyed metadata, no hoisted const.
-    expect(output).not.toContain("defineDeps");
-    expect(output).not.toContain("ɵreg");
+    expect(output).not.toContain('defineDeps');
+    expect(output).not.toContain('ɵreg');
   });
 
-  test("inverted hole order: add<IPair<$<1>,$<2>>>(Pair<$<2>,$<1>>) maps params through the instantiation", () => {
+  test('inverted hole order: add<IPair<$<1>,$<2>>>(Pair<$<2>,$<1>>) maps params through the instantiation', () => {
     const src = `
       ${BRANDS}
       interface IPair<A, B> {}
@@ -244,11 +244,11 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IPair<$1,$2>\", Pair, [[\"$2\", \"$1\"]]).as(\"singleton\");",
+      'services.add("./app:IPair<$1,$2>", Pair, [["$2", "$1"]]).as("singleton");',
     );
   });
 
-  test("repeated holes: add<IPair<$<1>,$<1>>>(Pair<$<1>,$<1>>)", () => {
+  test('repeated holes: add<IPair<$<1>,$<1>>>(Pair<$<1>,$<1>>)', () => {
     const src = `
       ${BRANDS}
       interface IPair<A, B> {}
@@ -261,11 +261,11 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IPair<$1,$1>\", Pair, [[\"$1\", \"$1\"]]).as(\"singleton\");",
+      'services.add("./app:IPair<$1,$1>", Pair, [["$1", "$1"]]).as("singleton");',
     );
   });
 
-  test("nested instantiation arg: Foo<Pair<$<1>,$<1>>> surfaces the nested template in the dep", () => {
+  test('nested instantiation arg: Foo<Pair<$<1>,$<1>>> surfaces the nested template in the dep', () => {
     const src = `
       ${BRANDS}
       interface Pair<A, B> {}
@@ -279,11 +279,11 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IFoo<$1>\", Foo, [[\"./app:Pair<$1,$1>\"]]).as(\"singleton\");",
+      'services.add("./app:IFoo<$1>", Foo, [["./app:Pair<$1,$1>"]]).as("singleton");',
     );
   });
 
-  test("instantiation override where the substituted union COLLAPSES (T | Bar with T = Bar) derives the collapsed type, no false diagnostic", () => {
+  test('instantiation override where the substituted union COLLAPSES (T | Bar with T = Bar) derives the collapsed type, no false diagnostic', () => {
     const src = `
       ${BRANDS}
       class Bar {}
@@ -299,11 +299,11 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     // `T | Bar` with `T = Bar` collapses to the non-union `Bar` — the param is a
     // single `Bar` token, NOT a union deriving the unsubstituted `T`.
     expect(output).toContain(
-      "services.add(\"./app:IRepo<./app:Bar>\", Repo, [[\"./app:Bar\"]]).as(\"singleton\");",
+      'services.add("./app:IRepo<./app:Bar>", Repo, [["./app:Bar"]]).as("singleton");',
     );
   });
 
-  test("closed instantiation: add<IRepo<User>>(SqlRepo<User>) — concrete tokens, still registration-carried", () => {
+  test('closed instantiation: add<IRepo<User>>(SqlRepo<User>) — concrete tokens, still registration-carried', () => {
     const src = `
       ${BRANDS}
       interface User {}
@@ -318,12 +318,12 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IRepo<./app:User>\", SqlRepo, [[\"./app:IDb\", \"./app:User\"]]).as(\"singleton\");",
+      'services.add("./app:IRepo<./app:User>", SqlRepo, [["./app:IDb", "./app:User"]]).as("singleton");',
     );
-    expect(output).not.toContain("defineDeps");
+    expect(output).not.toContain('defineDeps');
   });
 
-  test("open template registered at a non-singleton scope: add<IRepo<$<1>>>(SqlRepo<$<1>>).as<\"request\">()", () => {
+  test('open template registered at a non-singleton scope: add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"request">()', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -336,13 +336,13 @@ describe("instantiation-expression lowering (registration-carried deps)", () => 
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:IRepo<$1>\", SqlRepo, [[\"$1\"]]).as(\"request\");",
+      'services.add("./app:IRepo<$1>", SqlRepo, [["$1"]]).as("request");',
     );
   });
 });
 
-describe("Typeof witness", () => {
-  test("open binding: Typeof<T> with T = hole → { typeArg: N } slot", () => {
+describe('Typeof witness', () => {
+  test('open binding: Typeof<T> with T = hole → { typeArg: N } slot', () => {
     const src = `
       ${BRANDS}
       interface ILogger<T> {}
@@ -355,11 +355,11 @@ describe("Typeof witness", () => {
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:ILogger<$1>\", Logger, [[{ typeArg: 1 }]]).as(\"singleton\");",
+      'services.add("./app:ILogger<$1>", Logger, [[{ typeArg: 1 }]]).as("singleton");',
     );
   });
 
-  test("closed binding: Typeof<T> with T concrete → literal value slot with the derived token", () => {
+  test('closed binding: Typeof<T> with T concrete → literal value slot with the derived token', () => {
     const src = `
       ${BRANDS}
       interface User {}
@@ -373,13 +373,13 @@ describe("Typeof witness", () => {
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
     expect(output).toContain(
-      "services.add(\"./app:ILogger<./app:User>\", Logger, [[{ value: \"./app:User\" }]]).as(\"singleton\");",
+      'services.add("./app:ILogger<./app:User>", Logger, [[{ value: "./app:User" }]]).as("singleton");',
     );
   });
 });
 
-describe("resolve / nameof pick up generic tokens automatically", () => {
-  test("resolve<IRepo<User>>() lowers to the closed token", () => {
+describe('resolve / nameof pick up generic tokens automatically', () => {
+  test('resolve<IRepo<User>>() lowers to the closed token', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
@@ -387,10 +387,10 @@ describe("resolve / nameof pick up generic tokens automatically", () => {
       const r = provider.resolve<IRepo<User>>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("provider.resolve(\"./app:IRepo<./app:User>\")");
+    expect(output).toContain('provider.resolve("./app:IRepo<./app:User>")');
   });
 
-  test("nameof<IRepo<$<1>>>() yields the open template string", () => {
+  test('nameof<IRepo<$<1>>>() yields the open template string', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -398,12 +398,12 @@ describe("resolve / nameof pick up generic tokens automatically", () => {
       const t = nameof<IRepo<$<1>>>();
     `;
     const { output } = transform(fixture(src));
-    expect(output).toContain("const t = \"./app:IRepo<$1>\";");
+    expect(output).toContain('const t = "./app:IRepo<$1>";');
   });
 });
 
-describe("diagnostics 990007–990010", () => {
-  test("990007: bare generic class ref whose ctor references its type params", () => {
+describe('diagnostics 990007–990010', () => {
+  test('990007: bare generic class ref whose ctor references its type params', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -419,10 +419,10 @@ describe("diagnostics 990007–990010", () => {
     );
     expect(diag).toBeDefined();
     expect(diag!.category).toBe(1 /* ts.DiagnosticCategory.Error */);
-    expect(String(diag!.messageText)).toContain("instantiation expression");
+    expect(String(diag!.messageText)).toContain('instantiation expression');
   });
 
-  test("990007 negative: the instantiation-expression form binds the type params", () => {
+  test('990007 negative: the instantiation-expression form binds the type params', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -438,7 +438,7 @@ describe("diagnostics 990007–990010", () => {
     );
   });
 
-  test("990008: service token mixing holes and concrete args", () => {
+  test('990008: service token mixing holes and concrete args', () => {
     const src = `
       ${BRANDS}
       interface IPair<A, B> {}
@@ -456,7 +456,7 @@ describe("diagnostics 990007–990010", () => {
     expect(diag!.category).toBe(1);
   });
 
-  test("990008: a NESTED hole in a service-token arg is also mixed", () => {
+  test('990008: a NESTED hole in a service-token arg is also mixed', () => {
     const src = `
       ${BRANDS}
       interface IBar<T> {}
@@ -471,7 +471,7 @@ describe("diagnostics 990007–990010", () => {
     expect(codes(diagnostics)).toContain(DiagnosticCode.MixedServiceTokenArgs);
   });
 
-  test("990008 negative: all-holes (repeats allowed) and all-concrete are both fine", () => {
+  test('990008 negative: all-holes (repeats allowed) and all-concrete are both fine', () => {
     const src = `
       ${BRANDS}
       interface User {}
@@ -489,7 +489,7 @@ describe("diagnostics 990007–990010", () => {
     );
   });
 
-  test("990009: open token on addValue", () => {
+  test('990009: open token on addValue', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -502,10 +502,10 @@ describe("diagnostics 990007–990010", () => {
     );
     expect(diag).toBeDefined();
     expect(diag!.category).toBe(1);
-    expect(String(diag!.messageText)).toContain("addValue");
+    expect(String(diag!.messageText)).toContain('addValue');
   });
 
-  test("990009: open token on a factory registration", () => {
+  test('990009: open token on a factory registration', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -518,7 +518,7 @@ describe("diagnostics 990007–990010", () => {
     );
   });
 
-  test("990009 negative: closed tokens on addValue / factories are fine", () => {
+  test('990009 negative: closed tokens on addValue / factories are fine', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
@@ -532,7 +532,7 @@ describe("diagnostics 990007–990010", () => {
     );
   });
 
-  test("990010: a dep hole the service template does not bind", () => {
+  test('990010: a dep hole the service template does not bind', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
@@ -548,10 +548,10 @@ describe("diagnostics 990007–990010", () => {
     );
     expect(diag).toBeDefined();
     expect(diag!.category).toBe(1);
-    expect(String(diag!.messageText)).toContain("$2");
+    expect(String(diag!.messageText)).toContain('$2');
   });
 
-  test("990010: an unbound Typeof hole is caught too", () => {
+  test('990010: an unbound Typeof hole is caught too', () => {
     const src = `
       ${BRANDS}
       interface ILogger<T> {}
@@ -567,7 +567,7 @@ describe("diagnostics 990007–990010", () => {
     );
   });
 
-  test("990010 negative: dep holes bound by the service template are fine", () => {
+  test('990010 negative: dep holes bound by the service template are fine', () => {
     const src = `
       ${BRANDS}
       interface IPair<A, B> {}
@@ -584,8 +584,8 @@ describe("diagnostics 990007–990010", () => {
   });
 });
 
-describe("non-generic regression", () => {
-  test("a non-generic registration carries its signature inline as the third arg", () => {
+describe('non-generic regression', () => {
+  test('a non-generic registration carries its signature inline as the third arg', () => {
     const src = `
       interface ILogger {}
       interface IRepo {}
@@ -599,13 +599,13 @@ describe("non-generic regression", () => {
     `;
     const { output, diagnostics } = transform(fixture(src));
     expect(codes(diagnostics)).toEqual([]);
-    expect(output).not.toContain("defineDeps");
-    expect(output).not.toContain("ɵreg");
+    expect(output).not.toContain('defineDeps');
+    expect(output).not.toContain('ɵreg');
     expect(output).toContain(
-      "services.add(\"./app:ILogger\", ConsoleLogger, [[]]).as(\"singleton\");",
+      'services.add("./app:ILogger", ConsoleLogger, [[]]).as("singleton");',
     );
     expect(output).toContain(
-      "services.add(\"./app:IRepo\", SqlRepo, [[\"./app:ILogger\"]]).as(\"request\");",
+      'services.add("./app:IRepo", SqlRepo, [["./app:ILogger"]]).as("request");',
     );
   });
 });

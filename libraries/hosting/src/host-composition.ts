@@ -21,40 +21,28 @@
 //     off the built container and folded into the owned factory, so the host's
 //     own loggers -- and any composite logger already handed out -- light up.
 
-import type { IConfiguration } from "@rhombus-std/config.core";
-import type { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProvider, ServiceProviderOptions } from "@rhombus-std/di.core";
-import {
-  Environments,
-  HOST_APPLICATION_LIFETIME_TOKEN,
-  type HostBuilderContext,
-  HostDefaults,
-  type IHost,
-  type IHostLifetime,
-} from "@rhombus-std/hosting.core";
-import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from "@rhombus-std/logging";
-import type { ILoggerProvider } from "@rhombus-std/logging.core";
-import { process } from "@rhombus-std/primitives";
-import type { Func } from "@rhombus-toolkit/func";
-import {
-  CONFIGURATION_TOKEN,
-  HOST_BUILDER_CONTEXT_TOKEN,
-  HOST_ENVIRONMENT_TOKEN,
-  HOST_LIFETIME_TOKEN,
-  HOST_OPTIONS_CONFIGURE_TOKEN,
-  HOST_OPTIONS_TOKEN,
-} from "./framework-tokens";
-import { HostOptions } from "./HostOptions";
-import { ApplicationLifetime } from "./internal/ApplicationLifetime";
-import { Host } from "./internal/Host";
-import { HostingEnvironment } from "./internal/HostingEnvironment";
-import { NullLifetime } from "./internal/NullLifetime";
+import type { IConfiguration } from '@rhombus-std/config.core';
+import type { ServiceManifest } from '@rhombus-std/di';
+import type { ServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
+import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
+  type IHostLifetime } from '@rhombus-std/hosting.core';
+import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rhombus-std/logging';
+import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import { process } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import { CONFIGURATION_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
+  HOST_OPTIONS_CONFIGURE_TOKEN, HOST_OPTIONS_TOKEN } from './framework-tokens';
+import { HostOptions } from './HostOptions';
+import { ApplicationLifetime } from './internal/ApplicationLifetime';
+import { Host } from './internal/Host';
+import { HostingEnvironment } from './internal/HostingEnvironment';
+import { NullLifetime } from './internal/NullLifetime';
 
 /** The category the internal host writes its lifecycle log messages under. */
-export const HOST_LOGGER_CATEGORY = "Rhombus.Hosting.Host";
+export const HOST_LOGGER_CATEGORY = 'Rhombus.Hosting.Host';
 
 /** The category the {@link ApplicationLifetime} writes its callback-error messages under. */
-export const APPLICATION_LIFETIME_CATEGORY = "Rhombus.Hosting.ApplicationLifetime";
+export const APPLICATION_LIFETIME_CATEGORY = 'Rhombus.Hosting.ApplicationLifetime';
 
 /** The hosting-owned framework singletons threaded through the composition. */
 export interface FrameworkServices {
@@ -87,17 +75,17 @@ function isAbsolute(path: string): boolean {
  */
 function normalizeAbsoluteSegments(path: string): string {
   const out: string[] = [];
-  for (const segment of path.split("/")) {
-    if (segment === "" || segment === ".") {
+  for (const segment of path.split('/')) {
+    if (segment === '' || segment === '.') {
       continue;
     }
-    if (segment === "..") {
+    if (segment === '..') {
       out.pop();
       continue;
     }
     out.push(segment);
   }
-  return out.join("/");
+  return out.join('/');
 }
 
 /**
@@ -107,7 +95,7 @@ function normalizeAbsoluteSegments(path: string): string {
  * absolute path.
  */
 function resolvePath(base: string, path: string): string {
-  return "/" + normalizeAbsoluteSegments(base + "/" + path);
+  return '/' + normalizeAbsoluteSegments(base + '/' + path);
 }
 
 /**

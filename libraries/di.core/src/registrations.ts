@@ -4,8 +4,8 @@
 // resolution engine (`ServiceProviderClass`, `@rhombus-std/di`), so they live in
 // the abstractions layer both sides depend on.
 
-import type { Ctor, Func } from "@rhombus-toolkit/func";
-import type { DepSlot, Token } from "./types.js";
+import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { DepSlot, Token } from './types.js';
 
 export type { Ctor };
 

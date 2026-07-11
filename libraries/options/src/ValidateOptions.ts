@@ -2,7 +2,7 @@
 // IValidateOptions<T> (I prefix dropped, name parameter dropped -- see
 // configure-options.ts).
 
-import type { ValidateOptionsResult } from "./ValidateOptionsResult.js";
+import type { ValidateOptionsResult } from './ValidateOptionsResult.js';
 
 /**
  * Represents something that validates a fully-configured options object of

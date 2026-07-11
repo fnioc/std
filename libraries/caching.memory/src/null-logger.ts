@@ -4,10 +4,10 @@
 // null logger (issue #75 scope), so this package ships a private one. It is an
 // internal implementation detail -- not part of the published barrel.
 
-import type { EventId, ILogger, LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
+import type { EventId, ILogger, LoggerExtensionMethods, LogLevel } from '@rhombus-std/logging.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
 
 // Class-side type merge for the registry-installed `LoggerExtensions` methods —
 // same §36 reasoning as @rhombus-std/logging's NullLogger (no ILogger interface

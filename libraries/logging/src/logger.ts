@@ -10,11 +10,11 @@
 // `scopeLoggers`. A throwing sink is collected and re-thrown as an
 // `AggregateError` after the others run (the reference `AggregateException`).
 
-import type { EventId, ILogger, LoggerExtensionMethods, LogLevel } from "@rhombus-std/logging.core";
-import { augment } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import type { LoggerInformation, MessageLogger, ScopeLogger } from "./logger-information";
+import type { EventId, ILogger, LoggerExtensionMethods, LogLevel } from '@rhombus-std/logging.core';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import type { LoggerInformation, MessageLogger, ScopeLogger } from './logger-information';
 
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
 const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
@@ -131,5 +131,5 @@ export class Logger implements ILogger {
 
 /** Re-throws one or more sink failures as a single aggregate (reference `AggregateException`). */
 function throwLoggingError(errors: readonly unknown[]): never {
-  throw new AggregateError(errors, "An error occurred while writing to logger(s).");
+  throw new AggregateError(errors, 'An error occurred while writing to logger(s).');
 }

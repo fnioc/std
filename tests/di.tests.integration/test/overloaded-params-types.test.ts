@@ -1,5 +1,5 @@
-import type { OverloadedConstructorParameters, OverloadedParameters } from "@rhombus-std/di.core";
-import { describe, expect, test } from "bun:test";
+import type { OverloadedConstructorParameters, OverloadedParameters } from '@rhombus-std/di.core';
+import { describe, expect, test } from 'bun:test';
 
 // TYPE-LEVEL contract for the overload-faithful parameter-tuple utilities. This
 // file is type-checked by `integration:lint` (plain tsc over test/**); the real
@@ -55,8 +55,8 @@ class ZeroArg {
 // A zero-arg ctor → the empty tuple.
 type _ctorZero = Expect<Equal<OverloadedConstructorParameters<typeof ZeroArg>, []>>;
 
-describe("overload-faithful parameter type utilities", () => {
-  test("the OverloadedParameters / OverloadedConstructorParameters surface compiles (see file-level asserts)", () => {
+describe('overload-faithful parameter type utilities', () => {
+  test('the OverloadedParameters / OverloadedConstructorParameters surface compiles (see file-level asserts)', () => {
     // The real coverage is the integration:lint compile of this file; this keeps
     // the runtime test non-empty.
     expect(true).toBe(true);

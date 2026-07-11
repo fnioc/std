@@ -14,40 +14,25 @@
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
 
-import { MemoryConfigurationSource } from "@rhombus-std/config";
-import { type Resolver, RESOLVER_TOKEN, type ServiceProviderOptions } from "@rhombus-std/di.core";
-import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
-import {
-  HOST_APPLICATION_LIFETIME_TOKEN,
-  type HostBuilderContext,
-  HostDefaults,
-  HostingAbstractionsHostExtensions,
-  type IHostApplicationLifetime,
-  type IHostBuilder,
-  type IHostEnvironment,
-} from "@rhombus-std/hosting.core";
-import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from "@rhombus-std/logging";
-import type { ILoggerFactory, ILoggingBuilder } from "@rhombus-std/logging.core";
-import { type AbortSignal, type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Func } from "@rhombus-toolkit/func";
-import { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
-import {
-  addDefaultServices,
-  applyDefaultAppConfiguration,
-  applyDefaultHostConfiguration,
-  createDefaultServiceProviderOptions,
-} from "./default-configuration";
-import {
-  CONSOLE_LIFETIME_OPTIONS_TOKEN,
-  HOST_ENVIRONMENT_TOKEN,
-  HOST_LIFETIME_TOKEN,
-  HOST_OPTIONS_CONFIGURE_TOKEN,
-} from "./framework-tokens";
-import type { HostOptions } from "./HostOptions";
-import { ConsoleLifetime } from "./internal/console-lifetime";
-import { MetricsBuilder } from "./MetricsBuilder";
-import { setServiceProviderOptionsFactory } from "./service-provider-options-store";
+import { MemoryConfigurationSource } from '@rhombus-std/config';
+import { type Resolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
+import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostingAbstractionsHostExtensions,
+  type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
+import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
+import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Func } from '@rhombus-toolkit/func';
+import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
+import { addDefaultServices, applyDefaultAppConfiguration, applyDefaultHostConfiguration,
+  createDefaultServiceProviderOptions } from './default-configuration';
+import { CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
+  HOST_OPTIONS_CONFIGURE_TOKEN } from './framework-tokens';
+import type { HostOptions } from './HostOptions';
+import { ConsoleLifetime } from './internal/console-lifetime';
+import { MetricsBuilder } from './MetricsBuilder';
+import { setServiceProviderOptionsFactory } from './service-provider-options-store';
 
 // The interface-side merge for this const's members lives HERE beside the const
 // (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core
@@ -64,7 +49,7 @@ import { setServiceProviderOptionsFactory } from "./service-provider-options-sto
 // publish-resolvable and, being shared with hosting.core's merge, keeps every
 // site for this interface on one module file (the §38 merge-identity rule), so
 // the concrete `HostBuilder` still satisfies `implements IHostBuilder`.
-declare module "@rhombus-std/hosting.core" {
+declare module '@rhombus-std/hosting.core' {
   interface IHostBuilder {
     configureDefaults(args?: readonly string[]): this;
     useEnvironment(environment: string): this;

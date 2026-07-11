@@ -1,6 +1,6 @@
-import { DiagnosticCode } from "@rhombus-std/di.transformer/internal/index";
-import { describe, expect, test } from "bun:test";
-import { depsArrayFor, fixture, transform, type VirtualFiles } from "./harness.js";
+import { DiagnosticCode } from '@rhombus-std/di.transformer/internal/index';
+import { describe, expect, test } from 'bun:test';
+import { depsArrayFor, fixture, transform, type VirtualFiles } from './harness.js';
 
 // Factory detection (PRD §7 / §8). A constructor parameter whose type ANNOTATION
 // is an inline function-type literal (`() => IFoo`) emits a
@@ -9,8 +9,8 @@ import { depsArrayFor, fixture, transform, type VirtualFiles } from "./harness.j
 // deliberate opt-out and resolves to its own normal token. Detection is purely
 // syntactic (the annotation's shape), never the resolved type.
 
-describe("factory detection", () => {
-  test("inline () => IFoo emits a { type: token } slot", () => {
+describe('factory detection', () => {
+  test('inline () => IFoo emits a { type: token } slot', () => {
     const src = `
       interface IFoo {}
       interface ISvc {}
@@ -21,10 +21,10 @@ describe("factory detection", () => {
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe("[[{ type: \"./app:IFoo\" }]]");
+    expect(depsArrayFor(output, 'Svc')).toBe('[[{ type: "./app:IFoo" }]]');
   });
 
-  test("declared params are emitted as FactoryRef.params in declared order", () => {
+  test('declared params are emitted as FactoryRef.params in declared order', () => {
     const src = `
       interface IFoo {}
       interface ISvc {}
@@ -38,12 +38,12 @@ describe("factory detection", () => {
     `;
     const { output } = transform(fixture(src));
     // Declared params become caller-supplied tokens in authored order.
-    expect(depsArrayFor(output, "Svc")).toBe(
-      "[[{ type: \"./app:IFoo\", params: [\"./app:B2\", \"./app:D4\"] }]]",
+    expect(depsArrayFor(output, 'Svc')).toBe(
+      '[[{ type: "./app:IFoo", params: ["./app:B2", "./app:D4"] }]]',
     );
   });
 
-  test("named function-interface is NOT a factory (the opt-out)", () => {
+  test('named function-interface is NOT a factory (the opt-out)', () => {
     const src = `
       interface IFoo {}
       interface IFooThunk { (): IFoo }
@@ -56,11 +56,11 @@ describe("factory detection", () => {
     `;
     const { output } = transform(fixture(src));
     // Resolves to the named interface's OWN token, not a factory ref.
-    expect(depsArrayFor(output, "Svc")).toBe("[[\"./app:IFooThunk\"]]");
-    expect(output).not.toContain("factory:");
+    expect(depsArrayFor(output, 'Svc')).toBe('[["./app:IFooThunk"]]');
+    expect(output).not.toContain('factory:');
   });
 
-  test("Promise<IFoo> return type → the honest closed-generic factory token", () => {
+  test('Promise<IFoo> return type → the honest closed-generic factory token', () => {
     const src = `
       interface IFoo {}
       interface ISvc {}
@@ -73,10 +73,10 @@ describe("factory detection", () => {
     const { output } = transform(fixture(src));
     // Honest token-split: the factory's Promise<IFoo> return is NOT unwrapped —
     // its FactoryRef type is the closed-generic token `Promise<./app:IFoo>`.
-    expect(depsArrayFor(output, "Svc")).toBe("[[{ type: \"Promise<./app:IFoo>\" }]]");
+    expect(depsArrayFor(output, 'Svc')).toBe('[[{ type: "Promise<./app:IFoo>" }]]');
   });
 
-  test("factory mixes with plain tokens in one signature", () => {
+  test('factory mixes with plain tokens in one signature', () => {
     const src = `
       interface ILogger {}
       interface IFoo {}
@@ -88,12 +88,12 @@ describe("factory detection", () => {
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe(
-      "[[\"./app:ILogger\", { type: \"./app:IFoo\" }]]",
+    expect(depsArrayFor(output, 'Svc')).toBe(
+      '[["./app:ILogger", { type: "./app:IFoo" }]]',
     );
   });
 
-  test("a factory whose return type is a primitive keys on the keyword token (Rule 1)", () => {
+  test('a factory whose return type is a primitive keys on the keyword token (Rule 1)', () => {
     // Rule 1: `() => string` derives the factory's produced token "string" — the
     // return type now tokenizes by its keyword, no hard error. The factory is a
     // `{ type: "string" }` slot (a factory producing the registered `string`).
@@ -109,10 +109,10 @@ describe("factory detection", () => {
     expect(
       diagnostics.filter((d) => d.code === DiagnosticCode.UnderivableToken).length,
     ).toBe(0);
-    expect(depsArrayFor(output, "Svc")).toBe("[[{ type: \"string\" }]]");
+    expect(depsArrayFor(output, 'Svc')).toBe('[[{ type: "string" }]]');
   });
 
-  test("class expression with two construct overloads emits both signatures (Fix 2)", () => {
+  test('class expression with two construct overloads emits both signatures (Fix 2)', () => {
     // `extractCtorReferenceSignature` must iterate ALL construct signatures, not
     // just the first. A const-bound class expression with declared overloads is
     // the representative shape.
@@ -130,12 +130,12 @@ describe("factory detection", () => {
     `;
     const { output } = transform(fixture(src));
     // Both declared overloads must appear — the impl is ignored.
-    expect(depsArrayFor(output, "Impl")).toBe(
-      "[[\"./app:IFoo\"], [\"./app:IFoo\", \"./app:IBar\"]]",
+    expect(depsArrayFor(output, 'Impl')).toBe(
+      '[["./app:IFoo"], ["./app:IFoo", "./app:IBar"]]',
     );
   });
 
-  test("factory reference with two call overloads emits both signatures (Fix 2)", () => {
+  test('factory reference with two call overloads emits both signatures (Fix 2)', () => {
     // `extractFactoryReferenceSignature` must iterate ALL call signatures. A
     // named factory function with declared overloads is the representative shape.
     const src = `
@@ -149,20 +149,20 @@ describe("factory detection", () => {
     `;
     const { output } = transform(fixture(src));
     // Both call overloads must appear.
-    expect(depsArrayFor(output, "makeMarker")).toBe(
-      "[[\"./app:IFoo\"], [\"./app:IFoo\", \"./app:IBar\"]]",
+    expect(depsArrayFor(output, 'makeMarker')).toBe(
+      '[["./app:IFoo"], ["./app:IFoo", "./app:IBar"]]',
     );
   });
 
-  test("package-public factory return type keys on the package token", () => {
+  test('package-public factory return type keys on the package token', () => {
     const files: VirtualFiles = {
-      "/proj/node_modules/your-lib/package.json": JSON.stringify({
-        name: "your-lib",
-        version: "1.0.0",
-        exports: { "./contracts": "./contracts/index.js" },
+      '/proj/node_modules/your-lib/package.json': JSON.stringify({
+        name: 'your-lib',
+        version: '1.0.0',
+        exports: { './contracts': './contracts/index.js' },
       }),
-      "/proj/node_modules/your-lib/contracts/index.d.ts": `export interface IFoo {}`,
-      "/proj/src/app.ts": `
+      '/proj/node_modules/your-lib/contracts/index.d.ts': `export interface IFoo {}`,
+      '/proj/src/app.ts': `
         import { IFoo } from "your-lib/contracts";
         interface ISvc {}
         class Svc implements ISvc {
@@ -172,16 +172,16 @@ describe("factory detection", () => {
         services.add<ISvc>(Svc).as<"singleton">();
       `,
     };
-    const { outputs } = transform(files, { entry: ["/proj/src/app.ts"] });
-    const out = outputs["/proj/src/app.ts"]!;
-    expect(depsArrayFor(out, "Svc")).toBe(
-      "[[{ type: \"your-lib/contracts:IFoo\" }]]",
+    const { outputs } = transform(files, { entry: ['/proj/src/app.ts'] });
+    const out = outputs['/proj/src/app.ts']!;
+    expect(depsArrayFor(out, 'Svc')).toBe(
+      '[[{ type: "your-lib/contracts:IFoo" }]]',
     );
   });
 });
 
-describe("declared factory params → caller-supplied params (caller wins over registration)", () => {
-  test("(a: ILogger) => IReport emits { type, params: [ILogger token] }", () => {
+describe('declared factory params → caller-supplied params (caller wins over registration)', () => {
+  test('(a: ILogger) => IReport emits { type, params: [ILogger token] }', () => {
     const src = `
       interface ILogger {}
       interface IReport {}
@@ -193,12 +193,12 @@ describe("declared factory params → caller-supplied params (caller wins over r
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe(
-      "[[{ type: \"./app:IReport\", params: [\"./app:ILogger\"] }]]",
+    expect(depsArrayFor(output, 'Svc')).toBe(
+      '[[{ type: "./app:IReport", params: ["./app:ILogger"] }]]',
     );
   });
 
-  test("zero-arg factory emits bare { type } (strict mode, no params field)", () => {
+  test('zero-arg factory emits bare { type } (strict mode, no params field)', () => {
     const src = `
       interface IReport {}
       interface ISvc {}
@@ -209,10 +209,10 @@ describe("declared factory params → caller-supplied params (caller wins over r
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe("[[{ type: \"./app:IReport\" }]]");
+    expect(depsArrayFor(output, 'Svc')).toBe('[[{ type: "./app:IReport" }]]');
   });
 
-  test("mixed (table: string, log: ILogger) => IRepo emits params in declared order", () => {
+  test('mixed (table: string, log: ILogger) => IRepo emits params in declared order', () => {
     const src = `
       interface ILogger {}
       interface IRepo {}
@@ -224,8 +224,8 @@ describe("declared factory params → caller-supplied params (caller wins over r
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
-    expect(depsArrayFor(output, "Svc")).toBe(
-      "[[{ type: \"./app:IRepo\", params: [\"string\", \"./app:ILogger\"] }]]",
+    expect(depsArrayFor(output, 'Svc')).toBe(
+      '[[{ type: "./app:IRepo", params: ["string", "./app:ILogger"] }]]',
     );
   });
 });

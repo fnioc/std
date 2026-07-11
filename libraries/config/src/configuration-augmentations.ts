@@ -22,11 +22,11 @@
 // if ever ported it targets IConfigurationBuilder, so per the single-receiver
 // split rule it becomes a SEPARATE builder-targeted const, never folded here.
 
-import type { IConfiguration, IConfigurationSection } from "@rhombus-std/config.core";
-import { applyAugmentations, type AugmentationSet } from "@rhombus-std/primitives";
-import { ConfigurationSection } from "./configuration-section";
-import { ConfigurationManager } from "./ConfigurationManager";
-import { ConfigurationRoot } from "./ConfigurationRoot";
+import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config.core';
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
+import { ConfigurationSection } from './configuration-section';
+import { ConfigurationManager } from './ConfigurationManager';
+import { ConfigurationRoot } from './ConfigurationRoot';
 
 /**
  * Whether `section` has a {@link IConfigurationSection.value} or at least one
@@ -62,7 +62,7 @@ export const ConfigurationExtensions = {
    * `configuration.getSection("ConnectionStrings").get(name)`.
    */
   getConnectionString(configuration: IConfiguration, name: string): string | undefined {
-    return configuration.getSection("ConnectionStrings").get(name);
+    return configuration.getSection('ConnectionStrings').get(name);
   },
 
   /**
@@ -128,7 +128,7 @@ export const ConfigurationExtensions = {
 // several-impls reasoning that kept ILogger's log* wrappers standalone-only
 // (docs §36/§38). The fluent form is typed per concrete class below; an
 // interface-typed value uses the standalone `ConfigurationExtensions.*` form.
-declare module "./ConfigurationRoot" {
+declare module './ConfigurationRoot' {
   interface ConfigurationRoot {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigurationSection;
@@ -136,7 +136,7 @@ declare module "./ConfigurationRoot" {
   }
 }
 
-declare module "./configuration-section" {
+declare module './configuration-section' {
   interface ConfigurationSection {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigurationSection;
@@ -144,7 +144,7 @@ declare module "./configuration-section" {
   }
 }
 
-declare module "./ConfigurationManager" {
+declare module './ConfigurationManager' {
   interface ConfigurationManager {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigurationSection;

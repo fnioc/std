@@ -4,13 +4,13 @@
 // on a 1-char string). Excluding strings (and null/undefined) keeps the
 // single-string overload returning the string verbatim.
 function isIterable(value: unknown): value is Iterable<unknown> {
-  return typeof value === "object" && value !== null && Symbol.iterator in value;
+  return typeof value === 'object' && value !== null && Symbol.iterator in value;
 }
 
 // Utility functions and constants for manipulating configuration paths.
 
 /** The delimiter ":" used to separate individual keys in a path. */
-export const KeyDelimiter = ":";
+export const KeyDelimiter = ':';
 
 /** Combines path segments into one colon-delimited path. */
 export function combine(...pathSegments: string[]): string;
@@ -28,7 +28,7 @@ export function getSectionKey(path: string): string {
     return path;
   }
 
-  const lastDelimiterIndex = path.lastIndexOf(":");
+  const lastDelimiterIndex = path.lastIndexOf(':');
   return lastDelimiterIndex < 0 ? path : path.substring(lastDelimiterIndex + 1);
 }
 
@@ -41,6 +41,6 @@ export function getParentPath(path: string): string | null {
     return null;
   }
 
-  const lastDelimiterIndex = path.lastIndexOf(":");
+  const lastDelimiterIndex = path.lastIndexOf(':');
   return lastDelimiterIndex < 0 ? null : path.substring(0, lastDelimiterIndex);
 }

@@ -56,16 +56,16 @@
 // this conversion should smuggle in, and it has no in-tree consumer yet. Filed for
 // the finalize phase (tracked against #75).
 
-import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
-import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Ctor, Func } from "@rhombus-toolkit/func";
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 // Type-only: the const references `ServiceManifestClass` solely in type position
 // (the `satisfies` bound and the receiver annotation); the runtime install goes
 // through the registry, not a direct `applyAugmentations(ServiceManifestClass, …)`.
-import type { AddBuilder } from "../authoring.js";
-import type { ServiceManifest, ServiceManifestClass } from "../service-manifest.js";
-import type { DepSlot, Token } from "../types.js";
+import type { AddBuilder } from '../authoring.js';
+import type { ServiceManifest, ServiceManifestClass } from '../service-manifest.js';
+import type { DepSlot, Token } from '../types.js';
 
 // A no-op `.as(scope?)` continuation for the "already registered" branch of a
 // `tryAdd`/`tryAddFactory`: the conditional-add did NOT register, so a trailing
@@ -84,8 +84,8 @@ const NO_OP_CONTINUATION: AddBuilder<string> = {
 // unqualified names in a `declare module` body resolve in THIS file's scope.
 // `Provider` is defaulted so each merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
-declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+declare module '@rhombus-std/di.core' {
+  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Removes every registration bound to `token` (exact and open). The
      * reference `RemoveAll(Type)` / `RemoveAll<T>()` analog -- a `Token` is our
@@ -142,7 +142,7 @@ declare module "@rhombus-std/di.core" {
     replaceValue(token: Token, value: unknown): void;
   }
 
-  interface ServiceManifestClass<Scopes extends string = "singleton"> {
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     removeAll(token: Token): this;
     tryAdd(
       token: Token,

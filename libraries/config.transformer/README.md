@@ -7,8 +7,8 @@ interface gives you fully-typed, fully-coerced configuration with **zero
 hand-written schema**.
 
 ```ts
-import { ConfigurationBuilder } from "@rhombus-std/config";
-import "@rhombus-std/config/with-type-augment";
+import { ConfigurationBuilder } from '@rhombus-std/config';
+import '@rhombus-std/config/with-type-augment';
 
 interface ServerConfig {
   host: string;
@@ -17,7 +17,7 @@ interface ServerConfig {
 }
 
 const config = new ConfigurationBuilder()
-  .addInMemoryCollection({ host: "example.com", port: "8443", ssl: "true" })
+  .addInMemoryCollection({ host: 'example.com', port: '8443', ssl: 'true' })
   .withType<ServerConfig>() // ← rewritten to .withSchema({ host: "string", … })
   .build();
 
