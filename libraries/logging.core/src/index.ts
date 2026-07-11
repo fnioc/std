@@ -26,6 +26,11 @@ export type { LogEntry } from "./log-entry";
 export { getProviderAlias, providerAlias } from "./provider-alias";
 export type { ProviderAliased } from "./provider-alias";
 
+// Buffered logging: the batch-delivery capability a provider may implement
+// beside `ILogger` (the reference `IBufferedLogger` + `BufferedLogRecord`).
+export { BufferedLogRecord } from "./buffered-logger";
+export type { IBufferedLogger } from "./buffered-logger";
+
 // Deferred message formatting — exported so a provider-side sink can render or
 // structurally destructure a `FormattedLogValues` state (its `[name, value]`
 // pairs plus the `{OriginalFormat}` entry).
