@@ -80,6 +80,30 @@ test("the facade composes settings config, browser environment, console logging,
   host[Symbol.dispose]();
 });
 
+test("host stop detaches both the lifetime and the bridge listeners — no leak across host cycles", async () => {
+  const page = makeFakePage();
+
+  const builder = BrowserHost.createApplicationBuilder({ pageContext: page.context });
+  const host = builder.build();
+
+  // The bridge attaches its five listeners eagerly at composition.
+  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  expect(bridge).toBeInstanceOf(PageLifecycleEvents);
+  expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
+
+  // Start adds the lifetime's own five listeners over the same document/window.
+  await host.start();
+  expect(page.document.listenerCount + page.window.listenerCount).toBe(10);
+
+  // Stop must detach EVERY listener — the lifetime's and the (unowned, so
+  // container-undisposed) bridge's — or a multi-host page leaks five per cycle.
+  await host.stop();
+  expect(page.document.listenerCount).toBe(0);
+  expect(page.window.listenerCount).toBe(0);
+
+  host[Symbol.dispose]();
+});
+
 test("a built browser host starts, stops on terminal pagehide via the main.ts wiring, and never on bfcache", async () => {
   const page = makeFakePage();
   const events: string[] = [];

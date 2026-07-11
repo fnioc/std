@@ -58,6 +58,7 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
   readonly #applicationLifetime: IHostApplicationLifetime;
   readonly #logger: ILogger;
   readonly #context: PageContext;
+  readonly #pageLifecycleEvents?: Disposable;
 
   #onVisibilityChange?: Func<[], void>;
   #onFreeze?: Func<[], void>;
@@ -65,16 +66,26 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
   #onPageHide?: Func<[PageTransitionEventLike], void>;
   #onPageShow?: Func<[PageTransitionEventLike], void>;
 
+  /**
+   * @param pageLifecycleEvents The page-lifecycle bridge whose listeners share
+   *   this lifetime's teardown: it attaches eagerly at composition (so no
+   *   transition is missed before a subscriber arrives) but nothing in the
+   *   container disposes an unowned value registration, so `stop`/dispose here
+   *   is what detaches it — matching this lifetime's own detach-on-stop and
+   *   preventing a leak across host cycles over a shared document.
+   */
   public constructor(
     options: BrowserLifetimeOptions,
     applicationLifetime: IHostApplicationLifetime,
     loggerFactory: ILoggerFactory,
     context?: PageContext,
+    pageLifecycleEvents?: Disposable,
   ) {
     this.#options = options;
     this.#applicationLifetime = applicationLifetime;
     this.#logger = loggerFactory.createLogger(BROWSER_LIFETIME_CATEGORY);
     this.#context = context ?? defaultPageContext();
+    this.#pageLifecycleEvents = pageLifecycleEvents;
   }
 
   /** Attaches the five page-lifecycle listeners; browser applications start immediately. */
@@ -109,13 +120,13 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
     return Promise.resolve();
   }
 
-  /** Detaches every page-lifecycle listener; nothing else to do. */
+  /** Detaches every page-lifecycle listener (this lifetime's and the bridge's); nothing else to do. */
   public stop(_abortSignal: AbortSignal): Promise<void> {
     this.#detach();
     return Promise.resolve();
   }
 
-  /** Detaches every page-lifecycle listener. */
+  /** Detaches every page-lifecycle listener (this lifetime's and the bridge's). */
   public [Symbol.dispose](): void {
     this.#detach();
   }
@@ -160,5 +171,8 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
       window.removeEventListener("pageshow", this.#onPageShow);
       this.#onPageShow = undefined;
     }
+    // The bridge attaches eagerly and is registered as an unowned value the
+    // container never disposes — its teardown rides this lifetime's.
+    this.#pageLifecycleEvents?.[Symbol.dispose]();
   }
 }

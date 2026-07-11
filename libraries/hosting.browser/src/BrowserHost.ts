@@ -8,9 +8,10 @@
 //     NullFileProvider — the HostingEnvironment default),
 //   - browser console logging (@rhombus-std/logging.browserconsole),
 //   - the BrowserLifetime registered under the imported HOST_LIFETIME_TOKEN
-//     (last registration wins over the default NullLifetime),
-//   - the PageLifecycleEvents bridge registered (as a value, eagerly
-//     attached) under PAGE_LIFECYCLE_EVENTS_TOKEN.
+//     (last registration wins over the default NullLifetime), alongside the
+//     eagerly-attached PageLifecycleEvents bridge under
+//     PAGE_LIFECYCLE_EVENTS_TOKEN — both via registerBrowserLifetime, the seam
+//     the classic useBrowserLifetime path shares.
 //
 // Stop wiring: the built host is NOT resolvable from the container, so the
 // browser lifetime can only REQUEST the stop (stopApplication). main.ts
@@ -23,9 +24,7 @@ import { BrowserConsoleLoggerExtensions } from "@rhombus-std/logging.browsercons
 import type { Func } from "@rhombus-toolkit/func";
 import { BrowserLifetimeOptions } from "./BrowserLifetimeOptions";
 import type { PageContext } from "./page-context";
-import { PageLifecycleEvents } from "./PageLifecycleEvents";
 import { registerBrowserLifetime } from "./register-browser-lifetime";
-import { PAGE_LIFECYCLE_EVENTS_TOKEN } from "./tokens";
 
 /** Settings for {@link BrowserHost.createApplicationBuilder}. */
 export interface BrowserHostApplicationBuilderSettings {
@@ -73,12 +72,9 @@ export const BrowserHost = {
 
     const lifetimeOptions = new BrowserLifetimeOptions();
     settings?.configureLifetime?.(lifetimeOptions);
+    // Registers the BrowserLifetime AND the eagerly-attached PageLifecycleEvents
+    // bridge (whose teardown rides the lifetime — see register-browser-lifetime).
     registerBrowserLifetime(builder.services, lifetimeOptions, settings?.pageContext);
-
-    builder.services.addValue(
-      PAGE_LIFECYCLE_EVENTS_TOKEN,
-      new PageLifecycleEvents(settings?.pageContext),
-    );
 
     return builder;
   },

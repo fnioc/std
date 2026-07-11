@@ -15,13 +15,19 @@ import type { ILoggerFactory } from "@rhombus-std/logging.core";
 import { BrowserLifetime } from "./browser-lifetime";
 import type { BrowserLifetimeOptions } from "./BrowserLifetimeOptions";
 import type { PageContext } from "./page-context";
-import { BROWSER_LIFETIME_OPTIONS_TOKEN } from "./tokens";
+import { PageLifecycleEvents } from "./PageLifecycleEvents";
+import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from "./tokens";
 
 /**
- * Registers `options` and a {@link BrowserLifetime} factory (under the
- * imported {@link HOST_LIFETIME_TOKEN} — last registration wins over the
- * default NullLifetime). `context` is threaded for tests; production callers
- * omit it and the lifetime attaches to the platform document/window.
+ * Registers `options`, the eagerly-attached {@link PageLifecycleEvents} bridge,
+ * and a {@link BrowserLifetime} factory (under the imported
+ * {@link HOST_LIFETIME_TOKEN} — last registration wins over the default
+ * NullLifetime). Both the modern facade and the classic `useBrowserLifetime`
+ * route through here, so the bridge is registered on BOTH paths. The bridge is
+ * an unowned value the container never disposes, so it is handed to the
+ * lifetime, whose `stop`/dispose detaches it — see {@link BrowserLifetime}.
+ * `context` is threaded for tests; production callers omit it and both the
+ * lifetime and the bridge attach to the platform document/window.
  */
 export function registerBrowserLifetime(
   services: ServiceManifest,
@@ -29,6 +35,10 @@ export function registerBrowserLifetime(
   context?: PageContext,
 ): void {
   services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
+
+  const pageLifecycleEvents = new PageLifecycleEvents(context);
+  services.addValue(PAGE_LIFECYCLE_EVENTS_TOKEN, pageLifecycleEvents);
+
   services.addFactory(
     HOST_LIFETIME_TOKEN,
     (resolver: Resolver) =>
@@ -37,6 +47,7 @@ export function registerBrowserLifetime(
         resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
         resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
         context,
+        pageLifecycleEvents,
       ),
     [[RESOLVER_TOKEN]],
   );

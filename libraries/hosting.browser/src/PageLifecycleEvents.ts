@@ -38,8 +38,11 @@ export type PageLifecyclePhase = "visible" | "hidden" | "frozen" | "terminated";
 
 /**
  * The injectable page-lifecycle bridge. Constructed (and its listeners
- * attached) eagerly; registered by the BrowserHost facade under
- * {@link import("./tokens").PAGE_LIFECYCLE_EVENTS_TOKEN}.
+ * attached) eagerly by `registerBrowserLifetime` — the seam both the facade and
+ * the classic `useBrowserLifetime` path share — and registered under
+ * {@link import("./tokens").PAGE_LIFECYCLE_EVENTS_TOKEN}. Because a value
+ * registration is unowned, the container never disposes it; the BrowserLifetime
+ * it is handed to detaches it on `stop`/dispose.
  */
 export class PageLifecycleEvents implements Disposable {
   readonly #context: PageContext;
