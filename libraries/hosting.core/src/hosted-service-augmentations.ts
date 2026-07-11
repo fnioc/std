@@ -24,10 +24,18 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
 // importable here.
-import type { AddBuilder, DepSlot, ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
+import {
+  type AddBuilder,
+  type DepSlot,
+  type Resolver,
+  RESOLVER_TOKEN,
+  type ServiceManifest,
+  type ServiceManifestClass,
+} from "@rhombus-std/di.core";
 import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import type { Ctor } from "@rhombus-toolkit/func";
+import type { Ctor, Func } from "@rhombus-toolkit/func";
+import type { IHostedService } from "./IHostedService";
 import { HOSTED_SERVICE_TOKEN } from "./tokens";
 
 // The authored method merges onto core's `ServiceManifestBase` interface -- the
@@ -37,6 +45,19 @@ import { HOSTED_SERVICE_TOKEN } from "./tokens";
 // type-parameter list (TS2428 requires identical parameters).
 declare module "@rhombus-std/di.core" {
   interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+    /**
+     * Registers a factory as an {@link IHostedService} — the reference's
+     * `AddHostedService(Func<IServiceProvider, THostedService>)` overload. Use it
+     * to surface an instance already registered under a different token as a
+     * hosted service (e.g. `addHostedService((sp) => sp.resolve(SOME_TOKEN))`).
+     * The factory receives the resolver and returns the service; it is registered
+     * as the same enumerable singleton the ctor form uses.
+     *
+     * Listed before the ctor overload so an un-annotated factory lambda infers its
+     * resolver parameter; a class value is disambiguated by type (not arity) and
+     * still resolves to the ctor overload below.
+     */
+    addHostedService(implementationFactory: Func<[Resolver], IHostedService>): this;
     /**
      * Registers `ctor` as an {@link IHostedService} the host will start and stop
      * alongside its lifetime. The singleton lifetime is applied here (the host
@@ -48,8 +69,17 @@ declare module "@rhombus-std/di.core" {
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
+    addHostedService(implementationFactory: Func<[Resolver], IHostedService>): this;
     addHostedService(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
   }
+}
+
+// Discriminates the two `addHostedService` forms: an ES class stringifies to a
+// `class …` head, a factory (arrow or plain function) does not. Realistic hosted
+// services are classes and factories are lambdas, so this cleanly separates the
+// construct-signature form from the provider-taking one.
+function isConstructor(target: Ctor | Func<[Resolver], IHostedService>): target is Ctor {
+  return /^class[\s{]/.test(Function.prototype.toString.call(target));
 }
 
 // One named object literal mirroring the reference `ServiceCollectionHostedServiceExtensions`
@@ -58,10 +88,21 @@ declare module "@rhombus-std/di.core" {
 export const ServiceCollectionHostedServiceExtensions = {
   addHostedService(
     manifest: ServiceManifestClass<string>,
-    ctor: Ctor,
-    signatures?: readonly (readonly DepSlot[])[],
+    // §42 overloaded member: the ctor form carries optional dep signatures; the
+    // factory form is a lone provider-taking function. A class value matches the
+    // construct-signature arm, an arrow/function the call-signature arm.
+    ...rest:
+      | [ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]]
+      | [implementationFactory: Func<[Resolver], IHostedService>]
   ): ServiceManifestClass<string> {
-    const builder: AddBuilder<string> = manifest.add(HOSTED_SERVICE_TOKEN, ctor, signatures);
+    const [target, signatures] = rest;
+    // Both forms register the shared enumerable-singleton hosted-service token.
+    // The factory form injects the live resolver (via the `[[RESOLVER_TOKEN]]`
+    // dep signature) so the delegate receives it, mirroring the reference's
+    // `Func<IServiceProvider, T>`.
+    const builder: AddBuilder<string> = isConstructor(target)
+      ? manifest.add(HOSTED_SERVICE_TOKEN, target, signatures)
+      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]]);
     builder.as("singleton");
     return manifest;
   },
