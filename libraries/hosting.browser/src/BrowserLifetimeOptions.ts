@@ -1,0 +1,16 @@
+// BrowserLifetimeOptions — the ConsoleLifetimeOptions analog for the browser
+// lifetime (no reference-stack counterpart: the browser lifetime is native to
+// this port).
+
+/** Options for the {@link import("./browser-lifetime").BrowserLifetime}. */
+export class BrowserLifetimeOptions {
+  /**
+   * Whether a terminal `pagehide` (persisted === false — the page is being
+   * discarded, not frozen into the back/forward cache) requests a graceful
+   * shutdown via `IHostApplicationLifetime.stopApplication()`. Defaults to
+   * `true`. A persisted pagehide NEVER stops the host regardless of this flag
+   * (the page may be restored from the bfcache, and the host is
+   * non-restartable).
+   */
+  public stopOnPagehide = true;
+}

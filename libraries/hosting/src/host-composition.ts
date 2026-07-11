@@ -36,7 +36,6 @@ import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from "@rho
 import type { ILoggerProvider } from "@rhombus-std/logging.core";
 import { process } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
-import { isAbsolute, resolve as resolvePath } from "node:path";
 import {
   CONFIGURATION_TOKEN,
   HOST_BUILDER_CONTEXT_TOKEN,
@@ -65,6 +64,50 @@ export interface FrameworkServices {
   readonly applicationLifetime: ApplicationLifetime;
   /** The resolved {@link HostOptions} the host obeys. */
   readonly hostOptions: HostOptions;
+}
+
+// Minimal pure-string posix path helpers replacing `node:path` -- a static
+// `node:path` import is a bundler-time break for browser targets, and hosting
+// only ever feeds these two the content-root inputs below: an absolute posix
+// `basePath` (a `process.cwd()`-style path) and a possibly-relative
+// `contentRootPath`. Behaviour matches Node's posix `path.isAbsolute` /
+// `path.resolve` for exactly those inputs (the hosting test suite is the
+// arbiter); nothing else in the package touches `node:path`.
+
+/** Posix `path.isAbsolute`: a path is absolute iff it begins with `/`. */
+function isAbsolute(path: string): boolean {
+  return path.charCodeAt(0) === 47; // '/'
+}
+
+/**
+ * Normalizes an absolute posix path's segments, resolving `.`/`..` and
+ * collapsing redundant separators. Mirrors Node's internal `normalizeString`
+ * for a rooted path: a `..` at the root is dropped (never escapes above it),
+ * and no trailing separator is emitted.
+ */
+function normalizeAbsoluteSegments(path: string): string {
+  const out: string[] = [];
+  for (const segment of path.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      out.pop();
+      continue;
+    }
+    out.push(segment);
+  }
+  return out.join("/");
+}
+
+/**
+ * Posix `path.resolve(base, path)` for an absolute `base` and a relative
+ * `path` -- the only shape {@link resolveContentRootPath} produces (the
+ * absolute-`path` case is short-circuited by its caller). Returns a normalized
+ * absolute path.
+ */
+function resolvePath(base: string, path: string): string {
+  return "/" + normalizeAbsoluteSegments(base + "/" + path);
 }
 
 /**
@@ -96,10 +139,14 @@ export function resolveContentRootPath(
 export function createHostingEnvironment(configuration: IConfiguration): HostingEnvironment {
   const environment = new HostingEnvironment();
   environment.environmentName = configuration.get(HostDefaults.environmentKey) ?? Environments.Production;
-  environment.contentRootPath = resolveContentRootPath(
-    configuration.get(HostDefaults.contentRootKey),
-    process.cwd(),
-  );
+  // `process.cwd()` is reached only when the configured content root doesn't
+  // already resolve on its own: an already-absolute root short-circuits BEFORE
+  // the cwd lookup, so a browser composition (no `process` global; content
+  // root seeded to "/" by @rhombus-std/hosting.browser) never touches it.
+  const contentRootPath = configuration.get(HostDefaults.contentRootKey);
+  environment.contentRootPath = contentRootPath !== undefined && isAbsolute(contentRootPath)
+    ? contentRootPath
+    : resolveContentRootPath(contentRootPath, process.cwd());
   const applicationName = configuration.get(HostDefaults.applicationKey);
   if (applicationName) {
     environment.applicationName = applicationName;
