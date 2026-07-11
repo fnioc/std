@@ -13,13 +13,14 @@
 import { ConfigurationManager } from "@rhombus-std/config";
 import type { IConfigurationManager } from "@rhombus-std/config.core";
 import { ServiceManifest } from "@rhombus-std/di";
-import type { ServiceProviderFactory } from "@rhombus-std/di.core";
+import type { ServiceProviderFactory, ServiceProviderOptions } from "@rhombus-std/di.core";
 import type { IMetricsBuilder } from "@rhombus-std/diagnostics.core";
 import {
   type HostBuilderContext,
   HostDefaults,
   type IHost,
   type IHostApplicationBuilder,
+  type IHostBuilder,
   type IHostEnvironment,
 } from "@rhombus-std/hosting.core";
 import { LoggingBuilder } from "@rhombus-std/logging";
@@ -29,6 +30,7 @@ import {
   addCommandLineConfig,
   addDefaultServices,
   applyDefaultAppConfiguration,
+  createDefaultServiceProviderOptions,
   HOST_ENVIRONMENT_VARIABLE_PREFIX,
   setDefaultContentRoot,
 } from "./default-configuration";
@@ -40,6 +42,7 @@ import {
   resolveHost,
 } from "./host-composition";
 import { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
+import { HostBuilderAdapter } from "./Internal/HostBuilderAdapter";
 import { MetricsBuilder } from "./MetricsBuilder";
 
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */
@@ -51,7 +54,9 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   readonly #logging: LoggingBuilder;
   readonly #metrics: MetricsBuilder;
   readonly #framework: FrameworkServices;
+  readonly #serviceProviderOptions: ServiceProviderOptions | undefined;
 
+  #hostBuilderAdapter?: HostBuilderAdapter;
   #hostBuilt = false;
 
   public constructor(settings?: HostApplicationBuilderSettings) {
@@ -111,6 +116,13 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
       addDefaultServices(this.#services);
     }
 
+    // The reference computes the default service-provider options here (dev-env
+    // scope/build validation) and threads them into the provider build. With
+    // defaults disabled there is no factory, so the build stays unvalidated.
+    this.#serviceProviderOptions = resolved.disableDefaults
+      ? undefined
+      : createDefaultServiceProviderOptions(this.#environment);
+
     this.#logging = new LoggingBuilder(this.#services);
     this.#metrics = new MetricsBuilder(this.#services);
   }
@@ -155,12 +167,29 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     _configure?: Action<[TContainerBuilder]>,
   ): void {}
 
+  /**
+   * Returns a classic {@link IHostBuilder} view over this builder -- the
+   * reference `AsHostBuilder`. Lazily allocated and cached; the accumulated
+   * configure* delegates are replayed at {@link build} time. Intended for tooling
+   * that only understands the classic builder shape.
+   */
+  public asHostBuilder(): IHostBuilder {
+    return this.#hostBuilderAdapter ??= new HostBuilderAdapter(
+      this.#configuration,
+      this.#services,
+      this.#context,
+    );
+  }
+
   /** Builds the host. Can only be called once. */
   public build(): IHost {
     if (this.#hostBuilt) {
       throw new Error("Build can only be called once.");
     }
     this.#hostBuilt = true;
-    return resolveHost(this.#services, this.#framework, this.#configuration);
+    // Replay any classic-builder delegates accumulated through `asHostBuilder()`
+    // before the provider is built (reference parity).
+    this.#hostBuilderAdapter?.applyChanges();
+    return resolveHost(this.#services, this.#framework, this.#configuration, this.#serviceProviderOptions);
   }
 }

@@ -23,6 +23,7 @@ import {
   populateFrameworkServices,
   resolveHost,
 } from "./host-composition";
+import { resolveServiceProviderOptions } from "./service-provider-options-store";
 
 /** A program initialization utility -- the classic {@link IHostBuilder}. */
 @augment(nameof<IHostBuilder>())
@@ -127,7 +128,10 @@ export class HostBuilder implements IHostBuilder {
       action(hostBuilderContext, services);
     }
 
-    // 6. Build the provider and construct the internal host.
-    return resolveHost(services, framework, appConfiguration);
+    // 6. Build the provider and construct the internal host. The service-provider
+    // options (from `useDefaultServiceProvider` / `configureDefaults`) are
+    // resolved now that the context exists, then threaded into `build()`.
+    const serviceProviderOptions = resolveServiceProviderOptions(this, hostBuilderContext);
+    return resolveHost(services, framework, appConfiguration, serviceProviderOptions);
   }
 }

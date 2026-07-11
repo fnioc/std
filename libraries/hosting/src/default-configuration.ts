@@ -25,7 +25,8 @@ import type { IConfigurationBuilder } from "@rhombus-std/config.core";
 import { EnvironmentVariablesConfigurationSource } from "@rhombus-std/config.env";
 import { JsonConfigurationSource } from "@rhombus-std/config.json";
 import { ServiceManifest } from "@rhombus-std/di";
-import { HostDefaults, type IHostEnvironment } from "@rhombus-std/hosting.core";
+import type { ServiceProviderOptions } from "@rhombus-std/di.core";
+import { HostDefaults, HostEnvironmentEnvExtensions, type IHostEnvironment } from "@rhombus-std/hosting.core";
 import { LoggingBuilder, LoggingBuilderExtensions } from "@rhombus-std/logging";
 import { ConsoleLoggerProvider } from "@rhombus-std/logging.console";
 import { process } from "@rhombus-std/primitives";
@@ -88,4 +89,15 @@ export function applyDefaultAppConfiguration(
  */
 export function addDefaultServices(services: ServiceManifest): void {
   LoggingBuilderExtensions.addProvider(new LoggingBuilder(services), new ConsoleLoggerProvider());
+}
+
+/**
+ * Builds the default {@link ServiceProviderOptions} — the reference
+ * `CreateDefaultServiceProviderOptions`. Scope and build-time validation are
+ * enabled only in the Development environment, so a production host pays no
+ * validation cost while a developer catches lifetime mistakes early.
+ */
+export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
+  const isDevelopment = HostEnvironmentEnvExtensions.isDevelopment(environment);
+  return { validateScopes: isDevelopment, validateOnBuild: isDevelopment };
 }
