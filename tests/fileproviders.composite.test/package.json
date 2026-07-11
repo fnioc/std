@@ -1,0 +1,17 @@
+{
+  "name": "@rhombus-std/fileproviders.composite.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/fileproviders.composite. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/fileproviders.composite": "workspace:*",
+    "@rhombus-std/fileproviders.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
+  }
+}
