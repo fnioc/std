@@ -5,13 +5,13 @@ import { AnsiLogConsole } from "@rhombus-std/logging.console/internal/AnsiLogCon
 import { ConsoleFormatterOptions } from "@rhombus-std/logging.console/internal/ConsoleFormatterOptions";
 import { JsonConsoleFormatter } from "@rhombus-std/logging.console/internal/JsonConsoleFormatter";
 import { JsonConsoleFormatterOptions } from "@rhombus-std/logging.console/internal/JsonConsoleFormatterOptions";
-import type { LogEntry } from "@rhombus-std/logging.console/internal/LogEntry";
 import { LoggerColorBehavior } from "@rhombus-std/logging.console/internal/LoggerColorBehavior";
 import { ReloadableOptions } from "@rhombus-std/logging.console/internal/ReloadableOptions";
 import { SimpleConsoleFormatter } from "@rhombus-std/logging.console/internal/SimpleConsoleFormatter";
 import { SimpleConsoleFormatterOptions } from "@rhombus-std/logging.console/internal/SimpleConsoleFormatterOptions";
 import { SystemdConsoleFormatter } from "@rhombus-std/logging.console/internal/SystemdConsoleFormatter";
 import { StringWriter } from "@rhombus-std/logging.console/internal/text-writer";
+import type { LogEntry } from "@rhombus-std/logging.core";
 import { EventId, type IExternalScopeProvider } from "@rhombus-std/logging.core";
 import { LogLevel } from "@rhombus-std/logging.core";
 import { Options } from "@rhombus-std/options";

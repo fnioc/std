@@ -1,7 +1,10 @@
 // Public entry point for @rhombus-std/logging.core — the ME.Logging.Abstractions
 // analog. Ships the logging contracts (ILogger/ILoggerFactory/ILoggerProvider/
 // ILoggingBuilder + IExternalScopeProvider), the LogLevel enum, the EventId
-// value type, and the real-runtime convenience wrappers (logInformation/…).
+// value type, the LogEntry record, the IBufferedLogger/BufferedLogRecord
+// buffered-logging capability, the ProviderAlias filtering marker, the
+// LoggerMessage cached-delegate factories, and the real-runtime convenience
+// wrappers (logInformation/…, beginScope).
 //
 // Mirror of the reference edge `Logging.Abstractions -> DependencyInjection.
 // Abstractions`: @rhombus-std/di.core supplies the `ServiceManifest` type that
@@ -16,8 +19,28 @@ export type { ILoggingBuilder } from "./ILoggingBuilder";
 export type { IExternalScopeProvider, ILogger } from "./logger";
 export type { ILoggerFactory, ILoggerProvider } from "./logger-factory";
 
-// Deferred message formatting — exported so a provider-side sink (once
-// providers land) can render or destructure a `FormattedLogValues` state.
+// The single log-entry record a provider-side sink receives (the reference
+// `LogEntry<TState>`). Its reference home is this abstractions package; the
+// console provider re-exports it from here.
+export type { LogEntry } from "./log-entry";
+
+// The provider-alias filtering marker (the reference `ProviderAliasAttribute`)
+// and its reader — a provider class declares `static readonly [providerAlias]`.
+export { getProviderAlias, providerAlias } from "./provider-alias";
+export type { ProviderAliased } from "./provider-alias";
+
+// Buffered logging: the batch-delivery capability a provider may implement
+// beside `ILogger` (the reference `IBufferedLogger` + `BufferedLogRecord`).
+export { BufferedLogRecord } from "./buffered-logger";
+export type { IBufferedLogger } from "./buffered-logger";
+
+// The cached-delegate factories (the reference `LoggerMessage` runtime half).
+export { LoggerMessage } from "./logger-message";
+export type { LogDefineOptions } from "./logger-message";
+
+// Deferred message formatting — exported so a provider-side sink can render or
+// structurally destructure a `FormattedLogValues` state (its `[name, value]`
+// pairs plus the `{OriginalFormat}` entry).
 export { formatLogValues, formatMessage, FormattedLogValues } from "./formatted-log-values";
 
 // The real-runtime ILogger convenience wrappers (LoggerExtensions analog):
@@ -26,6 +49,7 @@ export { formatLogValues, formatMessage, FormattedLogValues } from "./formatted-
 // ILogger interface merge, §36). Importing the barrel registers the set
 // against the `ILogger` token as a side effect.
 export {
+  beginScope,
   log,
   logCritical,
   logDebug,

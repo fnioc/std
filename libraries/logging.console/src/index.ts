@@ -12,11 +12,9 @@
 // `"sideEffects": true` so a bundler cannot tree-shake that registration away.
 //
 // RESIDUALS — reference surface awaiting types from sibling packages:
-//   - LogEntry is declared locally; its reference home is the abstractions
-//     package (@rhombus-std/logging.core). Re-point when logging.core gains it.
-//   - IBufferedLogger/BufferedLogRecord (logging.core): ConsoleLogger's
-//     buffered-records side and the formatters' buffered fast paths are not
-//     ported.
+//   - IBufferedLogger/BufferedLogRecord now live in @rhombus-std/logging.core,
+//     but ConsoleLogger's buffered-records side and the formatters' buffered
+//     fast paths are still not ported (no consumer wires the buffered path).
 //   - ISupportExternalScope (logging.core) doesn't exist; the provider ports
 //     its `setScopeProvider` member directly, and nothing injects an
 //     IExternalScopeProvider yet (the factory-side scope plumbing).
@@ -26,6 +24,9 @@
 //     @rhombus-std/logging.configuration's `ILoggerProviderConfiguration<T>`
 //     provider-configuration factory, which doesn't exist yet.
 
+// LogEntry is re-exported from its reference home (the abstractions package)
+// now that it lives there; the local declaration was retired.
+export type { LogEntry } from "@rhombus-std/logging.core";
 export { ConsoleLogger } from "./console-logger";
 export { ConsoleFormatter } from "./ConsoleFormatter";
 export { ConsoleFormatterNames } from "./ConsoleFormatterNames";
@@ -39,7 +40,6 @@ export { ConsoleLoggerProvider } from "./ConsoleLoggerProvider";
 export { ConsoleLoggerQueueFullMode } from "./ConsoleLoggerQueueFullMode";
 export { JsonConsoleFormatterOptions } from "./JsonConsoleFormatterOptions";
 export type { JsonWriterOptions } from "./JsonConsoleFormatterOptions";
-export type { LogEntry } from "./LogEntry";
 export { LoggerColorBehavior } from "./LoggerColorBehavior";
 export { SimpleConsoleFormatterOptions } from "./SimpleConsoleFormatterOptions";
 export { StringWriter } from "./text-writer";
