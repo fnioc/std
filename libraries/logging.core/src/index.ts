@@ -36,3 +36,9 @@ export {
   logWarning,
 } from "./logger-augmentations";
 export type { LoggerExtensionMethods } from "./logger-augmentations";
+
+// The ILoggerFactory type-receiving createLogger wrapper (the reference
+// `LoggerFactoryExtensions` analog). Standalone-only — its one member's name
+// collides with ILoggerFactory's own `createLogger` primitive, so it is never
+// registered or prototype-installed (§29/§40 exclusion precedent).
+export { LoggerFactoryExtensions } from "./logger-factory-augmentations";
