@@ -82,7 +82,11 @@ test("bfcache restore surfaces as the onRestore event, and freeze/pagehide drive
   page.document.dispatch("freeze");
   expect(bridge.phase).toBe("frozen");
 
+  // resume leaves the frozen phase, re-reading the live visibility state.
   page.document.visibilityState = "visible";
+  page.document.dispatch("resume");
+  expect(bridge.phase).toBe("visible");
+
   page.pageShow(true);
   expect(restores).toBe(1);
   expect(bridge.phase).toBe("visible");

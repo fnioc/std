@@ -54,3 +54,15 @@ test("the hosting composition tail carries no node:* import (browser regression 
   const nodeSpecifiers = [...new Set([...result.bundle.matchAll(/node:[a-z_]+/g)].map((match) => match[0]))];
   expect(nodeSpecifiers).toEqual([]);
 });
+
+test("the hosting composition tail SOURCE imports no node:* builtin (catches stubbed builtins too)", async () => {
+  // The bundle grep above only catches builtins whose specifier SURVIVES the
+  // bundle -- bun's browser target polyfills node:path (specifier survives) but
+  // STUBS node:fs / node:async_hooks to empty modules (specifier vanishes), so
+  // a bundle-only check would miss a re-introduced `import ... from "node:fs"`.
+  // A source-level grep of the composition tail's own emit catches every
+  // flavor: no direct node:* import belongs in host-composition.
+  const source = await Bun.file(compositionTail).text();
+  const imports = [...source.matchAll(/(?:from|import|require\()\s*["']node:[a-z_/]+["']/g)].map((match) => match[0]);
+  expect(imports).toEqual([]);
+});

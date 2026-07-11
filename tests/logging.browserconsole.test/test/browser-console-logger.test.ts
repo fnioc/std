@@ -110,6 +110,16 @@ test("the provider caches one logger per category", () => {
   provider[Symbol.dispose]();
 });
 
+test("the no-arg provider falls back to the platform global console", () => {
+  // Exercises the `console ?? globalConsole` default branch every other test
+  // sidesteps by injecting a spy: binding the global must not throw and the
+  // provider still produces BrowserConsoleLoggers.
+  const provider = new BrowserConsoleLoggerProvider();
+
+  expect(provider.createLogger("App")).toBeInstanceOf(BrowserConsoleLogger);
+  provider[Symbol.dispose]();
+});
+
 test("addBrowserConsole registers ONE provider per manifest, however many calls run", () => {
   const { services, values } = fakeServices();
   const builder = new LoggingBuilder(services);
@@ -122,6 +132,25 @@ test("addBrowserConsole registers ONE provider per manifest, however many calls 
   });
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(BrowserConsoleLoggerProvider);
+});
+
+test("the per-manifest dedup is keyed by services, not effectively global", () => {
+  // A SECOND manifest must get its own provider — proving the WeakMap keys on
+  // `builder.services` rather than a shared boolean that would suppress it.
+  const first = fakeServices();
+  const second = fakeServices();
+
+  BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(first.services));
+  BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(second.services));
+
+  const providersFor = (values: [Token, unknown][]) => {
+    return values.filter(([token]) => {
+      return token === LOGGER_PROVIDER_TOKEN;
+    });
+  };
+  expect(providersFor(first.values)).toHaveLength(1);
+  expect(providersFor(second.values)).toHaveLength(1);
+  expect(providersFor(first.values)[0]?.[1]).not.toBe(providersFor(second.values)[0]?.[1]);
 });
 
 test("the fluent addBrowserConsole method form is installed on LoggingBuilder", () => {
