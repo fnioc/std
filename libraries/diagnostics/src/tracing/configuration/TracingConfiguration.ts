@@ -1,5 +1,5 @@
 // TracingConfiguration -- ported from MED.Tracing's internal
-// `TracingConfiguration`. The tracing twin of ../../Metrics/Configuration's
+// `TracingConfiguration`. The tracing twin of ../../metrics/configuration's
 // MetricsConfiguration: the marker `addTracingConfiguration` registers (one per
 // call, as a TRACING_CONFIGURATION_TOKEN collection value) so
 // DefaultActivityListenerConfigurationFactory can enumerate every configuration

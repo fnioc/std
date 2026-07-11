@@ -26,7 +26,7 @@ import type {
 } from "@rhombus-std/diagnostics.core";
 import type { Func } from "@rhombus-toolkit/func";
 
-declare module "./Metrics/MetricsBuilder" {
+declare module "./metrics/MetricsBuilder" {
   interface MetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
@@ -37,7 +37,7 @@ declare module "./Metrics/MetricsBuilder" {
   }
 }
 
-declare module "./Tracing/TracingBuilder" {
+declare module "./tracing/TracingBuilder" {
   interface TracingBuilder {
     addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
     clearTracingListeners(): this;

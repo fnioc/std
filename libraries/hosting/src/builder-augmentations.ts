@@ -45,7 +45,7 @@ import {
   HOST_OPTIONS_CONFIGURE_TOKEN,
 } from "./framework-tokens";
 import type { HostOptions } from "./HostOptions";
-import { ConsoleLifetime } from "./Internal/console-lifetime";
+import { ConsoleLifetime } from "./internal/console-lifetime";
 import { MetricsBuilder } from "./MetricsBuilder";
 import { setServiceProviderOptionsFactory } from "./service-provider-options-store";
 
@@ -211,7 +211,7 @@ export const HostingHostBuilderExtensions = {
   /**
    * Listens for Ctrl+C / SIGTERM / SIGQUIT and requests a graceful shutdown by
    * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
-   * default {@link import("./Internal/NullLifetime").NullLifetime}).
+   * default {@link import("./internal/NullLifetime").NullLifetime}).
    */
   useConsoleLifetime(
     hostBuilder: IHostBuilder,

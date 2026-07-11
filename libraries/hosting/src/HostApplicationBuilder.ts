@@ -42,7 +42,7 @@ import {
   resolveHost,
 } from "./host-composition";
 import { HostApplicationBuilderSettings } from "./HostApplicationBuilderSettings";
-import { HostBuilderAdapter } from "./Internal/HostBuilderAdapter";
+import { HostBuilderAdapter } from "./internal/HostBuilderAdapter";
 import { MetricsBuilder } from "./MetricsBuilder";
 
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */

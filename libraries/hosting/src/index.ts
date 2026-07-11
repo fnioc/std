@@ -37,8 +37,8 @@ export { HostBuilder } from "./HostBuilder";
 export { BackgroundServiceExceptionBehavior } from "./BackgroundServiceExceptionBehavior";
 export { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
 export { HostOptions } from "./HostOptions";
-export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from "./Internal/console-lifetime";
-export { NullLifetime } from "./Internal/NullLifetime";
+export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from "./internal/console-lifetime";
+export { NullLifetime } from "./internal/NullLifetime";
 export { MetricsBuilder } from "./MetricsBuilder";
 
 // The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).

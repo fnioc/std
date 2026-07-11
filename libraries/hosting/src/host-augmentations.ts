@@ -26,7 +26,7 @@ import type { Func } from "@rhombus-toolkit/func";
 import type { ConsoleLifetimeOptions } from "./ConsoleLifetimeOptions";
 import type { HostOptions } from "./HostOptions";
 
-declare module "./Internal/Host" {
+declare module "./internal/Host" {
   interface Host {
     run(abortSignal?: AbortSignal): Promise<void>;
     runAsync(abortSignal?: AbortSignal): Promise<void>;
@@ -56,7 +56,7 @@ declare module "./HostBuilder" {
   }
 }
 
-declare module "./Internal/HostingEnvironment" {
+declare module "./internal/HostingEnvironment" {
   interface HostingEnvironment {
     isEnvironment(environmentName: string): boolean;
     isDevelopment(): boolean;
@@ -68,7 +68,7 @@ declare module "./Internal/HostingEnvironment" {
 // The internal HostBuilderAdapter is also an `IHostBuilder`, decorated
 // `@augment(nameof<IHostBuilder>())`, so it pulls the same registered bag as the
 // concrete `HostBuilder`. Its class-side merge is therefore identical.
-declare module "./Internal/HostBuilderAdapter" {
+declare module "./internal/HostBuilderAdapter" {
   interface HostBuilderAdapter {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
     configureDefaults(args?: readonly string[]): this;

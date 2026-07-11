@@ -45,10 +45,10 @@ import {
   HOST_OPTIONS_TOKEN,
 } from "./framework-tokens";
 import { HostOptions } from "./HostOptions";
-import { ApplicationLifetime } from "./Internal/ApplicationLifetime";
-import { Host } from "./Internal/Host";
-import { HostingEnvironment } from "./Internal/HostingEnvironment";
-import { NullLifetime } from "./Internal/NullLifetime";
+import { ApplicationLifetime } from "./internal/ApplicationLifetime";
+import { Host } from "./internal/Host";
+import { HostingEnvironment } from "./internal/HostingEnvironment";
+import { NullLifetime } from "./internal/NullLifetime";
 
 /** The category the internal host writes its lifecycle log messages under. */
 export const HOST_LOGGER_CATEGORY = "Rhombus.Hosting.Host";
