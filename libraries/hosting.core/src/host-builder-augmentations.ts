@@ -21,7 +21,18 @@ import type { IHostBuilder } from "./IHostBuilder";
 // (rule 0.6). The runtime `HostingHostBuilderExtensions` merges its own members
 // onto `IHostBuilder` downstream; the class-side merge (so `HostBuilder`
 // SATISFIES the fully-merged interface) lives downstream next to that class.
-declare module "./IHostBuilder" {
+//
+// The merge targets the package BARREL (`@rhombus-std/hosting.core`), not the
+// relative declaring module: a cross-package augmentation kept verbatim in a
+// rolled `.d.ts` (rollup-dts `respectExternal`) only resolves for a published
+// consumer if the specifier survives publish. The downstream
+// `HostingHostBuilderExtensions` merge is cross-package, so it must use a
+// publish-resolvable specifier; the barrel is the only one an interface can
+// share across in-package and downstream sites (a relative/`internal/*` pair
+// resolves in-repo but breaks published consumers). Every merge site for this
+// interface therefore targets the barrel -- the same all-barrel discipline
+// di.core's `ServiceManifest` and logging.core's `ILoggingBuilder` already use.
+declare module "@rhombus-std/hosting.core" {
   interface IHostBuilder {
     startHost(abortSignal?: AbortSignal): Promise<IHost>;
   }
