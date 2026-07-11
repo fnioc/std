@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.console",
   "version": "0.0.0",
-  "description": "Console logging provider ported from the reference console-logging package: ConsoleLogger + ConsoleLoggerProvider writing the simple console format to stdout, against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
+  "description": "Console logging provider ported from the reference console-logging package: ConsoleLogger + ConsoleLoggerProvider, the ConsoleFormatter abstraction with the simple/json/systemd built-ins (ANSI colors), formatter/logger options, and an async background queue writer — against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
   "keywords": [
     "logging",
     "console",
@@ -44,6 +44,7 @@
   "dependencies": {
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/type-guards": "^1.3.4"
   },
