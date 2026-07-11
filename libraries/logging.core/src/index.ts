@@ -37,6 +37,7 @@ export { formatLogValues, formatMessage, FormattedLogValues } from "./formatted-
 // ILogger interface merge, §36). Importing the barrel registers the set
 // against the `ILogger` token as a side effect.
 export {
+  beginScope,
   log,
   logCritical,
   logDebug,

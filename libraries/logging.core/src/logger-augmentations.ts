@@ -94,6 +94,16 @@ export function log(logger: ILogger, logLevel: LogLevel, first: string | Error, 
 }
 
 /**
+ * Formats a message template and begins a logical operation scope on `logger` —
+ * the `LoggerExtensions.BeginScope(messageFormat, …args)` analog. Returns the
+ * scope `Disposable` (dispose to end the scope), or `undefined` when the logger
+ * does not support scopes.
+ */
+export function beginScope(logger: ILogger, messageFormat: string, ...args: unknown[]): Disposable | undefined {
+  return logger.beginScope(new FormattedLogValues(messageFormat, args));
+}
+
+/**
  * The `LoggerExtensions` augmentation set for {@link ILogger} (docs §28/§38).
  * Registered against the `ILogger` token below and reachable standalone as
  * `LoggerExtensions.logInformation(logger, …)`; a concrete logger class
@@ -101,6 +111,7 @@ export function log(logger: ILogger, logLevel: LogLevel, first: string | Error, 
  */
 export const LoggerExtensions = {
   log,
+  beginScope,
   logTrace,
   logDebug,
   logInformation,
@@ -132,15 +143,17 @@ export interface LoggerExtensionMethods {
   logCritical(error: Error, message: string, ...args: unknown[]): void;
 }
 
-// The wrapper `log` is a member of `LoggerExtensions` (its standalone surface)
-// but is deliberately NOT prototype-installed: `ILogger` already declares the
-// primitive `log(logLevel, eventId, state, error, formatter)` that every
-// wrapper here builds on, so installing the wrapper would overwrite the real
-// implementation on each decorated class — and the mounted thunk would then
-// recurse into itself. Same exclusion precedent as caching's `tryGetValue`.
-// Omit it via a rest destructure (TS exempts the rest-sibling from unused
-// checks; the binding is renamed only because the `log` function is already in
-// scope).
-const { log: _log, ...loggerInstanceMethods } = LoggerExtensions;
+// The wrappers `log` and `beginScope` are members of `LoggerExtensions` (their
+// standalone surface) but are deliberately NOT prototype-installed: `ILogger`
+// already declares the primitives `log(logLevel, eventId, state, error,
+// formatter)` and `beginScope(state)` that these wrappers build on, so
+// installing a wrapper would overwrite the real implementation on each decorated
+// class — and the mounted thunk would then recurse into itself. Same exclusion
+// precedent as `LoggerFactoryExtensions.createLogger` and caching's
+// `tryGetValue`. They are also absent from `LoggerExtensionMethods` for the same
+// reason (their names ARE primitive names). Omit them via a rest destructure (TS
+// exempts the rest-sibling from unused checks; the bindings are renamed only
+// because the `log`/`beginScope` functions are already in scope).
+const { log: _log, beginScope: _beginScope, ...loggerInstanceMethods } = LoggerExtensions;
 
 registerAugmentations(nameof<ILogger>(), loggerInstanceMethods);
