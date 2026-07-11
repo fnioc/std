@@ -5,7 +5,9 @@
 // PostEvictionCallbackRegistration), the per-entry options bag
 // (MemoryCacheEntryOptions -- placed here as ME has it in Abstractions), and
 // the real-runtime convenience wrappers (get/set/getOrCreate/setWithOptions/...
-// on IMemoryCache; setPriority/addExpirationToken/setOptions/... on ICacheEntry).
+// on IMemoryCache; setPriority/addExpirationToken/setOptions/... on ICacheEntry;
+// the fluent setPriority/setSize/setAbsoluteExpiration/... bag builders on
+// MemoryCacheEntryOptions).
 //
 // Mirror of the reference edge `Caching.Abstractions -> Primitives`: the only
 // external dependency is @rhombus-std/primitives, for the `IChangeToken` type
@@ -22,3 +24,4 @@ export { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
 
 export { CacheExtensions } from "./cache-augmentations";
 export { CacheEntryExtensions } from "./cache-entry-augmentations";
+export { MemoryCacheEntryExtensions } from "./cache-entry-options-augmentations";
