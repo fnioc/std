@@ -18,6 +18,11 @@ export { LogLevel } from "./LogLevel";
 export type { ILoggingBuilder } from "./ILoggingBuilder";
 export type { IExternalScopeProvider, ILogger } from "./logger";
 export type { ILoggerFactory, ILoggerProvider } from "./logger-factory";
+export type { ISupportExternalScope } from "./support-external-scope";
+// The generic-category logger (reference `Logger<T>`); its category comes from
+// the closing type's di token at registration. `ILogger<T>` is the same
+// `ILogger` interface above (a defaulted phantom type parameter — see ./logger).
+export { Logger } from "./logger-of-t";
 
 // The single log-entry record a provider-side sink receives (the reference
 // `LogEntry<TState>`). Its reference home is this abstractions package; the

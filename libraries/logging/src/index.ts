@@ -21,6 +21,7 @@ export { LoggingBuilderExtensions } from "./builder-augmentations";
 // sets.
 export { FilterLoggingBuilderExtensions, LoggerFilterOptionsExtensions } from "./filter-augmentations";
 export { Logger } from "./logger";
+export { LoggerExternalScopeProvider } from "./logger-external-scope-provider";
 export { LoggerFilterOptions, LoggerFilterRule } from "./logger-filter-options";
 export { LoggerFactory } from "./LoggerFactory";
 export { LoggingBuilder } from "./LoggingBuilder";

@@ -16,8 +16,17 @@ import type { LogLevel } from "./LogLevel";
  * `beginScope` returns a `Disposable` (the repo standardizes on
  * `ESNext.Disposable`'s `Symbol.dispose` — see @rhombus-std/options) that ends
  * the scope on dispose, or `undefined` when the logger does not support scopes.
+ *
+ * The optional `TCategoryName` type parameter is the port of the reference's
+ * separate `ILogger<out TCategoryName>` interface: TS forbids two same-named
+ * interfaces of differing arity, so the two collapse into one interface whose
+ * bare form (`ILogger` = `ILogger<unknown>`) is the reference's `ILogger` and
+ * whose `ILogger<T>` form is the generic-category logger injected from DI. The
+ * parameter is a PHANTOM marker — the platform erases it, so the concrete
+ * category comes from the type's di token at registration (see
+ * `@rhombus-std/logging`'s `Logger`), not from `T`.
  */
-export interface ILogger {
+export interface ILogger<TCategoryName = unknown> {
   /**
    * Writes a log entry.
    *
