@@ -20,6 +20,7 @@ import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
 import { combine, getSectionKey } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
 import type { ConfigurationRoot } from "./ConfigurationRoot";
+import { InternalConfigurationRootExtensions } from "./internal-configuration-root-augmentations";
 
 /**
  * A section of configuration values, identified by its full colon-delimited
@@ -108,7 +109,7 @@ export class ConfigurationSection extends IndexAccessed<IndexedSection> implemen
 
   /** The immediate descendant sections of this section. */
   public getChildren(): Iterable<IConfigurationSection> {
-    return this.#root.getChildrenImplementation(this.#path);
+    return InternalConfigurationRootExtensions.getChildrenImplementation(this.#root, this.#path);
   }
 
   /** This section's subtree as a nested plain string object. */

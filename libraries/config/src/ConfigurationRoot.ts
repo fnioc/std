@@ -9,8 +9,11 @@
 // The root also carries the section trio (key/path/value, all empty/undefined
 // sentinels) and extends IndexAccessed, so `build()` can present it as the
 // index-navigable root of the Section tree. See configuration-section.ts for
-// the reserved-name hazard (real members, incl. `getChildrenImplementation`,
-// shadow the indexer).
+// the reserved-name hazard (real members shadow the indexer).
+//
+// Child enumeration lives in the internal InternalConfigurationRootExtensions
+// helper (see internal-configuration-root-augmentations.ts), shared with the
+// manager and the sections -- mirroring the reference split.
 
 import type {
   ConfigObject,
@@ -22,11 +25,10 @@ import type {
 import { ChangeToken, type IChangeToken } from "@rhombus-std/primitives";
 import type { Func } from "@rhombus-toolkit/func";
 import { IndexAccessed } from "@rhombus-toolkit/proxy-base";
-import { combine } from "./abstractions/configuration-path";
 import { parseBoolean, parseNumber } from "./coerce";
 import { ConfigurationSection, subtreeToObject } from "./configuration-section";
 import { ConfigurationReloadToken } from "./ConfigurationReloadToken";
-import { foldKey } from "./fold-key";
+import { InternalConfigurationRootExtensions } from "./internal-configuration-root-augmentations";
 
 export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements IConfigurationRoot, Disposable {
   readonly #providers: IConfigurationProvider[];
@@ -181,7 +183,7 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
 
   /** The immediate top-level sections of this root. */
   public getChildren(): Iterable<IConfigurationSection> {
-    return this.getChildrenImplementation(undefined);
+    return InternalConfigurationRootExtensions.getChildrenImplementation(this, undefined);
   }
 
   /** The whole tree as a nested plain string object. */
@@ -212,31 +214,6 @@ export class ConfigurationRoot extends IndexAccessed<IndexedSection> implements 
     for (const provider of this.#providers) {
       (provider as Partial<Disposable>)[Symbol.dispose]?.();
     }
-  }
-
-  /**
-   * Shared child-enumeration for the root and its sections. Folds each
-   * provider's `getChildKeys` forward (so the last provider sorts the whole
-   * accumulated list), dedups ordinal-ignore-case keeping first occurrence
-   * (dedup is the ROOT's job, not the provider's), then maps to sections.
-   */
-  public getChildrenImplementation(path: string | undefined): IConfigurationSection[] {
-    let keys: Iterable<string> = [];
-    for (const provider of this.#providers) {
-      keys = provider.getChildKeys(keys, path);
-    }
-
-    const seen = new Set<string>();
-    const distinct: string[] = [];
-    for (const key of keys) {
-      const folded = foldKey(key);
-      if (!seen.has(folded)) {
-        seen.add(folded);
-        distinct.push(key);
-      }
-    }
-
-    return distinct.map((key) => this.getSection(path === undefined ? key : combine(path, key)));
   }
 
   protected _getIndex(key: PropertyKey): IndexedSection {
