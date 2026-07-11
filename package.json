@@ -11,7 +11,7 @@
   "scripts": {
     "build": "bun scripts/build-all.ts",
     "test": "bun --filter '*' test",
-    "lint": "bun --filter '*' lint",
+    "lint": "bun scripts/derive-publish-config.ts --check && bun --filter '*' lint",
     "format": "dprint fmt",
     "format:check": "dprint check",
     "typecheck": "tsc -b",
