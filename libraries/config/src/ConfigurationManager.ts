@@ -42,6 +42,7 @@ import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
 import { ConfigurationReloadToken } from "./ConfigurationReloadToken";
 import { ConfigurationRoot } from "./ConfigurationRoot";
+import { InternalConfigurationRootExtensions } from "./internal-configuration-root-augmentations";
 import { MemoryConfigurationSource } from "./memory/memory-configuration-source";
 
 /**
@@ -141,8 +142,14 @@ export class ConfigurationManager implements IConfigurationManager, IConfigurati
     return this.#root.getSection(key);
   }
 
+  /**
+   * Enumerates children with the MANAGER itself as the receiver -- mirroring
+   * the reference manager, which calls the internal helper on `this` rather
+   * than delegating -- though every member the helper touches (`providers`,
+   * `getSection`) delegates to the persistent root anyway.
+   */
   public getChildren(): Iterable<IConfigurationSection> {
-    return this.#root.getChildren();
+    return InternalConfigurationRootExtensions.getChildrenImplementation(this, undefined);
   }
 
   public toObject(): ConfigObject {
