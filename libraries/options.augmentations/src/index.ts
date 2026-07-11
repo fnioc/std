@@ -33,7 +33,13 @@ import {
   ServiceManifestClass,
   type Token,
 } from "@rhombus-std/di.core";
-import { Options, type PostConfigureOptions, type ValidateOptions, ValidateOptionsResult } from "@rhombus-std/options";
+import {
+  type ConfigureOptions,
+  Options,
+  type PostConfigureOptions,
+  type ValidateOptions,
+  ValidateOptionsResult,
+} from "@rhombus-std/options";
 import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
@@ -47,6 +53,16 @@ import {
   postConfigureStepToken,
   validateStepToken,
 } from "./option-tokens.js";
+
+// The reference OptionsBuilder's `DefaultValidationFailureMessage`, used when a
+// `validate` caller supplies no message.
+const DEFAULT_VALIDATION_FAILURE_MESSAGE = "A validation error has occurred.";
+
+// A same-length tuple of dependency-token strings, one per entry in `Deps` -- the
+// token list a DI-injected pipeline step (the `configure`/`postConfigure`/
+// `validate` dependency forms below) resolves from the provider before invoking
+// its callback. A typed caller writes `[nameof<Dep1>(), nameof<Dep2>()]`.
+type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token };
 
 // The authored methods merge onto core's `ServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` (`= ServiceManifestBase<…>`) a consumer
@@ -99,11 +115,35 @@ declare module "@rhombus-std/di.core" {
      */
     configure<T>(token: Token, configureOptions: Func<[T], void>): this;
     /**
+     * The DI-injected configure step: resolves each token in `depTokens` from the
+     * provider at materialization time and passes the instances to
+     * `configureOptions` after the options value. ME's
+     * `OptionsBuilder.Configure<TDep1..5>` family collapsed onto ONE variadic form
+     * (§42): a token tuple plus a tuple-typed callback instead of five fixed
+     * arities. A typed caller writes each token as `nameof<Dep>()`.
+     */
+    configure<T, Deps extends readonly unknown[]>(
+      token: Token,
+      depTokens: DepTokens<Deps>,
+      configureOptions: (options: T, ...deps: Deps) => void,
+    ): this;
+    /**
      * Registers a post-configure step for `token`, run after every configure
      * step. Accepts a {@link PostConfigureOptions} or a bare `(options) => void`
      * delegate. Mirrors ME's `OptionsServiceCollectionExtensions.PostConfigure`.
      */
     postConfigure<T>(token: Token, step: PostConfigureOptions<T> | Func<[T], void>): this;
+    /**
+     * The DI-injected post-configure step: resolves each token in `depTokens` and
+     * passes the instances to `configureOptions` after the options value. ME's
+     * `OptionsBuilder.PostConfigure<TDep1..5>` family, collapsed the same way as
+     * the {@link configure} dependency form above (§42).
+     */
+    postConfigure<T, Deps extends readonly unknown[]>(
+      token: Token,
+      depTokens: DepTokens<Deps>,
+      configureOptions: (options: T, ...deps: Deps) => void,
+    ): this;
     /**
      * Registers a validate step for `token`: `validate` runs against the
      * fully-configured value; a `false` result fails validation with
@@ -111,6 +151,18 @@ declare module "@rhombus-std/di.core" {
      * (unported, §4.2) -- the verb collapses onto the manifest here.
      */
     validate<T>(token: Token, validate: Func<[T], boolean>, failureMessage?: string): this;
+    /**
+     * The DI-injected validate step: resolves each token in `depTokens` and passes
+     * the instances to `validate` after the options value; a `false` result fails
+     * with `failureMessage`. ME's `OptionsBuilder.Validate<TDep1..5>` family,
+     * collapsed the same way as the {@link configure} dependency form above (§42).
+     */
+    validate<T, Deps extends readonly unknown[]>(
+      token: Token,
+      depTokens: DepTokens<Deps>,
+      validate: (options: T, ...deps: Deps) => boolean,
+      failureMessage?: string,
+    ): this;
   }
 
   interface ServiceManifestClass<Scopes extends string = "singleton"> {
@@ -118,8 +170,24 @@ declare module "@rhombus-std/di.core" {
     addOptions<T>(token: Token, makeBase: Func<[], T>): AddBuilder<Scopes>;
     configure(token: Token, section: IConfiguration): this;
     configure<T>(token: Token, configureOptions: Func<[T], void>): this;
+    configure<T, Deps extends readonly unknown[]>(
+      token: Token,
+      depTokens: DepTokens<Deps>,
+      configureOptions: (options: T, ...deps: Deps) => void,
+    ): this;
     postConfigure<T>(token: Token, step: PostConfigureOptions<T> | Func<[T], void>): this;
+    postConfigure<T, Deps extends readonly unknown[]>(
+      token: Token,
+      depTokens: DepTokens<Deps>,
+      configureOptions: (options: T, ...deps: Deps) => void,
+    ): this;
     validate<T>(token: Token, validate: Func<[T], boolean>, failureMessage?: string): this;
+    validate<T, Deps extends readonly unknown[]>(
+      token: Token,
+      depTokens: DepTokens<Deps>,
+      validate: (options: T, ...deps: Deps) => boolean,
+      failureMessage?: string,
+    ): this;
   }
 }
 
@@ -152,35 +220,80 @@ export const OptionsServiceCollectionExtensions = {
     }
     return manifest.addFactory(token, (t: T) => Options.of(t), [[source]]);
   },
-  postConfigure<T>(
+  postConfigure<T, Deps extends readonly unknown[]>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    step: PostConfigureOptions<T> | Func<[T], void>,
+    step: PostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
+    configureWithDeps?: (options: T, ...deps: Deps) => void,
   ): ServiceManifestClass<string> {
+    // DI-injected form (§42): `step` is the dep-token tuple and
+    // `configureWithDeps` the callback. Register a FACTORY for the post-configure
+    // slot whose injected params ARE the resolved deps; it produces a
+    // PostConfigureOptions that forwards them after the options value. The deps
+    // resolve once, when the assembly reads the slot -- consistent with how every
+    // pipeline step is captured once (a divergence from ME's per-materialization
+    // transient resolve, harmless for the stable services deps carry).
+    if (Array.isArray(step)) {
+      const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
+      manifest.addFactory(
+        postConfigureStepToken(token),
+        (...deps: Deps): PostConfigureOptions<T> => ({
+          postConfigure(options: T): void {
+            callback(options, ...deps);
+          },
+        }),
+        [step as readonly Token[]],
+      );
+      return manifest;
+    }
     // A bare delegate is wrapped into a PostConfigureOptions<T>; both append to
     // the token's post-configure slot, which `assembleOptions` reads and runs
     // after every configure step (previously a dead slot -- now reachable).
-    const wrapped: PostConfigureOptions<T> = typeof step === "function"
-      ? { postConfigure: step }
-      : step;
+    const plain = step as PostConfigureOptions<T> | Func<[T], void>;
+    const wrapped: PostConfigureOptions<T> = typeof plain === "function"
+      ? { postConfigure: plain }
+      : plain;
     manifest.addValue(postConfigureStepToken(token), wrapped);
     return manifest;
   },
-  validate<T>(
+  validate<T, Deps extends readonly unknown[]>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    validateFn: Func<[T], boolean>,
+    validateOrDeps: Func<[T], boolean> | DepTokens<Deps>,
+    failureMessageOrValidate?: string | ((options: T, ...deps: Deps) => boolean),
     failureMessage?: string,
   ): ServiceManifestClass<string> {
+    // DI-injected form (§42): `validateOrDeps` is the dep-token tuple,
+    // `failureMessageOrValidate` the predicate, `failureMessage` its message.
+    // Register a FACTORY whose injected params ARE the resolved deps, producing a
+    // ValidateOptions that forwards them after the options value.
+    if (Array.isArray(validateOrDeps)) {
+      const predicate = failureMessageOrValidate as (options: T, ...deps: Deps) => boolean;
+      const message = failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE;
+      manifest.addFactory(
+        validateStepToken(token),
+        (...deps: Deps): ValidateOptions<T> => ({
+          validate(options: T): ValidateOptionsResult {
+            return predicate(options, ...deps)
+              ? ValidateOptionsResult.success
+              : ValidateOptionsResult.fail(message);
+          },
+        }),
+        [validateOrDeps as readonly Token[]],
+      );
+      return manifest;
+    }
     // Wrap the predicate into a ValidateOptions<T> step appended to the token's
     // validate slot (also previously dead). ME's analog is the instance-method
     // OptionsBuilder.Validate; OptionsBuilder is unported (§4.2), so the verb
     // collapses onto the manifest -- flagged as a deliberate deviation.
+    const validateFn = validateOrDeps as Func<[T], boolean>;
+    const message = (failureMessageOrValidate as string | undefined) ?? DEFAULT_VALIDATION_FAILURE_MESSAGE;
     const step: ValidateOptions<T> = {
       validate(options: T): ValidateOptionsResult {
         return validateFn(options)
           ? ValidateOptionsResult.success
-          : ValidateOptionsResult.fail(failureMessage ?? "A validation error has occurred.");
+          : ValidateOptionsResult.fail(message);
       },
     };
     manifest.addValue(validateStepToken(token), step);
@@ -189,23 +302,43 @@ export const OptionsServiceCollectionExtensions = {
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
 export const OptionsConfigurationServiceCollectionExtensions = {
-  configure<T>(
+  configure<T, Deps extends readonly unknown[]>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    source: IConfiguration | Func<[T], void>,
+    source: IConfiguration | Func<[T], void> | DepTokens<Deps>,
+    configureWithDeps?: (options: T, ...deps: Deps) => void,
   ): ServiceManifestClass<string> {
+    // DI-injected form (§42): `source` is the dep-token tuple and
+    // `configureWithDeps` the callback. Register a FACTORY for the configure slot
+    // whose injected params ARE the resolved deps; it produces a ConfigureOptions
+    // that forwards them after the options value. The deps resolve once, when the
+    // assembly reads the slot -- consistent with how every step is captured once.
+    if (Array.isArray(source)) {
+      const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
+      manifest.addFactory(
+        configureStepToken(token),
+        (...deps: Deps): ConfigureOptions<T> => ({
+          configure(options: T): void {
+            callback(options, ...deps);
+          },
+        }),
+        [source as readonly Token[]],
+      );
+      return manifest;
+    }
     // A bare delegate is a pure code configure step: register only the configure
     // slot, no change-token source. ME houses delegate-Configure in
     // OptionsServiceCollectionExtensions, but the registry's flat bag namespace
     // (rule §38) forbids a second `configure` member on the token, so the
     // config-section member absorbs the delegate by arg type -- the same
     // disambiguation precedent `addOptions` uses.
-    if (typeof source === "function") {
-      manifest.addValue(configureStepToken(token), { configure: source });
+    const configSource = source as IConfiguration | Func<[T], void>;
+    if (typeof configSource === "function") {
+      manifest.addValue(configureStepToken(token), { configure: configSource });
       return manifest;
     }
-    manifest.addValue(configureStepToken(token), new ConfigurationConfigureOptions(source));
-    manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(source));
+    manifest.addValue(configureStepToken(token), new ConfigurationConfigureOptions(configSource));
+    manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(configSource));
     return manifest;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
