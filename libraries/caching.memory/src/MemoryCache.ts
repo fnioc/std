@@ -79,6 +79,11 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     return this.#entries.size;
   }
 
+  /** The keys of all the entries currently held (a fresh iterator per access). */
+  public get keys(): IterableIterator<unknown> {
+    return this.#entries.keys();
+  }
+
   #now(): number {
     return this.#options.clock ? this.#options.clock.utcNow.getTime() : Date.now();
   }
