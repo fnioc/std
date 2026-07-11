@@ -339,6 +339,37 @@ export class ServiceManifestClass<Scopes extends string = "singleton">
   }
 
   /**
+   * True when `token` already has at least one registration — an exact-map entry,
+   * or (for an open template token) a matching template in the open table. The
+   * "already registered?" PRIMITIVE behind the `tryAdd*` augmentations
+   * (`ServiceCollectionDescriptorExtensions`), which cannot reach these private
+   * tables from a separate module. Like `removeRegistrations`, it is not part of
+   * the public authoring interface (`ServiceManifestBase`): a consumer reaches
+   * the conditional-add behavior through the fluent `tryAdd`/`replace`
+   * augmentations, never as a raw method on the collection surface.
+   *
+   * The token is our service-type key (the reference `TryAdd` dedups by
+   * `ServiceType`). Matching is exact — an open template dedups against the same
+   * template string, never against a closing it could synthesize.
+   */
+  public hasRegistrations(token: Token): boolean {
+    const exact = this.#registrations.get(token);
+    if (exact !== undefined && exact.length > 0) {
+      return true;
+    }
+    if (isOpenToken(token)) {
+      const parsed = parseToken(token);
+      if (parsed !== undefined) {
+        const open = this.#openRegistrations.get(parsed.base);
+        if (open !== undefined && open.some((r) => r.template === token)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * Seals the collection into an immutable snapshot — the SEALING half of
    * `build()`. Deep-freezing the maps and each per-token list ensures that any
    * `.add()` call on the builder after sealing cannot mutate what the provider
