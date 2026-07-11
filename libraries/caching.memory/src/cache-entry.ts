@@ -3,13 +3,33 @@
 //
 // Disposing the entry COMMITS it to the owning cache (via the host's
 // `setEntry`). Simplifications vs the reference runtime (JS is single-threaded,
-// so the Interlocked/AsyncLocal machinery is unnecessary):
-//   - No linked-entry tracking (the AsyncLocal `_current` propagation) -- see
-//     the README. Commit is unconditional on `isValueSet`.
+// so the Interlocked machinery is unnecessary):
 //   - Eviction callbacks and token-expiry run SYNCHRONOUSLY, not on a
 //     background Task.
 //   - Durations are milliseconds; the absolute expiration is an epoch-ms
 //     number internally (`-1` = unset), surfaced as a `Date` on the interface.
+//
+// LINKED-ENTRY TRACKING (`MemoryCacheOptions.trackLinkedCacheEntries`). The
+// reference keeps the "entry currently being created" in a static
+// `AsyncLocal<CacheEntry>` slot: constructing an entry pushes it, disposing
+// pops back to the remembered previous, and reads/commits inside that window
+// propagate expiration tokens and earlier absolute expirations to the pending
+// parent. Here the slot is a MODULE-SCOPED variable (the `static` analog) with
+// the same push/pop chain -- equivalent to the reference for every
+// synchronous create->...->dispose window, which single-threaded JS executes
+// without interleaving. It is NOT an async-context slot: this platform's
+// `AsyncLocalStorage` cannot reproduce the reference semantics. The only
+// mutate-in-place API, `enterWith`, (a) segfaults the pinned bun runtime
+// (1.3.14) when called after any `await` (bun.report id la10d9b296, verified
+// 2026-07-11), and (b) even under correct engine semantics cannot express the
+// dispose-time POP: a store replaced after an `await` never restores the
+// awaiting caller's context (the platform lacks the reference's
+// restore-context-on-async-method-exit), so sequential async flows chain onto
+// each other's already-committed entries -- strictly WORSE than the plain
+// module variable, which pops correctly for every non-interleaved flow. The
+// residual divergence: cache operations interleaved from OTHER async flows
+// while a tracking entry is pending across an `await` see (and propagate to)
+// that pending entry, where the reference isolates per async flow.
 //
 // This class is internal -- reachable only through the `internal/*` export
 // subpath, not the package barrel.
@@ -39,6 +59,21 @@ export interface IMemoryCacheHost {
 
   /** The logger used to report eviction-callback failures. */
   readonly logger: ILogger;
+
+  /** Whether linked (nested) cache entries are tracked (see the module doc). */
+  readonly trackLinkedCacheEntries: boolean;
+}
+
+/**
+ * The ambient "entry currently being created" -- the module-scoped analog of
+ * the reference's static async-local slot (see the module doc for why it is a
+ * plain variable). `undefined` when no tracking entry is pending.
+ */
+let ambientCurrentEntry: CacheEntry | undefined = undefined;
+
+/** The pending ambient entry, exposed for white-box tests (the reference's internal `Current`). */
+export function currentCacheEntry(): CacheEntry | undefined {
+  return ambientCurrentEntry;
 }
 
 /** The concrete cache entry. Committed to its cache on dispose. */
@@ -64,6 +99,12 @@ export class CacheEntry implements ICacheEntry {
   #postEvictionCallbacks: PostEvictionCallbackRegistration[] | undefined = undefined;
   #tokenRegistrations: Disposable[] | undefined = undefined;
 
+  /**
+   * The pending entry this one was nested under at creation time; only set
+   * before this entry is added to the cache, and only when tracking is on.
+   */
+  #previous: CacheEntry | undefined = undefined;
+
   #isExpired = false;
   #isDisposed = false;
   #evictionReason: EvictionReason = EvictionReason.None;
@@ -74,6 +115,10 @@ export class CacheEntry implements ICacheEntry {
   public constructor(key: unknown, host: IMemoryCacheHost) {
     this.#key = key;
     this.#host = host;
+    if (host.trackLinkedCacheEntries) {
+      this.#previous = ambientCurrentEntry;
+      ambientCurrentEntry = this;
+    }
   }
 
   // -- ICacheEntry surface --------------------------------------------------
@@ -154,11 +199,33 @@ export class CacheEntry implements ICacheEntry {
       return;
     }
     this.#isDisposed = true;
-    // Only commit if a value was actually assigned: a create-then-throw path
-    // (e.g. a getOrCreate factory that throws) must not poison the cache.
-    if (this.#isValueSet) {
+    if (this.#host.trackLinkedCacheEntries) {
+      this.#commitWithTracking();
+    } else if (this.#isValueSet) {
+      // Only commit if a value was actually assigned: a create-then-throw path
+      // (e.g. a getOrCreate factory that throws) must not poison the cache.
       this.#host.setEntry(this);
     }
+  }
+
+  #commitWithTracking(): void {
+    // Pop the ambient slot back to the remembered previous. The reference
+    // asserts LIFO dispose order and pops unconditionally; mirrored here.
+    ambientCurrentEntry = this.#previous;
+
+    // Don't commit or propagate options if the value was never set -- we
+    // assume an exception kept the caller from setting it, so the entry is
+    // abandoned.
+    if (this.#isValueSet) {
+      this.#host.setEntry(this);
+
+      const parent = this.#previous;
+      if (parent !== undefined) {
+        this.#propagateOptionsTo(parent);
+      }
+    }
+
+    this.#previous = undefined; // don't root the chain
   }
 
   // -- internal surface (used by MemoryCache; not on ICacheEntry) -----------
@@ -262,6 +329,36 @@ export class CacheEntry implements ICacheEntry {
     this.#tokenRegistrations = undefined;
     for (const registration of registrations) {
       registration[Symbol.dispose]();
+    }
+  }
+
+  /**
+   * Propagates this (committed) entry's expiration options to the pending
+   * ambient entry, if there is one -- called by the cache on a hit while
+   * linked-entry tracking is on, so an entry created around the read expires
+   * with the value it depends on.
+   */
+  public propagateOptionsToCurrent(): void {
+    // Nothing to propagate, or no pending parent.
+    if (
+      ((this.#expirationTokens === undefined || this.#expirationTokens.length === 0)
+        && this.#absoluteMs < 0)
+      || ambientCurrentEntry === undefined
+    ) {
+      return;
+    }
+    // Copy regardless of whether the parent ends up cached: the tokens are
+    // associated with the value being returned.
+    this.#propagateOptionsTo(ambientCurrentEntry);
+  }
+
+  /** Copies an earlier absolute expiration and the expiration tokens to `parent`. */
+  #propagateOptionsTo(parent: CacheEntry): void {
+    if (this.#absoluteMs >= 0 && (parent.#absoluteMs < 0 || this.#absoluteMs < parent.#absoluteMs)) {
+      parent.#absoluteMs = this.#absoluteMs;
+    }
+    if (this.#expirationTokens !== undefined && this.#expirationTokens.length > 0) {
+      parent.expirationTokens.push(...this.#expirationTokens);
     }
   }
 

@@ -27,6 +27,7 @@ export type { PostEvictionDelegate } from "./PostEvictionDelegate";
 export type { ICacheEntry } from "./ICacheEntry";
 export type { CacheTryGetResult, IMemoryCache } from "./memory-cache";
 export { MemoryCacheEntryOptions } from "./MemoryCacheEntryOptions";
+export { MemoryCacheStatistics } from "./MemoryCacheStatistics";
 
 export { CacheExtensions } from "./cache-augmentations";
 export { CacheEntryExtensions } from "./cache-entry-augmentations";

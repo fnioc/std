@@ -3,11 +3,18 @@
 // The reference `bool TryGetValue(object key, out object? value)` maps to a
 // result TUPLE, mirroring @rhombus-std/config.core's `ITryGetResult` idiom
 // (an out-bool + out-value collapse into a discriminated tuple TS narrows on
-// element 0). `GetCurrentStatistics()` and the span-key overloads are not
-// ported (see the README): they are perf/diagnostic surface with no
-// no-transformer consumer yet.
+// element 0). The reference `GetCurrentStatistics` is a default interface
+// method returning null (so pre-existing implementations don't break); TS
+// interfaces carry no default bodies, so it is a REQUIRED member here -- an
+// implementation that doesn't track statistics returns `undefined`, which is
+// exactly what the reference default does. The span-key `TryGetValue`
+// overloads are NOT ported: they exist purely so a string key can be queried
+// from a char span without allocating a new string, a distinction that has no
+// meaning in JS (there is no non-string char-span representation to avoid
+// allocating from).
 
 import type { ICacheEntry } from "./ICacheEntry";
+import type { MemoryCacheStatistics } from "./MemoryCacheStatistics";
 
 /**
  * The result of {@link IMemoryCache.tryGetValue}: `[false]` on a miss,
@@ -32,4 +39,11 @@ export interface IMemoryCache extends Disposable {
 
   /** Removes the entry associated with `key`. */
   remove(key: unknown): void;
+
+  /**
+   * Gets a snapshot of the cache statistics, or `undefined` if the
+   * implementation does not track statistics (for `MemoryCache`, when
+   * `MemoryCacheOptions.trackStatistics` is off).
+   */
+  getCurrentStatistics(): MemoryCacheStatistics | undefined;
 }

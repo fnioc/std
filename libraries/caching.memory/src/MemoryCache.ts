@@ -3,8 +3,9 @@
 //
 // JS is single-threaded, so the reference runtime's concurrency machinery
 // (CoherentState, Interlocked size CAS loops, the string/non-string
-// ConcurrentDictionary split, background Task-scheduled scans/compaction)
-// collapses to a plain `Map` and straight-line size arithmetic. Behavior is
+// ConcurrentDictionary split, the per-thread Stats/StatsHandler statistics
+// sharding, background Task-scheduled scans/compaction) collapses to a plain
+// `Map`, straight-line size arithmetic, and plain counters. Behavior is
 // preserved:
 //   - Absolute / sliding / token expiration, enforced LAZILY on access and by
 //     an inline periodic scan gated on `expirationScanFrequency`.
@@ -12,10 +13,17 @@
 //     synchronously on the insert that would overflow (the reference defers it
 //     to a background thread; the effect is the same).
 //   - Eviction callbacks fired on remove / replace / expire / capacity.
+//   - Statistics (`MemoryCacheOptions.trackStatistics`): hit/miss/eviction
+//     counters and the entry-count/estimated-size snapshot via
+//     `getCurrentStatistics`.
+//   - Linked cache-entry tracking (`MemoryCacheOptions.trackLinkedCacheEntries`):
+//     see cache-entry.ts's module doc for the ambient-scope divergence from
+//     the reference (a module-scoped synchronous chain instead of an
+//     async-context slot).
 //
-// Intentionally NOT ported (see the README): statistics/metrics
-// (`GetCurrentStatistics`, the Meter counters), linked-entry tracking, and the
-// span-key `TryGetValue` overloads. None has a no-transformer consumer yet.
+// NOT ported: the meter/observable-counter metrics (`IMeterFactory` ctor
+// parameter, the counter instruments) -- they need a meter/instrument analog
+// the diagnostics family deliberately does not provide (no listener runtime).
 
 import {
   CacheItemPriority,
@@ -23,6 +31,7 @@ import {
   EvictionReason,
   type ICacheEntry,
   type IMemoryCache,
+  MemoryCacheStatistics,
 } from "@rhombus-std/caching.core";
 import type { ILogger, ILoggerFactory } from "@rhombus-std/logging.core";
 import type { Options } from "@rhombus-std/options";
@@ -46,6 +55,19 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   #cacheSize = 0;
   #lastExpirationScan: number;
 
+  /** Whether statistics are accumulated (captured once at construction). */
+  readonly #trackStatistics: boolean;
+  #hits = 0;
+  #misses = 0;
+  #evictions = 0;
+
+  /**
+   * Whether linked (nested) cache entries are tracked -- captured once at
+   * construction so it is consistent for the entire cache lifetime, exactly
+   * as the reference does.
+   */
+  public readonly trackLinkedCacheEntries: boolean;
+
   /**
    * @param optionsAccessor The cache options (a bare `new MemoryCacheOptions()`
    * works -- it is its own `Options` accessor).
@@ -55,6 +77,8 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     this.#options = optionsAccessor.value;
     this.#logger = loggerFactory ? loggerFactory.createLogger("MemoryCache") : NullLogger;
     this.#lastExpirationScan = this.#now();
+    this.#trackStatistics = this.#options.trackStatistics;
+    this.trackLinkedCacheEntries = this.#options.trackLinkedCacheEntries;
   }
 
   /** The logger, exposed for {@link CacheEntry} eviction-callback failures. */
@@ -65,6 +89,11 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   /** The number of entries currently held (diagnostic). */
   public get count(): number {
     return this.#entries.size;
+  }
+
+  /** The keys of all the entries currently held (a fresh iterator per access). */
+  public get keys(): IterableIterator<unknown> {
+    return this.#entries.keys();
   }
 
   #now(): number {
@@ -98,12 +127,25 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
       if (!entry.checkExpired(utcNow) || entry.evictionReason === EvictionReason.Replaced) {
         entry.lastAccessed = utcNow;
         const value = entry.value;
+        if (this.trackLinkedCacheEntries) {
+          // When this entry is retrieved in the scope of creating another
+          // entry, that entry needs a copy of these expiration options.
+          entry.propagateOptionsToCurrent();
+        }
         this.#scanForExpiredItemsIfNeeded(utcNow);
+        if (this.#trackStatistics) {
+          this.#hits++;
+        }
         return [true, value];
       }
-      this.#removeEntryCore(entry);
+      if (this.#removeEntryCore(entry) && this.#trackStatistics) {
+        this.#evictions++;
+      }
     }
     this.#scanForExpiredItemsIfNeeded(utcNow);
+    if (this.#trackStatistics) {
+      this.#misses++;
+    }
     return [false];
   }
 
@@ -131,6 +173,24 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
       entry.setExpired(EvictionReason.Removed);
       entry.invokeEvictionCallbacks();
     }
+  }
+
+  /**
+   * Gets a snapshot of the current statistics, or `undefined` when
+   * {@link MemoryCacheOptions.trackStatistics} is off. User-initiated removals
+   * (`remove`/`clear`) and replacements do not count as evictions.
+   */
+  public getCurrentStatistics(): MemoryCacheStatistics | undefined {
+    if (!this.#trackStatistics) {
+      return undefined;
+    }
+    return new MemoryCacheStatistics({
+      totalMisses: this.#misses,
+      totalHits: this.#hits,
+      currentEntryCount: this.count,
+      currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined,
+      totalEvictions: this.#evictions,
+    });
   }
 
   public [Symbol.dispose](): void {
@@ -205,7 +265,9 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
 
   /** Notifies the cache that a token-driven expiry evicted `entry`. */
   public entryExpired(entry: CacheEntry): void {
-    this.#removeEntryCore(entry);
+    if (this.#removeEntryCore(entry) && this.#trackStatistics) {
+      this.#evictions++;
+    }
     this.#scanForExpiredItemsIfNeeded(this.#now());
   }
 
@@ -311,8 +373,14 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     expireBucket(normalPriority);
     expireBucket(highPriority);
 
+    let actuallyRemoved = 0;
     for (const entry of toRemove) {
-      this.#removeEntryCore(entry);
+      if (this.#removeEntryCore(entry)) {
+        actuallyRemoved++;
+      }
+    }
+    if (actuallyRemoved > 0 && this.#trackStatistics) {
+      this.#evictions += actuallyRemoved;
     }
   }
 
@@ -325,7 +393,9 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
       // single-threaded runtime just walks the map inline.
       for (const entry of this.#entries.values()) {
         if (entry.checkExpired(utcNow)) {
-          this.#removeEntryCore(entry);
+          if (this.#removeEntryCore(entry) && this.#trackStatistics) {
+            this.#evictions++;
+          }
         }
       }
     }

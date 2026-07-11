@@ -61,13 +61,19 @@ export class MemoryDistributedCache implements IDistributedCache {
     options: DistributedCacheEntryOptions,
     _abortSignal?: AbortSignal,
   ): Promise<void> {
+    // Dispose in `finally` (the reference `using`): a validating setter that
+    // throws must still dispose the entry so the linked-entry tracking chain
+    // (if enabled on the inner cache) is popped.
     const entry = this.#memCache.createEntry(key);
-    entry.absoluteExpiration = options.absoluteExpiration;
-    entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
-    entry.slidingExpiration = options.slidingExpiration;
-    entry.size = value.length;
-    entry.value = value;
-    entry[Symbol.dispose]();
+    try {
+      entry.absoluteExpiration = options.absoluteExpiration;
+      entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
+      entry.slidingExpiration = options.slidingExpiration;
+      entry.size = value.length;
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
+    }
     return Promise.resolve();
   }
 
