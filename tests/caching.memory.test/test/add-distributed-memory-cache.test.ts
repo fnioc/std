@@ -29,7 +29,7 @@ describe("addDistributedMemoryCache", () => {
     expect(await cache.getString("key")).toBe("value");
   });
 
-  test("standalone member form matches, and setup sees the options bag eagerly", () => {
+  test("standalone member form matches, and setup joins the options pipeline lazily", () => {
     // The standalone member's receiver is the concrete, scope-generic
     // ServiceManifestClass<string> (the public `ServiceManifest` value IS that
     // class, but its constructor types instances as the base interface).
@@ -41,10 +41,12 @@ describe("addDistributedMemoryCache", () => {
     });
 
     expect(returned).toBe(services);
-    // Eager setup: the callback already ran, against the real options bag.
-    expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
+    // Lazy setup (the reference Configure(setupAction) composition): the
+    // configure step runs when the options resolve, not at registration.
+    expect(seen).toBeUndefined();
 
     const cache = services.build().createScope("singleton").resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
+    expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
   });
 });
