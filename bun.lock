@@ -390,7 +390,9 @@
       "name": "@rhombus-std/logging",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
       },
@@ -740,6 +742,18 @@
       "devDependencies": {
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+      },
+    },
+    "tests/logging.test": {
+      "name": "@rhombus-std/logging.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-toolkit/func": "3.5.3",
       },
     },
     "tests/options.augmentations.test": {
@@ -1210,6 +1224,8 @@
     "@rhombus-std/logging.core": ["@rhombus-std/logging.core@workspace:libraries/logging.core"],
 
     "@rhombus-std/logging.core.test": ["@rhombus-std/logging.core.test@workspace:tests/logging.core.test"],
+
+    "@rhombus-std/logging.test": ["@rhombus-std/logging.test@workspace:tests/logging.test"],
 
     "@rhombus-std/options": ["@rhombus-std/options@workspace:libraries/options"],
 

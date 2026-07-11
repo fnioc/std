@@ -14,16 +14,20 @@
 // registrant) onto its prototype. The exported const IS the standalone call surface.
 //
 // `addProvider` is mechanical, and `clearProviders` ports through di.core's
-// `removeAll` descriptor verb. `setMinimumLevel` routes through
-// `builder.Services.Configure<LoggerFilterOptions>(...)` in the reference, and
-// that filter layer is deferred — it stays a throwing stub (issue #75); giving
-// it the method form keeps the surface symmetric — the method throws exactly as
-// the standalone member does.
+// `removeAll` descriptor verb. `setMinimumLevel` mirrors the reference's
+// `builder.Services.Add(Singleton<IConfigureOptions<LoggerFilterOptions>>(new
+// DefaultLoggerLevelConfigureOptions(level)))`: it appends a
+// `DefaultLoggerLevelConfigureOptions` configure step to the
+// `Options<LoggerFilterOptions>` pipeline (keyed at LOGGER_FILTER_OPTIONS_TOKEN),
+// so the assembled options — the one the LoggerFactory consumes — pick up the
+// new minimum level in registration order.
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from "@rhombus-std/logging.core";
+import { configureStepToken } from "@rhombus-std/options.augmentations";
 import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
-import { LOGGER_PROVIDER_TOKEN } from "./tokens";
+import { DefaultLoggerLevelConfigureOptions } from "./default-logger-level-configure-options";
+import { LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from "./tokens";
 
 /**
  * The `LoggingBuilderExtensions` augmentation set for {@link ILoggingBuilder}
@@ -47,21 +51,17 @@ export const LoggingBuilderExtensions = {
   },
 
   /**
-   * Sets a minimum {@link LogLevel} for log messages.
-   *
-   * NOT IMPLEMENTED: the reference sets this by registering an
-   * `IConfigureOptions<LoggerFilterOptions>` via `builder.Services.Configure(...)`.
-   * That options-registration surface is not available (see the file header), and
-   * the filter layer that would read it is deferred (see ./logger.ts). Configure a
-   * `LoggerFilterOptions` directly and pass it to a `LoggerFactory` once the filter
-   * layer lands.
+   * Sets a minimum {@link LogLevel} for log messages — appends a
+   * {@link DefaultLoggerLevelConfigureOptions} configure step to the
+   * `Options<LoggerFilterOptions>` pipeline, the port of the reference's
+   * `builder.Services.Add(IConfigureOptions<LoggerFilterOptions>)`.
    */
-  setMinimumLevel(_builder: ILoggingBuilder, _level: LogLevel): ILoggingBuilder {
-    throw new Error(
-      "setMinimumLevel() is not implemented: it needs IServiceCollection.Configure<LoggerFilterOptions> "
-        + "(the options DI-builder augmentation @rhombus-std/options defers) plus the deferred filter layer. "
-        + "See issue #75.",
+  setMinimumLevel(builder: ILoggingBuilder, level: LogLevel): ILoggingBuilder {
+    builder.services.addValue(
+      configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
+      new DefaultLoggerLevelConfigureOptions(level),
     );
+    return builder;
   },
 
   /**

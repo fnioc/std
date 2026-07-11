@@ -10,31 +10,51 @@
 // why the package sets `"sideEffects": true` — a consumer who only wants the sugar
 // writes a bare `import "@rhombus-std/logging";`.
 //
-// Faithfulness vs. the reference AddLogging, given providers + the options DI
-// integration are out of scope (issue #75):
-//   - Registers a singleton ILoggerFactory -> LoggerFactory. (`add`, not TryAdd:
-//     di.core registrations are append-only last-wins; there is no add-if-absent
-//     surface. Re-calling addLogging appends a second — harmless, last wins.)
-//   - Runs `configure(new LoggingBuilder(manifest))`.
-//   - OMITTED: `AddOptions()`, the open `ILogger<> -> Logger<>` registration
-//     (needs runtime type-name reflection TS lacks), and the default
-//     `IConfigureOptions<LoggerFilterOptions>` (needs the deferred options DI
-//     integration). Documented in the README.
+// What it registers (the reference AddLogging, now full-parity):
+//   - the `Options<LoggerFilterOptions>` ASSEMBLY at LOGGER_FILTER_OPTIONS_TOKEN
+//     (the reference's `services.AddOptions()` open-generic infrastructure;
+//     per-token assembly registration is explicit here);
+//   - a default configure step pinning the min level to `Information`
+//     (DefaultLoggerLevelConfigureOptions — the reference's default
+//     `IConfigureOptions<LoggerFilterOptions>`);
+//   - the singleton `ILoggerFactory -> LoggerFactory`, INJECTED with the
+//     enumerable provider set and the assembled `Options<LoggerFilterOptions>`;
+//   - the open `ILogger<$1> -> Logger<$1>` registration (the reference's
+//     `Singleton(typeof(ILogger<>), typeof(Logger<>))`), the closing type's
+//     token flowing in through `typeArg(1)`;
+//   - `configure(new LoggingBuilder(manifest))`.
+//
+// `add`, not TryAdd: di.core registrations are append-only last-wins; there is
+// no add-if-absent surface. Re-calling addLogging appends duplicates — harmless,
+// last wins (same precedent logging.configuration's addConfiguration records).
 
-// `nameof<ServiceManifest>()` derives the BARE token
-// (`@rhombus-std/di.core:ServiceManifest`) for a bare reference to the
-// defaulted-generic alias — alias-wins derivation records no type arguments
-// (primitives.transformer `genericTypeArguments`, decision 5) — so it agrees
-// exactly with the token the `@augment`-decorated ServiceManifestClass
-// subscribes to in di.core.
-import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
-import type { ILoggingBuilder } from "@rhombus-std/logging.core";
+// Side-effect + merge: installs `addOptions`/`configure` (the options pipeline
+// verbs) onto di.core's ServiceManifest, and brings the interface merge that
+// types `manifest.addOptions(...)` below into the program.
+import "@rhombus-std/options.augmentations";
+
+import { closeToken, type ServiceManifest, type ServiceManifestClass, typeArg } from "@rhombus-std/di.core";
+import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from "@rhombus-std/logging.core";
+import { configureStepToken } from "@rhombus-std/options.augmentations";
 import { type AugmentationSet, registerAugmentations } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
+import { DefaultLoggerLevelConfigureOptions } from "./default-logger-level-configure-options";
+import { LoggerFilterOptions } from "./logger-filter-options";
 import { LoggerFactory } from "./LoggerFactory";
 import { LoggingBuilder } from "./LoggingBuilder";
-import { LOGGER_FACTORY_TOKEN } from "./tokens";
+import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from "./tokens";
+
+// The base of the open `ILogger<$1>` service token — byte-identical to the base
+// a transformer consumer's `nameof<ILogger<TCategory>>()` derives. Hardcoded
+// (not `closeToken(nameof<ILogger>(), "$1")`) because `ILogger` is a defaulted
+// generic: a BARE `nameof<ILogger>()` records the default type argument and
+// lowers to `"…:ILogger<unknown>"` (the augmentation-registry key), NOT the
+// clean service-token base. An explicit `nameof<ILogger<Foo>>()` derives
+// `"…:ILogger<pkg:Foo>"` off this same base, so the open template matches. A
+// no-transformer consumer writes this literal directly (docs §40); mirrors
+// logging.configuration's `LOGGER_PROVIDER_CONFIGURATION_BASE`.
+const ILOGGER_TOKEN_BASE = "@rhombus-std/logging.core:ILogger";
 
 // `addLogging` is a BRAND-NEW method name, so it must merge onto BOTH the
 // `ServiceManifestBase` interface (the surface the public `ServiceManifest` type
@@ -67,7 +87,30 @@ export const LoggingServiceCollectionExtensions = {
     manifest: ServiceManifestClass<string>,
     configure?: Func<[ILoggingBuilder], void>,
   ): ServiceManifestClass<string> {
-    manifest.add(LOGGER_FACTORY_TOKEN, LoggerFactory).as("singleton");
+    // The LoggerFilterOptions assembly + its default (Information) min level.
+    manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions())
+      .as("singleton");
+    manifest.addValue(
+      configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
+      new DefaultLoggerLevelConfigureOptions(LogLevel.Information),
+    );
+
+    // ILoggerFactory, injected with the enumerable provider set and the
+    // assembled Options<LoggerFilterOptions>.
+    manifest.add(
+      LOGGER_FACTORY_TOKEN,
+      LoggerFactory,
+      [[closeToken("Array", LOGGER_PROVIDER_TOKEN), LOGGER_FILTER_OPTIONS_TOKEN]],
+    ).as("singleton");
+
+    // The open ILogger<$1> -> Logger<$1> registration: the closing type's token
+    // flows in through typeArg(1), from which Logger<T> derives its category.
+    manifest.add(
+      closeToken(ILOGGER_TOKEN_BASE, "$1"),
+      LoggerOfT,
+      [[LOGGER_FACTORY_TOKEN, typeArg(1)]],
+    ).as("singleton");
+
     // `manifest` is the widened ServiceManifestClass<string> (see the
     // declare-module note above), whereas ILoggingBuilder.services is the
     // singleton-default `ServiceManifest` — matching ME, whose logging services
