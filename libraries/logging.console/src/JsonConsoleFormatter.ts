@@ -11,7 +11,7 @@
 // so the state property wins (last write). The `BufferedLogRecord` fast path
 // is NOT ported (see SimpleConsoleFormatter).
 
-import type { IExternalScopeProvider } from "@rhombus-std/logging.core";
+import type { IExternalScopeProvider, LogEntry } from "@rhombus-std/logging.core";
 import { LogLevel } from "@rhombus-std/logging.core";
 import type { Options } from "@rhombus-std/options";
 import { assertNever } from "@rhombus-toolkit/type-guards";
@@ -19,7 +19,6 @@ import { ConsoleFormatter } from "./ConsoleFormatter";
 import { ConsoleFormatterNames } from "./ConsoleFormatterNames";
 import { formatTimestamp } from "./date-format";
 import type { JsonConsoleFormatterOptions } from "./JsonConsoleFormatterOptions";
-import type { LogEntry } from "./LogEntry";
 import type { TextWriter } from "./text-writer";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };

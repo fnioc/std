@@ -10,7 +10,7 @@
 //
 // The `BufferedLogRecord` fast path is NOT ported (see SimpleConsoleFormatter).
 
-import type { IExternalScopeProvider } from "@rhombus-std/logging.core";
+import type { IExternalScopeProvider, LogEntry } from "@rhombus-std/logging.core";
 import { LogLevel } from "@rhombus-std/logging.core";
 import type { Options } from "@rhombus-std/options";
 import { assertNever } from "@rhombus-toolkit/type-guards";
@@ -19,7 +19,6 @@ import { ConsoleFormatter } from "./ConsoleFormatter";
 import { ConsoleFormatterNames } from "./ConsoleFormatterNames";
 import type { ConsoleFormatterOptions } from "./ConsoleFormatterOptions";
 import { formatTimestamp } from "./date-format";
-import type { LogEntry } from "./LogEntry";
 import type { TextWriter } from "./text-writer";
 
 /** 'Syslog Message Severities' from RFC 5424. */

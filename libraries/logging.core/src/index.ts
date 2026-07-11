@@ -16,6 +16,11 @@ export type { ILoggingBuilder } from "./ILoggingBuilder";
 export type { IExternalScopeProvider, ILogger } from "./logger";
 export type { ILoggerFactory, ILoggerProvider } from "./logger-factory";
 
+// The single log-entry record a provider-side sink receives (the reference
+// `LogEntry<TState>`). Its reference home is this abstractions package; the
+// console provider re-exports it from here.
+export type { LogEntry } from "./log-entry";
+
 // Deferred message formatting — exported so a provider-side sink can render or
 // structurally destructure a `FormattedLogValues` state (its `[name, value]`
 // pairs plus the `{OriginalFormat}` entry).
