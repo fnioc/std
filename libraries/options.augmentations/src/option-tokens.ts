@@ -36,6 +36,18 @@ export function changeTokenSourceToken(optionsToken: Token): Token {
 }
 
 /**
+ * The single collection slot token holding every options token marked for
+ * startup validation. `validateOnStart(token)` appends `token` here, and the
+ * StartupValidator resolves the whole list via the `Array<…>` wrapper (#48) to
+ * force each. Unlike the per-options slots above this takes NO argument -- one
+ * flat list serves the whole container, mirroring the reference's single
+ * `StartupValidatorOptions._validators` dictionary.
+ */
+export function startupValidationTargetToken(): Token {
+  return `${NAMESPACE}/startup-validation-target`;
+}
+
+/**
  * The collection wrapper token for `elementToken` — the string the engine
  * recognizes as a collection request and aggregates every registration of the
  * element into (the same `Array<T>` derivation the transformer emits).

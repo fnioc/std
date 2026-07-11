@@ -459,6 +459,7 @@
       "name": "@rhombus-std/options",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
       },
@@ -685,6 +686,8 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
       },
     },
     "tests/logging.configuration.test": {

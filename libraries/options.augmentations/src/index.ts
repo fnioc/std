@@ -217,6 +217,11 @@ export const OptionsConfigurationServiceCollectionExtensions = {
 registerAugmentations(nameof<ServiceManifest>(), OptionsServiceCollectionExtensions);
 registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
 
+// `validateOnStart` lives in its own file (its own reference static class,
+// `OptionsBuilderExtensions`, §28). The re-export executes that module, so its
+// `registerAugmentations` side effect installs the verb onto the manifest.
+export { OptionsBuilderExtensions } from "./validate-on-start.js";
+
 export { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
 export { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
 // The slot-token grammar is public surface: in the reference stack the
@@ -233,6 +238,7 @@ export {
   changeTokenSourceToken,
   configureStepToken,
   postConfigureStepToken,
+  startupValidationTargetToken,
   validateStepToken,
 } from "./option-tokens.js";
 export type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";

@@ -12,6 +12,8 @@
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/hosting": "workspace:*",
-    "@rhombus-std/logging.core": "workspace:*"
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*"
   }
 }

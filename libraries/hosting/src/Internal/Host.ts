@@ -23,6 +23,7 @@ import {
   type IHostLifetime,
 } from "@rhombus-std/hosting.core";
 import type { ILogger } from "@rhombus-std/logging.core";
+import type { IStartupValidator } from "@rhombus-std/options";
 import { type AbortSignal, augment } from "@rhombus-std/primitives";
 import { nameof } from "@rhombus-std/primitives.transformer/internal/nameof";
 import type { Func } from "@rhombus-toolkit/func";
@@ -171,8 +172,16 @@ export class Host implements IHost, AsyncDisposable {
 
       // Open the singleton scope and resolve the hosted services from it.
       this.#singletonScope = this.#services.createScope("singleton");
-      this.#hostedServices = this.#singletonScope.resolve<IHostedService[]>(hostedServiceCollectionToken());
+      const singletonScope = this.#singletonScope;
+      this.#hostedServices = singletonScope.resolve<IHostedService[]>(hostedServiceCollectionToken());
       this.#hostedLifecycleServices = getHostLifecycles(this.#hostedServices);
+
+      // Force eager validation of any options marked with `validateOnStart`
+      // (reference Host order: after resolving hosted services, before
+      // starting()). The validator is registered only when `validateOnStart`
+      // ran, so resolve it optionally; a validation failure throws out of start.
+      const startupValidator = singletonScope.tryResolve<IStartupValidator>(nameof<IStartupValidator>());
+      startupValidator?.validate();
 
       // starting()
       if (this.#hostedLifecycleServices) {
