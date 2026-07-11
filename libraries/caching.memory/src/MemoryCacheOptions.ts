@@ -28,9 +28,12 @@ export class MemoryCacheOptions implements Options<MemoryCacheOptions> {
   public expirationScanFrequency = 60_000;
 
   /**
-   * Whether linked (nested) cache entries are tracked. Always `false` here:
-   * the AsyncLocal-based linking of the reference runtime is not ported (see
-   * the README).
+   * Whether linked (nested) cache entries are tracked: while an entry created
+   * by {@link MemoryCache.createEntry} is pending (not yet committed by its
+   * dispose), entries read or committed within that window propagate their
+   * expiration tokens and earlier absolute expirations to it. Defaults to
+   * `false`. See cache-entry.ts's module doc for the ambient-scope divergence
+   * from the reference.
    */
   public trackLinkedCacheEntries = false;
 

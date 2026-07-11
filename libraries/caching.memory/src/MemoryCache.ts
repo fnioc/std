@@ -16,6 +16,10 @@
 //   - Statistics (`MemoryCacheOptions.trackStatistics`): hit/miss/eviction
 //     counters and the entry-count/estimated-size snapshot via
 //     `getCurrentStatistics`.
+//   - Linked cache-entry tracking (`MemoryCacheOptions.trackLinkedCacheEntries`):
+//     see cache-entry.ts's module doc for the ambient-scope divergence from
+//     the reference (a module-scoped synchronous chain instead of an
+//     async-context slot).
 //
 // NOT ported: the meter/observable-counter metrics (`IMeterFactory` ctor
 // parameter, the counter instruments) -- they need a meter/instrument analog
@@ -58,6 +62,13 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   #evictions = 0;
 
   /**
+   * Whether linked (nested) cache entries are tracked -- captured once at
+   * construction so it is consistent for the entire cache lifetime, exactly
+   * as the reference does.
+   */
+  public readonly trackLinkedCacheEntries: boolean;
+
+  /**
    * @param optionsAccessor The cache options (a bare `new MemoryCacheOptions()`
    * works -- it is its own `Options` accessor).
    * @param loggerFactory Optional; a {@link NullLogger} is used when omitted.
@@ -67,6 +78,7 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     this.#logger = loggerFactory ? loggerFactory.createLogger("MemoryCache") : NullLogger;
     this.#lastExpirationScan = this.#now();
     this.#trackStatistics = this.#options.trackStatistics;
+    this.trackLinkedCacheEntries = this.#options.trackLinkedCacheEntries;
   }
 
   /** The logger, exposed for {@link CacheEntry} eviction-callback failures. */
@@ -115,6 +127,11 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
       if (!entry.checkExpired(utcNow) || entry.evictionReason === EvictionReason.Replaced) {
         entry.lastAccessed = utcNow;
         const value = entry.value;
+        if (this.trackLinkedCacheEntries) {
+          // When this entry is retrieved in the scope of creating another
+          // entry, that entry needs a copy of these expiration options.
+          entry.propagateOptionsToCurrent();
+        }
         this.#scanForExpiredItemsIfNeeded(utcNow);
         if (this.#trackStatistics) {
           this.#hits++;

@@ -75,16 +75,23 @@ export const CacheExtensions = {
       | [key: unknown, value: T, expirationToken: IChangeToken]
   ): T {
     const [key, value, expiration] = rest;
+    // Dispose in `finally` (the reference `using`): a throw between creation
+    // and commit must still dispose the entry -- an undisposed entry would
+    // wedge the linked-entry tracking chain, and disposing without a value
+    // set abandons it without committing.
     const entry = cache.createEntry(key);
-    if (expiration instanceof Date) {
-      entry.absoluteExpiration = expiration;
-    } else if (typeof expiration === "number") {
-      entry.absoluteExpirationRelativeToNow = expiration;
-    } else if (isChangeToken(expiration)) {
-      entry.expirationTokens.push(expiration);
+    try {
+      if (expiration instanceof Date) {
+        entry.absoluteExpiration = expiration;
+      } else if (typeof expiration === "number") {
+        entry.absoluteExpirationRelativeToNow = expiration;
+      } else if (isChangeToken(expiration)) {
+        entry.expirationTokens.push(expiration);
+      }
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
     }
-    entry.value = value;
-    entry[Symbol.dispose]();
     return value;
   },
   /**
@@ -101,10 +108,15 @@ export const CacheExtensions = {
     if (result[0]) {
       return result[1] as T | undefined;
     }
+    // Dispose in `finally` (the reference `using`) -- see `set`.
     const entry = cache.createEntry(key);
-    const value = factory(entry);
-    entry.value = value;
-    entry[Symbol.dispose]();
+    let value: T;
+    try {
+      value = factory(entry);
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
+    }
     return value;
   },
   /**
@@ -119,10 +131,15 @@ export const CacheExtensions = {
     if (result[0]) {
       return result[1] as T | undefined;
     }
+    // Dispose in `finally` (the reference `using`) -- see `set`.
     const entry = cache.createEntry(key);
-    const value = await factory(entry);
-    entry.value = value;
-    entry[Symbol.dispose]();
+    let value: T;
+    try {
+      value = await factory(entry);
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
+    }
     return value;
   },
   /** Sets `value` at `key`, applying `options` to the entry (the `Set(options)` port). */
@@ -132,12 +149,16 @@ export const CacheExtensions = {
     value: T,
     options?: MemoryCacheEntryOptions,
   ): T {
+    // Dispose in `finally` (the reference `using`) -- see `set`.
     const entry = cache.createEntry(key);
-    if (options !== undefined) {
-      CacheEntryExtensions.setOptions(entry, options);
+    try {
+      if (options !== undefined) {
+        CacheEntryExtensions.setOptions(entry, options);
+      }
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
     }
-    entry.value = value;
-    entry[Symbol.dispose]();
     return value;
   },
   /**
@@ -154,13 +175,18 @@ export const CacheExtensions = {
     if (result[0]) {
       return result[1] as T | undefined;
     }
+    // Dispose in `finally` (the reference `using`) -- see `set`.
     const entry = cache.createEntry(key);
-    if (createOptions !== undefined) {
-      CacheEntryExtensions.setOptions(entry, createOptions);
+    let value: T;
+    try {
+      if (createOptions !== undefined) {
+        CacheEntryExtensions.setOptions(entry, createOptions);
+      }
+      value = factory(entry);
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
     }
-    const value = factory(entry);
-    entry.value = value;
-    entry[Symbol.dispose]();
     return value;
   },
   /** Async {@link CacheExtensions.getOrCreateWithOptions}. */
@@ -174,13 +200,18 @@ export const CacheExtensions = {
     if (result[0]) {
       return result[1] as T | undefined;
     }
+    // Dispose in `finally` (the reference `using`) -- see `set`.
     const entry = cache.createEntry(key);
-    if (createOptions !== undefined) {
-      CacheEntryExtensions.setOptions(entry, createOptions);
+    let value: T;
+    try {
+      if (createOptions !== undefined) {
+        CacheEntryExtensions.setOptions(entry, createOptions);
+      }
+      value = await factory(entry);
+      entry.value = value;
+    } finally {
+      entry[Symbol.dispose]();
     }
-    const value = await factory(entry);
-    entry.value = value;
-    entry[Symbol.dispose]();
     return value;
   },
 } satisfies AugmentationSet<IMemoryCache>;
