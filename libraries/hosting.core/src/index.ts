@@ -5,7 +5,7 @@
 //
 // Ships the host/hosted-service/lifetime/environment/builder contracts, the
 // concrete abstractions-package values the reference co-locates
-// (BackgroundService, HostAbortedException, Environments, HostDefaults), the
+// (BackgroundService, HostAbortedError, Environments, HostDefaults), the
 // shared DI-slot tokens, and the reference extension methods as named
 // object-literal augmentation sets (docs §28/§38).
 //
@@ -32,7 +32,7 @@ export type { IHostLifetime } from './IHostLifetime';
 export { BackgroundService } from './BackgroundService';
 export { Environments } from './environments';
 export { HostDefaults } from './host-defaults';
-export { HostAbortedException } from './HostAbortedException';
+export { HostAbortedError } from './HostAbortedError';
 
 // The shared DI-slot token ABI (registration + resolution travel through these),
 // plus the augmentation-registry tokens for the OPEN host/builder/environment

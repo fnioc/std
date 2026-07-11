@@ -31,8 +31,8 @@ export class ActivityListenerBuilder {
   activityStarted?: Func<[unknown], void>;
   /** Invoked when a sampled activity stops. */
   activityStopped?: Func<[unknown], void>;
-  /** Invoked when an exception is recorded on a sampled activity. */
-  exceptionRecorder?: Func<[unknown, unknown, unknown], void>;
+  /** Invoked when an error is recorded on a sampled activity. */
+  errorRecorder?: Func<[unknown, unknown, unknown], void>;
 
   /** @param name The listener name used for rule matching. */
   public constructor(name: string) {

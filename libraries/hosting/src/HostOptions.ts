@@ -7,7 +7,7 @@
 
 import type { IConfiguration } from '@rhombus-std/config.core';
 import type { BackgroundService, IHost, IHostedLifecycleService } from '@rhombus-std/hosting.core';
-import { BackgroundServiceExceptionBehavior } from './BackgroundServiceExceptionBehavior';
+import { BackgroundServiceErrorBehavior } from './BackgroundServiceErrorBehavior';
 
 /** Parses a strictly non-negative integer (digits only), or `undefined`. */
 function parseNonNegativeInt(value: string | undefined): number | undefined {
@@ -62,10 +62,10 @@ export class HostOptions {
 
   /**
    * The behavior the {@link IHost} follows when a {@link BackgroundService}
-   * throws an unhandled exception. Defaults to
-   * {@link BackgroundServiceExceptionBehavior.StopHost}.
+   * throws an unhandled error. Defaults to
+   * {@link BackgroundServiceErrorBehavior.StopHost}.
    */
-  public backgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
+  public backgroundServiceErrorBehavior = BackgroundServiceErrorBehavior.StopHost;
 
   /** Folds the host-option configuration keys onto these options. */
   public initialize(configuration: IConfiguration): void {

@@ -210,7 +210,7 @@ export class CacheEntry implements ICacheEntry {
     ambientCurrentEntry = this.#previous;
 
     // Don't commit or propagate options if the value was never set -- we
-    // assume an exception kept the caller from setting it, so the entry is
+    // assume an error kept the caller from setting it, so the entry is
     // abandoned.
     if (this.#isValueSet) {
       this.#host.setEntry(this);

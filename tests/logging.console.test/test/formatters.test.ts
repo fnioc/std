@@ -80,7 +80,7 @@ test('simple: multi-line message is padded per line', () => {
   expect(writer.toString()).toBe('info: Test.Category[10]\n      line one\n      line two\n');
 });
 
-test('simple: singleLine collapses newlines and appends the exception', () => {
+test('simple: singleLine collapses newlines and appends the error', () => {
   const options = new SimpleConsoleFormatterOptions();
   options.singleLine = true;
   const formatter = new SimpleConsoleFormatter(Options.of(options));
@@ -93,7 +93,7 @@ test('simple: singleLine collapses newlines and appends the exception', () => {
   expect(writer.toString()).toBe('info: Test.Category[10] a b Error: boom     at somewhere\n');
 });
 
-test('simple: exception renders after the message, padded', () => {
+test('simple: error renders after the message, padded', () => {
   const formatter = new SimpleConsoleFormatter(Options.of(new SimpleConsoleFormatterOptions()));
   const writer = new StringWriter();
   const error = new Error('boom');
@@ -198,7 +198,7 @@ test('systemd: syslog severities per level', () => {
   }
 });
 
-test('systemd: scopes and exception stay on the one line', () => {
+test('systemd: scopes and error stay on the one line', () => {
   const options = new ConsoleFormatterOptions();
   options.includeScopes = true;
   const formatter = new SystemdConsoleFormatter(Options.of(options));
@@ -263,7 +263,7 @@ test('json: state key/value pairs and differing state message are written', () =
   expect(parsed.State['Message']).toBe(String(state));
 });
 
-test('json: exception and scopes are included', () => {
+test('json: error and scopes are included', () => {
   const options = new JsonConsoleFormatterOptions();
   options.includeScopes = true;
   const formatter = new JsonConsoleFormatter(Options.of(options));
@@ -277,8 +277,8 @@ test('json: exception and scopes are included', () => {
     writer,
   );
 
-  const parsed = JSON.parse(writer.toString()) as { Exception: string; Scopes: unknown[]; };
-  expect(parsed.Exception).toBe('Error: boom\n    at somewhere');
+  const parsed = JSON.parse(writer.toString()) as { Error: string; Scopes: unknown[]; };
+  expect(parsed.Error).toBe('Error: boom\n    at somewhere');
   expect(parsed.Scopes).toEqual([
     'plain scope',
     { Message: 'RequestId,r-1', RequestId: 'r-1' },

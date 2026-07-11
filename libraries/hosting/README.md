@@ -17,7 +17,7 @@ layer this builds on.
   modern `HostApplicationBuilder` (`Host.createApplicationBuilder()`), plus the static `Host`
   factory facade.
 - **Host runtime objects.** `HostOptions`, `ConsoleLifetime` (+ its options), `NullLifetime`,
-  `ApplicationLifetime`, `HostingEnvironment`, `BackgroundServiceExceptionBehavior`.
+  `ApplicationLifetime`, `HostingEnvironment`, `BackgroundServiceErrorBehavior`.
 - **`HostingHostBuilderExtensions`.** `configureDefaults`, `useEnvironment`, `useContentRoot`,
   `useConsoleLifetime`, `useDefaultServiceProvider`, `configureLogging`, `configureMetrics`,
   `configureHostOptions`, `runConsoleAsync`.

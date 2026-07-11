@@ -1,4 +1,4 @@
-import { BackgroundService, Environments, HostAbortedException, HostDefaults, HOSTED_SERVICE_TOKEN,
+import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TOKEN,
   hostedServiceCollectionToken, HostEnvironmentEnvExtensions, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/internal/index';
 // Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
@@ -11,7 +11,7 @@ test('entry point loads and exposes the abstractions surface', () => {
   expect(Environments.Development).toBe('Development');
   expect(HostDefaults.environmentKey).toBe('environment');
   expect(HostDefaults.applicationKey).toBe('applicationName');
-  expect(new HostAbortedException()).toBeInstanceOf(Error);
+  expect(new HostAbortedError()).toBeInstanceOf(Error);
   expect(typeof BackgroundService).toBe('function');
 });
 

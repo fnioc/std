@@ -57,10 +57,10 @@ test('each member writes its fixed message at the reference level and event id',
     ],
     [(l) => HostingLoggerExtensions.stopped(l), LogLevel.Debug, LoggerEventIds.stopped, 'Hosting stopped', undefined],
     [
-      (l) => HostingLoggerExtensions.stoppedWithException(l, error),
+      (l) => HostingLoggerExtensions.stoppedWithError(l, error),
       LogLevel.Debug,
-      LoggerEventIds.stoppedWithException,
-      'Hosting shutdown exception',
+      LoggerEventIds.stoppedWithError,
+      'Hosting shutdown error',
       error,
     ],
     [
@@ -74,7 +74,7 @@ test('each member writes its fixed message at the reference level and event id',
       (l) => HostingLoggerExtensions.backgroundServiceStoppingHost(l, error),
       LogLevel.Critical,
       LoggerEventIds.backgroundServiceStoppingHost,
-      'A BackgroundService has thrown an unhandled exception, and the host is stopping.',
+      'A BackgroundService has thrown an unhandled error, and the host is stopping.',
       error,
     ],
     [
@@ -107,7 +107,7 @@ test('the fixed-message members guard on isEnabled and skip a disabled sink', ()
   HostingLoggerExtensions.started(logger);
   HostingLoggerExtensions.stopping(logger);
   HostingLoggerExtensions.stopped(logger);
-  HostingLoggerExtensions.stoppedWithException(logger, new Error('x'));
+  HostingLoggerExtensions.stoppedWithError(logger, new Error('x'));
   HostingLoggerExtensions.backgroundServiceFaulted(logger, new Error('x'));
   HostingLoggerExtensions.backgroundServiceStoppingHost(logger, new Error('x'));
   HostingLoggerExtensions.hostedServiceStartupFaulted(logger, new Error('x'));
@@ -121,7 +121,7 @@ test("applicationError writes at critical severity with the caller's event id", 
 
   HostingLoggerExtensions.applicationError(
     logger,
-    LoggerEventIds.applicationStoppingException,
+    LoggerEventIds.applicationStoppingError,
     'An error occurred stopping the application',
     error,
   );
@@ -129,7 +129,7 @@ test("applicationError writes at critical severity with the caller's event id", 
   expect(logger.entries).toHaveLength(1);
   const entry = logger.entries[0]!;
   expect(entry.level).toBe(LogLevel.Critical);
-  expect(entry.eventId.id).toBe(LoggerEventIds.applicationStoppingException.id);
+  expect(entry.eventId.id).toBe(LoggerEventIds.applicationStoppingError.id);
   expect(entry.message).toBe('An error occurred stopping the application');
   expect(entry.error).toBe(error);
 });
@@ -140,7 +140,7 @@ test('applicationError is unguarded — it writes even when the sink reports dis
 
   HostingLoggerExtensions.applicationError(
     logger,
-    LoggerEventIds.applicationStartupException,
+    LoggerEventIds.applicationStartupError,
     'startup',
     new Error('x'),
   );
@@ -152,7 +152,7 @@ test('applicationError appends each AggregateError inner message to the log mess
   const logger = new RecordingLogger();
   const error = new AggregateError([new Error('first'), 'second', null], 'outer');
 
-  HostingLoggerExtensions.applicationError(logger, LoggerEventIds.applicationStartupException, 'startup failed', error);
+  HostingLoggerExtensions.applicationError(logger, LoggerEventIds.applicationStartupError, 'startup failed', error);
 
   expect(logger.entries).toHaveLength(1);
   expect(logger.entries[0]!.message).toBe('startup failed\nfirst\nsecond');
@@ -163,7 +163,7 @@ test('applicationError coerces a non-Error thrown value for the sink', () => {
 
   HostingLoggerExtensions.applicationError(
     logger,
-    LoggerEventIds.applicationStoppedException,
+    LoggerEventIds.applicationStoppedError,
     'stopped',
     'plain string',
   );

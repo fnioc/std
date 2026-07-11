@@ -3,7 +3,7 @@
 // Ships the two builders (`HostBuilder`, `HostApplicationBuilder`) + their
 // settings, the static `Host` factory facade, the host runtime objects
 // (`HostOptions`, the console lifetime + its options, the background-service
-// exception behavior), and the `IHostBuilder` augmentation set
+// error behavior), and the `IHostBuilder` augmentation set
 // (`HostingHostBuilderExtensions`). Re-exports the @rhombus-std/hosting.core
 // public surface so a consumer reaches the whole hosting API through the single
 // @rhombus-std/hosting import.
@@ -34,7 +34,7 @@ export { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings
 export { HostBuilder } from './HostBuilder';
 
 // Host runtime objects.
-export { BackgroundServiceExceptionBehavior } from './BackgroundServiceExceptionBehavior';
+export { BackgroundServiceErrorBehavior } from './BackgroundServiceErrorBehavior';
 export { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 export { HostOptions } from './HostOptions';
 export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from './internal/console-lifetime';

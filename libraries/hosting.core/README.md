@@ -15,7 +15,7 @@ static `Host` factory.
   `IHostApplicationLifetime`, `IHostLifetime`, `IHostEnvironment`, `HostBuilderContext`,
   `IHostBuilder`, `IHostApplicationBuilder`.
 - **Concrete values.** `BackgroundService` (the abstract long-running-service base),
-  `HostAbortedException`, `Environments`, `HostDefaults` — the reference ships these directly
+  `HostAbortedError`, `Environments`, `HostDefaults` — the reference ships these directly
   in its abstractions package, not as pure types, and so does this one.
 - **DI-slot tokens.** `HOST_APPLICATION_LIFETIME_TOKEN`, `HOSTED_SERVICE_TOKEN`,
   `hostedServiceCollectionToken()` — the shared token ABI a host and its consumers both need.

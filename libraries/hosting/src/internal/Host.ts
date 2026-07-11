@@ -20,7 +20,7 @@ import type { IStartupValidator } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
-import { BackgroundServiceExceptionBehavior } from '../BackgroundServiceExceptionBehavior';
+import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavior';
 import type { HostOptions } from '../HostOptions';
 import { linkSignals, whenAborted } from '../signal-linking';
 import { ApplicationLifetime } from './ApplicationLifetime';
@@ -55,22 +55,22 @@ function getHostLifecycles(hostedServices: readonly IHostedService[]): IHostedLi
 /**
  * Runs `operation` over `services`. When `concurrent`, all operations are kicked
  * and awaited together; otherwise they run in order and, when
- * `abortOnFirstException`, stop after the first failure. Every failure is
- * collected into `exceptions` rather than thrown.
+ * `abortOnFirstError`, stop after the first failure. Every failure is
+ * collected into `errors` rather than thrown.
  */
 async function foreachService<T>(
   services: readonly T[],
   signal: AbortSignal,
   concurrent: boolean,
-  abortOnFirstException: boolean,
-  exceptions: unknown[],
+  abortOnFirstError: boolean,
+  errors: unknown[],
   operation: Func<[T, AbortSignal], Promise<void>>,
 ): Promise<void> {
   if (concurrent) {
     const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
       if (result.status === 'rejected') {
-        exceptions.push(result.reason);
+        errors.push(result.reason);
       }
     }
     return;
@@ -80,17 +80,17 @@ async function foreachService<T>(
     try {
       await operation(service, signal);
     } catch (error) {
-      exceptions.push(error);
-      if (abortOnFirstException) {
+      errors.push(error);
+      if (abortOnFirstError) {
         return;
       }
     }
   }
 }
 
-/** Builds the error to throw for a batch of collected `exceptions`. */
-function aggregate(exceptions: readonly unknown[], message: string): unknown {
-  return exceptions.length === 1 ? exceptions[0] : new AggregateError(exceptions, message);
+/** Builds the error to throw for a batch of collected `errors`. */
+function aggregate(errors: readonly unknown[], message: string): unknown {
+  return errors.length === 1 ? errors[0] : new AggregateError(errors, message);
 }
 
 /** The internal {@link IHost} implementation. */
@@ -107,7 +107,7 @@ export class Host implements IHost, AsyncDisposable {
   #hostedLifecycleServices?: IHostedLifecycleService[];
   #hostStarting = false;
   #backgroundServiceTasks?: Promise<void>[];
-  #backgroundServiceExceptions?: unknown[];
+  #backgroundServiceErrors?: unknown[];
 
   public constructor(
     services: ServiceProvider,
@@ -149,16 +149,16 @@ export class Host implements IHost, AsyncDisposable {
       await this.#hostLifetime.waitForStart(signal);
       signal.throwIfAborted();
 
-      const exceptions: unknown[] = [];
+      const errors: unknown[] = [];
       this.#hostStarting = true;
       const concurrent = this.#options.servicesStartConcurrently;
-      const abortOnFirstException = !concurrent;
+      const abortOnFirstError = !concurrent;
 
       const logAndRethrow = (): void => {
-        if (!exceptions.length) {
+        if (!errors.length) {
           return;
         }
-        const error = aggregate(exceptions, 'One or more hosted services failed to start.');
+        const error = aggregate(errors, 'One or more hosted services failed to start.');
         HostingLoggerExtensions.hostedServiceStartupFaulted(this.#logger, error);
         throw error;
       };
@@ -182,8 +182,8 @@ export class Host implements IHost, AsyncDisposable {
           this.#hostedLifecycleServices,
           signal,
           concurrent,
-          abortOnFirstException,
-          exceptions,
+          abortOnFirstError,
+          errors,
           (service, innerSignal) => service.starting(innerSignal),
         );
         logAndRethrow();
@@ -194,8 +194,8 @@ export class Host implements IHost, AsyncDisposable {
         this.#hostedServices,
         signal,
         concurrent,
-        abortOnFirstException,
-        exceptions,
+        abortOnFirstError,
+        errors,
         async (service, innerSignal) => {
           await service.start(innerSignal);
           if (service instanceof BackgroundService) {
@@ -212,8 +212,8 @@ export class Host implements IHost, AsyncDisposable {
           this.#hostedLifecycleServices,
           signal,
           concurrent,
-          abortOnFirstException,
-          exceptions,
+          abortOnFirstError,
+          errors,
           (service, innerSignal) => service.started(innerSignal),
         );
       }
@@ -240,7 +240,7 @@ export class Host implements IHost, AsyncDisposable {
     const signal = linked.signal;
 
     try {
-      const exceptions: unknown[] = [];
+      const errors: unknown[] = [];
 
       if (!this.#hostStarting) {
         // Host was never started; just fire applicationStopping.
@@ -260,7 +260,7 @@ export class Host implements IHost, AsyncDisposable {
             signal,
             concurrent,
             false,
-            exceptions,
+            errors,
             (service, innerSignal) => service.stopping(innerSignal),
           );
         }
@@ -274,7 +274,7 @@ export class Host implements IHost, AsyncDisposable {
           signal,
           concurrent,
           false,
-          exceptions,
+          errors,
           (service, innerSignal) => service.stop(innerSignal),
         );
 
@@ -285,7 +285,7 @@ export class Host implements IHost, AsyncDisposable {
             signal,
             concurrent,
             false,
-            exceptions,
+            errors,
             (service, innerSignal) => service.stopped(innerSignal),
           );
         }
@@ -297,15 +297,15 @@ export class Host implements IHost, AsyncDisposable {
       try {
         await this.#hostLifetime.stop(signal);
       } catch (error) {
-        exceptions.push(error);
+        errors.push(error);
       }
 
-      // Let the background-service monitors settle so their exceptions are visible.
+      // Let the background-service monitors settle so their errors are visible.
       if (this.#backgroundServiceTasks) {
         await Promise.race([Promise.allSettled(this.#backgroundServiceTasks), whenAborted(signal)]);
       }
-      if (this.#backgroundServiceExceptions) {
-        exceptions.push(...this.#backgroundServiceExceptions);
+      if (this.#backgroundServiceErrors) {
+        errors.push(...this.#backgroundServiceErrors);
       }
 
       // Dispose the singleton scope opened in start().
@@ -314,12 +314,12 @@ export class Host implements IHost, AsyncDisposable {
         this.#singletonScope = undefined;
       }
 
-      if (exceptions.length) {
+      if (errors.length) {
         const error = aggregate(
-          exceptions,
-          'One or more hosted services failed to stop, or a background service threw an exception.',
+          errors,
+          'One or more hosted services failed to stop, or a background service threw an error.',
         );
-        HostingLoggerExtensions.stoppedWithException(this.#logger, error);
+        HostingLoggerExtensions.stoppedWithError(this.#logger, error);
         throw error;
       }
     } finally {
@@ -331,8 +331,8 @@ export class Host implements IHost, AsyncDisposable {
 
   /**
    * Awaits a background service's execute task, applying the configured
-   * {@link BackgroundServiceExceptionBehavior} on an unhandled failure. Never
-   * throws -- collected exceptions surface from {@link stop}.
+   * {@link BackgroundServiceErrorBehavior} on an unhandled failure. Never
+   * throws -- collected errors surface from {@link stop}.
    */
   async #tryExecuteBackgroundService(backgroundService: BackgroundService): Promise<void> {
     const backgroundTask = backgroundService.executeTask;
@@ -349,9 +349,9 @@ export class Host implements IHost, AsyncDisposable {
       }
 
       HostingLoggerExtensions.backgroundServiceFaulted(this.#logger, error);
-      if (this.#options.backgroundServiceExceptionBehavior === BackgroundServiceExceptionBehavior.StopHost) {
+      if (this.#options.backgroundServiceErrorBehavior === BackgroundServiceErrorBehavior.StopHost) {
         HostingLoggerExtensions.backgroundServiceStoppingHost(this.#logger, error);
-        (this.#backgroundServiceExceptions ??= []).push(error);
+        (this.#backgroundServiceErrors ??= []).push(error);
         this.#applicationLifetime.stopApplication();
       }
     }

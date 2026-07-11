@@ -103,7 +103,7 @@ export class LoggerFactory implements ILoggerFactory {
           registration.provider[Symbol.dispose]();
         }
       } catch {
-        // Swallow exceptions on dispose (reference behavior).
+        // Swallow errors on dispose (reference behavior).
       }
     }
   }
