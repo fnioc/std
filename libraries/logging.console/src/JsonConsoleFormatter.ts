@@ -5,11 +5,12 @@
 // Serialization adapts the reference's streaming JSON writer to
 // `JSON.stringify` over an insertion-ordered plain object; property names and
 // ordering match the reference output (`Timestamp?`, `EventId`, `LogLevel`,
-// `Category`, `Message`, `Exception?`, `State?`, `Scopes?`). One divergence:
-// the reference writer can emit DUPLICATE keys inside `State` (its fixed
-// `Message` plus a state property also named "Message"); a JS object cannot,
-// so the state property wins (last write). The `BufferedLogRecord` fast path
-// is NOT ported (see SimpleConsoleFormatter).
+// `Category`, `Message`, `Error?`, `State?`, `Scopes?`) -- `Error?` renamed
+// from the reference's `Exception?` per this port's error-naming convention.
+// One further divergence: the reference writer can emit DUPLICATE keys inside
+// `State` (its fixed `Message` plus a state property also named "Message"); a
+// JS object cannot, so the state property wins (last write). The
+// `BufferedLogRecord` fast path is NOT ported (see SimpleConsoleFormatter).
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -132,7 +133,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
     entry['Message'] = message;
 
     if (logEntry.error !== undefined) {
-      entry['Exception'] = logEntry.error.stack ?? String(logEntry.error);
+      entry['Error'] = logEntry.error.stack ?? String(logEntry.error);
     }
 
     const state: unknown = logEntry.state;

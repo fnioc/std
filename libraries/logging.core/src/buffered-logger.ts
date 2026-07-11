@@ -29,8 +29,8 @@ export abstract class BufferedLogRecord {
   /** The record's event id. */
   public abstract get eventId(): EventId;
 
-  /** An exception string for this record, if any. */
-  public get exception(): string | undefined {
+  /** An error string for this record, if any. */
+  public get error(): string | undefined {
     return undefined;
   }
 

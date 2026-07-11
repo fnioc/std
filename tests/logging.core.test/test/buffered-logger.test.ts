@@ -47,7 +47,7 @@ describe('BufferedLogRecord', () => {
     expect(record.logLevel).toBe(LogLevel.Information);
     expect(record.eventId.id).toBe(7);
 
-    expect(record.exception).toBeUndefined();
+    expect(record.error).toBeUndefined();
     expect(record.activitySpanId).toBeUndefined();
     expect(record.activityTraceId).toBeUndefined();
     expect(record.managedThreadId).toBeUndefined();

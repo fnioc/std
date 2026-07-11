@@ -7,7 +7,7 @@
 // lock-based double-checked initialization collapses to a plain lazy check
 // (JS is single-threaded), and its `try { Cancel() } catch {}` guard has no
 // analog here -- `AbortController.abort()` never rethrows listener
-// exceptions (EventTarget dispatch isolates them).
+// errors (EventTarget dispatch isolates them).
 
 import type { Func } from '@rhombus-toolkit/func';
 

@@ -49,7 +49,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     } catch (error) {
       HostingLoggerExtensions.applicationError(
         this.#logger,
-        LoggerEventIds.applicationStoppingException,
+        LoggerEventIds.applicationStoppingError,
         'An error occurred stopping the application',
         error,
       );
@@ -63,7 +63,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     } catch (error) {
       HostingLoggerExtensions.applicationError(
         this.#logger,
-        LoggerEventIds.applicationStartupException,
+        LoggerEventIds.applicationStartupError,
         'An error occurred starting the application',
         error,
       );
@@ -77,7 +77,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     } catch (error) {
       HostingLoggerExtensions.applicationError(
         this.#logger,
-        LoggerEventIds.applicationStoppedException,
+        LoggerEventIds.applicationStoppedError,
         'An error occurred stopping the application',
         error,
       );

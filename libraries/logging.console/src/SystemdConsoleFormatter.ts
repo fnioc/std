@@ -93,11 +93,11 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
     logLevel: LogLevel,
     category: string,
     eventId: number,
-    exception: string | undefined,
+    error: string | undefined,
     stamp: Date | undefined,
   ): void {
     message = ConsoleControlCharacterSanitizer.sanitize(message);
-    exception = ConsoleControlCharacterSanitizer.sanitize(exception);
+    error = ConsoleControlCharacterSanitizer.sanitize(error);
     category = ConsoleControlCharacterSanitizer.sanitize(category);
 
     // loglevel
@@ -124,10 +124,10 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
       textWriter.write(message.replaceAll('\n', ' '));
     }
 
-    // exception, single-line
-    if (exception !== undefined) {
+    // error, single-line
+    if (error !== undefined) {
       textWriter.write(' ');
-      textWriter.write(exception.replaceAll('\n', ' '));
+      textWriter.write(error.replaceAll('\n', ' '));
     }
 
     // newline delimiter

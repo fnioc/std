@@ -70,8 +70,8 @@ export const HostingLoggerExtensions = {
   stopped(logger: ILogger): void {
     write(logger, LogLevel.Debug, LoggerEventIds.stopped, 'Hosting stopped');
   },
-  stoppedWithException(logger: ILogger, error: unknown): void {
-    write(logger, LogLevel.Debug, LoggerEventIds.stoppedWithException, 'Hosting shutdown exception', error);
+  stoppedWithError(logger: ILogger, error: unknown): void {
+    write(logger, LogLevel.Debug, LoggerEventIds.stoppedWithError, 'Hosting shutdown error', error);
   },
   backgroundServiceFaulted(logger: ILogger, error: unknown): void {
     write(logger, LogLevel.Error, LoggerEventIds.backgroundServiceFaulted, 'BackgroundService failed', error);
@@ -81,7 +81,7 @@ export const HostingLoggerExtensions = {
       logger,
       LogLevel.Critical,
       LoggerEventIds.backgroundServiceStoppingHost,
-      'A BackgroundService has thrown an unhandled exception, and the host is stopping.',
+      'A BackgroundService has thrown an unhandled error, and the host is stopping.',
       error,
     );
   },

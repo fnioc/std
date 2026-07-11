@@ -113,12 +113,12 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     message: string,
     logLevel: LogLevel,
     eventId: number,
-    exception: string | undefined,
+    error: string | undefined,
     category: string,
     stamp: Date | undefined,
   ): void {
     message = ConsoleControlCharacterSanitizer.sanitize(message);
-    exception = ConsoleControlCharacterSanitizer.sanitize(exception);
+    error = ConsoleControlCharacterSanitizer.sanitize(error);
     category = ConsoleControlCharacterSanitizer.sanitize(category);
 
     const logLevelColors = this.#getLogLevelConsoleColors(logLevel);
@@ -158,8 +158,8 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     // Example:
     // Error: something failed
     //    at fn (file:line)
-    if (exception !== undefined) {
-      SimpleConsoleFormatter.#writeMessage(textWriter, exception, singleLine);
+    if (error !== undefined) {
+      SimpleConsoleFormatter.#writeMessage(textWriter, error, singleLine);
     }
     if (singleLine) {
       textWriter.write('\n');

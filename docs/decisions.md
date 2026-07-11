@@ -2423,3 +2423,21 @@ Nothing about `hosting`/`hosting.core`'s existing surface changes; `hosting.brow
     module-evaluation-adjacent time; a server target would need those swapped for an injected,
     request-scoped context before any of this surface could run off the main thread. Not attempted
     here; tracked as a follow-up issue.
+
+## 70. The ported surface says "error", never "exception"
+
+The reference stack's own vocabulary is "exception" throughout; this port renames every
+occurrence that means a thrown error and belongs to this repo's own surface to "error" —
+identifiers and type names (`HostAbortedException` → `HostAbortedError`, `BackgroundServiceExceptionBehavior`
+→ `BackgroundServiceErrorBehavior`, and their filenames), enum/union member strings, event-id and
+JSON log-output field names, error messages, and prose describing this repo's own behavior. The
+rename is sense-aware, not a blind substitution — three cases stay "exception":
+
+- **Reference-citation spellings** — a comment or doc naming the reference's own class/property/
+  field verbatim (`InvalidOperationException`, `AggregateException`, `FileNotFoundException`,
+  `ExceptionRecorder`), same precedent as the augmentation-not-extension rule for `ME.*` names.
+- **Platform type names** — `NodeJS.ErrnoException` is Node's own type, not this repo's.
+- **The English "special case" sense** — "one rule, no exceptions", "core is the one exception" —
+  where the word doesn't mean a thrown error at all.
+
+No functional behavior changes; this is a naming-only pass over identifiers, strings, and prose.
