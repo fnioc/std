@@ -408,6 +408,21 @@
         "@rhombus-std/di.core": "workspace:^",
       },
     },
+    "libraries/logging.browserconsole": {
+      "name": "@rhombus-std/logging.browserconsole",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-toolkit/func": "3.5.3",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+    },
     "libraries/logging.configuration": {
       "name": "@rhombus-std/logging.configuration",
       "version": "0.0.0",
@@ -723,6 +738,16 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+      },
+    },
+    "tests/logging.browserconsole.test": {
+      "name": "@rhombus-std/logging.browserconsole.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/logging": "workspace:*",
+        "@rhombus-std/logging.browserconsole": "workspace:*",
+        "@rhombus-std/logging.core": "workspace:*",
       },
     },
     "tests/logging.configuration.test": {
@@ -1228,6 +1253,10 @@
     "@rhombus-std/hosting.test": ["@rhombus-std/hosting.test@workspace:tests/hosting.test"],
 
     "@rhombus-std/logging": ["@rhombus-std/logging@workspace:libraries/logging"],
+
+    "@rhombus-std/logging.browserconsole": ["@rhombus-std/logging.browserconsole@workspace:libraries/logging.browserconsole"],
+
+    "@rhombus-std/logging.browserconsole.test": ["@rhombus-std/logging.browserconsole.test@workspace:tests/logging.browserconsole.test"],
 
     "@rhombus-std/logging.configuration": ["@rhombus-std/logging.configuration@workspace:libraries/logging.configuration"],
 
