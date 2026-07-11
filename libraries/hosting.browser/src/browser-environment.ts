@@ -22,17 +22,13 @@ export interface BrowserEnvironmentSettings {
   applicationName?: string;
 }
 
-// The class-side merge for the registry-installed environment predicates
-// (hosting.core's HostEnvironmentEnvExtensions) — the interface-side merge
-// lives beside that const in hosting.core.
-declare module './browser-environment' {
-  interface BrowserHostingEnvironment {
-    isEnvironment(environmentName: string): boolean;
-    isDevelopment(): boolean;
-    isStaging(): boolean;
-    isProduction(): boolean;
-  }
-}
+// Interface-extends merge (augmentation doctrine): the registry-installed
+// environment predicates (hosting.core's HostEnvironmentEnvExtensions) reach the
+// IHostEnvironment interface via hosting.core's own merge; binding the interface
+// SYMBOL here flows every current and future IHostEnvironment augmentation onto
+// this concrete holder, so it satisfies `implements IHostEnvironment` without
+// restating any member.
+export interface BrowserHostingEnvironment extends IHostEnvironment {}
 
 /** The mutable browser {@link IHostEnvironment} — see the module documentation. */
 @augment(nameof<IHostEnvironment>())

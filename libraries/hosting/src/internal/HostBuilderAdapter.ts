@@ -27,6 +27,12 @@ function equalsIgnoreCase(left: string | undefined, right: string | undefined): 
   return (left ?? '').toLowerCase() === (right ?? '').toLowerCase();
 }
 
+// Interface-extends merge (augmentation doctrine): the `asHostBuilder()` view is
+// also an IHostBuilder; binding the interface SYMBOL flows every in-program
+// augmentation of it (including downstream `useBrowserLifetime`) onto this concrete
+// holder, so it satisfies `implements IHostBuilder` without restating any member.
+export interface HostBuilderAdapter extends IHostBuilder {}
+
 /** The classic-builder adapter over a modern application builder. */
 @augment(nameof<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {

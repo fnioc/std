@@ -44,12 +44,11 @@ import type { Options } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
-// Brings the class-side type merges for the IMemoryCache/ICacheEntry convenience
-// wrappers into the program. The runtime install is the registry path (docs §38):
-// caching.core registers CacheExtensions/CacheEntryExtensions against the
-// `IMemoryCache`/`ICacheEntry` tokens, and the `@augment(nameof<…>())` decoration
-// beside MemoryCache/CacheEntry pulls them onto the prototypes.
-import './cache-augmentations';
+// The runtime install is the registry path (docs §38): caching.core registers
+// CacheExtensions/CacheEntryExtensions against the `IMemoryCache`/`ICacheEntry`
+// tokens, and the `@augment(nameof<…>())` decoration beside MemoryCache/CacheEntry
+// pulls them onto the prototypes. Each concrete class satisfies its interface via
+// its own `interface ... extends I` merge beside the class -- no class-side module.
 import { DISTRIBUTED_CACHE_TOKEN } from './distributed-cache-token';
 import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN } from './memory-cache-options-token';
 import { MEMORY_CACHE_TOKEN } from './memory-cache-token';

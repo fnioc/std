@@ -7,6 +7,13 @@ import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
+// Interface-extends merge (augmentation doctrine): binding the ITracingBuilder
+// SYMBOL flows every in-program augmentation of the interface (the listener/rule
+// members from diagnostics.core, the config-binding member from this package) onto
+// this concrete holder, so it satisfies `implements ITracingBuilder` without
+// restating any member.
+export interface TracingBuilder extends ITracingBuilder {}
+
 /**
  * The concrete {@link ITracingBuilder}.
  *

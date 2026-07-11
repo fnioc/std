@@ -9,6 +9,12 @@ import type { IHostEnvironment } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
+// Interface-extends merge (augmentation doctrine): binding the IHostEnvironment
+// SYMBOL flows every in-program augmentation of the interface (hosting.core's
+// environment predicates isDevelopment/…) onto this concrete holder, so it
+// satisfies `implements IHostEnvironment` without restating any member.
+export interface HostingEnvironment extends IHostEnvironment {}
+
 /**
  * The mutable {@link IHostEnvironment} the host populates while building. This
  * supports infrastructure and is not intended to be used directly.

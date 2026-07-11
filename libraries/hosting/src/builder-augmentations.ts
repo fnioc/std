@@ -36,9 +36,10 @@ import { setServiceProviderOptionsFactory } from './service-provider-options-sto
 
 // The interface-side merge for this const's members lives HERE beside the const
 // (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core
-// contributes `startHost` onto the same interface from its own const file; the
-// class-side merge (so `HostBuilder` SATISFIES the fully-merged interface) lives
-// in `./host-augmentations` next to the class.
+// contributes `startHost` onto the same interface from its own const file. The
+// concrete `HostBuilder` (and `HostBuilderAdapter`) satisfy the fully-merged
+// interface via their own `interface ... extends IHostBuilder` merge beside each
+// class — no class-side member restatement.
 //
 // The merge targets the package BARREL (`@rhombus-std/hosting.core`), matching
 // hosting.core's own `startHost` merge. A cross-package merge is kept verbatim in

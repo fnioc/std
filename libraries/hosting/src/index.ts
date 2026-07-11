@@ -21,11 +21,11 @@
 // HostDefaults) + the `addHostedService` side-effect augmentation.
 export * from '@rhombus-std/hosting.core';
 
-// Bring the class-side declaration merges (and the runtime registration of the
-// IHostBuilder set) into the program so the concrete classes SATISFY their
-// augmented interfaces and `HostingHostBuilderExtensions` is registered.
+// Bring the runtime registration of the IHostBuilder set into the program so
+// `HostingHostBuilderExtensions` is registered. The concrete classes satisfy their
+// augmented interfaces via their own `interface ... extends I` merges (beside each
+// class), so no class-side augmentation module is needed.
 import './builder-augmentations';
-import './host-augmentations';
 
 // The builders + factory facade.
 export { Host } from './host';

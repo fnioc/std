@@ -37,6 +37,13 @@ import { CacheEntry, type IMemoryCacheHost } from './cache-entry';
 import type { MemoryCacheOptions } from './MemoryCacheOptions';
 import { NullLogger } from './null-logger';
 
+// Interface-extends merge (augmentation doctrine): binding the IMemoryCache SYMBOL
+// flows every in-program augmentation of the interface (caching.core's get/set/
+// getOrCreate/… convenience wrappers) onto this concrete holder, so it satisfies
+// `implements IMemoryCache` without restating any member. `tryGetValue` is a base
+// IMemoryCache primitive the class implements directly.
+export interface MemoryCache extends IMemoryCache {}
+
 /** A local in-memory cache backed by a `Map`. */
 @augment(nameof<IMemoryCache>())
 export class MemoryCache implements IMemoryCache, IMemoryCacheHost {

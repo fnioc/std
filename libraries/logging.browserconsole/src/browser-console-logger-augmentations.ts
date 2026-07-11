@@ -45,19 +45,12 @@ export const BrowserConsoleLoggerExtensions = {
 } satisfies AugmentationSet<ILoggingBuilder>;
 
 // The method form (docs §38): merge onto the owning ILoggingBuilder interface so a
-// consumer holding it sees the method, and onto the concrete LoggingBuilder (whose
-// source is recompiled in this program under source-libs) so it still SATISFIES
-// `implements ILoggingBuilder`. The class-side merge is retired once logging is
-// dist-built (plan section 5).
+// consumer holding it sees the method. Concrete implementers (logging's
+// LoggingBuilder) inherit it through their `interface ... extends ILoggingBuilder`
+// merge, so no class-side restatement is needed here.
 declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
     /** Instance-method form of {@link BrowserConsoleLoggerExtensions.addBrowserConsole}. */
-    addBrowserConsole(): this;
-  }
-}
-
-declare module '@rhombus-std/logging/internal/LoggingBuilder' {
-  interface LoggingBuilder {
     addBrowserConsole(): this;
   }
 }

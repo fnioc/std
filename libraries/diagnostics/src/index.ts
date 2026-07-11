@@ -48,11 +48,11 @@ import type { Func } from '@rhombus-toolkit/func';
 import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
 // Type-only side effect: the class-side declaration merges that keep the concrete
 // MetricsBuilder/TracingBuilder satisfying their OPEN interfaces once the builder
-// augmentation members merge in. The RUNTIME install now flows through the registry
+// augmentation members merge in. The RUNTIME install flows through the registry
 // -- importing the concrete classes below runs their `@augment` decoration, and the
 // registerAugmentations calls (diagnostics.core + the config-augmentation modules)
-// feed their prototypes (docs §38).
-import './builder-augmentations';
+// feed their prototypes (docs §38). Each concrete class satisfies its interface via
+// its own `interface ... extends I` merge beside the class -- no class-side module.
 import { MetricListenerConfigurationFactory } from './metrics/configuration/MetricListenerConfigurationFactory';
 import { MetricsBuilder } from './metrics/MetricsBuilder';
 import { DefaultActivityListenerConfigurationFactory } from './tracing/configuration/DefaultActivityListenerConfigurationFactory';
