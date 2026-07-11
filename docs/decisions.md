@@ -2441,3 +2441,49 @@ rename is sense-aware, not a blind substitution — three cases stay "exception"
   where the word doesn't mean a thrown error at all.
 
 No functional behavior changes; this is a naming-only pass over identifiers, strings, and prose.
+
+## 71. Implementer class-side merges retired — interface-extends supersedes §38's "stay downstream" rule
+
+§38 left one seam open: "class-side merges … stay downstream next to each class; they are
+retired per-lib as libs convert to dist builds (#68)." That retirement has now happened wholesale,
+not per-lib — implementer class-side merges (a `declare module` block widening a concrete class
+like `MemoryCache`, `Host`, or `LoggingBuilder` to restate members its own interface already
+carries) are **retired outright** wherever the target is a class that implements an augmented
+interface. §38's sentence is superseded by this entry; the OPEN/CLOSED registry mechanics, token
+grammar, and merge-identity rule it describes are otherwise unchanged.
+
+- **The replacement is a same-name empty extends-merge**, authored once beside the `@augment`
+  class: `export interface C extends I {}`. Binding the interface symbol onto the class symbol
+  means every augmentation registered against the interface — present or future, from any package
+  — is visible on the class through ordinary structural typing; there is nothing left to restate
+  by hand, and nothing to fall out of sync when the interface grows a member. Twelve sites
+  converted (`logging`'s `LoggingBuilder`, `hosting`'s `Host`/`HostBuilder`/`HostingEnvironment`/
+  `HostBuilderAdapter`/`MetricsBuilder`, `hosting.browser`'s `BrowserHostingEnvironment`,
+  `diagnostics`'s `MetricsBuilder`/`TracingBuilder`, `caching.memory`'s `MemoryCache`/`CacheEntry`).
+- **Cross-package class-side merges are banned outright**, not just retired — they are exactly the
+  #168 publish-hazard class: a downstream package reaching into an upstream's `internal/*`
+  subpath to widen its concrete class becomes unreachable the moment that subpath is publish-scrubbed
+  (§7). Five such blocks (logging.console, logging.browserconsole, and logging.configuration
+  augmenting `logging`'s `LoggingBuilder`; hosting.browser augmenting `hosting`'s `HostBuilder` and
+  `HostBuilderAdapter`) are deleted with no replacement — the interface-side merge on
+  `ILoggingBuilder`/`IHostBuilder` already carries every member they restated.
+- **Receiver-class carve-out, explicitly owner-reviewed, not auto-converted.** A `declare module`
+  block that targets a concrete class is NOT this pattern when the class has no augmented
+  interface counterpart to extend from — a CLOSED value-object receiver (`LoggerFilterOptions`,
+  `MemoryCacheEntryOptions`, `DistributedCacheEntryOptions`, `MetricsOptions`, `TracingOptions`),
+  a many-implementers receiver deliberately left unmerged at the interface per §38/§36
+  (`IConfiguration`/`IConfigurationRoot`'s concrete classes), or a class that intentionally does
+  not implement its family's base interface (`ConfigurationBuilder<T>`'s `build(): T` is
+  incompatible with `IConfigurationBuilder`, so its augmentations stay class-side by design).
+  These sites are unchanged by this decision and flagged for owner review rather than folded in
+  silently, since each rests on a judgment call (CLOSED-ness, many-implementers status, or
+  deliberate non-implementation) rather than a mechanical check.
+- **`publishConfig.exports` is now derived, not hand-authored**, closing the other half of the
+  #168 hazard: `scripts/derive-publish-config.ts` computes each package's published `exports` from
+  its dev `exports` — dropping the `./internal/*` white-box seam and collapsing every surviving
+  subpath to the canonical published trio (`types`/`import?`/`default`), matching §7's scrub by
+  construction instead of by hand-copied convention. `--check` runs in the root `lint` script (and
+  therefore in CI); `--write` regenerates. One shape is out of scope for derivation and stays
+  hand-authored: `@rhombus-std/config`'s `./configuration-builder`/`./configuration-manager` alias
+  subpaths collapse onto the rolled `dist/index.*` bundle at publish, which no path-swap of their
+  dev targets reproduces.
