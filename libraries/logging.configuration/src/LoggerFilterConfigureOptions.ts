@@ -1,11 +1,14 @@
-// Real config-binding of LoggerFilterOptions from an IConfiguration, ported
-// from ME.Logging.Configuration's internal `LoggerFilterConfigureOptions`
-// (`LoadDefaultConfigValues` / `LoadRules` / `TryGetSwitch`).
+// LoggerFilterConfigureOptions, ported from the reference logging
+// configuration project's internal `LoggerFilterConfigureOptions`
+// (`Configure` / `LoadDefaultConfigValues` / `LoadRules` / `TryGetSwitch`).
 //
-// This is genuinely mechanical — a walk over the configuration tree building
-// filter rules — so it is implemented for REAL. Expected shape:
+// A LAZY configure step (a `ConfigureOptions<LoggerFilterOptions>` pipeline
+// participant): nothing is read until the `Options<LoggerFilterOptions>`
+// assembly materializes the value, and every re-run (a configuration reload)
+// re-walks the tree. Expected shape:
 //
 //   {
+//     "CaptureScopes": "true",
 //     "LogLevel":  { "Default": "Information", "MyApp": "Debug" },   // global
 //     "Console":   { "LogLevel": { "Default": "Warning" } }          // per-provider
 //   }
@@ -18,6 +21,7 @@
 import type { IConfiguration } from "@rhombus-std/config.core";
 import { LoggerFilterOptions, LoggerFilterRule } from "@rhombus-std/logging";
 import { LogLevel } from "@rhombus-std/logging.core";
+import type { ConfigureOptions } from "@rhombus-std/options";
 
 const LOG_LEVEL_KEY = "loglevel";
 const DEFAULT_CATEGORY = "default";
@@ -66,20 +70,34 @@ function loadRules(
 }
 
 /**
- * Populates `options` from `configuration` — sets `captureScopes` and appends a
- * {@link LoggerFilterRule} for every `LogLevel` entry (global and per-provider).
+ * The configure step binding `LoggerFilterOptions` from an
+ * {@link IConfiguration} — sets `captureScopes` and appends a
+ * {@link LoggerFilterRule} for every `LogLevel` entry (global and
+ * per-provider). Registered by `addConfiguration` as one configure source in
+ * the options pipeline.
  */
-export function bindLoggerFilterOptions(configuration: IConfiguration, options: LoggerFilterOptions): void {
-  options.captureScopes = configuration.getBool("CaptureScopes", options.captureScopes);
+export class LoggerFilterConfigureOptions implements ConfigureOptions<LoggerFilterOptions> {
+  readonly #configuration: IConfiguration;
 
-  for (const section of configuration.getChildren()) {
-    if (section.key.toLowerCase() === LOG_LEVEL_KEY) {
-      // Global category defaults.
-      loadRules(options, section, undefined);
-    } else {
-      // Provider-specific rules under `<provider>:LogLevel`. A missing section
-      // is an empty IConfiguration (never null), so this is a safe no-op.
-      loadRules(options, section.getSection("LogLevel"), section.key);
+  /** @param configuration The configuration walked on every {@link configure}. */
+  public constructor(configuration: IConfiguration) {
+    this.#configuration = configuration;
+  }
+
+  /** Populates `options` from the configuration, mutating it in place. */
+  public configure(options: LoggerFilterOptions): void {
+    options.captureScopes = this.#configuration.getBool("CaptureScopes", options.captureScopes);
+
+    for (const section of this.#configuration.getChildren()) {
+      if (section.key.toLowerCase() === LOG_LEVEL_KEY) {
+        // Global category defaults.
+        loadRules(options, section, undefined);
+      } else {
+        // Provider-specific rules under `<provider>:LogLevel`. A missing
+        // section is an empty IConfiguration (never null), so this is a safe
+        // no-op.
+        loadRules(options, section.getSection("LogLevel"), section.key);
+      }
     }
   }
 }

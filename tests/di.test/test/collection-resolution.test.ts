@@ -177,6 +177,34 @@ describe("collection probes — isService / tryResolve", () => {
   });
 });
 
+describe("collection tokens as DEPENDENCY SLOTS", () => {
+  // A collection slot is always SATISFIABLE in signature selection — the
+  // aggregate may be empty, and an empty collection is a valid resolution —
+  // exactly as isService/tryResolve probe it. This is what lets a constructor
+  // mirror the reference's `IEnumerable<T>` injection.
+  class Host {
+    public constructor(public readonly plugins: readonly string[]) {}
+  }
+
+  test("a ctor Array<T> slot injects the aggregated registrations", () => {
+    const services = new ServiceManifest<"singleton">();
+    services.addValue(ELEMENT, "a");
+    services.addValue(ELEMENT, "b");
+    services.add("pkg:Host", Host, [[ARRAY]]);
+
+    const host = services.build().resolve<Host>("pkg:Host");
+    expect(host.plugins).toEqual(["a", "b"]);
+  });
+
+  test("an EMPTY aggregate still satisfies the signature (injects [])", () => {
+    const services = new ServiceManifest<"singleton">();
+    services.add("pkg:Host", Host, [[ARRAY]]);
+
+    const host = services.build().resolve<Host>("pkg:Host");
+    expect(host.plugins).toEqual([]);
+  });
+});
+
 describe("async collection resolution", () => {
   test("resolveAsync<Array<T>> settles an in-flight element through one Pending", async () => {
     const DEP: Token = "pkg:IDep";

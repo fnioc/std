@@ -219,4 +219,20 @@ registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceColl
 
 export { ConfigurationChangeTokenSource } from "./ConfigurationChangeTokenSource.js";
 export { ConfigurationConfigureOptions } from "./ConfigurationConfigureOptions.js";
+// The slot-token grammar is public surface: in the reference stack the
+// per-options configure / post-configure / validate steps and change-token
+// sources are ordinary OPEN service contracts — any downstream package may
+// register an implementation for a TOptions it doesn't own (the logging
+// configuration package registers both a custom configure step and a
+// change-token source that way). Here the derived slot token IS that
+// contract, so the derivation functions are exported: a downstream package
+// appends a step with `services.addValue(configureStepToken(token), step)`
+// (or `add`/`addFactory` for a lazily-constructed step) and the assembly for
+// `token` picks it up like any `configure(...)`-registered one.
+export {
+  changeTokenSourceToken,
+  configureStepToken,
+  postConfigureStepToken,
+  validateStepToken,
+} from "./option-tokens.js";
 export type { OptionsChangeTokenSource } from "./OptionsChangeTokenSource.js";
