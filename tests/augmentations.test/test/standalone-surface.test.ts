@@ -22,7 +22,7 @@ const keys = (set: object): string[] => Object.keys(set).sort();
 
 describe("standalone augmentation surface (member-name snapshots)", () => {
   test("config providers", () => {
-    expect(keys(JsonConfigurationExtensions)).toEqual(["addJsonFile"]);
+    expect(keys(JsonConfigurationExtensions)).toEqual(["addJsonFile", "addJsonStream"]);
     expect(keys(EnvironmentVariablesExtensions)).toEqual(["addEnvironmentVariables"]);
     expect(keys(CommandLineConfigurationExtensions)).toEqual(["addCommandLine"]);
     expect(keys(MemoryConfigurationBuilderExtensions)).toEqual(["addInMemoryCollection"]);

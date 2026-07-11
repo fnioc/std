@@ -1,16 +1,14 @@
 // JsonConfigurationProvider -- reads a JSON file from disk and flattens it
-// into the case-insensitive key/value store `ConfigurationProvider` provides:
-// nested objects flatten into `Parent:Child` keys, arrays index-flatten into
-// `Parent:0`, `Parent:1`, ..., and scalar leaves are string-converted. `null`
-// leaves (and empty objects/arrays) are omitted entirely -- a deliberate
-// choice to keep lookups simple (`get()` returning `undefined` means "absent",
-// full stop) rather than also representing "present but null" or "present but
-// empty" as distinct states.
+// into the case-insensitive key/value store `ConfigurationProvider` provides.
+// The parse + flattening rules live in the shared JsonConfigurationFileParser
+// (also used by JsonStreamConfigurationProvider) -- see that module's header
+// for the null/empty-leaf semantics.
 
 import { ConfigurationProvider } from "@rhombus-std/config";
 import { process } from "@rhombus-std/primitives";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { JsonConfigurationFileParser } from "./json-configuration-file-parser";
 import type { JsonConfigurationSource } from "./json-configuration-source";
 
 /** Whether `err` is a Node `ENOENT` (file-not-found) error. */
@@ -58,57 +56,19 @@ export class JsonConfigurationProvider extends ConfigurationProvider {
       throw err;
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
-      throw new Error(
-        `JsonConfigurationProvider: failed to parse JSON at ${resolvedPath}: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
+    for (
+      const [key, value] of JsonConfigurationFileParser.parse(
+        raw,
+        `JsonConfigurationProvider (${resolvedPath})`,
+      )
+    ) {
+      this.set(key, value);
     }
-
-    // A JSON document whose root is a scalar or null can't flatten into any
-    // key/value pairs -- reject it loudly rather than silently loading nothing.
-    if (typeof parsed !== "object" || parsed === null) {
-      throw new Error(
-        `JsonConfigurationProvider: root must be an object or array at ${resolvedPath}`,
-      );
-    }
-
-    this.flatten(parsed, "");
 
     // Only a successful load (this line) fires the reload token -- a thrown
-    // error above leaves the previous token (and this provider's prior data)
-    // in place, matching the base class's "reload only on an actual refresh"
-    // contract.
+    // parse error above leaves the previous token (and this provider's now-
+    // cleared data) in place, matching the base class's "reload only on an
+    // actual refresh" contract.
     this.onReload();
-  }
-
-  private flatten(value: unknown, prefix: string): void {
-    if (value === null || value === undefined) {
-      // null leaves are skipped entirely -- no key is written for them.
-      return;
-    }
-
-    if (Array.isArray(value)) {
-      value.forEach((item, index) => {
-        this.flatten(item, prefix === "" ? String(index) : `${prefix}:${index}`);
-      });
-      return;
-    }
-
-    if (typeof value === "object") {
-      for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-        this.flatten(child, prefix === "" ? key : `${prefix}:${key}`);
-      }
-      return;
-    }
-
-    // Scalar leaf (string, number, or boolean): string-convert it.
-    if (prefix !== "") {
-      this.set(prefix, String(value));
-    }
   }
 }
