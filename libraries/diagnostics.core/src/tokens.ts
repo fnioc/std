@@ -20,6 +20,11 @@ export const METRICS_CONFIGURE_TOKEN: Token = `${NAMESPACE}/metrics-configure`;
 export const METRICS_CHANGE_TOKEN_SOURCE_TOKEN: Token = `${NAMESPACE}/metrics-change-token-source`;
 /** The resolvable `Options<MetricsOptions>` the metrics assembly is registered at. */
 export const METRICS_OPTIONS_TOKEN: Token = `${NAMESPACE}/metrics-options`;
+/** Collection slot: every `MetricsConfiguration` marker `addMetricsConfiguration` registers. */
+export const METRICS_CONFIGURATION_TOKEN: Token = `${NAMESPACE}/metrics-configuration`;
+/** The resolvable `IMetricListenerConfigurationFactory` `addMetrics` registers. */
+export const METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN: Token =
+  `${NAMESPACE}/metrics-listener-configuration-factory`;
 
 /** Collection slot: every registered tracing `ActivityListenerBuilder`. */
 export const TRACING_LISTENER_TOKEN: Token = `${NAMESPACE}/tracing-listener`;
@@ -29,6 +34,11 @@ export const TRACING_CONFIGURE_TOKEN: Token = `${NAMESPACE}/tracing-configure`;
 export const TRACING_CHANGE_TOKEN_SOURCE_TOKEN: Token = `${NAMESPACE}/tracing-change-token-source`;
 /** The resolvable `Options<TracingOptions>` the tracing assembly is registered at. */
 export const TRACING_OPTIONS_TOKEN: Token = `${NAMESPACE}/tracing-options`;
+/** Collection slot: every `TracingConfiguration` marker `addTracingConfiguration` registers. */
+export const TRACING_CONFIGURATION_TOKEN: Token = `${NAMESPACE}/tracing-configuration`;
+/** The resolvable `ActivityListenerConfigurationFactory` `addTracing` registers. */
+export const TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN: Token =
+  `${NAMESPACE}/tracing-listener-configuration-factory`;
 
 /**
  * The collection-wrapper token for `elementToken` -- the string the engine
