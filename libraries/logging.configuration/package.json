@@ -47,6 +47,7 @@
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*"
   },
   "publishConfig": {
