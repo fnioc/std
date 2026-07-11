@@ -10,7 +10,8 @@
 import type { IHostApplicationLifetime } from "@rhombus-std/hosting.core";
 import type { ILogger } from "@rhombus-std/logging.core";
 import { AbortController, type AbortSignal } from "@rhombus-std/primitives";
-import { applicationError, LoggerEventIds } from "./logger-messages";
+import { HostingLoggerExtensions } from "./HostingLoggerExtensions";
+import { LoggerEventIds } from "./LoggerEventIds";
 
 /** Allows consumers to perform cleanup during a graceful shutdown. */
 export class ApplicationLifetime implements IHostApplicationLifetime {
@@ -46,7 +47,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#stoppingController.abort();
     } catch (error) {
-      applicationError(
+      HostingLoggerExtensions.applicationError(
         this.#logger,
         LoggerEventIds.applicationStoppingException,
         "An error occurred stopping the application",
@@ -60,7 +61,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#startedController.abort();
     } catch (error) {
-      applicationError(
+      HostingLoggerExtensions.applicationError(
         this.#logger,
         LoggerEventIds.applicationStartupException,
         "An error occurred starting the application",
@@ -74,7 +75,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#stoppedController.abort();
     } catch (error) {
-      applicationError(
+      HostingLoggerExtensions.applicationError(
         this.#logger,
         LoggerEventIds.applicationStoppedException,
         "An error occurred stopping the application",

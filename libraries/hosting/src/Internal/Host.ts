@@ -30,16 +30,7 @@ import { BackgroundServiceExceptionBehavior } from "../BackgroundServiceExceptio
 import type { HostOptions } from "../HostOptions";
 import { linkSignals, whenAborted } from "../signal-linking";
 import { ApplicationLifetime } from "./ApplicationLifetime";
-import {
-  backgroundServiceFaulted,
-  backgroundServiceStoppingHost,
-  hostedServiceStartupFaulted,
-  hostStarted,
-  hostStarting,
-  hostStopped,
-  hostStoppedWithException,
-  hostStopping,
-} from "./logger-messages";
+import { HostingLoggerExtensions } from "./HostingLoggerExtensions";
 
 // Re-export the shared hosted-service token so a white-box consumer can reach it
 // alongside the host. The value is hosting.core's token (the one
@@ -152,7 +143,7 @@ export class Host implements IHost, AsyncDisposable {
    * fire `applicationStarted`.
    */
   public async start(abortSignal?: AbortSignal): Promise<void> {
-    hostStarting(this.#logger);
+    HostingLoggerExtensions.starting(this.#logger);
 
     const sources = abortSignal
       ? [abortSignal, this.#applicationLifetime.applicationStopping]
@@ -174,7 +165,7 @@ export class Host implements IHost, AsyncDisposable {
           return;
         }
         const error = aggregate(exceptions, "One or more hosted services failed to start.");
-        hostedServiceStartupFaulted(this.#logger, error);
+        HostingLoggerExtensions.hostedServiceStartupFaulted(this.#logger, error);
         throw error;
       };
 
@@ -231,7 +222,7 @@ export class Host implements IHost, AsyncDisposable {
       linked[Symbol.dispose]();
     }
 
-    hostStarted(this.#logger);
+    HostingLoggerExtensions.started(this.#logger);
   }
 
   /**
@@ -240,7 +231,7 @@ export class Host implements IHost, AsyncDisposable {
    * host lifetime stop -> dispose the singleton scope.
    */
   public async stop(abortSignal?: AbortSignal): Promise<void> {
-    hostStopping(this.#logger);
+    HostingLoggerExtensions.stopping(this.#logger);
 
     const sources = abortSignal ? [abortSignal] : [];
     const linked = linkSignals(sources, this.#options.shutdownTimeout);
@@ -326,14 +317,14 @@ export class Host implements IHost, AsyncDisposable {
           exceptions,
           "One or more hosted services failed to stop, or a background service threw an exception.",
         );
-        hostStoppedWithException(this.#logger, error);
+        HostingLoggerExtensions.stoppedWithException(this.#logger, error);
         throw error;
       }
     } finally {
       linked[Symbol.dispose]();
     }
 
-    hostStopped(this.#logger);
+    HostingLoggerExtensions.stopped(this.#logger);
   }
 
   /**
@@ -355,9 +346,9 @@ export class Host implements IHost, AsyncDisposable {
         return;
       }
 
-      backgroundServiceFaulted(this.#logger, error);
+      HostingLoggerExtensions.backgroundServiceFaulted(this.#logger, error);
       if (this.#options.backgroundServiceExceptionBehavior === BackgroundServiceExceptionBehavior.StopHost) {
-        backgroundServiceStoppingHost(this.#logger, error);
+        HostingLoggerExtensions.backgroundServiceStoppingHost(this.#logger, error);
         (this.#backgroundServiceExceptions ??= []).push(error);
         this.#applicationLifetime.stopApplication();
       }
