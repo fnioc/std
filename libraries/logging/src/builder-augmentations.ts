@@ -77,20 +77,11 @@ export const LoggingBuilderExtensions = {
 } satisfies AugmentationSet<ILoggingBuilder>;
 
 // The method form (docs §38): merge onto the owning ILoggingBuilder interface so a
-// consumer holding it sees the methods, and onto the concrete LoggingBuilder so it
-// still SATISFIES `implements ILoggingBuilder` once the names are on the interface
-// (its source is recompiled in this program under source-libs). The class-side
-// merge is retired once logging is dist-built (plan section 5).
+// consumer holding it sees the methods. The concrete LoggingBuilder inherits them
+// through its `interface LoggingBuilder extends ILoggingBuilder` merge (beside the
+// class), so no class-side restatement is authored here.
 declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
-    addProvider(provider: ILoggerProvider): this;
-    setMinimumLevel(level: LogLevel): this;
-    clearProviders(): this;
-  }
-}
-
-declare module './LoggingBuilder' {
-  interface LoggingBuilder {
     addProvider(provider: ILoggerProvider): this;
     setMinimumLevel(level: LogLevel): this;
     clearProviders(): this;

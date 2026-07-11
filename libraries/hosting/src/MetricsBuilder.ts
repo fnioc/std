@@ -12,25 +12,17 @@
 // satisfying `IMetricsBuilder` once diagnostics.core merges those members onto the
 // interface (rule 0.6).
 
-import type { IConfiguration } from '@rhombus-std/config';
-import type { Ctor, DepSlot, ServiceManifest } from '@rhombus-std/di.core';
-import type { IMetricsBuilder, IMetricsListener, MeterScope } from '@rhombus-std/diagnostics.core';
+import type { ServiceManifest } from '@rhombus-std/di.core';
+import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
-// Class-side merge: the metrics augmentation members reach `IMetricsBuilder` via
-// diagnostics.core, so this class must declare them to still SATISFY the
-// interface. Signatures mirror the diagnostics interface-side merge exactly.
-declare module './MetricsBuilder' {
-  interface MetricsBuilder {
-    addMetricsListener(listener: IMetricsListener): this;
-    addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
-    clearMetricsListeners(): this;
-    enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
-    disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
-    addMetricsConfiguration(configuration: IConfiguration): this;
-  }
-}
+// Interface-extends merge (augmentation doctrine): the metrics augmentation
+// members reach `IMetricsBuilder` via diagnostics.core's interface-side merge;
+// binding the interface SYMBOL here flows all of them (and every future one) onto
+// this concrete holder, so it satisfies `implements IMetricsBuilder` without
+// restating a member.
+export interface MetricsBuilder extends IMetricsBuilder {}
 
 /** Carries the service-registration surface the metrics extension functions register against. */
 @augment(nameof<IMetricsBuilder>())

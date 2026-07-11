@@ -66,6 +66,17 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./ttsc": "./ttsc.mjs",
+      "./ttsc-app": "./ttsc-app.mjs"
+    }
   }
 }

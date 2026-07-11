@@ -247,9 +247,20 @@ before touching):
   derived INLINE at each use site (`nameof<Interface>()`, lowered to
   `"<declaring-package>:<TypeName>"`); there are NO exported token consts (§40). A hand-written
   (no-transformer) consumer writes the literal string directly. A
-  `.core`-authored const's interface-side `declare module` merge lives beside it in `.core`;
-  class-side merges stay downstream next to each concrete class (retired per-lib on dist
-  conversion, #68). **Merge-identity rule:** every interface-side merge for one interface must
+  `.core`-authored const's interface-side `declare module` merge lives beside it in `.core`.
+  **Implementer class-side merges are retired (§71, supersedes §38's "stays downstream" text):**
+  a concrete class that implements an augmented interface gets a same-name empty extends-merge
+  beside its `@augment` decoration (`export interface C extends I {}`) instead of restating
+  members — the extends binds the interface symbol onto the class so every augmentation flows
+  through live, present or future. Cross-package class-side merges (a downstream package widening
+  an upstream `internal/*`-reached class) are banned outright as the #168 publish-hazard class,
+  not merely retired. The carve-out: a class with no augmented-interface counterpart (a CLOSED
+  value-object receiver, a many-implementers receiver left deliberately unmerged, or a class that
+  intentionally doesn't implement its family's base interface) keeps a direct class-side merge —
+  flagged per-site for owner review, not auto-converted. `publishConfig.exports` is now derived by
+  `scripts/derive-publish-config.ts` (`--check` wired into the root `lint` script) rather than
+  hand-authored, closing the matching #168 hazard on the publish-config side. **Merge-identity
+  rule:** every interface-side merge for one interface must
   resolve to the interface's declaring module file — but a DOWNSTREAM/published-facing author
   merging onto an OPEN receiver it doesn't own must resolve through the receiver's PUBLIC BARREL,
   never `internal/*` (the publish-time scrub makes `internal/*` unreachable for a published

@@ -72,6 +72,12 @@ export function currentCacheEntry(): CacheEntry | undefined {
   return ambientCurrentEntry;
 }
 
+// Interface-extends merge (augmentation doctrine): binding the ICacheEntry SYMBOL
+// flows every in-program augmentation of the interface (caching.core's
+// setPriority/setAbsoluteExpiration/… fluent wrappers) onto this concrete holder,
+// so it satisfies `implements ICacheEntry` without restating any member.
+export interface CacheEntry extends ICacheEntry {}
+
 /** The concrete cache entry. Committed to its cache on dispose. */
 @augment(nameof<ICacheEntry>())
 export class CacheEntry implements ICacheEntry {

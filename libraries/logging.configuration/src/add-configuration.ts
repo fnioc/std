@@ -122,17 +122,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-// The concrete LoggingBuilder `implements ILoggingBuilder`, and under source-libs
-// its source is recompiled in this program -- so once the interface gains
-// `addConfiguration` the class must declare it too. Merge onto the DECLARING module
-// (reachable via logging's `internal/*` subpath), not the barrel: a class
-// re-exported through the barrel doesn't merge back onto its own declaring module.
-// Retired once logging is dist-built (plan section 5).
-declare module '@rhombus-std/logging/internal/LoggingBuilder' {
-  interface LoggingBuilder {
-    addConfiguration(): void;
-    addConfiguration(configuration: IConfiguration): this;
-  }
-}
-
 registerAugmentations(nameof<ILoggingBuilder>(), LoggingBuilderExtensions);

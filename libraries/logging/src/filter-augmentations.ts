@@ -131,19 +131,12 @@ function configureFilter(
 
 // The method form (docs §38): merge onto the owning ILoggingBuilder interface —
 // the same specifier every ILoggingBuilder merge in this family uses — so a
-// consumer holding the interface sees `builder.addFilter(...)`, and onto the
-// concrete LoggingBuilder so it still SATISFIES `implements ILoggingBuilder`
-// once the name is on the interface (its source is recompiled in this program
-// under source-libs; retired once logging is dist-built).
+// consumer holding the interface sees `builder.addFilter(...)`. The concrete
+// LoggingBuilder inherits it through its `interface LoggingBuilder extends
+// ILoggingBuilder` merge (beside the class), so no class-side restatement is
+// authored here.
 declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
-    addFilter(category: string | undefined, level: LogLevel): this;
-    addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
-  }
-}
-
-declare module './LoggingBuilder' {
-  interface LoggingBuilder {
     addFilter(category: string | undefined, level: LogLevel): this;
     addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
   }

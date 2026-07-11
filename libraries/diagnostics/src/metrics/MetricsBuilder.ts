@@ -10,6 +10,13 @@ import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
+// Interface-extends merge (augmentation doctrine): binding the IMetricsBuilder
+// SYMBOL flows every in-program augmentation of the interface (the listener/rule
+// members from diagnostics.core, the config-binding member from this package) onto
+// this concrete holder, so it satisfies `implements IMetricsBuilder` without
+// restating any member.
+export interface MetricsBuilder extends IMetricsBuilder {}
+
 /**
  * The concrete {@link IMetricsBuilder}.
  *

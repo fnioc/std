@@ -21,6 +21,13 @@ import { createFrameworkServices, createHostingEnvironment, populateFrameworkSer
   resolveHost } from './host-composition';
 import { resolveServiceProviderOptions } from './service-provider-options-store';
 
+// Interface-extends merge (augmentation doctrine): binding the IHostBuilder SYMBOL
+// flows every in-program augmentation of the interface (hosting.core's `startHost`,
+// this package's runtime members, downstream `useBrowserLifetime`, …) onto this
+// concrete holder, so it satisfies `implements IHostBuilder` without restating any
+// member.
+export interface HostBuilder extends IHostBuilder {}
+
 /** A program initialization utility -- the classic {@link IHostBuilder}. */
 @augment(nameof<IHostBuilder>())
 export class HostBuilder implements IHostBuilder {

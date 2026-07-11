@@ -93,6 +93,12 @@ function aggregate(errors: readonly unknown[], message: string): unknown {
   return errors.length === 1 ? errors[0] : new AggregateError(errors, message);
 }
 
+// Interface-extends merge (augmentation doctrine): binding the IHost SYMBOL flows
+// every in-program augmentation of the interface (hosting.core's run/waitFor…/stop
+// members) onto this concrete holder, so it satisfies `implements IHost` without
+// restating any member.
+export interface Host extends IHost {}
+
 /** The internal {@link IHost} implementation. */
 @augment(nameof<IHost>())
 export class Host implements IHost, AsyncDisposable {
