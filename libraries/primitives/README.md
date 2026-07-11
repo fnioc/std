@@ -1,9 +1,10 @@
 # @rhombus-std/primitives
 
 The change-token primitives ported from `ME.Primitives` --
-`IChangeToken`, `ChangeToken.onChange`, `CancellationChangeToken`. A leaf
-package: zero dependencies, the analog of ME's Primitives that everything
-reload-capable (config live-reload, options monitors, #6) builds on.
+`IChangeToken`, `ChangeToken.onChange`, `CancellationChangeToken`,
+`CompositeChangeToken`. A leaf package: zero dependencies, the analog of ME's
+Primitives that everything reload-capable (config live-reload, options
+monitors, #6) builds on.
 
 ## Install
 

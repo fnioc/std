@@ -13,7 +13,7 @@ import {
   NotFoundFileInfo,
   NullChangeToken,
 } from "@rhombus-std/fileproviders.core";
-import type { IChangeToken } from "@rhombus-std/primitives";
+import { CompositeChangeToken, type IChangeToken } from "@rhombus-std/primitives";
 import { CompositeDirectoryContents } from "./CompositeDirectoryContents.js";
 
 /**
@@ -81,19 +81,7 @@ export class CompositeFileProvider implements IFileProvider {
     if (changeTokens.length === 1) {
       return changeTokens[0]!;
     }
-
-    // DEFERRED (hosting-style): merging N>1 tokens into one requires a
-    // CompositeChangeToken. Upstream that type lives in ME.Primitives, and
-    // @rhombus-std/primitives does not port it yet (no consumer needed it until
-    // now). Porting it is a primitives-family decision, out of scope for this
-    // FileProviders pass -- see this package's tbdNotes / issue #77. Watching a
-    // CompositeFileProvider over 0 or 1 change-emitting providers works fully;
-    // this throw is reached only with 2+ providers that each return a live
-    // (non-null) change token for the same pattern.
-    throw new Error(
-      "CompositeFileProvider.watch over 2+ change-emitting providers is not implemented yet: "
-        + "it needs a CompositeChangeToken, which @rhombus-std/primitives does not port yet (see issue #77).",
-    );
+    return new CompositeChangeToken(changeTokens);
   }
 
   /**

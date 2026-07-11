@@ -670,6 +670,15 @@
         "typescript": "^7.0.2",
       },
     },
+    "tests/fileproviders.composite.test": {
+      "name": "@rhombus-std/fileproviders.composite.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/fileproviders.composite": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
     "tests/hosting.core.test": {
       "name": "@rhombus-std/hosting.core.test",
       "version": "0.0.0",
@@ -1163,6 +1172,8 @@
     "@rhombus-std/examples.lib.without-transformer": ["@rhombus-std/examples.lib.without-transformer@workspace:examples/examples.lib.without-transformer"],
 
     "@rhombus-std/fileproviders.composite": ["@rhombus-std/fileproviders.composite@workspace:libraries/fileproviders.composite"],
+
+    "@rhombus-std/fileproviders.composite.test": ["@rhombus-std/fileproviders.composite.test@workspace:tests/fileproviders.composite.test"],
 
     "@rhombus-std/fileproviders.core": ["@rhombus-std/fileproviders.core@workspace:libraries/fileproviders.core"],
 
