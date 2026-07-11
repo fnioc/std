@@ -14,13 +14,12 @@
     "directory": "libraries/options"
   },
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
-      "bun": "./src/index.ts",
-      "types": "./src/index.ts",
+      "bun": "./dist/index.js",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
