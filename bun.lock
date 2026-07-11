@@ -670,6 +670,16 @@
         "typescript": "^7.0.2",
       },
     },
+    "tests/diagnostics.core.test": {
+      "name": "@rhombus-std/diagnostics.core.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/diagnostics": "workspace:*",
+        "@rhombus-std/diagnostics.core": "workspace:*",
+      },
+    },
     "tests/fileproviders.composite.test": {
       "name": "@rhombus-std/fileproviders.composite.test",
       "version": "0.0.0",
@@ -1160,6 +1170,8 @@
     "@rhombus-std/diagnostics": ["@rhombus-std/diagnostics@workspace:libraries/diagnostics"],
 
     "@rhombus-std/diagnostics.core": ["@rhombus-std/diagnostics.core@workspace:libraries/diagnostics.core"],
+
+    "@rhombus-std/diagnostics.core.test": ["@rhombus-std/diagnostics.core.test@workspace:tests/diagnostics.core.test"],
 
     "@rhombus-std/examples.app.with-transformer": ["@rhombus-std/examples.app.with-transformer@workspace:examples/examples.app.with-transformer"],
 

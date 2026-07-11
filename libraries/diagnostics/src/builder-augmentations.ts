@@ -30,6 +30,7 @@ declare module "./Metrics/MetricsBuilder" {
   interface MetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    clearMetricsListeners(): this;
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     addMetricsConfiguration(configuration: IConfiguration): this;
@@ -39,6 +40,7 @@ declare module "./Metrics/MetricsBuilder" {
 declare module "./Tracing/TracingBuilder" {
   interface TracingBuilder {
     addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
+    clearTracingListeners(): this;
     enableTracing(
       sourceName?: string,
       operationName?: string,

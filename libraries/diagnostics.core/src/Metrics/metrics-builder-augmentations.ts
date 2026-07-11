@@ -115,6 +115,17 @@ export const MetricsBuilderExtensions = {
     return builder;
   },
   /**
+   * Removes all {@link IMetricsListener} registrations from the builder --
+   * the port of `MetricsBuilderExtensions.ClearListeners(IMetricsBuilder)`
+   * (`builder.Services.RemoveAll<IMetricsListener>()`), via di.core's
+   * `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb
+   * (installed as a manifest method through the augmentation registry).
+   */
+  clearMetricsListeners(builder: IMetricsBuilder): IMetricsBuilder {
+    builder.services.removeAll(METRICS_LISTENER_TOKEN);
+    return builder;
+  },
+  /**
    * Enables instruments via a deferred rule -- registers a configure step that
    * appends an ENABLE {@link InstrumentRule} to the bound {@link MetricsOptions}.
    * Mirrors `MetricsBuilderExtensions.EnableMetrics(IMetricsBuilder, ...)`.
@@ -160,6 +171,7 @@ declare module "./IMetricsBuilder" {
   interface IMetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    clearMetricsListeners(): this;
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
   }
