@@ -167,7 +167,15 @@ export const MetricsBuilderExtensions = {
 // are decorated `@augment(the `IMetricsBuilder` token)`, so this registration
 // reaches their prototypes -- including hosting's independent `MetricsBuilder`,
 // which shares the same token.
-declare module "./IMetricsBuilder" {
+//
+// The merge targets the package BARREL (`@rhombus-std/diagnostics.core`), not the
+// relative declaring module: the downstream config-binding member merges the same
+// interface from `@rhombus-std/diagnostics`, and a cross-package merge only
+// reaches a published consumer if its specifier survives publish. The barrel is
+// the one publish-resolvable specifier both the in-package and downstream sites
+// can share (the §38 merge-identity rule needs every site on one module file),
+// so both flip here -- matching di.core's `ServiceManifest` all-barrel pattern.
+declare module "@rhombus-std/diagnostics.core" {
   interface IMetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
     addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;

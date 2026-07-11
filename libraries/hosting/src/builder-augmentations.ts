@@ -55,12 +55,16 @@ import { setServiceProviderOptionsFactory } from "./service-provider-options-sto
 // class-side merge (so `HostBuilder` SATISFIES the fully-merged interface) lives
 // in `./host-augmentations` next to the class.
 //
-// The merge targets the DECLARING module (via the internal/* subpath), not the
-// package barrel: every interface-side merge for one interface must resolve to
-// the same module file (hosting.core augments it via `./host-builder`), or TS
-// treats the accumulated `this`-returning members as having unrelated this-types
-// and the concrete `HostBuilder` stops satisfying `implements IHostBuilder`.
-declare module "@rhombus-std/hosting.core/internal/IHostBuilder" {
+// The merge targets the package BARREL (`@rhombus-std/hosting.core`), matching
+// hosting.core's own `startHost` merge. A cross-package merge is kept verbatim in
+// the rolled `.d.ts` (rollup-dts `respectExternal`), so it only reaches a
+// published consumer if the specifier survives publish -- the `internal/*`
+// subpath this used to target is scrubbed at publish time (docs §7), so consumers
+// of `@rhombus-std/hosting` silently lost every member below. The barrel is
+// publish-resolvable and, being shared with hosting.core's merge, keeps every
+// site for this interface on one module file (the §38 merge-identity rule), so
+// the concrete `HostBuilder` still satisfies `implements IHostBuilder`.
+declare module "@rhombus-std/hosting.core" {
   interface IHostBuilder {
     configureDefaults(args?: readonly string[]): this;
     useEnvironment(environment: string): this;

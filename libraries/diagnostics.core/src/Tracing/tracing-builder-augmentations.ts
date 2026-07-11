@@ -157,7 +157,14 @@ export const TracingBuilderExtensions = {
 // class (@rhombus-std/diagnostics' builder-augmentations). That class is decorated
 // `@augment(the `ITracingBuilder` token)`, so this registration reaches its
 // prototype.
-declare module "./ITracingBuilder" {
+//
+// The merge targets the package BARREL (`@rhombus-std/diagnostics.core`), not the
+// relative declaring module: the downstream config-binding member merges the same
+// interface from `@rhombus-std/diagnostics`, and a cross-package merge only
+// reaches a published consumer if its specifier survives publish. The barrel is
+// the one publish-resolvable specifier both sites can share (the §38
+// merge-identity rule needs every site on one module file), so both flip here.
+declare module "@rhombus-std/diagnostics.core" {
   interface ITracingBuilder {
     addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
     clearTracingListeners(): this;

@@ -38,12 +38,16 @@ export const TracingBuilderConfigurationExtensions = {
 // registerAugmentations call live here beside it -- separate from the
 // listener/rule members registering from diagnostics.core against the same token.
 //
-// The merge targets the DECLARING module (via the internal/* subpath), not the
-// package barrel: every interface-side merge for one interface must resolve to
-// the same module file, or TS treats the accumulated `this`-returning members
-// as having unrelated this-types and the concrete builders stop satisfying
-// `implements ITracingBuilder`.
-declare module "@rhombus-std/diagnostics.core/internal/Tracing/ITracingBuilder" {
+// The merge targets the package BARREL (`@rhombus-std/diagnostics.core`),
+// matching diagnostics.core's own listener/rule merge. A cross-package merge is
+// kept verbatim in the rolled `.d.ts` (rollup-dts `respectExternal`), so it only
+// reaches a published consumer if the specifier survives publish -- the
+// `internal/*` subpath this used to target is scrubbed at publish (docs §7), so
+// consumers of `@rhombus-std/diagnostics` silently lost `addTracingConfiguration`.
+// The barrel is publish-resolvable and, shared with diagnostics.core's merge,
+// keeps every site for this interface on one module file (the §38 merge-identity
+// rule), so the concrete builders still satisfy `implements ITracingBuilder`.
+declare module "@rhombus-std/diagnostics.core" {
   interface ITracingBuilder {
     addTracingConfiguration(configuration: IConfiguration): this;
   }
