@@ -43,9 +43,13 @@ const NO_OP_DISPOSABLE: Disposable = { [Symbol.dispose]() {} };
  */
 export class PollingFileChangeToken implements IChangeToken {
   /**
-   * The polling interval in milliseconds. Mutable so white-box tests can drive
-   * a deterministic short interval (mirrors the reference's internal
+   * The polling interval in milliseconds: `hasChanged` re-reads the target at
+   * most once per this window. Mutable so white-box tests can drive a
+   * deterministic short interval (mirrors the reference's internal
    * `PollingInterval`).
+   *
+   * INDEPENDENT of {@link PhysicalFilesWatcher.pollingIntervalMs} (the shared
+   * timer's cadence); active-polling tests must lower both -- see that field.
    */
   public static pollingIntervalMs = DEFAULT_POLLING_INTERVAL_MS;
 

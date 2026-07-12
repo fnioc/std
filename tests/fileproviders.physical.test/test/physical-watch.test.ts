@@ -15,12 +15,17 @@
 
 import { NullChangeToken } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
+import { ExclusionFilters } from '@rhombus-std/fileproviders.physical/internal/ExclusionFilters';
+import { PhysicalFilesWatcher } from '@rhombus-std/fileproviders.physical/internal/PhysicalFilesWatcher';
+import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/internal/PollingFileChangeToken';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 let root: string;
+const originalWatcherInterval = PhysicalFilesWatcher.pollingIntervalMs;
+const originalTokenInterval = PollingFileChangeToken.pollingIntervalMs;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'fp-physical-watch-'));
@@ -28,6 +33,10 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(root, { recursive: true, force: true });
+  // Both statics gate active polling and must be restored together (they are
+  // independent knobs -- see the active-polling test below).
+  PhysicalFilesWatcher.pollingIntervalMs = originalWatcherInterval;
+  PollingFileChangeToken.pollingIntervalMs = originalTokenInterval;
 });
 
 // Push a path's mtime a fixed amount into the future so a signature comparison
@@ -143,5 +152,59 @@ describe('PhysicalFileProvider.watch active mode (best-effort)', () => {
     // Disposal must be idempotent and must not throw.
     provider[Symbol.dispose]();
     expect(() => provider[Symbol.dispose]()).not.toThrow();
+  });
+
+  // White-box against PhysicalFilesWatcher: the `.` export is dist-referenced,
+  // so exercising the shared-timer statics (src copies) through the built
+  // provider bundle can't reach them -- the watcher is driven directly, the
+  // same seam PollingFileChangeToken's own unit tests use.
+  test('disposal does NOT fire outstanding active tokens', () => {
+    writeFileSync(join(root, 'a.txt'), 'v1');
+    // Active (fs.watch) mode: pollForChanges=false, useActivePolling=false.
+    const watcher = new PhysicalFilesWatcher(root, false, false, ExclusionFilters.Sensitive);
+
+    const token = watcher.createFileChangeToken('a.txt');
+    expect(token.activeChangeCallbacks).toBe(true);
+
+    let fired = false;
+    token.registerChangeCallback(() => {
+      fired = true;
+    });
+
+    // Mirrors the reference's Dispose: the watcher is torn down but live token
+    // sources are abandoned, never cancelled -- so no callback runs on teardown.
+    watcher[Symbol.dispose]();
+    expect(fired).toBe(false);
+    expect(token.hasChanged).toBe(false);
+  });
+});
+
+describe('PhysicalFilesWatcher active polling (shared timer)', () => {
+  test('fires a registered callback once the target changes', async () => {
+    writeFileSync(join(root, 'a.txt'), 'v1');
+    // Both statics must be lowered: one gates the shared timer's cadence, the
+    // other the token's re-stat throttle. Lowering only one leaves the token
+    // refusing to re-check within the (still 4 s) other interval.
+    PhysicalFilesWatcher.pollingIntervalMs = 5;
+    PollingFileChangeToken.pollingIntervalMs = 5;
+
+    // Polling + active-polling mode: pollForChanges=true, useActivePolling=true.
+    const watcher = new PhysicalFilesWatcher(root, true, true, ExclusionFilters.Sensitive);
+
+    const token = watcher.createFileChangeToken('a.txt');
+    expect(token.activeChangeCallbacks).toBe(true);
+
+    const fired = new Promise<boolean>((resolvePromise) => {
+      const timer = setTimeout(() => resolvePromise(false), 1000);
+      token.registerChangeCallback(() => {
+        clearTimeout(timer);
+        resolvePromise(true);
+      });
+      // Bump synchronously, before the first timer tick reads hasChanged.
+      bumpMtime(join(root, 'a.txt'));
+    });
+
+    expect(await fired).toBe(true);
+    watcher[Symbol.dispose]();
   });
 });

@@ -51,6 +51,12 @@ export class PhysicalFilesWatcher {
   /**
    * The interval, in milliseconds, at which the shared active-polling timer
    * fires. Mutable so white-box tests can drive a deterministic short cadence.
+   *
+   * INDEPENDENT of {@link PollingFileChangeToken.pollingIntervalMs} (the token's
+   * re-stat throttle): a tick only fires a token whose `hasChanged` has flipped,
+   * and `hasChanged` re-reads at most once per that OTHER interval. Lowering one
+   * without the other yields a token that cannot flip within a tick -- so tests
+   * driving active polling must lower both.
    */
   public static pollingIntervalMs = DEFAULT_POLLING_INTERVAL_MS;
 
@@ -203,8 +209,12 @@ export class PhysicalFilesWatcher {
   }
 
   /**
-   * Disposes the watcher: closes every `fs.watch`, stops the polling timer, and
-   * cancels every outstanding active token. Idempotent.
+   * Disposes the watcher: closes every `fs.watch` and stops the polling timer.
+   * Outstanding active tokens are abandoned, NOT cancelled -- mirroring the
+   * reference's `Dispose`, which disposes the watcher/timer but never signals
+   * the live token sources. Firing them here would trigger consumer callbacks
+   * (config-reload, options-monitor) during teardown and contradict this type's
+   * "change tokens may not trigger after disposal" contract. Idempotent.
    */
   public [Symbol.dispose](): void {
     if (this.#disposed) {
@@ -217,9 +227,6 @@ export class PhysicalFilesWatcher {
     }
     this.#fsWatchers.clear();
 
-    for (const info of this.#activeTokens.values()) {
-      info.abort();
-    }
     this.#activeTokens.clear();
 
     if (this.#timer !== undefined) {
