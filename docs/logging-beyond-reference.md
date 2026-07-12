@@ -61,7 +61,10 @@ expect(levels(provider, 'PaymentService')).toEqual([LogLevel.Error]);
 `ILogger<TCategoryName = unknown>` is one phantom-param interface (`TCategoryName` appears in no
 member), because TS forbids two same-named interfaces of differing arity — where the reference splits
 `ILogger` and `ILogger<T>`, these collapse. `NullLogger.instance` (typed `ILogger`) is therefore
-already assignable to `ILogger<T>` for any `T`; no separate `NullLogger<T>` type is needed.
+already assignable to `ILogger<T>` for any `T`. `NullLogger` is nonetheless spelled generically
+(`class NullLogger<T = unknown> implements ILogger<T>`, the same defaulted-parameter trick) so the
+reference's `NullLogger<T>` has a parity spelling — `new NullLogger<Foo>()` — but, the parameter being
+phantom, it is the same no-op as the bare `NullLogger` and adds no behavior (decisions.md §77).
 
 **Caveat.** The explicit `LoggerFactoryExtensions.createLogger(factory, type)` form reads `type.name`,
 which degrades under class-name mangling; the token-derived `Logger<T>` path is authored, so it is

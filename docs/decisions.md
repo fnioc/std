@@ -2854,15 +2854,20 @@ a reconciliation plus recording divergences, not new types. The three intentiona
 stubs (`setMinimumLevel`, `clearProviders`, `LoggerFactory.create`, all throwing, await #75/§18) and all
 provider-facing abstractions (out of scope) stay untouched.
 
-- **`NullLogger<T>` is NOT a gap (contested call, resolved to no-op).** The reference splits
-  `NullLogger` and `NullLogger<T>`; here `ILogger<TCategoryName = unknown>` is a **phantom**-param
-  interface (`TCategoryName` appears in no member, §logger.ts), so `ILogger<A>` and `ILogger<B>` are
-  structurally identical and `NullLogger.instance` (typed `ILogger`) is already assignable to
-  `ILogger<T>` for every `T`. A `NullLogger<T>` would add zero capability; and it cannot even be
-  authored beside the existing `NullLogger` (two same-named classes of differing arity are a TS
-  duplicate-identifier error, and a static `instance` cannot reference a class type parameter). Done
-  correctly it collapses to a phantom-param rename of the existing singleton — YAGNI. Reopen only if a
-  member ever actually uses the category type parameter.
+- **`NullLogger<T>` ships as the phantom-generic parity spelling (revised — was "not a gap").** The
+  reference splits `NullLogger` and `NullLogger<T>`; here `ILogger<TCategoryName = unknown>` is a
+  **phantom**-param interface (`TCategoryName` appears in no member, §logger.ts), so `ILogger<A>` and
+  `ILogger<B>` are structurally identical and the shared `NullLogger.instance` singleton is already
+  assignable to `ILogger<T>` for every `T`. The earlier "it cannot even be authored" rationale was
+  wrong: the idiomatic TS form is not a second same-named class (that would be the duplicate-identifier
+  error it described) but ONE generic class with a defaulted parameter —
+  `class NullLogger<T = unknown> implements ILogger<T>`, exactly the trick
+  `ILogger<TCategoryName = unknown>` and `Logger<T>` already use. The family therefore now provides the
+  `NullLogger<T>` spelling: `new NullLogger<Foo>()` is a freshly-typed no-op, while the `instance`
+  singleton stays typed `NullLogger<unknown>` (a static member cannot reference the class type
+  parameter) and already covers every closed slot. Because the parameter is phantom this adds the
+  reference-parity spelling, **not new runtime behavior** — the bare `NullLogger` remains
+  `NullLogger<unknown>` and every prior use (value or type) compiles unchanged.
 
 - **Candidate (1): the `LoggerFilterOptions` binding is already lazy and reload-reactive (no work).**
   `logging.configuration`'s `addConfiguration` installs the `Options<LoggerFilterOptions>` pipeline
@@ -2879,7 +2884,8 @@ provider-facing abstractions (out of scope) stay untouched.
   (phantom param), `Logger<T>` (category from the DI token's type-name segment, not `typeof(T)`), the
   open `ILogger<$1> -> Logger<$1>` registration, and `createLogger(factory, type) -> factory.createLogger(type.name)`
   are all live (#162). `CreateLogger<T>()` is deliberately transformer sugar (no-transformer-first). See
-  the `NullLogger<T>` note above for why the trio's `NullLogger<T>` member is not a gap.
+  the `NullLogger<T>` note above — the trio's `NullLogger<T>` member now ships as the phantom-generic
+  parity spelling.
 
 - **`LoggerFactoryOptions` / `ActivityTrackingOptions` / `LoggingBuilderExtensions.Configure` stay
   unported (divergence recorded).** Their sole purpose is `Activity`-based scope enrichment; this port
