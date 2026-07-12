@@ -1,0 +1,7 @@
+{
+  "extends": ["./tsconfig.json", "../../tsconfig.tspc.json"],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": ".tspc-out"
+  }
+}

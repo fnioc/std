@@ -15,6 +15,8 @@
 // duplicate sibling keys, but `JSON.parse` folds duplicates (last one wins)
 // per the language spec before this code ever sees them.
 
+import { FormatError } from '@rhombus-std/config.file';
+
 /**
  * The port of the reference's internal `JsonConfigurationFileParser` static
  * class: parses raw JSON text and flattens it into ordered `[key, value]`
@@ -31,15 +33,16 @@ export const JsonConfigurationFileParser = {
     try {
       parsed = JSON.parse(raw);
     } catch (err) {
-      throw new Error(
+      throw new FormatError(
         `${origin}: failed to parse JSON: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
 
-    // A JSON document whose root is a scalar or null can't flatten into any
-    // key/value pairs -- reject it loudly rather than silently loading nothing.
-    if (typeof parsed !== 'object' || parsed === null) {
-      throw new Error(`${origin}: root must be an object or array`);
+    // The top-level element must be an object -- a scalar, null, or ARRAY root
+    // is rejected (matching the reference, which requires a JSON object at the
+    // root; a top-level array is `Error_InvalidTopLevelJSONElement`).
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new FormatError(`${origin}: the top-level JSON element must be an object`);
     }
 
     const pairs: [key: string, value: string][] = [];

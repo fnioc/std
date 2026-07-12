@@ -1,11 +1,11 @@
 {
-  "name": "@rhombus-std/config.json",
+  "name": "@rhombus-std/config.file",
   "version": "0.0.0",
-  "description": "JSON file configuration provider for @rhombus-std/config: JsonConfigurationSource/Provider + the addJsonFile augmentation.",
+  "description": "Shared base classes for file-backed configuration providers in @rhombus-std/config: FileConfigurationSource/FileConfigurationProvider, reloadOnChange wiring over an IFileProvider, and the setFileProvider/setBasePath builder augmentations.",
   "keywords": [
     "configuration",
     "config",
-    "json",
+    "file",
     "ioc",
     "typescript"
   ],
@@ -13,17 +13,16 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/fnioc/std.git",
-    "directory": "libraries/config.json"
+    "directory": "libraries/config.file"
   },
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "sideEffects": true,
   "exports": {
     ".": {
-      "source": "./src/index.ts",
       "bun": "./dist/index.js",
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
@@ -43,18 +42,19 @@
   },
   "dependencies": {
     "@rhombus-std/config.core": "workspace:*",
-    "@rhombus-std/config.file": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
+    "@rhombus-std/fileproviders.physical": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3"
   },
   "peerDependencies": {
     "@rhombus-std/config": "workspace:^"
   },
   "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
     "ts-patch": "^3.3.0",
-    "typescript": "^5.9.0",
-    "@rhombus-std/config": "workspace:*"
+    "typescript": "^5.9.0"
   },
   "publishConfig": {
     "access": "public",

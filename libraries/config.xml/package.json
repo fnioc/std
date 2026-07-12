@@ -1,11 +1,11 @@
 {
-  "name": "@rhombus-std/config.json",
+  "name": "@rhombus-std/config.xml",
   "version": "0.0.0",
-  "description": "JSON file configuration provider for @rhombus-std/config: JsonConfigurationSource/Provider + the addJsonFile augmentation.",
+  "description": "XML file configuration provider for @rhombus-std/config: XmlConfigurationSource/Provider + XmlStream* + the addXmlFile/addXmlStream augmentations, on the config.file base.",
   "keywords": [
     "configuration",
     "config",
-    "json",
+    "xml",
     "ioc",
     "typescript"
   ],
@@ -13,17 +13,16 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/fnioc/std.git",
-    "directory": "libraries/config.json"
+    "directory": "libraries/config.xml"
   },
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "sideEffects": true,
   "exports": {
     ".": {
-      "source": "./src/index.ts",
       "bun": "./dist/index.js",
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
@@ -51,10 +50,10 @@
     "@rhombus-std/config": "workspace:^"
   },
   "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
     "ts-patch": "^3.3.0",
-    "typescript": "^5.9.0",
-    "@rhombus-std/config": "workspace:*"
+    "typescript": "^5.9.0"
   },
   "publishConfig": {
     "access": "public",

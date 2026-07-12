@@ -128,7 +128,18 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `JsonStreamConfigurationSource`/`Provider` + `addJsonStream` over a shared internal
   `JsonConfigurationFileParser`, §59). `config.env` also exports
   `colonAndDotVariableNameTransformation` and normalizes its prefix through the transform before
-  matching (§30/§31); `config.commandline` honors bare `key=value` argv tokens (§34).
+  matching (§30/§31) and re-keys `*CONNSTR_`-prefixed vars into the `ConnectionStrings` section
+  (provider-name sub-keys omitted, §75); `config.commandline` honors bare `key=value` argv tokens
+  (§34). The **file-configuration sub-family** (§75): `config.file` — the shared base
+  (`FileConfigurationSource`/`FileConfigurationProvider`, `FileLoadErrorContext`,
+  `FormatError`/`InvalidDataError`, reload-on-change over an `IFileProvider`, and the
+  `setFileProvider`/`setBasePath`/`setFileLoadErrorHandler` builder augmentations; ← `config` peer +
+  `config.core` + `fileproviders.core` + `fileproviders.physical`; reads synchronously via
+  `IFileInfo.physicalPath`, resets its store by reassignment per #86) ← `config.json` (rebased onto
+  the base: reads through an `IFileProvider`, top-level JSON array now rejected), `config.ini`
+  (`IniStreamParser` grammar), and `config.xml` (a self-contained tokenizer, NO XML-parser dep;
+  encrypted-config decryptor and `KeyPerFile` out of scope). Hosting's default `reloadOnChange` stays
+  OFF pending file-provider-watcher disposal ownership (§75, the #182 disposal question).
   `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
 - **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
   `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/

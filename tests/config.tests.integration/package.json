@@ -14,7 +14,9 @@
     "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/config.commandline": "workspace:*",
     "@rhombus-std/config.env": "workspace:*",
+    "@rhombus-std/config.ini": "workspace:*",
     "@rhombus-std/config.json": "workspace:*",
+    "@rhombus-std/config.xml": "workspace:*",
     "@types/node": "^24.13.2"
   }
 }

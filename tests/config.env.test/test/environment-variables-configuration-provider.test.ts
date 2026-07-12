@@ -140,3 +140,46 @@ describe('addEnvironmentVariables augmentation', () => {
     expect(manager.get('Foo')).toBe('via-manager');
   });
 });
+
+describe('connection-string prefixes', () => {
+  test('re-keys a *CONNSTR_ variable into the ConnectionStrings section', () => {
+    const provider = providerOf({ SQLCONNSTR_Default: 'server=db' });
+
+    expect(provider.tryGet('ConnectionStrings:Default')).toEqual([true, 'server=db']);
+  });
+
+  test('matches the connection-string prefix case-insensitively', () => {
+    const provider = providerOf({ customconnstr_Cache: 'redis://x' });
+
+    expect(provider.tryGet('ConnectionStrings:Cache')).toEqual([true, 'redis://x']);
+  });
+
+  test('transforms the part after the prefix (default __ -> :)', () => {
+    const provider = providerOf({ POSTGRESQLCONNSTR_My__Db: 'pg://y' });
+
+    expect(provider.tryGet('ConnectionStrings:My:Db')).toEqual([true, 'pg://y']);
+  });
+
+  test('does not emit a _ProviderName sibling key', () => {
+    const provider = providerOf({ SQLCONNSTR_Default: 'server=db' });
+
+    expect(provider.tryGet('ConnectionStrings:Default_ProviderName')).toEqual([false]);
+  });
+
+  test('recognizes all of the conventional connection-string prefixes', () => {
+    const provider = providerOf({
+      MYSQLCONNSTR_A: '1',
+      SQLAZURECONNSTR_B: '2',
+      APIHUBCONNSTR_C: '3',
+      DOCDBCONNSTR_D: '4',
+      EVENTHUBCONNSTR_E: '5',
+      NOTIFICATIONHUBCONNSTR_F: '6',
+      SERVICEBUSCONNSTR_G: '7',
+    });
+
+    expect(provider.tryGet('ConnectionStrings:A')).toEqual([true, '1']);
+    expect(provider.tryGet('ConnectionStrings:B')).toEqual([true, '2']);
+    expect(provider.tryGet('ConnectionStrings:C')).toEqual([true, '3']);
+    expect(provider.tryGet('ConnectionStrings:G')).toEqual([true, '7']);
+  });
+});

@@ -1,8 +1,8 @@
 {
-  "name": "@rhombus-std/config.json.test",
+  "name": "@rhombus-std/config.file.test",
   "private": true,
   "version": "0.0.0",
-  "description": "Tests for @rhombus-std/config.json. Not published.",
+  "description": "Tests for @rhombus-std/config.file. Not published.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,8 +10,9 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@rhombus-std/config.json": "workspace:*",
     "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/config.file": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/fileproviders.physical": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
