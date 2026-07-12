@@ -2671,6 +2671,13 @@ referencing tier attempting the first `built`-mode self-compile.
   collapses that subpath onto the rolled `dist/index.*` bundle (§7, §71) — derives the root barrel.
   That axis is closed only by a COMPLETE per-package `types→dist` flip; flip whole packages
   atomically, never half their subpaths, or the collapse desyncs writer from reader.
+  **Correction (§78, #68):** that subpath/barrel split is a compile-time declaration-merge concern
+  only. config derives NO _runtime_ augmentation token from the concrete `ConfigurationBuilder`
+  class — every config-family registry token is `nameof<IConfigurationBuilder>()` (the interface,
+  which lives in the already-dist `config.core`), and `config.transformer` rewrites only
+  `.withType<T>()`, deriving no token at all. So config's own flip needed no token-derivation
+  change; collapsing the two subpaths onto the rolled barrel (writer=reader on `dist/index.d.ts`)
+  plus a `config-source` self-condition was mechanically sufficient (§78).
 - **Both engines, kept in lockstep (§41 parity)**: the TS engine derives every token through one
   path — `entrySourceFile` in `libraries/primitives.transformer/src/tokens.ts`, called from
   `publicImportSpecifier` (the di.transformer.options base scan routes through it too, via
@@ -2902,13 +2909,15 @@ catalogued in `docs/logging-beyond-reference.md`. No public type or signature in
 `logging.core`/`logging`/`logging.configuration` changed, so no referencing library (`hosting.core`/
 `hosting`, `diagnostics`) is affected.
 
-## 78. The runtime tier is dist-referenced; the `built` condition is retired — `config` deferred (#68)
+## 78. The runtime tier is dist-referenced; the `built` condition is retired — #68 COMPLETE
 
 §74 fixed the runtime augmentation-token desync that §72 named as tier 3's blocker; this entry
 lands the tier-3+ conversion §72 said would follow once that fix existed, and retires the `built`
-hatch §9's forebear section named as `built`'s own eventual replacement.
+hatch §9's forebear section named as `built`'s own eventual replacement. `config` — the sole lib
+this entry originally deferred — converted in a follow-up (see the final bullet); **#68 is now
+complete, every runtime library is dist-referenced.**
 
-- **Converted (18 libs).** `di.core`, `di`, `config.json`, `config.env`, `config.commandline`,
+- **Converted (19 libs).** `di.core`, `di`, `config`, `config.json`, `config.env`, `config.commandline`,
   `diagnostics.core`, `diagnostics`, `logging.core`, `logging`, `logging.configuration`,
   `logging.console`, `logging.browserconsole`, `caching.core`, `caching.memory`, `hosting.core`,
   `hosting`, `hosting.browser`, `options.augmentations` — each `.` export's type-facing condition
@@ -2944,16 +2953,21 @@ hatch §9's forebear section named as `built`'s own eventual replacement.
   narrower replacement: `built` was a blanket forces-dist hatch any consumer could reach for; a
   `-source` condition exists only on its own owning core's tsconfig and is never set by a
   consumer.
-- **Deferred — `config` is the sole remaining src-referenced runtime lib; #68 stays open, scoped
-  to it alone.** This is §74's flagged hard case: `config` declares its augmentation receivers at
-  SUBPATH exports (`./configuration-builder`, `./configuration-manager`), which its providers
-  merge onto. `config.json`/`config.env`/`config.commandline` DID convert — they build clean
-  against `config`'s still-src `.` export and subpaths, because their augmentations are
-  compile-time-only declaration merges with no runtime `@augment` token to desync. Flipping
-  `config`'s own `.` export to dist would seal it external, and `rollup-plugin-dts` can no longer
-  pull those src subpath modules into a provider's program once that happens — TS2664 again, this
-  time with no `-source`-style fix available, since the augmented receivers themselves (not just a
-  self-referencing core) live at the subpaths. §74 already named the actual close: collapse
-  `./configuration-builder`/`./configuration-manager` onto the rolled root barrel AND update
-  `config.transformer`'s token derivation to match — a design decision about `config`'s export
-  shape, not a mechanical condition shim, so it was left rather than forced here.
+- **`config` converted — the last runtime lib; #68 closed.** This entry originally deferred
+  `config` as §74's flagged hard case, on the theory that its subpath-declared augmentation
+  receivers (`./configuration-builder`, `./configuration-manager`) needed both a barrel collapse
+  AND a `config.transformer` token-derivation change. The token half was wrong (see §74's
+  correction): config derives no runtime augmentation token from the concrete `ConfigurationBuilder`
+  class — every config-family registry token is `nameof<IConfigurationBuilder>()`, the interface,
+  which lives in the already-dist `config.core`, so its barrel/subpath form is stable regardless of
+  `config`'s own flip; and `config.transformer` rewrites only `.withType<T>()`, deriving no token.
+  So the flip was mechanical, identical in shape to the three self-augmenting cores above: the two
+  subpath exports collapse `types` onto the rolled `./dist/index.d.ts` (external consumers merge
+  onto the flat barrel where `ConfigurationBuilder` is declared directly — no re-export chain to
+  trip TS's phantom-duplicate) while a package-unique `config-source` condition, listed FIRST,
+  routes `config`'s OWN program back to `./src/*` so its `with-type-augment.ts` self-`declare
+  module` sees the concrete class in its declaring module during the not-yet-built compile. The
+  `bun` per-file emit stays for white-box execution. Verified against the full gate — `bun run
+  build`/`test`/`lint` all exit 0, including the config provider suites (`config.json`/`env`/
+  `commandline`), `config.tests.integration`'s "augmentations are installed on the dist
+  ConfigurationBuilder" assertions, and the §16 `examples.app.*` byte-diff e2e.
