@@ -1,0 +1,72 @@
+{
+  "name": "@rhombus-std/config.file",
+  "version": "0.0.0",
+  "description": "Shared base classes for file-backed configuration providers in @rhombus-std/config: FileConfigurationSource/FileConfigurationProvider, reloadOnChange wiring over an IFileProvider, and the setFileProvider/setBasePath builder augmentations.",
+  "keywords": [
+    "configuration",
+    "config",
+    "file",
+    "ioc",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/config.file"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": true,
+  "exports": {
+    ".": {
+      "bun": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./dist/internal/*.js",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/internal"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/fileproviders.core": "workspace:*",
+    "@rhombus-std/fileproviders.physical": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3"
+  },
+  "peerDependencies": {
+    "@rhombus-std/config": "workspace:^"
+  },
+  "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "ts-patch": "^3.3.0",
+    "typescript": "^5.9.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}

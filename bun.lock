@@ -188,6 +188,26 @@
         "@rhombus-std/config": "workspace:^",
       },
     },
+    "libraries/config.file": {
+      "name": "@rhombus-std/config.file",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/fileproviders.physical": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
+      },
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/primitives.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/config": "workspace:^",
+      },
+    },
     "libraries/config.json": {
       "name": "@rhombus-std/config.json",
       "version": "0.0.0",
@@ -1245,6 +1265,8 @@
     "@rhombus-std/config.env": ["@rhombus-std/config.env@workspace:libraries/config.env"],
 
     "@rhombus-std/config.env.test": ["@rhombus-std/config.env.test@workspace:tests/config.env.test"],
+
+    "@rhombus-std/config.file": ["@rhombus-std/config.file@workspace:libraries/config.file"],
 
     "@rhombus-std/config.json": ["@rhombus-std/config.json@workspace:libraries/config.json"],
 
