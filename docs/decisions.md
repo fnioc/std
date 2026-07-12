@@ -2552,3 +2552,71 @@ the di family and stopped there rather than ship a silently-broken runtime.
   `customConditions: ["built"]`, and the `built` condition's plan-of-record ("interim hatch the
   src-referencing rule will retire, #68") in §9's forebear section is only half superseded — true
   for the tiers this entry converted, still load-bearing for the rest.
+
+## 73. `fileproviders.physical` — a disk-backed provider, watch limited to exact-file / directory-prefix
+
+Adds `fileproviders.physical` (← `fileproviders.core` + `primitives`) implementing `IFileProvider`
+against the on-disk file system, born dist-referenced from the start (the post-§72 shape — no
+`built`/src-reference detour, since it neither ships a transformer augmentation nor self-augments a
+public receiver). `getFileInfo`/`getDirectoryContents` reproduce the reference's guards: empty/
+invalid-char/absolute-path/above-root paths (`pathNavigatesAboveRoot` plus a resolved-path
+prefix/equality check against the provider's root) fall through to `NotFoundFileInfo` /
+`NotFoundDirectoryContents.singleton`. `ExclusionFilters` is ported as a bitflag const
+(`None`/`DotPrefixed`/`Hidden`/`System`/`Sensitive`), defaulted to `Sensitive`, but only
+`DotPrefixed` is enforceable on this repo's POSIX target — `Hidden`/`System` are documented no-ops
+rather than silently-always-off, since a future platform target could make them real.
+`createReadStream()` returns a web `ReadableStream<Uint8Array>` over lazy `openSync`/`readSync`
+chunks (the reference's `Stream` has no TS analog) — a flagged deviation, not a gap.
+
+**Globbing verdict: deferred outright, not stubbed.** The reference's `Watch(filter)` only routes
+to `Matcher`/glob when the filter contains `*` or ends in a separator; every filter a bare exact
+filename bypasses glob entirely. No ported consumer (`config`'s future `reloadOnChange`,
+`hosting`'s content-root wiring) passes a wildcard filter today, so per the repo's YAGNI rule
+`FileSystemGlobbing` (~30 internal types) is not ported and there is no `fileproviders.globbing`
+package. `watch` supports exactly the reference's non-glob branch — an exact file path (mtime
+token) or a directory path ending in `/` (recursive prefix-watch token) — and **throws** on any
+filter containing `*` (`"Wildcard watch filters are not yet supported…"`), a faithful subset of the
+reference's own branch split rather than a silently-inert `NullChangeToken`. Widening `watch` to
+glob is deferred to a follow-up package, gated on a real wildcard-watch consumer appearing.
+
+**Watcher design — active `fs.watch` XOR polling, not the reference's always-composite backstop.**
+`PhysicalFilesWatcher` picks one mechanism per provider: active mode registers a `fs.watch` per
+watched target and flips a `CancellationChangeToken` (from `primitives`) on a matching event;
+polling mode (`PollingFileChangeToken`) re-`statSync`s a target only after a 4000ms interval
+(matching the reference's default) and **latches `hasChanged` permanently true** once a change is
+observed, with a shared timer driving callbacks only under active-polling. This is a flagged
+simplification, not full parity: the reference runs both mechanisms together as a backstop; this
+port runs exactly one per provider, because Node/Bun recursive `fs.watch` is well-known unreliable
+on Linux (this repo's platform) and a composite always-both design would mask that unreliability
+rather than surface it — polling is the documented deterministic path, active is the default,
+best-effort mode. Directory-subtree change detection uses a structural `(path, mtimeMs)` join
+rather than the reference's SHA hash — cheaper, same collision-avoidance property for this use.
+Not ported (follow-up, correctness meanwhile covered by polling): `PendingCreationWatcher`
+(watching a not-yet-existent root), renamed-descendant recursion, and the subdirectory-descriptor
+watch-count optimization.
+
+**Naming-taboo deviation.** The reference's polling-mode env var embeds the vendor product name
+and cannot be written into a checked-in file; it is renamed to
+`RHOMBUS_STD_USE_POLLING_FILE_WATCHER` (same `"1"`/case-insensitive-`"true"` semantics, read once
+lazily), documented in-source as a rename of "the reference's polling env var."
+
+**Test coverage added alongside**, filling gaps the port surfaced rather than pre-existing debt:
+`tests/fileproviders.core.test` (null-object abstractions — `NotFoundFileInfo`,
+`NotFoundDirectoryContents.singleton`, `NullChangeToken`, `NullFileProvider` — previously
+untested), an extension to `tests/fileproviders.composite.test` (`getFileInfo` fall-through,
+`getDirectoryContents` merge + first-wins dedup, lazy `CompositeDirectoryContents` init), and
+`tests/fileproviders.physical.test` (29 cases: guards, exclusion filtering, read-stream
+round-trip, polling determinism as the authoritative watch gate, active-mode as a tolerant
+best-effort check). Coverage caught a real bug in `#getFullPath`: the provider's stored root
+carries a trailing separator that `path.resolve` strips, so the root path itself
+(`getFullPath('')`) was wrongly rejected as outside-root; fixed by adding an equality check
+alongside the trailing-separator prefix check (which still blocks sibling-prefix escapes, e.g.
+`/root-evil` against root `/root`).
+
+**Superseding the family digest's deferral text** (previously: "A disk-backed provider
+(`ME.FileProviders.Physical`) … [is] deliberately deferred"): that line now describes only
+`FileSystemGlobbing`, not the physical provider itself, which has landed. §18/§20's still-deferred
+non-console logging/physical-file-provider bundle referenced from the `hosting` family entry is
+likewise narrowed — `hosting`'s content-root `PhysicalFileProvider` wiring remains a follow-up
+(swap `HostingEnvironment.contentRootFileProvider`'s `NullFileProvider()` default, decide
+disposal ownership), but the provider it would wire now exists.

@@ -219,9 +219,17 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `NullFileProvider`; ← `primitives`) ← `fileproviders.composite` (`CompositeFileProvider`
   fan-out over 0/1/N inner providers, `watch` now real for all tiers — including 2+
   change-emitting providers via `primitives`' `CompositeChangeToken`, closing issue #77, §58; ←
-  `fileproviders.core` + `primitives`). A disk-backed provider (`ME.FileProviders.Physical`) and
-  `ME.FileSystemGlobbing` (only ever a `Physical` dependency upstream) are deliberately deferred —
-  what a physical provider means here is an open design question, not yet scoped.
+  `fileproviders.core` + `primitives`) ← `fileproviders.physical` (`PhysicalFileProvider`, a
+  disk-backed provider over `IFileInfo`/`IDirectoryContents` with the reference's empty/invalid/
+  absolute/above-root guards, `ExclusionFilters` — only `DotPrefixed` enforceable on this repo's
+  POSIX target — and `watch` limited to exact-file / directory-prefix targets (an out-of-range
+  wildcard filter throws rather than silently no-op'ing); the watcher is one mechanism per
+  provider (active `fs.watch` XOR polling, 4000ms default, latching `hasChanged`), not the
+  reference's always-composite backstop, since recursive `fs.watch` is unreliable on this repo's
+  platform — polling is the deterministic path, §73; ← `fileproviders.core` + `primitives`).
+  `ME.FileSystemGlobbing` (a `Physical`-only dependency upstream, no wildcard-watch consumer here)
+  stays deliberately deferred — `fileproviders.physical`'s `watch` ports only the reference's
+  non-glob branch, §73.
 
 Cross-cutting invariants (each spans several packages — confirm against `docs/decisions.md`
 before touching):
