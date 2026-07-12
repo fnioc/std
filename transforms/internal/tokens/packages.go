@@ -68,8 +68,7 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 	}
 	matches := []match{}
 	for _, entry := range tokentext.CollectExportEntries(pkg.json) {
-		absStem := tokentext.StripExt(pkg.dir + "/" + entry.TargetRel)
-		sf := ctx.SourceFileAtStem(absStem)
+		sf := entrySourceFile(pkg, entry, ctx.SourceFileAtStem)
 		if sf == nil {
 			continue
 		}
@@ -116,4 +115,29 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		return pkg.name, true
 	}
 	return pkg.name + "/" + best.subpath, true
+}
+
+// entrySourceFile resolves an export entry's on-disk target to the source file
+// the PROGRAM actually loaded for it — the load-bearing fix for
+// build-state-independent tokens. The candidate stems (literal target first,
+// then the `dist/<X> -> src/<X>` twin) come from tokentext.EntrySourceStems, the
+// shared convention this and dioptionstransform's isRootExportTarget both key on
+// so the two Go call sites cannot drift; see that helper for the full rationale.
+//
+// Because the SAME GetExportsOfModule membership check then runs against the
+// resolved entry module either way, the derived token is byte-identical in every
+// compilation context. The literal stem is always tried first, so any context in
+// which the literal target is loaded is unaffected.
+// Mirrors the TS engine's entrySourceFile (libraries/primitives.transformer/src/tokens.ts).
+func entrySourceFile(
+	pkg *packageInfo,
+	entry tokentext.ExportEntry,
+	sourceFileAtStem func(stem string) *shimast.SourceFile,
+) *shimast.SourceFile {
+	for _, stem := range tokentext.EntrySourceStems(pkg.dir, entry) {
+		if sf := sourceFileAtStem(stem); sf != nil {
+			return sf
+		}
+	}
+	return nil
 }
