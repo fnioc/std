@@ -1,0 +1,17 @@
+{
+  "name": "@rhombus-std/config.xml.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/config.xml. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.xml": "workspace:*",
+    "@rhombus-std/fileproviders.physical": "workspace:*"
+  }
+}

@@ -260,6 +260,25 @@
         "typescript": ">=5.2",
       },
     },
+    "libraries/config.xml": {
+      "name": "@rhombus-std/config.xml",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/config.file": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/primitives.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/config": "workspace:^",
+      },
+    },
     "libraries/di": {
       "name": "@rhombus-std/di",
       "version": "10.1.0",
@@ -725,6 +744,15 @@
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^7.0.2",
+      },
+    },
+    "tests/config.xml.test": {
+      "name": "@rhombus-std/config.xml.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.xml": "workspace:*",
+        "@rhombus-std/fileproviders.physical": "workspace:*",
       },
     },
     "tests/di.test": {
@@ -1334,6 +1362,10 @@
     "@rhombus-std/config.transformer.test": ["@rhombus-std/config.transformer.test@workspace:tests/config.transformer.test"],
 
     "@rhombus-std/config.transformer.ttsc.e2e": ["@rhombus-std/config.transformer.ttsc.e2e@workspace:tests/config.transformer.ttsc.e2e"],
+
+    "@rhombus-std/config.xml": ["@rhombus-std/config.xml@workspace:libraries/config.xml"],
+
+    "@rhombus-std/config.xml.test": ["@rhombus-std/config.xml.test@workspace:tests/config.xml.test"],
 
     "@rhombus-std/di": ["@rhombus-std/di@workspace:libraries/di"],
 
