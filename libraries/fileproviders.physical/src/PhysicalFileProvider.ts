@@ -2,28 +2,43 @@
 // ME.FileProviders.Physical.PhysicalFileProvider.
 //
 // Serves IFileInfo/IDirectoryContents off the on-disk file system rooted at an
-// absolute directory. Every lookup is guarded against escaping the root (empty
-// or invalid subpaths, absolute subpaths, and `..` traversal above the root
-// all resolve to the not-found singletons).
+// absolute directory, and watches exact files / directory prefixes for changes
+// via a lazily-created PhysicalFilesWatcher. Every lookup is guarded against
+// escaping the root (empty or invalid subpaths, absolute subpaths, and `..`
+// traversal above the root all resolve to the not-found singletons).
 //
-// DEVIATION (flagged): the reference's under-root guard compares with
-// OrdinalIgnoreCase (reflecting Windows' case-insensitive file system). On the
-// repo's target platform (Linux) paths are case-sensitive, so the guard here
-// uses a case-sensitive prefix check -- the more correct behavior for POSIX.
+// DEVIATIONS (flagged):
+//   - The reference's under-root guard compares with OrdinalIgnoreCase
+//     (reflecting Windows' case-insensitive file system). On the repo's target
+//     platform (Linux) paths are case-sensitive, so the guard here uses a
+//     case-sensitive prefix check -- the more correct behavior for POSIX.
+//   - `watch` supports exact-file and directory-prefix filters only; a filter
+//     containing a wildcard throws (see the NAMING/`watch` notes below). The
+//     reference routes wildcards to a glob Matcher, deferred here (no wildcard
+//     consumer exists; a fileproviders.globbing package would restore it).
+//   - NAMING TABOO: the reference's polling env var name embeds the vendor
+//     product name and cannot appear in a checked-in file, so it is renamed to
+//     RHOMBUS_STD_USE_POLLING_FILE_WATCHER (same "1"/"true" semantics).
 
 import { statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 
-import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents,
-  NotFoundFileInfo } from '@rhombus-std/fileproviders.core';
-import type { IChangeToken } from '@rhombus-std/primitives';
+import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo,
+  NullChangeToken } from '@rhombus-std/fileproviders.core';
+import { type IChangeToken, process } from '@rhombus-std/primitives';
 
 import { ExclusionFilters } from './ExclusionFilters.js';
 import { isExcluded } from './FileSystemInfoHelper.js';
-import { ensureTrailingSeparator, hasInvalidPathChars, pathNavigatesAboveRoot,
+import { ensureTrailingSeparator, hasInvalidFilterChars, hasInvalidPathChars, pathNavigatesAboveRoot,
   trimStartSeparators } from './PathUtils.js';
 import { PhysicalDirectoryContents } from './PhysicalDirectoryContents.js';
 import { PhysicalFileInfo } from './PhysicalFileInfo.js';
+import { PhysicalFilesWatcher } from './PhysicalFilesWatcher.js';
+
+// The reference's `DOTNET_USE_POLLING_FILE_WATCHER`, renamed to strip the
+// vendor product name (NAMING TABOO). "1" or a case-insensitive "true" enables
+// polling.
+const POLLING_ENVIRONMENT_KEY = 'RHOMBUS_STD_USE_POLLING_FILE_WATCHER';
 
 /**
  * Looks up files using the on-disk file system.
@@ -31,6 +46,9 @@ import { PhysicalFileInfo } from './PhysicalFileInfo.js';
 export class PhysicalFileProvider implements IFileProvider {
   readonly #root: string;
   readonly #filters: ExclusionFilters;
+  #fileWatcher: PhysicalFilesWatcher | undefined;
+  #usePollingFileWatcher: boolean | undefined;
+  #useActivePolling: boolean | undefined;
   #disposed = false;
 
   /**
@@ -55,6 +73,63 @@ export class PhysicalFileProvider implements IFileProvider {
    */
   public get root(): string {
     return this.#root;
+  }
+
+  #readPollingEnvironmentVariables(): void {
+    const value = process.env[POLLING_ENVIRONMENT_KEY];
+    const pollForChanges = value === '1' || value?.toLowerCase() === 'true';
+    this.#usePollingFileWatcher = pollForChanges;
+    this.#useActivePolling = pollForChanges;
+  }
+
+  /**
+   * Whether this provider uses polling (rather than an OS file watcher) to
+   * detect changes. Defaults from the {@link POLLING_ENVIRONMENT_KEY}
+   * environment variable. Cannot be changed once the watcher has been created.
+   */
+  public get usePollingFileWatcher(): boolean {
+    if (this.#fileWatcher !== undefined) {
+      return this.#usePollingFileWatcher ?? false;
+    }
+    if (this.#usePollingFileWatcher === undefined) {
+      this.#readPollingEnvironmentVariables();
+    }
+    return this.#usePollingFileWatcher ?? false;
+  }
+
+  public set usePollingFileWatcher(value: boolean) {
+    if (this.#fileWatcher !== undefined) {
+      throw new Error('Cannot modify usePollingFileWatcher once the file watcher is initialized.');
+    }
+    this.#usePollingFileWatcher = value;
+  }
+
+  /**
+   * Whether the change tokens returned by {@link watch} actively poll for
+   * changes (raising callbacks) rather than being passive. Only effective when
+   * {@link usePollingFileWatcher} is set. Defaults from the environment.
+   */
+  public get useActivePolling(): boolean {
+    if (this.#useActivePolling === undefined) {
+      this.#readPollingEnvironmentVariables();
+    }
+    return this.#useActivePolling ?? false;
+  }
+
+  public set useActivePolling(value: boolean) {
+    this.#useActivePolling = value;
+  }
+
+  #getFileWatcher(): PhysicalFilesWatcher {
+    if (this.#fileWatcher === undefined) {
+      this.#fileWatcher = new PhysicalFilesWatcher(
+        this.#root,
+        this.usePollingFileWatcher,
+        this.useActivePolling,
+        this.#filters,
+      );
+    }
+    return this.#fileWatcher;
   }
 
   #getFullPath(subpath: string): string | undefined {
@@ -143,22 +218,46 @@ export class PhysicalFileProvider implements IFileProvider {
   }
 
   /**
-   * Creates a change token for the given filter. Not yet implemented -- wired
-   * to the file watcher in a following change.
+   * Creates a change token for the specified filter.
    *
-   * @param _filter A filter string identifying a file or directory to watch.
+   * @param filter An exact file path, or a directory path ending in a
+   * separator, relative to the root. Leading slashes are ignored.
+   * @returns A change token notified when the target changes, or
+   * {@link NullChangeToken.singleton} for a `null`/invalid, absolute, or
+   * out-of-root filter.
+   * @throws If `filter` contains a wildcard (`*`) -- glob watching is not yet
+   * supported (deferred to a future fileproviders.globbing package).
    */
-  public watch(_filter: string): IChangeToken {
-    throw new Error('PhysicalFileProvider.watch is not yet implemented.');
+  public watch(filter: string): IChangeToken {
+    // A hand-written (no-transformer) JS caller could still pass a nullish
+    // filter despite the `string` type, so guard defensively -- mirroring the
+    // reference's null check.
+    const nullableFilter = filter as string | null | undefined;
+    if (nullableFilter === null || nullableFilter === undefined || hasInvalidFilterChars(filter)) {
+      return NullChangeToken.singleton;
+    }
+
+    const trimmed = trimStartSeparators(filter);
+
+    if (trimmed.includes('*')) {
+      throw new Error(
+        'Wildcard watch filters are not yet supported; watch an exact file or a directory '
+          + 'prefix instead. (A fileproviders.globbing package would restore glob support.)',
+      );
+    }
+
+    return this.#getFileWatcher().createFileChangeToken(trimmed);
   }
 
   /**
-   * Disposes the provider. Idempotent.
+   * Disposes the provider, closing its file watcher. Idempotent. Change tokens
+   * may not trigger after disposal.
    */
   public [Symbol.dispose](): void {
     if (this.#disposed) {
       return;
     }
     this.#disposed = true;
+    this.#fileWatcher?.[Symbol.dispose]();
   }
 }
