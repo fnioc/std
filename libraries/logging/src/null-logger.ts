@@ -67,6 +67,9 @@ export class NullLoggerProvider implements ILoggerProvider {
 }
 
 /** An {@link ILoggerFactory} that creates {@link NullLogger} instances. */
+// `@augment(nameof<ILoggerFactory>())` installs the runtime `createLogger(type)`
+// dispatcher — see ./LoggerFactory.ts (not statically typed, §36 + TS2430).
+@augment(nameof<ILoggerFactory>())
 export class NullLoggerFactory implements ILoggerFactory {
   /** The shared no-op factory instance. */
   public static readonly instance: NullLoggerFactory = new NullLoggerFactory();

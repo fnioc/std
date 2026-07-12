@@ -17,23 +17,29 @@
 // adaptation is the constructor's own `name` — the entire helper collapses to
 // `type.name`, no internal `TypeNameHelper` analog needed.
 //
-// Standalone-only, permanently: NO registry registration and NO method form.
-// The member's name IS `ILoggerFactory`'s own primitive `createLogger`, so a
-// prototype install would overwrite each concrete factory's implementation
-// with a thunk that delegates straight back into itself (the string case
-// self-recurses). Same exclusion precedent as caching's `tryGetValue` (§29)
-// and the `log` wrapper (§40) — and since this set has no other member, there
-// is nothing to register at all.
+// The member's name IS `ILoggerFactory`'s own primitive `createLogger`, so the
+// set registers with a merge strategy: at install the registry mounts a
+// dispatcher over each decorated factory's `createLogger` that routes a type
+// (constructor) to this wrapper and a category-name string to the primitive.
+// The wrapper re-enters the receiver in primitive shape (`createLogger(type.name)`),
+// so the dispatcher routes that back to the primitive — no self-recursion. The
+// convenience form is thus dot-callable AT RUNTIME on any `@augment`-decorated
+// factory; it is not TYPED as a method overload (a factory declares the
+// primitive `createLogger(string)` in its body, and TS forbids merging the
+// incompatible `createLogger(type)` overload onto it, TS2430). The typed path
+// stays the standalone `LoggerFactoryExtensions.createLogger(factory, MyService)`.
 
-import type { AugmentationSet } from '@rhombus-std/primitives';
+import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { AbstractCtor } from '@rhombus-toolkit/func';
 import type { ILogger } from './logger';
 import type { ILoggerFactory } from './logger-factory';
 
 /**
  * The `LoggerFactoryExtensions` augmentation set for {@link ILoggerFactory}
- * (docs §28/§38). Standalone-only — see the header comment; reached as
- * `LoggerFactoryExtensions.createLogger(factory, MyService)`.
+ * (docs §28/§38). Reached standalone as
+ * `LoggerFactoryExtensions.createLogger(factory, MyService)` and, on a decorated
+ * concrete factory, as the runtime dot-callable `factory.createLogger(MyService)`.
  */
 export const LoggerFactoryExtensions = {
   /**
@@ -46,3 +52,18 @@ export const LoggerFactoryExtensions = {
     return factory.createLogger(type.name);
   },
 } satisfies AugmentationSet<ILoggerFactory>;
+
+// The `createLogger` merge strategy: the convenience form takes a type
+// (constructor); the primitive takes a category-name string.
+const factoryMerge = {
+  createLogger(original, extension) {
+    return function(this: ILoggerFactory, first: unknown, ...rest: unknown[]) {
+      if (typeof first === 'function') {
+        return extension(this, first, ...rest);
+      }
+      return original.call(this, first, ...rest);
+    };
+  },
+} satisfies MergeStrategies;
+
+registerAugmentations(nameof<ILoggerFactory>(), LoggerFactoryExtensions, factoryMerge);

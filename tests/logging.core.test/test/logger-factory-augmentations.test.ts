@@ -1,12 +1,16 @@
 // LoggerFactoryExtensions — the type-receiving `createLogger` wrapper
 // (black-box via the public logging.core surface; the concrete factories come
-// from @rhombus-std/logging). The set is standalone-only by design: its one
-// member's name IS ILoggerFactory's own `createLogger` primitive, so it is
-// never registered or prototype-installed (§29/§40 exclusion precedent).
+// from @rhombus-std/logging). Its member shares ILoggerFactory's own
+// `createLogger` primitive name, so it installs as a DISPATCHER over the
+// primitive: a type (constructor) routes to the wrapper, a category string to
+// the primitive — dot-callable at runtime on any decorated factory.
 
 import { LoggerFactory, NullLogger, NullLoggerFactory } from '@rhombus-std/logging';
 import { type ILogger, type ILoggerFactory, LoggerFactoryExtensions } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
+
+/** The method-form surface `@augment` installs at runtime (not statically typed, §36 + TS2430). */
+type WithTypeCreateLogger = { createLogger(type: abstract new(...args: never) => unknown): ILogger; };
 
 class OrderProcessor {}
 abstract class PaymentGateway {}
@@ -42,13 +46,25 @@ describe('LoggerFactoryExtensions.createLogger', () => {
     expect(logger).toBe(NullLogger.instance);
   });
 
-  test("is standalone-only: the concrete factories' own createLogger survives un-clobbered", () => {
-    // If the member had been prototype-installed it would have overwritten
-    // LoggerFactory's own `createLogger`, and this plain string call would
-    // recurse into the installed thunk forever.
+  test('the primitive createLogger(string) still works (a string routes to the primitive, no recursion)', () => {
     const factory = new LoggerFactory();
     const logger = factory.createLogger('plain-category');
     expect(logger).toBeDefined();
     expect(Object.getOwnPropertyNames(LoggerFactory.prototype)).toContain('createLogger');
+  });
+
+  test('the convenience form is dot-callable on a decorated factory (a type routes to the wrapper)', () => {
+    const factory = new LoggerFactory() as LoggerFactory & WithTypeCreateLogger;
+
+    // Passing a constructor routes to the wrapper, which derives the category
+    // from the class name — the same logger the string form caches.
+    const viaType = factory.createLogger(OrderProcessor);
+    const viaName = factory.createLogger('OrderProcessor');
+    expect(viaType).toBe(viaName);
+  });
+
+  test('NullLoggerFactory dispatches the type form to the shared no-op logger', () => {
+    const factory = NullLoggerFactory.instance as NullLoggerFactory & WithTypeCreateLogger;
+    expect(factory.createLogger(OrderProcessor)).toBe(NullLogger.instance);
   });
 });

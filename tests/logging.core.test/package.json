@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@rhombus-std/logging": "workspace:*",
-    "@rhombus-std/logging.core": "workspace:*"
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   }
 }
