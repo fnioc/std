@@ -208,6 +208,25 @@
         "@rhombus-std/config": "workspace:^",
       },
     },
+    "libraries/config.ini": {
+      "name": "@rhombus-std/config.ini",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/config.file": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/primitives.transformer": "workspace:*",
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.9.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/config": "workspace:^",
+      },
+    },
     "libraries/config.json": {
       "name": "@rhombus-std/config.json",
       "version": "0.0.0",
@@ -644,6 +663,15 @@
         "@rhombus-std/fileproviders.physical": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
+      },
+    },
+    "tests/config.ini.test": {
+      "name": "@rhombus-std/config.ini.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.ini": "workspace:*",
+        "@rhombus-std/fileproviders.physical": "workspace:*",
       },
     },
     "tests/config.json.test": {
@@ -1288,6 +1316,10 @@
     "@rhombus-std/config.file": ["@rhombus-std/config.file@workspace:libraries/config.file"],
 
     "@rhombus-std/config.file.test": ["@rhombus-std/config.file.test@workspace:tests/config.file.test"],
+
+    "@rhombus-std/config.ini": ["@rhombus-std/config.ini@workspace:libraries/config.ini"],
+
+    "@rhombus-std/config.ini.test": ["@rhombus-std/config.ini.test@workspace:tests/config.ini.test"],
 
     "@rhombus-std/config.json": ["@rhombus-std/config.json@workspace:libraries/config.json"],
 
