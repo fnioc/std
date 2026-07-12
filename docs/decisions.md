@@ -2971,6 +2971,7 @@ complete, every runtime library is dist-referenced.**
   build`/`test`/`lint` all exit 0, including the config provider suites (`config.json`/`env`/
   `commandline`), `config.tests.integration`'s "augmentations are installed on the dist
   ConfigurationBuilder" assertions, and the §16 `examples.app.*` byte-diff e2e.
+
 ## 79. Augmentation collision model — delta install + blind prototype merge
 
 The registry (§38) installs augmentation members onto a class prototype (the TS
