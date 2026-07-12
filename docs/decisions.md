@@ -2843,3 +2843,55 @@ The features where options goes beyond the reference are catalogued in
 `docs/options-beyond-reference.md`. No public type or signature in `options`/`options.augmentations`
 changed, so no referencing library (`di.transformer.options`, `diagnostics`,
 `logging.configuration`, `hosting`) is affected.
+
+## 77. `logging` (core/config only): ME public-API alignment pass — #129
+
+The public/abstract type-set of the logging family (`logging.core` / `logging` /
+`logging.configuration`) already corresponds to the reference (`ME.Logging.Abstractions` /
+`ME.Logging` / `ME.Logging.Configuration`) — no new public type is warranted, and both candidates the
+#129 triage surfaced were already resolved by earlier work and are live/consumed. The alignment pass is
+a reconciliation plus recording divergences, not new types. The three intentional pending-integration
+stubs (`setMinimumLevel`, `clearProviders`, `LoggerFactory.create`, all throwing, await #75/§18) and all
+provider-facing abstractions (out of scope) stay untouched.
+
+- **`NullLogger<T>` is NOT a gap (contested call, resolved to no-op).** The reference splits
+  `NullLogger` and `NullLogger<T>`; here `ILogger<TCategoryName = unknown>` is a **phantom**-param
+  interface (`TCategoryName` appears in no member, §logger.ts), so `ILogger<A>` and `ILogger<B>` are
+  structurally identical and `NullLogger.instance` (typed `ILogger`) is already assignable to
+  `ILogger<T>` for every `T`. A `NullLogger<T>` would add zero capability; and it cannot even be
+  authored beside the existing `NullLogger` (two same-named classes of differing arity are a TS
+  duplicate-identifier error, and a static `instance` cannot reference a class type parameter). Done
+  correctly it collapses to a phantom-param rename of the existing singleton — YAGNI. Reopen only if a
+  member ever actually uses the category type parameter.
+
+- **Candidate (1): the `LoggerFilterOptions` binding is already lazy and reload-reactive (no work).**
+  `logging.configuration`'s `addConfiguration` installs the `Options<LoggerFilterOptions>` pipeline
+  through `options.augmentations` — an `addOptions` assembly + a `LoggerFilterConfigureOptions`
+  configure step + a `ConfigurationChangeTokenSource` at the change-token-source slot — so nothing
+  binds until the assembly materializes and a configuration reload re-runs the parse. The triage's
+  "binds eagerly, stale blame comment" premise was resolved by #162; the header comment already reads
+  "faithful LAZY pipeline … a configuration reload re-runs it." The ported-but-unconsumed
+  `LoggerFilterRule` selection is reachable and consumed at log time — `LoggerFactory` subscribes to
+  the options change token and re-selects via `LoggerRuleSelector.select(...)`. Reopen trigger: a
+  black-box e2e showing a config-file level change does NOT re-filter a live logger.
+
+- **Candidate (2): the generic category-logger trio is present, non-reflective (no work).** `ILogger<T>`
+  (phantom param), `Logger<T>` (category from the DI token's type-name segment, not `typeof(T)`), the
+  open `ILogger<$1> -> Logger<$1>` registration, and `createLogger(factory, type) -> factory.createLogger(type.name)`
+  are all live (#162). `CreateLogger<T>()` is deliberately transformer sugar (no-transformer-first). See
+  the `NullLogger<T>` note above for why the trio's `NullLogger<T>` member is not a gap.
+
+- **`LoggerFactoryOptions` / `ActivityTrackingOptions` / `LoggingBuilderExtensions.Configure` stay
+  unported (divergence recorded).** Their sole purpose is `Activity`-based scope enrichment; this port
+  drops the entire Activity/ActivitySource/Meter runtime (§17/§61). An options bag whose only field can
+  never be populated is dead surface. Rationale previously lived only in a `LoggerFactory.ts` inline
+  comment; recorded here so the logging-side consequence is discoverable from decisions.md, not just
+  the diagnostics family. Reopen only if an `Activity`/`ActivitySource` analog is ever ported.
+
+The enhancements where logging goes beyond the reference (string DI tokens, the token-derived
+generic-category logger, dual-export augmentations on `ILoggingBuilder`/`LoggerFilterOptions`, the
+`Disposable`/`Symbol.dispose` convention, `FormattedLogValues` as a first-class export, the collapsed
+convenience-wrapper overloads, and the reload-reactive converged filter-options pipeline) are
+catalogued in `docs/logging-beyond-reference.md`. No public type or signature in
+`logging.core`/`logging`/`logging.configuration` changed, so no referencing library (`hosting.core`/
+`hosting`, `diagnostics`) is affected.
