@@ -16,13 +16,11 @@
     "directory": "libraries/config.core"
   },
   "type": "module",
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
-      "bun": "./src/index.ts",
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.d.ts"
     }
   },
   "files": [
