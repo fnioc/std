@@ -80,12 +80,15 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
   re-exports it), `registerAugmentations(token, set, merge?)` (per-token bag holding a per-name LIST
   of contributions — a second same-name registration ACCUMULATES, never throws at registration;
-  notifies an `EventTarget` bus), and the `@augment(token)` class decorator that DELTA-installs (§73):
+  notifies a per-token SYNCHRONOUS subscriber list, deliberately NOT an `EventTarget` bus — a
+  strategy-less collision THROWS from install and `EventTarget.dispatchEvent` would swallow it, so
+  iterating subscribers directly lets the throw reach the registrant, §78), and the `@augment(token)`
+  class decorator that DELTA-installs (§78):
   on first application it catches up on the accumulated bag once, and each later registration installs
   only its own `set` onto the prototype — never the whole bag again, so a member on a heavily-shared
   token installs exactly once per class. Collision is resolved BLIND at install time (no token/receiver/
   member identity): a name already taken on the prototype with NO `merge` strategy THROWS (never a
-  silent clobber), and with a `MergeStrategy` (per member name, §73) installs a dispatcher chaining the
+  silent clobber), and with a `MergeStrategy` (per member name, §78) installs a dispatcher chaining the
   incoming over the existing — letting an augmentation share a name with the class's own primitive
   (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger`, and `di`'s
   `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
