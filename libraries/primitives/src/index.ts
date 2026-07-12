@@ -8,7 +8,7 @@ export { AbortController, neverSignal } from './abort.js';
 export type { AbortControllerConstructor, AbortSignal } from './abort.js';
 export { augment, registerAugmentations } from './augmentation-registry.js';
 export { applyAugmentations } from './augmentations.js';
-export type { AugmentationSet } from './augmentations.js';
+export type { AugmentationSet, MergeStrategies, MergeStrategy } from './augmentations.js';
 export { CancellationChangeToken } from './CancellationChangeToken.js';
 export { CompositeChangeToken } from './CompositeChangeToken.js';
 export type { IChangeToken } from './IChangeToken.js';

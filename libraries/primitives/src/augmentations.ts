@@ -26,6 +26,21 @@
 // unaware (di ⊥ config, §4.3): `di.core` is disqualified as the home because
 // the config-provider packages would then need a config→di edge just to
 // reach the installer.
+//
+// COLLISION MODEL (docs/decisions.md §73). Installing a member onto a prototype
+// is a BLIND merge -- no tokens, no receivers, no member identity enter the
+// decision. The only question `installMember` asks is "is a member already
+// mounted at this name?":
+//   - name FREE  -> mount the `this`-forwarding thunk.
+//   - name TAKEN -> a genuinely different registration is colliding (the class's
+//     own primitive, a base-class member, or a member a different token/set
+//     already installed onto this same prototype). With a `merge` strategy for
+//     the name, mount a DISPATCHER chaining the incoming over the existing;
+//     WITHOUT one, THROW rather than silently clobber.
+// Nothing is ever installed twice over itself: the registry drives installs as
+// deltas (each registration's own members, once), so a member reaches a given
+// prototype exactly once. There is therefore no idempotency/marker bookkeeping
+// here -- a second arrival at a taken name is, by construction, a real collision.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -33,9 +48,34 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 export type AugmentationSet<R> = Record<string, Func<[receiver: R, ...args: any[]], unknown>>;
 
 /**
+ * A collision resolver for a single augmented member whose name is already
+ * taken on the receiver prototype -- the class's own primitive, or a member an
+ * earlier registration mounted. It is handed:
+ *
+ *   - `original` -- the member currently occupying the slot, adapted to a
+ *     `this`-bound method. Call it as `original.call(this, ...args)`.
+ *   - `extension` -- the incoming augmentation function, receiver-first. Call it
+ *     as `extension(this, ...args)`.
+ *
+ * and returns the DISPATCHER method that replaces the slot: a pure filter that
+ * routes a call to `extension` when the arguments match the extension's own
+ * signature, and to `original` otherwise. Routing the primitive-shaped call to
+ * `original` is what keeps a wrapper (which typically re-enters the receiver
+ * method in primitive shape) from recursing into itself.
+ */
+export type MergeStrategy = (
+  original: (this: any, ...args: any[]) => unknown,
+  extension: Func<[receiver: any, ...args: any[]], unknown>,
+) => (this: any, ...args: any[]) => unknown;
+
+/** Per-member collision resolvers, keyed by the augmentation member name. */
+export type MergeStrategies = Record<string, MergeStrategy>;
+
+/**
  * Dumb installer: mounts each augmentation onto `Ctor.prototype` as a
- * `this`-forwarding method. No validation -- only a library author calls this.
- * The forwarding thunk MUST `return` so fluent chaining survives.
+ * `this`-forwarding method. Only a library author calls this. The forwarding
+ * thunk MUST `return` so fluent chaining survives. Collisions are resolved by
+ * `merge` (a per-name strategy) or refused -- see `installMember`.
  *
  * `R` is constrained to an actual constructor and the receiver is derived via
  * `InstanceType<R>`, so `Ctor.prototype` is directly typed -- no casts. Call
@@ -44,8 +84,9 @@ export type AugmentationSet<R> = Record<string, Func<[receiver: R, ...args: any[
 export function applyAugmentations<R extends Ctor<any[], any>>(
   Ctor: R,
   augmentations: AugmentationSet<InstanceType<R>>,
+  merge?: MergeStrategies,
 ): void {
-  installSet(Ctor, augmentations);
+  installSet(Ctor, augmentations, merge);
 }
 
 /**
@@ -53,10 +94,6 @@ export function applyAugmentations<R extends Ctor<any[], any>>(
  * (`applyAugmentations` and the augmentation registry). Mounts each
  * receiver-first function onto `Ctor.prototype` as a `this`-forwarding method
  * that returns the callee's result (so fluent chaining survives).
- *
- * Idempotent: re-installing the same set overwrites each prototype slot with an
- * identical thunk, so the registry can pull a token's full bag repeatedly as
- * later augmentations register.
  *
  * Typed loosely (constructor + bare-function set) because the registry mounts
  * bags keyed by an erased `Token`, where the exact receiver type is not
@@ -66,16 +103,46 @@ export function applyAugmentations<R extends Ctor<any[], any>>(
 export function installSet(
   Ctor: Ctor<any[], any>,
   augmentations: AugmentationSet<any>,
+  merge?: MergeStrategies,
 ): void {
-  Object.assign(
-    Ctor.prototype,
-    Object.fromEntries(
-      Object.entries(augmentations).map(([name, fn]) => [
-        name,
-        function(this: any, ...args: any[]) {
-          return fn(this, ...args);
-        },
-      ]),
-    ),
-  );
+  const proto = Ctor.prototype as Record<PropertyKey, any>;
+  for (const [name, extension] of Object.entries(augmentations)) {
+    installMember(Ctor, proto, name, extension, merge?.[name]);
+  }
+}
+
+/**
+ * Mounts one augmentation member with a BLIND merge (docs §73):
+ *   - name free       -> a plain `this`-forwarding thunk.
+ *   - name taken + strategy -> a dispatcher chaining the incoming over whatever
+ *     already occupies the slot (the primitive, or a prior installation).
+ *   - name taken + no strategy -> THROW, never clobber.
+ * No token/receiver/member identity is consulted -- the sole input is whether
+ * the name is already taken.
+ */
+function installMember(
+  Ctor: Ctor<any[], any>,
+  proto: Record<PropertyKey, any>,
+  name: string,
+  extension: Func<[receiver: any, ...args: any[]], unknown>,
+  strategy: MergeStrategy | undefined,
+): void {
+  if (!(name in proto)) {
+    proto[name] = function(this: any, ...args: any[]) {
+      return extension(this, ...args);
+    };
+    return;
+  }
+
+  if (strategy === undefined) {
+    throw new Error(
+      `augmentation "${name}" collides on ${Ctor.name} — supply a merge strategy`,
+    );
+  }
+
+  const existing = proto[name] as (this: any, ...args: any[]) => unknown;
+  const original = function(this: any, ...args: any[]) {
+    return existing.call(this, ...args);
+  };
+  proto[name] = strategy(original, extension);
 }
