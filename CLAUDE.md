@@ -41,7 +41,7 @@ Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` 
 
 - **`bun run build` (topological), never `bun --filter '*' build`.** It runs
   `scripts/build-all.ts`. Transformer-active packages resolve their upstream through the `built`
-  d.ts condition, not source (see [Build layout](#build-layout--source-libs-with-a-built-exception)),
+  d.ts condition, not source (see [Build layout](#build-layout--dist-referencing-in-progress-72)),
   so the upstream `dist` must be complete and stable before they compile — a flat parallel build
   races and silently mis-resolves. `build-all` tiers the workspace by its dependency graph and
   finishes each tier before the next (§1/§9).
@@ -113,9 +113,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   OPEN `IConfigureOptions`/`IOptionsChangeTokenSource`-style step for a type it doesn't own; its
   `validateOnStart` manifest verb (§55) and DI-injected `configure`/`postConfigure`/`validate`
   overloads (a token-tuple + tuple-typed callback, §64) round out the pipeline.
-- **`config`** — `config.core` (the `IConfiguration*` types + one runtime export, the
-  `IConfigurationBuilder` augmentation token — no longer pure-types, §38 — plus the shared
-  `properties` key/value bag between a builder and its sources, §59) ← `config` (builder/root/section
+- **`config`** — `config.core` (the `IConfiguration*` types — pure types, zero runtime emit, so it
+  is dist-referenced as `dist/index.d.ts` only, §72 — plus the shared `properties` key/value bag
+  between a builder and its sources, §59) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigurationManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigurationProvider#toString` gives `getDebugView` a friendly
   provider label, §33; `ChainedConfigurationSource`/`ChainedConfigurationProvider` wrap an
@@ -306,32 +306,43 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
 (`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
 
-## Build layout — source-libs, with a `built` exception
+## Build layout — dist-referencing, in progress (§72)
 
-**Src-referencing rule.** Only **d.ts-only** libs (zero runtime emit — in practice the `*.core`
-abstraction libs, but the rule keys on the property, not the name) may be _src-referenced_: expose
-the `.` export's `source`/`bun`/`types` conditions pointing at `./src/*.ts`. A lib that emits
-runtime `.js` must be _dist-referenced_ — its type-facing conditions resolve to the rolled
-`./dist/*.d.ts`, so in-repo consumers see the same sealed surface a published consumer does.
-Src-referencing a runtime lib is what forces the `built` condition (below): the consumer's
-typecheck sees raw pre-augmentation source, which the impl classes can't satisfy once a transformer
-augmentation merges in. `config.core` is the model; `di.core` ships runtime (§9) and so does
-**not** qualify despite its name. **Not yet enforced — most runtime libs are still src-referenced;
-tracked in #68.**
+**The target invariant (not yet universal): every package is dist-referenced.** Type-facing
+`exports` conditions resolve the rolled `./dist/*.d.ts`, and runtime resolves the bundled
+`./dist/*.js`, so an in-repo consumer typechecks and runs against the same sealed surface a
+published consumer gets — never raw `.ts` source. The old src-referencing rule (a `.` export's
+`source`/`bun`/`types` conditions pointing at `./src/*.ts`, permitted only for d.ts-only libs) is
+being retired package by package; see §72 in `docs/decisions.md` for why and for the current
+front line. **`internal/*` deliberately stays src-referenced** — white-box tests need it, and there
+is no rolled per-file `.d.ts` for it to resolve to instead.
 
-Mechanically: packages consume each other's raw TS `src` via `workspace:*` + `exports` whose
-`source`/`bun`/`types` conditions point at `.ts`, under `moduleResolution: bundler`. The
-`import`/`default` conditions point at built `dist` — what published consumers resolve.
+**Landed:** `primitives`, `options`, `fileproviders.core`, `fileproviders.composite`,
+`config.core` — `.`-export type-facing conditions (and, for the four runtime libs among them,
+`bun`) point at `dist`; root `main`/`types` point at `dist`.
 
-Two deviations, both because a **transformer** is in play:
+**Not yet landed — the di family (`di`, `di.core`) and everything past it in dependency order**
+still carry `source`/`types`→`src` plus the `built` custom condition. `built` exists because a
+program that pulls a transformer's `declare module` augmentation into scope (via its `tsconfig`
+`types` array) cannot co-compile di's _source_ — the impl classes stop satisfying their interfaces
+once the authored 0-arg forms are merged in — so such consumers set `customConditions: ["built"]`
+to read di's rolled `.d.ts` instead of its source, reproducing how a real published consumer sees
+it. Flipping di/di.core's `types` straight to dist looked like it made `built` redundant, but it
+exposed a **runtime augmentation-token desync** (§72): di.core's own self-augmentation derives its
+`@augment` token from whichever condition its _own_ build sees (still-src at that point → a
+file-path token), while every external registrant resolves di.core's already-built dist → a
+barrel token. The two stop matching and the `ServiceManifest` augmentation (`build`,
+`addHostedService`, `tryAdd*`, …) silently fails to install — a runtime break invisible to
+`tsc --noEmit`, only caught by the test gate. `built` therefore stays until that desync has a
+design fix; do not flip di/di.core's `types` without one (§72 lists the candidate fixes).
 
-- **The `built` condition.** A program that pulls a transformer's `declare module` augmentation
-  into scope (via its `tsconfig` `types` array) cannot co-compile di's _source_ — the impl classes
-  stop satisfying their interfaces once the authored 0-arg forms are merged in. Such packages set
-  `customConditions: ["built"]`, so the di family resolves to its rolled `.d.ts` instead —
-  reproducing how a real published consumer sees di. This is why build order matters and why
-  `bun run build` is mandatory over a flat parallel build (§1/§9). This per-consumer opt-in is the
-  interim hatch the src-referencing rule above will retire (#68).
+Mechanically, for packages not yet converted: they consume each other's raw TS `src` via
+`workspace:*` + `exports` whose `source`/`bun`/`types` conditions point at `.ts`, under
+`moduleResolution: bundler`. The `import`/`default` conditions point at built `dist` — what
+published consumers resolve.
+
+One further deviation, because a **transformer** is in play:
+
 - **`tspc`, not `tsc`.** Transformer-active packages build/typecheck with `tspc` (ts-patch), wired
   per-package: a `plugins: [{ transform, import }]` entry in `tsconfig.json` plus the `types` array
   bringing the augmentation into the program. `ts-patch`, `rollup`, and `rollup-plugin-dts` live at

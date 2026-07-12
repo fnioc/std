@@ -2487,3 +2487,68 @@ grammar, and merge-identity rule it describes are otherwise unchanged.
   hand-authored: `@rhombus-std/config`'s `./configuration-builder`/`./configuration-manager` alias
   subpaths collapse onto the rolled `dist/index.*` bundle at publish, which no path-swap of their
   dev targets reproduces.
+
+## 72. Dist-referencing lands for the leaf tiers; the di family stays src-referenced pending a token-desync fix
+
+§9's original src-referencing rule (pure-types libs may point their `.` export at `./src/*.ts`;
+runtime-emitting libs must be dist-referenced) was never fully enforced — most runtime libs stayed
+src-referenced behind the `built` custom condition, tracked as #68. This entry records the first
+real retirement pass: it converted the leaf tiers cleanly, then hit a genuine blocker converting
+the di family and stopped there rather than ship a silently-broken runtime.
+
+- **Landed — tiers 1–2.** `primitives` (tier 1) and `options` / `fileproviders.core` /
+  `fileproviders.composite` / `config.core` (tier 2) had their `.` export's type-facing conditions
+  (and, for the four runtime-emitting libs among them, the `bun` condition) repointed from
+  `./src/*.ts` to the rolled `./dist/*.d.ts` / `./dist/*.js`, and their root `main`/`types` fields
+  to match. `config.core` — pure types, zero runtime emit — collapses to a `{types, default}`
+  pair over `dist/index.d.ts` alone, correcting the stale §9/family-digest text that called it
+  "no longer pure-types" (that description described a transitional state, not the current one).
+  Each tier's `bun run build` and the full `bun run test` gate passed clean (0 failures) before
+  advancing to the next; `scripts/derive-publish-config.ts --write` reported no drift at either
+  tier, confirming `publishConfig.exports` was already dist-shaped as the src-referencing rule
+  anticipated. `internal/*` deliberately stays src-referenced throughout — white-box tests need it
+  and there is no rolled per-file `.d.ts` for it to resolve to instead.
+- **Blocked — tier 3 (`di`, `di.core`) and everything past it in dependency order.** Flipping
+  `di.core`'s `types` condition to dist makes `bun run build` (`tsc --noEmit`) pass, but breaks 223
+  runtime tests. The failure is not the type-level `declare module` incompatibility the `built`
+  condition exists to prevent — types merge fine. It's a **runtime augmentation-token desync**: a
+  package's public augmentation token (§40's `nameof<Interface>()` → `<declaring-package>:<TypeName>`
+  derivation) is computed by walking that package's OWN resolved `exports` conditions
+  (`primitives.transformer`'s `resolveConditionTargets`, over
+  `['types','import','module','default','require','node','bun']`). Once `di.core`'s conditions
+  point at dist, `di.core`'s _own_ build — compiling before its own `dist/index.d.ts` exists —
+  can't find itself through those conditions and falls back to a Tier-2 file-path token
+  (`@rhombus-std/di.core/src/service-manifest:ServiceManifest`) for its own `@augment` self-
+  decoration. Every _external_ registrant (the `di` runtime, `hosting.core`, `logging.core`, …)
+  resolves `di.core` through its already-built dist and gets the intended Tier-1 barrel token
+  (`@rhombus-std/di.core:ServiceManifest`) instead. The two forms never match, so no
+  `ServiceManifest` augmentation installs — `build`, `addHostedService`, `tryAdd*`,
+  `addLogging`, `addMetrics`, and everything else registered against `ServiceManifest` silently
+  disappears at runtime. This only trips on a package that both ships runtime AND self-augments
+  its own public receiver — `di.core` today, and, if converted the same way,
+  `diagnostics.core`/`config`/`hosting.core`/`logging.core` next, each of which `declare module`s
+  its own public name. `bun run build` cannot see this class of break; only the `bun run test`
+  gate catches it, which is why the tsc-detectable-break premise in the pass's own plan understated
+  the risk for these packages specifically.
+  - A secondary, narrower problem surfaces first and has a known fix: `di.core` also fails to
+    _typecheck_ its own `declare module '@rhombus-std/di.core'` self-augmentation once `types`→dist,
+    because self-name resolution hits a dist that doesn't exist yet during `di.core`'s own build
+    (TS2664). A package-unique `di-core-source` custom condition (not the shared `source`
+    condition — that would pull every downstream consumer of `di.core` — logging.core,
+    hosting.core, diagnostics.core — into co-compiling `di.core` source too) fixes the typecheck.
+    It does **not** fix the token desync above, because `resolveConditionTargets` doesn't consult
+    custom conditions at all.
+- **Standing direction, per owner: full retirement (#68 stays open).** The candidates for
+  resolving the token desync — teach `resolveConditionTargets` to derive a package's own
+  augmentation token from a src-pointing condition regardless of what its published conditions
+  currently resolve to (correct, but must land byte-identically in both the ts-patch/TS5 engine
+  and the Go/`ttsc` engine per §41's parity invariant); hard-code the barrel token literally at
+  each self-augmenting core's `@augment`/`registerAugmentations` call (narrower, but a deviation
+  from §40's no-literal-tokens rule, and needed at every self-augmenting core, not just di.core);
+  or leave the di family (and other self-augmenting cores) permanently src-referenced and scope
+  full retirement down to non-self-augmenting libs — are each design-significant enough that they
+  were left for separate resolution rather than picked under this pass. Until one lands, `di` /
+  `di.core` and the packages tiered after them keep `source`/`types`→`src` plus
+  `customConditions: ["built"]`, and the `built` condition's plan-of-record ("interim hatch the
+  src-referencing rule will retire, #68") in §9's forebear section is only half superseded — true
+  for the tiers this entry converted, still load-bearing for the rest.
