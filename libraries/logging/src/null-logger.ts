@@ -14,15 +14,26 @@ const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
 // Class-side type merge for the registry-installed `LoggerExtensions` methods
 // — see ./logger.ts; same §36 reasoning (no ILogger interface merge).
-export interface NullLogger extends LoggerExtensionMethods {}
+export interface NullLogger<T = unknown> extends LoggerExtensionMethods {}
 
-/** A minimalistic {@link ILogger} that does nothing. */
+/**
+ * A minimalistic {@link ILogger} that does nothing.
+ *
+ * The optional `T` is the port of the reference's separate generic `NullLogger<T>`.
+ * `ILogger<TCategoryName>`'s parameter is a phantom marker (see ./logger.ts), so
+ * the bare `NullLogger` (= `NullLogger<unknown>`) and any `NullLogger<T>` are the
+ * structurally-identical no-op — `T` buys the reference-parity spelling, not new
+ * behavior. The shared {@link NullLogger.instance} singleton stays typed
+ * `NullLogger<unknown>` (a static member cannot reference the class type parameter)
+ * and, because `T` is phantom, is already assignable to every `ILogger<T>` slot;
+ * `new NullLogger<Foo>()` hands a freshly-typed no-op to callers that want one.
+ */
 @augment(nameof<ILogger>())
-export class NullLogger implements ILogger {
-  /** The shared no-op logger instance. */
+export class NullLogger<T = unknown> implements ILogger<T> {
+  /** The shared no-op logger instance, typed `NullLogger<unknown>`. */
   public static readonly instance: NullLogger = new NullLogger();
 
-  private constructor() {}
+  public constructor() {}
 
   public log<TState>(
     _logLevel: LogLevel,
