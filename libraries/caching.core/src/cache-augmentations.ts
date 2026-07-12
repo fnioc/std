@@ -3,8 +3,8 @@
 // augmentation object literal (docs §28/§38), one member per reference static
 // method, receiver-first. The members build only on the three core
 // `IMemoryCache` members (`tryGetValue`/`createEntry`/`remove`). `tryGetValue`
-// is a member of the literal but is NOT prototype-installed (see
-// caching.memory's cache-augmentations.ts).
+// shares its name with the primitive, so it installs as a dispatcher that routes
+// to the primitive (see the registration below).
 //
 // Collapsing the reference overloads:
 //   - `Get` and `Get<TItem>` collapse into one generic `get<T>` (TS cannot
@@ -25,7 +25,8 @@
 // `MemoryCacheEntryOptions` now lives in caching.core (as ME has it), so the
 // options TYPE is in scope here.
 
-import { type AugmentationSet, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet, type IChangeToken, type MergeStrategies,
+  registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
 import { CacheEntryExtensions } from './cache-entry-augmentations';
@@ -218,8 +219,12 @@ export const CacheExtensions = {
 
 // The method-form surface merged onto IMemoryCache (docs §28/§38): the concrete
 // MemoryCache downstream is decorated `@augment(nameof<IMemoryCache>())` and pulls
-// these onto its prototype. `tryGetValue` is absent -- IMemoryCache already
-// declares it (the primitive the wrapper builds on); see the registration below.
+// these onto its prototype. `tryGetValue` is absent here: it shares its name with
+// the IMemoryCache primitive (which the class declares in its body), so TS forbids
+// merging a value-typed convenience overload onto it (TS2430). It still installs as
+// a dispatcher that routes to the primitive (runtime-identical — the wrapper only
+// re-casts the tuple's value type), so the primitive's `tryGetValue(key)` already
+// covers the method form; a value-typed read uses the standalone `tryGetValue<T>`.
 declare module './memory-cache' {
   interface IMemoryCache {
     get<T = unknown>(key: unknown): T | undefined;
@@ -244,10 +249,17 @@ declare module './memory-cache' {
 }
 
 // Self-registration for the OPEN `IMemoryCache` receiver (docs §38). `tryGetValue`
-// is a member of `CacheExtensions` (its standalone surface) but is deliberately
-// NOT prototype-installed: IMemoryCache already declares the `tryGetValue`
-// primitive the wrapper builds on, so installing it would overwrite the real
-// implementation and the mounted thunk would recurse into itself. Omit it via a
-// rest destructure (TS exempts the rest-sibling from unused checks).
-const { tryGetValue: _tryGetValue, ...cacheInstanceMethods } = CacheExtensions;
-registerAugmentations(nameof<IMemoryCache>(), cacheInstanceMethods);
+// shares its name with IMemoryCache's own primitive, so the full set is registered
+// with a merge strategy that routes to the primitive: the convenience `tryGetValue`
+// and the primitive are runtime-identical (both take just `key` and return the
+// `[found, value]` tuple; the wrapper only re-casts the value type), so routing to
+// the primitive both keeps the method dot-callable and avoids the wrapper's own
+// `cache.tryGetValue(key)` call recursing through the dispatcher.
+const cacheMerge = {
+  tryGetValue(original, _extension) {
+    return function(this: IMemoryCache, ...args: unknown[]) {
+      return original.call(this, ...args);
+    };
+  },
+} satisfies MergeStrategies;
+registerAugmentations(nameof<IMemoryCache>(), CacheExtensions, cacheMerge);
