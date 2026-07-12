@@ -1,0 +1,57 @@
+{
+  "name": "@rhombus-std/fileproviders.physical",
+  "version": "0.0.0",
+  "description": "Disk-backed file provider ported from ME.FileProviders.Physical: PhysicalFileProvider serves IFileInfo/IDirectoryContents off the on-disk file system and watches exact files and directory prefixes for changes. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
+  "keywords": [
+    "fileproviders",
+    "filesystem",
+    "physical",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/fileproviders.physical"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "bun": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/fileproviders.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
