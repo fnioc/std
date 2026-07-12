@@ -107,13 +107,44 @@ describe('JsonConfigurationProvider', () => {
   });
 
   test('throws when the JSON root is a scalar', () => {
-    expect(() => rootFromFixture('scalar.json')).toThrow(/root must be an object or array/);
+    // A parse rejection now surfaces wrapped: the file base rethrows the
+    // parser's FormatError inside an InvalidDataError (naming the file), so
+    // the top-level-element message lives on the error chain, not the top.
+    expect(messageChain(catchOf(() => rootFromFixture('scalar.json'))))
+      .toMatch(/the top-level JSON element must be an object/);
   });
 
   test('throws when the JSON root is null', () => {
-    expect(() => rootFromFixture('null-root.json')).toThrow(/root must be an object or array/);
+    expect(messageChain(catchOf(() => rootFromFixture('null-root.json'))))
+      .toMatch(/the top-level JSON element must be an object/);
+  });
+
+  test('throws when the JSON root is a top-level array', () => {
+    expect(messageChain(catchOf(() => rootFromFixture('top-level-array.json'))))
+      .toMatch(/the top-level JSON element must be an object/);
   });
 });
+
+/** Runs `fn`, returning whatever it threw (or `undefined` if it didn't throw). */
+function catchOf(fn: () => unknown): unknown {
+  try {
+    fn();
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}
+
+/** Concatenates an error's message with each `cause` message down the chain. */
+function messageChain(error: unknown): string {
+  let chain = '';
+  let current: unknown = error;
+  while (current instanceof Error) {
+    chain += `${current.message}\n`;
+    current = current.cause;
+  }
+  return chain;
+}
 
 describe('JsonConfigurationProvider#toString', () => {
   test("includes the path and 'Required' when optional is not set", () => {

@@ -102,8 +102,9 @@ export abstract class FileConfigurationProvider extends ConfigurationProvider im
         this.loadContent(content);
       } catch (error) {
         this.data = reload ? new Map() : previous;
+        // Reference parity: the failure names the resolved physical path.
         this.#handleError(
-          new InvalidDataError(`Failed to load configuration from file '${this.#source.path}'.`, { cause: error }),
+          new InvalidDataError(`Failed to load configuration from file '${file.physicalPath}'.`, { cause: error }),
         );
       }
     }

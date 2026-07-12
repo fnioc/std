@@ -55,7 +55,14 @@ describe('JsonStreamConfigurationProvider', () => {
     const source = new JsonStreamConfigurationSource('42');
 
     expect(() => new ConfigurationBuilder().add(source).build())
-      .toThrow(/root must be an object or array/);
+      .toThrow(/the top-level JSON element must be an object/);
+  });
+
+  test('throws when the JSON root is a top-level array', () => {
+    const source = new JsonStreamConfigurationSource('[1, 2, 3]');
+
+    expect(() => new ConfigurationBuilder().add(source).build())
+      .toThrow(/the top-level JSON element must be an object/);
   });
 
   test("throws when the source's stream payload was never assigned", () => {
