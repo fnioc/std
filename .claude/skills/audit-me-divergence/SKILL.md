@@ -18,7 +18,7 @@ the reference drift.
 
 This is a **mirror-first** repo (`docs/decisions.md` §0): the port replicates the ME package graph
 edge-for-edge, then collapses distinctions only once shown unjustified. This audit is the ledger of
-*where and why* the two have parted — the raw material for the later "collapse away from ME" pass.
+_where and why_ the two have parted — the raw material for the later "collapse away from ME" pass.
 
 ## The reference source (never name it in a checked-in artifact)
 
@@ -41,12 +41,12 @@ and instruct them to emit **only** shorthand in their returns.
 
 The doc is a four-level outline. Each **leaf divergence** has the ID **`MED-F.A.T.D`**:
 
-| Level | Meaning | How its number is fixed |
-| --- | --- | --- |
-| **F** — family | one of the nine `@rhombus-std` families | **hard-coded** (table below); never changes |
-| **A** — area | a comparison unit in the family: an ME package that maps here, or one of our sub-packages with no ME analog (a `.transformer`) | ordinal after sorting all areas in the family by **identity string** (ME-shorthand namespace, or our package name), ascending code-point |
-| **T** — type | an ME type (interface/class/static holder) in that area; for no-analog areas, our own type | ordinal after sorting the area's types by **type name**, ascending |
-| **D** — divergence | one specific divergence on that type | ordinal after sorting the type's divergences by **slug**, ascending |
+| Level              | Meaning                                                                                                                        | How its number is fixed                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **F** — family     | one of the nine `@rhombus-std` families                                                                                        | **hard-coded** (table below); never changes                                                                                              |
+| **A** — area       | a comparison unit in the family: an ME package that maps here, or one of our sub-packages with no ME analog (a `.transformer`) | ordinal after sorting all areas in the family by **identity string** (ME-shorthand namespace, or our package name), ascending code-point |
+| **T** — type       | an ME type (interface/class/static holder) in that area; for no-analog areas, our own type                                     | ordinal after sorting the area's types by **type name**, ascending                                                                       |
+| **D** — divergence | one specific divergence on that type                                                                                           | ordinal after sorting the type's divergences by **slug**, ascending                                                                      |
 
 Other docs cite a divergence as **`MED-4.2.3.1`** (config family → area 2 → type 3 → divergence 1).
 
@@ -54,17 +54,17 @@ Other docs cite a divergence as **`MED-4.2.3.1`** (config family → area 2 → 
 
 Mirrors the order of the `## Architecture` section in the root `CLAUDE.md`.
 
-| F | Family | ME packages that map here |
-| --- | --- | --- |
-| 1 | `primitives` | ME.Primitives (change-token subset only) |
-| 2 | `di` | ME.DependencyInjection.Abstractions, ME.DependencyInjection (+ our `.transformer` areas, no analog) |
-| 3 | `options` | ME.Options, ME.Options.ConfigurationExtensions, ME.Options.DataAnnotations |
-| 4 | `config` | ME.Configuration(.Abstractions/.Binder/.FileExtensions) + providers (.Json/.EnvironmentVariables/.CommandLine) + our `config.transformer` |
-| 5 | `hosting` | ME.Hosting, ME.Hosting.Abstractions |
-| 6 | `diagnostics` | ME.Diagnostics, ME.Diagnostics.Abstractions |
-| 7 | `logging` | ME.Logging, ME.Logging.Abstractions, ME.Logging.Configuration |
-| 8 | `caching` | ME.Caching.Abstractions, ME.Caching.Memory |
-| 9 | `fileproviders` | ME.FileProviders.Abstractions, ME.FileProviders.Composite |
+| F | Family          | ME packages that map here                                                                                                                 |
+| - | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | `primitives`    | ME.Primitives (change-token subset only)                                                                                                  |
+| 2 | `di`            | ME.DependencyInjection.Abstractions, ME.DependencyInjection (+ our `.transformer` areas, no analog)                                       |
+| 3 | `options`       | ME.Options, ME.Options.ConfigurationExtensions, ME.Options.DataAnnotations                                                                |
+| 4 | `config`        | ME.Configuration(.Abstractions/.Binder/.FileExtensions) + providers (.Json/.EnvironmentVariables/.CommandLine) + our `config.transformer` |
+| 5 | `hosting`       | ME.Hosting, ME.Hosting.Abstractions                                                                                                       |
+| 6 | `diagnostics`   | ME.Diagnostics, ME.Diagnostics.Abstractions                                                                                               |
+| 7 | `logging`       | ME.Logging, ME.Logging.Abstractions, ME.Logging.Configuration                                                                             |
+| 8 | `caching`       | ME.Caching.Abstractions, ME.Caching.Memory                                                                                                |
+| 9 | `fileproviders` | ME.FileProviders.Abstractions, ME.FileProviders.Composite                                                                                 |
 
 ## The stability contract — append-only, never renumber
 
@@ -72,7 +72,7 @@ This is the load-bearing rule. A `MED-…` ID, once assigned, is **permanent**, 
 `decisions.md` §N number.
 
 - **Identity of a divergence** = `(F, area-identity, type-identity, slug)`. The **slug** is a short
-  kebab-case key derived from the *semantic content* of the divergence, not its wording
+  kebab-case key derived from the _semantic content_ of the divergence, not its wording
   (`keyed-services-omitted`, `options-snapshot-collapse`), so it survives prose edits.
 - **On a re-run, read the existing `docs/me-divergence.md` first.** Every divergence whose identity
   still matches keeps its exact number. Only genuinely new divergences are allocated numbers — the
@@ -88,7 +88,7 @@ This is the load-bearing rule. A `MED-…` ID, once assigned, is **permanent**, 
 
 ## What is a divergence (and what is not)
 
-Record a divergence when the port departs from the reference in a way a reader porting *from* ME
+Record a divergence when the port departs from the reference in a way a reader porting _from_ ME
 would want flagged. Tag each with a **kind**:
 
 - **`omission`** — an ME type/member/package intentionally not ported (YAGNI, no consumer, or a
@@ -102,13 +102,13 @@ would want flagged. Tag each with a **kind**:
 - **`addition`** — something in our port with **no** ME analog at all (the `.transformer` families,
   the dual-export extension installer, `internal/*` white-box exports).
 
-**Do NOT itemize — catalogue each such *class* once in the appendix instead (see below):**
+**Do NOT itemize — catalogue each such _class_ once in the appendix instead (see below):**
 
 - **Mechanical / cosmetic differences** — uniform across the whole port; listing each would bury the
   signal. If in doubt whether something is mechanical, it is mechanical.
-- **Reference-deprecated surface** — a reference type/member the reference *itself* marks `[Obsolete]`
+- **Reference-deprecated surface** — a reference type/member the reference _itself_ marks `[Obsolete]`
   (especially `error: true`) that the port omits. The reference is retiring it, so not porting it
-  needs no per-item justification. (A reference-`[Obsolete]` member the port nonetheless *ported*, or
+  needs no per-item justification. (A reference-`[Obsolete]` member the port nonetheless _ported_, or
   one whose omission actually changes behaviour, is still a normal divergence.)
 
 ## Run procedure
@@ -130,7 +130,7 @@ would want flagged. Tag each with a **kind**:
 
 ## The appendix (mechanical classes deliberately skipped)
 
-`docs/me-divergence.md` ends with an appendix listing the difference *classes* the audit skips
+`docs/me-divergence.md` ends with an appendix listing the difference _classes_ the audit skips
 wholesale, so a reader knows they were considered and are intentional, not missed. Keep this list
 current; it includes at least: file/dir casing (`PascalCase.cs` → kebab/camel `.ts`),
 namespace→package rename (per the `me-port-naming-map` memory), C# `namespace`/`using` mechanics,
