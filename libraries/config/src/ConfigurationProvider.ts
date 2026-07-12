@@ -33,8 +33,21 @@ function segment(key: string, prefixLength: number): string {
  * served from the store here.
  */
 export abstract class ConfigurationProvider implements IConfigurationProvider {
-  /** lowercased-key -> [original-cased key, value]. */
-  protected readonly data = new Map<string, [key: string, value: string]>();
+  /**
+   * lowercased-key -> [original-cased key, value].
+   *
+   * NOT `readonly` (#86): a provider may reset its store either in place
+   * (`this.data.clear()`) or by wholesale reassignment (`this.data = new
+   * Map()`). The reference's file providers reload via the reassignment idiom
+   * (`Data = newDict`), and {@link FileConfigurationProvider} relies on it to
+   * swap in a freshly-parsed store atomically and restore the previous one if
+   * a non-reload parse fails -- which an in-place `clear()` cannot express,
+   * since it destroys the previous store. The base's own accessors always read
+   * `this.data`, so either idiom is observed. (#86's second half -- preserving
+   * a distinct null value vs. the empty string -- is unaddressed here: the
+   * value tuple stays `string`, as no ported provider stores a null leaf.)
+   */
+  protected data = new Map<string, [key: string, value: string]>();
 
   #reloadToken = new ConfigurationReloadToken();
 
