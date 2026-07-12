@@ -2,6 +2,7 @@ package tokens
 
 import (
 	"sort"
+	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 
@@ -68,8 +69,7 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 	}
 	matches := []match{}
 	for _, entry := range tokentext.CollectExportEntries(pkg.json) {
-		absStem := tokentext.StripExt(pkg.dir + "/" + entry.TargetRel)
-		sf := ctx.SourceFileAtStem(absStem)
+		sf := entrySourceFile(pkg, entry, ctx.SourceFileAtStem)
 		if sf == nil {
 			continue
 		}
@@ -116,4 +116,44 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		return pkg.name, true
 	}
 	return pkg.name + "/" + best.subpath, true
+}
+
+// entrySourceFile resolves an export entry's on-disk target to the source file
+// the PROGRAM actually loaded for it — the load-bearing fix for
+// build-state-independent tokens. Two candidate stems are tried, in order:
+//
+//  1. The LITERAL target stem (`<pkg>/dist/index` from `./dist/index.js`, or
+//     `<pkg>/index` from a raw `./index.js`). This is what a CONSUMER compiling
+//     against the package's built dist loads, and what a src-referenced package
+//     compiling itself loads when a `source`/`types`/`bun` condition points at
+//     `src`.
+//  2. The `src/` TWIN of a `dist/` target (`<pkg>/dist/<X>` -> `<pkg>/src/<X>`),
+//     per scripts/build-lib.ts's `dist/<X>.js <-> src/<X>.ts` convention. This
+//     is what a DIST-referenced package compiling ITSELF loads: its own dist is
+//     not built yet, so candidate 1 is absent from the program, but the SOURCE
+//     entry (`src/index.ts`, pulled in by tsconfig `include`) is present.
+//
+// Because the SAME GetExportsOfModule membership check then runs against the
+// resolved entry module either way, the derived token is byte-identical in every
+// compilation context — the whole point of the fix. Candidate 1 is always tried
+// first, so any context in which the literal target is loaded is unaffected.
+// Mirrors the TS engine's entrySourceFile (libraries/primitives.transformer/src/tokens.ts).
+func entrySourceFile(
+	pkg *packageInfo,
+	entry tokentext.ExportEntry,
+	sourceFileAtStem func(stem string) *shimast.SourceFile,
+) *shimast.SourceFile {
+	literalStem := tokentext.StripExt(entry.TargetRel)
+	if direct := sourceFileAtStem(pkg.dir + "/" + literalStem); direct != nil {
+		return direct
+	}
+	// The `src/` twin of a `dist/`-rooted target — the package's own source entry
+	// when its dist is not yet built (self-compilation of a dist-referenced pkg).
+	const distPrefix = "dist/"
+	if strings.HasPrefix(literalStem, distPrefix) {
+		if rest := literalStem[len(distPrefix):]; rest != "" {
+			return sourceFileAtStem(pkg.dir + "/src/" + rest)
+		}
+	}
+	return nil
 }
