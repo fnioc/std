@@ -40,10 +40,10 @@ export const LoggingBuilderExtensions = {
    * `builder.Services.AddSingleton(provider)`, registered under the enumerable
    * {@link LOGGER_PROVIDER_TOKEN}.
    *
-   * NOTE: the registration is real, but a `LoggerFactory` built via `addLogging`
-   * does not yet INJECT this provider set (provider enumeration into the factory
-   * is deferred — issue #75). Until then, compose providers explicitly with
-   * `new LoggerFactory([...providers])`.
+   * The `LoggerFactory` that `addLogging` builds consumes this registration: it
+   * is injected the aggregated `Array<ILoggerProvider>` collection (wired in
+   * `add-logging.ts`), so every provider added here receives log output — no
+   * manual `new LoggerFactory([...providers])` needed (§62).
    */
   addProvider(builder: ILoggingBuilder, provider: ILoggerProvider): ILoggingBuilder {
     builder.services.addValue(LOGGER_PROVIDER_TOKEN, provider);
