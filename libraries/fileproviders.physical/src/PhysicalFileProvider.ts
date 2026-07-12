@@ -35,8 +35,9 @@ import { PhysicalDirectoryContents } from './PhysicalDirectoryContents.js';
 import { PhysicalFileInfo } from './PhysicalFileInfo.js';
 import { PhysicalFilesWatcher } from './PhysicalFilesWatcher.js';
 
-// The reference's `DOTNET_USE_POLLING_FILE_WATCHER`, renamed to strip the
-// vendor product name (NAMING TABOO). "1" or a case-insensitive "true" enables
+// The reference's polling env var, whose name embeds the vendor product name
+// and so cannot be written verbatim in a checked-in file (NAMING TABOO); it is
+// renamed here to strip that name. "1" or a case-insensitive "true" enables
 // polling.
 const POLLING_ENVIRONMENT_KEY = 'RHOMBUS_STD_USE_POLLING_FILE_WATCHER';
 
@@ -89,6 +90,9 @@ export class PhysicalFileProvider implements IFileProvider {
    */
   public get usePollingFileWatcher(): boolean {
     if (this.#fileWatcher !== undefined) {
+      // DEVIATION (flagged): once the watcher exists the reference returns
+      // `false` unconditionally -- misreporting a provider that is in fact
+      // polling. Returning the locked-in value is the more truthful behavior.
       return this.#usePollingFileWatcher ?? false;
     }
     if (this.#usePollingFileWatcher === undefined) {
@@ -164,7 +168,10 @@ export class PhysicalFileProvider implements IFileProvider {
    * empty, invalid, absolute, out-of-root, or excluded path.
    */
   public getFileInfo(subpath: string): IFileInfo {
-    if (subpath.length === 0 || hasInvalidPathChars(subpath)) {
+    // Guard nullish defensively -- a hand-written (no-transformer) JS caller
+    // could pass null/undefined despite the `string` type; mirrors the
+    // reference's `IsNullOrEmpty` guard (and this type's own `watch`).
+    if (!subpath || hasInvalidPathChars(subpath)) {
       return new NotFoundFileInfo(subpath);
     }
 

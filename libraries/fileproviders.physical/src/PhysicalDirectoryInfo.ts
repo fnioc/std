@@ -101,6 +101,11 @@ export class PhysicalDirectoryInfo implements IFileInfo, IDirectoryContents {
           }
           const childPath = join(this.#fullPath, dirent.name);
           entries.push(
+            // DEVIATION (flagged): the reference constructs child directories
+            // through its filters-less public constructor, dropping exclusion
+            // filters one level down; this port propagates `this.#filters`
+            // through the subtree -- the consistent, more correct behavior when
+            // a consumer recursively walks the returned tree.
             dirent.isDirectory()
               ? new PhysicalDirectoryInfo(childPath, this.#filters)
               : new PhysicalFileInfo(childPath),

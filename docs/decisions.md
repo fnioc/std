@@ -2603,7 +2603,16 @@ watch-count optimization.
 **Naming-taboo deviation.** The reference's polling-mode env var embeds the vendor product name
 and cannot be written into a checked-in file; it is renamed to
 `RHOMBUS_STD_USE_POLLING_FILE_WATCHER` (same `"1"`/case-insensitive-`"true"` semantics, read once
-lazily), documented in-source as a rename of "the reference's polling env var."
+lazily), documented in-source as a rename of "the reference's polling env var" — the env var name
+is never spelled verbatim in a checked-in file.
+
+**Two further reference divergences, kept because each is the more correct behavior (both flagged
+in-source).** (1) `PhysicalDirectoryInfo` propagates its `ExclusionFilters` to the child
+`PhysicalDirectoryInfo`s it yields; the reference builds those children through its filters-less
+public constructor, so filters silently drop one level down and a recursive walk of the returned
+tree stops excluding. (2) `PhysicalFileProvider.usePollingFileWatcher` returns the locked-in value
+once the watcher exists; the reference returns `false` there unconditionally, misreporting a
+provider that is in fact polling.
 
 **Test coverage added alongside**, filling gaps the port surfaced rather than pre-existing debt:
 `tests/fileproviders.core.test` (null-object abstractions — `NotFoundFileInfo`,
