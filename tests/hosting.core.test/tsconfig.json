@@ -3,7 +3,16 @@
   "compilerOptions": {
     "noEmit": true,
     "composite": false,
-    "types": ["bun"]
+    "types": ["bun"],
+    // This white-box program pulls hosting.core's SOURCE in through the
+    // `./internal/*` seam, and that source carries
+    // `declare module '@rhombus-std/hosting.core'` (host-builder-augmentations.ts).
+    // Now that hosting.core is dist-referenced (§72), the bare package specifier
+    // otherwise resolves to the built barrel — a different module than the source
+    // being compiled — and the self-augmentation can't bind (TS2664). The
+    // package-unique `hosting-core-source` condition routes `@rhombus-std/hosting.core`
+    // back to src, matching the library's own tsconfig, so the merge resolves.
+    "customConditions": ["hosting-core-source"]
   },
   "include": ["test/**/*"]
 }
