@@ -55,6 +55,7 @@ There is no global metadata store and no decorator: the dependency signature tra
 | `DepSlot` / `DepRecord`                                                                              | Type aliases         | The positional-slot union (`Token \| FactoryRef \| Union \| LiteralRef \| TypeArgRef`) and the per-registration signature-array shape.                          |
 | `Inject<T, K>`                                                                                       | Type alias           | Phantom brand — pins a specific token for one constructor parameter without changing its value type.                                                            |
 | `Hole<N, C>` / `$<N>`                                                                                | Type aliases         | Compile-time placeholders standing in for the `N`th type argument of an open-generic template.                                                                  |
+| `$1` … `$9`                                                                                          | Type aliases         | Pre-instantiated, non-generic aliases for the 9 most common holes — `$1` = `Hole<1>`, … `$9` = `Hole<9>`. `$<N>` remains the only spelling for `N ≥ 10`.        |
 | `Typeof<T>`                                                                                          | Type alias           | Phantom brand — a constructor parameter that receives the _token string_ of type argument `T`.                                                                  |
 | `closeToken` / `parseToken` / `isOpenToken` / `substituteToken` / `substituteSignatures` / `typeArg` | Functions            | The open-generic token grammar: render, parse, detect, and substitute closed/open generic tokens.                                                               |
 | `EmptyServiceProvider`                                                                               | Const                | A null-object `ServiceProvider` with no application services registered.                                                                                        |
@@ -147,6 +148,19 @@ export type $<N extends number> = Hole<N>;
 ```ts
 services.add<IRepository<$<1>>>(SqlRepository<Hole<1, Entity>>);
 ```
+
+For the overwhelmingly common unconstrained case with 9 or fewer holes, the pre-instantiated bare aliases `$1` … `$9` (`$1` = `Hole<1>`, … `$9` = `Hole<9>`) drop one more pair of angle brackets:
+
+```ts
+export type $1 = Hole<1>;
+// … through $9 = Hole<9>
+```
+
+```ts
+services.add<IRepository<$1>>(SqlRepository<$1>);
+```
+
+This mirrors how shell/regex backreference syntax treats `$1`-`$9` as directly usable bare identifiers while reserving a bracketed/braced form (`${10}`, `$<10>`, etc.) for everything beyond. `$<N>` stays exactly as it is — the only spelling for `N ≥ 10`, and still usable at any `N` for anyone who prefers the generic form.
 
 Zero runtime footprint — these are pure compile-time brands read structurally by `@rhombus-std/di.transformer`.
 

@@ -51,6 +51,25 @@ export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
  */
 export type $<N extends number> = Hole<N>;
 
+/**
+ * Pre-instantiated, non-generic aliases for the nine most common holes:
+ * `$1` = `Hole<1>`, … `$9` = `Hole<9>`. One fewer pair of angle brackets than
+ * `$<1>` … `$<9>` for the overwhelmingly common case — mirrors how
+ * shell/regex backreference syntax treats `$1`-`$9` as directly usable bare
+ * identifiers while reserving a bracketed/braced form (`${10}`, `$<10>`,
+ * etc.) for everything beyond. `$<N>` stays the only spelling for N ≥ 10, and
+ * remains usable at any N for anyone who prefers the generic form.
+ */
+export type $1 = Hole<1>;
+export type $2 = Hole<2>;
+export type $3 = Hole<3>;
+export type $4 = Hole<4>;
+export type $5 = Hole<5>;
+export type $6 = Hole<6>;
+export type $7 = Hole<7>;
+export type $8 = Hole<8>;
+export type $9 = Hole<9>;
+
 // ── Typeof brand ────────────────────────────────────────────────────────
 
 /**

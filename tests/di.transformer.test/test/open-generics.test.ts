@@ -191,6 +191,29 @@ describe('hole derivation ($N via the Hole brand)', () => {
     expect(output).toContain('const b = "./app:IRepo<$1>";');
   });
 
+  test('bare $1 alias (not $<1>) derives the identical $1 hole token end-to-end', () => {
+    // di.core additionally exports pre-instantiated bare aliases $1…$9, each
+    // `export type $N = Hole<N>;` — same structural HOLE brand, no generic
+    // parameter. Detection is structural, so a bare $1 must transform
+    // identically to $<1> through both service-token derivation and the
+    // registration-carried dep signature.
+    const src = `
+      ${BRANDS}
+      type $1 = Hole<1>;
+      interface IRepo<T> {}
+      class SqlRepo<T> implements IRepo<T> {
+        constructor(seed: T) {}
+      }
+      declare const services: any;
+      services.add<IRepo<$1>>(SqlRepo<$1>).as<"singleton">();
+    `;
+    const { output, diagnostics } = transform(fixture(src));
+    expect(codes(diagnostics)).toEqual([]);
+    expect(output).toContain(
+      'services.add("./app:IRepo<$1>", SqlRepo, [["$1"]]).as("singleton");',
+    );
+  });
+
   test('constrained Hole<N, C> derives $N, not the constraint or an alias token', () => {
     const src = `
       ${BRANDS}
