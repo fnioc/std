@@ -2634,3 +2634,43 @@ non-console logging/physical-file-provider bundle referenced from the `hosting` 
 likewise narrowed — `hosting`'s content-root `PhysicalFileProvider` wiring remains a follow-up
 (swap `HostingEnvironment.contentRootFileProvider`'s `NullFileProvider()` default, decide
 disposal ownership), but the provider it would wire now exists.
+
+## 74. Augmentation tokens derive from export MEMBERSHIP, never from resolved `exports`-condition targets
+
+`nameof<T>()` (§40) locates the module that publicly exports `T` by walking a package's `exports`
+map and asking, for each entry, "does the module at this entry's _resolved target_ re-export `T`?"
+Both engines resolved that target by taking the entry's on-disk path literally — for a
+dist-referenced package (the `built` customCondition, §41) that target is `dist/<X>`. Compiling
+such a package's OWN source against itself, the not-yet-built `dist/<X>` doesn't exist in the
+program yet, so the literal-target lookup came up empty and the derivation silently fell back to
+the Tier-2 file-path form (`pkg/src/file:Type`) instead of the barrel form (`pkg:Type`) a
+consumer of the same type derives once `dist` exists. Same type, same declaration, two different
+token strings depending on which side of the build the deriving compiler sat on — a registry-key
+desync between a package's self-registered augmentations and a downstream package's lookup of
+them. Latent on `main` (nothing was dist-referenced yet to trigger it); caught by a dist-
+referencing tier attempting the first `built`-mode self-compile.
+
+- **The fix**: before falling back to Tier-2, try one more candidate — the entry's `src/`
+  twin (`dist/<X>` → `src/<X>`, per `scripts/build-lib.ts`'s hard `dist/<X>.js ↔ src/<X>.ts`
+  convention). If the type is a member of the exports of _that_ module, it derives the same
+  barrel/subpath form a dist-side consumer would. The literal target is still tried FIRST, so
+  every already-resolvable derivation (a package's dist dependency is built and present, or the
+  package isn't dist-referenced at all) is byte-identical to before — the twin only fires in the
+  previously-broken self-compile-of-dist case. Membership itself is unchanged: a non-exported
+  internal type still gets the Tier-2 file-path form regardless of which candidate resolved it;
+  aliased re-exports still tokenize to the DECLARED name, not the export alias; a type reachable
+  from multiple subpaths still resolves to the shortest (root barrel wins).
+- **The invariant this restores**: a type's augmentation token must be identical in EVERY
+  compilation context — self-compile or downstream, dist-built or not-yet-built — because the
+  token is a registry key shared across packages compiled at different times by different
+  processes (§38). Derivation must not be sensitive to which artifacts happen to exist on disk
+  at the moment a particular compiler invocation runs.
+- **Both engines, kept in lockstep (§41 parity)**: the TS engine's fix lives in
+  `libraries/primitives.transformer/src/tokens.ts` (`entrySourceFile`, called from
+  `publicImportSpecifier`); the Go/`ttsc` engine's mirror lives in
+  `transforms/internal/tokens/packages.go` (same helper name and shape). The Go engine had
+  carried the exact pre-fix literal-only lookup — a second, independently-discovered instance of
+  the same bug, fixed in the same change rather than left to diverge the moment dist-referencing
+  tiers land. Parity is verified by re-running every `*.ttsc.e2e` suite plus the
+  `examples.app.with-transformer` byte-diff — unchanged, since the twin only activates on a
+  compilation shape neither suite exercises yet.
