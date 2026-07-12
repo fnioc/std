@@ -5,10 +5,11 @@
 // Dual export (docs §28/§38): the receiver-first functions are exported plain
 // (the standalone surface), grouped into the `LoggerExtensions` set and
 // registered against the `ILogger` token so every concrete logger decorated
-// with `@augment(nameof<ILogger>())` gains the method form. `ILogger` itself
-// gets NO interface-side merge — it has many implementers (sinks, fakes,
-// wrappers), and a merge would force phantom members onto all of them (§36);
-// the method surface is typed per concrete class via `LoggerExtensionMethods`.
+// with `@augment(nameof<ILogger>())` gains the method form. The method surface
+// is merged onto `ILogger` itself via the `declare module './logger'` block
+// below — the §36/§48 many-implementers carve-out is retired (§80): every
+// receiver, `ILogger` included, uses the standard declare-module interface
+// merge, and each concrete class `extends ILogger` beside its `@augment`.
 //
 // Collapsing the reference overloads: each reference level method has four
 // overloads keyed on an optional leading `EventId` and optional `Exception`.
@@ -120,34 +121,34 @@ export const LoggerExtensions = {
   logCritical,
 } satisfies AugmentationSet<ILogger>;
 
-/**
- * The method-form surface of {@link LoggerExtensions}. Deliberately NOT merged
- * onto `ILogger` (§36: the interface has many implementers — sinks, fakes,
- * wrappers — that would inherit phantom members). Each CONCRETE logger class
- * extends this interface beside its `@augment(nameof<ILogger>())` decoration,
- * so the method form is typed exactly where it is installed.
- *
- * `log` and `beginScope` are absent here on purpose. They are registered and
- * install as dispatchers over the `ILogger` primitives (see the merge strategies
- * below), so the convenience form is dot-callable AT RUNTIME. It is not TYPED as
- * a method overload: a concrete class declares the primitive `log`/`beginScope`
- * in its body, and TS forbids an interface merge from adding an incompatible
- * convenience overload to a body-declared method (TS2430). The typed path stays
- * the standalone `log(logger, …)` / `beginScope(logger, …)` functions.
- */
-export interface LoggerExtensionMethods {
-  logTrace(message: string, ...args: unknown[]): void;
-  logTrace(error: Error, message: string, ...args: unknown[]): void;
-  logDebug(message: string, ...args: unknown[]): void;
-  logDebug(error: Error, message: string, ...args: unknown[]): void;
-  logInformation(message: string, ...args: unknown[]): void;
-  logInformation(error: Error, message: string, ...args: unknown[]): void;
-  logWarning(message: string, ...args: unknown[]): void;
-  logWarning(error: Error, message: string, ...args: unknown[]): void;
-  logError(message: string, ...args: unknown[]): void;
-  logError(error: Error, message: string, ...args: unknown[]): void;
-  logCritical(message: string, ...args: unknown[]): void;
-  logCritical(error: Error, message: string, ...args: unknown[]): void;
+// The method-form surface merged onto {@link ILogger} (docs §28/§38): the merge
+// types the wrappers on the interface itself, so every `ILogger` value carries
+// them and each concrete logger class `extends ILogger` beside its
+// `@augment(nameof<ILogger>())` decoration to declare them where they install.
+//
+// `log` and `beginScope` are absent from THIS interface merge — their names ARE
+// `ILogger`'s own primitives, and TS forbids merging an incompatible convenience
+// overload onto a body-declared primitive method (TS2430). They are NOT excluded
+// at runtime: the registration below installs them with a merge strategy that
+// dispatches the primitive-shaped call to the primitive and the convenience-shaped
+// call to the wrapper (see `loggerMerge`), so the convenience form stays
+// dot-callable. Their typed path stays the standalone `log(logger, …)` /
+// `beginScope(logger, …)` functions.
+declare module './logger' {
+  interface ILogger<TCategoryName = unknown> {
+    logTrace(message: string, ...args: unknown[]): void;
+    logTrace(error: Error, message: string, ...args: unknown[]): void;
+    logDebug(message: string, ...args: unknown[]): void;
+    logDebug(error: Error, message: string, ...args: unknown[]): void;
+    logInformation(message: string, ...args: unknown[]): void;
+    logInformation(error: Error, message: string, ...args: unknown[]): void;
+    logWarning(message: string, ...args: unknown[]): void;
+    logWarning(error: Error, message: string, ...args: unknown[]): void;
+    logError(message: string, ...args: unknown[]): void;
+    logError(error: Error, message: string, ...args: unknown[]): void;
+    logCritical(message: string, ...args: unknown[]): void;
+    logCritical(error: Error, message: string, ...args: unknown[]): void;
+  }
 }
 
 // The wrappers `log` and `beginScope` share their names with `ILogger`'s own

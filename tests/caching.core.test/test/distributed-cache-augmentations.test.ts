@@ -1,13 +1,17 @@
-// DistributedCacheExtensions over a hand-written IDistributedCache fake --
-// which doubles as the regression guard for the no-interface-merge decision
-// (§36/§38): a plain class implementing ONLY the four primitive members must
-// satisfy IDistributedCache and be accepted by every standalone member.
+// DistributedCacheExtensions over a hand-written IDistributedCache fake. After
+// the §36/§48 many-implementers carve-out retirement (§80), the wrapper methods
+// are merged onto IDistributedCache, so the fake binds them via an empty
+// `extends IDistributedCache` beside its four primitive members; this test
+// exercises the STANDALONE member surface.
 
 import { DistributedCacheEntryOptions, DistributedCacheExtensions,
   type IDistributedCache } from '@rhombus-std/caching.core';
 import { describe, expect, test } from 'bun:test';
 
 /** A minimal in-process IDistributedCache: a Map of payloads, options recorded per set. */
+// Binds the augmented `IDistributedCache` symbol onto the fake so the merged
+// setString/getString (§80) are declared on it; never called here.
+interface FakeDistributedCache extends IDistributedCache {}
 class FakeDistributedCache implements IDistributedCache {
   public readonly store = new Map<string, Uint8Array>();
   public lastSetOptions: DistributedCacheEntryOptions | undefined;

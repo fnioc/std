@@ -13,13 +13,13 @@
 //     collapse into one `setString` with an optional `options` parameter.
 //   - `GetString`/`GetStringAsync` collapse into one `getString`.
 //
-// `IDistributedCache` gets NO interface-side merge -- it is the family's
-// many-implementers interface (memory today; remote providers by design), and
-// a merge would force phantom members onto every hand-written implementer and
-// test fake (§36/§38, the `ILogger` precedent). The method surface is typed
-// per concrete class via `DistributedCacheExtensionMethods`, and the set is
-// registered against the `IDistributedCache` token so every concrete class
-// decorated `@augment(nameof<IDistributedCache>())` gains the method form.
+// The method surface is merged onto `IDistributedCache` itself via the
+// `declare module './IDistributedCache'` block below -- the §36/§48 many-
+// implementers carve-out is retired (§80): every receiver uses the standard
+// interface merge, and each concrete cache class `extends IDistributedCache`
+// beside its `@augment(nameof<IDistributedCache>())` decoration. The set is
+// still registered against the `IDistributedCache` token so every decorated
+// class gains the method form on its prototype at runtime.
 
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
@@ -91,23 +91,23 @@ export const DistributedCacheExtensions = {
   },
 } satisfies AugmentationSet<IDistributedCache>;
 
-/**
- * The method-form surface of {@link DistributedCacheExtensions}. Deliberately
- * NOT merged onto `IDistributedCache` (§36/§38: the interface has many
- * implementers by design, and a merge would force phantom members onto every
- * one). Each concrete cache class extends this interface beside its
- * `@augment(nameof<IDistributedCache>())` decoration, so the method form is
- * typed exactly where it is installed. `set` is absent -- see the exclusion at
- * the registration below.
- */
-export interface DistributedCacheExtensionMethods {
-  setString(
-    key: string,
-    value: string,
-    options?: DistributedCacheEntryOptions,
-    abortSignal?: AbortSignal,
-  ): Promise<void>;
-  getString(key: string, abortSignal?: AbortSignal): Promise<string | undefined>;
+// The method-form surface merged onto {@link IDistributedCache} (docs §28/§38):
+// the merge types the wrappers on the interface itself, so every
+// `IDistributedCache` value carries them and each concrete cache class
+// `extends IDistributedCache` beside its `@augment(nameof<IDistributedCache>())`
+// decoration to declare them where they install. `set` is absent -- its name IS
+// `IDistributedCache`'s own primitive, so it stays standalone-only (excluded
+// from both this merge and the prototype install; see the registration below).
+declare module './IDistributedCache' {
+  interface IDistributedCache {
+    setString(
+      key: string,
+      value: string,
+      options?: DistributedCacheEntryOptions,
+      abortSignal?: AbortSignal,
+    ): Promise<void>;
+    getString(key: string, abortSignal?: AbortSignal): Promise<string | undefined>;
+  }
 }
 
 // The default-options `set` is a member of `DistributedCacheExtensions` (its

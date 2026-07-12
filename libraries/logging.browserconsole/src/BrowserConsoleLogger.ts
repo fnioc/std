@@ -6,7 +6,7 @@
 // console argument so devtools render its stack interactively instead of a
 // flattened string.
 
-import { type EventId, type ILogger, type LoggerExtensionMethods, LogLevel } from '@rhombus-std/logging.core';
+import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
@@ -43,11 +43,10 @@ export function consoleMethodFor(logLevel: LogLevel): ConsoleMethod {
   }
 }
 
-// The class-side type merge for the registry-installed `LoggerExtensions`
-// methods (log/logInformation/…). `ILogger` itself gets NO interface merge
-// (§36: many implementers); the method form is typed here, exactly where
-// `@augment(nameof<ILogger>())` installs it.
-export interface BrowserConsoleLogger extends LoggerExtensionMethods {}
+// Binds the `ILogger` interface symbol onto the class so the interface-merged
+// wrapper methods (logInformation/…, §80) flow onto `BrowserConsoleLogger`,
+// beside the `@augment(nameof<ILogger>())` install below.
+export interface BrowserConsoleLogger extends ILogger {}
 
 /** An {@link ILogger} that writes through the browser console global. */
 @augment(nameof<ILogger>())

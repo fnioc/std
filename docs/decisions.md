@@ -1885,6 +1885,10 @@ the sweep enforces, not its per-file diff.
 
 ## 48. Many-implementers receivers get no interface-side merge — generalizes §36's `ILogger` precedent
 
+**Superseded by §80** — the `ILogger`/`IDistributedCache` carve-out is retired; both now take the
+standard interface merge, so the general rule below no longer holds for them. Retained as the record
+of the interim design (`IConfiguration`/`IConfigurationRoot` stay per §38).
+
 §36 left `ILogger`/`IConfiguration` without a prototype-method form because they have "several
 impls and no single downstream concrete to patch," but didn't generalize the shape beyond those two
 CLOSED-package cases. The distributed-cache slice (#147) hit the identical situation with
@@ -2144,7 +2148,8 @@ folds duplicates before user code sees them.
 distributed slice. Byte payloads map to `Uint8Array` (a miss resolves `undefined`); the four
 sync+async member pairs collapse to single Promise-returning members (no sync analog for
 distributed IO); `CancellationToken` maps to an optional `AbortSignal` (§39). `IDistributedCache`
-gets the many-implementers treatment §48 generalizes. The reference's internal `Freeze()` on
+initially got the many-implementers treatment §48 generalized — later RETIRED (§80): the wrapper
+methods are merged onto the interface like every other receiver. The reference's internal `Freeze()` on
 `DistributedCacheEntryOptions` ports as a module-scoped, barrel-excluded helper (the reference-
 internal-member convention `freezeDistributedCacheEntryOptions`/`toDistributedCacheEntryOptions`
 below both follow). `IBufferDistributedCache` is not ported — its entire purpose is the reference's
@@ -2976,9 +2981,10 @@ complete, every runtime library is dist-referenced.**
 
 The registry (§38) installs augmentation members onto a class prototype (the TS
 stand-in for C# extension methods). Two different registrations contributing the
-SAME member name onto one class used to silently clobber. §73's first cut fixed
-the clobber with a member-identity marker on each installed slot; this entry
-supersedes that with a simpler, correct-by-construction model in three parts.
+SAME member name onto one class used to silently clobber. An earlier, now-removed
+first cut fixed the clobber with a member-identity marker on each installed slot;
+this entry supersedes that with a simpler, correct-by-construction model in three
+parts.
 
 - **Delta install (`@augment` never re-installs the whole bag).** The old
   listener re-installed the token's ENTIRE accumulated bag on every later
@@ -3010,10 +3016,11 @@ supersedes that with a simpler, correct-by-construction model in three parts.
   (`augmentation "n" collides on <Class> — supply a merge strategy`). Because
   delta install guarantees a member is mounted once, a second arrival at a taken
   name is always a real collision — there is no idempotency/marker bookkeeping,
-  and the retired §73 `installed`-marker (`base`/`member`) machinery is gone.
+  and the retired `installed`-marker (`base`/`member`) machinery of that earlier
+  first cut is gone.
 
 - **The bag holds a per-name list — a `Multimap` of `[fn, merge?]` contributions
-  (§73/3 kept).** The bag is a single `Multimap<string, [ExtensionFn,
+  (carried over from that earlier first cut).** The bag is a single `Multimap<string, [ExtensionFn,
   MergeStrategy?]>` per token (`primitives`' array-backed `Multimap`): each
   contribution is the augmentation function paired with the own strategy its
   registration supplied for that name, collapsing the earlier two parallel
@@ -3045,3 +3052,41 @@ supersedes that with a simpler, correct-by-construction model in three parts.
   stays the standalone functions. The seam left for the transformer: it will later
   auto-generate the default merge, so a transformer user never writes a strategy —
   built here as a no-transformer capability first, transformer sugar deferred.
+
+## 80. Retire the many-implementers no-interface-merge carve-out — `ILogger`/`IDistributedCache` join the standard pattern (§36/§48/§60 superseded)
+
+There is no single- vs many-implementer distinction. §36 kept `ILogger`'s `log*` wrappers off the
+interface; §48 generalized that into a "many-implementers receiver gets NO interface-side merge —
+registry install + per-class `@augment` + an exported `*ExtensionMethods` typing interface only"
+rule; §60 applied it to `IDistributedCache`. That carve-out is dropped. Every augmented receiver —
+`ILogger` and `IDistributedCache` included — now uses the ONE standard pattern (§28/§38/§71): a
+`declare module` interface merge on the receiver itself, with each concrete class binding it via an
+empty `export interface C extends I {}` beside its `@augment` decoration.
+
+- **Mechanics.** `logger-augmentations.ts` moves the twelve `LoggerExtensionMethods` signatures into
+  a `declare module './logger' { interface ILogger<TCategoryName = unknown> { … } }` merge and
+  deletes the interface (and its barrel export); `distributed-cache-augmentations.ts` does the same
+  for the two `DistributedCacheExtensionMethods` signatures via `declare module './IDistributedCache'`.
+  The `registerAugmentations(nameof<…>(), …)` runtime registration is unchanged — this is a
+  type-side move, so emitted `dist` JS is byte-identical. Each concrete implementer
+  (`Logger`/`Logger<T>`/`NullLogger`/`NullLogger<T>`/`ConsoleLogger`/`BrowserConsoleLogger`;
+  caching.memory's private `NullLoggerImpl`; `MemoryDistributedCache`) repoints its
+  `extends *ExtensionMethods` to `extends ILogger`/`extends IDistributedCache`. The proven precedent
+  is `MemoryCache extends IMemoryCache {}` (§71): a class implements the augmented interface, its body
+  defines only the primitives, and the empty extends-merge declares the merged wrapper members with
+  no body implementation required.
+
+- **The accepted trade-off.** A merge lands the wrapper members on EVERY implementer's type — real
+  and test-fake. Each therefore now carries the standard binding: a concrete gets `@augment` +
+  `extends`; a hand-written test fake gets an empty `interface Fake extends I {}` beside its
+  `implements I` (no `@augment` — the wrappers it never calls need no runtime install); a partial
+  object-literal double casts `as unknown as I`. The primitive-collision exclusions are UNCHANGED:
+  `log`/`beginScope` (their names ARE `ILogger` primitives) and `set` (an `IDistributedCache`
+  primitive) stay standalone-only — absent from both the interface merge and the prototype install.
+
+- **Scope.** Only the two receivers that carried an `*ExtensionMethods` carve-out interface
+  (`ILogger`, `IDistributedCache`) are converted. `IConfiguration`/`IConfigurationRoot` are untouched:
+  their family-owned extensions merge onto the concrete `ConfigurationRoot`/`ConfigurationSection`/
+  `ConfigurationManager` receivers, not the interface, so there is no `*ExtensionMethods` interface to
+  retire and §38's CLOSED-receiver treatment of them stands. §48's general rule and §60's
+  "`IDistributedCache` gets the many-implementers treatment" are superseded here.

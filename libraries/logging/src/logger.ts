@@ -10,7 +10,7 @@
 // `scopeLoggers`. A throwing sink is collected and re-thrown as an
 // `AggregateError` after the others run (the reference `AggregateException`).
 
-import type { EventId, ILogger, LoggerExtensionMethods, LogLevel } from '@rhombus-std/logging.core';
+import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
@@ -19,11 +19,10 @@ import type { LoggerInformation, MessageLogger, ScopeLogger } from './logger-inf
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
 const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
-// The class-side type merge for the registry-installed `LoggerExtensions`
-// methods (log/logInformation/…). `ILogger` itself gets NO interface merge
-// (§36: many implementers); the method form is typed here, exactly where
-// `@augment(nameof<ILogger>())` installs it.
-export interface Logger extends LoggerExtensionMethods {}
+// Binds the `ILogger` interface symbol onto the class so the interface-merged
+// wrapper methods (logInformation/…, §80) flow onto `Logger`, beside the
+// `@augment(nameof<ILogger>())` install below.
+export interface Logger extends ILogger {}
 
 @augment(nameof<ILogger>())
 export class Logger implements ILogger {
