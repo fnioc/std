@@ -18,7 +18,9 @@
 // Key construction (matching the reference): the root element contributes only
 // its `Name` attribute to the prefix, never its element name. A descendant
 // element pushes its element name; a case-insensitive `Name` attribute pushes
-// an extra segment right after it; repeated sibling elements (same
+// an extra segment right after it AND is additionally emitted as an ordinary
+// `elementPath:Name` attribute pair (the reference reads Name both for the
+// prefix and as a normal attribute). Repeated sibling elements (same
 // element-name[:Name]) each push a numeric index. Other attributes map to
 // `elementPath:AttrName`, text maps to `elementPath`, and a duplicate resolved
 // key is a FormatError.
@@ -183,9 +185,13 @@ function parseStartTag(inner: string): XmlElement {
 
   for (const [attrName, attrValue] of parseAttributes(trimmed.slice(cursor))) {
     if (attrName.toLowerCase() === NAME_ATTRIBUTE.toLowerCase()) {
-      // The special "Name" attribute only contributes to the prefix.
+      // The special "Name" attribute contributes to the prefix -- AND is still
+      // emitted as an ordinary `<prefix>:Name` attribute pair. The reference
+      // reads it twice: GetName pulls it for the prefix while ReadAttributes
+      // adds *every* attribute (Name included) to element.Attributes, so keys
+      // like `Data:DefaultConnection:Name` are produced alongside the prefix
+      // contribution. Set nameAttribute but fall through to push it too.
       nameAttribute = attrValue;
-      continue;
     }
     rejectNamespaced(attrName);
     attributes.push({ name: attrName, value: attrValue });

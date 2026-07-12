@@ -31,10 +31,13 @@ describe('XML grammar', () => {
     expect(root.get('Server:Scheme')).toBe('https');
   });
 
-  test('a case-insensitive Name attribute contributes an extra path segment', () => {
+  test('a case-insensitive Name attribute contributes an extra path segment and is also emitted', () => {
     const root = fromXml('<settings><Endpoint name="primary"><Url>http://a</Url></Endpoint></settings>');
 
     expect(root.get('Endpoint:primary:Url')).toBe('http://a');
+    // The reference reads Name both for the prefix and as an ordinary attribute,
+    // so the `<prefix>:Name` pair is produced too (keys are case-insensitive).
+    expect(root.get('Endpoint:primary:Name')).toBe('primary');
   });
 
   test('repeated sibling elements get a numeric index segment', () => {
@@ -51,10 +54,11 @@ describe('XML grammar', () => {
     expect(root.get('Item:y')).toBe('2');
   });
 
-  test('a root Name attribute prefixes every key', () => {
+  test('a root Name attribute prefixes every key and is emitted at prefix:Name', () => {
     const root = fromXml('<settings Name="app"><Key>v</Key></settings>');
 
     expect(root.get('app:Key')).toBe('v');
+    expect(root.get('app:Name')).toBe('app');
   });
 
   test('a root attribute (non-Name) maps to a top-level key', () => {
