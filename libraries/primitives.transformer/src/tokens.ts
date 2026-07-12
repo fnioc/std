@@ -926,8 +926,7 @@ function publicImportSpecifier(
 
   const matches: { subpath: string; targetsDeclFile: boolean; }[] = [];
   for (const entry of collectExportEntries(pkg)) {
-    const absStem = stripExt(`${pkg.dir}/${entry.targetRel}`);
-    const sf = ctx.sourceFileAtStem(absStem);
+    const sf = entrySourceFile(pkg, entry, ctx.sourceFileAtStem);
     if (!sf) {
       continue;
     }
@@ -961,6 +960,46 @@ function publicImportSpecifier(
   });
   const best = matches[0]!;
   return best.subpath === '' ? pkg.name : `${pkg.name}/${best.subpath}`;
+}
+
+/**
+ * Resolve an export entry's on-disk target to the source file the PROGRAM
+ * actually loaded for it — the load-bearing fix for build-state-independent
+ * tokens. Two candidate stems are tried, in order:
+ *
+ *   1. The LITERAL target stem (`<pkg>/dist/index` from `./dist/index.js`, or
+ *      `<pkg>/index` from a raw `./index.js`). This is what a CONSUMER compiling
+ *      against the package's built dist loads, and what a src-referenced package
+ *      compiling itself loads when a `source`/`types`/`bun` condition points at
+ *      `src`.
+ *   2. The `src/` TWIN of a `dist/` target (`<pkg>/dist/<X>` → `<pkg>/src/<X>`),
+ *      per scripts/build-lib.ts's `dist/<X>.js ↔ src/<X>.ts` convention. This is
+ *      what a DIST-referenced package compiling ITSELF loads: its own dist is not
+ *      built yet, so candidate 1 is absent from the program, but the SOURCE entry
+ *      (`src/index.ts`, pulled in by tsconfig `include`) is present.
+ *
+ * Because the SAME `getExportsOfModule` membership check then runs against the
+ * resolved entry module either way, the derived token is byte-identical in every
+ * compilation context — the whole point of the fix. Candidate 1 is always tried
+ * first, so any context in which the literal target is loaded is unaffected.
+ */
+function entrySourceFile(
+  pkg: PackageInfo,
+  entry: ExportEntry,
+  sourceFileAtStem: Func<[string], ts.SourceFile | undefined>,
+): ts.SourceFile | undefined {
+  const literalStem = stripExt(entry.targetRel);
+  const direct = sourceFileAtStem(`${pkg.dir}/${literalStem}`);
+  if (direct) {
+    return direct;
+  }
+  // The `src/` twin of a `dist/`-rooted target — the package's own source entry
+  // when its dist is not yet built (self-compilation of a dist-referenced pkg).
+  const distTwin = /^dist\/(.+)$/.exec(literalStem);
+  if (distTwin) {
+    return sourceFileAtStem(`${pkg.dir}/src/${distTwin[1]}`);
+  }
+  return undefined;
 }
 
 interface ExportEntry {
