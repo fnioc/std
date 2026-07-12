@@ -11,6 +11,10 @@
   },
   "devDependencies": {
     "@rhombus-std/config.json": "workspace:*",
-    "@rhombus-std/config": "workspace:*"
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/fileproviders.core": "workspace:*",
+    "@rhombus-std/fileproviders.physical": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/func": "^3.5.3"
   }
 }
