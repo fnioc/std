@@ -335,6 +335,14 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
     },
+    "libraries/fileproviders.physical": {
+      "name": "@rhombus-std/fileproviders.physical",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
     "libraries/hosting": {
       "name": "@rhombus-std/hosting",
       "version": "0.0.0",
@@ -737,6 +745,14 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/fileproviders.composite": "workspace:*",
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
+    "tests/fileproviders.core.test": {
+      "name": "@rhombus-std/fileproviders.core.test",
+      "version": "0.0.0",
+      "devDependencies": {
         "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
       },
@@ -1278,6 +1294,10 @@
     "@rhombus-std/fileproviders.composite.test": ["@rhombus-std/fileproviders.composite.test@workspace:tests/fileproviders.composite.test"],
 
     "@rhombus-std/fileproviders.core": ["@rhombus-std/fileproviders.core@workspace:libraries/fileproviders.core"],
+
+    "@rhombus-std/fileproviders.core.test": ["@rhombus-std/fileproviders.core.test@workspace:tests/fileproviders.core.test"],
+
+    "@rhombus-std/fileproviders.physical": ["@rhombus-std/fileproviders.physical@workspace:libraries/fileproviders.physical"],
 
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
 
