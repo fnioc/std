@@ -78,9 +78,17 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`
   (§28), installed either directly via `applyAugmentations` (CLOSED receivers) or through the
   **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
-  re-exports it), `registerAugmentations(token, set)` (flat per-token bag, throws on member-name
-  collision, notifies an `EventTarget` bus), and the `@augment(token)` class decorator that
-  (re)installs the token's bag on the prototype now and on every later registration. It lives here
+  re-exports it), `registerAugmentations(token, set, merge?)` (per-token bag holding a per-name LIST
+  of contributions — a second same-name registration ACCUMULATES, never throws at registration;
+  notifies an `EventTarget` bus), and the `@augment(token)` class decorator that DELTA-installs (§73):
+  on first application it catches up on the accumulated bag once, and each later registration installs
+  only its own `set` onto the prototype — never the whole bag again, so a member on a heavily-shared
+  token installs exactly once per class. Collision is resolved BLIND at install time (no token/receiver/
+  member identity): a name already taken on the prototype with NO `merge` strategy THROWS (never a
+  silent clobber), and with a `MergeStrategy` (per member name, §73) installs a dispatcher chaining the
+  incoming over the existing — letting an augmentation share a name with the class's own primitive
+  (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger`, and `di`'s
+  `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
   `primitives.transformer` hosts the `nameof<T>()`/token-derivation machinery extracted from
   di.transformer (which depends on it and re-exports the old surface). It also owns the structural
