@@ -243,6 +243,42 @@ source is read, merged, and coerced at runtime, on every process start. Add
 `@rhombus-std/config.transformer` when (and only when) you want
 `.withType<T>()` to save you from writing `.withSchema({...})` yourself.
 
+## Key exports
+
+| Export                                                             | What it is                                                                                               |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `ConfigurationBuilder`                                             | Stacks sources into layers; `.withSchema()`/`.withType<T>()` + `.build()`.                               |
+| `ConfigurationManager`                                             | A builder and a live, already-built config in one — `.set()` works before any source is added.           |
+| `ConfigurationRoot`, `ConfigurationSection`                        | The built, navigable config tree — dot/bracket access, `getSection`, reload tokens.                      |
+| `ConfigurationProvider`                                            | Abstract base a configuration source's provider extends.                                                 |
+| `addInMemoryCollection`                                            | Bundled in-memory source — set config values directly, no file or env involved.                          |
+| `addConfiguration`                                                 | Wraps an already-built `IConfiguration` as a source layer inside another builder.                        |
+| `Schema`, `Infer`, `OPTIONAL`                                      | The hand-written schema surface (Tier 1) — `Infer<S>` gives you the resulting TypeScript type.           |
+| `SchemaCoercionError`                                              | Thrown by `build()` when a required key is missing or fails coercion; lists every offending key at once. |
+| `compareConfigurationKeys`                                         | The `:`-segment-aware comparer configuration keys sort by.                                               |
+| `exists`, `ConfigurationExtensions`, `ConfigurationRootExtensions` | Small convenience helpers over a built config (existence checks, debug views).                           |
+
+## How it fits
+
+`@rhombus-std/config` is the engine: the builder, the merge/precedence logic,
+reload tokens, the in-memory and chained-config sources, and the runtime
+schema. It depends on
+[`@rhombus-std/config.core`](../config.core/README.md) for the
+`IConfiguration*` interfaces and on
+[`@rhombus-std/primitives`](../primitives/README.md) for change tokens.
+
+Install source packages alongside it as needed —
+[`@rhombus-std/config.json`](../config.json/README.md),
+[`@rhombus-std/config.env`](../config.env/README.md), and
+[`@rhombus-std/config.commandline`](../config.commandline/README.md) each
+add their own `add*` builder method via side-effect import.
+[`@rhombus-std/config.transformer`](../config.transformer/README.md) is the
+optional compile-time companion for `.withType<T>()`.
+
+Downstream, [`@rhombus-std/options`](../options/README.md) and
+[`@rhombus-std/hosting`](../hosting/README.md) build on top of a built
+config to bind typed options and assemble an application host.
+
 ---
 
 `@rhombus-std/config.transformer` is an optional add-on package.
