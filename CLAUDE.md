@@ -112,7 +112,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   slot-token grammar (`configureStepToken` et al., §54) so a downstream package can register an
   OPEN `IConfigureOptions`/`IOptionsChangeTokenSource`-style step for a type it doesn't own; its
   `validateOnStart` manifest verb (§55) and DI-injected `configure`/`postConfigure`/`validate`
-  overloads (a token-tuple + tuple-typed callback, §64) round out the pipeline.
+  overloads (a token-tuple + tuple-typed callback, §64) round out the pipeline. All three pipeline
+  stages are reachable through the manifest surface (§76); validation is **sync-only** by design
+  (the async family stays out) and the config→`Options<T>` bind is a compose-not-clobber structural
+  deep-merge, not a reflective bind (§76).
 - **`config`** — `config.core` (the `IConfiguration*` types — pure types, zero runtime emit, so it
   is dist-referenced as `dist/index.d.ts` only, §72 — plus the shared `properties` key/value bag
   between a builder and its sources, §59) ← `config` (builder/root/section

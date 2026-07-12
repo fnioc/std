@@ -2792,3 +2792,54 @@ reference `FileExtensions` / `Ini` / `Xml` packages. `config.json` is rebased on
   `reloadOnChange:false` (zero regression); the config-side machinery fully supports opt-in
   `reloadOnChange` with a disposal-aware provider. #182 (content-root `PhysicalFileProvider`
   wiring) is likewise left for its issue.
+
+## 76. `options`: pipeline reachability closed + recorded divergences — #128
+
+The public/abstract type-set of the options family already corresponds to the reference
+(`ME.Options` / `ME.Options.ConfigurationExtensions`) modulo the §4.2/§4.5 carve-outs — no new
+public type is warranted (YAGNI: `IOptionsFactory<T>`, `BinderOptions`, the source-gen validator
+attributes, and an `OptionsWrapper<T>` all lack any consumer). The alignment pass is about
+pipeline-stage **reachability** and recording divergences, not new types.
+
+- **Pipeline reachability.** All three `OptionsFactory` stages (configure / post-configure /
+  validate) are reachable through `options.augmentations`' public manifest surface. The one
+  genuine gap was coverage, not capability: `postConfigure`'s bare form —
+  `postConfigure(token, delegate)` and `postConfigure(token, PostConfigureOptions-object)` — was
+  implemented and reachable but had **zero** callers through the manifest augmentation (the only
+  bare `PostConfigureOptions` in the repo, the without-transformer example, builds
+  `new OptionsFactory(...)` directly and bypasses the slot). It is now exercised end-to-end
+  (`tests/options.augmentations.test/test/post-configure.test.ts`), asserting both forms run
+  **after** configure and that multiple steps run in registration order. Test-only change; the
+  impl was already correct.
+
+- **Sync-only validation (divergence recorded).** Validation is synchronous and resolution lazy by
+  design, so the async family (`IAsyncValidateOptions<T>`, `IAsyncStartupValidator`) and the
+  source-gen validator attributes stay out (the latter has no TS analog; a future
+  `options.data-annotations` satellite, §4.4). The **sync** path is ported and stays IN:
+  `IStartupValidator`/`StartupValidator`/`validateOnStart` (§55). The issue's carve-out wording
+  that lumps `IStartupValidator`/`ValidateOnStart` in with the async-out family is imprecise —
+  only the async pieces are out; removing sync `IStartupValidator` would regress a §55-documented,
+  tested feature.
+
+- **`OptionsFactory<T>` is not a DI seam (divergence recorded).** It is a concrete class, not the
+  reference's DI-swappable `IOptionsFactory<T>` interface — YAGNI, no consumer needs to substitute
+  pipeline assembly. Reopen when one does.
+
+- **Deep-merge config bind (divergence recorded).** The config→options bind
+  (`ConfigurationConfigureOptions`/`bindSection`) reimplements the reference's reflective
+  `ConfigurationBinder.Bind` structurally as a deep merge (reflection is impossible under type
+  erasure). Beyond being reflection-free, the deep merge carries a stronger guarantee than the
+  reference `Bind`: two configure steps binding overlapping sections **compose** rather than
+  clobber each other's nested keys (`config-options.test.ts` asserts this).
+
+- **Step-object-or-delegate, deps resolved once (divergence recorded).** `configure`/
+  `postConfigure`/`validate` each accept a pre-built step object *or* a bare delegate on the one
+  verb (the reference needs a separate raw DI registration for the instance form). The DI-injected
+  variadic `DepTokens<Deps>` form (§42) resolves its dependency tokens **once**, when the assembly
+  reads the slot — not per-materialization as the reference's transient closures do — harmless for
+  the stable services those deps carry.
+
+The features where options goes beyond the reference are catalogued in
+`docs/options-beyond-reference.md`. No public type or signature in `options`/`options.augmentations`
+changed, so no referencing library (`di.transformer.options`, `diagnostics`,
+`logging.configuration`, `hosting`) is affected.
