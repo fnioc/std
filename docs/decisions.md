@@ -806,6 +806,11 @@ idiom (§14), with `caching.memory`'s `package.json` carrying `"sideEffects": tr
 
 ## 20. `fileproviders` family scaffolded — composite provider real, physical provider and glob matching held — #77
 
+> **Partly superseded by §73.** The physical provider has since landed
+> (`fileproviders.physical`); only `FileSystemGlobbing` remains deferred, and
+> `CompositeFileProvider.watch`'s throw was unstubbed by §58. Read §73/§58 for
+> the current behavioral contract before relying on the text below.
+
 `fileproviders.core` ships `IFileProvider`/`IFileInfo`/`IDirectoryContents`, `NotFoundFileInfo`/
 `NotFoundDirectoryContents`, `NullChangeToken`, and `NullFileProvider` — mirroring
 `ME.FileProviders.Abstractions` → `Primitives`, realized as `fileproviders.core` → `primitives`.

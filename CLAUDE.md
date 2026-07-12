@@ -147,8 +147,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   internal `HostBuilderAdapter`), the `HostAbortedError(message, innerError)` constructor,
   and no-context convenience overloads on the pure-extension builder members only (the three
   core-interface members keep their single context-taking signature — a TS arity constraint, not
-  an omission). The physical file provider and the non-console logging sinks it composes stay
-  deferred at their own families (§18, §20). `hosting.browser` (← `hosting` + `hosting.core` +
+  an omission). The physical file provider now exists at its own family (`fileproviders.physical`,
+  §73); only its content-root _wiring_ into `hosting` (swapping
+  `HostingEnvironment.contentRootFileProvider`'s `NullFileProvider` default) stays a follow-up,
+  and the non-console logging sinks it composes stay deferred (§18, §20/§73). `hosting.browser`
+  (← `hosting` + `hosting.core` +
   `di.core`) hosts the same runtime in a page: `BrowserLifetime` on the existing
   `HOST_LIFETIME_TOKEN` (waitForStart immediate, pagehide-not-persisted → best-effort
   `stopApplication()` only — never a suspend→stop mapping, since `stopApplication` is a terminal
