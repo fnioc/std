@@ -1,16 +1,12 @@
 {
+  // This program carries the `declare module "@rhombus-std/di.core"` augmentation
+  // (`./augment.ts`) that merges the tokenless authoring overloads onto
+  // `ServiceManifestBase` / `AddBuilder` / `Resolver`. Under those merges di.core's
+  // SOURCE cannot co-compile — the concrete `ServiceManifestClass` no longer
+  // satisfies its own augmented base interface (TS2416). Now that di.core is
+  // dist-referenced (§72), its `.` export's `types` resolves the built,
+  // skip-lib-checked `.d.ts` for every consumer, so no `built` custom condition is
+  // needed to reach it. Mirrors docs/decisions.md §1/§9.
   "extends": "../../tsconfig.lib.json",
-  "compilerOptions": {
-    // Resolve `@rhombus-std/di.core` to its BUILT `.d.ts` (the `built` condition),
-    // NOT source. This program carries the `declare module "@rhombus-std/di.core"`
-    // augmentation (`./augment.ts`) that merges the tokenless authoring overloads
-    // onto `ServiceManifestBase` / `AddBuilder` / `Resolver`. Under those merges
-    // di.core's SOURCE cannot co-compile — the concrete `ServiceManifestClass` no
-    // longer satisfies its own augmented base interface (TS2416). A real consumer
-    // holds the built types and augments on top; the built `.d.ts` is
-    // skip-lib-checked, so the augmentation never forces the class to recompile.
-    // Mirrors `di.transformer.options` and docs/decisions.md §1/§9.
-    "customConditions": ["built"]
-  },
   "include": ["src/**/*"]
 }

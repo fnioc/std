@@ -21,16 +21,14 @@
     // transformer-compiled output) and index token maps heavily. Relaxing
     // `noUncheckedIndexedAccess` here keeps the assertions readable without
     // `!`-littering every token lookup; the production packages keep it on.
-    "noUncheckedIndexedAccess": false,
-    // Resolve @rhombus-std/di + @rhombus-std/di.core to their BUILT `.d.ts` (the
-    // `built` export condition), NOT source. This program pulls in the transformer
-    // augmentation (see `types` above), and di's SOURCE cannot co-compile under it
-    // — the impl classes can't satisfy the interfaces once the authored 0-arg forms
-    // are merged in. A real consumer holds di's built types and augments the
-    // `@rhombus-std/di.core` interface on top; consuming built types here reproduces
-    // that. Requires di/di.core built first (the harness already needs di's dist to
-    // run the lowered output, so dist is a prerequisite regardless).
-    "customConditions": ["built"]
+    // di and di.core are dist-referenced (§72), so their `types` conditions resolve
+    // the built `.d.ts` directly. That matters here because this program pulls in
+    // the transformer augmentation (see `types` above), under which di's SOURCE
+    // cannot co-compile — the impl classes can't satisfy the interfaces once the
+    // authored 0-arg forms are merged in; a real consumer holds di's built types
+    // and augments `@rhombus-std/di.core` on top, which the dist `.d.ts` reproduces.
+    // No `built` custom condition is needed.
+    "noUncheckedIndexedAccess": false
   },
   "include": ["test/**/*"]
 }

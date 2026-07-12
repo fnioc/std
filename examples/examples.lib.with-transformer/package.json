@@ -2,7 +2,7 @@
   "name": "@rhombus-std/examples.lib.with-transformer",
   "private": true,
   "version": "0.0.0",
-  "description": "Example dependency library authored in the tokenless di dialect and built with tspc. Its build is its only consumable form — every exports condition resolves to dist, so raw source never bypasses the transformer lowering.",
+  "description": "Example dependency library authored in the tokenless di dialect and built with tspc. Its build is its only consumable form \u2014 every exports condition resolves to dist, so raw source never bypasses the transformer lowering.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,7 +10,6 @@
   "exports": {
     ".": {
       "bun": "./dist/index.js",
-      "built": "./dist/index.d.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"

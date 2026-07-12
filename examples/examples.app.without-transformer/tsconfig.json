@@ -1,5 +1,5 @@
 {
-  "//": "Plain tsc — no transformer. Every token is hand-written, so nothing needs lowering. customConditions:[built] resolves the di family to their built d.ts: importing @rhombus-std/options.augmentations declaration-merges addOptions/configure onto di.core's ServiceManifestBase, which di's own SOURCE could not satisfy its `implements` against — the built declaration has no implements check. The with-transformer example library resolves to dist under every condition regardless. module:ESNext keeps specifiers verbatim for node ESM at runtime; the DOM lib supplies console + AbortSignal (via options → primitives).",
+  "//": "Plain tsc — no transformer. Every token is hand-written, so nothing needs lowering. The di family is now dist-referenced (§72), so its `types` conditions resolve the built d.ts directly: importing @rhombus-std/options.augmentations declaration-merges addOptions/configure onto di.core's ServiceManifestBase, which di's own SOURCE could not satisfy its `implements` against — the built declaration has no implements check. No `built` custom condition is needed. module:ESNext keeps specifiers verbatim for node ESM at runtime; the DOM lib supplies console + AbortSignal (via options → primitives).",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "ESNext",
@@ -10,8 +10,7 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
-    "composite": false,
-    "customConditions": ["built"]
+    "composite": false
   },
   "include": ["src/**/*"]
 }

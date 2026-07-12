@@ -1,5 +1,5 @@
 {
-  "//": "Built with tspc (ts-patch): the @rhombus-std/di.transformer plugin lowers the authored add<I>()/addFactory<I>() forms during emit, producing dist/*.js (lowered) + dist/*.d.ts (the clean authored surface). The transformer's declare-module augmentation enters the program via `types` (a compile-time inclusion, never a runtime import), so the authored forms type-check under both `tspc` (build) and `tspc --noEmit` (lint). customConditions:[built] resolves @rhombus-std/di + di.transformer to their built d.ts — di's source can't co-compile once the authoring augmentation is merged in, exactly as a published consumer's setup. module:ESNext keeps relative .js specifiers verbatim so node ESM resolves the emitted dist at runtime; moduleResolution:Bundler maps them back to source at compile time.",
+  "//": "Built with tspc (ts-patch): the @rhombus-std/di.transformer plugin lowers the authored add<I>()/addFactory<I>() forms during emit, producing dist/*.js (lowered) + dist/*.d.ts (the clean authored surface). The transformer's declare-module augmentation enters the program via `types` (a compile-time inclusion, never a runtime import), so the authored forms type-check under both `tspc` (build) and `tspc --noEmit` (lint). @rhombus-std/di + di.transformer are now dist-referenced (§72), so their `types` conditions resolve the built d.ts directly — di's source can't co-compile once the authoring augmentation is merged in, exactly as a published consumer's setup; no `built` custom condition is needed. module:ESNext keeps relative .js specifiers verbatim so node ESM resolves the emitted dist at runtime; moduleResolution:Bundler maps them back to source at compile time.",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "ESNext",
@@ -12,7 +12,6 @@
     "sourceMap": false,
     "composite": false,
     "types": ["@rhombus-std/di.transformer"],
-    "customConditions": ["built"],
     "plugins": [{ "transform": "@rhombus-std/di.transformer", "import": "transform" }]
   },
   "include": ["src/**/*"]
