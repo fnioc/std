@@ -2971,3 +2971,72 @@ complete, every runtime library is dist-referenced.**
   build`/`test`/`lint` all exit 0, including the config provider suites (`config.json`/`env`/
   `commandline`), `config.tests.integration`'s "augmentations are installed on the dist
   ConfigurationBuilder" assertions, and the §16 `examples.app.*` byte-diff e2e.
+
+## 79. Augmentation collision model — delta install + blind prototype merge
+
+The registry (§38) installs augmentation members onto a class prototype (the TS
+stand-in for C# extension methods). Two different registrations contributing the
+SAME member name onto one class used to silently clobber. §73's first cut fixed
+the clobber with a member-identity marker on each installed slot; this entry
+supersedes that with a simpler, correct-by-construction model in three parts.
+
+- **Delta install (`@augment` never re-installs the whole bag).** The old
+  listener re-installed the token's ENTIRE accumulated bag on every later
+  `registerAugmentations(token, …)`. With eight config providers registering onto
+  `nameof<IConfigurationBuilder>()` (config.json/env/commandline/ini/xml/file plus
+  config's memory + chained), `addJsonFile` was re-installed ~8 times. Now the
+  install is a DELTA: the INITIAL `@augment` application installs the
+  currently-accumulated members ONCE (catch-up for anything registered before the
+  class was decorated), and each LATER `registerAugmentations` installs ONLY that
+  registration's own `set`. A member therefore reaches a given prototype EXACTLY
+  ONCE. The delta is driven onto every subscribed class through a plain
+  per-token SUBSCRIBER LIST called SYNCHRONOUSLY — deliberately NOT an
+  `EventTarget` bus. A strategy-less collision (below) THROWS from
+  `installMember`, and `EventTarget.dispatchEvent` SWALLOWS a listener's throw
+  (reported out-of-band as an uncaughtException, never propagated to the
+  dispatcher). Through a bus, an already-decorated class's genuine collision
+  would return normally and silently DROP the colliding member — asymmetric with
+  the catch-up path, which throws loudly. Iterating the subscribers directly
+  lets the throw reach the `registerAugmentations` registrant.
+
+- **Blind prototype merge (no tokens, no receivers, no member identity).**
+  Mounting member `n` asks one question: is `n` already on the prototype?
+  Absent → mount the `this`-forwarding thunk. Present → a genuinely different
+  registration is colliding (the class's own primitive, a base-class member, or a
+  member a DIFFERENT token/set already installed — different tokens share one
+  prototype). With a `merge` strategy for `n`, mount a dispatcher chaining the
+  incoming over the existing (blind — the strategy does not inspect which
+  token/receiver/member it is). With NO strategy, THROW
+  (`augmentation "n" collides on <Class> — supply a merge strategy`). Because
+  delta install guarantees a member is mounted once, a second arrival at a taken
+  name is always a real collision — there is no idempotency/marker bookkeeping,
+  and the retired §73 `installed`-marker (`base`/`member`) machinery is gone.
+
+- **The bag holds a per-name list (§73/3 kept).** `registerAugmentations` does
+  NOT throw when a name is registered a second time under the same token — it
+  appends to that name's list. The throw for an unresolved collision lives
+  entirely at install: a late-decorated class replays the bag's contributions in
+  registration order, and the second same-name contribution hits the blind merge
+  (dispatcher with a strategy, or throw without one). The common cross-token
+  same-name collision needs no bag list at all — different tokens share the
+  prototype, so §2's install path already covers it; the list only covers a
+  same-token same-name pair.
+
+- **Double-installs are harmless by construction, not policed.** With delta
+  install a member is installed once; the only residual double-install is the rare
+  same-name-re-registered-with-a-strategy case, which self-chains into a dead
+  routing branch. No machinery detects or prevents it — adding some would be
+  weight against a case that is already inert.
+
+- **The hand-authored, no-transformer path (the real API, per
+  "No-transformer-first").** A wrapper that shares a name with the primitive it
+  builds on (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`,
+  `ILoggerFactory.createLogger`, and `di`'s `build` over `di.core`'s throwing
+  stub) supplies a `MergeStrategy` by hand: a pure filter routing the
+  primitive-shaped call to the primitive and the convenience-shaped call to the
+  wrapper. The convenience form is thus dot-callable at runtime; it is NOT typed
+  as a method overload (a concrete class declares the primitive in its body and TS
+  forbids merging an incompatible overload onto it, TS2430), so the typed path
+  stays the standalone functions. The seam left for the transformer: it will later
+  auto-generate the default merge, so a transformer user never writes a strategy —
+  built here as a no-transformer capability first, transformer sugar deferred.

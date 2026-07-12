@@ -20,7 +20,7 @@
 // event id and a message string are ambiguous at runtime; a caller that needs
 // an explicit event id calls `logger.log(level, EventId.from(n), …)` directly.
 
-import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import { EventId } from './event-id';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
@@ -125,8 +125,15 @@ export const LoggerExtensions = {
  * onto `ILogger` (§36: the interface has many implementers — sinks, fakes,
  * wrappers — that would inherit phantom members). Each CONCRETE logger class
  * extends this interface beside its `@augment(nameof<ILogger>())` decoration,
- * so the method form is typed exactly where it is installed. The wrapper `log`
- * is absent — see the exclusion at the registration below.
+ * so the method form is typed exactly where it is installed.
+ *
+ * `log` and `beginScope` are absent here on purpose. They are registered and
+ * install as dispatchers over the `ILogger` primitives (see the merge strategies
+ * below), so the convenience form is dot-callable AT RUNTIME. It is not TYPED as
+ * a method overload: a concrete class declares the primitive `log`/`beginScope`
+ * in its body, and TS forbids an interface merge from adding an incompatible
+ * convenience overload to a body-declared method (TS2430). The typed path stays
+ * the standalone `log(logger, …)` / `beginScope(logger, …)` functions.
  */
 export interface LoggerExtensionMethods {
   logTrace(message: string, ...args: unknown[]): void;
@@ -143,17 +150,39 @@ export interface LoggerExtensionMethods {
   logCritical(error: Error, message: string, ...args: unknown[]): void;
 }
 
-// The wrappers `log` and `beginScope` are members of `LoggerExtensions` (their
-// standalone surface) but are deliberately NOT prototype-installed: `ILogger`
-// already declares the primitives `log(logLevel, eventId, state, error,
-// formatter)` and `beginScope(state)` that these wrappers build on, so
-// installing a wrapper would overwrite the real implementation on each decorated
-// class — and the mounted thunk would then recurse into itself. Same exclusion
-// precedent as `LoggerFactoryExtensions.createLogger` and caching's
-// `tryGetValue`. They are also absent from `LoggerExtensionMethods` for the same
-// reason (their names ARE primitive names). Omit them via a rest destructure (TS
-// exempts the rest-sibling from unused checks; the bindings are renamed only
-// because the `log`/`beginScope` functions are already in scope).
-const { log: _log, beginScope: _beginScope, ...loggerInstanceMethods } = LoggerExtensions;
+// The wrappers `log` and `beginScope` share their names with `ILogger`'s own
+// primitives (`log(logLevel, eventId, state, error, formatter)` and
+// `beginScope(state)`). Rather than exclude them, the full set is registered
+// with a merge strategy per colliding member: at install the registry mounts a
+// DISPATCHER over each primitive that routes the primitive-shaped call to the
+// primitive and the convenience-shaped call to the wrapper. Because the wrapper
+// re-enters the receiver in primitive shape (`log(logLevel, EventId.from(0), …)`,
+// `beginScope(new FormattedLogValues(…))`), the dispatcher routes those back to
+// the primitive — so the convenience form is dot-callable without recursing.
+const loggerMerge = {
+  // `log`: the primitive's second argument is always an `EventId`; the
+  // convenience wrapper's is a message string (or a leading `Error`).
+  log(original, extension) {
+    return function(this: ILogger, logLevel: LogLevel, second: unknown, ...rest: unknown[]) {
+      if (second instanceof EventId) {
+        return original.call(this, logLevel, second, ...rest);
+      }
+      return extension(this, logLevel, second, ...rest);
+    };
+  },
+  // `beginScope`: the convenience wrapper formats a message template with args;
+  // the primitive takes an arbitrary state (which may itself be a bare string).
+  // Route to the wrapper only for the unambiguous format form — a string WITH
+  // format args — so a lone `beginScope("op-1")` stays raw primitive state, as
+  // the reference's instance-method-wins overload resolution does.
+  beginScope(original, extension) {
+    return function(this: ILogger, first: unknown, ...rest: unknown[]) {
+      if (typeof first === 'string' && rest.length > 0) {
+        return extension(this, first, ...rest);
+      }
+      return original.call(this, first, ...rest);
+    };
+  },
+} satisfies MergeStrategies;
 
-registerAugmentations(nameof<ILogger>(), loggerInstanceMethods);
+registerAugmentations(nameof<ILogger>(), LoggerExtensions, loggerMerge);

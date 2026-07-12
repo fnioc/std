@@ -24,6 +24,8 @@ import { ServiceManifest, type ServiceProvider } from '@rhombus-std/di';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
+import { augment } from '@rhombus-std/primitives';
+import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
 import { Logger } from './logger';
 import { LoggerExternalScopeProvider } from './logger-external-scope-provider';
@@ -40,6 +42,10 @@ interface ProviderRegistration {
   shouldDispose: boolean;
 }
 
+// `@augment(nameof<ILoggerFactory>())` installs the registry's `createLogger(type)`
+// dispatcher over this factory's primitive (runtime dot-callable — see
+// logging.core's logger-factory-augmentations.ts; not statically typed, §36 + TS2430).
+@augment(nameof<ILoggerFactory>())
 export class LoggerFactory implements ILoggerFactory {
   readonly #loggers = new Map<string, Logger>();
   readonly #providerRegistrations: ProviderRegistration[] = [];
@@ -199,6 +205,7 @@ export class LoggerFactory implements ILoggerFactory {
  * Wraps a container-resolved {@link ILoggerFactory} so disposing the factory
  * disposes the owning container scope — the reference's `DisposingLoggerFactory`.
  */
+@augment(nameof<ILoggerFactory>())
 class DisposingLoggerFactory implements ILoggerFactory {
   public constructor(
     private readonly factory: ILoggerFactory,

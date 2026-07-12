@@ -18,7 +18,7 @@
 
 import { type OpenRegistration, type Registration, type ServiceManifest as ServiceManifestInterface,
   ServiceManifestClass, type ServiceProvider, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
-import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 
 import { ServiceProviderClass } from './ServiceProviderClass.js';
@@ -60,7 +60,24 @@ export const ServiceCollectionContainerBuilderExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<ServiceManifestInterface>(), ServiceCollectionContainerBuilderExtensions);
+// `build` shares its name with di.core's `ServiceManifestClass.build` — a stub
+// that only throws "requires the @rhombus-std/di runtime". This runtime IS that
+// half, so the stub is fully superseded: the merge strategy installs a dispatcher
+// that always routes to this real `build`, never the stub. (Without a strategy the
+// registry throws on the collision rather than silently clobbering the primitive.)
+const containerBuilderMerge = {
+  build(_stub, extension) {
+    return function(this: ServiceManifestClass<string>, ...args: unknown[]) {
+      return extension(this, ...args);
+    };
+  },
+} satisfies MergeStrategies;
+
+registerAugmentations(
+  nameof<ServiceManifestInterface>(),
+  ServiceCollectionContainerBuilderExtensions,
+  containerBuilderMerge,
+);
 
 /**
  * The static / constructor side of the public `ServiceManifest`. Extracted as an
