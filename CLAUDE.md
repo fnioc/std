@@ -342,29 +342,35 @@ being retired package by package; see §72 in `docs/decisions.md` for why and fo
 front line. **`internal/*` deliberately stays src-referenced** — white-box tests need it, and there
 is no rolled per-file `.d.ts` for it to resolve to instead.
 
-**Landed:** `primitives`, `options`, `fileproviders.core`, `fileproviders.composite`,
-`config.core` — `.`-export type-facing conditions (and, for the four runtime libs among them,
-`bun`) point at `dist`; root `main`/`types` point at `dist`.
+**Landed:** `primitives`, `options`, `fileproviders.core`, `fileproviders.composite`, `config.core`
+(tiers 1–2, §72), and — following §74's token-derivation fix — `di.core`, `di`, `config.json`,
+`config.env`, `config.commandline`, `diagnostics.core`, `diagnostics`, `logging.core`, `logging`,
+`logging.configuration`, `logging.console`, `logging.browserconsole`, `caching.core`,
+`caching.memory`, `hosting.core`, `hosting`, `hosting.browser`, `options.augmentations` (tier 3+,
+§78). All: `.`-export type-facing conditions (and, for runtime-emitting libs, `bun`) point at
+`dist`; root `main`/`types` point at `dist`. The three self-augmenting cores among them —
+`di.core`, `diagnostics.core`, `hosting.core`, each of which `declare module`s its own public
+receiver — carry a package-unique `<pkg>-source` condition (`di-core-source`/
+`diagnostics-core-source`/`hosting-core-source`), listed first in the `.` export ahead of `types`,
+so the core's OWN program resolves back to its not-yet-built src (the §72 TS2664 self-typecheck
+fix) while every external consumer resolves the built dist; `hosting.core.test`'s white-box
+program needs the same condition in its own tsconfig, since it pulls hosting.core's src through
+`./internal/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's `.`
+export and from `customConditions` in all nine downstream consumer tsconfigs that used to force
+dist-resolution with it (the `di.transformer` pair, the example/app programs, and the di + config
+transformer test programs) — the per-core `-source` conditions above are its narrower replacement.
 
-**Not yet landed — the di family (`di`, `di.core`) and everything past it in dependency order**
-still carry `source`/`types`→`src` plus the `built` custom condition. `built` exists because a
-program that pulls a transformer's `declare module` augmentation into scope (via its `tsconfig`
-`types` array) cannot co-compile di's _source_ — the impl classes stop satisfying their interfaces
-once the authored 0-arg forms are merged in — so such consumers set `customConditions: ["built"]`
-to read di's rolled `.d.ts` instead of its source, reproducing how a real published consumer sees
-it. Flipping di/di.core's `types` straight to dist looked like it made `built` redundant, but it
-exposed a **runtime augmentation-token desync** (§72): di.core's own self-augmentation derives its
-`@augment` token from whichever condition its _own_ build sees (still-src at that point → a
-file-path token), while every external registrant resolves di.core's already-built dist → a
-barrel token. The two stop matching and the `ServiceManifest` augmentation (`build`,
-`addHostedService`, `tryAdd*`, …) silently fails to install — a runtime break invisible to
-`tsc --noEmit`, only caught by the test gate. That desync now has its design fix (§74): derivation
-keys on export MEMBERSHIP via the `src/` twin, byte-identically in both engines, so a self-augmenting
-core compiling its own not-yet-built dist derives the same barrel token its external registrants do.
-`built` retirement for di/di.core therefore no longer waits on an open design question — only on
-doing the tier-3 conversion itself, which still needs §72's secondary TS2664 self-typecheck fix (the
-package-unique `di-core-source` condition). Don't flip di/di.core's `types` before that conversion
-lands (§72/§74).
+**Deferred — `config` is the sole remaining src-referenced runtime lib (#68 stays open, scoped to
+it).** `config` declares its augmentation receivers at SUBPATH exports
+(`./configuration-builder`, `./configuration-manager`) that its providers merge onto;
+`config.json`/`config.env`/`config.commandline` converted fine against config's still-src
+subpaths, since their augmentations are compile-time-only with no runtime token to desync. Flipping
+config's own `.` export to dist would seal it external, and `rollup-plugin-dts` can no longer pull
+those src subpath modules into a provider's program (TS2664, with no `-source`-style fix available
+since the receivers themselves live at the subpaths). Per §74, this closes only via a COMPLETE
+per-package flip — collapsing those subpaths onto the rolled root barrel AND updating
+`config.transformer`'s token derivation to match — a design decision, not a mechanical shim, so it
+was left rather than forced (§78).
 
 Mechanically, for packages not yet converted: they consume each other's raw TS `src` via
 `workspace:*` + `exports` whose `source`/`bun`/`types` conditions point at `.ts`, under
@@ -396,13 +402,14 @@ existence (`tsconfig.build.json` → tspc, `tsconfig.ttsc.json` → ttsc). The o
 `rhombusBuild` manifest field carries the four deviations (`lowering`/`typesOnly`/`inline`/
 `forbidImports`), each documented by a `//rhombusBuild` neighbor. Library tsconfigs extend the
 shared root fragments `tsconfig.lib.json` (typecheck profile) / `tsconfig.tspc.json` (lowering
-stage); `include`, `rootDir`/`outDir`, and `customConditions: ["built"]` stay leaf-side.
+stage); `include`, `rootDir`/`outDir`, and a self-augmenting core's `customConditions: ["<pkg>-source"]`
+(§78) stay leaf-side.
 
 ### Two transformer engines — dual-track (§41)
 
 The four authoring-time transformers exist twice. The **ts-patch/TS5** sources
-(`libraries/*.transformer`) stay the **lint/typecheck gate** (`tspc --noEmit`, eslint, the `built`
-condition above) — unchanged. A **Go/`ttsc`** port under the root `transforms/` module
+(`libraries/*.transformer`) stay the **lint/typecheck gate** (`tspc --noEmit`, eslint) — unchanged.
+A **Go/`ttsc`** port under the root `transforms/` module
 (`go.mod` `github.com/fnioc/std/transforms`, one `cmd/ttsc-*` per plugin, shared `internal/`) is
 the **build/emit engine**: it lowers `nameof`/`add`/`addOptions`/`withType` into the shipped JS.
 The two must lower **identically — token strings byte-for-byte** (the parity invariant); code shape

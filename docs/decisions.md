@@ -2895,3 +2895,59 @@ convenience-wrapper overloads, and the reload-reactive converged filter-options 
 catalogued in `docs/logging-beyond-reference.md`. No public type or signature in
 `logging.core`/`logging`/`logging.configuration` changed, so no referencing library (`hosting.core`/
 `hosting`, `diagnostics`) is affected.
+
+## 78. The runtime tier is dist-referenced; the `built` condition is retired — `config` deferred (#68)
+
+§74 fixed the runtime augmentation-token desync that §72 named as tier 3's blocker; this entry
+lands the tier-3+ conversion §72 said would follow once that fix existed, and retires the `built`
+hatch §9's forebear section named as `built`'s own eventual replacement.
+
+- **Converted (18 libs).** `di.core`, `di`, `config.json`, `config.env`, `config.commandline`,
+  `diagnostics.core`, `diagnostics`, `logging.core`, `logging`, `logging.configuration`,
+  `logging.console`, `logging.browserconsole`, `caching.core`, `caching.memory`, `hosting.core`,
+  `hosting`, `hosting.browser`, `options.augmentations` — each `.` export's type-facing condition
+  (and, since all eighteen emit runtime, `bun`) repointed `./src/*.ts` → `./dist/*`, `source`
+  dropped, root `main`/`types` → `dist`. `./internal/*` is unchanged throughout — still
+  src-referenced, white-box tests only, same as every tier before it.
+- **§72's secondary TS2664 problem: a per-core, not shared, source condition.** Three of the
+  eighteen self-augment their own public receiver — `di.core` → `ServiceManifest`,
+  `diagnostics.core` → `IMetricsBuilder`/`ITracingBuilder`, `hosting.core` → `IHostBuilder` — so
+  each carries a package-unique `<pkg>-source` condition (`di-core-source`/
+  `diagnostics-core-source`/`hosting-core-source`), listed FIRST in the `.` export ahead of
+  `types`, that routes the core's OWN program back to its not-yet-built src while every external
+  consumer (which never sets the condition) resolves the built dist. This is deliberately narrower
+  than the shared `source` condition §72 considered and rejected: `source` would pull every
+  downstream consumer (`logging.core`, `hosting.core`, `diagnostics.core`, …) into co-compiling
+  the core's src too. `hosting.core.test`'s white-box program hits the identical TS2664 through a
+  different path — it pulls `hosting.core`'s src in via `./internal/*`, which still carries the
+  self-`declare module` — so it sets `hosting-core-source` in its own tsconfig too, matching the
+  library's.
+- **§72's primary runtime desync does not recur.** §74 landed first, precisely so this wouldn't
+  reopen it: derivation now keys on export MEMBERSHIP (literal target, then the
+  `dist/<X> → src/<X>` twin), byte-identically in both engines, so a self-augmenting core
+  compiling its own not-yet-built dist derives the same barrel token an external registrant does.
+  Verified, not assumed: `bun run build`, `bun run test`, and `bun run lint` all exit 0 across the
+  full workspace (1359+14 passes, 0 failures), including the §16 `examples.app.*` e2e that builds
+  with `tspc` and diffs stdout against the checked-in `expected.txt` — the one suite that actually
+  runs the built dist end-to-end rather than only typechecking against it.
+- **`built` retired.** Dropped from `di.core`/`di`'s `.` export and from `customConditions` in the
+  nine downstream consumer tsconfigs that used to set `customConditions: ["built"]` to force
+  dist-resolution against di's still-src `.` export (the `di.transformer` pair, the example/app
+  programs, and the di + config transformer test programs), plus the now-redundant `built` export
+  condition on `examples.lib.with-transformer`. The per-core `-source` conditions above are its
+  narrower replacement: `built` was a blanket forces-dist hatch any consumer could reach for; a
+  `-source` condition exists only on its own owning core's tsconfig and is never set by a
+  consumer.
+- **Deferred — `config` is the sole remaining src-referenced runtime lib; #68 stays open, scoped
+  to it alone.** This is §74's flagged hard case: `config` declares its augmentation receivers at
+  SUBPATH exports (`./configuration-builder`, `./configuration-manager`), which its providers
+  merge onto. `config.json`/`config.env`/`config.commandline` DID convert — they build clean
+  against `config`'s still-src `.` export and subpaths, because their augmentations are
+  compile-time-only declaration merges with no runtime `@augment` token to desync. Flipping
+  `config`'s own `.` export to dist would seal it external, and `rollup-plugin-dts` can no longer
+  pull those src subpath modules into a provider's program once that happens — TS2664 again, this
+  time with no `-source`-style fix available, since the augmented receivers themselves (not just a
+  self-referencing core) live at the subpaths. §74 already named the actual close: collapse
+  `./configuration-builder`/`./configuration-manager` onto the rolled root barrel AND update
+  `config.transformer`'s token derivation to match — a design decision about `config`'s export
+  shape, not a mechanical condition shim, so it was left rather than forced here.
