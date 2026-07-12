@@ -18,14 +18,13 @@
     "directory": "libraries/config.commandline"
   },
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "sideEffects": true,
   "exports": {
     ".": {
-      "source": "./src/index.ts",
       "bun": "./dist/index.js",
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },

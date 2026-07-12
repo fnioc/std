@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.console",
   "version": "0.0.0",
-  "description": "Console logging provider ported from the reference console-logging package: ConsoleLogger + ConsoleLoggerProvider, the ConsoleFormatter abstraction with the simple/json/systemd built-ins (ANSI colors), formatter/logger options, and an async background queue writer — against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
+  "description": "Console logging provider ported from the reference console-logging package: ConsoleLogger + ConsoleLoggerProvider, the ConsoleFormatter abstraction with the simple/json/systemd built-ins (ANSI colors), formatter/logger options, and an async background queue writer \u2014 against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
   "keywords": [
     "logging",
     "console",
@@ -17,13 +17,12 @@
   },
   "type": "module",
   "sideEffects": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
       "bun": "./dist/index.js",
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },

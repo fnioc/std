@@ -10,11 +10,11 @@
     "types": ["bun"],
     // The harness builds and diffs emitted text and indexes token maps; relax
     // unchecked-index so assertions read cleanly without `!`-littering.
-    "noUncheckedIndexedAccess": false,
-    // Resolve `@rhombus-std/di.transformer` + `@rhombus-std/di.core` to their BUILT
-    // `.d.ts` (the `built` condition); the satellite's own `./internal/*` seam
-    // still resolves to source `.ts`, which is what these white-box tests exercise.
-    "customConditions": ["built"]
+    // di.transformer and di.core are dist-referenced (§72), so their `types`
+    // conditions resolve the built `.d.ts` directly; the satellite's own
+    // `./internal/*` seam still resolves to source `.ts`, which is what these
+    // white-box tests exercise. No `built` custom condition is needed.
+    "noUncheckedIndexedAccess": false
   },
   "include": ["test/**/*"]
 }

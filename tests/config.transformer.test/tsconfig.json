@@ -18,13 +18,11 @@
     // heavily. Relaxing `noUncheckedIndexedAccess` here keeps the assertions
     // readable without `!`-littering every lookup; the production package keeps
     // it on.
-    "noUncheckedIndexedAccess": false,
-    // Resolve @rhombus-std/config + @rhombus-std/config.core to their BUILT
-    // `.d.ts` (the `built` export condition) rather than source, matching how a
-    // real consumer holds the built types. The e2e harness already needs those
-    // packages' dist on disk to link them into its temp project, so dist is a
-    // prerequisite regardless.
-    "customConditions": ["built"]
+    // config.core is dist-referenced (its `types` resolves the rolled `.d.ts`);
+    // config itself is still src-referenced (its subpath augmentations are not yet
+    // flipped, §74), so it resolves to source. Neither needs a `built` custom
+    // condition — the `built` export condition has been retired.
+    "noUncheckedIndexedAccess": false
   },
   "include": ["test/**/*"]
 }
