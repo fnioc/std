@@ -757,6 +757,15 @@
         "@rhombus-std/primitives": "workspace:*",
       },
     },
+    "tests/fileproviders.physical.test": {
+      "name": "@rhombus-std/fileproviders.physical.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/fileproviders.core": "workspace:*",
+        "@rhombus-std/fileproviders.physical": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
     "tests/hosting.browser.test": {
       "name": "@rhombus-std/hosting.browser.test",
       "version": "0.0.0",
@@ -1298,6 +1307,8 @@
     "@rhombus-std/fileproviders.core.test": ["@rhombus-std/fileproviders.core.test@workspace:tests/fileproviders.core.test"],
 
     "@rhombus-std/fileproviders.physical": ["@rhombus-std/fileproviders.physical@workspace:libraries/fileproviders.physical"],
+
+    "@rhombus-std/fileproviders.physical.test": ["@rhombus-std/fileproviders.physical.test@workspace:tests/fileproviders.physical.test"],
 
     "@rhombus-std/hosting": ["@rhombus-std/hosting@workspace:libraries/hosting"],
 

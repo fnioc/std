@@ -142,7 +142,12 @@ export class PhysicalFileProvider implements IFileProvider {
     } catch {
       return undefined;
     }
-    if (!fullPath.startsWith(this.#root)) {
+    // `#root` carries a trailing separator (so a sibling like `<root>x` cannot
+    // prefix-match), but `resolve` strips the trailing separator from the root
+    // itself -- so the root directory must be matched by equality as well as by
+    // the trailing-separator prefix.
+    const rootWithoutSeparator = this.#root.slice(0, -1);
+    if (fullPath !== rootWithoutSeparator && !fullPath.startsWith(this.#root)) {
       return undefined;
     }
     return fullPath;
