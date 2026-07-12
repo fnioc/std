@@ -2695,3 +2695,100 @@ referencing tier attempting the first `built`-mode self-compile.
   resolve §72's _secondary_ TS2664 self-typecheck problem (still needs the package-unique
   `di-core-source` custom condition). So `built` retirement for `di`/`di.core` and the tiers past
   them now waits only on doing that conversion — the runtime desync that made it unsafe is fixed.
+
+## 75. The file-configuration family — `config.file` base, `config.ini`, `config.xml`
+
+The configuration family gains a file base layer and two new format providers, mirroring the
+reference `FileExtensions` / `Ini` / `Xml` packages. `config.json` is rebased onto the shared base.
+
+- **`config.file` — the shared base (the `FileExtensions` analog).** `FileConfigurationSource`
+  (abstract: `fileProvider`/`path`/`optional`/`reloadOnChange`/`reloadDelay`/`onLoadError`,
+  `ensureDefaults`, `resolveFileProvider`) and `FileConfigurationProvider` (abstract: reads the
+  file through the source's `IFileProvider`, hands decoded text to an abstract `loadContent`,
+  reloads on change) plus `FileLoadErrorContext` and the `FormatError`/`InvalidDataError` types.
+  The name is short and tier-flat (like `config.json`): the package's job is base classes, not
+  side-effect extension methods, so the `Extensions⇒augmentations` rule (§0) doesn't fire. Depends
+  on `config` (peer), `config.core`, `fileproviders.core`, and `fileproviders.physical` (the
+  centralized default provider). It is inherently node-side; the `config` barrel stays
+  browser-clean by never importing it. Born dist-referenced (§72) with the `nameof` `internal/*`
+  lowering split (§40).
+
+  - **Read is synchronous via `physicalPath` (flagged deviation).** `load()` is synchronous, but
+    `IFileInfo.createReadStream` yields an async `ReadableStream` that can't be drained in a sync
+    method. So the base reads with `readFileSync(fileInfo.physicalPath)` — which is exactly the
+    reference's own primary path (its `OpenRead` special-cases `PhysicalPath` to a synchronous
+    `FileStream`). A provider exposing no `physicalPath` (in-memory/remote) is unsupported for
+    synchronous file config and throws.
+  - **Reset by reassignment (#86).** The base resets its store with `this.data = new Map()` (the
+    §-preceding widening dropped `readonly` on `ConfigurationProvider#data`), so it parses into a
+    fresh store and swaps it in atomically — restoring the previous store when a NON-reload parse
+    fails, matching the reference's "Data unchanged on a failed initial load" semantics, which an
+    in-place `clear()` can't express. #86's second half (null value vs. empty string) is left open:
+    no ported provider stores a null leaf.
+  - **`FileConfigurationExtensions`** installs `setFileProvider`/`getFileProvider`/`setBasePath`/
+    `setFileLoadErrorHandler`/`getFileLoadErrorHandler` against the shared `IConfigurationBuilder`
+    token, merged onto the `config.core` `IConfigurationBuilder` INTERFACE (so a source's
+    `ensureDefaults`, which only sees the interface, can call `builder.getFileProvider()`) AND onto
+    both concrete builders (so user code reaches `setBasePath` on a `ConfigurationBuilder`/
+    `ConfigurationManager`). The `properties`-bag keys stay the reference's literal strings
+    (`"FileProvider"`, `"FileLoadExceptionHandler"`) for cross-provider parity; the member and type
+    names are error-worded (`FileLoadErrorContext`, `onLoadError`) per the error-not-exception rule.
+
+- **`config.json` rebased.** `JsonConfigurationSource`/`Provider` now derive from the file base;
+  the read flows through an `IFileProvider` (default a cwd-rooted `PhysicalFileProvider`,
+  reproducing the old cwd-relative behavior byte-for-byte), so `node:fs` leaves `config.json`
+  entirely. The positional `(path, opts)` ctor is unchanged (hosting's appsettings sources keep
+  working); `JsonConfigurationSourceOptions` gains `reloadOnChange`/`reloadDelay`/`fileProvider`.
+  **Deviation from the reference's positional-bool `AddJsonFile` ladder:** the established
+  options-object form (matching `addEnvironmentVariables`) subsumes it more idiomatically (§0).
+  **Deviation:** `build()` calls `resolveFileProvider` before `ensureDefaults` so a directly
+  constructed source with an absolute path self-roots (the reference resolves only inside the
+  ladder; this keeps direct construction reading absolute paths). The parser now throws
+  `FormatError` (wrapped by the base in `InvalidDataError`) and rejects a top-level JSON ARRAY —
+  the root must be an object, as the reference requires (an audit-found gap). Stream variants are
+  unchanged (§59).
+
+- **`config.ini`.** `IniConfigurationSource`/`Provider` on the file base + the `IniStream*` pair
+  over `config`'s stream base, sharing an `IniStreamParser` (sections, `;`/`#`/`/` comments,
+  first-`=` split, one-pair quote strip, duplicate-key and no-`=` `FormatError`). `addIniFile`/
+  `addIniStream` on both builders.
+
+- **`config.xml`.** `XmlConfigurationSource`/`Provider` + the `XmlStream*` pair, over a
+  self-contained tokenizer + tree walk (`XmlStreamParser`) with NO XML-parser dependency (a dep
+  would violate the zero-ambient-types ethos, §39/§44). Grammar: elements/attributes/text/CDATA;
+  the root element name is dropped; a case-insensitive `Name` attribute contributes an extra path
+  segment; repeated siblings get a numeric index; the five predefined entities are expanded (plus
+  numeric character references — core XML, beyond the plan's five-entity scope); a namespace (a
+  name containing `:`), a DTD, an undefined entity, or a duplicate resolved key is a `FormatError`;
+  the XML declaration, comments, and PIs are ignored. **Simplification (flagged):** the reference's
+  `SingleChild`/`ChildrenBySiblingName` perf optimization collapses to a plain grouped-children
+  walk. **Out of scope:** encrypted-section decryption (`XmlDocumentDecryptor`/`EncryptedData`) —
+  no analog; `KeyPerFile` — no reference source present, no consumer.
+
+- **`config.env` connection-string prefixes (audit rider).** An environment variable whose name
+  starts (case-insensitively) with one of the conventional `*CONNSTR_` prefixes some deployment
+  platforms inject is re-keyed into the `ConnectionStrings` section with the prefix stripped
+  (`SQLCONNSTR_Db` → `ConnectionStrings:Db`); the part after the prefix is transformed as usual.
+  The reference additionally emits a `<name>_ProviderName` sibling naming the ADO provider for four
+  prefixes; those provider-name values are OMITTED — they are runtime-stack-specific identifiers
+  with no analog here — so no `_ProviderName` key is written.
+
+- **Prerequisite issues.** **#82** (builder `Properties`/`Sources` narrowing): the `Properties` bag
+  the file base needs was already landed by §59, so no widening was required — the file base
+  consumes it directly; the `Sources`-mutability half remains unaddressed (no consumer). **#86**
+  (provider `Data` reassignment + null coercion): the reassignment half is now enabled (the file
+  base relies on it, above); the null-vs-empty-string half is deferred (no consumer). **#183**
+  (config.json `reloadOnChange` retrofit) is fully implemented and closes.
+
+- **Hosting `reloadOnChange` enablement — DEFERRED (blocked on watcher-disposal ownership).**
+  `PhysicalFileProvider.watch` is live (#184), so the reference's default of `reloadConfigOnChange
+  = true` on the host's `appsettings(.{env}).json` sources is now technically wireable. It is NOT
+  flipped, because enabling it by default registers an `fs.watch` handle (which does not `unref`)
+  per appsettings source, through a cwd-rooted `PhysicalFileProvider` that `getFileProvider`
+  creates fresh and NOBODY disposes — so the watcher keeps the event loop alive and the process
+  never exits (the app examples boot via the Generic Host and would hang the output-diff e2e). The
+  missing piece is disposal ownership: something must own disposing the default file providers when
+  the host stops — the SAME open question #182 raises for the content-root provider. Hosting keeps
+  `reloadOnChange:false` (zero regression); the config-side machinery fully supports opt-in
+  `reloadOnChange` with a disposal-aware provider. #182 (content-root `PhysicalFileProvider`
+  wiring) is likewise left for its issue.
