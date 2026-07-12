@@ -2986,10 +2986,17 @@ supersedes that with a simpler, correct-by-construction model in three parts.
   config's memory + chained), `addJsonFile` was re-installed ~8 times. Now the
   install is a DELTA: the INITIAL `@augment` application installs the
   currently-accumulated members ONCE (catch-up for anything registered before the
-  class was decorated), and each LATER dispatch installs ONLY that registration's
-  own `set`. The delta rides the dispatched event (`event.set` + the token's
-  accumulated `event.merges`); the listener reads it synchronously during
-  dispatch. A member therefore reaches a given prototype EXACTLY ONCE.
+  class was decorated), and each LATER `registerAugmentations` installs ONLY that
+  registration's own `set`. A member therefore reaches a given prototype EXACTLY
+  ONCE. The delta is driven onto every subscribed class through a plain
+  per-token SUBSCRIBER LIST called SYNCHRONOUSLY — deliberately NOT an
+  `EventTarget` bus. A strategy-less collision (below) THROWS from
+  `installMember`, and `EventTarget.dispatchEvent` SWALLOWS a listener's throw
+  (reported out-of-band as an uncaughtException, never propagated to the
+  dispatcher). Through a bus, an already-decorated class's genuine collision
+  would return normally and silently DROP the colliding member — asymmetric with
+  the catch-up path, which throws loudly. Iterating the subscribers directly
+  lets the throw reach the `registerAugmentations` registrant.
 
 - **Blind prototype merge (no tokens, no receivers, no member identity).**
   Mounting member `n` asks one question: is `n` already on the prototype?

@@ -18,8 +18,9 @@
 //   - the augmentation registry (`augmentation-registry.ts`) -- the OPEN-set
 //     path for builder interfaces downstream packages extend (ServiceManifest,
 //     ConfigurationBuilder, ILoggingBuilder, ...). It calls `installSet`
-//     through a token + EventTarget so late-registered augmentations still
-//     reach an already-decorated class prototype.
+//     through a token + a synchronous per-token subscriber list so
+//     late-registered augmentations still reach an already-decorated class
+//     prototype.
 //
 // This infrastructure lives in `primitives` -- the universal leaf every
 // family can already depend on -- because di and config must stay mutually

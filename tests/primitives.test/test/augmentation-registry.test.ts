@@ -441,6 +441,86 @@ describe('install-time collision with a class primitive (§73/2)', () => {
   });
 });
 
+describe('dispatch-path collision propagates to the registrant (§78 defect fix)', () => {
+  // The collision throw must reach the `registerAugmentations` CALLER even when
+  // the receiving class is ALREADY decorated (the registry's primary open-set
+  // scenario: a downstream package registers onto a token whose concrete class
+  // loaded first). The install runs synchronously per subscriber -- NOT through
+  // an `EventTarget` bus, whose `dispatchEvent` would swallow the listener throw
+  // and silently drop the colliding member.
+
+  test('a strategy-LESS collision onto an already-decorated class THROWS from registerAugmentations', () => {
+    const TOKEN = freshToken();
+
+    class Recv {
+      readonly seen: string[] = [];
+    }
+    interface Recv {
+      addFoo(): void;
+    }
+
+    // Decorate FIRST, then register the first member -- it installs via delta.
+    augment(TOKEN)(Recv);
+    registerAugmentations(TOKEN, {
+      addFoo(receiver: { seen: string[]; }): void {
+        receiver.seen.push('first');
+      },
+    });
+
+    // A SECOND same-name registration with no strategy collides at install. The
+    // throw must surface HERE (not be swallowed out-of-band).
+    expect(() =>
+      registerAugmentations(TOKEN, {
+        addFoo(receiver: { seen: string[]; }): void {
+          receiver.seen.push('second');
+        },
+      })
+    ).toThrow(/augmentation "addFoo" collides on Recv/);
+
+    // The first contribution stays intact (the collision refused the second, it
+    // did not clobber the first).
+    const recv = new Recv();
+    recv.addFoo();
+    expect(recv.seen).toEqual(['first']);
+  });
+
+  test('a strategy-carrying collision onto an already-decorated class CHAINS (both reachable)', () => {
+    const TOKEN = freshToken();
+
+    class Recv {}
+    interface Recv {
+      pick(x: unknown): string;
+    }
+
+    const merge = {
+      pick(original, extension) {
+        return function(this: Recv, x: unknown, ...rest: unknown[]) {
+          return typeof x === 'number' ? extension(this, x, ...rest) : original.call(this, x, ...rest);
+        };
+      },
+    } satisfies MergeStrategies;
+
+    augment(TOKEN)(Recv);
+    registerAugmentations(TOKEN, {
+      pick(_r: Recv, x: unknown): string {
+        return `first:${String(x)}`;
+      },
+    });
+    // Later delta collides but carries a strategy -- both signatures stay live.
+    expect(() =>
+      registerAugmentations(TOKEN, {
+        pick(_r: Recv, x: unknown): string {
+          return `second:${String(x)}`;
+        },
+      }, merge)
+    ).not.toThrow();
+
+    const recv = new Recv();
+    expect(recv.pick('a')).toBe('first:a');
+    expect(recv.pick(5)).toBe('second:5');
+  });
+});
+
 describe('cross-token collision (two tokens, one class, same member name, §73/2)', () => {
   // Two DIFFERENT tokens each contribute a same-NAMED member onto the SAME class.
   // The per-token bag cannot see this (two tokens = two bags), so the guard lives
