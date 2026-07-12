@@ -2833,7 +2833,7 @@ pipeline-stage **reachability** and recording divergences, not new types.
   clobber each other's nested keys (`config-options.test.ts` asserts this).
 
 - **Step-object-or-delegate, deps resolved once (divergence recorded).** `configure`/
-  `postConfigure`/`validate` each accept a pre-built step object *or* a bare delegate on the one
+  `postConfigure`/`validate` each accept a pre-built step object _or_ a bare delegate on the one
   verb (the reference needs a separate raw DI registration for the instance form). The DI-injected
   variadic `DepTokens<Deps>` form (§42) resolves its dependency tokens **once**, when the assembly
   reads the slot — not per-materialization as the reference's transient closures do — harmless for

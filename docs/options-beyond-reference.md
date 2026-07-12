@@ -35,7 +35,9 @@ next change token automatically after each fire.
 
 ```ts
 // libraries/options/src/options.ts
-function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): Options<T> {
+function watch<T>(getValue: Func<[], T>,
+  produceToken: ChangeTokenProducer): Options<T>
+{
   return {
     get value(): T {
       return getValue();
@@ -64,7 +66,7 @@ expect(seen).toEqual([{ Url: 'http://second' }]);
 ## 3. An explicit-token `addOptions(token, tToken)` wrap verb
 
 Alongside the assembly-pipeline overload (`addOptions(token, () => base)` — runs the whole
-configure/post-configure/validate pipeline), a second verb wraps an *already-bound* `T` into an
+configure/post-configure/validate pipeline), a second verb wraps an _already-bound_ `T` into an
 `Options<T>` (#34). Same member name, disambiguated by whether the second argument is a base factory
 or a token.
 
@@ -117,7 +119,7 @@ closures.
 
 ```ts
 // tests/options.augmentations.test/test/di-injected-steps.test.ts
-services.configure<WidgetOptions, [UrlProvider, { attempts: number }]>(
+services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(
   OPTIONS_TOKEN,
   [URL_PROVIDER_TOKEN, RETRY_POLICY_TOKEN],
   (options, urls, policy) => {
@@ -129,10 +131,10 @@ services.configure<WidgetOptions, [UrlProvider, { attempts: number }]>(
 
 The same variadic form serves `postConfigure` and `validate`.
 
-## 7. A step object *or* a delegate on the one verb
+## 7. A step object _or_ a delegate on the one verb
 
 The reference needs a separate raw DI registration to supply a pre-built `IPostConfigureOptions`
-instance. Here `configure`/`postConfigure`/`validate` each accept a pre-built step object *or* a
+instance. Here `configure`/`postConfigure`/`validate` each accept a pre-built step object _or_ a
 bare delegate on the same verb.
 
 ```ts
@@ -153,12 +155,14 @@ Both append to the token's post-configure slot, which the assembly runs after ev
 
 The reference's config→options bind calls the reflective `ConfigurationBinder.Bind`. Reflection is
 impossible under TS type erasure, so `ConfigurationConfigureOptions` reimplements the bind
-*structurally* — and the deep merge carries a stronger guarantee than the reference: two configure
+_structurally_ — and the deep merge carries a stronger guarantee than the reference: two configure
 steps binding overlapping sections **compose** rather than clobber each other's nested keys.
 
 ```ts
 // libraries/options.augmentations/src/ConfigurationConfigureOptions.ts
-function bindSection(config: IConfiguration, target: Record<string, unknown>): void {
+function bindSection(config: IConfiguration,
+  target: Record<string, unknown>): void
+{
   for (const child of config.getChildren()) {
     const grandchildren = [...child.getChildren()];
     if (grandchildren.length) {
