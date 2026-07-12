@@ -56,6 +56,67 @@ func TestCollectExportEntriesConditions(t *testing.T) {
 	}
 }
 
+// EntrySourceStems is the single build-state-independent candidate set shared by
+// both Go token-derivation call sites (tokens.entrySourceFile and
+// dioptionstransform.isRootExportTarget), and mirrors the TS engine's
+// entrySourceFile. These assertions pin the exact stems — literal target first,
+// then the `dist/<X> -> src/<X>` twin — so the two engines cannot drift.
+func TestEntrySourceStems(t *testing.T) {
+	const dir = "/proj/node_modules/my-lib"
+
+	cases := []struct {
+		name  string
+		entry ExportEntry
+		want  []string
+	}{
+		{
+			// A dist target yields the literal stem first, then its src twin —
+			// the twin is what a dist-referenced package compiling ITSELF loads.
+			name:  "dist root: literal then src twin",
+			entry: ExportEntry{Subpath: "", TargetRel: "dist/index.js"},
+			want:  []string{dir + "/dist/index", dir + "/src/index"},
+		},
+		{
+			// A `.d.ts` target strips to the same `dist/index` stem and twin.
+			name:  "dist root .d.ts: same stem and twin",
+			entry: ExportEntry{Subpath: "", TargetRel: "dist/index.d.ts"},
+			want:  []string{dir + "/dist/index", dir + "/src/index"},
+		},
+		{
+			// A subpath dist target twins on its own basename.
+			name:  "dist subpath: literal then src twin",
+			entry: ExportEntry{Subpath: "extras", TargetRel: "dist/extras.js"},
+			want:  []string{dir + "/dist/extras", dir + "/src/extras"},
+		},
+		{
+			// A raw `./index.js` (no dist prefix): only the literal stem, no twin.
+			name:  "non-dist target: literal only",
+			entry: ExportEntry{Subpath: "", TargetRel: "index.js"},
+			want:  []string{dir + "/index"},
+		},
+		{
+			// Guard on the non-empty remainder: `dist/` alone never twins.
+			name:  "bare dist prefix: no twin",
+			entry: ExportEntry{Subpath: "", TargetRel: "dist/"},
+			want:  []string{dir + "/dist/"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := EntrySourceStems(dir, tc.entry)
+			if len(got) != len(tc.want) {
+				t.Fatalf("stems = %v, want %v", got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Fatalf("stems = %v, want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
 func TestCollectExportEntriesFallbackAndMissingName(t *testing.T) {
 	pkg, ok := ParsePackageJSON(`{ "name": "n", "types": "./dist/index.d.ts" }`)
 	if !ok {

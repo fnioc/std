@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // Production-path e2e parity: drives the REAL ttsc (typescript-go toolchain) over
@@ -56,6 +56,14 @@ function goEnv(): NodeJS.ProcessEnv {
   if (goBin) {
     env.TTSC_GO_BINARY = goBin;
   }
+  // `go build`'s $WORK dir defaults to $TMPDIR (often a small tmpfs); compiling
+  // the typescript-go checker the plugin links against needs a few GB of scratch,
+  // so redirect GOTMPDIR onto a roomy home-cache dir to avoid an ENOSPC ("disk
+  // quota exceeded") on a tmpfs /tmp — matching the sibling ttsc.e2e suites and
+  // scripts/build-package.ts's ttscEnv.
+  const goTmp = join(homedir(), '.cache', 'fnioc-ttsc-build-tmp');
+  mkdirSync(goTmp, { recursive: true });
+  env.GOTMPDIR = goTmp;
   return env;
 }
 

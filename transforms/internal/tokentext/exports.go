@@ -25,6 +25,34 @@ type ExportEntry struct {
 	TargetRel string
 }
 
+// EntrySourceStems returns, in resolution-priority order, the extension-stripped
+// absolute path stems an export entry's on-disk target may resolve to in the
+// program. It is the single shared convention both Go token-derivation call
+// sites use — publicImportSpecifier's entrySourceFile (the general token
+// derivation) and dioptionstransform's isRootExportTarget (the Options<T> base
+// scan) — so the two cannot drift (parity, decisions §41). The candidates are:
+//
+//  1. The LITERAL target stem (`<pkgDir>/dist/index` from `./dist/index.js`, or
+//     `<pkgDir>/index` from a raw `./index.js`) — what a CONSUMER of the built
+//     dist, or a src-referenced package compiling itself, loads.
+//  2. The `src/` TWIN of a `dist/`-rooted target (`<pkgDir>/dist/<X>` ->
+//     `<pkgDir>/src/<X>`, per scripts/build-lib.ts's convention) — what a
+//     DIST-referenced package compiling ITSELF loads, its own dist not yet built.
+//
+// Mirrors the TS engine's entrySourceFile
+// (libraries/primitives.transformer/src/tokens.ts).
+func EntrySourceStems(pkgDir string, entry ExportEntry) []string {
+	literalStem := StripExt(entry.TargetRel)
+	stems := []string{pkgDir + "/" + literalStem}
+	const distPrefix = "dist/"
+	if strings.HasPrefix(literalStem, distPrefix) {
+		if rest := literalStem[len(distPrefix):]; rest != "" {
+			stems = append(stems, pkgDir+"/src/"+rest)
+		}
+	}
+	return stems
+}
+
 // ParsePackageJSON decodes the manifest subset, returning ok=false for malformed
 // JSON or a nameless package (both treated as "no owning package" up-tree).
 func ParsePackageJSON(text string) (PackageJSON, bool) {

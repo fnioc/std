@@ -2660,17 +2660,28 @@ referencing tier attempting the first `built`-mode self-compile.
   internal type still gets the Tier-2 file-path form regardless of which candidate resolved it;
   aliased re-exports still tokenize to the DECLARED name, not the export alias; a type reachable
   from multiple subpaths still resolves to the shortest (root barrel wins).
-- **The invariant this restores**: a type's augmentation token must be identical in EVERY
-  compilation context — self-compile or downstream, dist-built or not-yet-built — because the
-  token is a registry key shared across packages compiled at different times by different
-  processes (§38). Derivation must not be sensitive to which artifacts happen to exist on disk
-  at the moment a particular compiler invocation runs.
-- **Both engines, kept in lockstep (§41 parity)**: the TS engine's fix lives in
-  `libraries/primitives.transformer/src/tokens.ts` (`entrySourceFile`, called from
-  `publicImportSpecifier`); the Go/`ttsc` engine's mirror lives in
-  `transforms/internal/tokens/packages.go` (same helper name and shape). The Go engine had
-  carried the exact pre-fix literal-only lookup — a second, independently-discovered instance of
-  the same bug, fixed in the same change rather than left to diverge the moment dist-referencing
-  tiers land. Parity is verified by re-running every `*.ttsc.e2e` suite plus the
-  `examples.app.with-transformer` byte-diff — unchanged, since the twin only activates on a
-  compilation shape neither suite exercises yet.
+- **The invariant this restores** (scoped to the built-vs-not-yet-built axis): a type's
+  augmentation token must be identical whether the deriving compiler sits on the built or the
+  not-yet-built side of the SAME `exports` shape — because the token is a registry key shared
+  across packages compiled at different times by different processes (§38), and derivation must
+  not be sensitive to which artifacts happen to exist on disk when a given invocation runs. The
+  fix does NOT reconcile a _different_ `exports` shape: a type whose declaring file is itself a
+  subpath entry (e.g. `config`'s `ConfigurationBuilder` at `./configuration-builder`) tokenizes to
+  that subpath while the repo is src-referenced, but a published consumer — whose `publishConfig`
+  collapses that subpath onto the rolled `dist/index.*` bundle (§7, §71) — derives the root barrel.
+  That axis is closed only by a COMPLETE per-package `types→dist` flip; flip whole packages
+  atomically, never half their subpaths, or the collapse desyncs writer from reader.
+- **Both engines, kept in lockstep (§41 parity)**: the TS engine derives every token through one
+  path — `entrySourceFile` in `libraries/primitives.transformer/src/tokens.ts`, called from
+  `publicImportSpecifier` (the di.transformer.options base scan routes through it too, via
+  `baseTokenForSymbol`) — so a single fix there covers it. The Go/`ttsc` engine carried the
+  pre-fix literal-only lookup in TWO independent call sites: `publicImportSpecifier`
+  (`transforms/internal/tokens/packages.go`) and the `Options<T>` base scan's `isRootExportTarget`
+  (`transforms/internal/dioptionstransform/options.go`), which the general-derivation fix alone
+  left divergent — a dist-referenced `@rhombus-std/options` self-compile would leave every
+  `addOptions<T>()` unlowered while the TS engine lowered it. Both Go sites now resolve their
+  candidate stems through one shared helper, `tokentext.EntrySourceStems` (literal target, then
+  the `dist/<X> → src/<X>` twin), so they cannot drift again. Parity is verified by re-running
+  every `*.ttsc.e2e` suite plus the `examples.app.with-transformer` byte-diff — unchanged, since
+  the twin only activates on a compilation shape neither suite exercises yet; the twin's stem
+  selection is pinned by `TestEntrySourceStems`/`TestEntrySourceFile` in the Go unit corpus.

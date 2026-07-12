@@ -76,15 +76,25 @@ func resolveOptionsBase(prog *driver.Program, ctx *tokens.Context) (string, bool
 }
 
 // isRootExportTarget reports whether sf is the on-disk target of the package's
-// ROOT (`.`) export entry, matched by extension-stripped path.
+// ROOT (`.`) export entry, matched by extension-stripped path. The match runs
+// against tokentext.EntrySourceStems — the same build-state-independent candidate
+// set (literal target, then the `dist/<X> -> src/<X>` twin) the general token
+// derivation resolves through (parity, decisions §41). Without the twin, a
+// dist-referenced `@rhombus-std/options` compiling ITSELF — dist not built, so
+// the loaded root entry is `src/index.ts`, not the `dist/index` target — would
+// fail this check, resolveOptionsBase would return absent, and every
+// `addOptions<T>()` would be left unlowered while the TS engine (which routes
+// through the fixed publicImportSpecifier) lowers it: a byte-parity break.
 func isRootExportTarget(pkg *packageInfo, sf *shimast.SourceFile) bool {
 	target := tokentext.StripExt(tokentext.Normalize(sf.FileName()))
 	for _, entry := range tokentext.CollectExportEntries(pkg.json) {
 		if entry.Subpath != "" {
 			continue
 		}
-		if tokentext.StripExt(pkg.dir+"/"+entry.TargetRel) == target {
-			return true
+		for _, stem := range tokentext.EntrySourceStems(pkg.dir, entry) {
+			if stem == target {
+				return true
+			}
 		}
 	}
 	return false
