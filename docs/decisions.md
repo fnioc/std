@@ -2685,3 +2685,13 @@ referencing tier attempting the first `built`-mode self-compile.
   every `*.ttsc.e2e` suite plus the `examples.app.with-transformer` byte-diff — unchanged, since
   the twin only activates on a compilation shape neither suite exercises yet; the twin's stem
   selection is pinned by `TestEntrySourceStems`/`TestEntrySourceFile` in the Go unit corpus.
+- **Relationship to §72 (tier-3 dist-referencing).** This lands the first of the three candidates
+  §72 named for its tier-3 blocker — teach derivation to key on a src-pointing target regardless
+  of what the published conditions currently resolve to, byte-identically in both engines. Landing
+  it removes §72's **runtime augmentation-token desync**: a self-augmenting core compiling its own
+  not-yet-built dist now finds itself through the `src/` twin and derives the same barrel token an
+  external registrant does, so the `ServiceManifest` (and every other self-augmented receiver)
+  install no longer silently drops. It does NOT perform the tier-3 conversion itself, and does NOT
+  resolve §72's _secondary_ TS2664 self-typecheck problem (still needs the package-unique
+  `di-core-source` custom condition). So `built` retirement for `di`/`di.core` and the tiers past
+  them now waits only on doing that conversion — the runtime desync that made it unsafe is fixed.

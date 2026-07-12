@@ -344,8 +344,13 @@ exposed a **runtime augmentation-token desync** (§72): di.core's own self-augme
 file-path token), while every external registrant resolves di.core's already-built dist → a
 barrel token. The two stop matching and the `ServiceManifest` augmentation (`build`,
 `addHostedService`, `tryAdd*`, …) silently fails to install — a runtime break invisible to
-`tsc --noEmit`, only caught by the test gate. `built` therefore stays until that desync has a
-design fix; do not flip di/di.core's `types` without one (§72 lists the candidate fixes).
+`tsc --noEmit`, only caught by the test gate. That desync now has its design fix (§74): derivation
+keys on export MEMBERSHIP via the `src/` twin, byte-identically in both engines, so a self-augmenting
+core compiling its own not-yet-built dist derives the same barrel token its external registrants do.
+`built` retirement for di/di.core therefore no longer waits on an open design question — only on
+doing the tier-3 conversion itself, which still needs §72's secondary TS2664 self-typecheck fix (the
+package-unique `di-core-source` condition). Don't flip di/di.core's `types` before that conversion
+lands (§72/§74).
 
 Mechanically, for packages not yet converted: they consume each other's raw TS `src` via
 `workspace:*` + `exports` whose `source`/`bun`/`types` conditions point at `.ts`, under
