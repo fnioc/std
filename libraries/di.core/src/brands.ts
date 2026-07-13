@@ -95,3 +95,34 @@ export type $9 = Hole<9>;
  */
 declare const ARG: unique symbol;
 export type Typeof<T> = Token & { readonly [ARG]?: T; };
+
+// ── Keyed brand ─────────────────────────────────────────────────────────────
+
+/**
+ * Compile-time phantom brand that pins a resolution KEY for one constructor or
+ * factory parameter. A key is not a parallel resolution subsystem — it is a
+ * `"#<key>"` suffix on the token the transformer would otherwise derive, so
+ * `Keyed<ICache, "redis">` lowers to `resolve("caching.core:ICache#redis")`,
+ * an ordinary token that hits the existing exact lookup.
+ *
+ * The value type stays `T` — a plain `T` is assignable because the brand
+ * property is optional. Zero runtime footprint.
+ *
+ * `K` is always a string LITERAL (the key text). The brand stacks ORTHOGONALLY
+ * with `Inject`: both are optional-property intersections on `T`, so
+ * `Keyed<Inject<T, "tok">, "k">` is `T & { [TOK]?: "tok" } & { [KEY]?: "k" }`.
+ * The transformer reads `[TOK]` (base override) and `[KEY]` (key suffix)
+ * independently — `[TOK]` (or `T` itself) fixes the base token, `[KEY]` appends
+ * `"#" + K`.
+ *
+ * @example
+ * ```ts
+ * class Handler {
+ *   constructor(
+ *     redis: Keyed<ICache, "redis">,  // resolve("caching.core:ICache#redis")
+ *   ) {}
+ * }
+ * ```
+ */
+declare const KEY: unique symbol;
+export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };

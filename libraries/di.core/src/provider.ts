@@ -31,8 +31,29 @@ import type { Token } from './types.js';
  *   - `resolve(token)`      — explicit token, `unknown` return (dynamic).
  */
 export interface RequiredResolver {
-  resolve<T>(token: Token): T;
-  resolve(token: Token): unknown;
+  /**
+   * Keyed PLURAL resolve — scans `token`'s key-space and returns EVERY
+   * registration whose key portion matches `pattern`, in registration order,
+   * each honoring its own registration's lifetime. A dot-plus pattern matches
+   * "any with a (non-empty) key"; a dot-star pattern matches "true any" (the
+   * bare non-keyed token included); a specific pattern matches those keys.
+   * 0 matches yields `[]` — never throws on count. The scan is confined to the
+   * FIXED `token` base (bare `token` or `token + "#" + key`), so it can never
+   * wander into a collection-wrapper (`Array<token>`) or a different type.
+   */
+  resolve<T>(token: Token, pattern: RegExp): T[];
+  resolve(token: Token, pattern: RegExp): unknown[];
+  /**
+   * Keyed SINGULAR resolve — composes the lookup token `key === "" ? token :
+   * token + "#" + key` and runs the ordinary exact lookup. `key` defaults to
+   * `""` (the bare non-keyed token), so the single-argument call is unchanged.
+   * A keyed token is an ordinary token; keyed registration is `add(token +
+   * "#" + key, Impl)`.
+   *   - `resolve<T>(token, key?)` — explicit token + key, typed return.
+   *   - `resolve(token, key?)`    — explicit token + key, `unknown` return.
+   */
+  resolve<T>(token: Token, key?: string): T;
+  resolve(token: Token, key?: string): unknown;
 }
 
 /**
@@ -87,8 +108,23 @@ export interface Resolver extends RequiredResolver, ServiceQuery {
    *   - `tryResolve<T>(token)` — explicit token, typed nullable return.
    *   - `tryResolve(token)`    — explicit token, `unknown` return (dynamic).
    */
-  tryResolve<T>(token: Token): T | undefined;
-  tryResolve(token: Token): unknown;
+  /**
+   * Keyed PLURAL non-throwing resolve — the `tryResolve` parity of the keyed
+   * plural `resolve`. Scans `token`'s key-space and returns every match in
+   * registration order; 0 matches yields `[]`.
+   */
+  tryResolve<T>(token: Token, pattern: RegExp): T[];
+  tryResolve(token: Token, pattern: RegExp): unknown[];
+  /**
+   * Keyed SINGULAR non-throwing resolve — composes `key === "" ? token : token
+   * + "#" + key` and probes it; `undefined` when the composed token is
+   * unregistered. `key` defaults to `""`, so the single-argument call is
+   * unchanged.
+   *   - `tryResolve<T>(token, key?)` — explicit token + key, typed nullable.
+   *   - `tryResolve(token, key?)`    — explicit token + key, `unknown` return.
+   */
+  tryResolve<T>(token: Token, key?: string): T | undefined;
+  tryResolve(token: Token, key?: string): unknown;
   /**
    * Returns a FACTORY for `type` rather than an instance. When `params` is
    * absent or empty, returns a strict zero-arg `() => T` — every ctor slot must

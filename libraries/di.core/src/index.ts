@@ -21,7 +21,7 @@ export type { DepRecord, DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, Ty
 
 // The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`), plus
 // the pre-instantiated `$1`…`$9` bare-hole aliases.
-export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Typeof } from './brands.js';
+export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Keyed, Typeof } from './brands.js';
 
 // The overload-faithful `Parameters<T>` / `ConstructorParameters<T>` analogs.
 export type { OverloadedConstructorParameters, OverloadedParameters } from './overloads.js';
