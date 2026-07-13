@@ -20,44 +20,40 @@ bun add @rhombus-std/hosting.browser @rhombus-std/hosting @rhombus-std/hosting.c
 
 ```ts
 import { BrowserHost } from '@rhombus-std/hosting.browser';
-import { HOST_APPLICATION_LIFETIME_TOKEN,
-  type IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 
-const builder = BrowserHost.createApplicationBuilder({
-  environmentName: 'Production',
-  applicationName: 'my-app',
-});
-
-const host = builder.build();
-
-// The built host is not resolvable from the container, so the lifetime can
-// only REQUEST a stop — wire the actual stop pipeline once, at the top level.
-const lifetime = host.services.resolve<IHostApplicationLifetime>(
-  HOST_APPLICATION_LIFETIME_TOKEN,
-);
-lifetime.applicationStopping.addEventListener(
-  'abort',
-  () => {
-    void host.stop();
+// Builds the browser-composed host, starts it, waits for shutdown (a terminal
+// pagehide), then stops and disposes — all in one call.
+await BrowserHost.run(
+  {
+    environmentName: 'Production',
+    applicationName: 'my-app',
   },
-  { once: true },
+  (builder) => {
+    // Register your services on the ordinary builder surface here.
+    builder.services.addHostedService(MyWorker, [[]]);
+  },
 );
-
-await host.start();
 ```
 
-`BrowserHost.createApplicationBuilder` returns an ordinary `HostApplicationBuilder`
-from `@rhombus-std/hosting` with the browser pieces already wired in: an
-in-memory configuration source (if you pass `initialData`), a browser-shaped
-environment, a browser console logger, and a page-lifecycle-driven lifetime.
-Everything it configures is the normal builder surface, so you can still
-register your own services, add more configuration sources, or override any
-of the defaults on the returned builder.
+> **Best-effort only:** on a real page close this async stop may be cut off
+> before it finishes. Anything that MUST survive a close goes in
+> `PageLifecycleEvents.onFlush` (synchronous), not a hosted service's `stop()`.
+
+`BrowserHost.run` drives the full pipeline (start → wait-for-shutdown → stop) via
+hosting's `runAsync`, so there's no stop wiring to write by hand. If you need the
+builder or the built host yourself, `BrowserHost.createApplicationBuilder(settings)`
+returns an ordinary `HostApplicationBuilder` from `@rhombus-std/hosting` with the
+browser pieces already wired in: an in-memory configuration source (if you pass
+`initialData`), a browser-shaped environment, a browser console logger, and a
+page-lifecycle-driven lifetime. Everything it configures is the normal builder
+surface, so you can still register your own services, add more configuration
+sources, or override any of the defaults on the returned builder.
 
 ## Key exports
 
 | Export                                                                       | What it is                                                                                                                                                                                                                   |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BrowserHost.run(settings?, configureApp?)`                                  | Builds the browser-composed host, registers your services via `configureApp`, then runs the full start → wait-for-shutdown → stop pipeline; the promise settles once the host has stopped.                                   |
 | `BrowserHost.createApplicationBuilder(settings?)`                            | The one-call facade: builds a `HostApplicationBuilder` with browser configuration, environment, logging, and lifetime pre-applied.                                                                                           |
 | `BrowserLifetime`                                                            | The `IHostLifetime` driven by the Page Lifecycle API — requests a shutdown on a terminal `pagehide`, never on one that's entering the back/forward cache.                                                                    |
 | `BrowserLifetimeOptions`                                                     | Options for `BrowserLifetime` — currently just `stopOnPagehide` (default `true`).                                                                                                                                            |
@@ -101,11 +97,12 @@ the modern builder.
 
 ## Notes
 
-- **You still own the stop wiring.** The lifetime can only _request_ a
-  shutdown (`stopApplication()`); nothing in this package can call
-  `host.stop()` for you, because the built host object is never itself
-  resolvable from its own container. Wire the one listener shown in Usage
-  once, near wherever you build the host.
+- **`BrowserHost.run()` owns the stop.** It drives the full start →
+  wait-for-shutdown → stop pipeline through hosting's `runAsync`, so a terminal
+  `pagehide` shuts the host down without any hand-wired listener. Best-effort
+  only, though: on a real page close the async stop may be cut off before it
+  finishes — put anything that MUST survive a close on
+  `PageLifecycleEvents.onFlush` (synchronous), not a hosted service's `stop()`.
 - **A persisted `pagehide` never stops the host.** When the page is being
   frozen into the back/forward cache rather than discarded, the lifetime
   bridges the event (so `PageLifecycleEvents` and the log reflect it) but

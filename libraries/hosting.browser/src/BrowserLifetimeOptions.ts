@@ -11,6 +11,10 @@ export class BrowserLifetimeOptions {
    * `true`. A persisted pagehide NEVER stops the host regardless of this flag
    * (the page may be restored from the bfcache, and the host is
    * non-restartable).
+   *
+   * This is a best-effort courtesy shutdown REQUEST, not a guaranteed-complete
+   * one; critical persistence belongs on
+   * {@link import("./PageLifecycleEvents").PageLifecycleEvents.onFlush}.
    */
   public stopOnPagehide = true;
 }
