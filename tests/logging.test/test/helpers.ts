@@ -13,6 +13,9 @@ export interface Record {
 }
 
 /** A sink that records every write it is asked to make and always reports enabled. */
+// Binds the augmented `ILogger` symbol onto the fake so the merged wrapper
+// methods (logInformation/…, §80) are declared on it; never called here.
+export interface RecordingLogger extends ILogger {}
 export class RecordingLogger implements ILogger {
   public readonly records: Record[] = [];
   public readonly scopes: unknown[] = [];
@@ -81,6 +84,8 @@ export class ScopeAwareProvider implements ILoggerProvider, ISupportExternalScop
   public createLogger(_categoryName: string): ILogger {
     const seenScopes = this.seenScopes;
     const providerRef = this;
+    // Partial ILogger double — only the primitives this provider exercises; cast
+    // past the merged wrapper members (§80) it never calls.
     return {
       log: () => {
         const active: unknown[] = [];
@@ -89,7 +94,7 @@ export class ScopeAwareProvider implements ILoggerProvider, ISupportExternalScop
       },
       isEnabled: () => true,
       beginScope: () => ({ [Symbol.dispose]() {} }),
-    };
+    } as unknown as ILogger;
   }
 
   public [Symbol.dispose](): void {}

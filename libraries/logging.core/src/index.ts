@@ -49,13 +49,12 @@ export type { LogDefineOptions } from './logger-message';
 export { formatLogValues, formatMessage, FormattedLogValues } from './formatted-log-values';
 
 // The real-runtime ILogger convenience wrappers (LoggerExtensions analog):
-// the standalone functions, the registered `LoggerExtensions` set, and the
-// method-form surface each concrete logger class merges in (§28/§38; no
-// ILogger interface merge, §36). Importing the barrel registers the set
-// against the `ILogger` token as a side effect.
+// the standalone functions and the registered `LoggerExtensions` set. The
+// method-form surface is merged onto `ILogger` itself (§28/§38; the §36/§48
+// many-implementers carve-out retired, §80). Importing the barrel registers
+// the set against the `ILogger` token as a side effect.
 export { beginScope, log, logCritical, logDebug, logError, LoggerExtensions, logInformation, logTrace,
   logWarning } from './logger-augmentations';
-export type { LoggerExtensionMethods } from './logger-augmentations';
 
 // The ILoggerFactory type-receiving createLogger wrapper (the reference
 // `LoggerFactoryExtensions` analog). Its member shares ILoggerFactory's own

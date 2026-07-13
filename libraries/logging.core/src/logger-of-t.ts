@@ -17,7 +17,6 @@ import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import type { Func } from '@rhombus-toolkit/func';
 import type { EventId } from './event-id';
 import type { ILogger } from './logger';
-import type { LoggerExtensionMethods } from './logger-augmentations';
 import type { ILoggerFactory } from './logger-factory';
 import type { LogLevel } from './LogLevel';
 
@@ -27,11 +26,10 @@ function categoryFromToken(token: string): string {
   return separator === -1 ? token : token.slice(separator + 1);
 }
 
-// The class-side type merge for the registry-installed `LoggerExtensions`
-// methods (log/logInformation/…). `ILogger` itself gets NO interface merge
-// (§36: many implementers); the method form is typed here, exactly where
-// `@augment(nameof<ILogger>())` installs it.
-export interface Logger<T> extends LoggerExtensionMethods {}
+// Binds the `ILogger` interface symbol onto the class so the interface-merged
+// wrapper methods (logInformation/…, §80) flow onto `Logger<T>`, present and
+// future, beside the `@augment(nameof<ILogger>())` install below.
+export interface Logger<T> extends ILogger<T> {}
 
 /**
  * Delegates to an {@link ILogger} named for `T`, created by the provided

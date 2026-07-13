@@ -441,7 +441,7 @@ describe('install-time collision with a class primitive (§73/2)', () => {
   });
 });
 
-describe('dispatch-path collision propagates to the registrant (§78 defect fix)', () => {
+describe('dispatch-path collision propagates to the registrant (§79 defect fix)', () => {
   // The collision throw must reach the `registerAugmentations` CALLER even when
   // the receiving class is ALREADY decorated (the registry's primary open-set
   // scenario: a downstream package registers onto a token whose concrete class

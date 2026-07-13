@@ -35,7 +35,7 @@ export { MemoryCacheEntryExtensions } from './cache-entry-options-augmentations'
 
 // The distributed-cache surface. `freezeDistributedCacheEntryOptions` is
 // deliberately NOT re-exported (it mirrors the reference's internal Freeze).
-export { type DistributedCacheExtensionMethods, DistributedCacheExtensions } from './distributed-cache-augmentations';
+export { DistributedCacheExtensions } from './distributed-cache-augmentations';
 export { DistributedCacheEntryExtensions } from './distributed-cache-entry-augmentations';
 export { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 export type { IDistributedCache } from './IDistributedCache';

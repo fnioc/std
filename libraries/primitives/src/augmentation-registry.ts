@@ -1,5 +1,5 @@
 // The augmentation REGISTRY -- the OPEN-set install path (docs/decisions.md §38,
-// §73, §78, building on the §28 authoring shape).
+// §79, building on the §28 authoring shape).
 //
 // CLOSED sets (receiver interface AND all its augmentations owned inside one
 // family's own `.core`) keep the direct `applyAugmentations` call at the
@@ -12,7 +12,7 @@
 //   - `registerAugmentations(token, set, merge?)` -- each extender package calls
 //     this at import time, beside its `declare module` type merge. It appends
 //     `set`'s members into the token's bag (a per-name list -- a second same-name
-//     registration accumulates, it does NOT throw here, §73/3), records any
+//     registration accumulates, it does NOT throw here, §79), records any
 //     `merge` strategies, then drives JUST this set onto every class already
 //     subscribed to the token by calling each subscriber SYNCHRONOUSLY.
 //   - `augment(token)` -- a class decorator on the concrete receiver class. On
@@ -22,7 +22,7 @@
 //     registration's own set -- never the whole bag again.
 //
 // A plain synchronous subscriber list (not an `EventTarget` bus) is load-bearing
-// for the collision throw (§78, defect fix): a delta install that hits a taken
+// for the collision throw (§79): a delta install that hits a taken
 // name with no `merge` strategy THROWS from `installMember`, and that throw must
 // reach the `registerAugmentations` caller so the colliding member is refused,
 // not silently dropped. `EventTarget.dispatchEvent` SWALLOWS a listener's
@@ -31,7 +31,7 @@
 // collision would return normally and drop the member. Iterating the
 // subscribers directly lets the throw propagate synchronously to the registrant.
 //
-// DELTA INSTALL (docs §73/1, §78) is the core of the design. The old listener
+// DELTA INSTALL (docs §79) is the core of the design. The old listener
 // re-installed the ENTIRE accumulated bag on every dispatch, so a member on a
 // heavily-shared token (eight config providers all register onto
 // `nameof<IConfigurationBuilder>()`) was re-installed once per later
@@ -39,7 +39,7 @@
 // catch-up pull covers members registered before decoration, and each
 // registration installs only its own set. Double-installs are impossible by
 // construction, so the install path (`installMember`) needs no idempotency
-// bookkeeping -- a second arrival at a taken name is a genuine collision (§73/2).
+// bookkeeping -- a second arrival at a taken name is a genuine collision (§79).
 //
 // Registration and decoration may happen in either order and any number of
 // times.
@@ -68,7 +68,7 @@ type Contribution = readonly [fn: ExtensionFn, merge?: MergeStrategy];
 
 /**
  * The accumulated bag per token: a per-NAME list of {@link Contribution}s
- * (§73/3). A name registered by two sets accumulates BOTH, replayed in
+ * (§79). A name registered by two sets accumulates BOTH, replayed in
  * registration order during a late class's catch-up so it collides exactly as a
  * class present for both dispatches would. The `[fn, merge?]` tuple carries each
  * contribution's own strategy, so the two parallel structures (a name->fn-list
@@ -96,12 +96,12 @@ const subscribers = new Map<Token, DeltaInstaller[]>();
  * `@augment(token)` -- JUST these members, synchronously.
  *
  * Registering a member name a prior set already contributed does NOT throw here
- * (§73/3) -- the bag holds a list per name and the two contributions accumulate.
+ * (§79) -- the bag holds a list per name and the two contributions accumulate.
  * The throw for an UNRESOLVED collision lives entirely at install time
  * (`installMember`): mounting the second contribution finds the name taken and,
  * without a `merge` strategy, refuses. With one, the two chain. Because the
  * subscribers are called synchronously (not through an `EventTarget` bus, whose
- * `dispatchEvent` would swallow the throw, §78), that refusal propagates to this
+ * `dispatchEvent` would swallow the throw, §79), that refusal propagates to this
  * caller instead of silently dropping the member.
  */
 export function registerAugmentations<R>(

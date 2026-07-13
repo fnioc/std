@@ -16,7 +16,9 @@ interface Written {
 function recordingLogger(enabled = true): { logger: ILogger; written: Written[]; scopes: unknown[]; } {
   const written: Written[] = [];
   const scopes: unknown[] = [];
-  const logger: ILogger = {
+  // Partial ILogger double — only the primitives this test exercises; cast past
+  // the merged wrapper members (§80) it never calls.
+  const logger = {
     log<TState>(
       logLevel: LogLevel,
       eventId: EventId,
@@ -33,7 +35,7 @@ function recordingLogger(enabled = true): { logger: ILogger; written: Written[];
       scopes.push(state);
       return { [Symbol.dispose]() {} };
     },
-  };
+  } as unknown as ILogger;
   return { logger, written, scopes };
 }
 

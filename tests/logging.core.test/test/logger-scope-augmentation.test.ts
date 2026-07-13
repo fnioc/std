@@ -20,7 +20,9 @@ const ILOGGER_TOKEN = '@rhombus-std/logging.core:ILogger<unknown>';
 /** A logger that records the state handed to `beginScope` and returns a token. */
 function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
   const scopes: unknown[] = [];
-  const logger: ILogger = {
+  // Partial ILogger double — only the primitives this test exercises; cast past
+  // the merged wrapper members (§80) it never calls.
+  const logger = {
     log(): void {},
     isEnabled(): boolean {
       return true;
@@ -29,7 +31,7 @@ function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
       scopes.push(state);
       return { [Symbol.dispose]() {} };
     },
-  };
+  } as unknown as ILogger;
   return { logger, scopes };
 }
 
@@ -54,10 +56,15 @@ class DecoratedRecordingLogger implements ILogger {
     return { [Symbol.dispose]() {} };
   }
 }
+// The `@augment` install lands the merged wrapper members on `ILogger`, so
+// `implements ILogger` now requires them on the class — the empty extends-merge
+// binds them body-free (§71/§80), exactly as the concrete loggers do.
+interface DecoratedRecordingLogger extends ILogger {}
 augment(ILOGGER_TOKEN)(DecoratedRecordingLogger);
 
 // The convenience method forms `@augment` installs at runtime — not statically
-// typed onto the class (§36 + TS2430), so intersected in at the call site.
+// typed onto the class (TS2430: `log`/`beginScope` share their names with
+// `ILogger`'s body-declared primitives), so intersected in at the call site.
 type LoggerConvenience = {
   log(logLevel: LogLevel, message: string, ...args: unknown[]): void;
   beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined;

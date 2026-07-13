@@ -83,13 +83,13 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   with its own strategy — a second same-name registration ACCUMULATES, never throws at registration;
   notifies a per-token SYNCHRONOUS subscriber list, deliberately NOT an `EventTarget` bus — a
   strategy-less collision THROWS from install and `EventTarget.dispatchEvent` would swallow it, so
-  iterating subscribers directly lets the throw reach the registrant, §78), and the `@augment(token)`
-  class decorator that DELTA-installs (§78):
+  iterating subscribers directly lets the throw reach the registrant, §79), and the `@augment(token)`
+  class decorator that DELTA-installs (§79):
   on first application it catches up on the accumulated bag once, and each later registration installs
   only its own `set` onto the prototype — never the whole bag again, so a member on a heavily-shared
   token installs exactly once per class. Collision is resolved BLIND at install time (no token/receiver/
   member identity): a name already taken on the prototype with NO `merge` strategy THROWS (never a
-  silent clobber), and with a `MergeStrategy` (per member name, §78) installs a dispatcher chaining the
+  silent clobber), and with a `MergeStrategy` (per member name, §79) installs a dispatcher chaining the
   incoming over the existing — letting an augmentation share a name with the class's own primitive
   (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger`, and `di`'s
   `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
@@ -232,7 +232,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   augmentation is needed; the `MemoryCacheEntryExtensions` fluent sugar on `MemoryCacheEntryOptions`
   — a CLOSED value-object set, §49; the distributed-cache surface `IDistributedCache`/
   `DistributedCacheEntryOptions`/`DistributedCacheExtensions`/`DistributedCacheEntryExtensions`,
-  with `IDistributedCache` getting the many-implementers no-interface-merge treatment (§48, §60);
+  with `IDistributedCache` on the standard interface-merge pattern like every other receiver (§80,
+  retiring the §48/§60 many-implementers carve-out);
   and the `Hybrid/` abstractions-only subsystem (`HybridCache`/`HybridCacheEntryOptions`/
   `HybridCacheEntryFlags`/`IHybridCacheSerializer`/`IHybridCacheSerializerFactory`), ported ahead
   of any concrete tiered-cache implementation, §60; ← `primitives`) ← `caching.memory` (a
@@ -303,11 +304,12 @@ before touching):
   never `internal/*` (the publish-time scrub makes `internal/*` unreachable for a published
   extender, §47; `di.core`'s `authoring.ts` documents the barrel form). Mixing barrel and
   declaring-module specifiers for the SAME interface makes TS treat the `this`-returning members as
-  unrelated this-types and breaks `implements` (§38). **Many-implementers rule:** a receiver with
-  multiple present/future/test-fake implementers and no single owning concrete (`ILogger`,
-  `IDistributedCache`) gets NO interface-side merge at all — registry install + per-class
-  `@augment` + an exported `*ExtensionMethods` typing interface only, since a merge would force
-  phantom members onto every implementer (§36, §48).
+  unrelated this-types and breaks `implements` (§38). **Many-implementers rule — RETIRED (§80):**
+  there is no single- vs many-implementer distinction; every augmented receiver, `ILogger` and
+  `IDistributedCache` included, takes the standard `declare module` interface merge + per-class
+  `extends`. The accepted trade-off is that every implementer (real or test-fake) carries the merged
+  members via `extends`; the `log`/`beginScope`/`set` primitive-collision exclusions stay
+  standalone-only.
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the

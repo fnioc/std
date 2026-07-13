@@ -28,7 +28,7 @@
 // the config-provider packages would then need a config→di edge just to
 // reach the installer.
 //
-// COLLISION MODEL (docs/decisions.md §73). Installing a member onto a prototype
+// COLLISION MODEL (docs/decisions.md §79). Installing a member onto a prototype
 // is a BLIND merge -- no tokens, no receivers, no member identity enter the
 // decision. The only question `installMember` asks is "is a member already
 // mounted at this name?":
@@ -113,7 +113,7 @@ export function installSet(
 }
 
 /**
- * Mounts one augmentation member with a BLIND merge (docs §73):
+ * Mounts one augmentation member with a BLIND merge (docs §79):
  *   - name free       -> a plain `this`-forwarding thunk.
  *   - name taken + strategy -> a dispatcher chaining the incoming over whatever
  *     already occupies the slot (the primitive, or a prior installation).

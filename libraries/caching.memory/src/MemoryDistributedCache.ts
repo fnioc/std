@@ -11,8 +11,7 @@
 // MemoryCache, so each resolves immediately (the reference's async members
 // likewise wrap their sync twins in a completed Task).
 
-import type { DistributedCacheEntryOptions, DistributedCacheExtensionMethods,
-  IDistributedCache } from '@rhombus-std/caching.core';
+import type { DistributedCacheEntryOptions, IDistributedCache } from '@rhombus-std/caching.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { Options } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
@@ -20,11 +19,10 @@ import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
 import { MemoryCache } from './MemoryCache';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
-// Class-side type merge for the registry-installed `DistributedCacheExtensions`
-// methods (setString/getString) -- no IDistributedCache interface merge (the
-// many-implementers rule, §36/§38); the `@augment(nameof<IDistributedCache>())`
-// decoration installs the method form on the prototype.
-export interface MemoryDistributedCache extends DistributedCacheExtensionMethods {}
+// Binds the `IDistributedCache` interface symbol onto the class so the
+// interface-merged wrapper methods (setString/getString, §80) flow onto it,
+// beside the `@augment(nameof<IDistributedCache>())` install below.
+export interface MemoryDistributedCache extends IDistributedCache {}
 
 /** Implements `IDistributedCache` by storing items in a private in-memory {@link MemoryCache}. */
 @augment(nameof<IDistributedCache>())
