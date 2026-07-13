@@ -55,3 +55,19 @@ A library's `.` export resolves its type-facing conditions and `bun` to the roll
 ## §83 — The `_` export is for tests and `nameof` only
 
 Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `nameof`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
+
+## §24 — No pluggable containers
+
+di has ONE container type. `build()` accepts a `ServiceProviderFactory` — the type lives in
+di.core only so the hosting builders share one shape instead of hand-rolling four copies — but it
+IGNORES it: there is nothing to swap. Hosting and everything else must NOT try to support
+pluggable or third-party (Autofac-style) containers, and `DefaultServiceProviderFactory` is
+deliberately unported. _Owner-decided._
+
+## §84 — Per-builder build-time state rides the builder's `properties` bag
+
+When a hosting-builder augmentation needs to stash state for `build()` to read later (e.g. the
+`ServiceProviderOptions` from `useDefaultServiceProvider`), it goes in `IHostBuilder.properties` —
+the Map the builder already exposes and threads into the context — under a module-private `Symbol`
+key. That bag exists for exactly this per-builder build-time state. (§24: with no pluggable
+containers, the factory seam that would otherwise carry these is inert.) _Owner-approved._

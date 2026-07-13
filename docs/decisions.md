@@ -24,7 +24,9 @@
 > **v2 prose:** as simple and straightforward as possible — a single paragraph when it fits.
 > Primarily for Claude’s use.
 >
-> **When every entry below is struck through:** delete this block, delete this file, and rename
+> **`✅ SETTLED` entries stay in place, un-struck** — an adjudicated decision that must remain because other files cite it by `§N` (e.g. §80). NOT struck or migrated; it counts as DONE for the completion check and is never re-presented. At final teardown, SETTLED entries move to v2 so their citations survive.
+>
+> **When every entry below is struck through (or `✅ SETTLED`):** delete this block, delete this file, and rename
 > `decisions.v2.md` → `decisions.md`.
 
 ---
@@ -1073,30 +1075,9 @@ d.ts-only src-referenced lib.
   `di.core`'s `ServiceManifestClass`, which `hosting` doesn't own, so it uses the `addJsonFile`/
   `addOptions` augmentation idiom (§14) — `declare module` + prototype patch.
 
-## 24. `ServiceProviderFactory` promoted into `di.core` — one provider-factory abstraction
+## ~~24. `ServiceProviderFactory` promoted into `di.core` — one provider-factory abstraction~~
 
-The reference `IServiceProviderFactory<TContainerBuilder>` had no named home in `di.core`, so the
-hosting builders each hand-rolled the same structural shape — a private `interface
-ServiceProviderFactory` in `hosting`'s `HostBuilder`, plus three more inlined anonymously in
-`HostApplicationBuilder.configureContainer`, `IHostBuilder.useServiceProviderFactory`, and
-`IHostApplicationBuilder.configureContainer` (one of which carried a comment apologizing that
-"di.core does not ship" the type). Four copies of one contract, free to drift.
-
-- **The abstraction now lives in `di.core`** as a types-only `interface
-  ServiceProviderFactory<TContainerBuilder>` (`service-provider-factory.ts`, one type per file per
-  §13/§46), shape `{ createBuilder(services: ServiceManifest): TContainerBuilder;
-  createServiceProvider(containerBuilder: TContainerBuilder): Resolver }` over the existing
-  `ServiceManifest` / `Resolver` di.core types. Exported from the `di.core` barrel and re-exported
-  from `di` alongside the rest of the provider surface.
-- **All four hand-rolled copies are replaced** by the shared type, and the "di.core does not ship"
-  apology comment is retired. ZERO behavior change — the single-container hosting model still
-  accepts the factory and ignores it (§23's no-op `useServiceProviderFactory` / `configureContainer`).
-- **`DefaultServiceProviderFactory` is deliberately NOT ported** — no consumer, and with one
-  container type there is nothing for a default factory to build.
-
-Refines §23's "no `IServiceProviderFactory<TBuilder>` analog in `di.core` to swap in" bullet: the
-named analog now exists as a shared abstraction; only the runtime behavior (accept-and-ignore)
-stays a no-op, unchanged.
+~~Ratified into `decisions.v2.md` §24 (no pluggable containers). Struck — read v2, not here.~~
 
 ## 25. Typed `resolveFactory<F>` overload — the reference `ObjectFactory` return analog
 
@@ -1900,26 +1881,9 @@ level even where no runtime call survives bundling).
 
 ~~Full text migrated to `decisions.v2.md` §47 and struck here — never read for behavior.~~
 
-## 48. Many-implementers receivers get no interface-side merge — generalizes §36's `ILogger` precedent
+## ~~48. Many-implementers receivers get no interface-side merge — generalizes §36's `ILogger` precedent~~
 
-**Superseded by §80** — the `ILogger`/`IDistributedCache` carve-out is retired; both now take the
-standard interface merge, so the general rule below no longer holds for them. Retained as the record
-of the interim design (`IConfiguration`/`IConfigurationRoot` stay per §38).
-
-§36 left `ILogger`/`IConfiguration` without a prototype-method form because they have "several
-impls and no single downstream concrete to patch," but didn't generalize the shape beyond those two
-CLOSED-package cases. The distributed-cache slice (#147) hit the identical situation with
-`IDistributedCache` — memory today, remote providers by design, hand-written test fakes — and
-resolved it the same way, this time through the §38 REGISTRY rather than a bare standalone
-function: `DistributedCacheExtensions` registers against `nameof<IDistributedCache>()` with NO
-interface-side `declare module` merge (a merge would force phantom members onto every implementer,
-present and future); each concrete class (`MemoryDistributedCache`) is `@augment`-decorated and
-separately typed via an exported `DistributedCacheExtensionMethods` interface, so the method form
-exists per concrete class without touching the interface. The general rule: a many-implementers
-receiver — an interface with multiple present/future/test-fake implementers and no single owning
-concrete — gets registry install + per-class `@augment` + an exported `*ExtensionMethods` typing
-interface, and NO interface-side merge, whether the receiver is a CLOSED package (`ILogger`) or the
-newer registry-based OPEN shape (`IDistributedCache`).
+~~The carve-out is retired (#197); struck — never read for behavior. Its reversal is the live §80 below (which stays). Nothing migrates to v2 — the standard interface-merge pattern (§28/§38/§71) is the baseline.~~
 
 ## 49. `caching.core`: `MemoryCacheEntryExtensions` — the third value-object CLOSED-set — #144
 
@@ -2874,6 +2838,8 @@ complete, every runtime library is dist-referenced.**
 ~~Full text migrated to `decisions.v2.md` §79 and struck here — never read for behavior.~~
 
 ## 80. Retire the many-implementers no-interface-merge carve-out — `ILogger`/`IDistributedCache` join the standard pattern (§36/§48/§60 superseded)
+
+> **✅ SETTLED — stays here, un-struck.** The carve-out is retired and this is the live record the codebase cites (`(§80)`, ~15 refs across caching + logging). Adjudicated: NOT struck, NOT migrated, NOT pending — it counts as done for the completion check and is never re-presented.
 
 There is no single- vs many-implementer distinction. §36 kept `ILogger`'s `log*` wrappers off the
 interface; §48 generalized that into a "many-implementers receiver gets NO interface-side merge —
