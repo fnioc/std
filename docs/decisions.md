@@ -24,6 +24,12 @@
 > **v2 prose:** as simple and straightforward as possible — a single paragraph when it fits.
 > Primarily for Claude’s use.
 >
+> **State each decision POSITIVELY** — the design as it IS, not a defense against an alternative.
+> v2 is a clean slate: its reader never saw the old mechanism or the option you rejected, so don’t
+> write “not a bespoke X”, “instead of Y”, or “supersedes Z” — there’s no strawman there to argue
+> with. Say what the design is and why. (Noting a _migrated-from_ §N is fine; defending against
+> something the reader never proposed is not.)
+>
 > **`✅ SETTLED` entries stay in place, un-struck** — an adjudicated decision that must remain because other files cite it by `§N` (e.g. §80). NOT struck or migrated; it counts as DONE for the completion check and is never re-presented. At final teardown, SETTLED entries move to v2 so their citations survive.
 >
 > **When every entry below is struck through (or `✅ SETTLED`):** delete this block, delete this file, and rename
