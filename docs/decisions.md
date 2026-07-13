@@ -30,6 +30,10 @@
 > with. Say what the design is and why. (Noting a _migrated-from_ §N is fine; defending against
 > something the reader never proposed is not.)
 >
+> **Don’t save solutions to non-problems.** If the framework already supports the use case, there’s
+> no decision to make — don’t record one in v2. If such a solution-to-a-non-problem is already
+> sitting in this old doc, just strike it (don’t migrate it).
+>
 > **`✅ SETTLED` entries stay in place, un-struck** — an adjudicated decision that must remain because other files cite it by `§N` (e.g. §80). NOT struck or migrated; it counts as DONE for the completion check and is never re-presented. At final teardown, SETTLED entries move to v2 so their citations survive.
 >
 > **When every entry below is struck through (or `✅ SETTLED`):** delete this block, delete this file, and rename
