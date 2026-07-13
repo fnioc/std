@@ -203,9 +203,9 @@ export const CORE_BRAND_APP = '/proj/src/app.ts';
 
 /**
  * Build a multi-file fixture backed by a virtual `@rhombus-std/di.core` package that
- * exports the `Inject<T, K>` brand, with `appSource` as the entry file at
- * {@link CORE_BRAND_APP}. Lets brand-detection tests reference `@rhombus-std/di.core`
- * without a real `node_modules`.
+ * exports the `Inject<T, K>` and `Keyed<T, K>` brands, with `appSource` as the
+ * entry file at {@link CORE_BRAND_APP}. Lets brand-detection tests reference
+ * `@rhombus-std/di.core` without a real `node_modules`.
  */
 export function withCoreBrand(appSource: string): VirtualFiles {
   return {
@@ -215,7 +215,9 @@ export function withCoreBrand(appSource: string): VirtualFiles {
       exports: { '.': './index.js' },
     }),
     '/proj/node_modules/@rhombus-std/di.core/index.d.ts': 'declare const TOK: unique symbol;\n'
-      + 'export type Inject<T, K extends string> = T & { readonly [TOK]?: K };\n',
+      + 'export type Inject<T, K extends string> = T & { readonly [TOK]?: K };\n'
+      + 'declare const KEY: unique symbol;\n'
+      + 'export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };\n',
     [CORE_BRAND_APP]: appSource,
   };
 }

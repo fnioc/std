@@ -12,7 +12,7 @@
 // The result is ONE signature (a positional array), matching the single
 // canonical ctor the transformer sees statically.
 
-import { type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, isPureLiteralUnion,
+import { type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, isPureLiteralUnion, keyedTokenFor,
   literalUnionTokenForOptional, type LiteralValue, singletonValue, type TokenContext, tokenForReturnType,
   tokenForType } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
@@ -424,6 +424,14 @@ function extractParamSlot(
   //    `extractParamSlotFromTypeNode` / `nonNullishMemberSlots`, which check the
   //    brand on each member first).
   if (!isOptionalParam(param, ctx, typeOverride) && !isMultiMemberUnion(rawType)) {
+    // A `Keyed<T, "k">` param composes the derived base with a `#k` suffix. It
+    // must run BEFORE the bare `injectTokenFor` below: `Keyed<Inject<T, "tok">,
+    // "k">` stacks both brands, and `keyedTokenFor` reads the `Inject` base
+    // itself — the bare check would return `tok` and drop the `#k` suffix.
+    const keyedToken = keyedTokenFor(rawType, ctx);
+    if (keyedToken !== undefined) {
+      return keyedToken;
+    }
     const brandedToken = injectTokenFor(rawType, ctx.checker);
     if (brandedToken !== undefined) {
       return brandedToken;

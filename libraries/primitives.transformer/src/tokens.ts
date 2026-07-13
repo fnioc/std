@@ -60,6 +60,24 @@ const INJECT_TOK_PROPERTY = 'TOK';
 //   type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
 const HOLE_BRAND_PROPERTY = 'HOLE';
 
+// The unique symbol key name of the `Keyed<T, K>` brand — detected exactly like
+// the Inject brand above, except the extracted literal is the KEY string `K`
+// that gets composed onto the derived base token as a `#K` suffix:
+//   declare const KEY: unique symbol;
+//   type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
+const KEY_BRAND_PROPERTY = 'KEY';
+
+// Every phantom-brand's computed-symbol property name. A brand-object
+// constituent of an intersection (`{ readonly [KEY]?: K }`) carries ONLY such a
+// property; a real user type never does. Used by `stripBrandMembers` to recover
+// the underlying `T` from a `Keyed<T, K>` intersection.
+const BRAND_PROPERTY_NAMES = new Set<string>([
+  INJECT_TOK_PROPERTY,
+  HOLE_BRAND_PROPERTY,
+  KEY_BRAND_PROPERTY,
+  'ARG',
+]);
+
 // The default-lib collection bases whose wrapper token keeps ONLY its element
 // type argument — the closed-generic form `Array<elem>` / `Iterable<elem>` the
 // resolution engine aggregates on. A default-lib `Array` / `Iterable` tokenizes
@@ -320,6 +338,116 @@ export function holeNumberFor(
   checker: ts.TypeChecker,
 ): number | undefined {
   return brandLiteralFor(type, checker, HOLE_BRAND_PROPERTY, extractNumberLiteral);
+}
+
+/**
+ * If `type` carries the `Keyed<T, K>` brand, return the literal key string `K`.
+ * Returns `undefined` when the type is not keyed.
+ *
+ * Detection mirrors {@link injectTokenFor} exactly: union-aware (an optional
+ * `x?: Keyed<T, K>` resolves to `(T & { [KEY]?: K }) | undefined`, whose common
+ * properties omit the brand), then a `brandLiteralFor` property walk for a
+ * computed-symbol property named `KEY` whose type is the string literal `K`.
+ */
+export function keyLiteralFor(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+): string | undefined {
+  if (type.isUnion()) {
+    for (const member of type.types) {
+      const isNullish = member.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null);
+      if (isNullish) {
+        continue;
+      }
+      const result = keyLiteralFor(member, checker);
+      if (result !== undefined) {
+        return result;
+      }
+    }
+    return undefined;
+  }
+  return brandLiteralFor(type, checker, KEY_BRAND_PROPERTY, extractStringLiteral);
+}
+
+/**
+ * If `type` carries the `Keyed<T, K>` brand, return the composed keyed token
+ * `<base>#<key>`; otherwise `undefined` (so the caller falls through to normal
+ * derivation). A key is NOT a parallel resolution subsystem — it is a `#<key>`
+ * suffix on the ordinary token the underlying `T` derives, so
+ * `Keyed<ICache, "redis">` composes `caching.core:ICache#redis`.
+ *
+ * The base is derived from `T` two ways, checked in order so `Keyed` stacks
+ * orthogonally with `Inject`:
+ *   1. An `Inject<T, "tok">` brand under the `Keyed` pins the base explicitly
+ *      (`Keyed<Inject<T, "tok">, "k">` → `tok#k`) — {@link injectTokenFor} reads
+ *      `[TOK]` off the same flattened intersection.
+ *   2. Otherwise the base derives structurally from `T` with the phantom-brand
+ *      members stripped off the intersection ({@link stripBrandMembers}), since
+ *      the raw `T & { [KEY]?: K }` intersection has no symbol of its own.
+ *
+ * Returns `undefined` (not a hard error here) when no base is derivable — the
+ * caller's normal path then raises the appropriate diagnostic.
+ */
+export function keyedTokenFor(
+  type: ts.Type,
+  ctx: TokenContext,
+): string | undefined {
+  const key = keyLiteralFor(type, ctx.checker);
+  if (key === undefined) {
+    return undefined;
+  }
+  const injected = injectTokenFor(type, ctx.checker);
+  const base = injected ?? deriveToken(stripBrandMembers(type, ctx.checker), ctx);
+  if (base === undefined) {
+    return undefined;
+  }
+  return `${base}#${key}`;
+}
+
+/**
+ * Recover the underlying `T` from a `Keyed<T, K>` (and any stacked-brand)
+ * intersection by dropping every phantom-brand-object constituent. `Keyed<T, K>`
+ * resolves to `T & { readonly [KEY]?: K }`; when exactly one non-brand
+ * constituent survives it IS `T`, so it is returned for normal derivation. A
+ * non-intersection type (or one with multiple non-brand constituents, out of
+ * scope) is returned unchanged.
+ */
+function stripBrandMembers(type: ts.Type, checker: ts.TypeChecker): ts.Type {
+  if (!(type.flags & ts.TypeFlags.Intersection)) {
+    return type;
+  }
+  const constituents = (type as ts.IntersectionType).types;
+  const nonBrand = constituents.filter((c) => !isBrandObject(c, checker));
+  return nonBrand.length === 1 ? nonBrand[0]! : type;
+}
+
+/**
+ * True when `type` is a phantom-brand object literal — an intersection
+ * constituent whose ONLY properties are computed-symbol brand properties
+ * (`{ readonly [KEY]?: K }`). A real user type declares named members, so this
+ * cannot misfire on `T` itself.
+ */
+function isBrandObject(type: ts.Type, checker: ts.TypeChecker): boolean {
+  const props = checker.getPropertiesOfType(type);
+  if (!props.length) {
+    return false;
+  }
+  return props.every((prop) => {
+    const decls = prop.getDeclarations();
+    if (!decls?.length) {
+      return false;
+    }
+    return decls.some((decl) => {
+      if (!ts.isPropertySignature(decl)) {
+        return false;
+      }
+      const name = decl.name;
+      if (!ts.isComputedPropertyName(name) || !ts.isIdentifier(name.expression)) {
+        return false;
+      }
+      return BRAND_PROPERTY_NAMES.has(name.expression.text);
+    });
+  });
 }
 
 /**
