@@ -27,7 +27,7 @@
     // cannot co-compile — the impl classes can't satisfy the interfaces once the
     // authored 0-arg forms are merged in; a real consumer holds di.core's built
     // types and augments the interface on top, which the dist `.d.ts` reproduces.
-    // The transformer's own `internal/*` seam still resolves to source `.ts`, which
+    // The transformer's own `_/*` seam still resolves to source `.ts`, which
     // is exactly what these white-box tests exercise. No `built` condition needed.
     "noUncheckedIndexedAccess": false
   },

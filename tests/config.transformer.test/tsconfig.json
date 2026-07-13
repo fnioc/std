@@ -6,7 +6,7 @@
     // composite for its own standalone tsconfig — there are no project
     // references between packages here. Keeping it off here matches that and
     // sidesteps composite's "every file must be in the declared file list"
-    // check (TS6307), which the white-box `./internal/*` seam into the
+    // check (TS6307), which the white-box `./_/*` seam into the
     // transformer's src would otherwise trip.
     "composite": false,
     // The transformer package is listed so its published types enter this

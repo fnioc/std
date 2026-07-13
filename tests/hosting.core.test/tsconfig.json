@@ -5,7 +5,7 @@
     "composite": false,
     "types": ["bun"],
     // This white-box program pulls hosting.core's SOURCE in through the
-    // `./internal/*` seam, and that source carries
+    // `./_/*` seam, and that source carries
     // `declare module '@rhombus-std/hosting.core'` (host-builder-augmentations.ts).
     // Now that hosting.core is dist-referenced (§72), the bare package specifier
     // otherwise resolves to the built barrel — a different module than the source
