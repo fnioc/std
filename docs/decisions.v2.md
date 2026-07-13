@@ -31,3 +31,27 @@ sharing a primitive's name (`log`/`beginScope`, `tryGetValue`, `createLogger`, d
 supplies a hand-written merge; the convenience form is runtime dot-callable but NOT a typed
 overload (TS2430), so the typed path stays the standalone functions. The transformer will later
 auto-generate the default merge (deferred). _Owner-approved._
+
+---
+
+## §47 — Prefer relative internal imports; fall back to the fully-qualified specifier when relative doesn't work
+
+Within a package, internal imports are relative by default. Reach for the fully-qualified package specifier (`@rhombus-std/<pkg>`) only where a relative one won't resolve correctly — the standing case being a `declare module` augmentation target, which must name the package **barrel** so the merge lands on the class every consumer resolves and survives the published `.d.ts`. _Owner-approved._
+
+---
+
+## §72 — Every runtime library is dist-referenced
+
+A library's `.` export resolves its type-facing conditions and `bun` to the rolled `./dist`; none resolve to `./src`. A self-augmenting core resolves its **own** compile back to source through a package-unique `<pkg>-source` custom condition listed first on the `.` export (so it can `declare module` its own barrel before its dist exists). The `./_/*` subpath is the only src-resolving export (§83). _Owner-approved._
+
+---
+
+## §74 — `nameof` and token derivation
+
+`nameof<T>()` is declared in `@rhombus-std/primitives` with a throwing body (a call reaching runtime means the transformer wasn't wired). The transformer lowers it to a token identifying where `T` sits in the exports graph — the package barrel for a publicly-exported type (`pkg:Type`), the `_` subpath for a tests-only one (`pkg/_/file:Type`). It keys on export **membership**, not on-disk path, so a package's own build and an external consumer derive the identical token. _Owner-approved._
+
+---
+
+## §83 — The `_` export is for tests and `nameof` only
+
+Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `nameof`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
