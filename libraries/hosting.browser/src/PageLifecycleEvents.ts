@@ -28,6 +28,11 @@
 import type { Func } from '@rhombus-toolkit/func';
 import { defaultPageContext, type PageContext, type PageTransitionEventLike } from './page-context';
 
+// The `console` global, typed the §39/§44 way (this program carries no lib.dom):
+// a structural `globalThis` lookup for the one method the reliability guard in
+// `#notify` needs. Every host (browser/node/bun) supplies it.
+const { console } = globalThis as unknown as { console: { error(...args: unknown[]): void; }; };
+
 /**
  * The bridge's phase snapshot values. `visible`/`hidden` mirror
  * `document.visibilityState`; `frozen` covers both an explicit `freeze` and a
@@ -113,8 +118,14 @@ export class PageLifecycleEvents implements Disposable {
   }
 
   /**
-   * Subscribes to the RECURRING flush signal (every visibility transition to
-   * hidden — the documented persistence point) and returns the unsubscriber.
+   * RELIABLE persistence point. Subscribes to the RECURRING flush signal (every
+   * visibility transition to hidden — the documented place to persist state)
+   * and returns the unsubscriber.
+   *
+   * The listener MUST be synchronous — an async listener type-checks
+   * (void-return bivariance) but only its code before the first `await` runs
+   * before the page can be discarded. Do synchronous work (e.g. `localStorage`)
+   * or fire `navigator.sendBeacon` here; never `await`.
    */
   public onFlush(listener: Func<[], void>): Func<[], void> {
     this.#flushListeners.add(listener);
@@ -156,8 +167,15 @@ export class PageLifecycleEvents implements Disposable {
   }
 
   #notify(listeners: ReadonlySet<Func<[], void>>): void {
+    // This is the "one reliable point" — a single throwing subscriber must not
+    // starve the rest (or, for the flush signal, cost another subscriber its
+    // last chance to persist). Isolate each listener.
     for (const listener of listeners) {
-      listener();
+      try {
+        listener();
+      } catch (error) {
+        console.error(error);
+      }
     }
   }
 }
