@@ -2,15 +2,15 @@
   "extends": "../../tsconfig.lib.json",
   "compilerOptions": {
     // §78 self-reference shim (the config analog of di.core's `di-core-source`,
-    // §72/§74): config's with-type-augment.ts merges `declare module
-    // "@rhombus-std/config/configuration-builder"`, and its provider-facing
-    // subpaths (`./configuration-builder` / `./configuration-manager`) now point
-    // `types` at the not-yet-built rolled dist `.d.ts` (TS2664 during config's
-    // own compile). The package-unique `config-source` condition -- listed FIRST
-    // in those subpath exports so it wins over `types` -- routes config's OWN
-    // program back to src, so the merge sees the concrete class in its declaring
-    // module, while every external consumer (which never sets this condition)
-    // resolves the built dist barrel. Dev-only: absent from publishConfig.
+    // §72/§74): config self-augments -- memory/chained/with-type-augment.ts all
+    // `declare module "@rhombus-std/config"` and import the class from it -- so
+    // config's own program must resolve its OWN package name, which otherwise
+    // points `types` at the not-yet-built rolled dist `.d.ts` (TS2664/TS2307
+    // during config's own compile). The package-unique `config-source`
+    // condition, listed FIRST on the `.` export so it wins over `types`, routes
+    // config's OWN program back to ./src/index.ts; every external consumer
+    // (which never sets this condition) resolves the built dist barrel.
+    // Dev-only: absent from publishConfig.
     "customConditions": ["config-source"]
   },
   "include": ["src/**/*"]

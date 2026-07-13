@@ -16,7 +16,13 @@ import { nameof } from '@rhombus-std/primitives';
 import { EnvironmentVariablesConfigurationSource,
   type EnvironmentVariablesConfigurationSourceOptions } from './environment-variables-configuration-source';
 
-declare module '@rhombus-std/config/configuration-builder' {
+// Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
+// providers typecheck against its rolled, flat dist/index.d.ts, where
+// ConfigurationBuilder is declared directly (no re-export chain) -- a
+// declare-module merge onto the barrel lands on the class the barrel exposes,
+// even with 2+ provider augmentations in one program (pre-#199 this needed a
+// `./configuration-builder` subpath; the src barrel re-export split the class).
+declare module '@rhombus-std/config' {
   // Generic arity + default MUST match the class (TS2428).
   interface ConfigurationBuilder<T = IndexedSection> {
     /**
@@ -28,9 +34,8 @@ declare module '@rhombus-std/config/configuration-builder' {
   }
 }
 
-// Same declare-merge-onto-the-declaring-module reasoning as above -- see the
-// "configuration-manager-subpath" note in @rhombus-std/config's package.json.
-declare module '@rhombus-std/config/configuration-manager' {
+// Same barrel merge for ConfigurationManager -- see the builder note above.
+declare module '@rhombus-std/config' {
   interface ConfigurationManager {
     /**
      * Registers an {@link EnvironmentVariablesConfigurationSource} seeded from

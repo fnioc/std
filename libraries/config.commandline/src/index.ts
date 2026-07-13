@@ -23,15 +23,13 @@ import { nameof } from '@rhombus-std/primitives';
 import { CommandLineConfigurationSource,
   type CommandLineConfigurationSourceOptions } from './command-line-configuration-source';
 
-// Augmenting the declaring module ("@rhombus-std/config/configuration-builder"),
-// NOT the barrel ("@rhombus-std/config") -- TS's declaration merging for a class
-// re-exported through another module doesn't merge back onto the class as
-// seen through its own declaring module, so augmenting the barrel produces a
-// phantom second `ConfigurationBuilder` type the moment another augmentation
-// (e.g. core's own addInMemoryCollection, or config-json's addJsonFile) is
-// also in the program. See the "configuration-builder-subpath" note in
-// @rhombus-std/config's package.json.
-declare module '@rhombus-std/config/configuration-builder' {
+// Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
+// providers typecheck against its rolled, flat dist/index.d.ts, where
+// ConfigurationBuilder is declared directly (no re-export chain) -- a
+// declare-module merge onto the barrel lands on the class the barrel exposes,
+// even with 2+ provider augmentations in one program (pre-#199 this needed a
+// `./configuration-builder` subpath; the src barrel re-export split the class).
+declare module '@rhombus-std/config' {
   // Generic arity + default MUST match the class (TS2428).
   interface ConfigurationBuilder<T = IndexedSection> {
     /**
@@ -48,9 +46,8 @@ declare module '@rhombus-std/config/configuration-builder' {
   }
 }
 
-// Same declare-merge-onto-the-declaring-module reasoning as above -- see the
-// "configuration-manager-subpath" note in @rhombus-std/config's package.json.
-declare module '@rhombus-std/config/configuration-manager' {
+// Same barrel merge for ConfigurationManager -- see the builder note above.
+declare module '@rhombus-std/config' {
   interface ConfigurationManager {
     /**
      * Registers a command-line configuration source over `args` (typically

@@ -22,14 +22,15 @@ import { nameof } from '@rhombus-std/primitives';
 import { JsonConfigurationSource, type JsonConfigurationSourceOptions } from './json-configuration-source';
 import { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
 
-// Augmenting the declaring module ("@rhombus-std/config/configuration-builder"),
-// NOT the barrel ("@rhombus-std/config") -- TS's declaration merging for a class
-// re-exported through another module doesn't merge back onto the class as
-// seen through its own declaring module, so augmenting the barrel produces a
-// phantom second `ConfigurationBuilder` type the moment another augmentation
-// (e.g. core's own addInMemoryCollection) is also in the program. See the
-// "configuration-builder-subpath" note in @rhombus-std/config's package.json.
-declare module '@rhombus-std/config/configuration-builder' {
+// Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
+// providers typecheck against its rolled, flat dist/index.d.ts, where
+// ConfigurationBuilder is declared directly (no re-export chain) -- a
+// declare-module merge onto the barrel lands on the same class the barrel
+// exposes, even with 2+ provider augmentations in one program. (Pre-#199 this
+// had to target a `./configuration-builder` subpath: providers then saw
+// config's src barrel, which re-exports the class, and a re-exported class
+// won't declaration-merge -- 2+ augmenters split it into phantom types.)
+declare module '@rhombus-std/config' {
   // Generic arity + default MUST match the class (TS2428) -- `<T =
   // IndexedSection>`, same IndexedSection imported from @rhombus-std/config.core.
   interface ConfigurationBuilder<T = IndexedSection> {
@@ -40,11 +41,9 @@ declare module '@rhombus-std/config/configuration-builder' {
   }
 }
 
-// Same "declare-merge onto the declaring module, not the barrel" reasoning as
-// above -- see the "configuration-manager-subpath" note in
-// @rhombus-std/config's package.json. ConfigurationManager has no generic
-// type parameter, so there's no TS2428 arity concern here.
-declare module '@rhombus-std/config/configuration-manager' {
+// Same barrel merge for ConfigurationManager -- see the builder note above.
+// ConfigurationManager has no generic type parameter, so no TS2428 arity concern.
+declare module '@rhombus-std/config' {
   interface ConfigurationManager {
     /** Registers a {@link JsonConfigurationSource} reading `path` (resolved against `process.cwd()`). */
     addJsonFile(path: string, opts?: JsonConfigurationSourceOptions): this;

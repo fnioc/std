@@ -17,10 +17,11 @@ import { nameof } from '@rhombus-std/primitives';
 import { IniConfigurationSource, type IniConfigurationSourceOptions } from './IniConfigurationSource';
 import { IniStreamConfigurationSource } from './IniStreamConfigurationSource';
 
-// Declare-merge onto the declaring modules (not the barrel), same reasoning as
-// config.json's addJsonFile install -- see @rhombus-std/config's package.json
-// "configuration-builder-subpath" note.
-declare module '@rhombus-std/config/configuration-builder' {
+// Declare-merge onto the config barrel, same reasoning as config.json's
+// addJsonFile install: config is dist-referenced, so its flat dist/index.d.ts
+// declares ConfigurationBuilder/Manager directly and a barrel merge lands
+// cleanly even with other provider augmentations present.
+declare module '@rhombus-std/config' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Registers an {@link IniConfigurationSource} reading `path`. */
     addIniFile(path: string, opts?: IniConfigurationSourceOptions): this;
@@ -29,7 +30,7 @@ declare module '@rhombus-std/config/configuration-builder' {
   }
 }
 
-declare module '@rhombus-std/config/configuration-manager' {
+declare module '@rhombus-std/config' {
   interface ConfigurationManager {
     /** Registers an {@link IniConfigurationSource} reading `path`. */
     addIniFile(path: string, opts?: IniConfigurationSourceOptions): this;
