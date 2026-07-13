@@ -1898,18 +1898,7 @@ level even where no runtime call survives bundling).
 
 ## 47. Published-facing OPEN-receiver merges resolve through the owning package's barrel — refines §38's merge-identity rule
 
-§38's merge-identity rule already forbids mixing a barrel specifier and a declaring-module (`internal/*`)
-specifier for merges targeting the SAME interface, because TS then treats the `this`-returning
-members as unrelated this-types and `implements` breaks. This entry narrows the rule further for a
-downstream package authoring a NEW merge onto an OPEN receiver it doesn't own: that merge must
-resolve through the receiver's PUBLIC barrel, never `internal/*` — because the publish-time scrub
-(§7) makes `internal/*` genuinely unreachable for a published extender, not merely discouraged.
-`di.core`'s `authoring.ts` documents this as the canonical recipe: its worked example imports
-`registerAugmentations`/`AugmentationSet` from `@rhombus-std/primitives`'s bare specifier, never an
-internal path, precisely because a downstream author has no other route once published. A parallel
-sweep (branch `fix-publish-merge-specifiers`) is auditing every existing OPEN-receiver merge and
-flipping any that still resolve through `internal/*` to the barrel; this entry records the RULE
-the sweep enforces, not its per-file diff.
+~~Full text migrated to `decisions.v2.md` §47 and struck here — never read for behavior.~~
 
 ## 48. Many-implementers receivers get no interface-side merge — generalizes §36's `ILogger` precedent
 
@@ -2528,68 +2517,7 @@ grammar, and merge-identity rule it describes are otherwise unchanged.
 
 ## 72. Dist-referencing lands for the leaf tiers; the di family stays src-referenced pending a token-desync fix
 
-§9's original src-referencing rule (pure-types libs may point their `.` export at `./src/*.ts`;
-runtime-emitting libs must be dist-referenced) was never fully enforced — most runtime libs stayed
-src-referenced behind the `built` custom condition, tracked as #68. This entry records the first
-real retirement pass: it converted the leaf tiers cleanly, then hit a genuine blocker converting
-the di family and stopped there rather than ship a silently-broken runtime.
-
-- **Landed — tiers 1–2.** `primitives` (tier 1) and `options` / `fileproviders.core` /
-  `fileproviders.composite` / `config.core` (tier 2) had their `.` export's type-facing conditions
-  (and, for the four runtime-emitting libs among them, the `bun` condition) repointed from
-  `./src/*.ts` to the rolled `./dist/*.d.ts` / `./dist/*.js`, and their root `main`/`types` fields
-  to match. `config.core` — pure types, zero runtime emit — collapses to a `{types, default}`
-  pair over `dist/index.d.ts` alone, correcting the stale §9/family-digest text that called it
-  "no longer pure-types" (that description described a transitional state, not the current one).
-  Each tier's `bun run build` and the full `bun run test` gate passed clean (0 failures) before
-  advancing to the next; `scripts/derive-publish-config.ts --write` reported no drift at either
-  tier, confirming `publishConfig.exports` was already dist-shaped as the src-referencing rule
-  anticipated. `internal/*` deliberately stays src-referenced throughout — white-box tests need it
-  and there is no rolled per-file `.d.ts` for it to resolve to instead.
-- **Blocked — tier 3 (`di`, `di.core`) and everything past it in dependency order.** Flipping
-  `di.core`'s `types` condition to dist makes `bun run build` (`tsc --noEmit`) pass, but breaks 223
-  runtime tests. The failure is not the type-level `declare module` incompatibility the `built`
-  condition exists to prevent — types merge fine. It's a **runtime augmentation-token desync**: a
-  package's public augmentation token (§40's `nameof<Interface>()` → `<declaring-package>:<TypeName>`
-  derivation) is computed by walking that package's OWN resolved `exports` conditions
-  (`primitives.transformer`'s `resolveConditionTargets`, over
-  `['types','import','module','default','require','node','bun']`). Once `di.core`'s conditions
-  point at dist, `di.core`'s _own_ build — compiling before its own `dist/index.d.ts` exists —
-  can't find itself through those conditions and falls back to a Tier-2 file-path token
-  (`@rhombus-std/di.core/src/service-manifest:ServiceManifest`) for its own `@augment` self-
-  decoration. Every _external_ registrant (the `di` runtime, `hosting.core`, `logging.core`, …)
-  resolves `di.core` through its already-built dist and gets the intended Tier-1 barrel token
-  (`@rhombus-std/di.core:ServiceManifest`) instead. The two forms never match, so no
-  `ServiceManifest` augmentation installs — `build`, `addHostedService`, `tryAdd*`,
-  `addLogging`, `addMetrics`, and everything else registered against `ServiceManifest` silently
-  disappears at runtime. This only trips on a package that both ships runtime AND self-augments
-  its own public receiver — `di.core` today, and, if converted the same way,
-  `diagnostics.core`/`config`/`hosting.core`/`logging.core` next, each of which `declare module`s
-  its own public name. `bun run build` cannot see this class of break; only the `bun run test`
-  gate catches it, which is why the tsc-detectable-break premise in the pass's own plan understated
-  the risk for these packages specifically.
-  - A secondary, narrower problem surfaces first and has a known fix: `di.core` also fails to
-    _typecheck_ its own `declare module '@rhombus-std/di.core'` self-augmentation once `types`→dist,
-    because self-name resolution hits a dist that doesn't exist yet during `di.core`'s own build
-    (TS2664). A package-unique `di-core-source` custom condition (not the shared `source`
-    condition — that would pull every downstream consumer of `di.core` — logging.core,
-    hosting.core, diagnostics.core — into co-compiling `di.core` source too) fixes the typecheck.
-    It does **not** fix the token desync above, because `resolveConditionTargets` doesn't consult
-    custom conditions at all.
-- **Standing direction, per owner: full retirement (#68 stays open).** The candidates for
-  resolving the token desync — teach `resolveConditionTargets` to derive a package's own
-  augmentation token from a src-pointing condition regardless of what its published conditions
-  currently resolve to (correct, but must land byte-identically in both the ts-patch/TS5 engine
-  and the Go/`ttsc` engine per §41's parity invariant); hard-code the barrel token literally at
-  each self-augmenting core's `@augment`/`registerAugmentations` call (narrower, but a deviation
-  from §40's no-literal-tokens rule, and needed at every self-augmenting core, not just di.core);
-  or leave the di family (and other self-augmenting cores) permanently src-referenced and scope
-  full retirement down to non-self-augmenting libs — are each design-significant enough that they
-  were left for separate resolution rather than picked under this pass. Until one lands, `di` /
-  `di.core` and the packages tiered after them keep `source`/`types`→`src` plus
-  `customConditions: ["built"]`, and the `built` condition's plan-of-record ("interim hatch the
-  src-referencing rule will retire, #68") in §9's forebear section is only half superseded — true
-  for the tiers this entry converted, still load-bearing for the rest.
+~~Full text migrated to `decisions.v2.md` §72 and struck here — never read for behavior.~~
 
 ## 73. `fileproviders.physical` — a disk-backed provider, watch limited to exact-file / directory-prefix
 
@@ -2670,71 +2598,7 @@ disposal ownership), but the provider it would wire now exists.
 
 ## 74. Augmentation tokens derive from export MEMBERSHIP, never from resolved `exports`-condition targets
 
-`nameof<T>()` (§40) locates the module that publicly exports `T` by walking a package's `exports`
-map and asking, for each entry, "does the module at this entry's _resolved target_ re-export `T`?"
-Both engines resolved that target by taking the entry's on-disk path literally — for a
-dist-referenced package (the `built` customCondition, §41) that target is `dist/<X>`. Compiling
-such a package's OWN source against itself, the not-yet-built `dist/<X>` doesn't exist in the
-program yet, so the literal-target lookup came up empty and the derivation silently fell back to
-the Tier-2 file-path form (`pkg/src/file:Type`) instead of the barrel form (`pkg:Type`) a
-consumer of the same type derives once `dist` exists. Same type, same declaration, two different
-token strings depending on which side of the build the deriving compiler sat on — a registry-key
-desync between a package's self-registered augmentations and a downstream package's lookup of
-them. Latent on `main` (nothing was dist-referenced yet to trigger it); caught by a dist-
-referencing tier attempting the first `built`-mode self-compile.
-
-- **The fix**: before falling back to Tier-2, try one more candidate — the entry's `src/`
-  twin (`dist/<X>` → `src/<X>`, per `scripts/build-lib.ts`'s hard `dist/<X>.js ↔ src/<X>.ts`
-  convention). If the type is a member of the exports of _that_ module, it derives the same
-  barrel/subpath form a dist-side consumer would. The literal target is still tried FIRST, so
-  every already-resolvable derivation (a package's dist dependency is built and present, or the
-  package isn't dist-referenced at all) is byte-identical to before — the twin only fires in the
-  previously-broken self-compile-of-dist case. Membership itself is unchanged: a non-exported
-  internal type still gets the Tier-2 file-path form regardless of which candidate resolved it;
-  aliased re-exports still tokenize to the DECLARED name, not the export alias; a type reachable
-  from multiple subpaths still resolves to the shortest (root barrel wins).
-- **The invariant this restores** (scoped to the built-vs-not-yet-built axis): a type's
-  augmentation token must be identical whether the deriving compiler sits on the built or the
-  not-yet-built side of the SAME `exports` shape — because the token is a registry key shared
-  across packages compiled at different times by different processes (§38), and derivation must
-  not be sensitive to which artifacts happen to exist on disk when a given invocation runs. The
-  fix does NOT reconcile a _different_ `exports` shape: a type whose declaring file is itself a
-  subpath entry (e.g. `config`'s `ConfigurationBuilder` at `./configuration-builder`) tokenizes to
-  that subpath while the repo is src-referenced, but a published consumer — whose `publishConfig`
-  collapses that subpath onto the rolled `dist/index.*` bundle (§7, §71) — derives the root barrel.
-  That axis is closed only by a COMPLETE per-package `types→dist` flip; flip whole packages
-  atomically, never half their subpaths, or the collapse desyncs writer from reader.
-  **Correction (§78, #68):** that subpath/barrel split is a compile-time declaration-merge concern
-  only. config derives NO _runtime_ augmentation token from the concrete `ConfigurationBuilder`
-  class — every config-family registry token is `nameof<IConfigurationBuilder>()` (the interface,
-  which lives in the already-dist `config.core`), and `config.transformer` rewrites only
-  `.withType<T>()`, deriving no token at all. So config's own flip needed no token-derivation
-  change; collapsing the two subpaths onto the rolled barrel (writer=reader on `dist/index.d.ts`)
-  plus a `config-source` self-condition was mechanically sufficient (§78).
-- **Both engines, kept in lockstep (§41 parity)**: the TS engine derives every token through one
-  path — `entrySourceFile` in `libraries/primitives.transformer/src/tokens.ts`, called from
-  `publicImportSpecifier` (the di.transformer.options base scan routes through it too, via
-  `baseTokenForSymbol`) — so a single fix there covers it. The Go/`ttsc` engine carried the
-  pre-fix literal-only lookup in TWO independent call sites: `publicImportSpecifier`
-  (`transforms/internal/tokens/packages.go`) and the `Options<T>` base scan's `isRootExportTarget`
-  (`transforms/internal/dioptionstransform/options.go`), which the general-derivation fix alone
-  left divergent — a dist-referenced `@rhombus-std/options` self-compile would leave every
-  `addOptions<T>()` unlowered while the TS engine lowered it. Both Go sites now resolve their
-  candidate stems through one shared helper, `tokentext.EntrySourceStems` (literal target, then
-  the `dist/<X> → src/<X>` twin), so they cannot drift again. Parity is verified by re-running
-  every `*.ttsc.e2e` suite plus the `examples.app.with-transformer` byte-diff — unchanged, since
-  the twin only activates on a compilation shape neither suite exercises yet; the twin's stem
-  selection is pinned by `TestEntrySourceStems`/`TestEntrySourceFile` in the Go unit corpus.
-- **Relationship to §72 (tier-3 dist-referencing).** This lands the first of the three candidates
-  §72 named for its tier-3 blocker — teach derivation to key on a src-pointing target regardless
-  of what the published conditions currently resolve to, byte-identically in both engines. Landing
-  it removes §72's **runtime augmentation-token desync**: a self-augmenting core compiling its own
-  not-yet-built dist now finds itself through the `src/` twin and derives the same barrel token an
-  external registrant does, so the `ServiceManifest` (and every other self-augmented receiver)
-  install no longer silently drops. It does NOT perform the tier-3 conversion itself, and does NOT
-  resolve §72's _secondary_ TS2664 self-typecheck problem (still needs the package-unique
-  `di-core-source` custom condition). So `built` retirement for `di`/`di.core` and the tiers past
-  them now waits only on doing that conversion — the runtime desync that made it unsafe is fixed.
+~~Full text migrated to `decisions.v2.md` §74 and struck here — never read for behavior.~~
 
 ## 75. The file-configuration family — `config.file` base, `config.ini`, `config.xml`
 
