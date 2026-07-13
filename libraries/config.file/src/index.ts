@@ -58,11 +58,13 @@ declare module '@rhombus-std/config.core' {
   }
 }
 
-// Class-side merges onto the two concrete builders (their declaring modules,
-// never the barrel -- §38), mirroring config.json's addJsonFile install: so
+// Class-side merges onto the two concrete builders via the config barrel
+// (config is dist-referenced, so its flat dist/index.d.ts declares both classes
+// directly -- a barrel merge lands cleanly even with other provider
+// augmentations present; see config.json's addJsonFile install), so
 // `new ConfigurationManager().setBasePath('/x')` type-checks against the
 // prototype methods the registry installs.
-declare module '@rhombus-std/config/configuration-builder' {
+declare module '@rhombus-std/config' {
   interface ConfigurationBuilder<T = IndexedSection> {
     setFileProvider(fileProvider: IFileProvider): this;
     getFileProvider(): IFileProvider;
@@ -72,7 +74,7 @@ declare module '@rhombus-std/config/configuration-builder' {
   }
 }
 
-declare module '@rhombus-std/config/configuration-manager' {
+declare module '@rhombus-std/config' {
   interface ConfigurationManager {
     setFileProvider(fileProvider: IFileProvider): this;
     getFileProvider(): IFileProvider;

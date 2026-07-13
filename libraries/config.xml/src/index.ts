@@ -16,7 +16,10 @@ import { nameof } from '@rhombus-std/primitives';
 import { XmlConfigurationSource, type XmlConfigurationSourceOptions } from './XmlConfigurationSource';
 import { XmlStreamConfigurationSource } from './XmlStreamConfigurationSource';
 
-declare module '@rhombus-std/config/configuration-builder' {
+// Declare-merge onto the config barrel (dist-referenced flat dist/index.d.ts
+// declares the classes directly, so the merge lands cleanly even with other
+// provider augmentations present -- see config.json's addJsonFile install).
+declare module '@rhombus-std/config' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Registers an {@link XmlConfigurationSource} reading `path`. */
     addXmlFile(path: string, opts?: XmlConfigurationSourceOptions): this;
@@ -25,7 +28,7 @@ declare module '@rhombus-std/config/configuration-builder' {
   }
 }
 
-declare module '@rhombus-std/config/configuration-manager' {
+declare module '@rhombus-std/config' {
   interface ConfigurationManager {
     /** Registers an {@link XmlConfigurationSource} reading `path`. */
     addXmlFile(path: string, opts?: XmlConfigurationSourceOptions): this;

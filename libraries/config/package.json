@@ -19,8 +19,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": true,
-  "//configuration-builder-subpath": "Every provider package augments ConfigurationBuilder via `declare module \"@rhombus-std/config/configuration-builder\"`, NOT the barrel (\"@rhombus-std/config\") -- TS's declaration merging for a class re-exported through another module (`export { ConfigurationBuilder } from \"./configuration-builder\"` in ./src/index.ts) does not merge back onto the class as seen through the declaring module's own specifier. Augmenting the barrel directly works for exactly one augmenter, but the moment a SECOND package (or core's own addInMemoryCollection) also augments the class, TS sees two non-interchangeable 'ConfigurationBuilder' phantom types and errors on `return this` inside the prototype-assignment function -- reproduced and confirmed during config-json's build. Now that config is dist-referenced (§78, #68): config's OWN program resolves this subpath to ./src/ConfigurationBuilder.ts via the package-unique `config-source` custom condition (listed FIRST, ahead of `types`) -- so config's with-type-augment.ts merge sees the concrete class in its declaring module while dist doesn't exist yet -- while every external consumer (no `config-source` set) resolves `types` -> the rolled ./dist/index.d.ts. That rolled barrel is a single flat file: ConfigurationBuilder is declared directly in it, no re-export chain to trip over, so a provider's declare-module merge onto this subpath lands on the same object the barrel exposes. The `bun` per-file emit stays for white-box test execution. `config-source` is dev-only (absent from publishConfig), where this subpath collapses onto ./dist/index.* like the reference `.`; a provider's rolled dist/index.d.ts keeps the `declare module` verbatim (respectExternal: true), so this subpath must exist in the PUBLISHED package.json too.",
-  "//configuration-manager-subpath": "Same rationale as configuration-builder-subpath above, substituting ConfigurationManager for ConfigurationBuilder: every provider package now ALSO installs its augmentation onto ConfigurationManager (declare module + a second applyAugmentations call, see docs/decisions.md), so it must declare-merge onto `@rhombus-std/config/configuration-manager`, not the barrel, or the same phantom-duplicate-type error reappears. Same collapsed shape: `config-source` -> ./src/ConfigurationManager.ts for config's own program, `types` -> the rolled ./dist/index.d.ts for external consumers. `./src/ConfigurationManager.ts` has no generic type parameter, so there's no TS2428 arity concern the way there is for ConfigurationBuilder<T>.",
+  "//configuration-builder-subpath": "Sole remaining consumer: config's OWN with-type-augment.ts, which merges `declare module \"@rhombus-std/config/configuration-builder\"`. The provider packages (config.json/.env/.commandline/.file/.ini/.xml) now augment the barrel (\"@rhombus-std/config\") directly -- they are EXTERNAL to config, typechecking against its rolled, flat dist/index.d.ts where ConfigurationBuilder is declared directly (no re-export chain), so a barrel merge lands cleanly even with 2+ providers in one program. with-type-augment CANNOT do the same: it compiles INSIDE config's own program alongside memory/index.ts + chained/index.ts, which merge onto the DECLARING module via relative `../ConfigurationBuilder`. Routing the barrel back to src (a `config-source` on the `.` export) re-introduces the phantom split -- with-type on the src barrel's re-exported class vs memory/chained on the declaring module -- and `return this` fails (reproduced). A relative `./ConfigurationBuilder` typechecks but does NOT survive rollup-plugin-dts: it is rewritten to a self-referential `declare module \"./with-type-augment\"`, so external with-type-augment consumers never get `withType` on the real builder. So this subpath stays: `config-source` (listed FIRST, ahead of `types`) resolves it to ./src/ConfigurationBuilder.ts for config's OWN program -- the concrete declaring module, matching memory/chained -- while every external consumer (no `config-source` set) resolves `types` -> the rolled ./dist/index.d.ts (flat, class declared directly), and with-type-augment's rolled dist keeps the `declare module` verbatim (respectExternal: true), so this subpath must exist in the PUBLISHED package.json too. The `bun` per-file emit stays for white-box test execution. `config-source` is dev-only (absent from publishConfig, where this subpath collapses onto ./dist/index.* like the reference `.`).",
   "exports": {
     ".": {
       "bun": "./dist/index.js",
@@ -31,13 +30,6 @@
     "./configuration-builder": {
       "config-source": "./src/ConfigurationBuilder.ts",
       "bun": "./dist/internal/ConfigurationBuilder.js",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./configuration-manager": {
-      "config-source": "./src/ConfigurationManager.ts",
-      "bun": "./dist/internal/ConfigurationManager.js",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -86,11 +78,6 @@
         "default": "./dist/index.js"
       },
       "./configuration-builder": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
-      },
-      "./configuration-manager": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "default": "./dist/index.js"

@@ -9,10 +9,17 @@
 // generated `.withSchema({...})`.
 //
 // The type augmentation targets the public subpath specifier
-// "@rhombus-std/config/configuration-builder" (the same one the provider packages
-// augment) so it survives rollup-plugin-dts into the published
-// dist/with-type-augment.d.ts verbatim. The runtime prototype patch imports the
-// class through the relative module so it's bundled into
+// "@rhombus-std/config/configuration-builder" -- NOT the barrel the provider
+// packages now use. This module compiles inside config's own program next to
+// memory/chained's relative `../ConfigurationBuilder` merges; a barrel merge
+// here would phantom-split the class against those, and a relative
+// `./ConfigurationBuilder` does not survive rollup-plugin-dts (it gets rewritten
+// to a self-referential `./with-type-augment`). The subpath threads the needle:
+// `config-source` routes it to ./src/ConfigurationBuilder.ts for config's own
+// compile, and it survives rollup-plugin-dts into the published
+// dist/with-type-augment.d.ts verbatim. See config's package.json
+// "//configuration-builder-subpath" note. The runtime prototype patch imports
+// the class through the relative module so it's bundled into
 // dist/with-type-augment.js.
 
 import type { IndexedSection } from '@rhombus-std/config.core';

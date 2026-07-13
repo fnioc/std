@@ -3,14 +3,17 @@
   "compilerOptions": {
     // §78 self-reference shim (the config analog of di.core's `di-core-source`,
     // §72/§74): config's with-type-augment.ts merges `declare module
-    // "@rhombus-std/config/configuration-builder"`, and its provider-facing
-    // subpaths (`./configuration-builder` / `./configuration-manager`) now point
-    // `types` at the not-yet-built rolled dist `.d.ts` (TS2664 during config's
-    // own compile). The package-unique `config-source` condition -- listed FIRST
-    // in those subpath exports so it wins over `types` -- routes config's OWN
-    // program back to src, so the merge sees the concrete class in its declaring
-    // module, while every external consumer (which never sets this condition)
-    // resolves the built dist barrel. Dev-only: absent from publishConfig.
+    // "@rhombus-std/config/configuration-builder"`, whose `./configuration-builder`
+    // export points `types` at the not-yet-built rolled dist `.d.ts` (TS2664
+    // during config's own compile). The package-unique `config-source` condition
+    // -- listed FIRST in that subpath export so it wins over `types` -- routes
+    // config's OWN program back to ./src/ConfigurationBuilder.ts, so the merge
+    // sees the concrete declaring module (matching memory/chained's relative
+    // `../ConfigurationBuilder` merges), while every external consumer (which
+    // never sets this condition) resolves the built dist barrel. Dev-only:
+    // absent from publishConfig. The provider packages no longer need this --
+    // they augment the barrel "@rhombus-std/config" directly against the flat
+    // dist; with-type-augment is the sole remaining subpath consumer.
     "customConditions": ["config-source"]
   },
   "include": ["src/**/*"]
