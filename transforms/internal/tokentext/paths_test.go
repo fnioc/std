@@ -61,7 +61,7 @@ func TestPosixRelative(t *testing.T) {
 
 func TestPackagePrivateToken(t *testing.T) {
 	got := PackagePrivateToken("the-app", "/proj", "/proj/src/services/IUserRepo.ts", "IUserRepo")
-	want := "the-app/src/services/IUserRepo:IUserRepo"
+	want := "the-app/_/services/IUserRepo:IUserRepo"
 	if got != want {
 		t.Errorf("PackagePrivateToken = %q, want %q", got, want)
 	}

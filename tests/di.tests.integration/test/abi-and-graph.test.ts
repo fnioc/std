@@ -82,10 +82,10 @@ describe('emit contract — transformer-emitted lowered output (PRD §8)', () =>
     // `union("string", { value: undefined })` — the "string" token wins if
     // registered, else `undefined` is supplied. One signature, no expansion.
     expect(sigFor(wiring, 'SqlUserRepo')).toBe(
-      '[["fnioc-integration-sample/src/sample/contracts:ILogger", "fnioc-integration-sample/src/sample/contracts:IDbConnection", { union: ["string", { value: void 0 }] }]]',
+      '[["fnioc-integration-sample/_/sample/contracts:ILogger", "fnioc-integration-sample/_/sample/contracts:IDbConnection", { union: ["string", { value: void 0 }] }]]',
     );
     expect(wiring).toContain(
-      'services.add("fnioc-integration-sample/src/sample/contracts:IUserRepo", SqlUserRepo, ',
+      'services.add("fnioc-integration-sample/_/sample/contracts:IUserRepo", SqlUserRepo, ',
     );
   });
 
@@ -101,7 +101,7 @@ describe('emit contract — transformer-emitted lowered output (PRD §8)', () =>
     // ReportService has one factory param: `makeCtx: () => IRequestContext`.
     // The transformer emits the return type as the slot token.
     expect(sigFor(wiring, 'ReportService')).toBe(
-      '[[{ type: "fnioc-integration-sample/src/sample/contracts:IRequestContext" }]]',
+      '[[{ type: "fnioc-integration-sample/_/sample/contracts:IRequestContext" }]]',
     );
   });
 
@@ -110,14 +110,14 @@ describe('emit contract — transformer-emitted lowered output (PRD §8)', () =>
     // ReportFactory ctor: `makeReport: (log: ILogger) => IReport`.
     // The declared `log: ILogger` param becomes the params array on the FactoryRef.
     expect(sigFor(wiring, 'ReportFactory')).toBe(
-      '[[{ type: "fnioc-integration-sample/src/sample/contracts:IReport", params: ["fnioc-integration-sample/src/sample/contracts:ILogger"] }]]',
+      '[[{ type: "fnioc-integration-sample/_/sample/contracts:IReport", params: ["fnioc-integration-sample/_/sample/contracts:ILogger"] }]]',
     );
   });
 
   test('the type-driven type arg lowers to a string token; `.as<"x">()` → `.as("x")`', () => {
     const wiring = project.emitted('sample/wiring.js');
     expect(wiring).toContain(
-      'services.add("fnioc-integration-sample/src/sample/contracts:ILogger", ConsoleLogger, [[]]).as("singleton");',
+      'services.add("fnioc-integration-sample/_/sample/contracts:ILogger", ConsoleLogger, [[]]).as("singleton");',
     );
   });
 
@@ -125,7 +125,7 @@ describe('emit contract — transformer-emitted lowered output (PRD §8)', () =>
     const wiring = project.emitted('sample/wiring.js');
     // Honest token-split: the dep is NOT unwrapped — it keys on the Promise token.
     expect(sigFor(wiring, 'ConfigConsumer')).toBe(
-      '[["Promise<fnioc-integration-sample/src/sample/contracts:IConfig>"]]',
+      '[["Promise<fnioc-integration-sample/_/sample/contracts:IConfig>"]]',
     );
   });
 
@@ -134,9 +134,9 @@ describe('emit contract — transformer-emitted lowered output (PRD §8)', () =>
     // ThunkConsumer(thunk: IThunk) — IThunk is `interface IThunk { (): string }`.
     // It must be a string-token slot, never `{ factory: ... }`.
     expect(sigFor(wiring, 'ThunkConsumer')).toBe(
-      '[["fnioc-integration-sample/src/sample/contracts:IThunk"]]',
+      '[["fnioc-integration-sample/_/sample/contracts:IThunk"]]',
     );
-    expect(wiring).not.toContain('factory: "fnioc-integration-sample/src/sample/contracts:IThunk"');
+    expect(wiring).not.toContain('factory: "fnioc-integration-sample/_/sample/contracts:IThunk"');
   });
 });
 
@@ -250,7 +250,7 @@ describe('parameterized factory e2e — declared arg overrides the DIRECT slot o
     const req = root.createScope('request');
 
     // The transformer emits the token for IReportFactory (request-scoped).
-    const T_REPORT_FACTORY = 'fnioc-integration-sample/src/sample/contracts:IReportFactory';
+    const T_REPORT_FACTORY = 'fnioc-integration-sample/_/sample/contracts:IReportFactory';
     const reportFactory = req.resolve<{
       makeReport: (log: { lines: string[]; }) => { repo: { logger: unknown; }; logger: unknown; };
     }>(T_REPORT_FACTORY);

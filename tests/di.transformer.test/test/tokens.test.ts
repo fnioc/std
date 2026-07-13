@@ -89,7 +89,7 @@ describe('token generation', () => {
     });
     const out = outputs['/proj/src/app.ts']!;
     expect(out).toContain(
-      'services.add("the-app/src/services/IUserRepo:IUserRepo", SqlUserRepo, ',
+      'services.add("the-app/_/services/IUserRepo:IUserRepo", SqlUserRepo, ',
     );
   });
 
@@ -111,7 +111,7 @@ describe('token generation', () => {
       compilerOptions: { rootDir: '/proj' },
     });
     const out = outputs['/proj/src/app.ts']!;
-    expect(out).toContain('services.add("the-app/src/contracts:IThing", Thing, ');
+    expect(out).toContain('services.add("the-app/_/contracts:IThing", Thing, ');
   });
 
   test('Promise<X> parameter → the honest closed-generic token Promise<X>', () => {
@@ -213,7 +213,7 @@ describe('token generation', () => {
     });
     const { outputs } = transform(files, { entry: selfCompileEntry });
     const out = outputs['/proj/src/app.ts']!;
-    // Barrel `my-lib:IFoo`, NOT the Tier-2 `my-lib/src/foo:IFoo` — the token is
+    // Barrel `my-lib:IFoo`, NOT the Tier-2 `my-lib/_/foo:IFoo` — the token is
     // build-state-independent.
     expect(out).toContain('services.add("my-lib:IFoo", Foo, ');
   });
@@ -259,7 +259,7 @@ describe('token generation', () => {
       compilerOptions: { rootDir: '/proj' },
     });
     expect(outputs['/proj/src/app.ts']!).toContain(
-      'services.add("my-lib/src/internal:IHidden", Hidden, ',
+      'services.add("my-lib/_/internal:IHidden", Hidden, ',
     );
   });
 
