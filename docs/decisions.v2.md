@@ -100,3 +100,23 @@ what a bare published consumer sees. Platform types come in explicitly instead: 
 `process` / timers / streams / `AbortSignal` as typed `globalThis` lookups, and `node:fs` / `node:path`
 are typed by per-package `src/node-builtins.d.ts` shims (unimported, so never shipped). Tests,
 examples, and repo tooling keep their bun/node types deliberately. _Owner-approved._
+
+## §86 — Browser-host shutdown is a three-tier reliability contract
+
+A browser can discard a page without running async work, so the browser host presents three tiers,
+and callers must know which they are relying on:
+
+- **Reliable — `PageLifecycleEvents.onFlush`.** Fires synchronously on every `visibilitychange →
+  hidden`, while the page is still alive. Synchronous work here — a `localStorage` write, a
+  `navigator.sendBeacon` call — is guaranteed to run (for a beacon: the call fires and enqueues, not
+  that delivery arrives). This is the one place to persist critical state; listeners must be
+  synchronous.
+- **Conditional — a synchronous `applicationStopping` listener.** Runs when a terminal
+  (non-persisted) `pagehide` fires, because the abort dispatch is synchronous — but `pagehide` is not
+  guaranteed on hard or mobile discard. A backstop, not a guarantee.
+- **Best-effort — the async `host.stop()` pipeline** (hosted-service `stop()`/dispose,
+  `applicationStopped`). Cut off mid-await on a terminal pagehide and may never start on an abrupt
+  discard; reliable only for a deliberate in-app stop, not a page-close-triggered one.
+
+A persisted (bfcache) pagehide never stops the host (suspend≠stop, §69). `sendBeacon` is a plain
+global a caller uses inside its own `onFlush`. _Owner-approved._
