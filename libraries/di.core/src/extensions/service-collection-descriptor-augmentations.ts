@@ -57,7 +57,7 @@
 // the finalize phase (tracked against #75).
 
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 // Type-only: the const references `ServiceManifestClass` solely in type position

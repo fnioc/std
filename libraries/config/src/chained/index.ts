@@ -20,7 +20,7 @@
 import type { IConfiguration, IConfigurationBuilder, IConfigurationSource,
   IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { ConfigurationBuilder } from '../ConfigurationBuilder';
 import { ChainedConfigurationSource } from './ChainedConfigurationSource';
 

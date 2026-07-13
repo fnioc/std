@@ -24,10 +24,6 @@ export { createNameofTransformerFactory, default as transformer, transform } fro
 // lowered tokens match the ones this package derives for the same program.
 export { createTokenContext, type TokenContextOptions } from './context.js';
 
-// `nameof<T>()` — the compile-time token mechanism (rewritten by the transformer)
-// — and the exported identifier name the transformer recognizes.
-export { nameof, NAMEOF_NAME } from './nameof.js';
-
 // The closed-generic token grammar helpers (compile-time `parseToken` /
 // `isOpenToken`).
 export { isOpenToken, type ParsedToken, parseToken } from './grammar.js';

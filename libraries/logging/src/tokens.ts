@@ -2,7 +2,7 @@
 // the package name per the di.core "pkg:IFace" token convention.
 
 import type { Options } from '@rhombus-std/options';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { LoggerFilterOptions } from './logger-filter-options';
 
 /** Token for the singleton {@link ILoggerFactory} registered by `addLogging`. */

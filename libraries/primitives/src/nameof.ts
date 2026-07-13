@@ -8,11 +8,16 @@
 // The runtime body exists only so that un-transformed code fails loudly instead
 // of silently returning `undefined` — if you call `nameof` without the
 // transformer wired up, you get a clear error pointing at the missing plugin.
+//
+// It lives in `@rhombus-std/primitives` (the zero-dep leaf) rather than in the
+// transformer package so every library imports the single `nameof` symbol from
+// one home; `@rhombus-std/primitives.transformer` is the base plugin that lowers
+// the calls.
 
 /**
- * Compile-time token for a type. Rewritten by the @rhombus-std/di.transformer
- * plugin to a string literal; the runtime body only runs when the transformer
- * is absent.
+ * Compile-time token for a type. Rewritten by the
+ * @rhombus-std/primitives.transformer plugin to a string literal; the runtime
+ * body only runs when the transformer is absent.
  *
  * @example
  * ```ts
@@ -22,8 +27,8 @@
 export function nameof<T>(): string {
   void (0 as unknown as T);
   throw new Error(
-    'nameof<T>() requires the @rhombus-std/di.transformer plugin. Add { "transform": '
-      + '"@rhombus-std/di.transformer" } to your tsconfig "plugins", or pass a token string.',
+    'nameof<T>() requires the @rhombus-std/primitives.transformer plugin. Add { "transform": '
+      + '"@rhombus-std/primitives.transformer" } to your tsconfig "plugins", or pass a token string.',
   );
 }
 

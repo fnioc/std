@@ -19,7 +19,7 @@
 import type { ConfigurationBuilder } from '@rhombus-std/config';
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { CommandLineConfigurationSource,
   type CommandLineConfigurationSourceOptions } from './command-line-configuration-source';
 

@@ -35,7 +35,7 @@ const token = 'my-package:IUserRepository';
 the string, and let the transformer fill in the string for you.
 
 ```ts
-import { nameof } from '@rhombus-std/primitives.transformer';
+import { nameof } from '@rhombus-std/primitives';
 
 interface IUserRepository {
   findById(id: string): Promise<User>;

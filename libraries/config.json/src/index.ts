@@ -18,7 +18,7 @@
 import type { ConfigurationBuilder, StreamPayload } from '@rhombus-std/config';
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { JsonConfigurationSource, type JsonConfigurationSourceOptions } from './json-configuration-source';
 import { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
 

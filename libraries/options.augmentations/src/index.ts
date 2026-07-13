@@ -31,7 +31,7 @@ import { type AddBuilder, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestC
 import { type ConfigureOptions, Options, type PostConfigureOptions, type ValidateOptions,
   ValidateOptionsResult } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleOptions } from './assemble-options.js';

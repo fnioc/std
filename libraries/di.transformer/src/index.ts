@@ -37,7 +37,7 @@ export { createTransformerFactory, default as transformer, transform } from './t
 export { createTokenContext, type TokenContextOptions } from '@rhombus-std/primitives.transformer';
 
 // `nameof<T>()` — the compile-time token mechanism (rewritten by the transformer).
-export { nameof } from '@rhombus-std/primitives.transformer';
+export { nameof } from '@rhombus-std/primitives';
 
 // Token generation, dependency extraction, and diagnostics — exported so
 // downstream tooling (and tests) can reuse the building blocks.

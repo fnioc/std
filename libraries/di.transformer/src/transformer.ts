@@ -14,8 +14,9 @@
 //   2. Rewrites every `nameof<T>()` and tokenless `resolve<T>()` / `resolveAsync<T>()`
 //      call to its string token.
 
-import { createTokenContext, deriveToken, injectTokenFor, NAMEOF_NAME, singletonValue, type TokenContext,
-  tokenForReturnType, tokenForType } from '@rhombus-std/primitives.transformer';
+import { NAMEOF_NAME } from '@rhombus-std/primitives';
+import { createTokenContext, deriveToken, injectTokenFor, singletonValue, type TokenContext, tokenForReturnType,
+  tokenForType } from '@rhombus-std/primitives.transformer';
 import type { Func } from '@rhombus-toolkit/func';
 import ts from 'typescript';
 import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';

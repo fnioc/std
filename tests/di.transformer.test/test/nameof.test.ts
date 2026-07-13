@@ -1,4 +1,4 @@
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 import { fixture, transform, type VirtualFiles } from './harness.js';
 
@@ -9,8 +9,8 @@ describe('nameof<T>() runtime body (transformer absent)', () => {
   test('throws a tight, instructive message naming the plugin + how to add it', () => {
     // The runtime body only runs when the transformer did not rewrite the call.
     expect(() => nameof<unknown>()).toThrow(
-      'nameof<T>() requires the @rhombus-std/di.transformer plugin. Add { "transform": '
-        + '"@rhombus-std/di.transformer" } to your tsconfig "plugins", or pass a token string.',
+      'nameof<T>() requires the @rhombus-std/primitives.transformer plugin. Add { "transform": '
+        + '"@rhombus-std/primitives.transformer" } to your tsconfig "plugins", or pass a token string.',
     );
     let message = '';
     try {
@@ -19,7 +19,7 @@ describe('nameof<T>() runtime body (transformer absent)', () => {
       message = (e as Error).message;
     }
     // Instructive, short, and free of "lowering" jargon.
-    expect(message).toContain('@rhombus-std/di.transformer plugin');
+    expect(message).toContain('@rhombus-std/primitives.transformer plugin');
     expect(message).toContain('plugins');
     expect(message.toLowerCase()).not.toContain('lower');
     expect(message.split('\n').length).toBe(1);

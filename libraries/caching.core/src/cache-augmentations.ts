@@ -27,7 +27,7 @@
 
 import { type AugmentationSet, type IChangeToken, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { CacheEntryExtensions } from './cache-entry-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
