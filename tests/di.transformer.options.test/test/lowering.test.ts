@@ -5,7 +5,7 @@
 // token any `resolve<T>()` / `add<T>()` would derive, so the two arguments are
 // relationally locked (`wrapper === "@rhombus-std/options:Options<" + element + ">"`).
 
-import { DiagnosticCode } from '@rhombus-std/di.transformer.options/internal/diagnostics';
+import { DiagnosticCode } from '@rhombus-std/di.transformer.options/_/diagnostics';
 import { describe, expect, test } from 'bun:test';
 import { addOptionsArgs, fixtureWithoutOptions, optionsFixture, transform } from './harness';
 

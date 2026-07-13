@@ -1,4 +1,4 @@
-import { DiagnosticCode } from '@rhombus-std/di.transformer/internal/index';
+import { DiagnosticCode } from '@rhombus-std/di.transformer/_/index';
 import { describe, expect, test } from 'bun:test';
 import { CORE_BRAND_APP, depsArrayFor, fixture, transform, withCoreBrand } from './harness.js';
 

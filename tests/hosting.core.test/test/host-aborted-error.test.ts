@@ -1,4 +1,4 @@
-import { HostAbortedError } from '@rhombus-std/hosting.core/internal/index';
+import { HostAbortedError } from '@rhombus-std/hosting.core/_/index';
 import { expect, test } from 'bun:test';
 
 test('HostAbortedError() uses the system-supplied message', () => {

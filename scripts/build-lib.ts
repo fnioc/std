@@ -76,7 +76,7 @@ if (typecheck.status !== 0) {
 }
 
 // Entrypoints: src/index.ts + every exports subpath whose `import` condition
-// is a non-index dist/*.js. (`internal/*`, `./ttsc`, and bun-only subpaths all
+// is a non-index dist/*.js. (`_/*`, `./ttsc`, and bun-only subpaths all
 // fail the test and are correctly ignored.)
 const entrypoints = ['src/index.ts'];
 const dtsConfigs = ['rollup.dts.mjs'];

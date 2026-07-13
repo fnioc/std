@@ -10,8 +10,8 @@
 // `package.json` files, so token generation (package-public vs app-internal)
 // can be exercised deterministically without touching real `node_modules`.
 
-import type { Diagnostic } from '@rhombus-std/di.transformer/internal/diagnostics';
-import { createTransformerFactory } from '@rhombus-std/di.transformer/internal/transformer';
+import type { Diagnostic } from '@rhombus-std/di.transformer/_/diagnostics';
+import { createTransformerFactory } from '@rhombus-std/di.transformer/_/transformer';
 import ts from 'typescript';
 
 /** A virtual filesystem: absolute POSIX path → file contents. */

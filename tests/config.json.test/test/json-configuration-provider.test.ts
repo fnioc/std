@@ -8,14 +8,14 @@
 
 import { ConfigurationBuilder, ConfigurationManager, type IndexedSection } from '@rhombus-std/config';
 import { JsonConfigurationSource,
-  type JsonConfigurationSourceOptions } from '@rhombus-std/config.json/internal/json-configuration-source';
-import { JsonConfigurationProvider } from '@rhombus-std/config.json/internal/JsonConfigurationProvider';
+  type JsonConfigurationSourceOptions } from '@rhombus-std/config.json/_/json-configuration-source';
+import { JsonConfigurationProvider } from '@rhombus-std/config.json/_/JsonConfigurationProvider';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // Side-effect import: installs `addJsonFile` onto ConfigurationBuilder.
-import '@rhombus-std/config.json/internal/index';
+import '@rhombus-std/config.json/_/index';
 
 const FIXTURES = 'test/fixtures/json-file';
 

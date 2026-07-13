@@ -1,5 +1,5 @@
 import { MemoryConfigurationSource } from '@rhombus-std/config';
-import { Host } from '@rhombus-std/hosting/internal/index';
+import { Host } from '@rhombus-std/hosting/_/index';
 import { expect, test } from 'bun:test';
 
 test('asHostBuilder returns a cached classic IHostBuilder view', () => {

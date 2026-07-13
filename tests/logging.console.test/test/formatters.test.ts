@@ -1,16 +1,16 @@
 // White-box formatter tests — reach the internal built-in formatters through
 // the library's `internal/*` subpath (lowered per-file JS; docs §7/§40).
 
-import { AnsiLogConsole } from '@rhombus-std/logging.console/internal/AnsiLogConsole';
-import { ConsoleFormatterOptions } from '@rhombus-std/logging.console/internal/ConsoleFormatterOptions';
-import { JsonConsoleFormatter } from '@rhombus-std/logging.console/internal/JsonConsoleFormatter';
-import { JsonConsoleFormatterOptions } from '@rhombus-std/logging.console/internal/JsonConsoleFormatterOptions';
-import { LoggerColorBehavior } from '@rhombus-std/logging.console/internal/LoggerColorBehavior';
-import { ReloadableOptions } from '@rhombus-std/logging.console/internal/ReloadableOptions';
-import { SimpleConsoleFormatter } from '@rhombus-std/logging.console/internal/SimpleConsoleFormatter';
-import { SimpleConsoleFormatterOptions } from '@rhombus-std/logging.console/internal/SimpleConsoleFormatterOptions';
-import { SystemdConsoleFormatter } from '@rhombus-std/logging.console/internal/SystemdConsoleFormatter';
-import { StringWriter } from '@rhombus-std/logging.console/internal/text-writer';
+import { AnsiLogConsole } from '@rhombus-std/logging.console/_/AnsiLogConsole';
+import { ConsoleFormatterOptions } from '@rhombus-std/logging.console/_/ConsoleFormatterOptions';
+import { JsonConsoleFormatter } from '@rhombus-std/logging.console/_/JsonConsoleFormatter';
+import { JsonConsoleFormatterOptions } from '@rhombus-std/logging.console/_/JsonConsoleFormatterOptions';
+import { LoggerColorBehavior } from '@rhombus-std/logging.console/_/LoggerColorBehavior';
+import { ReloadableOptions } from '@rhombus-std/logging.console/_/ReloadableOptions';
+import { SimpleConsoleFormatter } from '@rhombus-std/logging.console/_/SimpleConsoleFormatter';
+import { SimpleConsoleFormatterOptions } from '@rhombus-std/logging.console/_/SimpleConsoleFormatterOptions';
+import { SystemdConsoleFormatter } from '@rhombus-std/logging.console/_/SystemdConsoleFormatter';
+import { StringWriter } from '@rhombus-std/logging.console/_/text-writer';
 import type { LogEntry } from '@rhombus-std/logging.core';
 import { EventId, type IExternalScopeProvider } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';

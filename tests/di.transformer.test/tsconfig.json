@@ -6,7 +6,7 @@
     // own standalone tsconfig — there are no project references between
     // packages here. These white-box tests additionally reach OUTSIDE their own
     // `test/**/*` tree: the harness and several specs import the transformer's
-    // internal source through the `@rhombus-std/di.transformer/internal/*` seam,
+    // internal source through the `@rhombus-std/di.transformer/_/*` seam,
     // which maps onto `libraries/di.transformer/src/*.ts`. composite's "every
     // file must be in the declared file list" check (TS6307) fires the moment an
     // out-of-tree file is reachable, so this must be off here too.

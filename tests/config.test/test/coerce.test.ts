@@ -1,7 +1,7 @@
 // Coercion primitives -- the single source of truth for number/boolean parsing
 // shared by the on-demand section helpers and the schema-walker.
 
-import { parseBoolean, parseNumber } from '@rhombus-std/config/internal/coerce';
+import { parseBoolean, parseNumber } from '@rhombus-std/config/_/coerce';
 import { describe, expect, test } from 'bun:test';
 
 describe('parseNumber', () => {
