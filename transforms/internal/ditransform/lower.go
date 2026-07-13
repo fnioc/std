@@ -194,6 +194,12 @@ func (c *context) tokenForReg(reg foundReg) (string, bool) {
 	if t == nil {
 		return "", false
 	}
+	// A `add<Keyed<T, "k">>(Impl)` registration composes the derived base with a
+	// `#k` suffix — the raw `T & { [KEY]?: K }` intersection has no symbol, so
+	// DeriveTokenF alone would miss it. Unbranded types fall straight through.
+	if token, ok := tokens.KeyedTokenFor(c.tokens, t); ok {
+		return token, true
+	}
 	return tokens.DeriveTokenF(c.tokens, t, nil)
 }
 
