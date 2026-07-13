@@ -1114,7 +1114,7 @@ function dirname(p: string): string {
 
 export function stripExt(p: string): string {
   return p
-    .replace(/\.d\.ts$/, '')
+    .replace(/\.d\.(ts|mts|cts)$/, '')
     .replace(/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, '');
 }
 
