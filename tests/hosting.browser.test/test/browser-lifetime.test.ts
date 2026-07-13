@@ -1,4 +1,4 @@
-import { BrowserLifetime, BrowserLifetimeOptions } from '@rhombus-std/hosting.browser';
+import { BrowserLifetime, BrowserLifetimeOptions, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
 import { NullLoggerFactory } from '@rhombus-std/logging';
 import { neverSignal } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
@@ -9,22 +9,29 @@ function makeLifetime(configure?: (options: BrowserLifetimeOptions) => void) {
   const applicationLifetime = new FakeApplicationLifetime();
   const options = new BrowserLifetimeOptions();
   configure?.(options);
+  // The bridge is the single DOM-listening component; the lifetime consumes it
+  // as its event source.
+  const bridge = new PageLifecycleEvents(page.context);
   const lifetime = new BrowserLifetime(
     options,
     applicationLifetime,
     NullLoggerFactory.instance,
-    page.context,
+    bridge,
   );
-  return { page, applicationLifetime, lifetime };
+  return { page, applicationLifetime, bridge, lifetime };
 }
 
-test('waitForStart attaches the five page-lifecycle listeners and resolves immediately', async () => {
+test('the bridge is the single DOM listener; waitForStart subscribes without adding DOM listeners', async () => {
   const { page, lifetime } = makeLifetime();
+
+  // The bridge attached its five page-lifecycle listeners at construction.
+  expect(page.document.registeredTypes.slice().sort()).toEqual(['freeze', 'resume', 'visibilitychange']);
+  expect(page.window.registeredTypes.slice().sort()).toEqual(['pagehide', 'pageshow']);
 
   await lifetime.waitForStart(neverSignal);
 
-  expect(page.document.registeredTypes.slice().sort()).toEqual(['freeze', 'resume', 'visibilitychange']);
-  expect(page.window.registeredTypes.slice().sort()).toEqual(['pagehide', 'pageshow']);
+  // Still five — the lifetime subscribes to the bridge, it does not touch the DOM.
+  expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 });
 
 test('never registers unload or beforeunload (bfcache disqualifiers)', async () => {
@@ -41,8 +48,9 @@ test('terminal pagehide (persisted=false) requests a graceful shutdown', async (
   const { page, applicationLifetime, lifetime } = makeLifetime();
   await lifetime.waitForStart(neverSignal);
 
-  // The synchronous abort dispatch is the flush backstop: the stopping
-  // listener must have run before the pagehide handler returned.
+  // The synchronous abort dispatch is the flush backstop: the stopping listener
+  // must have run before the pagehide dispatch returned — the whole path
+  // (bridge phase -> subscriber -> stopApplication -> abort) is synchronous.
   let flushedDuringDispatch = false;
   applicationLifetime.applicationStopping.addEventListener('abort', () => {
     flushedDuringDispatch = true;
@@ -86,7 +94,7 @@ test('stopOnPagehide=false suppresses the shutdown request', async () => {
   expect(applicationLifetime.stopCalls).toBe(0);
 });
 
-test('stop detaches every listener', async () => {
+test('stop disposes the bridge — every listener detaches', async () => {
   const { page, applicationLifetime, lifetime } = makeLifetime();
   await lifetime.waitForStart(neverSignal);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
@@ -101,7 +109,7 @@ test('stop detaches every listener', async () => {
   expect(applicationLifetime.stopCalls).toBe(0);
 });
 
-test('dispose detaches every listener', async () => {
+test('dispose disposes the bridge — every listener detaches', async () => {
   const { page, lifetime } = makeLifetime();
   await lifetime.waitForStart(neverSignal);
 

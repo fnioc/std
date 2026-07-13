@@ -1,8 +1,7 @@
 import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import { BROWSER_LIFETIME_OPTIONS_TOKEN, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
   createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TOKEN, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
-import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type IHostApplicationLifetime,
-  type IHostLifetime } from '@rhombus-std/hosting.core';
+import { Environments, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_PROVIDER_TOKEN } from '@rhombus-std/logging';
 import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
@@ -69,23 +68,24 @@ test('the facade composes settings config, browser environment, console logging,
   host[Symbol.dispose]();
 });
 
-test('host stop detaches both the lifetime and the bridge listeners — no leak across host cycles', async () => {
+test('host stop disposes the single bridge listener set — no leak across host cycles', async () => {
   const page = makeFakePage();
 
   const builder = BrowserHost.createApplicationBuilder({ pageContext: page.context });
   const host = builder.build();
 
-  // The bridge attaches its five listeners eagerly at composition.
+  // The bridge — the single DOM-listening component — attaches its five
+  // listeners eagerly at composition.
   const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 
-  // Start adds the lifetime's own five listeners over the same document/window.
+  // Start subscribes the lifetime to the bridge; it adds NO DOM listeners.
   await host.start();
-  expect(page.document.listenerCount + page.window.listenerCount).toBe(10);
+  expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 
-  // Stop must detach EVERY listener — the lifetime's and the (unowned, so
-  // container-undisposed) bridge's — or a multi-host page leaks five per cycle.
+  // Stop disposes the (unowned, so container-undisposed) bridge via the
+  // lifetime — or a multi-host page leaks five listeners per cycle.
   await host.stop();
   expect(page.document.listenerCount).toBe(0);
   expect(page.window.listenerCount).toBe(0);
@@ -93,44 +93,40 @@ test('host stop detaches both the lifetime and the bridge listeners — no leak 
   host[Symbol.dispose]();
 });
 
-test('a built browser host starts, stops on terminal pagehide via the main.ts wiring, and never on bfcache', async () => {
+test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a terminal pagehide', async () => {
   const page = makeFakePage();
   const events: string[] = [];
 
-  const builder = BrowserHost.createApplicationBuilder({ pageContext: page.context });
-  builder.services.addHostedService(
-    class Worker {
-      public async start(): Promise<void> {
-        events.push('start');
-      }
-      public async stop(): Promise<void> {
-        events.push('stop');
-      }
+  const runPromise = BrowserHost.run(
+    { pageContext: page.context },
+    (builder) => {
+      builder.services.addHostedService(
+        class Worker {
+          public async start(): Promise<void> {
+            events.push('start');
+          }
+          public async stop(): Promise<void> {
+            events.push('stop');
+          }
+        },
+        [[]],
+      );
     },
-    [[]],
   );
-  const host = builder.build();
 
-  // The documented one-line main.ts stop wiring.
-  const applicationLifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
-  let stopDriven: Promise<void> | undefined;
-  applicationLifetime.applicationStopping.addEventListener('abort', () => {
-    stopDriven = host.stop();
-  }, { once: true });
-
-  await host.start();
+  // Wait until the host has started (the lifetime subscribes before hosted
+  // services run, so an observed 'start' means the lifetime is listening).
+  for (let attempt = 0; attempt < 1000 && !events.includes('start'); attempt += 1) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 1));
+  }
   expect(events).toEqual(['start']);
 
   // bfcache pagehide: the host MUST NOT stop.
   page.pageHide(true);
-  expect(stopDriven).toBeUndefined();
   expect(events).toEqual(['start']);
 
-  // Terminal pagehide: stopApplication fires, the wiring drives the pipeline.
+  // Terminal pagehide: stopApplication fires and runAsync drives the stop.
   page.pageHide(false);
-  expect(stopDriven).toBeDefined();
-  await stopDriven;
+  await runPromise;
   expect(events).toEqual(['start', 'stop']);
-
-  host[Symbol.dispose]();
 });

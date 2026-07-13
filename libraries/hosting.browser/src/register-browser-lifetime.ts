@@ -46,7 +46,6 @@ export function registerBrowserLifetime(
         resolver.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN),
         resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
         resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-        context,
         pageLifecycleEvents,
       ),
     [[RESOLVER_TOKEN]],
