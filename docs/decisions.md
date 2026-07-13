@@ -3090,34 +3090,3 @@ empty `export interface C extends I {}` beside its `@augment` decoration.
   `ConfigurationManager` receivers, not the interface, so there is no `*ExtensionMethods` interface to
   retire and §38's CLOSED-receiver treatment of them stands. §48's general rule and §60's
   "`IDistributedCache` gets the many-implementers treatment" are superseded here.
-
-## 81. Config providers augment the barrel; the `./configuration-manager` subpath is dropped (§78 refined)
-
-§78 collapsed both `@rhombus-std/config` subpath merge-anchors (`./configuration-builder`,
-`./configuration-manager`) onto the flat rolled `dist/index.d.ts` but kept them, because at the
-time the provider packages still declared their augmentations against the subpath specifiers. Now
-that config is dist-referenced, the subpaths are no longer needed by the providers: every provider
-(`config.json`/`.env`/`.commandline`/`.file`/`.ini`/`.xml`) is EXTERNAL to config and typechecks
-against its flat `dist/index.d.ts`, where `ConfigurationBuilder`/`ConfigurationManager` are declared
-directly (no re-export chain), so a `declare module '@rhombus-std/config'` merge lands cleanly on the
-real class even with 2+ providers in one program. This was the exact hazard the subpaths existed to
-dodge; the flat dist barrel dissolves it. All six providers now merge onto the barrel; the config
-integration suite ("augmentations are installed on the dist ConfigurationBuilder") and the
-`examples.app.*` byte-diff e2e confirm the augmentations still install.
-
-- **`./configuration-manager` is deleted outright** (dev exports + publishConfig). Nothing merges
-  onto `ConfigurationManager` through a subpath anymore — the providers moved to the barrel, and
-  config's own `memory`/`chained` augmenters already used relative `../ConfigurationManager`.
-
-- **`./configuration-builder` stays — the one holdout — for config's OWN `with-type-augment.ts`.**
-  That module compiles INSIDE config's program alongside `memory`/`chained`, which merge onto the
-  DECLARING module via relative `../ConfigurationBuilder`. It cannot switch to the barrel: routing
-  the barrel back to src (a `config-source` on the `.` export) re-introduces the phantom split
-  (with-type on the src barrel's re-exported class vs memory/chained on the declaring module, and
-  `return this` fails — reproduced during this change). A relative `./ConfigurationBuilder`
-  typechecks but does not survive rollup-plugin-dts: it is rewritten to a self-referential
-  `declare module './with-type-augment'`, so external `@rhombus-std/config/with-type-augment`
-  consumers never get `withType` on the real builder. The subpath threads the needle — `config-source`
-  (listed FIRST) routes it to `./src/ConfigurationBuilder.ts` for config's own compile, and it
-  survives the dts roll verbatim for external consumers. `config-source` therefore also stays (its
-  sole remaining user is this one subpath).
