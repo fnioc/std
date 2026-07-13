@@ -147,6 +147,23 @@ function orderByArityDesc(
 const ARRAY_TOKEN_BASE = 'Array';
 const ITERABLE_TOKEN_BASE = 'Iterable';
 
+/**
+ * The separator between a base token and its resolution KEY. A keyed
+ * registration lives under the ORDINARY token `base + "#" + key` — service
+ * identity is already a token string, and a key is just a `"#<key>"` suffix on
+ * it, so exact keyed resolution needs no separate engine.
+ */
+const KEY_SEPARATOR = '#';
+
+/**
+ * Composes the lookup token for a SINGULAR keyed resolve. The empty key is the
+ * bare, non-keyed token (the single-argument `resolve(token)` default), so an
+ * unkeyed call is byte-for-byte the token it always was.
+ */
+function composeKeyed(base: Token, key: string): Token {
+  return key === '' ? base : base + KEY_SEPARATOR + key;
+}
+
 /** A recognized collection request: its wrapper base and single element token. */
 interface CollectionRequest {
   readonly base: typeof ARRAY_TOKEN_BASE | typeof ITERABLE_TOKEN_BASE;
@@ -387,9 +404,11 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * provably never RETURNS a Pending — a cached one throws inside the spine).
    * The public entry point starts a fresh cycle-detection stack.
    */
-  public resolve<T>(token: Token): T;
-  public resolve(token: Token): unknown;
-  public resolve<T>(token?: Token): T {
+  public resolve<T>(token: Token, pattern: RegExp): T[];
+  public resolve(token: Token, pattern: RegExp): unknown[];
+  public resolve<T>(token: Token, key?: string): T;
+  public resolve(token: Token, key?: string): unknown;
+  public resolve<T>(token?: Token, key: string | RegExp = ''): T | T[] {
     if (token === undefined) {
       throw new TypeError(
         'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
@@ -397,9 +416,13 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
           + 'resolve<T>("my:token").',
       );
     }
-    const result = this.#resolve<T>(token, this.#frame, [], false);
+    if (key instanceof RegExp) {
+      return this.#resolveKeyed<T>(token, key, this.#frame, []);
+    }
+    const lookupToken = composeKeyed(token, key);
+    const result = this.#resolve<T>(lookupToken, this.#frame, [], false);
     if (isPending(result)) {
-      throw new AsyncResolutionRequiredError(token);
+      throw new AsyncResolutionRequiredError(lookupToken);
     }
     return result;
   }
@@ -432,9 +455,11 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    * the registration probe (`#lookup`) is what distinguishes "not a service"
    * from "a service that failed to build".
    */
-  public tryResolve<T>(token: Token): T | undefined;
-  public tryResolve(token: Token): unknown;
-  public tryResolve<T>(token?: Token): T | undefined {
+  public tryResolve<T>(token: Token, pattern: RegExp): T[];
+  public tryResolve(token: Token, pattern: RegExp): unknown[];
+  public tryResolve<T>(token: Token, key?: string): T | undefined;
+  public tryResolve(token: Token, key?: string): unknown;
+  public tryResolve<T>(token?: Token, key: string | RegExp = ''): T | T[] | undefined {
     if (token === undefined) {
       throw new TypeError(
         'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
@@ -442,12 +467,18 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
           + 'tryResolve<T>("my:token").',
       );
     }
-    if (!this.#isKnown(token)) {
+    if (key instanceof RegExp) {
+      // Plural is intrinsically non-throwing on count — 0 matches is `[]`, so
+      // tryResolve-plural is the same scan as resolve-plural.
+      return this.#resolveKeyed<T>(token, key, this.#frame, []);
+    }
+    const lookupToken = composeKeyed(token, key);
+    if (!this.#isKnown(lookupToken)) {
       return undefined;
     }
-    const result = this.#resolve<T>(token, this.#frame, [], false);
+    const result = this.#resolve<T>(lookupToken, this.#frame, [], false);
     if (isPending(result)) {
-      throw new AsyncResolutionRequiredError(token);
+      throw new AsyncResolutionRequiredError(lookupToken);
     }
     return result;
   }
@@ -878,6 +909,58 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   }
 
   /**
+   * Resolves the PLURAL keyed form: scans `base`'s key-space and returns every
+   * registration whose KEY PORTION matches `pattern`, in registration order,
+   * each honoring its own registration's lifetime (resolved through
+   * `#resolveWith`, exactly as a collection element is).
+   *
+   * The scan is confined to the FIXED `base`: a token counts only when it is
+   * exactly `base` (key portion `""`, the bare non-keyed registration) or
+   * `base + "#" + <k>` (key portion `<k>`). The regex tests the KEY PORTION
+   * alone — NEVER the whole token — so a keyed scan can never wander into a
+   * collection wrapper (`Array<base>`) or a different type. A dot-plus pattern
+   * matches any non-empty key; a dot-star pattern matches everything including
+   * the bare token; a specific pattern matches those keys. 0 matches is `[]`,
+   * never a throw.
+   *
+   * Keyed registrations are ordinary exact registrations, so only the exact
+   * `#registrations` map is scanned — open-generic synthesis is not keyed.
+   */
+  #resolveKeyed<T>(
+    base: Token,
+    pattern: RegExp,
+    vantage: Scope | undefined,
+    stack: Token[],
+  ): T[] {
+    const prefix = base + KEY_SEPARATOR;
+    const matches: T[] = [];
+    for (const [token, list] of this.#registrations) {
+      let keyPortion: string;
+      if (token === base) {
+        keyPortion = '';
+      } else if (token.startsWith(prefix)) {
+        keyPortion = token.slice(prefix.length);
+      } else {
+        continue;
+      }
+      // Reset `lastIndex` so a caller's `/…/g` regex is stateless across the
+      // per-key tests (a global regex advances `lastIndex` on every `test`).
+      pattern.lastIndex = 0;
+      if (!pattern.test(keyPortion)) {
+        continue;
+      }
+      for (const registration of list) {
+        const result = this.#resolveWith<T>(token, registration, vantage, stack, false);
+        if (isPending(result)) {
+          throw new AsyncResolutionRequiredError(token);
+        }
+        matches.push(result);
+      }
+    }
+    return matches;
+  }
+
+  /**
    * Owns the HOW of construction: the missing-metadata check, greedy
    * (async-aware) signature selection, slot fill, and the fast/slow build. Every
    * kind builds through one call — `registration.produce(...args)` — so there is
@@ -951,15 +1034,18 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
   ): Resolver & ScopeFactory<S> {
     const sp = this;
     return {
-      resolve: <U>(depToken?: Token): U => {
+      resolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] => {
         if (depToken === undefined) {
           throw new TypeError(
             'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
               + 'runtime).',
           );
         }
+        if (key instanceof RegExp) {
+          return sp.#resolveKeyed<U>(depToken, key, owningFrame, stack);
+        }
         // Sync mode never yields a Pending — the spine throws on a cached one.
-        return sp.#resolve<U>(depToken, owningFrame, stack, false, captor) as U;
+        return sp.#resolve<U>(composeKeyed(depToken, key), owningFrame, stack, false, captor) as U;
       },
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
         if (depToken === undefined) {
@@ -970,18 +1056,22 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
         }
         return settle(sp.#resolve<U>(depToken, owningFrame, stack, true, captor)) as Promise<U>;
       },
-      tryResolve: <U>(depToken?: Token): U | undefined => {
+      tryResolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] | undefined => {
         if (depToken === undefined) {
           throw new TypeError(
             'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token '
               + 'at runtime).',
           );
         }
-        if (!sp.#isKnown(depToken)) {
+        if (key instanceof RegExp) {
+          return sp.#resolveKeyed<U>(depToken, key, owningFrame, stack);
+        }
+        const lookupToken = composeKeyed(depToken, key);
+        if (!sp.#isKnown(lookupToken)) {
           return undefined;
         }
         // Sync mode never yields a Pending — the spine throws on a cached one.
-        return sp.#resolve<U>(depToken, owningFrame, stack, false, captor) as U;
+        return sp.#resolve<U>(lookupToken, owningFrame, stack, false, captor) as U;
       },
       isService: (depToken: Token): boolean => sp.#isKnown(depToken),
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>

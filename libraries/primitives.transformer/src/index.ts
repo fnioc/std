@@ -30,5 +30,5 @@ export { isOpenToken, type ParsedToken, parseToken } from './grammar.js';
 
 // The token-generation building blocks.
 export { baseTokenForSymbol, type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, intrinsicToken,
-  isPureLiteralUnion, type LiteralResult, literalUnionTokenForOptional, type LiteralValue, singletonValue, stripExt,
-  type TokenContext, tokenForReturnType, tokenForType, type TokenResult } from './tokens.js';
+  isPureLiteralUnion, keyedTokenFor, keyLiteralFor, type LiteralResult, literalUnionTokenForOptional, type LiteralValue,
+  singletonValue, stripExt, type TokenContext, tokenForReturnType, tokenForType, type TokenResult } from './tokens.js';

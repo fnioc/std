@@ -16,7 +16,7 @@
 // A dynamic arg with no statically derivable signature gets no signature array —
 // the runtime throws with guidance if it needs metadata (a nonzero-arg ctor).
 
-import { deriveToken, isOpenToken, type LiteralValue, parseToken,
+import { deriveToken, isOpenToken, keyedTokenFor, type LiteralValue, parseToken,
   type TokenContext } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
 import { type CheckContext, checkExtractedRegistration } from './checks.js';
@@ -779,7 +779,10 @@ function tokenForReg(reg: FoundReg, ctx: LowerContext): string | undefined {
   const type = reg.typeArg
     ? ctx.checker.getTypeFromTypeNode(reg.typeArg)
     : inferredRegType(reg, ctx);
-  return deriveToken(type, ctx);
+  // A `add<Keyed<T, "k">>(Impl)` registration composes the derived base with a
+  // `#k` suffix — the raw `T & { [KEY]?: K }` intersection has no symbol, so
+  // `deriveToken` alone would miss it. Unbranded types fall straight through.
+  return keyedTokenFor(type, ctx) ?? deriveToken(type, ctx);
 }
 
 /** The type the matched overload binds to `T` for a no-type-arg registration. */

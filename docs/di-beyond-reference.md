@@ -205,6 +205,43 @@ Every feature above has this same relationship: `union(...)`, `{ value }`, `{ ty
 and `resolveFactory(...)` are all public, hand-writable data — not compiler output you're
 locked out of authoring yourself.
 
+## 10. Keyed registrations
+
+The reference container needs a whole second hierarchy — `IKeyedServiceProvider`,
+`KeyedService.AnyKey`, `FromKeyedServicesAttribute` — because its service identity is a
+`Type` object with no room for a key. Here, identity is already a token _string_, so a key
+is just a suffix on it: `"pkg:IStore#k"`. `resolve` takes an optional trailing argument —
+an exact string for one service (`''` is the non-keyed registration), a `RegExp` for every
+matching registration as a list, in registration order. There's no `AnyKey` sentinel to
+special-case: `/.+/` means "has some key" and `/.*/` means "keyed or not", a distinction the
+reference can't express at all. `T[]` / `Iterable<T>` stay non-keyed-only, so the two
+aggregate forms never overlap.
+
+```ts
+services.add<IStore>(RedisStore).as<'singleton'>(); // key '' — the plain registration
+services.add<IStore>(SqlStore, 'sql').as<'singleton'>();
+services.add<IStore>(MemStore, 'mem').as<'singleton'>();
+
+resolver.resolve<IStore>(); // RedisStore — the unkeyed one
+resolver.resolve<IStore>('sql'); // SqlStore — exact key
+resolver.resolve<IStore>(/^(sql|mem)$/); // [SqlStore, MemStore] — RegExp → list
+resolver.resolve<IStore>(/.+/); // every keyed registration, RedisStore excluded
+resolver.resolve<IStore>(/.*/); // every registration, RedisStore included too
+
+class Report {
+  constructor(private readonly store: Keyed<IStore, 'sql'>) {}
+}
+// Keyed stacks with Inject — the base comes from Inject, the key from Keyed:
+class Audit {
+  constructor(
+    private readonly store: Keyed<Inject<IStore, 'pkg:IStore'>, 'sql'>,
+  ) {}
+}
+
+// manual dialect — what Keyed<IStore, 'sql'> lowers to:
+resolver.resolve('pkg:IStore#sql');
+```
+
 ---
 
 One more cross-cutting difference: every failure mode here is a typed subclass of

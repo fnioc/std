@@ -369,6 +369,13 @@ func (c *context) extractParamSlot(param *shimast.Node, typeOverride *shimchecke
 
 	// 2. Inject brand on the whole single non-union param type.
 	if !c.isOptionalParam(param, typeOverride) && !isMultiMemberUnion(rawType) {
+		// A `Keyed<T, "k">` param composes the derived base with a `#k` suffix. It
+		// must run BEFORE the bare InjectTokenFor below: `Keyed<Inject<T, "tok">,
+		// "k">` stacks both brands, and KeyedTokenFor reads the Inject base itself
+		// — the bare check would return `tok` and drop the `#k` suffix.
+		if token, ok := tokens.KeyedTokenFor(c.tokens, rawType); ok {
+			return tokenSlot(token)
+		}
 		if token, ok := tokens.InjectTokenFor(rawType, c.checker); ok {
 			return tokenSlot(token)
 		}

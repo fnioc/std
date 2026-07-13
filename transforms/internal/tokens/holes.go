@@ -25,7 +25,24 @@ import (
 const (
 	injectBrandProperty = "TOK"
 	holeBrandProperty   = "HOLE"
+	// keyBrandProperty is the Keyed<T, K> brand — detected exactly like the Inject
+	// brand, except the extracted literal is the KEY string K that composes onto
+	// the derived base token as a `#K` suffix:
+	//   declare const KEY: unique symbol;
+	//   type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
+	keyBrandProperty = "KEY"
 )
+
+// brandPropertyNames is the set of every phantom-brand computed-symbol property
+// name. A brand-object constituent of an intersection (`{ readonly [KEY]?: K }`)
+// carries ONLY such a property; a real user type never does. Used by
+// stripBrandMembers to recover the underlying T from a Keyed<T, K> intersection.
+var brandPropertyNames = map[string]bool{
+	injectBrandProperty: true,
+	holeBrandProperty:   true,
+	keyBrandProperty:    true,
+	"ARG":               true,
+}
 
 // Failure is the channel through which DeriveTokenF reports that derivation hit
 // an unbound type parameter (as opposed to a nameless anonymous structure). A
@@ -206,6 +223,126 @@ func InjectTokenFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, 
 		return "", false
 	}
 	return brandLiteralFor(t, checker, injectBrandProperty, extractStringLiteral)
+}
+
+// KeyLiteralFor returns the literal key string K of a `Keyed<T, K>`-branded
+// type, or ok=false when the type is not keyed. Detection mirrors InjectTokenFor
+// exactly: union-aware (an optional `x?: Keyed<T, K>` resolves to
+// `(T & { [KEY]?: K }) | undefined`, whose common properties omit the brand),
+// then a brandLiteralFor property walk for a computed-symbol property named KEY.
+func KeyLiteralFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, bool) {
+	if t.Flags()&shimchecker.TypeFlagsUnion != 0 {
+		for _, member := range t.Types() {
+			if member.Flags()&(shimchecker.TypeFlagsUndefined|shimchecker.TypeFlagsNull) != 0 {
+				continue
+			}
+			if key, ok := KeyLiteralFor(member, checker); ok {
+				return key, true
+			}
+		}
+		return "", false
+	}
+	return brandLiteralFor(t, checker, keyBrandProperty, extractStringLiteral)
+}
+
+// KeyedTokenFor returns the composed keyed token `<base>#<key>` when t carries
+// the `Keyed<T, K>` brand, or ok=false so the caller falls through to normal
+// derivation. A key is NOT a parallel resolution subsystem — it is a `#<key>`
+// suffix on the ordinary token the underlying T derives, so
+// `Keyed<ICache, "redis">` composes `caching.core:ICache#redis`.
+//
+// The base derives from T two ways, checked in order so Keyed stacks
+// orthogonally with Inject:
+//  1. An `Inject<T, "tok">` brand under the Keyed pins the base explicitly
+//     (`Keyed<Inject<T, "tok">, "k">` → `tok#k`) — InjectTokenFor reads [TOK]
+//     off the same flattened intersection.
+//  2. Otherwise the base derives structurally from T with the phantom-brand
+//     members stripped off the intersection (stripBrandMembers), since the raw
+//     `T & { [KEY]?: K }` intersection has no symbol of its own.
+//
+// Returns ok=false when no base is derivable — the caller's normal path then
+// raises the appropriate diagnostic.
+func KeyedTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
+	key, ok := KeyLiteralFor(t, ctx.Checker)
+	if !ok {
+		return "", false
+	}
+	base, ok := InjectTokenFor(t, ctx.Checker)
+	if !ok {
+		// Hole-aware derivation (DeriveTokenF, not DeriveToken) to match the
+		// ts-patch keyedTokenFor: a keyed dependency whose base itself contains an
+		// open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render the base as
+		// `IThing<$1>` — DeriveToken has no hole branch and would bail, dropping the
+		// key suffix and diverging from the ts-patch engine's output.
+		base, ok = DeriveTokenF(ctx, stripBrandMembers(t, ctx.Checker), nil)
+		if !ok {
+			return "", false
+		}
+	}
+	return base + "#" + key, true
+}
+
+// stripBrandMembers recovers the underlying T from a `Keyed<T, K>` (and any
+// stacked-brand) intersection by dropping every phantom-brand-object
+// constituent. `Keyed<T, K>` resolves to `T & { readonly [KEY]?: K }`; when
+// exactly one non-brand constituent survives it IS T, so it is returned for
+// normal derivation. A non-intersection type (or one with multiple non-brand
+// constituents, out of scope) is returned unchanged.
+func stripBrandMembers(t *shimchecker.Type, checker *shimchecker.Checker) *shimchecker.Type {
+	if t.Flags()&shimchecker.TypeFlagsIntersection == 0 {
+		return t
+	}
+	constituents := t.Types()
+	nonBrand := make([]*shimchecker.Type, 0, len(constituents))
+	for _, c := range constituents {
+		if !isBrandObject(c, checker) {
+			nonBrand = append(nonBrand, c)
+		}
+	}
+	if len(nonBrand) == 1 {
+		return nonBrand[0]
+	}
+	return t
+}
+
+// isBrandObject reports whether t is a phantom-brand object literal — an
+// intersection constituent whose ONLY properties are computed-symbol brand
+// properties (`{ readonly [KEY]?: K }`). A real user type declares named
+// members, so this cannot misfire on T itself.
+func isBrandObject(t *shimchecker.Type, checker *shimchecker.Checker) bool {
+	props := checker.GetPropertiesOfType(t)
+	if len(props) == 0 {
+		return false
+	}
+	for _, prop := range props {
+		if !isAnyBrandProperty(prop) {
+			return false
+		}
+	}
+	return true
+}
+
+// isAnyBrandProperty reports whether a property symbol is a computed-symbol
+// signature `readonly [NAME]?: K` whose NAME identifier is one of the known
+// phantom brands.
+func isAnyBrandProperty(prop *shimast.Symbol) bool {
+	for _, decl := range prop.Declarations {
+		if decl.Kind != shimast.KindPropertySignature {
+			continue
+		}
+		name := decl.Name()
+		if name == nil || name.Kind != shimast.KindComputedPropertyName {
+			continue
+		}
+		expr := name.AsComputedPropertyName().Expression
+		if expr == nil || expr.Kind != shimast.KindIdentifier {
+			continue
+		}
+		if brandPropertyNames[expr.Text()] {
+			return true
+		}
+	}
+	return false
 }
 
 // brandLiteralFor walks a type's properties for one declared as a
