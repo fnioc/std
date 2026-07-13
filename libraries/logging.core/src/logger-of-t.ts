@@ -13,7 +13,7 @@
 
 import type { Typeof } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import type { EventId } from './event-id';
 import type { ILogger } from './logger';

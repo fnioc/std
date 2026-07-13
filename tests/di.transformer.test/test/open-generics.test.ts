@@ -1,4 +1,4 @@
-import { DiagnosticCode } from '@rhombus-std/di.transformer/internal/index';
+import { DiagnosticCode } from '@rhombus-std/di.transformer/_/index';
 import { describe, expect, test } from 'bun:test';
 import { fixture, transform, type VirtualFiles } from './harness.js';
 

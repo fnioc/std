@@ -15,10 +15,10 @@
 // di.transformer has each `nameof<T>()` consumed by whichever plugin runs
 // first; the other simply finds no `nameof` calls left.
 
+import { NAMEOF_NAME } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import ts from 'typescript';
 import { createTokenContext } from './context.js';
-import { NAMEOF_NAME } from './nameof.js';
 import { deriveToken, type TokenContext } from './tokens.js';
 
 /**
@@ -66,8 +66,8 @@ function rewriteNameof(node: ts.Node, ctx: FileContext): ts.Node {
  * rewrite above there is no runtime reference left, but TypeScript's own
  * import elision consults the ORIGINAL checker's reference marks (where
  * `nameof` WAS value-referenced), so without this pass the emitted JS keeps a
- * dangling `import { nameof } from "@rhombus-std/primitives.transformer/..."`
- * — a build-time package no runtime consumer can (or should) resolve.
+ * dangling `import { nameof } from "@rhombus-std/primitives"` — a value import
+ * with no remaining runtime reference (the token has been inlined).
  *
  * Matching mirrors {@link isNameofCall}'s looseness: any named-import specifier
  * whose EXPORTED name is `nameof` (so `import { nameof as keyOf }` elides too).

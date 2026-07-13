@@ -1,8 +1,8 @@
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TOKEN,
   hostedServiceCollectionToken, HostEnvironmentEnvExtensions, type IHostedService,
-  type IHostEnvironment } from '@rhombus-std/hosting.core/internal/index';
+  type IHostEnvironment } from '@rhombus-std/hosting.core/_/index';
 // Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
-import '@rhombus-std/hosting.core/internal/index';
+import '@rhombus-std/hosting.core/_/index';
 import { ServiceManifest } from '@rhombus-std/di';
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { expect, test } from 'bun:test';

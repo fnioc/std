@@ -12,7 +12,7 @@
 import type { ConfigurationBuilder } from '@rhombus-std/config';
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { EnvironmentVariablesConfigurationSource,
   type EnvironmentVariablesConfigurationSourceOptions } from './environment-variables-configuration-source';
 

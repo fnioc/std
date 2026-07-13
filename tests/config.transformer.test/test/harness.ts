@@ -12,8 +12,8 @@
 // affects printed text (what the injection tests assert); `ts.transform` prints
 // without re-checking, so the unresolved specifier is fine.
 
-import type { Diagnostic } from '@rhombus-std/config.transformer/internal/diagnostics';
-import { createTransformerFactory } from '@rhombus-std/config.transformer/internal/transformer';
+import type { Diagnostic } from '@rhombus-std/config.transformer/_/diagnostics';
+import { createTransformerFactory } from '@rhombus-std/config.transformer/_/transformer';
 import ts from 'typescript';
 
 /** A virtual filesystem: absolute POSIX path -> file contents. */

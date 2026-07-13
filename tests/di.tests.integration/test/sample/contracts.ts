@@ -1,7 +1,7 @@
 // Interface-first contracts for the integration sample. These are app-internal
 // types (not exported through the package's public surface), so the transformer
 // derives package-qualified tokens of the form
-// `fnioc-integration-sample/src/sample/contracts:IFoo`.
+// `fnioc-integration-sample/_/sample/contracts:IFoo`.
 
 export interface ILogger {
   log(line: string): void;

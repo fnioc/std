@@ -13,6 +13,7 @@ export { CancellationChangeToken } from './CancellationChangeToken.js';
 export { CompositeChangeToken } from './CompositeChangeToken.js';
 export type { IChangeToken } from './IChangeToken.js';
 export { Multimap } from './Multimap.js';
+export { nameof, NAMEOF_NAME } from './nameof.js';
 export { ChangeToken } from './on-change.js';
 export type { ChangeTokenConsumer, ChangeTokenProducer } from './on-change.js';
 export { process } from './process.js';

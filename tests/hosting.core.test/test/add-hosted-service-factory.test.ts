@@ -1,7 +1,7 @@
 import { ServiceManifest } from '@rhombus-std/di';
-import { hostedServiceCollectionToken, type IHostedService } from '@rhombus-std/hosting.core/internal/index';
+import { hostedServiceCollectionToken, type IHostedService } from '@rhombus-std/hosting.core/_/index';
 // Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
-import '@rhombus-std/hosting.core/internal/index';
+import '@rhombus-std/hosting.core/_/index';
 import { expect, test } from 'bun:test';
 
 test("addHostedService(factory) registers the factory's result under the hosted-service token", async () => {

@@ -11,8 +11,8 @@
 // without the real di.core). Token generation reads the virtual `package.json`
 // through the injected `readFile`.
 
-import type { Diagnostic } from '@rhombus-std/di.transformer.options/internal/diagnostics';
-import { createTransformerFactory } from '@rhombus-std/di.transformer.options/internal/transformer';
+import type { Diagnostic } from '@rhombus-std/di.transformer.options/_/diagnostics';
+import { createTransformerFactory } from '@rhombus-std/di.transformer.options/_/transformer';
 import ts from 'typescript';
 
 /** A virtual filesystem: absolute POSIX path -> file contents. */

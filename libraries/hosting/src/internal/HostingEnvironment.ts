@@ -7,7 +7,7 @@
 import { type IFileProvider, NullFileProvider } from '@rhombus-std/fileproviders.core';
 import type { IHostEnvironment } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 
 // Interface-extends merge (augmentation doctrine): binding the IHostEnvironment
 // SYMBOL flows every in-program augmentation of the interface (hosting.core's

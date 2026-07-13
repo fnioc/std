@@ -29,7 +29,7 @@
     },
     "./ttsc": "./ttsc.mjs",
     "./ttsc-app": "./ttsc-app.mjs",
-    "./internal/*": {
+    "./_/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"

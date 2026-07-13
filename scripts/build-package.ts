@@ -143,7 +143,7 @@ export interface BuildPackageOptions {
    * footprint).
    *
    * After bundling, the per-file lowered emit is KEPT at `dist/internal/` and
-   * the package's `internal/*` export subpath points its `bun` condition there:
+   * the package's `_/*` export subpath points its `bun` condition there:
    * white-box consumers (sibling test packages) execute the same lowered JS a
    * published consumer would, instead of raw src whose un-lowered `nameof<T>()`
    * throws at import time. `dist/internal` is publish-excluded via a

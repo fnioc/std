@@ -15,7 +15,7 @@
 
 import { AbortController, type AbortSignal, type AugmentationSet, clearTimeout, neverSignal, registerAugmentations,
   setTimeout } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { IHost } from './IHost';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';

@@ -3,11 +3,11 @@
 // library's `internal/*` subpath (docs §7/§40).
 
 import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
-  getForegroundColorEscapeCode } from '@rhombus-std/logging.console/internal/AnsiParser';
-import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/internal/ConsoleControlCharacterSanitizer';
-import { formatTimestamp } from '@rhombus-std/logging.console/internal/date-format';
-import { StringWriter } from '@rhombus-std/logging.console/internal/text-writer';
-import { TextWriterExtensions } from '@rhombus-std/logging.console/internal/TextWriterExtensions';
+  getForegroundColorEscapeCode } from '@rhombus-std/logging.console/_/AnsiParser';
+import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/_/ConsoleControlCharacterSanitizer';
+import { formatTimestamp } from '@rhombus-std/logging.console/_/date-format';
+import { StringWriter } from '@rhombus-std/logging.console/_/text-writer';
+import { TextWriterExtensions } from '@rhombus-std/logging.console/_/TextWriterExtensions';
 import { expect, test } from 'bun:test';
 
 // --- sanitizer ---

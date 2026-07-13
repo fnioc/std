@@ -18,7 +18,7 @@ import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIG
   METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 import { ConfigurationChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 
 import { MetricsConfiguration } from './MetricsConfiguration';
 import { MetricsConfigureOptions } from './MetricsConfigureOptions';

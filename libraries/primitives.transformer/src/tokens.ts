@@ -15,8 +15,10 @@
 //          entry point), not file-path stems — so a type declared deep but
 //          re-exported from the package root tokenizes as the bare `pkg`.
 //       2. App-internal (owned by a `package.json` but not publicly exported) →
-//          `packageName/<decl-file path relative to package root, ext stripped>`.
-//          The package name makes it globally unique.
+//          `packageName/<decl-file path relative to package root, ext stripped>`,
+//          with a leading `src/` rewritten to `_/` so it matches the package's
+//          `_/*` white-box import specifier. The package name makes it globally
+//          unique.
 //       3. Rootless (no named `package.json` up-tree) → best-effort
 //          `./<decl-file path relative to projectRoot, ext stripped>`.
 //
@@ -1112,14 +1114,17 @@ function dirname(p: string): string {
 
 export function stripExt(p: string): string {
   return p
-    .replace(/\.d\.ts$/, '')
+    .replace(/\.d\.(ts|mts|cts)$/, '')
     .replace(/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, '');
 }
 
 /**
  * App-internal (tier 2) token: `packageName/<decl-file path relative to the
- * PACKAGE root, extension stripped>:<exportName>`. The package-name prefix makes
- * it globally unique across disparate packages that share a relative path.
+ * PACKAGE root, extension stripped>:<exportName>`, with a leading `src/` segment
+ * rewritten to `_/` so the token equals the package's `_/*` white-box import
+ * specifier (the tests-only seam a non-public type is reached through). The
+ * package-name prefix makes it globally unique across disparate packages that
+ * share a relative path.
  */
 function packagePrivateToken(
   pkg: PackageInfo,
@@ -1127,7 +1132,7 @@ function packagePrivateToken(
   exportName: string,
 ): string {
   const rel = posixRelative(pkg.dir, declPath);
-  const base = stripExt(rel ?? normalize(declPath).replace(/^\/+/, ''));
+  const base = stripExt(rel ?? normalize(declPath).replace(/^\/+/, '')).replace(/^src\//, '_/');
   return `${pkg.name}/${base}:${exportName}`;
 }
 

@@ -50,8 +50,8 @@ func nameofTransform(prog *driver.Program, ctx *tokens.Context, _ func(plugin.Di
 // top-level imports. After the rewrite above there is no runtime reference left,
 // but the toolchain's import elision consults the ORIGINAL reference marks (where
 // `nameof` WAS value-referenced), so without this pass the emit keeps a dangling
-// `import { nameof } from "@rhombus-std/primitives.transformer/..."` — a
-// build-time module no runtime consumer can resolve.
+// `import { nameof } from "@rhombus-std/primitives"` — a value import with no
+// remaining runtime reference (the token has been inlined).
 func elideNameofImports(factory *shimast.NodeFactory, sf *shimast.SourceFile) *shimast.SourceFile {
 	statements := sf.Statements.Nodes
 	kept := make([]*shimast.Node, 0, len(statements))

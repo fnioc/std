@@ -5,7 +5,7 @@
 import type { ServiceManifest } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 
 // Interface-extends merge (augmentation doctrine): binding the ILoggingBuilder
 // SYMBOL flows every in-program augmentation of the interface — this package's

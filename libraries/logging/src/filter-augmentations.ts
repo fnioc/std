@@ -43,7 +43,7 @@ import '@rhombus-std/options.augmentations';
 
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { applyAugmentations, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { LoggerFilterOptions, LoggerFilterRule } from './logger-filter-options';
 import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';

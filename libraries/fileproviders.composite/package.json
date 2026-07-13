@@ -24,7 +24,7 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./internal/*": {
+    "./_/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"

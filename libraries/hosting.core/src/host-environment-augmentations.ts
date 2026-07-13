@@ -12,7 +12,7 @@
 // prototype; the class-side merge stays downstream next to that class.
 
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { Environments } from './environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 

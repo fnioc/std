@@ -48,7 +48,7 @@
       "import": "./dist/with-type-augment.js",
       "default": "./dist/with-type-augment.js"
     },
-    "./internal/*": {
+    "./_/*": {
       "source": "./src/*.ts",
       "bun": "./dist/internal/*.js",
       "types": "./src/*.ts"

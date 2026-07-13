@@ -18,7 +18,7 @@ import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHost
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavior';
 import type { HostOptions } from '../HostOptions';

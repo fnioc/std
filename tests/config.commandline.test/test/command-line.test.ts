@@ -8,10 +8,10 @@
 // switchMappings validation and the "/switch" -> "--switch" rewrite.
 
 import { ConfigurationBuilder, ConfigurationManager } from '@rhombus-std/config';
-import { CommandLineConfigurationSource } from '@rhombus-std/config.commandline/internal/command-line-configuration-source';
+import { CommandLineConfigurationSource } from '@rhombus-std/config.commandline/_/command-line-configuration-source';
 import { describe, expect, test } from 'bun:test';
 // Side-effect import: installs `addCommandLine` onto ConfigurationBuilder/ConfigurationManager.
-import '@rhombus-std/config.commandline/internal/index';
+import '@rhombus-std/config.commandline/_/index';
 
 /** Builds a provider from `args`/`switchMappings`, loads it, and returns the
  * flattened key -> value map it produced (via getChildKeys + tryGet, since

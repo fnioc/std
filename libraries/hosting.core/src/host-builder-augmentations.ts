@@ -13,7 +13,7 @@
 // into the async form -- JS cannot block a thread.
 
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { IHost } from './IHost';
 import type { IHostBuilder } from './IHostBuilder';
 

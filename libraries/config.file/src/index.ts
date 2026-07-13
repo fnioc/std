@@ -24,7 +24,7 @@ import type { IConfigurationBuilder, IndexedSection } from '@rhombus-std/config.
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import { type AugmentationSet, process, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 

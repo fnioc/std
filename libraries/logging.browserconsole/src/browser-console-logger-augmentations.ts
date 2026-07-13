@@ -16,7 +16,7 @@
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
 const registrations = new WeakMap<ILoggingBuilder['services'], BrowserConsoleLoggerProvider>();

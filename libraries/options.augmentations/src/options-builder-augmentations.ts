@@ -24,7 +24,7 @@ import { type Resolver, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestCla
   type Token } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 
 import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
 

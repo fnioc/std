@@ -22,7 +22,7 @@
 // an explicit event id calls `logger.log(level, EventId.from(n), …)` directly.
 
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives.transformer/internal/nameof';
+import { nameof } from '@rhombus-std/primitives';
 import { EventId } from './event-id';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
 import type { ILogger } from './logger';
