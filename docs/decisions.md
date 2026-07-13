@@ -1,8 +1,36 @@
-# Design decisions & requirements
+# Design decisions & requirements — ⚠️ RETIRING
 
-Running record of load-bearing decisions for the `@rhombus-std` monorepo. **Append
-here as decisions land — don't leave them only in conversation.** Each entry: the
-decision, why, and status (issue/PR where relevant).
+> # ⚠️ DECISIONS-DOC MIGRATION — READ THIS FIRST (governs how you use this file)
+>
+> **`decisions.v2.md` is the live decisions doc.** This file is being retired one decision at a
+> time. **NEVER write to this file** except to strike through an entry the owner has ruled on.
+>
+> 1. **Recording a decision:** never write to EITHER doc without the owner’s explicit signal
+>    (ask "save ___ to decisions?" and get a yes). On approval it goes into `decisions.v2.md` ONLY.
+> 2. **Reading for guidance:** read BOTH docs. If a NOT-struck entry in THIS old file is relevant
+>    to what you’re about to do, you MUST present it to the owner and get signoff BEFORE it guides
+>    your behavior — never act on an un-ratified old-doc decision.
+> 3. **After the owner rules** (approve OR disapprove): strike the entry to `~~…~~`. Approve ⇒ ALSO
+>    copy it to `decisions.v2.md`, keeping its original `§N` id (so `§N` citations still resolve).
+>    Disapprove ⇒ it becomes (at least) an unjustified divergence; the owner directs any code change
+>    case-by-case. A decision that merely REVERSES another needs no v2 entry and no separate reversal
+>    entry — striking the reversed decision IS the reversal.
+> 4. If the owner declines to rule right then, leave it un-struck and re-present it next time it’s
+>    relevant.
+>
+> **NEVER let `~~struck-through~~` text influence your behavior, EVER** — struck = adjudicated
+> (migrated to v2, or rejected); its authority is gone.
+>
+> **v2 prose:** as simple and straightforward as possible — a single paragraph when it fits.
+> Primarily for Claude’s use.
+>
+> **When every entry below is struck through:** delete this block, delete this file, and rename
+> `decisions.v2.md` → `decisions.md`.
+
+---
+
+Running record of load-bearing decisions for the `@rhombus-std` monorepo (RETIRING — see the block
+above; do not append here). Each entry: the decision, why, and status.
 
 ---
 
@@ -2977,81 +3005,9 @@ complete, every runtime library is dist-referenced.**
   `commandline`), `config.tests.integration`'s "augmentations are installed on the dist
   ConfigurationBuilder" assertions, and the §16 `examples.app.*` byte-diff e2e.
 
-## 79. Augmentation collision model — delta install + blind prototype merge
+## ~~79. Augmentation collision model — delta install + blind prototype merge~~
 
-The registry (§38) installs augmentation members onto a class prototype (the TS
-stand-in for C# extension methods). Two different registrations contributing the
-SAME member name onto one class used to silently clobber. An earlier, now-removed
-first cut fixed the clobber with a member-identity marker on each installed slot;
-this entry supersedes that with a simpler, correct-by-construction model in three
-parts.
-
-- **Delta install (`@augment` never re-installs the whole bag).** The old
-  listener re-installed the token's ENTIRE accumulated bag on every later
-  `registerAugmentations(token, …)`. With eight config providers registering onto
-  `nameof<IConfigurationBuilder>()` (config.json/env/commandline/ini/xml/file plus
-  config's memory + chained), `addJsonFile` was re-installed ~8 times. Now the
-  install is a DELTA: the INITIAL `@augment` application installs the
-  currently-accumulated members ONCE (catch-up for anything registered before the
-  class was decorated), and each LATER `registerAugmentations` installs ONLY that
-  registration's own `set`. A member therefore reaches a given prototype EXACTLY
-  ONCE. The delta is driven onto every subscribed class through a plain
-  per-token SUBSCRIBER LIST called SYNCHRONOUSLY — deliberately NOT an
-  `EventTarget` bus. A strategy-less collision (below) THROWS from
-  `installMember`, and `EventTarget.dispatchEvent` SWALLOWS a listener's throw
-  (reported out-of-band as an uncaughtException, never propagated to the
-  dispatcher). Through a bus, an already-decorated class's genuine collision
-  would return normally and silently DROP the colliding member — asymmetric with
-  the catch-up path, which throws loudly. Iterating the subscribers directly
-  lets the throw reach the `registerAugmentations` registrant.
-
-- **Blind prototype merge (no tokens, no receivers, no member identity).**
-  Mounting member `n` asks one question: is `n` already on the prototype?
-  Absent → mount the `this`-forwarding thunk. Present → a genuinely different
-  registration is colliding (the class's own primitive, a base-class member, or a
-  member a DIFFERENT token/set already installed — different tokens share one
-  prototype). With a `merge` strategy for `n`, mount a dispatcher chaining the
-  incoming over the existing (blind — the strategy does not inspect which
-  token/receiver/member it is). With NO strategy, THROW
-  (`augmentation "n" collides on <Class> — supply a merge strategy`). Because
-  delta install guarantees a member is mounted once, a second arrival at a taken
-  name is always a real collision — there is no idempotency/marker bookkeeping,
-  and the retired `installed`-marker (`base`/`member`) machinery of that earlier
-  first cut is gone.
-
-- **The bag holds a per-name list — a `Multimap` of `[fn, merge?]` contributions
-  (carried over from that earlier first cut).** The bag is a single `Multimap<string, [ExtensionFn,
-  MergeStrategy?]>` per token (`primitives`' array-backed `Multimap`): each
-  contribution is the augmentation function paired with the own strategy its
-  registration supplied for that name, collapsing the earlier two parallel
-  structures (a name→fn-list plus a name→strategy map) into one. `registerAugmentations`
-  does NOT throw when a name is registered a second time under the same token — it
-  appends another contribution to that name's list. The throw for an unresolved
-  collision lives entirely at install: a late-decorated class replays the bag's
-  contributions in registration order, and the second same-name contribution hits
-  the blind merge (dispatcher with its own strategy, or throw without one). The common cross-token
-  same-name collision needs no bag list at all — different tokens share the
-  prototype, so §2's install path already covers it; the list only covers a
-  same-token same-name pair.
-
-- **Double-installs are harmless by construction, not policed.** With delta
-  install a member is installed once; the only residual double-install is the rare
-  same-name-re-registered-with-a-strategy case, which self-chains into a dead
-  routing branch. No machinery detects or prevents it — adding some would be
-  weight against a case that is already inert.
-
-- **The hand-authored, no-transformer path (the real API, per
-  "No-transformer-first").** A wrapper that shares a name with the primitive it
-  builds on (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`,
-  `ILoggerFactory.createLogger`, and `di`'s `build` over `di.core`'s throwing
-  stub) supplies a `MergeStrategy` by hand: a pure filter routing the
-  primitive-shaped call to the primitive and the convenience-shaped call to the
-  wrapper. The convenience form is thus dot-callable at runtime; it is NOT typed
-  as a method overload (a concrete class declares the primitive in its body and TS
-  forbids merging an incompatible overload onto it, TS2430), so the typed path
-  stays the standalone functions. The seam left for the transformer: it will later
-  auto-generate the default merge, so a transformer user never writes a strategy —
-  built here as a no-transformer capability first, transformer sugar deferred.
+~~Full text migrated to `decisions.v2.md` §79 and struck here — never read for behavior.~~
 
 ## 80. Retire the many-implementers no-interface-merge carve-out — `ILogger`/`IDistributedCache` join the standard pattern (§36/§48/§60 superseded)
 
