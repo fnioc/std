@@ -269,7 +269,12 @@ func KeyedTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
 	}
 	base, ok := InjectTokenFor(t, ctx.Checker)
 	if !ok {
-		base, ok = DeriveToken(ctx, stripBrandMembers(t, ctx.Checker))
+		// Hole-aware derivation (DeriveTokenF, not DeriveToken) to match the
+		// ts-patch keyedTokenFor: a keyed dependency whose base itself contains an
+		// open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render the base as
+		// `IThing<$1>` — DeriveToken has no hole branch and would bail, dropping the
+		// key suffix and diverging from the ts-patch engine's output.
+		base, ok = DeriveTokenF(ctx, stripBrandMembers(t, ctx.Checker), nil)
 		if !ok {
 			return "", false
 		}

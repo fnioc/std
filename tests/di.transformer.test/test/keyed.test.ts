@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'bun:test';
-import { CORE_BRAND_APP, depsArrayFor, transform, withCoreBrand } from './harness.js';
+import { CORE_BRAND_APP, depsArrayFor, fixture, transform, withCoreBrand } from './harness.js';
+
+// Brands declared inline (structural detection, no import needed): the `Keyed`
+// key brand plus the open-generic `Hole` brand, so a keyed base can itself carry
+// a hole.
+const KEYED_HOLE_BRANDS = `
+  declare const KEY: unique symbol;
+  type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
+  declare const HOLE: unique symbol;
+  type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
+  type $<N extends number> = Hole<N>;
+`;
 
 // Keyed-services transformer lowering.
 //
@@ -129,6 +140,29 @@ describe('add<Keyed<T, K>> registration lowering', () => {
     // registration never collides with, nor leaks into, the non-keyed token.
     expect(base).not.toContain('#');
     expect(regToken(out, 'KeyedThing')).toBe(`${base}#primary`);
+  });
+
+  test('keyed base carrying an open-generic hole composes <base<$N>>#k', () => {
+    // The exotic case the parity fix guards: a generic impl registered OPEN, whose
+    // ctor param keys an open-generic base (`Keyed<IThing<T>, "redis">`). After the
+    // instantiation substitutes T→Hole<1>, the keyed base must render its hole as
+    // `$1` — so the composed dep token is `./app:IThing<$1>#redis`, NOT a dropped
+    // key / hard diagnostic. Both engines must emit this byte-for-byte.
+    const src = `
+        ${KEYED_HOLE_BRANDS}
+        interface IThing<T> {}
+        interface IRepo<T> {}
+        class SqlRepo<T> implements IRepo<T> {
+          constructor(cache: Keyed<IThing<T>, "redis">) {}
+        }
+        declare const services: any;
+        services.add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"singleton">();
+      `;
+    const { output, diagnostics } = transform(fixture(src));
+    expect(diagnostics.length).toBe(0);
+    expect(output).toContain(
+      'services.add("./app:IRepo<$1>", SqlRepo, [["./app:IThing<$1>#redis"]]).as("singleton");',
+    );
   });
 
   test('add<Keyed<Inject<T, "tok">, "k">>(Impl) registers under tok#k (exact)', () => {

@@ -109,9 +109,16 @@ import { IUserRepo } from "your-lib/contracts";
 declare const KEY: unique symbol;
 type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 
+// The open-generic hole brand, so a keyed base can itself carry a hole.
+declare const HOLE: unique symbol;
+type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
+type $<N extends number> = Hole<N>;
+
 interface ILogger {}
 interface IDbConnection {}
 interface ICache {}
+interface IThing<T> {}
+interface IRepo<T> {}
 class ConsoleLogger implements ILogger {}
 class SqlUserRepo implements IUserRepo {
   constructor(log: ILogger, db: IDbConnection, table: string) {}
@@ -119,6 +126,12 @@ class SqlUserRepo implements IUserRepo {
 class RedisCache implements ICache {}
 class CacheConsumer {
   constructor(cache: Keyed<ICache, "redis">) {}
+}
+// A generic impl whose keyed ctor dep keys an OPEN-generic base: after the
+// instantiation substitutes the hole, the base must render \`IThing<$1>\` and
+// compose \`#redis\` onto it — the exotic keyed-in-open-generic parity case.
+class ThingRepo<T> implements IRepo<T> {
+  constructor(thing: Keyed<IThing<T>, "redis">) {}
 }
 
 declare const services: {
@@ -133,6 +146,7 @@ services.add<ILogger>(ConsoleLogger).as<"singleton">();
 services.add<IUserRepo>(SqlUserRepo).as<"request">();
 services.add<Keyed<ICache, "redis">>(RedisCache).as<"singleton">();
 services.add<CacheConsumer>(CacheConsumer).as<"singleton">();
+services.add<IRepo<$<1>>>(ThingRepo<$<1>>).as<"singleton">();
 
 export const marker = nameof<IUserRepo>();
 export const dep = provider.resolve<ILogger>();
@@ -230,5 +244,14 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     // CacheConsumer's sole ctor dep lowers to the same composed keyed token, so
     // exact keyed resolution finds the keyed registration by identical string.
     expect(app).toContain(`[["./app:ICache#redis"]]`);
+  });
+
+  test('keyed base carrying an open-generic hole composes IThing<$1>#redis', () => {
+    // ThingRepo's keyed ctor dep keys an OPEN-generic base; the substituted hole
+    // must render `$1` inside the base BEFORE the `#redis` suffix. The Go engine
+    // must use hole-aware base derivation here to stay byte-identical to ts-patch
+    // (a non-hole-aware derivation drops the key and hard-errors instead).
+    expect(app).toContain(`services.add("./app:IRepo<$1>", ThingRepo,`);
+    expect(app).toContain(`[["./app:IThing<$1>#redis"]]`);
   });
 });
