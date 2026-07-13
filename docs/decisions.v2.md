@@ -30,4 +30,4 @@ Double-installs are harmless by construction (mounted once). No-transformer path
 sharing a primitive's name (`log`/`beginScope`, `tryGetValue`, `createLogger`, di's `build`)
 supplies a hand-written merge; the convenience form is runtime dot-callable but NOT a typed
 overload (TS2430), so the typed path stays the standalone functions. The transformer will later
-auto-generate the default merge (deferred). *Owner-approved.*
+auto-generate the default merge (deferred). _Owner-approved._
