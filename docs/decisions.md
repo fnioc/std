@@ -1771,48 +1771,9 @@ output was verified byte-identical before/after (sha256 over every `libraries/*/
   `tsconfig.lint.json` files were functionally identical to their `tsconfig.json` (tests moved
   to sibling packages long ago) — deleted, `lint` scripts repointed.
 
-## 44. Zero ambient platform types in libraries — §39 finished and machine-checked
+## ~~44. Zero ambient platform types in libraries — §39 finished and machine-checked~~
 
-§39 gave `primitives` owned `AbortSignal`/`AbortController` typings so the published d.ts never
-leans on lib.dom/@types/node. But the rest of the platform surface still resolved by ACCIDENT:
-no library tsconfig had a `types` array, so tsc auto-included every `node_modules/@types`
-walking up from the package — root `@types/bun` → `bun-types` → `@types/node` — and the gate
-compiled a looser program than a bare published consumer sees (the honest program showed
-TS2591/TS2304 across the fleet). This entry closes the gap:
-
-- **`primitives` owns the remaining platform typings**, same recipe as §39 (typed `globalThis`
-  lookup, no `declare global`):
-  - `process.ts` — `ProcessLike` (exactly the observed member set: `env`, `cwd`,
-    `stdout.write`, signal `on`/`off`) + a typed `process` value re-export; consumers
-    (config.env, config.json, hosting, logging.console) import it instead of naming the ambient
-    global. One-way assignability (platform → ours) is sufficient and type-tested.
-  - `timers.ts` — opaque `TimeoutHandle` (`unknown`; the platform return type differs per
-    runtime and handles only round-trip through our own `clearTimeout`) + typed
-    `setTimeout`/`clearTimeout` re-exports; consumers: hosting.core, hosting.
-  - `streams.ts` — structural `ReadableStream<R>` for the one stream type in a PUBLIC signature
-    (fileproviders.core's `IFileInfo.createReadStream`); precise members + loose plumbing + an
-    optional phantom `__chunkType?: R` for variance. The load-bearing platform → ours direction
-    is type-tested; full §39 MUTUAL assignability is impossible here because bun-types extends
-    its variant with required consumer-convenience members (`text`/`json`/`bytes`/`blob`/
-    `values`) that lib.dom's variant lacks — one structural type cannot both carry them (breaks
-    the lib.dom implementer) and omit them (fails ours → full-bun-interface).
-  - `abort.ts` routes its `globalThis` cast through `unknown` (under the bare program the
-    direct cast is a TS2352) and additionally exports **`neverSignal`** — a singleton inert
-    never-aborting signal, the port's analog of the reference stack's never-cancelled token.
-  - The augmentation registry's notify bus types `EventTarget`/`Event` structurally
-    module-private (nothing public names them, so they are not exported).
-- **`node:fs`/`node:path` get per-package compile-scope `src/node-builtins.d.ts`** (config.json,
-  hosting) declaring exactly the imported signatures. Nothing imports these files, so
-  rollup-plugin-dts never ships them; under a consumer program that has @types/node they merge
-  as extra overloads (inert). Tighter than putting ambient `declare module "node:*"` blocks in
-  primitives, which would leak them into every consumer program.
-- **Enforcement: `types: []` in `/tsconfig.lib.json`** — every library (and, via extends, every
-  lowering-stage config) now compiles the bare program, so the tsc 5.9 gate and the honest view
-  can never silently diverge again; the §39 guarantee is machine-checked instead of accidental.
-  Tests/examples keep their bun/node types deliberately; repo tooling gets its own
-  `scripts/tsconfig.json` with `types: ["bun"]` (it runs under bun and is never published).
-- The four transformer packages' `ttsc.mjs` shims declare a `ttsc` devDependency so the JSDoc
-  `import("ttsc")` types resolve under bun's isolated linker (previously only caching.core did).
+~~Migrated to `decisions.v2.md` §44. Struck — read v2, not here.~~
 
 ## 45. `src/` mirrors the ME package folder layout; single-type files are named after their type
 

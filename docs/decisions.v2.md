@@ -90,3 +90,13 @@ Constructor injection uses a phantom brand, `Keyed<T, K extends string>`, siblin
 Deferred: the reference's `FromKeyedServices` `InheritKey` mode (resolve a dependency with the _same_ key that resolved the enclosing service) needs the engine to thread the ambient resolution key through the resolution context — the one keyed feature that is genuine engine work rather than a brand. `ExplicitKey` and `NullKey` modes come for free (`Keyed<T,K>` and plain `T`). The reference descriptor-verb ladder (`addKeyedSingleton`/`tryAddKeyed*`/`removeAllKeyed`/`getKeyedServices`/`isKeyedService`) is likewise deferred — the `#`-token primitive already provides the capability; the sugar verbs are additive and unbuilt.
 
 _Owner-approved._
+
+## §44 — Libraries compile with zero ambient platform types
+
+Every library builds a "bare" program: `types: []` (via `/tsconfig.lib.json`) so no `@types/*`
+package auto-injects globals, and a `lib` without `DOM` so no `window`/`fetch`/`document`. The
+published `.d.ts` then never leans on `@types/node` or `lib.dom` — an in-repo build sees exactly
+what a bare published consumer sees. Platform types come in explicitly instead: `primitives` owns
+`process` / timers / streams / `AbortSignal` as typed `globalThis` lookups, and `node:fs` / `node:path`
+are typed by per-package `src/node-builtins.d.ts` shims (unimported, so never shipped). Tests,
+examples, and repo tooling keep their bun/node types deliberately. _Owner-approved._
