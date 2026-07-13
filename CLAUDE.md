@@ -78,8 +78,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`
   (§28), installed either directly via `applyAugmentations` (CLOSED receivers) or through the
   **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
-  re-exports it), `registerAugmentations(token, set, merge?)` (per-token bag holding a per-name LIST
-  of contributions — a second same-name registration ACCUMULATES, never throws at registration;
+  re-exports it), `registerAugmentations(token, set, merge?)` (per-token bag = a
+  `Multimap<string, [fn, merge?]>` holding a per-name LIST of contributions, each pairing the fn
+  with its own strategy — a second same-name registration ACCUMULATES, never throws at registration;
   notifies a per-token SYNCHRONOUS subscriber list, deliberately NOT an `EventTarget` bus — a
   strategy-less collision THROWS from install and `EventTarget.dispatchEvent` would swallow it, so
   iterating subscribers directly lets the throw reach the registrant, §78), and the `@augment(token)`

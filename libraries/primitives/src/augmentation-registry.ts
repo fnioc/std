@@ -51,31 +51,38 @@
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { type AugmentationSet, installSet, type MergeStrategies } from './augmentations.js';
+import { type AugmentationSet, installSet, type MergeStrategies, type MergeStrategy } from './augmentations.js';
+import { Multimap } from './Multimap.js';
 import type { Token } from './Token.js';
 
 /** A receiver-first augmentation function whose receiver type is erased in the bag. */
 type ExtensionFn = Func<[receiver: never, ...args: never[]], unknown>;
 
 /**
- * The accumulated bag per token. `members` is a per-NAME list of contributions
- * (§73/3): a name registered by two sets accumulates BOTH, replayed in
- * registration order during a late class's catch-up so it collides exactly as a
- * class present for both dispatches would. `merges` are the token's accumulated
- * collision strategies, consulted at every install.
+ * One contribution to a member name: the augmentation function paired with the
+ * OWN collision strategy the registration supplied for it (if any). The strategy
+ * travels WITH its function -- at install, a colliding contribution is resolved
+ * by its own strategy, never a strategy some other contribution provided.
  */
-interface Bag {
-  readonly members: Map<string, ExtensionFn[]>;
-  readonly merges: MergeStrategies;
-}
+type Contribution = readonly [fn: ExtensionFn, merge?: MergeStrategy];
+
+/**
+ * The accumulated bag per token: a per-NAME list of {@link Contribution}s
+ * (§73/3). A name registered by two sets accumulates BOTH, replayed in
+ * registration order during a late class's catch-up so it collides exactly as a
+ * class present for both dispatches would. The `[fn, merge?]` tuple carries each
+ * contribution's own strategy, so the two parallel structures (a name->fn-list
+ * plus a name->strategy map) collapse into a single {@link Multimap}.
+ */
+type Bag = Multimap<string, Contribution>;
 
 /**
  * A subscribed class's delta installer: given ONE registration's `set` (plus the
- * token's accumulated `merges`), install just those members onto that class's
- * prototype. Invoked synchronously by `registerAugmentations`, so a collision
- * throw propagates back to the registrant.
+ * per-member `merge` strategies that same registration supplied), install just
+ * those members onto that class's prototype. Invoked synchronously by
+ * `registerAugmentations`, so a collision throw propagates back to the registrant.
  */
-type DeltaInstaller = (set: AugmentationSet<any>, merges: MergeStrategies) => void;
+type DeltaInstaller = (set: AugmentationSet<any>, merge: MergeStrategies | undefined) => void;
 
 /** One accumulated bag per token. */
 const bags = new Map<Token, Bag>();
@@ -104,29 +111,22 @@ export function registerAugmentations<R>(
 ): void {
   let bag = bags.get(token);
   if (bag === undefined) {
-    bag = { members: new Map(), merges: {} };
+    bag = new Multimap();
     bags.set(token, bag);
   }
+  // Append each member as a `[fn, ownStrategy]` contribution: the strategy this
+  // registration supplied for the name travels with its function into the bag.
   for (const [name, fn] of Object.entries(set as Record<string, ExtensionFn>)) {
-    const list = bag.members.get(name);
-    if (list === undefined) {
-      bag.members.set(name, [fn]);
-    } else {
-      list.push(fn);
-    }
-  }
-  if (merge !== undefined) {
-    Object.assign(bag.merges, merge);
+    bag.add(name, [fn, merge?.[name]]);
   }
 
-  // Drive ONLY this registration's delta onto every already-decorated class.
-  // `bag.merges` is the token's accumulated strategy map (already including this
-  // call's `merge`), so a colliding member finds its resolver whichever call
-  // supplied it. Synchronous, so a strategy-less collision throw reaches here.
+  // Drive ONLY this registration's delta onto every already-decorated class,
+  // with this registration's OWN strategies (`installSet` reads `merge?.[name]`
+  // per member). Synchronous, so a strategy-less collision throw reaches here.
   const installers = subscribers.get(token);
   if (installers !== undefined) {
     for (const install of installers) {
-      install(set as AugmentationSet<any>, bag.merges);
+      install(set as AugmentationSet<any>, merge);
     }
   }
 }
@@ -166,19 +166,20 @@ export function augment(token: Token) {
       installers = [];
       subscribers.set(token, installers);
     }
-    installers.push(function(set: AugmentationSet<any>, merges: MergeStrategies) {
-      installSet(target, set, merges);
+    installers.push(function(set: AugmentationSet<any>, merge: MergeStrategies | undefined) {
+      installSet(target, set, merge);
     });
 
     // Catch-up: install everything registered BEFORE this class was decorated,
     // exactly once, replaying each name's contributions in registration order so
     // an accumulated same-name pair collides here just as it would at dispatch.
+    // Each contribution carries its own strategy, so a colliding member resolves
+    // by the strategy that came with it.
     const bag = bags.get(token);
     if (bag !== undefined) {
-      for (const [name, list] of bag.members) {
-        for (const fn of list) {
-          installSet(target, { [name]: fn } as AugmentationSet<any>, bag.merges);
-        }
+      for (const [name, [fn, strategy]] of bag) {
+        const merge = strategy !== undefined ? { [name]: strategy } : undefined;
+        installSet(target, { [name]: fn } as AugmentationSet<any>, merge);
       }
     }
   };

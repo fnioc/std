@@ -3012,12 +3012,17 @@ supersedes that with a simpler, correct-by-construction model in three parts.
   name is always a real collision — there is no idempotency/marker bookkeeping,
   and the retired §73 `installed`-marker (`base`/`member`) machinery is gone.
 
-- **The bag holds a per-name list (§73/3 kept).** `registerAugmentations` does
-  NOT throw when a name is registered a second time under the same token — it
-  appends to that name's list. The throw for an unresolved collision lives
-  entirely at install: a late-decorated class replays the bag's contributions in
-  registration order, and the second same-name contribution hits the blind merge
-  (dispatcher with a strategy, or throw without one). The common cross-token
+- **The bag holds a per-name list — a `Multimap` of `[fn, merge?]` contributions
+  (§73/3 kept).** The bag is a single `Multimap<string, [ExtensionFn,
+  MergeStrategy?]>` per token (`primitives`' array-backed `Multimap`): each
+  contribution is the augmentation function paired with the own strategy its
+  registration supplied for that name, collapsing the earlier two parallel
+  structures (a name→fn-list plus a name→strategy map) into one. `registerAugmentations`
+  does NOT throw when a name is registered a second time under the same token — it
+  appends another contribution to that name's list. The throw for an unresolved
+  collision lives entirely at install: a late-decorated class replays the bag's
+  contributions in registration order, and the second same-name contribution hits
+  the blind merge (dispatcher with its own strategy, or throw without one). The common cross-token
   same-name collision needs no bag list at all — different tokens share the
   prototype, so §2's install path already covers it; the list only covers a
   same-token same-name pair.
