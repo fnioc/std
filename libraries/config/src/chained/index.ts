@@ -11,17 +11,17 @@
 // builders (ConfigurationBuilder and ConfigurationManager) are decorated with
 // that token, so one registration reaches both.
 //
-// The augmentation targets the module that DECLARES each class so the merge
-// survives the re-export through the package barrel. The receiver is generic
-// over any builder whose add() returns itself, so ONE object literal satisfies
-// `AugmentationSet` for both classes -- see memory/index.ts for the full
-// rationale.
+// The ConfigurationBuilder augmentation targets the package barrel
+// "@rhombus-std/config" (config-source routes it to ./src/index.ts for config's
+// own compile -- see memory/index.ts). The receiver is generic over any builder
+// whose add() returns itself, so ONE object literal satisfies `AugmentationSet`
+// for both classes -- see memory/index.ts for the full rationale.
 
+import type { ConfigurationBuilder } from '@rhombus-std/config';
 import type { IConfiguration, IConfigurationBuilder, IConfigurationSource,
   IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import type { ConfigurationBuilder } from '../ConfigurationBuilder';
 import { ChainedConfigurationSource } from './ChainedConfigurationSource';
 
 export { ChainedConfigurationProvider } from './ChainedConfigurationProvider';
@@ -30,7 +30,7 @@ export { ChainedConfigurationSource } from './ChainedConfigurationSource';
 // The generic arity + default MUST match the class declaration exactly, or
 // declaration merging fails (TS2428). Every augmentation spells `<T =
 // IndexedSection>` and imports the same `IndexedSection` from @rhombus-std/config.core.
-declare module '../ConfigurationBuilder' {
+declare module '@rhombus-std/config' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Adds `config` as a chained configuration source. */
     addConfiguration(config: IConfiguration, shouldDisposeConfiguration?: boolean): this;

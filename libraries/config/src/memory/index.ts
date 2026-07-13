@@ -5,8 +5,11 @@
 // pattern the external provider packages use (TS declaration merging + a
 // registry registration) -- `ConfigurationBuilder` itself carries no add* sugar
 // of its own, only augmentations, even for the in-package Memory provider. The
-// augmentation targets the module that DECLARES the class so the merge survives
-// the re-export through the package barrel.
+// augmentation targets the package barrel "@rhombus-std/config" (the
+// `config-source` condition on config's `.` export routes it back to
+// ./src/index.ts for config's own compile -- di.core's self-source pattern),
+// the same specifier chained/index.ts and with-type-augment.ts use, so all of
+// config's own ConfigurationBuilder augmenters merge onto one type.
 //
 // `addInMemoryCollection` targets the OPEN `IConfigurationBuilder` receiver, so
 // it registers against nameof<IConfigurationBuilder>() (docs §38)
@@ -21,10 +24,10 @@
 // one's own concrete return type through the fluent chain (ConfigurationBuilder<T>
 // keeps T; ConfigurationManager stays ConfigurationManager).
 
+import type { ConfigurationBuilder } from '@rhombus-std/config';
 import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import type { ConfigurationBuilder } from '../ConfigurationBuilder';
 import { type ConfigurationData, MemoryConfigurationSource } from './memory-configuration-source';
 
 export { type ConfigurationData, MemoryConfigurationSource } from './memory-configuration-source';
@@ -33,7 +36,7 @@ export { MemoryConfigurationProvider } from './MemoryConfigurationProvider';
 // The generic arity + default MUST match the class declaration exactly, or
 // declaration merging fails (TS2428). Every augmentation spells `<T =
 // IndexedSection>` and imports the same `IndexedSection` from @rhombus-std/config.core.
-declare module '../ConfigurationBuilder' {
+declare module '@rhombus-std/config' {
   interface ConfigurationBuilder<T = IndexedSection> {
     /** Registers an in-memory configuration source seeded with `initialData`. */
     addInMemoryCollection(initialData?: ConfigurationData): this;
