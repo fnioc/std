@@ -11,18 +11,8 @@
 // token, so the @augment-decorated concrete HostBuilder gains the fluent
 // `useBrowserLifetime()` method form.
 //
-// STOP WIRING (the one line main.ts owns): the built host is not resolvable
-// from the container, so the lifetime only REQUESTS shutdown
-// (stopApplication); drive the pipeline yourself —
-//
-//   const host = BrowserHost.createApplicationBuilder({ ... }).build();
-//   const lifetime = host.services.resolve<IHostApplicationLifetime>(
-//     HOST_APPLICATION_LIFETIME_TOKEN,
-//   );
-//   lifetime.applicationStopping.addEventListener("abort", () => {
-//     void host.stop();
-//   }, { once: true });
-//   await host.start();
+// RUNNING: `BrowserHost.run()` builds and drives the full pipeline (start ->
+// wait-for-shutdown -> stop) via hosting's `runAsync` — no stop wiring by hand.
 
 // The lifetime + its options.
 export { BROWSER_LIFETIME_CATEGORY, BrowserLifetime } from './browser-lifetime';

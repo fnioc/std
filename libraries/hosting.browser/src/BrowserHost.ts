@@ -13,15 +13,15 @@
 //     PAGE_LIFECYCLE_EVENTS_TOKEN — both via registerBrowserLifetime, the seam
 //     the classic useBrowserLifetime path shares.
 //
-// Stop wiring: the built host is NOT resolvable from the container, so the
-// browser lifetime can only REQUEST the stop (stopApplication). main.ts
-// drives the pipeline with one line — see ./browser-lifetime.
+// Running: `BrowserHost.run()` builds and drives the full pipeline (start ->
+// wait-for-shutdown -> stop) via hosting's `runAsync`, so the caller no longer
+// wires the stop by hand.
 
 import { MemoryConfigurationSource } from '@rhombus-std/config';
 import type { ConfigurationData } from '@rhombus-std/config';
 import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from '@rhombus-std/hosting';
 import { BrowserConsoleLoggerExtensions } from '@rhombus-std/logging.browserconsole';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Action, Func } from '@rhombus-toolkit/func';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
 import { registerBrowserLifetime } from './register-browser-lifetime';
@@ -77,5 +77,28 @@ export const BrowserHost = {
     registerBrowserLifetime(builder.services, lifetimeOptions, settings?.pageContext);
 
     return builder;
+  },
+
+  /**
+   * Builds a browser-composed host and runs it: `createApplicationBuilder` ->
+   * `configureApp` (register your services here) -> `build().runAsync()`. The
+   * returned promise completes only once shutdown is triggered (a terminal
+   * `pagehide`, when `stopOnPagehide` is set), after the host has stopped and
+   * disposed.
+   *
+   * `runAsync` drives the full pipeline (start -> wait-for-shutdown -> stop), so
+   * there is no stop wiring to write by hand. Note the shutdown is best-effort:
+   * on a real page close the async stop may be cut off before it finishes —
+   * anything that MUST survive a close belongs on
+   * {@link import("./PageLifecycleEvents").PageLifecycleEvents.onFlush}
+   * (synchronous), not a hosted service's `stop()`.
+   */
+  run(
+    settings?: BrowserHostApplicationBuilderSettings,
+    configureApp?: Action<[HostApplicationBuilder]>,
+  ): Promise<void> {
+    const builder = BrowserHost.createApplicationBuilder(settings);
+    configureApp?.(builder);
+    return builder.build().runAsync();
   },
 };

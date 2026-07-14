@@ -69,6 +69,34 @@ test('the flush signal is RECURRING: it fires on every transition to hidden', ()
   bridge[Symbol.dispose]();
 });
 
+test('a throwing flush subscriber cannot starve the others (the reliable persistence point)', () => {
+  const page = makeFakePage();
+  const bridge = new PageLifecycleEvents(page.context);
+
+  // Silence the isolation guard's console.error for this test.
+  const globals = globalThis as unknown as { console: { error(...args: unknown[]): void; }; };
+  const originalError = globals.console.error;
+  globals.console.error = () => {};
+
+  let passingRan = false;
+  try {
+    // A throwing subscriber registered BEFORE a passing one.
+    bridge.onFlush(() => {
+      throw new Error('boom');
+    });
+    bridge.onFlush(() => {
+      passingRan = true;
+    });
+
+    page.changeVisibility('hidden');
+  } finally {
+    globals.console.error = originalError;
+  }
+
+  expect(passingRan).toBe(true);
+  bridge[Symbol.dispose]();
+});
+
 test('bfcache restore surfaces as the onRestore event, and freeze/pagehide drive the phase', () => {
   const page = makeFakePage();
   const bridge = new PageLifecycleEvents(page.context);
