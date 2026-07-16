@@ -98,6 +98,35 @@ describe('registration receiver-shape anchoring', () => {
     expect(output).toContain('fake.add<');
     expect(output).not.toContain('fake.add("');
   });
+
+  test('an anonymous/structural object receiver is NOT lowered (add)', () => {
+    const src = `
+      const bag = { add<I>(ctor: new() => I): { as(s: string): void } { return { as() {} }; } };
+      interface IFoo {}
+      class Foo implements IFoo { constructor() {} }
+      bag.add<IFoo>(Foo);
+    `;
+    const { output } = transform(fixture(src));
+    // The anonymous object's add resolves to a type-literal member, not the
+    // di.core interface — the type argument survives.
+    expect(output).toContain('bag.add<');
+    expect(output).not.toContain('bag.add("');
+  });
+
+  test('a namespace-nested ServiceManifestBase receiver is NOT lowered', () => {
+    const src = `
+      import type { Nested } from "@rhombus-std/di.core";
+      declare const nested: Nested.ServiceManifestBase;
+      interface IFoo {}
+      class Foo implements IFoo { constructor() {} }
+      nested.add<IFoo>(Foo);
+    `;
+    const { output } = transform(fixture(src));
+    // The nearest enclosing module scope is the \`Nested\` namespace, not the
+    // \`@rhombus-std/di.core\` module — so the member is not the declaring one.
+    expect(output).toContain('nested.add<');
+    expect(output).not.toContain('nested.add("');
+  });
 });
 
 describe('resolution receiver-shape anchoring', () => {
@@ -147,5 +176,28 @@ describe('resolution receiver-shape anchoring', () => {
     `;
     const { output } = transform(fixture(src));
     expect(output).toContain('nr.isService<');
+  });
+
+  test('resolve<T>() on an anonymous/structural object is NOT lowered', () => {
+    const src = `
+      const bag = { resolve<T>(): T { return {} as T; } };
+      interface IFoo {}
+      const foo = bag.resolve<IFoo>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain('bag.resolve<');
+    expect(output).not.toContain('bag.resolve("');
+  });
+
+  test('resolve<T>() on a namespace-nested Resolver receiver is NOT lowered', () => {
+    const src = `
+      import type { Nested } from "@rhombus-std/di.core";
+      declare const nested: Nested.Resolver;
+      interface IFoo {}
+      const foo = nested.resolve<IFoo>();
+    `;
+    const { output } = transform(fixture(src));
+    expect(output).toContain('nested.resolve<');
+    expect(output).not.toContain('nested.resolve("');
   });
 });

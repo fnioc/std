@@ -89,6 +89,19 @@ declare module "@rhombus-std/di.core" {
   }
   export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
 
+  // Same-named authoring interfaces NESTED in a namespace inside the declaring
+  // module. The nearest enclosing module scope is \`Nested\` (identifier-named),
+  // not the module, so a receiver typed \`Nested.ServiceManifestBase\` /
+  // \`Nested.Resolver\` must NOT match.
+  export namespace Nested {
+    export interface ServiceManifestBase<Scopes extends string = string> {
+      add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+    }
+    export interface Resolver {
+      resolve<T>(): T;
+    }
+  }
+
   const TOK: unique symbol;
   export type Inject<T, K extends Token> = T & { readonly [TOK]?: K };
   const HOLE: unique symbol;
