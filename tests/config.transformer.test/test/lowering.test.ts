@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { fixture, transform } from './harness.js';
+import { fixture, ROOT, transform } from './harness.js';
 
 describe('withType -> withSchema lowering', () => {
   test('flat interface lowers to a schema literal with an OPTIONAL wrapper', () => {
@@ -86,6 +86,75 @@ describe('withType -> withSchema lowering', () => {
     );
     expect(diagnostics).toHaveLength(0);
     expect(output).toContain('new Other().withType<T>()');
+    expect(output).not.toContain('.withSchema(');
+  });
+});
+
+// The matcher anchors on the DECLARATION SITE of the `withType` member (config's
+// `declare module '@rhombus-std/config'` ConfigurationBuilder interface), not the
+// receiver type's symbol name. Every receiver whose `withType` resolves back to
+// that interface lowers; a type that merely shares the name does not.
+describe('withType receiver-shape matching (declaration-site)', () => {
+  test('a subinterface of ConfigurationBuilder is lowered', () => {
+    const { output, diagnostics } = transform(
+      fixture(`
+        interface MyBuilder extends ConfigurationBuilder {}
+        declare const b: MyBuilder;
+        interface T { host: string }
+        b.withType<T>();
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('.withSchema(');
+    expect(output).not.toContain('.withType<');
+  });
+
+  test('a class carrying the empty extends-merge is lowered', () => {
+    const { output, diagnostics } = transform(
+      fixture(`
+        declare class MyBuilder {}
+        interface MyBuilder extends ConfigurationBuilder {}
+        declare const b: MyBuilder;
+        interface T { host: string }
+        b.withType<T>();
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('.withSchema(');
+    expect(output).not.toContain('.withType<');
+  });
+
+  test('a generic bound by ConfigurationBuilder is lowered', () => {
+    const { output, diagnostics } = transform(
+      fixture(`
+        interface T { host: string }
+        function useIt<B extends ConfigurationBuilder>(b: B) {
+          return b.withType<T>();
+        }
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('.withSchema(');
+    expect(output).not.toContain('.withType<');
+  });
+
+  test('a local class merely NAMED ConfigurationBuilder is NOT lowered (false-positive regression)', () => {
+    // No ambient config module and no header — a self-contained local class that
+    // the OLD name-based matcher WOULD have lowered (its symbol is named
+    // `ConfigurationBuilder`). Declaration-site matching rejects it: `withType`
+    // resolves to a local class, not config's declare-module interface.
+    const { output, diagnostics } = transform({
+      [`${ROOT}/app.ts`]: `
+        class ConfigurationBuilder<T = unknown> {
+          withType<U>(): ConfigurationBuilder<U> { return this as any; }
+          withSchema(schema: unknown): ConfigurationBuilder<unknown> { return this as any; }
+        }
+        interface T { a: string }
+        const b = new ConfigurationBuilder().withType<T>();
+      `,
+    });
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('.withType<T>()');
     expect(output).not.toContain('.withSchema(');
   });
 });
