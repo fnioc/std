@@ -6,10 +6,13 @@
 // factory against a Program directly (it needs `ts.Program` + `addDiagnostic`).
 //
 // A fixture ships a virtual `@rhombus-std/options` package (so the `Options<T>`
-// wrapper base tokenizes package-public as `@rhombus-std/options:Options`) plus a
-// local `ServiceManifest` stub (so the receiver is ServiceManifest-symboled
-// without the real di.core). Token generation reads the virtual `package.json`
-// through the injected `readFile`.
+// wrapper base tokenizes package-public as `@rhombus-std/options:Options`) plus an
+// AMBIENT `declare module '@rhombus-std/di.core'` file declaring
+// `ServiceManifestBase` with the `addOptions` overloads. The matcher anchors on
+// that declaration site (§41), so the receiver is recognized because its
+// `addOptions` member resolves back to the ambient di.core interface — not because
+// a type happens to be symbol-named `ServiceManifest`. Token generation reads the
+// virtual `package.json` through the injected `readFile`.
 
 import type { Diagnostic } from '@rhombus-std/di.transformer.options/_/diagnostics';
 import { createTransformerFactory } from '@rhombus-std/di.transformer.options/_/transformer';
@@ -29,6 +32,12 @@ export interface TransformResult {
 
 const PROJ_ROOT = '/proj';
 export const APP_PATH = `${PROJ_ROOT}/src/app.ts`;
+
+// The ambient `declare module '@rhombus-std/di.core'` fixture path. A script file
+// (no top-level import/export) so the block is an ambient module DECLARATION,
+// resolvable without node_modules — added to the program ROOTS but never a
+// transform target.
+export const DI_CORE_PATH = `${PROJ_ROOT}/src/di-core.ambient.d.ts`;
 
 export interface TransformOptions {
   readonly entry?: readonly string[];
@@ -97,10 +106,18 @@ export function transform(
     realpath: (f) => f,
   };
 
+  // Program roots include every non-node_modules `.ts`/`.d.ts` fixture (so the
+  // ambient di.core `.d.ts` is loaded and its module declaration registered);
+  // transform targets are the emittable `.ts` app files only.
+  const roots = Object.keys(files).filter(
+    (f) => (f.endsWith('.ts') || f.endsWith('.d.ts')) && !f.includes('/node_modules/'),
+  );
   const entry = options.entry
-    ?? Object.keys(files).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
+    ?? Object.keys(files).filter(
+      (f) => f.endsWith('.ts') && !f.endsWith('.d.ts') && !f.includes('/node_modules/'),
+    );
 
-  const program = ts.createProgram(entry.slice(), compilerOptions, host);
+  const program = ts.createProgram(roots.slice(), compilerOptions, host);
 
   const diagnostics: Diagnostic[] = [];
   const factory = createTransformerFactory(
@@ -137,7 +154,7 @@ export function transform(
 
   return {
     outputs,
-    output: outputs[entry[0]!] ?? '',
+    output: outputs[APP_PATH] ?? outputs[entry[0]!] ?? '',
     diagnostics,
   };
 }
@@ -163,25 +180,40 @@ function anyFileUnder(files: VirtualFiles, dir: string): boolean {
 }
 
 /**
- * A local registration-builder stub the transformer's receiver check matches
- * (`ServiceManifest`-symboled), carrying both `addOptions` overloads, plus a
- * kept reference to `@rhombus-std/options`'s `Options` so that package is in the
- * program for the wrapper-base lookup.
+ * The ambient `declare module '@rhombus-std/di.core'` fixture: a script file
+ * declaring `ServiceManifestBase` with the type-driven sugar overload plus the
+ * explicit two-arg verb, and its `AddBuilder` continuation. The matcher anchors
+ * on the sugar overload's declaration HERE — a receiver whose `addOptions`
+ * resolves back to this interface is recognized regardless of the receiver's own
+ * symbol name.
  */
-const MANIFEST_STUB = `
-import type { Options } from "@rhombus-std/options";
-export type __KeepOptions<T> = Options<T>;
-type AddBuilder<S extends string> = { as(scope: S): void };
-declare class ServiceManifest<S extends string = "singleton"> {
-  addOptions<T>(): AddBuilder<S>;
-  addOptions(token: string, tToken: string): AddBuilder<S>;
+const DI_CORE_AMBIENT = `
+declare module "@rhombus-std/di.core" {
+  export type AddBuilder<Scopes extends string = "singleton"> = { as(scope: Scopes): void };
+  export interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+    addOptions<T>(): AddBuilder<Scopes>;
+    addOptions(token: string, tToken: string): AddBuilder<Scopes>;
+  }
 }
-declare const services: ServiceManifest<"singleton">;
 `;
 
 /**
- * Build a fixture: the virtual `@rhombus-std/options` package plus `appSource`
- * (prepended with {@link MANIFEST_STUB}) at {@link APP_PATH}.
+ * App header for {@link optionsFixture}: imports `ServiceManifestBase` from the
+ * ambient di.core module (the positive interface-typed-receiver shape) and keeps
+ * a reference to `@rhombus-std/options`'s `Options` so that package is in the
+ * program for the wrapper-base lookup.
+ */
+const APP_HEADER = `
+import type { Options } from "@rhombus-std/options";
+import type { ServiceManifestBase } from "@rhombus-std/di.core";
+export type __KeepOptions<T> = Options<T>;
+declare const services: ServiceManifestBase<"singleton">;
+`;
+
+/**
+ * Build a fixture: the virtual `@rhombus-std/options` package, the ambient
+ * di.core module, and `appSource` (prepended with {@link APP_HEADER}) at
+ * {@link APP_PATH}.
  */
 export function optionsFixture(appSource: string): VirtualFiles {
   return {
@@ -191,26 +223,25 @@ export function optionsFixture(appSource: string): VirtualFiles {
       exports: { '.': './index.js' },
     }),
     '/proj/node_modules/@rhombus-std/options/index.d.ts': 'export interface Options<T> { readonly value: T; }\n',
-    [APP_PATH]: MANIFEST_STUB + appSource,
+    [DI_CORE_PATH]: DI_CORE_AMBIENT,
+    [APP_PATH]: APP_HEADER + appSource,
   };
 }
 
 /**
  * Fixture with NO `@rhombus-std/options` package in the program — so the wrapper
- * base cannot be resolved (drives the unlowerable-diagnostic path). The
- * `ServiceManifest` stub declares `Options` locally instead.
+ * base cannot be resolved (drives the unlowerable-diagnostic path). The ambient
+ * di.core module (and thus the matched receiver) is still present.
  */
 export function fixtureWithoutOptions(appSource: string): VirtualFiles {
-  const stub = `
-type AddBuilder<S extends string> = { as(scope: S): void };
-interface Options<T> { readonly value: T; }
-declare class ServiceManifest<S extends string = "singleton"> {
-  addOptions<T>(): AddBuilder<S>;
-  addOptions(token: string, tToken: string): AddBuilder<S>;
-}
-declare const services: ServiceManifest<"singleton">;
+  const header = `
+import type { ServiceManifestBase } from "@rhombus-std/di.core";
+declare const services: ServiceManifestBase<"singleton">;
 `;
-  return { [APP_PATH]: stub + appSource };
+  return {
+    [DI_CORE_PATH]: DI_CORE_AMBIENT,
+    [APP_PATH]: header + appSource,
+  };
 }
 
 /**

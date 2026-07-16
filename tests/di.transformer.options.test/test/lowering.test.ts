@@ -89,3 +89,94 @@ describe('addOptions<T>() lowering', () => {
     expect(output).toContain('Beta>');
   });
 });
+
+// The matcher anchors on the DECLARATION SITE of the `addOptions` member (its
+// di.core `declare module` interface), not the receiver type's symbol name. So
+// every receiver whose `addOptions` resolves back to `ServiceManifestBase` is
+// lowered — a subinterface, a class carrying the empty extends-merge, a generic
+// bound by the interface — while a type that merely shares the name is not.
+describe('addOptions receiver-shape matching (declaration-site)', () => {
+  test('interface-typed variable is lowered (the default `services` receiver)', () => {
+    const { output, diagnostics } = transform(
+      optionsFixture(`
+        interface AppConfig { host: string; }
+        services.addOptions<AppConfig>();
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(addOptionsArgs(output)).toBeDefined();
+    expect(output).not.toContain('services.addOptions<');
+  });
+
+  test('a subinterface of ServiceManifestBase is lowered', () => {
+    const { output, diagnostics } = transform(
+      optionsFixture(`
+        interface MyManifest extends ServiceManifestBase {}
+        declare const m: MyManifest;
+        interface AppConfig { host: string; }
+        m.addOptions<AppConfig>();
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(addOptionsArgs(output)).toBeDefined();
+    expect(output).not.toContain('m.addOptions<');
+  });
+
+  test('a class carrying the empty extends-merge is lowered', () => {
+    const { output, diagnostics } = transform(
+      optionsFixture(`
+        declare class MyThing {}
+        interface MyThing extends ServiceManifestBase {}
+        declare const thing: MyThing;
+        interface AppConfig { host: string; }
+        thing.addOptions<AppConfig>();
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(addOptionsArgs(output)).toBeDefined();
+    expect(output).not.toContain('thing.addOptions<');
+  });
+
+  test('a generic bound by ServiceManifestBase is lowered', () => {
+    const { output, diagnostics } = transform(
+      optionsFixture(`
+        interface AppConfig { host: string; }
+        function useIt<M extends ServiceManifestBase>(m: M) {
+          return m.addOptions<AppConfig>();
+        }
+      `),
+    );
+    expect(diagnostics).toHaveLength(0);
+    expect(addOptionsArgs(output)).toBeDefined();
+    expect(output).not.toContain('m.addOptions<');
+  });
+
+  test('a local type merely NAMED ServiceManifest is NOT lowered (false-positive regression)', () => {
+    const { output } = transform(
+      optionsFixture(`
+        type LocalBuilder<S extends string> = { as(scope: S): void };
+        declare class ServiceManifest<S extends string = "singleton"> {
+          addOptions<T>(): LocalBuilder<S>;
+        }
+        declare const local: ServiceManifest<"singleton">;
+        interface AppConfig { host: string; }
+        local.addOptions<AppConfig>();
+      `),
+    );
+    // The old name-based matcher WOULD have lowered this (the receiver's symbol
+    // is named `ServiceManifest`); declaration-site matching rejects it because
+    // the member resolves to a local class, not the di.core interface.
+    expect(output).toContain('local.addOptions<');
+    expect(addOptionsArgs(output)).toBeUndefined();
+  });
+
+  test('an anonymous-object receiver is not lowered', () => {
+    const { output } = transform(
+      optionsFixture(`
+        const other = { addOptions<T>(): void {} } as { addOptions<T>(): void };
+        other.addOptions<{ a: number }>();
+      `),
+    );
+    expect(output).toContain('other.addOptions<');
+  });
+});
