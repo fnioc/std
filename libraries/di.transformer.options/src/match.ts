@@ -97,15 +97,17 @@ function declaredOnManifestInterface(declaration: ts.Declaration): boolean {
 }
 
 /**
- * True when `iface`'s enclosing `declare module` names {@link DECLARING_MODULE}.
- * The interface sits inside a `ModuleBlock` whose parent is the
- * `ModuleDeclaration`; its name is the string-literal specifier.
+ * True when `iface`'s NEAREST enclosing module declaration is
+ * `declare module '<DECLARING_MODULE>'`. The nearest module scope decides: an
+ * interface nested in a `namespace` inside the declaring module belongs to that
+ * namespace, not the module, so it is rejected (mirrors the Go twin).
  */
 function interfaceIsInDeclaringModule(iface: ts.InterfaceDeclaration): boolean {
   for (let node: ts.Node = iface.parent; node; node = node.parent) {
-    if (ts.isModuleDeclaration(node) && ts.isStringLiteral(node.name)) {
-      return node.name.text === DECLARING_MODULE;
+    if (!ts.isModuleDeclaration(node)) {
+      continue;
     }
+    return ts.isStringLiteral(node.name) && node.name.text === DECLARING_MODULE;
   }
   return false;
 }

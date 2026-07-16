@@ -179,4 +179,20 @@ describe('addOptions receiver-shape matching (declaration-site)', () => {
     );
     expect(output).toContain('other.addOptions<');
   });
+
+  test('an interface nested in a namespace inside di.core is NOT lowered', () => {
+    const { output, diagnostics } = transform(
+      optionsFixture(`
+        import type { Nested } from "@rhombus-std/di.core";
+        declare const nested: Nested.ServiceManifestBase;
+        interface AppConfig { host: string; }
+        nested.addOptions<AppConfig>();
+      `),
+    );
+    // The nearest enclosing module scope is the \`Nested\` namespace, not the
+    // \`@rhombus-std/di.core\` module — so the member is not the declaring one.
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('nested.addOptions<');
+    expect(addOptionsArgs(output)).toBeUndefined();
+  });
 });

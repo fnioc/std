@@ -138,6 +138,22 @@ describe('withType receiver-shape matching (declaration-site)', () => {
     expect(output).not.toContain('.withType<');
   });
 
+  test('an interface nested in a namespace inside config is NOT lowered', () => {
+    const { output, diagnostics } = transform(
+      fixture(`
+        import type { Nested } from "@rhombus-std/config";
+        declare const nested: Nested.ConfigurationBuilder;
+        interface T { host: string }
+        nested.withType<T>();
+      `),
+    );
+    // The nearest enclosing module scope is the \`Nested\` namespace, not the
+    // \`@rhombus-std/config\` module — so the member is not the declaring one.
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('nested.withType<');
+    expect(output).not.toContain('.withSchema(');
+  });
+
   test('a local class merely NAMED ConfigurationBuilder is NOT lowered (false-positive regression)', () => {
     // No ambient config module and no header — a self-contained local class that
     // the OLD name-based matcher WOULD have lowered (its symbol is named

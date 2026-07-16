@@ -194,6 +194,14 @@ declare module "@rhombus-std/di.core" {
     addOptions<T>(): AddBuilder<Scopes>;
     addOptions(token: string, tToken: string): AddBuilder<Scopes>;
   }
+  // A same-named interface NESTED in a namespace inside the declaring module.
+  // The nearest enclosing module scope is \`Nested\` (identifier-named), not the
+  // module, so a receiver typed \`Nested.ServiceManifestBase\` must NOT match.
+  export namespace Nested {
+    export interface ServiceManifestBase<Scopes extends string = "singleton"> {
+      addOptions<T>(): AddBuilder<Scopes>;
+    }
+  }
 }
 `;
 

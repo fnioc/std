@@ -62,6 +62,14 @@ declare module "@rhombus-std/config" {
   export interface ConfigurationBuilder<T = unknown> {
     withType<U>(): ConfigurationBuilder<U>;
   }
+  // A same-named interface NESTED in a namespace inside the declaring module.
+  // The nearest enclosing module scope is \`Nested\` (identifier-named), not the
+  // module, so a receiver typed \`Nested.ConfigurationBuilder\` must NOT match.
+  export namespace Nested {
+    export interface ConfigurationBuilder<T = unknown> {
+      withType<U>(): ConfigurationBuilder<U>;
+    }
+  }
 }
 `;
 

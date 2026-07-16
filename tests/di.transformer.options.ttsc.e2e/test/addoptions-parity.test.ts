@@ -117,6 +117,11 @@ beforeAll(() => {
     addOptions<T>(): AddBuilder<Scopes>;
     addOptions(token: string, tToken: string): AddBuilder<Scopes>;
   }
+  export namespace Nested {
+    export interface ServiceManifestBase<Scopes extends string = "singleton"> {
+      addOptions<T>(): AddBuilder<Scopes>;
+    }
+  }
 }
 `,
   );
@@ -129,7 +134,7 @@ beforeAll(() => {
     `
 import type { Options } from "@rhombus-std/options";
 import { IFoo } from "your-lib/contracts";
-import type { ServiceManifestBase } from "@rhombus-std/di.core";
+import type { Nested, ServiceManifestBase } from "@rhombus-std/di.core";
 export type __KeepOptions<T> = Options<T>;
 declare const services: ServiceManifestBase<"singleton">;
 interface AppConfig { host: string; port: number; }
@@ -161,6 +166,9 @@ declare class ServiceManifest<S extends string = "singleton"> {
 }
 declare const local: ServiceManifest<"singleton">;
 export const viaLocalName = local.addOptions<AppConfig>();
+
+declare const nested: Nested.ServiceManifestBase;
+export const viaNamespace = nested.addOptions<AppConfig>();
 `,
   );
   writeFileSync(
@@ -241,5 +249,11 @@ describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity',
     // Total wrappers: the 5 app-internal calls above + packagePublic (IFoo) = 6.
     const wrapperCount = app.split('@rhombus-std/options:Options<').length - 1;
     expect(wrapperCount).toBe(6);
+  });
+
+  test('an interface nested in a namespace inside di.core is not lowered', () => {
+    // The nearest enclosing module scope is the `Nested` namespace, not the
+    // `@rhombus-std/di.core` module — both engines reject it.
+    expect(app).toContain('nested.addOptions<');
   });
 });
