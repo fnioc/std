@@ -138,6 +138,21 @@ describe('withType receiver-shape matching (declaration-site)', () => {
     expect(output).not.toContain('.withType<');
   });
 
+  test('an anonymous/structural object receiver is NOT lowered', () => {
+    const { output, diagnostics } = transform(
+      fixture(`
+        const bag = { withType<U>(): { schema: U } { return {} as any; } };
+        interface T { host: string }
+        bag.withType<T>();
+      `),
+    );
+    // The anonymous object's withType resolves to a type-literal member, not
+    // config's declare-module interface — the call is left verbatim.
+    expect(diagnostics).toHaveLength(0);
+    expect(output).toContain('bag.withType<');
+    expect(output).not.toContain('.withSchema(');
+  });
+
   test('an interface nested in a namespace inside config is NOT lowered', () => {
     const { output, diagnostics } = transform(
       fixture(`

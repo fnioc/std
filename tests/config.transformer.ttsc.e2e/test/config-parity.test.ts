@@ -138,6 +138,11 @@ const CONFIG_AMBIENT = `declare module "@rhombus-std/config" {
   export interface ConfigurationBuilder<T = unknown> {
     withType<U>(): ConfigurationBuilder<U>;
   }
+  export namespace Nested {
+    export interface ConfigurationBuilder<T = unknown> {
+      withType<U>(): ConfigurationBuilder<U>;
+    }
+  }
 }
 `;
 
@@ -283,6 +288,25 @@ interface T { a: string }
 export const b = new ConfigurationBuilder().withType<T>();
 `,
   );
+  // (f) a TRUE anonymous / structural object receiver — its withType resolves to a
+  // type-literal member, not config's declare-module interface.
+  writeFileSync(
+    join(hsrc, 'anon.ts'),
+    `interface T { host: string }
+const bag = { withType<U>(): { schema: U } { return {} as any; } };
+export const b = bag.withType<T>();
+`,
+  );
+  // (i) a namespace-nested ConfigurationBuilder — the nearest enclosing module
+  // scope is the \`Nested\` namespace, not the \`@rhombus-std/config\` module.
+  writeFileSync(
+    join(hsrc, 'nestedns.ts'),
+    `import type { Nested } from "@rhombus-std/config";
+interface T { host: string }
+declare const nested: Nested.ConfigurationBuilder;
+export const b = nested.withType<T>();
+`,
+  );
   writeFileSync(join(projHappy, 'tsconfig.json'), tsconfig(true));
 
   const host = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
@@ -406,6 +430,18 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     // matching leaves it untouched.
     expect(local).toContain('.withType<T>()');
     expect(local).not.toContain('.withSchema(');
+  });
+
+  test('host: (f) an anonymous/structural object receiver is not lowered', () => {
+    const anon = happy('anon');
+    expect(anon).toContain('bag.withType<T>()');
+    expect(anon).not.toContain('.withSchema(');
+  });
+
+  test('host: (i) a namespace-nested ConfigurationBuilder is not lowered', () => {
+    const nested = happy('nestedns');
+    expect(nested).toContain('nested.withType<T>()');
+    expect(nested).not.toContain('.withSchema(');
   });
 
   // ── hard diagnostics, no silent partial (sidecar envelope) ──────────────────
