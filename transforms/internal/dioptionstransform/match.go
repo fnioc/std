@@ -8,22 +8,33 @@ import (
 // addOptionsName is the member name the sugar is spelled with.
 const addOptionsName = "addOptions"
 
-// manifestNames are the type symbol names a registration builder surfaces: the
-// public `ServiceManifest` alias, the `ServiceManifestBase` interface it expands
-// to, and the concrete `ServiceManifestClass` a runtime instance produces. The
-// receiver of a tokenless `addOptions<T>()` must resolve to one of these.
-var manifestNames = map[string]bool{
-	"ServiceManifest":      true,
+// declaringInterfaces are the registration-builder interfaces the sugar (and the
+// explicit verbs) declaration-merge onto: `ServiceManifestBase` (which the public
+// `ServiceManifest` alias resolves to) and the concrete `ServiceManifestClass`.
+// `ServiceManifest` is a type ALIAS and declares no members, so it never anchors a
+// declaration here.
+var declaringInterfaces = map[string]bool{
 	"ServiceManifestBase":  true,
 	"ServiceManifestClass": true,
 }
 
+// declaringModule is the `declare module` specifier the augmentation is declared
+// against — the package that owns the registration-builder interfaces.
+const declaringModule = "@rhombus-std/di.core"
+
 // isAddOptionsSugarCall reports whether call is a tokenless
 // `<manifest>.addOptions<T>()` sugar call: a property-access callee named
-// `addOptions`, exactly ONE type argument, ZERO value arguments, and a receiver
-// whose type resolves through a ServiceManifest. The explicit two-argument verbs
-// (`addOptions(token, tToken)`) carry value arguments and are left untouched —
-// they are already the lowered form this sugar produces.
+// `addOptions`, exactly ONE type argument, ZERO value arguments, and a resolved
+// `addOptions` member declared on a di.core registration-builder interface. The
+// explicit two-argument verbs (`addOptions(token, tToken)`) carry value arguments
+// and are left untouched — they are already the lowered form this sugar produces.
+//
+// The receiver is matched at the member's DECLARATION SITE, not by the receiver
+// type's symbol name: an inherited member keeps its original declaration, so a
+// subinterface, a class carrying the repo's empty extends-merge, an
+// interface-typed variable, or a generic `<M extends ServiceManifestBase>` all
+// resolve back to that same declaration; an unrelated same-named `addOptions`
+// resolves to its own declaration and is rejected.
 func isAddOptionsSugarCall(checker *shimchecker.Checker, call *shimast.CallExpression) bool {
 	callee := call.Expression
 	if callee == nil || callee.Kind != shimast.KindPropertyAccessExpression {
@@ -43,32 +54,57 @@ func isAddOptionsSugarCall(checker *shimchecker.Checker, call *shimast.CallExpre
 	if argCount != 0 {
 		return false
 	}
-	return receiverIsManifest(checker, callee.AsPropertyAccessExpression().Expression)
+	return memberDeclaredOnManifest(checker, name)
 }
 
-// receiverIsManifest reports whether expr's type is (or resolves through) a
-// ServiceManifest. A generic instance surfaces its symbol through the apparent
-// type, so both the direct and apparent type are checked.
-func receiverIsManifest(checker *shimchecker.Checker, expr *shimast.Node) bool {
-	t := checker.GetTypeAtLocation(expr)
-	if t == nil {
-		return false
-	}
-	if typeNamedManifest(t) {
-		return true
-	}
-	return typeNamedManifest(checker.GetApparentType(t))
-}
-
-// typeNamedManifest reports whether a type's name symbol (its alias symbol when
-// spelled through an alias, else its underlying symbol) is a ServiceManifest name.
-func typeNamedManifest(t *shimchecker.Type) bool {
-	if t == nil {
-		return false
-	}
-	symbol := shimchecker.Type_getTypeNameSymbol(t)
+// memberDeclaredOnManifest reports whether the `addOptions` member referenced at
+// name resolves to a symbol with a declaration on a di.core registration-builder
+// interface. A merged property symbol carries declarations from every
+// contributing merge, so any one matching declaration suffices.
+func memberDeclaredOnManifest(checker *shimchecker.Checker, name *shimast.Node) bool {
+	symbol := checker.GetSymbolAtLocation(name)
 	if symbol == nil {
 		return false
 	}
-	return manifestNames[symbol.Name]
+	for _, decl := range symbol.Declarations {
+		if declaredOnManifestInterface(decl) {
+			return true
+		}
+	}
+	return false
+}
+
+// declaredOnManifestInterface reports whether decl's parent is a
+// `ServiceManifestBase` / `ServiceManifestClass` interface declared inside the
+// `declare module '@rhombus-std/di.core'` block.
+func declaredOnManifestInterface(decl *shimast.Node) bool {
+	if decl == nil {
+		return false
+	}
+	parent := decl.Parent
+	if parent == nil || parent.Kind != shimast.KindInterfaceDeclaration {
+		return false
+	}
+	ifaceName := parent.Name()
+	if ifaceName == nil || !declaringInterfaces[ifaceName.Text()] {
+		return false
+	}
+	return interfaceIsInDeclaringModule(parent)
+}
+
+// interfaceIsInDeclaringModule reports whether iface's enclosing `declare module`
+// names declaringModule. The interface sits inside a `ModuleBlock` whose parent is
+// the `ModuleDeclaration`; its name is the string-literal specifier.
+func interfaceIsInDeclaringModule(iface *shimast.Node) bool {
+	for node := iface.Parent; node != nil; node = node.Parent {
+		if node.Kind != shimast.KindModuleDeclaration {
+			continue
+		}
+		moduleName := node.Name()
+		if moduleName == nil || moduleName.Kind != shimast.KindStringLiteral {
+			return false
+		}
+		return moduleName.Text() == declaringModule
+	}
+	return false
 }
