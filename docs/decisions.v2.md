@@ -121,33 +121,9 @@ and callers must know which they are relying on:
 A persisted (bfcache) pagehide never stops the host (suspend≠stop, §69). `sendBeacon` is a plain
 global a caller uses inside its own `onFlush`. _Owner-approved._
 
-## §87 — Augmentation authoring stays first-party; the merge-strategy transformer and typia never ship to consumers
+## §87 — Augmentation authoring stays first-party
 
-Consumers authoring augmentations is not a goal. Consumers authoring **concretes** that implement
-an augmented interface is the goal, and that path already needs no transformer: members flow
-through the class-side `extends` merge (§71) at the type level, the registry delivers them at
-runtime, and the `@augment` token is a hand-written literal (or `nameof<T>()` sugar for
-transformer users) — the no-transformer-first rule already covers it.
-
-Consequences:
-
-- The default-merge-strategy transformer (#213 — synthesizes a typia guard per colliding member
-  so a collision auto-resolves instead of throwing) is in-repo-only build machinery: it runs only
-  where augmentations are authored, which today is only this repo's own libraries.
-- typia ships in no published manifest — not a dependency, not a peer — only a repo-internal
-  build-time devDependency. Build-time lowering inlines the generated guards into our dist;
-  consumers receive plain JS with no typia import, runtime or otherwise.
-- Under the transforms owner-binary architecture (final shape still pending, not settled here),
-  the typia build tax is scoped by a static split of hosts by audience: published transformer
-  descriptors resolve a typia-free host (external cold builds stay overlay-only, offline-capable),
-  while only this repo's own build — which passes explicit plugin entries, suppressing ttsc
-  auto-discovery — resolves the full host linking the merge synthesizer and typia. The split is
-  static by audience, not a per-consumer list, so it needs no list at descriptor time.
-- An external consumer's transform menu stays app-side sugar only — `nameof<T>()` / `add<T>()` /
-  `addOptions<T>()` / `withType<T>()`. The merge transformer is never on it.
-
-Not changed: a downstream package can still author augmentations, and every correctness rule for
-doing so — registry registration, barrel-form merge-identity, publish-scrub constraints (§38/§40/
-§47/§71 family) — stands unmodified. The ruling only says this path isn't a goal and gets no
-dedicated tooling: a downstream augmentation author with a real collision writes the merge
-strategy by hand, same throw as always (§79). _Owner-approved._
+Consumers being able to author augmentations is **not** a goal. Consumers authoring
+**concretes** that implement an augmented interface **is** a goal — a distinct thing from
+authoring the augmentation itself. This ruling drives the scoping of the default-merge-strategy
+transformer (#213). _Owner-approved._
