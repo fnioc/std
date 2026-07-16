@@ -97,11 +97,50 @@ beforeAll(() => {
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IUserRepo {}\n`);
 
   writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
+
+  // The ambient `declare module "@rhombus-std/di.core"` — the authoring interfaces
+  // (runtime + sugar overloads) the transformer's forms anchor on. A script
+  // `.d.ts` so the block is an ambient module declaration.
+  writeFileSync(
+    join(projDir, 'src', 'di-core.d.ts'),
+    `declare module "@rhombus-std/di.core" {
+  export type Ctor<A extends any[] = any[], I = unknown> = new(...args: A) => I;
+  export type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
+  export interface AddBuilder<Scopes extends string = string> {
+    as(scope: Scopes): void;
+    as<S extends Scopes>(): void;
+  }
+  export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+    add(token: string, ctor: Ctor, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
+    add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+    add<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    addValue<I>(value: I): void;
+  }
+  export interface RequiredResolver {
+    resolve<T>(token: string): T;
+    resolve<T>(): T;
+  }
+  export interface ServiceQuery {
+    isService(token: string): boolean;
+    isService<T>(): boolean;
+  }
+  export interface Resolver extends RequiredResolver, ServiceQuery {
+    resolveAsync<T>(): Promise<T>;
+    tryResolve<T>(): T | undefined;
+  }
+  export interface ServiceProvider<S extends string = string> extends Resolver {}
+  export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
+}
+`,
+  );
+
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
 import { nameof } from "./nameof";
 import { IUserRepo } from "your-lib/contracts";
+import type { ServiceManifest, ServiceProvider } from "@rhombus-std/di.core";
 
 // The Keyed<T, K> phantom brand (declared locally — the transformer detects it
 // structurally by the computed-symbol \`[KEY]\` property, not by import source):
@@ -134,13 +173,8 @@ class ThingRepo<T> implements IRepo<T> {
   constructor(thing: Keyed<IThing<T>, "redis">) {}
 }
 
-declare const services: {
-  add<I>(c: unknown): { as<S extends string>(): void };
-};
-declare const provider: {
-  resolve<I>(): I;
-  isService<I>(): boolean;
-};
+declare const services: ServiceManifest<string>;
+declare const provider: ServiceProvider<string>;
 
 services.add<ILogger>(ConsoleLogger).as<"singleton">();
 services.add<IUserRepo>(SqlUserRepo).as<"request">();

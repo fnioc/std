@@ -63,7 +63,6 @@ describe('Keyed<T, K> injection lowering', () => {
         class Handler implements IKeyed {
           constructor(cache: Keyed<ICache, "redis">) {}
         }
-        declare const services: any;
         services.add<IPlain>(Plain).as<"singleton">();
         services.add<IKeyed>(Handler).as<"singleton">();
       `);
@@ -86,7 +85,6 @@ describe('Keyed<T, K> injection lowering', () => {
         class Svc implements ISvc {
           constructor(cache: Keyed<Inject<ICache, "pkg:redis-cache">, "primary">) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, { entry: [CORE_BRAND_APP] });
@@ -108,7 +106,6 @@ describe('Keyed<T, K> injection lowering', () => {
         class Svc implements ISvc {
           constructor(opts: Keyed<Inject<{ n: number }, "my:opts">, "alt">) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, { entry: [CORE_BRAND_APP] });
@@ -126,7 +123,6 @@ describe('add<Keyed<T, K>> registration lowering', () => {
         interface IThing {}
         class PlainThing implements IThing {}
         class KeyedThing implements IThing {}
-        declare const services: any;
         services.add<IThing>(PlainThing).as<"singleton">();
         services.add<Keyed<IThing, "primary">>(KeyedThing).as<"singleton">();
       `);
@@ -155,7 +151,6 @@ describe('add<Keyed<T, K>> registration lowering', () => {
         class SqlRepo<T> implements IRepo<T> {
           constructor(cache: Keyed<IThing<T>, "redis">) {}
         }
-        declare const services: any;
         services.add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"singleton">();
       `;
     const { output, diagnostics } = transform(fixture(src));
@@ -170,7 +165,6 @@ describe('add<Keyed<T, K>> registration lowering', () => {
         import type { Inject, Keyed } from "@rhombus-std/di.core";
         interface IThing {}
         class KeyedThing implements IThing {}
-        declare const services: any;
         services.add<Keyed<Inject<IThing, "pkg:IThing">, "primary">>(KeyedThing).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, { entry: [CORE_BRAND_APP] });

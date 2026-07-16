@@ -14,7 +14,6 @@ describe('collection-token lowering — resolve<…>()', () => {
   function resolveEmit(typeArg: string): string {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const x = scope.resolve<${typeArg}>();
     `;
     const { output } = transform(fixture(src));
@@ -38,7 +37,6 @@ describe('collection-token lowering — resolve<…>()', () => {
   test('resolveAsync<IFoo[]>() lowers to resolveAsync with the same wrapper token', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const x = scope.resolveAsync<IFoo[]>();
     `;
     const { output } = transform(fixture(src));
@@ -53,7 +51,6 @@ describe('collection-token lowering — constructor parameters', () => {
       class Consumer {
         constructor(readonly plugins: IFoo[]) {}
       }
-      declare const services: any;
       services.add<Consumer>(Consumer).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -66,7 +63,6 @@ describe('collection-token lowering — constructor parameters', () => {
       class Consumer {
         constructor(readonly plugins: Iterable<IFoo>) {}
       }
-      declare const services: any;
       services.add<Consumer>(Consumer).as<"singleton">();
     `;
     const { output } = transform(fixture(src));

@@ -15,7 +15,6 @@ describe('registration lowering', () => {
       class SqlUserRepo implements IUserRepo {
         constructor(log: ILogger, db: IDbConnection) {}
       }
-      declare const services: any;
       services.add<IUserRepo>(SqlUserRepo).as<"request">();
     `;
     const { output } = transform(fixture(src));
@@ -32,7 +31,6 @@ describe('registration lowering', () => {
     const src = `
       interface ILogger {}
       class ConsoleLogger implements ILogger {}
-      declare const services: any;
       services.add<ILogger>(ConsoleLogger).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -46,7 +44,6 @@ describe('registration lowering', () => {
     const src = `
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
-      declare const services: any;
       services.add<IFoo>(Foo).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -58,7 +55,6 @@ describe('registration lowering', () => {
     // The two-arg explicit-token form has arguments.length === 2 → excluded from
     // the single-arg registration pattern. It must never be re-lowered.
     const src = `
-      declare const services: any;
       services.add("my-token", class {});
     `;
     const { output } = transform(fixture(src));
@@ -70,7 +66,6 @@ describe('registration lowering', () => {
     const src = `
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
-      declare const services: any;
       services.add<IFoo>(Foo);
     `;
     const { output } = transform(fixture(src));

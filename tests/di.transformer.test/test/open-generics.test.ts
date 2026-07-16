@@ -1,6 +1,6 @@
 import { DiagnosticCode } from '@rhombus-std/di.transformer/_/index';
 import { describe, expect, test } from 'bun:test';
-import { fixture, transform, type VirtualFiles } from './harness.js';
+import { DI_CORE_FILES, fixture, transform, type VirtualFiles } from './harness.js';
 
 // Open generics (spec v1): closed-generic token derivation (`base<arg1,arg2>`),
 // hole placeholders (`$N` via the `Hole<N, C>` brand), instantiation-expression
@@ -30,7 +30,6 @@ describe('closed-generic token derivation', () => {
       interface User {}
       interface IRepo<T> {}
       class UserRepo implements IRepo<User> { constructor() {} }
-      declare const services: any;
       services.add<IRepo<User>>(UserRepo).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -45,6 +44,7 @@ describe('closed-generic token derivation', () => {
 
   test('package-public type arg → base<importSpecifier:Symbol>', () => {
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/node_modules/your-lib/package.json': JSON.stringify({
         name: 'your-lib',
         version: '3.4.5',
@@ -57,7 +57,6 @@ describe('closed-generic token derivation', () => {
         import { IFoo } from "your-lib/contracts";
         interface IWrap<T> {}
         class Wrap implements IWrap<IFoo> { constructor() {} }
-        declare const services: any;
         services.add<IWrap<IFoo>>(Wrap).as<"singleton">();
       `,
     };
@@ -99,7 +98,6 @@ describe('closed-generic token derivation', () => {
       interface IRepository<T> {}
       type UserRepoAlias = IRepository<User>;
       class SqlUserRepo implements IRepository<User> { constructor() {} }
-      declare const services: any;
       services.add<UserRepoAlias>(SqlUserRepo).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -126,7 +124,6 @@ describe('closed-generic token derivation', () => {
       class Svc {
         constructor(repo: Promise<IRepo<User>>) {}
       }
-      declare const services: any;
       services.add(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -204,7 +201,6 @@ describe('hole derivation ($N via the Hole brand)', () => {
       class SqlRepo<T> implements IRepo<T> {
         constructor(seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<$1>>(SqlRepo<$1>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -241,7 +237,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class SqlRepo<T> implements IRepo<T> {
         constructor(db: IDb, seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -261,7 +256,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class Pair<A, B> implements IPair<B, A> {
         constructor(a: A, b: B) {}
       }
-      declare const services: any;
       services.add<IPair<$<1>, $<2>>>(Pair<$<2>, $<1>>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -278,7 +272,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class Pair<A, B> implements IPair<A, B> {
         constructor(a: A, b: B) {}
       }
-      declare const services: any;
       services.add<IPair<$<1>, $<1>>>(Pair<$<1>, $<1>>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -296,7 +289,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class Foo<T> implements IFoo<T> {
         constructor(x: T) {}
       }
-      declare const services: any;
       services.add<IFoo<$<1>>>(Foo<Pair<$<1>, $<1>>>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -314,7 +306,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class Repo<T> implements IRepo<T> {
         constructor(x: T | Bar) {}
       }
-      declare const services: any;
       services.add<IRepo<Bar>>(Repo<Bar>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -335,7 +326,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class SqlRepo<T> implements IRepo<T> {
         constructor(db: IDb, seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<User>>(SqlRepo<User>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -353,7 +343,6 @@ describe('instantiation-expression lowering (registration-carried deps)', () => 
       class SqlRepo<T> implements IRepo<T> {
         constructor(seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"request">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -372,7 +361,6 @@ describe('Typeof witness', () => {
       class Logger<T> implements ILogger<T> {
         constructor(category: Typeof<T>) {}
       }
-      declare const services: any;
       services.add<ILogger<$<1>>>(Logger<$<1>>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -390,7 +378,6 @@ describe('Typeof witness', () => {
       class Logger<T> implements ILogger<T> {
         constructor(category: Typeof<T>) {}
       }
-      declare const services: any;
       services.add<ILogger<User>>(Logger<User>).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -406,7 +393,6 @@ describe('resolve / nameof pick up generic tokens automatically', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
-      declare const provider: any;
       const r = provider.resolve<IRepo<User>>();
     `;
     const { output } = transform(fixture(src));
@@ -433,7 +419,6 @@ describe('diagnostics 990007–990010', () => {
       class SqlRepo<T> implements IRepo<T> {
         constructor(seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<$<1>>>(SqlRepo).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -452,7 +437,6 @@ describe('diagnostics 990007–990010', () => {
       class SqlRepo<T> implements IRepo<T> {
         constructor(seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<$<1>>>(SqlRepo<$<1>>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -468,7 +452,6 @@ describe('diagnostics 990007–990010', () => {
       class Pair<A, B> implements IPair<A, B> {
         constructor(a: A, b: B) {}
       }
-      declare const services: any;
       services.add<IPair<$<1>, string>>(Pair<$<1>, string>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -487,7 +470,6 @@ describe('diagnostics 990007–990010', () => {
       class Foo<T> implements IFoo<T> {
         constructor(x: T) {}
       }
-      declare const services: any;
       services.add<IFoo<IBar<$<1>>>>(Foo<IBar<$<1>>>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -502,7 +484,6 @@ describe('diagnostics 990007–990010', () => {
       class Pair<A, B> implements IPair<A, B> {
         constructor(a: A, b: B) {}
       }
-      declare const services: any;
       services.add<IPair<$<1>, $<1>>>(Pair<$<1>, $<1>>).as<"singleton">();
       services.add<IPair<User, User>>(Pair<User, User>).as<"singleton">();
     `;
@@ -516,7 +497,6 @@ describe('diagnostics 990007–990010', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
-      declare const services: any;
       services.addValue<IRepo<$<1>>>({});
     `;
     const { diagnostics } = transform(fixture(src));
@@ -532,7 +512,6 @@ describe('diagnostics 990007–990010', () => {
     const src = `
       ${BRANDS}
       interface IRepo<T> {}
-      declare const services: any;
       services.add<IRepo<$<1>>>(() => ({}) as IRepo<$<1>>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -545,7 +524,6 @@ describe('diagnostics 990007–990010', () => {
     const src = `
       interface User {}
       interface IRepo<T> {}
-      declare const services: any;
       services.addValue<IRepo<User>>({});
       services.add<IRepo<User>>(() => ({}) as IRepo<User>).as<"singleton">();
     `;
@@ -562,7 +540,6 @@ describe('diagnostics 990007–990010', () => {
       class SqlRepo<T> implements IRepo<$<1>> {
         constructor(seed: T) {}
       }
-      declare const services: any;
       services.add<IRepo<$<1>>>(SqlRepo<$<2>>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -581,7 +558,6 @@ describe('diagnostics 990007–990010', () => {
       class Logger<T> implements ILogger<$<1>> {
         constructor(category: Typeof<T>) {}
       }
-      declare const services: any;
       services.add<ILogger<$<1>>>(Logger<$<2>>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -597,7 +573,6 @@ describe('diagnostics 990007–990010', () => {
       class Pair<A, B> implements IPair<A, B> {
         constructor(a: A, b: B) {}
       }
-      declare const services: any;
       services.add<IPair<$<1>, $<2>>>(Pair<$<2>, $<1>>).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -616,7 +591,6 @@ describe('non-generic regression', () => {
       class SqlRepo implements IRepo {
         constructor(log: ILogger) {}
       }
-      declare const services: any;
       services.add<ILogger>(ConsoleLogger).as<"singleton">();
       services.add<IRepo>(SqlRepo).as<"request">();
     `;

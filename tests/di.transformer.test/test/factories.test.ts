@@ -1,6 +1,6 @@
 import { DiagnosticCode } from '@rhombus-std/di.transformer/_/index';
 import { describe, expect, test } from 'bun:test';
-import { depsArrayFor, fixture, transform, type VirtualFiles } from './harness.js';
+import { depsArrayFor, DI_CORE_FILES, fixture, transform, type VirtualFiles } from './harness.js';
 
 // Factory detection (PRD §7 / §8). A constructor parameter whose type ANNOTATION
 // is an inline function-type literal (`() => IFoo`) emits a
@@ -17,7 +17,6 @@ describe('factory detection', () => {
       class Svc implements ISvc {
         constructor(makeFoo: () => IFoo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -33,7 +32,6 @@ describe('factory detection', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (a: B2, b: D4) => IFoo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -51,7 +49,6 @@ describe('factory detection', () => {
       class Svc implements ISvc {
         constructor(thunk: IFooThunk) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -67,7 +64,6 @@ describe('factory detection', () => {
       class Svc implements ISvc {
         constructor(makeFoo: () => Promise<IFoo>) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -84,7 +80,6 @@ describe('factory detection', () => {
       class Svc implements ISvc {
         constructor(log: ILogger, makeFoo: () => IFoo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -102,7 +97,6 @@ describe('factory detection', () => {
       class Svc implements ISvc {
         constructor(makeName: () => string) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -125,7 +119,6 @@ describe('factory detection', () => {
         constructor(a: IFoo, b: IBar);
         constructor(a: IFoo, b?: IBar) {}
       };
-      declare const services: any;
       services.add<IMarker>(Impl).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -144,7 +137,6 @@ describe('factory detection', () => {
       interface IMarker {}
       declare function makeMarker(a: IFoo): IMarker;
       declare function makeMarker(a: IFoo, b: IBar): IMarker;
-      declare const services: any;
       services.add<IMarker>(makeMarker).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -156,6 +148,7 @@ describe('factory detection', () => {
 
   test('package-public factory return type keys on the package token', () => {
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/node_modules/your-lib/package.json': JSON.stringify({
         name: 'your-lib',
         version: '1.0.0',
@@ -168,7 +161,6 @@ describe('factory detection', () => {
         class Svc implements ISvc {
           constructor(makeFoo: () => IFoo) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `,
     };
@@ -189,7 +181,6 @@ describe('declared factory params → caller-supplied params (caller wins over r
       class Svc implements ISvc {
         constructor(makeReport: (a: ILogger) => IReport) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -205,7 +196,6 @@ describe('declared factory params → caller-supplied params (caller wins over r
       class Svc implements ISvc {
         constructor(makeReport: () => IReport) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -220,7 +210,6 @@ describe('declared factory params → caller-supplied params (caller wins over r
       class Svc implements ISvc {
         constructor(makeRepo: (table: string, log: ILogger) => IRepo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));

@@ -23,7 +23,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (x: string) => Foo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -49,7 +48,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (x: IA, y: string, z: number) => Foo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -74,7 +72,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (b: string) => Foo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -96,7 +93,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (a: IA, b: string) => Foo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -117,7 +113,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (x: string) => Foo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc, ["manual:IFoo"]).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -138,7 +133,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (b: string) => Foo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc, ["manual:IA"]).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -156,7 +150,6 @@ describe('factory-signature diagnostic (§4.5)', () => {
       class Svc implements ISvc {
         constructor(makeFoo: (x: number) => IFoo) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
