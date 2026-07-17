@@ -1,7 +1,13 @@
 # Design docs
 
-- **[decisions.md](decisions.md)** — running log of load-bearing design decisions &
-  requirements. **Start here**, and append to it as decisions land.
+- **[decisions.v2.md](decisions.v2.md)** — the live, owner-approved log of load-bearing design
+  decisions & requirements. **Start here.**
+- [decisions.md](decisions.md) — retiring: the pre-v2 decisions log, being struck down entry by
+  entry as each is re-ratified into `decisions.v2.md`. Historical record only — never append to it.
+- [augmentations.md](augmentations.md) — the augmentations mechanism (this repo's stand-in for
+  extension methods): how to author one, how to consume one, how it works.
+- [transformer-architecture.md](transformer-architecture.md) — how the four authoring-time
+  transformers ship two engines (ts-patch + a Go/`ttsc` backend) behind one contract.
 
 ## reference
 
@@ -16,11 +22,9 @@ Reference and design documents carried over from the pre-consolidation repos
 ## di
 
 - [PRD.md](di/PRD.md) — product requirements (historical, pre-consolidation)
-- [PLAN.md](di/PLAN.md) — implementation plan (historical, pre-consolidation)
 
 ## config
 
 - [no-options-port.md](config/no-options-port.md) — **superseded** (see decisions.md §4):
   the original decision _not_ to port ME.Options. We have since reversed
   it and are defining `@rhombus-std/options`.
-- [TODO.md](config/TODO.md) — parked config follow-ups
