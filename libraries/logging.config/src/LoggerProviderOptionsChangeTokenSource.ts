@@ -18,7 +18,7 @@ import type { ILoggerProviderConfig } from './ILoggerProviderConfig';
  * `LoggerProviderOptions.registerProviderOptions`.
  */
 export class LoggerProviderOptionsChangeTokenSource<TOptions, TProvider> extends ConfigChangeTokenSource {
-  public constructor(providerConfiguration: ILoggerProviderConfig<TProvider>) {
-    super(providerConfiguration.configuration);
+  public constructor(providerConfig: ILoggerProviderConfig<TProvider>) {
+    super(providerConfig.config);
   }
 }

@@ -26,7 +26,7 @@
 //
 // `add`, not TryAdd: di.core registrations are append-only last-wins; there is
 // no add-if-absent surface. Re-calling addLogging appends duplicates — harmless,
-// last wins (same precedent logging.config's addConfiguration records).
+// last wins (same precedent logging.config's addConfig records).
 
 // Side-effect + merge: installs `addOptions`/`configure` (the options pipeline
 // verbs) onto di.core's ServiceManifest, and brings the interface merge that

@@ -16,7 +16,7 @@
 // (the open service contract @rhombus-std/options.augmentations exports as
 // `configureStepToken`/`changeTokenSourceToken`), with the closed
 // `ILoggerProviderConfig<TProvider>` token as the dep slot — resolved
-// through the open template the no-arg `addConfiguration` registers, so the
+// through the open template the no-arg `addConfig` registers, so the
 // whole chain stays lazy: nothing touches configuration until the
 // `IOptions<TOptions>` assembly materializes.
 //
@@ -46,7 +46,7 @@ export const LoggerProviderOptions = {
    * Indicates that settings for the provider `TProvider` should be loaded
    * into the `TOptions` type: appends a provider-bound configure step and
    * change-token source to `optionsToken`'s pipeline slots. Requires the
-   * provider-configuration services (the no-arg `addConfiguration`) and an
+   * provider-configuration services (the no-arg `addConfig`) and an
    * `addOptions(optionsToken, …)` assembly registration for the token.
    *
    * @param services The registration builder to register on.
@@ -59,12 +59,12 @@ export const LoggerProviderOptions = {
     optionsToken: Typeof<IOptions<TOptions>>,
     providerType: Typeof<TProvider>,
   ): void {
-    const providerConfiguration: Token = loggerProviderConfigToken(providerType);
+    const providerConfig: Token = loggerProviderConfigToken(providerType);
     services
-      .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfiguration]])
+      .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]])
       .as('singleton');
     services
-      .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfiguration]])
+      .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]])
       .as('singleton');
   },
 };

@@ -20,7 +20,7 @@
 //     IExternalScopeProvider yet (the factory-side scope plumbing).
 //   - The config-binding wiring (ConsoleLoggerConfigureOptions,
 //     ConsoleFormatterConfigureOptions, the formatter change-token sources,
-//     `AddConsole`'s no-arg `addConfiguration()` call) needs
+//     `AddConsole`'s no-arg `addConfig()` call) needs
 //     @rhombus-std/logging.config's `ILoggerProviderConfig<T>`
 //     provider-configuration factory, which doesn't exist yet.
 

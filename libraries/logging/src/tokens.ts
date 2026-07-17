@@ -30,7 +30,7 @@ export const LOGGER_PROVIDER_TOKEN = nameof<ILoggerProvider>();
  * NOT the bare `LoggerFilterOptions` type token. This is the convergence point
  * (#146): `addLogging` registers the assembly here, the builder-level
  * `addFilter`/`setMinimumLevel` append their configure steps to this token's
- * pipeline slots, and logging.config's `addConfiguration` derives the
+ * pipeline slots, and logging.config's `addConfig` derives the
  * SAME token inline from the type — so all three compose into one
  * `IOptions<LoggerFilterOptions>` the `LoggerFactory` consumes. The reference
  * keys this pipeline by the options TYPE (`Configure<LoggerFilterOptions>` /

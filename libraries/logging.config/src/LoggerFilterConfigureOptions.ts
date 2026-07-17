@@ -73,22 +73,22 @@ function loadRules(
  * The configure step binding `LoggerFilterOptions` from an
  * {@link IConfig} — sets `captureScopes` and appends a
  * {@link LoggerFilterRule} for every `LogLevel` entry (global and
- * per-provider). Registered by `addConfiguration` as one configure source in
+ * per-provider). Registered by `addConfig` as one configure source in
  * the options pipeline.
  */
 export class LoggerFilterConfigureOptions implements IConfigureOptions<LoggerFilterOptions> {
-  readonly #configuration: IConfig;
+  readonly #config: IConfig;
 
-  /** @param configuration The configuration walked on every {@link configure}. */
-  public constructor(configuration: IConfig) {
-    this.#configuration = configuration;
+  /** @param config The configuration walked on every {@link configure}. */
+  public constructor(config: IConfig) {
+    this.#config = config;
   }
 
   /** Populates `options` from the configuration, mutating it in place. */
   public configure(options: LoggerFilterOptions): void {
-    options.captureScopes = this.#configuration.getBool('CaptureScopes', options.captureScopes);
+    options.captureScopes = this.#config.getBool('CaptureScopes', options.captureScopes);
 
-    for (const section of this.#configuration.getChildren()) {
+    for (const section of this.#config.getChildren()) {
       if (section.key.toLowerCase() === LOG_LEVEL_KEY) {
         // Global category defaults.
         loadRules(options, section, undefined);

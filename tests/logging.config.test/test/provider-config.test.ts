@@ -1,4 +1,4 @@
-// End-to-end: the no-arg `addConfiguration()` provider-configuration services —
+// End-to-end: the no-arg `addConfig()` provider-configuration services —
 // `ILoggerProviderConfigFactory` chaining every registered
 // `LoggingConfig`'s provider-named section, and the open-generic
 // `ILoggerProviderConfig<$1>` registration closing per provider type.
@@ -20,7 +20,7 @@ function rootWith(data: Record<string, string>): IConfigRoot {
   return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
 }
 
-describe('addConfiguration() — provider-configuration services', () => {
+describe('addConfig() — provider-configuration services', () => {
   test('loggerProviderConfigToken derives the closed-generic token', () => {
     expect(loggerProviderConfigToken(FAKE_PROVIDER_TOKEN)).toBe(
       '@rhombus-std/logging.config:ILoggerProviderConfig<test:FakeProvider>',
@@ -30,67 +30,67 @@ describe('addConfiguration() — provider-configuration services', () => {
   test('the factory chains the provider-named section of every registered configuration', () => {
     const services = new ServiceManifest<'singleton'>();
     const builder = new LoggingBuilder(services);
-    builder.addConfiguration(rootWith({
+    builder.addConfig(rootWith({
       'FakeProvider:Format': 'json',
       'FakeProvider:MaxDepth': '3',
     }));
-    builder.addConfiguration(rootWith({
+    builder.addConfig(rootWith({
       'FakeProvider:Format': 'text', // later configuration wins on conflict
       'OtherProvider:Format': 'xml', // other providers' sections are invisible
     }));
 
     const provider = services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
-    const configuration = factory.getConfiguration(FAKE_PROVIDER_TOKEN);
+    const config = factory.getConfig(FAKE_PROVIDER_TOKEN);
 
-    expect(configuration.get('Format')).toBe('text');
-    expect(configuration.get('MaxDepth')).toBe('3');
+    expect(config.get('Format')).toBe('text');
+    expect(config.get('MaxDepth')).toBe('3');
 
-    const other = factory.getConfiguration('test:MissingProvider');
+    const other = factory.getConfig('test:MissingProvider');
     expect(other.get('Format')).toBeUndefined();
   });
 
   test('the chained provider configuration is LIVE across a reload', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
     const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfiguration(config);
+    new LoggingBuilder(services).addConfig(config);
 
     const provider = services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
-    const configuration = factory.getConfiguration(FAKE_PROVIDER_TOKEN);
-    expect(configuration.get('Format')).toBe('json');
+    const config = factory.getConfig(FAKE_PROVIDER_TOKEN);
+    expect(config.get('Format')).toBe('json');
 
     let fired = false;
-    configuration.getReloadToken().registerChangeCallback(() => {
+    config.getReloadToken().registerChangeCallback(() => {
       fired = true;
     });
     config.set('FakeProvider:Format', 'text');
     config.reload();
 
-    expect(configuration.get('Format')).toBe('text');
+    expect(config.get('Format')).toBe('text');
     expect(fired).toBe(true);
   });
 
   test('the open ILoggerProviderConfig<$1> registration closes per provider', () => {
     const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfiguration(rootWith({ 'FakeProvider:Format': 'json' }));
+    new LoggingBuilder(services).addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
 
     const provider = services.build().createScope('singleton');
     const token = loggerProviderConfigToken(FAKE_PROVIDER_TOKEN);
-    const providerConfiguration = provider.resolve<ILoggerProviderConfig<unknown>>(token);
+    const providerConfig = provider.resolve<ILoggerProviderConfig<unknown>>(token);
 
-    expect(providerConfiguration.configuration.get('Format')).toBe('json');
+    expect(providerConfig.config.get('Format')).toBe('json');
     // Singleton-tagged: the closing caches per closed token.
-    expect(provider.resolve<ILoggerProviderConfig<unknown>>(token)).toBe(providerConfiguration);
+    expect(provider.resolve<ILoggerProviderConfig<unknown>>(token)).toBe(providerConfig);
   });
 
   test('the no-arg method form registers the services without a filter pipeline', () => {
     const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfiguration();
+    new LoggingBuilder(services).addConfig();
 
     const provider = services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
     // No LoggingConfig registered yet: every provider section is empty.
-    expect(factory.getConfiguration(FAKE_PROVIDER_TOKEN).get('Format')).toBeUndefined();
+    expect(factory.getConfig(FAKE_PROVIDER_TOKEN).get('Format')).toBeUndefined();
   });
 });

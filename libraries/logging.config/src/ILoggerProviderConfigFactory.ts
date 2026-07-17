@@ -19,5 +19,5 @@ export interface ILoggerProviderConfigFactory {
    * @param providerType The logger provider type's token
    * (`nameof<TProvider>()`).
    */
-  getConfiguration(providerType: Token): IConfig;
+  getConfig(providerType: Token): IConfig;
 }

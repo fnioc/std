@@ -2,7 +2,7 @@
 
 **Drive your log-level filters from configuration instead of hard-coded calls.**
 
-Point `addConfiguration` at an `IConfig` tree and your logging setup's
+Point `addConfig` at an `IConfig` tree and your logging setup's
 minimum levels — global and per-provider — come from a config file or
 environment variable, and update live on reload. It also gives individual
 logging providers (a console sink, a custom transport) a clean way to read
@@ -15,7 +15,7 @@ library directly.
 bun add @rhombus-std/logging.config @rhombus-std/logging @rhombus-std/config
 ```
 
-Importing the package registers `addConfiguration` onto `ILoggingBuilder` as
+Importing the package registers `addConfig` onto `ILoggingBuilder` as
 a side effect — keep the import even if you never reference a named export:
 
 ```ts
@@ -36,7 +36,7 @@ const configuration = new ConfigBuilder()
 
 const services = new ServiceManifestClass();
 const builder = new LoggingBuilder(services);
-builder.addConfiguration(configuration);
+builder.addConfig(configuration);
 ```
 
 `logging.json`:
@@ -53,7 +53,7 @@ section named after a provider (`"Console"` above) scopes its own nested
 `LogLevel` to just that provider. Reload the underlying configuration and the
 filter rules recompute automatically — nothing needs to be re-registered.
 
-`addConfiguration` also works with no arguments (`builder.addConfiguration()`)
+`addConfig` also works with no arguments (`builder.addConfig()`)
 to register only the provider-configuration plumbing described below, without
 binding `LoggerFilterOptions` from anything.
 
@@ -61,8 +61,8 @@ binding `LoggerFilterOptions` from anything.
 
 | Export                                   | What it is                                                                                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LoggingBuilderExtensions`               | The standalone form of `addConfiguration` — call it directly as `LoggingBuilderExtensions.addConfiguration(builder, configuration)`.        |
-| `addConfiguration` (method)              | Same operation, as an instance method on `ILoggingBuilder` once this package is imported.                                                   |
+| `LoggingBuilderExtensions`               | The standalone form of `addConfig` — call it directly as `LoggingBuilderExtensions.addConfig(builder, configuration)`.                      |
+| `addConfig` (method)                     | Same operation, as an instance method on `ILoggingBuilder` once this package is imported.                                                   |
 | `ILoggerProviderConfig<T>`               | Interface exposing the configuration section bound to a specific logger provider.                                                           |
 | `loggerProviderConfigToken`              | Derives the registration token for `ILoggerProviderConfig<T>` closed over a given provider type.                                            |
 | `ILoggerProviderConfigFactory`           | Interface a provider resolves to fetch its own configuration section by provider token.                                                     |
@@ -79,7 +79,7 @@ binding `LoggerFilterOptions` from anything.
 If you're authoring your own logging provider and want its options bound
 from a section of the same configuration tree — the same mechanism the
 built-in filter binding uses — call `LoggerProviderOptions.registerProviderOptions`
-after `addConfiguration` has run:
+after `addConfig` has run:
 
 ```ts
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
@@ -118,9 +118,9 @@ provider options sourced from configuration rather than set in code.
 
 ## Notes
 
-- `addConfiguration` is lazy: nothing is read from the configuration until
+- `addConfig` is lazy: nothing is read from the configuration until
   the underlying `IOptions<LoggerFilterOptions>` (or provider options) value is
   actually resolved, and a configuration reload re-runs the binding.
 - The side-effect import is required exactly once, anywhere in your app's
-  startup path — `addConfiguration` doesn't exist on `ILoggingBuilder` until
+  startup path — `addConfig` doesn't exist on `ILoggingBuilder` until
   this package has been imported.
