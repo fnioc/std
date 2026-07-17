@@ -252,7 +252,7 @@ source is read, merged, and coerced at runtime, on every process start. Add
 | `ConfigRoot`, `ConfigSection`                        | The built, navigable config tree — dot/bracket access, `getSection`, reload tokens.                      |
 | `ConfigProvider`                                     | Abstract base a configuration source's provider extends.                                                 |
 | `addInMemoryCollection`                              | Bundled in-memory source — set config values directly, no file or env involved.                          |
-| `addConfiguration`                                   | Wraps an already-built `IConfig` as a source layer inside another builder.                               |
+| `addConfig`                                          | Wraps an already-built `IConfig` as a source layer inside another builder.                               |
 | `Schema`, `Infer`, `OPTIONAL`                        | The hand-written schema surface (Tier 1) — `Infer<S>` gives you the resulting TypeScript type.           |
 | `SchemaCoercionError`                                | Thrown by `build()` when a required key is missing or fails coercion; lists every offending key at once. |
 | `compareConfigKeys`                                  | The `:`-segment-aware comparer configuration keys sort by.                                               |

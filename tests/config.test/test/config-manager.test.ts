@@ -107,9 +107,9 @@ describe('ConfigManager provider augmentations', () => {
     expect(manager.get('Server:Port')).toBe('8080');
   });
 
-  test('addConfiguration installs on ConfigManager, not just ConfigBuilder', () => {
+  test('addConfig installs on ConfigManager, not just ConfigBuilder', () => {
     const chained = new ConfigManager().addInMemoryCollection({ 'Server:Port': '8080' });
-    const manager = new ConfigManager().addConfiguration(chained);
+    const manager = new ConfigManager().addConfig(chained);
     expect(manager.get('Server:Port')).toBe('8080');
   });
 });

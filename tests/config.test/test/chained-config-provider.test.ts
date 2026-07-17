@@ -29,7 +29,7 @@ class CountingSource implements IConfigSource {
 describe('ChainedConfigProvider', () => {
   test('tryGet delegates to the chained configuration; an empty-string value counts as a miss', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1', B: '' }).build();
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     expect(provider.tryGet('A')).toEqual([true, '1']);
     expect(provider.tryGet('B')).toEqual([false]);
@@ -38,7 +38,7 @@ describe('ChainedConfigProvider', () => {
 
   test('set writes through to the chained configuration', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1' }).build();
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     provider.set('A', '2');
     expect(inner.get('A')).toBe('2');
@@ -46,14 +46,14 @@ describe('ChainedConfigProvider', () => {
 
   test("getReloadToken delegates to the chained configuration's own token", () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1' }).build();
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     expect(provider.getReloadToken()).toBe(inner.getReloadToken());
   });
 
   test('toString returns the class name -- it has no ConfigProvider base to inherit the default from', () => {
     const inner = new ConfigBuilder().build();
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     expect(String(provider)).toBe('ChainedConfigProvider');
   });
@@ -62,7 +62,7 @@ describe('ChainedConfigProvider', () => {
     const inner = new ConfigBuilder()
       .addInMemoryCollection({ 'Server:Port': '8080', 'Server:Host': 'localhost', 'Logging:Level': 'Info' })
       .build();
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     expect([...provider.getChildKeys(['Zeta'], undefined)]).toEqual(['Logging', 'Server', 'Zeta']);
     expect([...provider.getChildKeys([], 'Server')]).toEqual(['Host', 'Port']);
@@ -74,7 +74,7 @@ describe('ChainedConfigProvider', () => {
     // ConfigRoot's constructor eagerly loads every provider once.
     expect(countingSource.provider.loadCount).toBe(1);
 
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
     provider.load();
     expect(countingSource.provider.loadCount).toBe(1);
   });
@@ -83,7 +83,7 @@ describe('ChainedConfigProvider', () => {
     const countingSource = new CountingSource();
     const inner = new ConfigBuilder().add(countingSource).build();
 
-    const provider = new ChainedConfigSource({ configuration: inner }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
     provider.load(); // the initial no-op
     provider.load();
     expect(countingSource.provider.loadCount).toBe(2);
@@ -94,7 +94,7 @@ describe('ChainedConfigProvider', () => {
     const manager = new ConfigManager().add(countingSource);
     const countAfterAdd = countingSource.provider.loadCount;
 
-    const provider = new ChainedConfigSource({ configuration: manager }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: manager }).build(new ConfigBuilder());
     provider.load(); // the initial no-op
     provider.load();
     expect(countingSource.provider.loadCount).toBe(countAfterAdd + 1);
@@ -104,7 +104,7 @@ describe('ChainedConfigProvider', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080' }).build();
     const section = inner.getSection('Server');
 
-    const provider = new ChainedConfigSource({ configuration: section }).build(new ConfigBuilder());
+    const provider = new ChainedConfigSource({ config: section }).build(new ConfigBuilder());
     expect(() => {
       provider.load();
       provider.load();
@@ -113,9 +113,9 @@ describe('ChainedConfigProvider', () => {
 });
 
 describe('ChainedConfigSource', () => {
-  test('shouldDisposeConfiguration defaults to false', () => {
-    const source = new ChainedConfigSource({ configuration: new ConfigBuilder().build() });
-    expect(source.shouldDisposeConfiguration).toBe(false);
+  test('shouldDisposeConfig defaults to false', () => {
+    const source = new ChainedConfigSource({ config: new ConfigBuilder().build() });
+    expect(source.shouldDisposeConfig).toBe(false);
   });
 });
 
@@ -162,16 +162,16 @@ class FakeDisposableConfig implements IConfig, Disposable {
 describe('ChainedConfigProvider disposal', () => {
   test('does not dispose the chained configuration by default', () => {
     const inner = new FakeDisposableConfig();
-    const provider = new ChainedConfigProvider(new ChainedConfigSource({ configuration: inner }));
+    const provider = new ChainedConfigProvider(new ChainedConfigSource({ config: inner }));
 
     provider[Symbol.dispose]();
     expect(inner.disposed).toBe(false);
   });
 
-  test('disposes the chained configuration when shouldDisposeConfiguration is true', () => {
+  test('disposes the chained configuration when shouldDisposeConfig is true', () => {
     const inner = new FakeDisposableConfig();
     const provider = new ChainedConfigProvider(
-      new ChainedConfigSource({ configuration: inner, shouldDisposeConfiguration: true }),
+      new ChainedConfigSource({ config: inner, shouldDisposeConfig: true }),
     );
 
     provider[Symbol.dispose]();
@@ -179,17 +179,17 @@ describe('ChainedConfigProvider disposal', () => {
   });
 });
 
-describe('addConfiguration augmentation', () => {
+describe('addConfig augmentation', () => {
   test('registers a ChainedConfigSource on the builder', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1' }).build();
-    const root = new ConfigBuilder().addConfiguration(inner).build();
+    const root = new ConfigBuilder().addConfig(inner).build();
 
     expect(root.get('A')).toBe('1');
   });
 
   test('installs on ConfigManager, not just ConfigBuilder', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1' }).build();
-    const manager = new ConfigManager().addConfiguration(inner);
+    const manager = new ConfigManager().addConfig(inner);
 
     expect(manager.get('A')).toBe('1');
   });
@@ -197,7 +197,7 @@ describe('addConfiguration augmentation', () => {
   test('a source registered after the chained configuration still overrides it (last-registered wins)', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1' }).build();
     const root = new ConfigBuilder()
-      .addConfiguration(inner)
+      .addConfig(inner)
       .addInMemoryCollection({ A: '2' })
       .build();
 

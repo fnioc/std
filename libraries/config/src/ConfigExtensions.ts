@@ -9,8 +9,8 @@
 // the install is a direct `applyAugmentations` at the concrete classes -- NO
 // token, NO registry. The set is authored as ONE named exported const mirroring
 // the reference static class, so it is available BOTH as a fluent method
-// (`configuration.getConnectionString(name)`) and as the standalone member form
-// (`ConfigExtensions.getConnectionString(configuration, name)`).
+// (`config.getConnectionString(name)`) and as the standalone member form
+// (`ConfigExtensions.getConnectionString(config, name)`).
 //
 // `exists` is deliberately NOT a member of the set: the reference receiver is a
 // nullable `IConfigSection?`, and a prototype method cannot dispatch on
@@ -58,11 +58,11 @@ export function exists(section: IConfigSection | undefined): boolean {
  */
 export const ConfigExtensions = {
   /**
-   * The specified connection string from `configuration`. Shorthand for
-   * `configuration.getSection("ConnectionStrings").get(name)`.
+   * The specified connection string from `config`. Shorthand for
+   * `config.getSection("ConnectionStrings").get(name)`.
    */
-  getConnectionString(configuration: IConfig, name: string): string | undefined {
-    return configuration.getSection('ConnectionStrings').get(name);
+  getConnectionString(config: IConfig, name: string): string | undefined {
+    return config.getSection('ConnectionStrings').get(name);
   },
 
   /**
@@ -70,8 +70,8 @@ export const ConfigExtensions = {
    * {@link IConfig.getSection} -- which always returns a (possibly
    * empty) section -- this throws when no matching section {@link exists}.
    */
-  getRequiredSection(configuration: IConfig, key: string): IConfigSection {
-    const section = configuration.getSection(key);
+  getRequiredSection(config: IConfig, key: string): IConfigSection {
+    const section = config.getSection(key);
     if (exists(section)) {
       return section;
     }
@@ -79,7 +79,7 @@ export const ConfigExtensions = {
   },
 
   /**
-   * Enumerates the key/value pairs within `configuration` as a depth-first walk
+   * Enumerates the key/value pairs within `config` as a depth-first walk
    * of the section tree. When `makePathsRelative` is `true`, the enumeration
    * root's path is trimmed from the front of each returned key (and the root's
    * own -- now empty -- key is skipped).
@@ -92,23 +92,23 @@ export const ConfigExtensions = {
    * reached through `getChildren()` is a section by the interface contract.
    */
   *asEnumerable(
-    configuration: IConfig,
+    config: IConfig,
     // Annotated: AugmentationSet<R>'s index signature (`...args: any[]`)
     // contextually types the parameter `any`, beating default-value inference.
     makePathsRelative: boolean = false,
   ): Generator<[key: string, value: string | undefined]> {
-    const rootIsSection = configuration instanceof ConfigSection;
+    const rootIsSection = config instanceof ConfigSection;
     // Trim the root section's path plus its trailing delimiter; a non-section
     // root contributes no prefix.
-    const prefixLength = makePathsRelative && rootIsSection ? configuration.path.length + 1 : 0;
+    const prefixLength = makePathsRelative && rootIsSection ? config.path.length + 1 : 0;
 
-    const stack: IConfig[] = [configuration];
+    const stack: IConfig[] = [config];
     while (stack.length) {
       const node = stack.pop()!;
-      const isSection = node === configuration ? rootIsSection : true;
+      const isSection = node === config ? rootIsSection : true;
       // Skip the enumeration root itself when trimming paths -- its relative
       // key would be empty.
-      if (isSection && (!makePathsRelative || node !== configuration)) {
+      if (isSection && (!makePathsRelative || node !== config)) {
         const section = node as IConfigSection;
         yield [section.path.substring(prefixLength), section.value];
       }

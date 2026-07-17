@@ -114,7 +114,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
       addXmlFile(): void;
       addFile(): void;
       addMemory(): void;
-      addConfiguration(): void;
+      addConfig(): void;
     }
 
     // Both concrete classes are decorated up front, BEFORE any provider registers
@@ -131,7 +131,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
       'addXmlFile',
       'addFile',
       'addMemory',
-      'addConfiguration',
+      'addConfig',
     ] as const;
 
     // Each provider registers its ONE differently-named member in a SEPARATE

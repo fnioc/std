@@ -49,7 +49,7 @@ import { MemoryConfigSource } from './memory/MemoryConfigSource';
  * ConfigManager IS an IConfigBuilder too, so `@augment` gives it
  * the same OPEN-receiver decoration as ConfigBuilder -- every provider
  * package's add* sugar (addJsonFile, addEnvironmentVariables,
- * addConfiguration, ...) reaches `manager.` exactly as it reaches `builder.`
+ * addConfig, ...) reaches `manager.` exactly as it reaches `builder.`
  * (docs/decisions.md §38).
  */
 @augment(nameof<IConfigBuilder>())

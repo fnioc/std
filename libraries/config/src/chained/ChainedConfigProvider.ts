@@ -16,7 +16,7 @@ import type { ChainedConfigSource } from './ChainedConfigSource';
  * carries -- neither a plain section nor `IConfig` has it. Mirrors the
  * reference's `_config is IConfigRoot` type test.
  */
-function isConfigurationRoot(config: IConfig): config is IConfigRoot {
+function isConfigRoot(config: IConfig): config is IConfigRoot {
   return typeof (config as Partial<IConfigRoot>).reload === 'function';
 }
 
@@ -27,8 +27,8 @@ export class ChainedConfigProvider implements IConfigProvider, Disposable {
   #initialLoadCompleted = false;
 
   public constructor(source: ChainedConfigSource) {
-    this.#config = source.configuration;
-    this.#shouldDisposeConfig = source.shouldDisposeConfiguration;
+    this.#config = source.config;
+    this.#shouldDisposeConfig = source.shouldDisposeConfig;
   }
 
   /** Case-insensitive lookup, delegated to the chained configuration. Empty-string values count as a miss. */
@@ -60,7 +60,7 @@ export class ChainedConfigProvider implements IConfigProvider, Disposable {
       return;
     }
 
-    if (isConfigurationRoot(this.#config)) {
+    if (isConfigRoot(this.#config)) {
       for (const provider of this.#config.providers) {
         provider.load();
       }
@@ -96,7 +96,7 @@ export class ChainedConfigProvider implements IConfigProvider, Disposable {
     return this.constructor.name;
   }
 
-  /** Disposes the chained configuration, but only when the source opted in via `shouldDisposeConfiguration`. */
+  /** Disposes the chained configuration, but only when the source opted in via `shouldDisposeConfig`. */
   public [Symbol.dispose](): void {
     if (this.#shouldDisposeConfig) {
       (this.#config as Partial<Disposable>)[Symbol.dispose]?.();

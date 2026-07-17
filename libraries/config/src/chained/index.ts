@@ -1,11 +1,11 @@
-// Chained provider barrel + the addConfiguration augmentation.
+// Chained provider barrel + the addConfig augmentation.
 //
 // Like the Memory provider, Chained lives in the same package as
 // ConfigBuilder, but its sugar method is installed via the SAME
 // augmentation pattern the external provider packages use (TS declaration
 // merging + a registry registration) -- ConfigBuilder itself carries no
 // add* sugar of its own, only augmentations, even for the in-package Chained
-// provider. `addConfiguration` targets the OPEN `IConfigBuilder`
+// provider. `addConfig` targets the OPEN `IConfigBuilder`
 // receiver, so it registers against nameof<IConfigBuilder>()
 // (docs/decisions.md §38) rather than installing directly -- both concrete
 // builders (ConfigBuilder and ConfigManager) are decorated with
@@ -32,7 +32,7 @@ export { ChainedConfigSource } from './ChainedConfigSource';
 declare module '@rhombus-std/config' {
   interface ConfigBuilder<T = IndexedSection> {
     /** Adds `config` as a chained configuration source. */
-    addConfiguration(config: IConfig, shouldDisposeConfiguration?: boolean): this;
+    addConfig(config: IConfig, shouldDisposeConfig?: boolean): this;
   }
 }
 
@@ -41,7 +41,7 @@ declare module '@rhombus-std/config' {
 declare module '../ConfigManager' {
   interface ConfigManager {
     /** Adds `config` as a chained configuration source. */
-    addConfiguration(config: IConfig, shouldDisposeConfiguration?: boolean): this;
+    addConfig(config: IConfig, shouldDisposeConfig?: boolean): this;
   }
 }
 
@@ -51,12 +51,12 @@ declare module '../ConfigManager' {
 // form. `TBuilder` is bounded by "has an add() that returns itself" rather than
 // pinned to ConfigBuilder<T> -- see memory/index.ts for the full rationale.
 export const ChainedBuilderExtensions = {
-  addConfiguration<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
+  addConfig<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     config: IConfig,
-    shouldDisposeConfiguration = false,
+    shouldDisposeConfig = false,
   ): TBuilder {
-    return builder.add(new ChainedConfigSource({ configuration: config, shouldDisposeConfiguration }));
+    return builder.add(new ChainedConfigSource({ config, shouldDisposeConfig }));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 

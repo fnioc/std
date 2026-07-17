@@ -69,7 +69,7 @@ export const XmlStreamParser = {
   /** Parses XML `content` into ordered `[key, value]` pairs. */
   parse(content: string): [key: string, value: string][] {
     const root = buildTree(content);
-    return provideConfiguration(root);
+    return provideConfig(root);
   },
 };
 
@@ -245,7 +245,7 @@ function* parseAttributes(text: string): Generator<[name: string, value: string]
 
 // -- walk the tree into configuration pairs --------------------------------
 
-function provideConfiguration(root: XmlElement | undefined): [key: string, value: string][] {
+function provideConfig(root: XmlElement | undefined): [key: string, value: string][] {
   const pairs: [key: string, value: string][] = [];
   if (root === undefined) {
     return pairs;
