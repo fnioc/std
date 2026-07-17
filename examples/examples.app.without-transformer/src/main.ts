@@ -32,7 +32,7 @@ import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
 import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
-import { Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
+import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 import { ConfigurationConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
@@ -47,9 +47,9 @@ import { addCasualServices, GREETING_TOKEN } from '@rhombus-std/examples.lib.wit
 // `ConfigurationRoot` into the hosted worker below.
 const BANNER_TOKEN = 'Promise<@rhombus-std/examples.contracts:IBanner>';
 const REPORT_TOKEN = '@rhombus-std/examples.contracts:IServerReport';
-const SERVER_OPTIONS_TOKEN = '@rhombus-std/options:Options<@rhombus-std/examples.contracts:ServerOptions>';
+const SERVER_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/examples.contracts:ServerOptions>';
 const POLICY_TOKEN = '@rhombus-std/examples.contracts:GreetingPolicy';
-const POLICY_OPTIONS_TOKEN = '@rhombus-std/options:Options<@rhombus-std/examples.contracts:GreetingPolicy>';
+const POLICY_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/examples.contracts:GreetingPolicy>';
 const CONFIG_TOKEN = '@rhombus-std/config:ConfigurationRoot';
 
 // ── config ───────────────────────────────────────────────────────────────────
@@ -66,12 +66,12 @@ function buildConfig(): ConfigurationRoot {
 }
 
 /**
- * Assembles the reactive `Options<ServerOptions>`: the full OptionsFactory
+ * Assembles the reactive `IOptions<ServerOptions>`: the full OptionsFactory
  * pipeline (config-bind configure → coercion post-configure → range validate)
  * wrapped in `Options.watch` over the config's reload token. Token-free, so it is
  * identical to the with-transformer app's assembly.
  */
-function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
+function makeServerOptions(config: ConfigurationRoot): IOptions<ServerOptions> {
   const bindConfig: IConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
@@ -137,7 +137,7 @@ class InteropWorker implements IHostedLifecycleService {
     const report = this.#resolver.resolve<IServerReport>(REPORT_TOKEN);
     const banner = await this.#resolver.resolveAsync<IBanner>(BANNER_TOKEN);
 
-    const optionsView = this.#resolver.resolve<Options<ServerOptions>>(SERVER_OPTIONS_TOKEN);
+    const optionsView = this.#resolver.resolve<IOptions<ServerOptions>>(SERVER_OPTIONS_TOKEN);
     const updates: string[] = [];
     const subscription = optionsView.subscribe!((next: ServerOptions) => {
       updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);
@@ -206,7 +206,7 @@ services.addFactory(REPORT_TOKEN, makeServerReport, [[RESOLVER_TOKEN]]).as('sing
 // The reactive server options — one shared live instance.
 services.addValue(SERVER_OPTIONS_TOKEN, serverOptions);
 
-// A config-independent policy, wrapped as a static Options<GreetingPolicy> via
+// A config-independent policy, wrapped as a static IOptions<GreetingPolicy> via
 // the augmentation's explicit addOptions(token, tToken) verb.
 services.addValue(POLICY_TOKEN, { excitement: '!' } satisfies GreetingPolicy);
 services.addOptions(POLICY_OPTIONS_TOKEN, POLICY_TOKEN).as('singleton');

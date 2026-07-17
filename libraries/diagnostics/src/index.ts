@@ -23,8 +23,8 @@
 // (DefaultMeterFactory, MetricsSubscriptionManager, DefaultActivitySourceFactory,
 // the NoOpOptions/SubscriptionActivator startup hooks) -- none of which has an
 // analog here (no Meter/Instrument/Activity/ActivitySource runtime). What is
-// ported is registering the resolvable `Options<MetricsOptions>` /
-// `Options<TracingOptions>` assembly (so a consumer can resolve the assembled,
+// ported is registering the resolvable `IOptions<MetricsOptions>` /
+// `IOptions<TracingOptions>` assembly (so a consumer can resolve the assembled,
 // config-reactive rule set), the per-listener configuration factory
 // (IMetricListenerConfigurationFactory / ActivityListenerConfigurationFactory,
 // which merges the `{listenerName}` sections of every configuration bound via
@@ -69,7 +69,7 @@ declare module '@rhombus-std/di.core' {
     /**
      * Registers the metrics options assembly and, if `configure` is supplied,
      * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
-     * {@link METRICS_OPTIONS_TOKEN} yields an `Options<MetricsOptions>` assembled
+     * {@link METRICS_OPTIONS_TOKEN} yields an `IOptions<MetricsOptions>` assembled
      * from every rule / config-bind step registered through the builder, reactive
      * to configuration reloads. Mirrors `MetricsServiceExtensions.AddMetrics`
      * (the listener/subscription runtime it also wires has no analog here).
@@ -78,7 +78,7 @@ declare module '@rhombus-std/di.core' {
     /**
      * Registers the tracing options assembly and, if `configure` is supplied,
      * runs it over a concrete {@link ITracingBuilder}. After this call resolving
-     * {@link TRACING_OPTIONS_TOKEN} yields an `Options<TracingOptions>` assembled
+     * {@link TRACING_OPTIONS_TOKEN} yields an `IOptions<TracingOptions>` assembled
      * from every rule / config-bind step registered through the builder, reactive
      * to configuration reloads. Mirrors `TracingServiceExtensions.AddTracing`.
      */
@@ -102,7 +102,7 @@ export const MetricsServiceExtensions = {
     manifest: ServiceManifestClass<string>,
     configure?: Func<[IMetricsBuilder], void>,
   ): ServiceManifestClass<string> {
-    // Register the resolvable `Options<MetricsOptions>` assembly at singleton
+    // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
     // scope. Calling addMetrics twice re-registers the (identical) factory --
     // last-wins bare-token resolution keeps that correct; the reference guards it
     // with TryAdd, a `has`/`try*` surface di.core does not expose (options.augmentations'

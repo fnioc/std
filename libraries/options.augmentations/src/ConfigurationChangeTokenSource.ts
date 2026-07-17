@@ -1,6 +1,6 @@
 // ConfigurationChangeTokenSource -- ported from MEO's
 // ConfigurationChangeTokenSource<TOptions>. Wraps an IConfiguration and hands
-// back its reload token, so an assembled reactive `Options<T>` re-runs its
+// back its reload token, so an assembled reactive `IOptions<T>` re-runs its
 // pipeline whenever the configuration reloads (#6).
 
 import type { IConfiguration } from '@rhombus-std/config.core';
@@ -11,7 +11,7 @@ import type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 /**
  * An {@link IOptionsChangeTokenSource} backed by an {@link IConfiguration}:
  * {@link getChangeToken} returns the configuration's reload token, so a change
- * to the configuration (a provider reload) notifies the reactive `Options<T>`
+ * to the configuration (a provider reload) notifies the reactive `IOptions<T>`
  * watching it. Mirrors MEO's `ConfigurationChangeTokenSource<TOptions>`.
  */
 export class ConfigurationChangeTokenSource implements IOptionsChangeTokenSource {

@@ -1,10 +1,10 @@
-// End-to-end: bind a configuration section into an Options<T>, resolve it from
+// End-to-end: bind a configuration section into an IOptions<T>, resolve it from
 // the container, and observe reactivity across a reload -- the config -> Options
 // bridge (#40) exercised through its public authoring surface only.
 
 import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -22,7 +22,7 @@ function rootWith(data: Record<string, string>): IConfigurationRoot {
 }
 
 describe('configure — section-to-options binding', () => {
-  test("resolving Options<T> binds the section's values into the base", () => {
+  test("resolving IOptions<T> binds the section's values into the base", () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
     const services = new ServiceManifest<'singleton'>();
@@ -30,7 +30,7 @@ describe('configure — section-to-options binding', () => {
     services.configure(TOKEN, config.getSection('Widget'));
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
   });
@@ -43,7 +43,7 @@ describe('configure — section-to-options binding', () => {
     services.configure(TOKEN, config.getSection('Widget'));
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
 
     const seen: WidgetOptions[] = [];
     const registration = options.subscribe!((value) => seen.push(value));
@@ -77,7 +77,7 @@ describe('configure — section-to-options binding', () => {
     services.configure(TOKEN, config.getSection('Extra'));
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
   });
@@ -89,7 +89,7 @@ describe('addOptions — no configured source', () => {
     services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' })).as('singleton');
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
 
     expect(options.value).toEqual({ Url: 'default' });
     expect(options.subscribe).toBeUndefined();

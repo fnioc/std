@@ -17,7 +17,7 @@
 // Both registrations mirror the reference's `AddOptions()` + `Configure(setup)`
 // + singleton-service composition through the repo's options-assembly pipeline
 // (the LOGGER_FILTER_OPTIONS_TOKEN precedent): `addOptions` registers the
-// `Options<T>` assembly for the options token, `setup` becomes a LAZY code
+// `IOptions<T>` assembly for the options token, `setup` becomes a LAZY code
 // configure step (it runs when the options first resolve, not at registration),
 // and the cache factory resolves the assembled options plus -- when logging is
 // registered -- the `ILoggerFactory`, mirroring the reference's
@@ -40,7 +40,7 @@ import '@rhombus-std/options.augmentations';
 import type { IResolver, IServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
 import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
@@ -76,7 +76,7 @@ declare module '@rhombus-std/di.core' {
     /**
      * Registers a singleton {@link MemoryCache} as `IMemoryCache` (resolvable
      * at {@link MEMORY_CACHE_TOKEN}), assembled from the
-     * `Options<MemoryCacheOptions>` pipeline keyed at
+     * `IOptions<MemoryCacheOptions>` pipeline keyed at
      * {@link MEMORY_CACHE_OPTIONS_TOKEN} and -- when logging is registered --
      * the `ILoggerFactory`. `setup` joins the options pipeline as a configure
      * step, so it runs LAZILY when the options first resolve. Returns the
@@ -90,7 +90,7 @@ declare module '@rhombus-std/di.core' {
      * a default in-memory implementation frameworks that require a
      * distributed cache can rely on. Single-server only: items live in this
      * process's memory. `setup` joins the
-     * `Options<MemoryDistributedCacheOptions>` pipeline (keyed at
+     * `IOptions<MemoryDistributedCacheOptions>` pipeline (keyed at
      * {@link MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN}) as a lazy configure
      * step. Returns the manifest for chaining.
      */
@@ -113,7 +113,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     manifest: ServiceManifestClass<string>,
     setup?: Func<[MemoryCacheOptions], void>,
   ): ServiceManifestClass<string> {
-    // The reference `AddOptions()` analog: register the Options<T> assembly
+    // The reference `AddOptions()` analog: register the IOptions<T> assembly
     // for the options token (§14/§15). Singleton, like every registration the
     // reference makes here.
     manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions()).as('singleton');
@@ -131,7 +131,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     manifest
       .tryAddFactory(MEMORY_CACHE_TOKEN, (resolver: IResolver) =>
         new MemoryCache(
-          resolver.resolve<Options<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
+          resolver.resolve<IOptions<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
         ), [[RESOLVER_TOKEN]])
       .as('singleton');
@@ -154,7 +154,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     manifest
       .tryAddFactory(DISTRIBUTED_CACHE_TOKEN, (resolver: IResolver) =>
         new MemoryDistributedCache(
-          resolver.resolve<Options<MemoryDistributedCacheOptions>>(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN),
+          resolver.resolve<IOptions<MemoryDistributedCacheOptions>>(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
         ), [[RESOLVER_TOKEN]])
       .as('singleton');

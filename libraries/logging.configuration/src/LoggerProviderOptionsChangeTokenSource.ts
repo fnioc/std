@@ -13,7 +13,7 @@ import type { ILoggerProviderConfiguration } from './ILoggerProviderConfiguratio
 
 /**
  * A change-token source wired to provider `TProvider`'s configuration section,
- * so an `Options<TOptions>` bound to it re-binds when the section reloads —
+ * so an `IOptions<TOptions>` bound to it re-binds when the section reloads —
  * registered per options token by
  * `LoggerProviderOptions.registerProviderOptions`.
  */

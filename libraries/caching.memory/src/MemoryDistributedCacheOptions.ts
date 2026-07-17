@@ -3,12 +3,12 @@
 // defaults to 200 MB (the memory-backed IDistributedCache sizes each entry by
 // its byte length, so the default bounds the cache at 200 MB of payload).
 
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { MemoryCacheOptions } from './MemoryCacheOptions';
 
 /** Options for a {@link MemoryDistributedCache}. */
 export class MemoryDistributedCacheOptions extends MemoryCacheOptions
-  implements Options<MemoryDistributedCacheOptions>
+  implements IOptions<MemoryDistributedCacheOptions>
 {
   public constructor() {
     super();

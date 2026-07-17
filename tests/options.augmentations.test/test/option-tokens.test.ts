@@ -6,7 +6,7 @@
 
 import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigurationChangeTokenSource, configureStepToken, postConfigureStepToken,
   validateStepToken } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -43,7 +43,7 @@ describe('the public slot-token grammar', () => {
     services.addValue(changeTokenSourceToken(TOKEN), new ConfigurationChangeTokenSource(config));
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
     expect(options.value).toEqual({ Url: 'http://first' });
 
     const seen: WidgetOptions[] = [];

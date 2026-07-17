@@ -6,7 +6,7 @@
 // It extends di.tests.integration's harness: the options story additionally
 // links @rhombus-std/options, @rhombus-std/options.augmentations (and its runtime
 // deps config.core + primitives) and adds the satellite plugin, so the emitted
-// `services.addOptions<T>()` lowering actually resolves an `Options<T>`.
+// `services.addOptions<T>()` lowering actually resolves an `IOptions<T>`.
 
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';

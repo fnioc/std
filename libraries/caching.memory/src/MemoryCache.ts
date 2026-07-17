@@ -28,7 +28,7 @@
 import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache,
   MemoryCacheStatistics } from '@rhombus-std/caching.core';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
@@ -74,7 +74,7 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
    * works -- it is its own `Options` accessor).
    * @param loggerFactory Optional; a {@link NullLogger} is used when omitted.
    */
-  public constructor(optionsAccessor: Options<MemoryCacheOptions>, loggerFactory?: ILoggerFactory) {
+  public constructor(optionsAccessor: IOptions<MemoryCacheOptions>, loggerFactory?: ILoggerFactory) {
     this.#options = optionsAccessor.value;
     this.#logger = loggerFactory ? loggerFactory.createLogger('MemoryCache') : NullLogger;
     this.#lastExpirationScan = this.#now();

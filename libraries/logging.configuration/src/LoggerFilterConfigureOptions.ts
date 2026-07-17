@@ -3,7 +3,7 @@
 // (`Configure` / `LoadDefaultConfigValues` / `LoadRules` / `TryGetSwitch`).
 //
 // A LAZY configure step (a `IConfigureOptions<LoggerFilterOptions>` pipeline
-// participant): nothing is read until the `Options<LoggerFilterOptions>`
+// participant): nothing is read until the `IOptions<LoggerFilterOptions>`
 // assembly materializes the value, and every re-run (a configuration reload)
 // re-walks the tree. Expected shape:
 //

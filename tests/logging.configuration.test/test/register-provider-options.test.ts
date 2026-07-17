@@ -7,13 +7,13 @@
 // The whole chain the reference wires through DI is exercised: the step
 // classes are constructed lazily by the container (their dep is the CLOSED
 // `ILoggerProviderConfiguration<TProvider>` resolved through the open
-// template), so nothing touches configuration until `Options<T>` materializes.
+// template), so nothing touches configuration until `IOptions<T>` materializes.
 
 import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.configuration';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -43,7 +43,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<FakeProviderOptions>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
 
     // Only FakeProvider's section binds; the configure step deep-merges onto
     // the makeBase value.
@@ -59,7 +59,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<FakeProviderOptions>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
     expect(options.value.Format).toBe('json');
 
     const seen: FakeProviderOptions[] = [];
@@ -88,7 +88,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<FakeProviderOptions>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
 
     expect(options.value).toEqual({ Format: 'json', MaxDepth: '9' });
   });

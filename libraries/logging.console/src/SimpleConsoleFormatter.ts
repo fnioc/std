@@ -6,7 +6,7 @@
 //             Request received
 //
 // The reference's `IOptionsMonitor<TOptions>` constructor parameter is the
-// repo's collapsed `Options<TOptions>` (subscribe-capable when reloadable).
+// repo's collapsed `IOptions<TOptions>` (subscribe-capable when reloadable).
 // The `BufferedLogRecord` fast path is NOT ported — `IBufferedLogger` /
 // `BufferedLogRecord` don't exist in @rhombus-std/logging.core yet (residual,
 // see the package index). The Android/mobile color suppression is skipped: a
@@ -14,7 +14,7 @@
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ConsoleColor } from './AnsiParser';
 import { ConsoleControlCharacterSanitizer } from './ConsoleControlCharacterSanitizer';
@@ -77,7 +77,7 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
   /** The live options — reassigned on reload (internal, as upstream). */
   public formatterOptions: SimpleConsoleFormatterOptions;
 
-  public constructor(options: Options<SimpleConsoleFormatterOptions>) {
+  public constructor(options: IOptions<SimpleConsoleFormatterOptions>) {
     super(ConsoleFormatterNames.simple);
     this.formatterOptions = options.value;
     this.#optionsReloadToken = options.subscribe?.((reloaded) => {

@@ -28,7 +28,7 @@ export interface IGreeting {
 /**
  * The application's server options — the type the config sources bind into,
  * post-configure coerces, and validate guards. Delivered as a reactive
- * `Options<ServerOptions>` that re-runs the pipeline on every config reload.
+ * `IOptions<ServerOptions>` that re-runs the pipeline on every config reload.
  * PascalCase members mirror the PascalCase configuration keys they bind from.
  */
 export interface ServerOptions {
@@ -40,7 +40,7 @@ export interface ServerOptions {
 /**
  * A config-INDEPENDENT policy value delivered through the explicit-wrap
  * `addOptions<T>()` verb (#34): a pre-built default is registered and wrapped as
- * a static `Options<GreetingPolicy>` — the MEO-faithful config-free options
+ * a static `IOptions<GreetingPolicy>` — the MEO-faithful config-free options
  * shape. The greeting report reads it to punctuate each greeting.
  */
 export interface GreetingPolicy {

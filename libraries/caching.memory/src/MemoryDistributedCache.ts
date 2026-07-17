@@ -13,7 +13,7 @@
 
 import type { DistributedCacheEntryOptions, IDistributedCache } from '@rhombus-std/caching.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import { MemoryCache } from './MemoryCache';
@@ -37,7 +37,7 @@ export class MemoryDistributedCache implements IDistributedCache {
    * when omitted.
    */
   public constructor(
-    optionsAccessor: Options<MemoryDistributedCacheOptions>,
+    optionsAccessor: IOptions<MemoryDistributedCacheOptions>,
     loggerFactory?: ILoggerFactory,
   ) {
     this.#memCache = new MemoryCache(optionsAccessor.value, loggerFactory);

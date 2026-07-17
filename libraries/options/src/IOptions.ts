@@ -1,4 +1,4 @@
-// Options<T> -- the collapsed accessor described in docs/decisions.md §4.2.
+// IOptions<T> -- the collapsed accessor described in docs/decisions.md §4.2.
 //
 // MEO splits this into three: IOptions<T> (singleton snapshot),
 // IOptionsSnapshot<T> (scoped snapshot), and IOptionsMonitor<T> (reactive,
@@ -8,7 +8,7 @@
 // distinct accessor type -- IOptions and IOptionsSnapshot collapse into one
 // `value` getter. The reactive capability (IOptionsMonitor.OnChange) is
 // orthogonal to lifetime and survives as `subscribe` -- present only when the
-// source backing this Options<T> is reload-capable.
+// source backing this IOptions<T> is reload-capable.
 //
 // NOT built here (see README): named options (MEO's `.Get(name)` -- §4.2
 // treats named options as distinct registrations instead). The
@@ -23,7 +23,7 @@ import type { Func } from '@rhombus-toolkit/func';
  * `IOptions<T>` / `IOptionsSnapshot<T>` / `IOptionsMonitor<T>.CurrentValue`
  * into one accessor. See the module doc for why.
  */
-export interface Options<T> {
+export interface IOptions<T> {
   /**
    * The current value. For a static snapshot ({@link Options.of}) this
    * never changes; for a reactive instance ({@link Options.watch}) this
@@ -33,7 +33,7 @@ export interface Options<T> {
 
   /**
    * Registers `listener` to be called whenever the underlying value
-   * changes. Present only when the source backing this `Options<T>` is
+   * changes. Present only when the source backing this `IOptions<T>` is
    * reload-capable -- absent (`undefined`) for a static snapshot.
    *
    * @param listener Called with the new value each time it changes.
@@ -43,15 +43,15 @@ export interface Options<T> {
 }
 
 /**
- * A static `Options<T>` snapshot: `value` never changes and `subscribe` is
+ * A static `IOptions<T>` snapshot: `value` never changes and `subscribe` is
  * absent. Mirrors MEO's `Options.Create`.
  */
-function of<T>(value: T): Options<T> {
+function of<T>(value: T): IOptions<T> {
   return { value };
 }
 
 /**
- * A reactive `Options<T>` backed by a change-token producer. `value`
+ * A reactive `IOptions<T>` backed by a change-token producer. `value`
  * re-reads `getValue()` on every access -- so it always reflects the latest
  * state, mirroring `IOptionsMonitor<T>.CurrentValue`. `subscribe` wires
  * `listener` through {@link ChangeToken.onChange}, which re-subscribes to
@@ -62,7 +62,7 @@ function of<T>(value: T): Options<T> {
  * @param produceToken Produces the change token to watch next -- see
  * {@link ChangeTokenProducer}.
  */
-function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): Options<T> {
+function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): IOptions<T> {
   return {
     get value(): T {
       return getValue();

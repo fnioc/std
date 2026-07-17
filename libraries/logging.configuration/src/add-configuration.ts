@@ -15,17 +15,17 @@
 // IS the standalone call surface.
 //
 // What the one-arg form registers — the faithful LAZY pipeline (nothing binds
-// until the `Options<LoggerFilterOptions>` assembly materializes; a
+// until the `IOptions<LoggerFilterOptions>` assembly materializes; a
 // configuration reload re-runs it):
 //
 //   - the no-arg provider-configuration services (the reference's first line);
 //   - a `LoggerFilterConfigureOptions` configure step + a
-//     `ConfigurationChangeTokenSource` at the `Options<LoggerFilterOptions>`
+//     `ConfigurationChangeTokenSource` at the `IOptions<LoggerFilterOptions>`
 //     token's pipeline slots (the reference's `IConfigureOptions` /
 //     `IOptionsChangeTokenSource` singletons);
 //   - the `LoggingConfiguration` holder (accumulated — the provider-
 //     configuration factory injects the whole collection);
-//   - the `Options<LoggerFilterOptions>` ASSEMBLY itself. The reference gets
+//   - the `IOptions<LoggerFilterOptions>` ASSEMBLY itself. The reference gets
 //     this from `AddLogging`'s ambient `services.AddOptions()` open-generic
 //     infrastructure; per-token assembly registration is explicit here, and
 //     `addLogging` does not register it, so `addConfiguration` does.
@@ -33,8 +33,8 @@
 //     behavior as the reference's TryAdd (di.core has no add-if-absent
 //     surface; see @rhombus-std/logging's addLogging precedent note).
 //
-// The options token is derived INLINE (`nameof<Options<LoggerFilterOptions>>()`
-// → `"@rhombus-std/options:Options<@rhombus-std/logging:LoggerFilterOptions>"`,
+// The options token is derived INLINE (`nameof<IOptions<LoggerFilterOptions>>()`
+// → `"@rhombus-std/options:IOptions<@rhombus-std/logging:LoggerFilterOptions>"`,
 // docs §40) — the same token the logging family's own consumers derive from
 // the type, with no shared const.
 
@@ -42,7 +42,7 @@ import type { IConfiguration } from '@rhombus-std/config.core';
 import { closeToken, typeArg } from '@rhombus-std/di.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigurationChangeTokenSource,
   configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
@@ -98,7 +98,7 @@ export const LoggingBuilderExtensions = {
 
     // ── The LoggerFilterOptions pipeline (the LoggingBuilderExtensions
     // mirror): assembly + custom configure step + reload change-token source.
-    const optionsToken = nameof<Options<LoggerFilterOptions>>();
+    const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
     builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
     builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(configuration));
     builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigurationChangeTokenSource(configuration));

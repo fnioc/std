@@ -7,7 +7,7 @@
 // @rhombus-std/options.augmentations config-binding pattern: a IConfigureOptions
 // step (the MetricsConfigureOptions parse) plus a ConfigurationChangeTokenSource
 // wired to the configuration's reload token, so the assembled reactive
-// `Options<MetricsOptions>` re-parses on reload. The reference additionally
+// `IOptions<MetricsOptions>` re-parses on reload. The reference additionally
 // registers a `MetricsConfiguration` marker singleton per call -- mirrored as a
 // METRICS_CONFIGURATION_TOKEN collection value, which the
 // MetricListenerConfigurationFactory `addMetrics` registers enumerates to build

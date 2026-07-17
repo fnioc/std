@@ -11,14 +11,14 @@
 // writes a bare `import "@rhombus-std/logging";`.
 //
 // What it registers (the reference AddLogging, now full-parity):
-//   - the `Options<LoggerFilterOptions>` ASSEMBLY at LOGGER_FILTER_OPTIONS_TOKEN
+//   - the `IOptions<LoggerFilterOptions>` ASSEMBLY at LOGGER_FILTER_OPTIONS_TOKEN
 //     (the reference's `services.AddOptions()` open-generic infrastructure;
 //     per-token assembly registration is explicit here);
 //   - a default configure step pinning the min level to `Information`
 //     (DefaultLoggerLevelConfigureOptions — the reference's default
 //     `IConfigureOptions<LoggerFilterOptions>`);
 //   - the singleton `ILoggerFactory -> LoggerFactory`, INJECTED with the
-//     enumerable provider set and the assembled `Options<LoggerFilterOptions>`;
+//     enumerable provider set and the assembled `IOptions<LoggerFilterOptions>`;
 //   - the open `ILogger<$1> -> Logger<$1>` registration (the reference's
 //     `Singleton(typeof(ILogger<>), typeof(Logger<>))`), the closing type's
 //     token flowing in through `typeArg(1)`;
@@ -96,7 +96,7 @@ export const LoggingServiceCollectionExtensions = {
     );
 
     // ILoggerFactory, injected with the enumerable provider set and the
-    // assembled Options<LoggerFilterOptions>.
+    // assembled IOptions<LoggerFilterOptions>.
     manifest.add(
       LOGGER_FACTORY_TOKEN,
       LoggerFactory,

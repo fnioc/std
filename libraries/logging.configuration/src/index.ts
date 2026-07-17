@@ -2,7 +2,7 @@
 // logging configuration project's analog, at full surface parity:
 //
 //   - `addConfiguration` (the `LoggingBuilderExtensions` augmentation set) —
-//     the lazy, reload-reactive `Options<LoggerFilterOptions>` pipeline plus
+//     the lazy, reload-reactive `IOptions<LoggerFilterOptions>` pipeline plus
 //     (no-arg arity) the provider-configuration services;
 //   - the provider-configuration surface: `ILoggerProviderConfigurationFactory`
 //     / `ILoggerProviderConfiguration<T>` and their concrete classes;

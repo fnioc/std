@@ -1,16 +1,16 @@
 // Lowering unit tests for the `addOptions<T>()` sugar.
 //
-// The sugar rewrites to the explicit verb `addOptions(token(Options<T>),
+// The sugar rewrites to the explicit verb `addOptions(token(IOptions<T>),
 // token(T))`: the wrapper token is the closed-generic form over the SAME element
 // token any `resolve<T>()` / `add<T>()` would derive, so the two arguments are
-// relationally locked (`wrapper === "@rhombus-std/options:Options<" + element + ">"`).
+// relationally locked (`wrapper === "@rhombus-std/options:IOptions<" + element + ">"`).
 
 import { DiagnosticCode } from '@rhombus-std/di.transformer.options/_/diagnostics';
 import { describe, expect, test } from 'bun:test';
 import { addOptionsArgs, fixtureWithoutOptions, optionsFixture, transform } from './harness';
 
 describe('addOptions<T>() lowering', () => {
-  test('lowers to addOptions(token(Options<T>), token(T)) over a package-public Options base', () => {
+  test('lowers to addOptions(token(IOptions<T>), token(T)) over a package-public Options base', () => {
     const { output, diagnostics } = transform(
       optionsFixture(`
         interface AppConfig { host: string; port: number; }
@@ -22,9 +22,9 @@ describe('addOptions<T>() lowering', () => {
     const args = addOptionsArgs(output);
     expect(args).toBeDefined();
     // The element token is whatever this program derives for AppConfig; the
-    // wrapper is the closed Options<> over exactly that — locked relationally.
+    // wrapper is the closed IOptions<> over exactly that — locked relationally.
     // The Options base tokenizes package-public regardless of T's own tier.
-    expect(args!.wrapper).toBe(`@rhombus-std/options:Options<${args!.element}>`);
+    expect(args!.wrapper).toBe(`@rhombus-std/options:IOptions<${args!.element}>`);
     expect(args!.element).toContain('AppConfig');
     // The `<T>` type argument is dropped from the CALL.
     expect(output).toContain('services.addOptions(');

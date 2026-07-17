@@ -1,4 +1,4 @@
-// Behavior tests for Options<T> -- the collapsed accessor (docs/decisions.md
+// Behavior tests for IOptions<T> -- the collapsed accessor (docs/decisions.md
 // §4.2). `Options.of` is a static snapshot; `Options.watch` is the reactive
 // form.
 //
@@ -11,7 +11,7 @@
 // call -- made during the fire itself -- observes a live, not-yet-aborted
 // signal.
 
-import { Options } from '@rhombus-std/options/_/options';
+import { Options } from '@rhombus-std/options/_/IOptions';
 import { CancellationChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

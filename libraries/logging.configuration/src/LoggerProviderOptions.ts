@@ -18,12 +18,12 @@
 // `ILoggerProviderConfiguration<TProvider>` token as the dep slot — resolved
 // through the open template the no-arg `addConfiguration` registers, so the
 // whole chain stays lazy: nothing touches configuration until the
-// `Options<TOptions>` assembly materializes.
+// `IOptions<TOptions>` assembly materializes.
 //
 // Divergences from the reference, both platform-forced:
 //   - `<TOptions, TProvider>` reify as runtime tokens (`optionsToken`,
 //     `providerType`) — type arguments erase here. A transformer consumer
-//     derives them inline (`nameof<Options<MyOptions>>()`,
+//     derives them inline (`nameof<IOptions<MyOptions>>()`,
 //     `nameof<MyProvider>()`); a hand-written one passes the literal strings.
 //   - The reference's `TryAddEnumerable` dedupes repeat registrations by
 //     implementation type; di.core registrations are append-only, so calling
@@ -31,7 +31,7 @@
 //     (an idempotent re-bind — harmless, but not deduped).
 
 import type { IServiceManifest, Token, Typeof } from '@rhombus-std/di.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
 import { loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
 import { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
@@ -50,13 +50,13 @@ export const LoggerProviderOptions = {
    * `addOptions(optionsToken, …)` assembly registration for the token.
    *
    * @param services The registration builder to register on.
-   * @param optionsToken The `Options<TOptions>` token the steps attach to —
+   * @param optionsToken The `IOptions<TOptions>` token the steps attach to —
    * the same token the `addOptions`/`configure` pipeline uses.
    * @param providerType The provider type's token (`nameof<TProvider>()`).
    */
   registerProviderOptions<TOptions, TProvider>(
     services: IServiceManifest,
-    optionsToken: Typeof<Options<TOptions>>,
+    optionsToken: Typeof<IOptions<TOptions>>,
     providerType: Typeof<TProvider>,
   ): void {
     const providerConfiguration: Token = loggerProviderConfigurationToken(providerType);

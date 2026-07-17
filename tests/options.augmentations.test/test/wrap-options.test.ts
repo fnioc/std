@@ -1,10 +1,10 @@
-// The explicit `addOptions(token, tToken)` verb (#34): register an Options<T>
+// The explicit `addOptions(token, tToken)` verb (#34): register an IOptions<T>
 // that WRAPS the already-bound T resolved from tToken. This is the complete,
 // transformer-free form the `addOptions<T>()` sugar lowers to — exercised here
 // through the public authoring surface with hand-written tokens (no transformer).
 
 import { ServiceManifest } from '@rhombus-std/di';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -13,10 +13,10 @@ interface Widget {
 }
 
 const WIDGET_TOKEN = 'test:Widget';
-const OPTIONS_TOKEN = '@rhombus-std/options:Options<test:Widget>';
+const OPTIONS_TOKEN = '@rhombus-std/options:IOptions<test:Widget>';
 
 describe('addOptions(token, tToken) — wrap the bound T', () => {
-  test('resolving the wrapper delivers an Options<T> over the bound T', () => {
+  test('resolving the wrapper delivers an IOptions<T> over the bound T', () => {
     const services = new ServiceManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
@@ -24,7 +24,7 @@ describe('addOptions(token, tToken) — wrap the bound T', () => {
     services.addOptions(OPTIONS_TOKEN, WIDGET_TOKEN).as('singleton');
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<Widget>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<Widget>>(OPTIONS_TOKEN);
 
     // The wrapped value IS the instance bound at the element token.
     expect(options.value).toBe(widget);
@@ -37,7 +37,7 @@ describe('addOptions(token, tToken) — wrap the bound T', () => {
       readonly kind = 'v8';
     }
     const ENGINE_TOKEN = 'test:Engine';
-    const ENGINE_OPTIONS = '@rhombus-std/options:Options<test:Engine>';
+    const ENGINE_OPTIONS = '@rhombus-std/options:IOptions<test:Engine>';
 
     const services = new ServiceManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
@@ -46,7 +46,7 @@ describe('addOptions(token, tToken) — wrap the bound T', () => {
 
     const provider = services.build().createScope('singleton');
     const engine = provider.resolve<Engine>(ENGINE_TOKEN);
-    const options = provider.resolve<Options<Engine>>(ENGINE_OPTIONS);
+    const options = provider.resolve<IOptions<Engine>>(ENGINE_OPTIONS);
 
     expect(options.value).toBe(engine);
     expect(options.value.kind).toBe('v8');

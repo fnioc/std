@@ -3,7 +3,7 @@
 //
 // Like every `@rhombus-std/di.transformer` authored form, `addOptions<T>()` NEVER
 // executes — the transformer rewrites it to the explicit verb
-// `addOptions(token(Options<T>), token(T))` before runtime. It is therefore a
+// `addOptions(token(IOptions<T>), token(T))` before runtime. It is therefore a
 // PURE TYPING, living here (not in `@rhombus-std/options.augmentations`'s runtime
 // surface) so it lights up only when this transformer is in the TypeScript
 // program. Without the transformer the 0-arg form does not exist — which is the
@@ -26,9 +26,9 @@ import type { AddBuilder } from '@rhombus-std/di.core';
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
-     * Type-driven options sugar — registers an `Options<T>` at `token(Options<T>)`
+     * Type-driven options sugar — registers an `IOptions<T>` at `token(IOptions<T>)`
      * that wraps the `T` resolved from `token(T)`. Lowers to the explicit
-     * `addOptions(token(Options<T>), token(T))` (`@rhombus-std/options.augmentations`).
+     * `addOptions(token(IOptions<T>), token(T))` (`@rhombus-std/options.augmentations`).
      * Never runs post-transform. Returns the `.as(scope)` continuation so the
      * lifetime is chosen at the registration site.
      */

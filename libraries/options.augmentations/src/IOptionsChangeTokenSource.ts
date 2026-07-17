@@ -7,7 +7,7 @@ import type { IChangeToken } from '@rhombus-std/primitives';
 
 /**
  * A source of {@link IChangeToken}s that notify when the value backing an
- * `Options<T>` changes. The reactive `Options<T>` an assembly delivers watches
+ * `IOptions<T>` changes. The reactive `IOptions<T>` an assembly delivers watches
  * every source registered for its options token; each fire re-runs the
  * pipeline and pushes the fresh value to subscribers.
  */

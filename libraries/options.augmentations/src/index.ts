@@ -6,13 +6,13 @@
 // through the OPEN-set registry), exactly how @rhombus-std/config.json adds
 // `addJsonFile` to ConfigurationBuilder:
 //
-//   - `addOptions<T>(token, makeBase)` -- registers the `Options<T>` assembly
+//   - `addOptions<T>(token, makeBase)` -- registers the `IOptions<T>` assembly
 //     (the OptionsFactory pipeline, §4.5) for `token`. Returns the `.as(scope)`
 //     continuation so the consumer picks the registration lifetime (§4.2: with
 //     open-ended scopes, Options is registered explicitly at a chosen scope).
 //   - `configure(token, section)` -- registers a config-bind configure step
 //     PLUS a change-token source wired to the section's reload token, so the
-//     delivered `Options<T>` binds the section and reacts to reloads (#6).
+//     delivered `IOptions<T>` binds the section and reacts to reloads (#6).
 //     Mirrors ME's Configure<TOptions>(IConfiguration) =
 //     NamedConfigureFromConfigurationOptions + ConfigurationChangeTokenSource.
 //
@@ -61,12 +61,12 @@ type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token; };
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
-     * Registers an `Options<T>` at `token` that WRAPS the `T` resolved from
+     * Registers an `IOptions<T>` at `token` that WRAPS the `T` resolved from
      * `tToken`. The explicit, complete, transformer-free verb (#34): internally
      * just `addFactory(token, (t) => Options.of(t), [[tToken]])`, so di gains no
      * new primitive. The type-driven `addOptions<T>()` sugar
      * (`@rhombus-std/di.transformer.options`) lowers to exactly this call,
-     * deriving `token` = `token(Options<T>)` and `tToken` = `token(T)`.
+     * deriving `token` = `token(IOptions<T>)` and `tToken` = `token(T)`.
      *
      * Distinct from the pipeline overload below by its second argument's type: a
      * `Token` (string) here, a `() => T` base factory there. Returns the
@@ -75,7 +75,7 @@ declare module '@rhombus-std/di.core' {
      */
     addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
     /**
-     * Registers the `Options<T>` assembly for `token`: resolving `token`
+     * Registers the `IOptions<T>` assembly for `token`: resolving `token`
      * assembles the value from all configure/post-configure/validate steps and
      * change-token sources registered for it (the OptionsFactory pipeline).
      * `makeBase` produces the base instance each pipeline run starts from.

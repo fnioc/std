@@ -18,7 +18,7 @@
 // `builder.Services.Add(Singleton<IConfigureOptions<LoggerFilterOptions>>(new
 // DefaultLoggerLevelConfigureOptions(level)))`: it appends a
 // `DefaultLoggerLevelConfigureOptions` configure step to the
-// `Options<LoggerFilterOptions>` pipeline (keyed at LOGGER_FILTER_OPTIONS_TOKEN),
+// `IOptions<LoggerFilterOptions>` pipeline (keyed at LOGGER_FILTER_OPTIONS_TOKEN),
 // so the assembled options — the one the LoggerFactory consumes — pick up the
 // new minimum level in registration order.
 
@@ -53,7 +53,7 @@ export const LoggingBuilderExtensions = {
   /**
    * Sets a minimum {@link LogLevel} for log messages — appends a
    * {@link DefaultLoggerLevelConfigureOptions} configure step to the
-   * `Options<LoggerFilterOptions>` pipeline, the port of the reference's
+   * `IOptions<LoggerFilterOptions>` pipeline, the port of the reference's
    * `builder.Services.Add(IConfigureOptions<LoggerFilterOptions>)`.
    */
   setMinimumLevel(builder: ILoggingBuilder, level: LogLevel): ILoggingBuilder {

@@ -3,7 +3,7 @@
 // Build-time only. A `@rhombus-std/di.transformer` SATELLITE (not a standalone
 // family transformer — see docs/decisions.md §15): it lowers the type-driven
 // `addOptions<T>()` sugar to the explicit verb
-// `addOptions(token(Options<T>), token(T))` that `@rhombus-std/options.augmentations`
+// `addOptions(token(IOptions<T>), token(T))` that `@rhombus-std/options.augmentations`
 // installs. Pure token-lowering (di's kind of transform: type → token); it emits
 // di registrations and has zero value without di, so it lives as a di.transformer
 // satellite that IMPORTS di.transformer's token derivation — never the di runtime.

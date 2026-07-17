@@ -10,7 +10,7 @@
 //
 // Per SourceFile the visitor walks depth-first; when a visited node is a
 // `<manifest>.addOptions<T>()` sugar call, it is rewritten to the explicit verb
-// `<manifest>.addOptions(token(Options<T>), token(T))` with the `<T>` type
+// `<manifest>.addOptions(token(IOptions<T>), token(T))` with the `<T>` type
 // argument dropped. On a derivation failure the ORIGINAL call is left in place
 // and a hard diagnostic surfaces — never a silent partial.
 //
@@ -54,7 +54,7 @@ export function createTransformerFactory(
 }
 
 /**
- * Rewrite `<manifest>.addOptions<T>()` → `<manifest>.addOptions("<Options<T>>", "<T>")`.
+ * Rewrite `<manifest>.addOptions<T>()` → `<manifest>.addOptions("<IOptions<T>>", "<T>")`.
  * On any derivation failure returns the original call and emits a diagnostic.
  */
 function rewriteAddOptions(
@@ -76,7 +76,7 @@ function rewriteAddOptions(
         typeArg,
         DiagnosticCode.UnlowerableAddOptions,
         'cannot lower addOptions<T>(): the @rhombus-std/options `Options` type is '
-          + 'not in the program, so the Options<T> wrapper token cannot be derived. '
+          + 'not in the program, so the IOptions<T> wrapper token cannot be derived. '
           + 'Ensure @rhombus-std/options is a dependency.',
       ),
     );

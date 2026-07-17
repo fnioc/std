@@ -12,7 +12,7 @@
 // still honors.
 //
 // The scenario, everything in concert:
-//   - config sources feed a reactive Options<ServerOptions> through the full
+//   - config sources feed a reactive IOptions<ServerOptions> through the full
 //     configure → post-configure → validate pipeline (#41);
 //   - both example libraries' services are registered into ONE container — the
 //     with-transformer lib's FormalGreeting + report factory + async banner, and
@@ -48,7 +48,7 @@ import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
 import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
-import { Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
+import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 // Brings the config-bind configure step + the runtime `addOptions` verb the
 // `addOptions<T>()` sugar lowers to. Side-effect import — MUST stay for the
 // prototype patch to land.
@@ -78,13 +78,13 @@ function buildConfig(): ConfigurationRoot {
 }
 
 /**
- * Assembles the reactive `Options<ServerOptions>`: the full OptionsFactory
+ * Assembles the reactive `IOptions<ServerOptions>`: the full OptionsFactory
  * pipeline (config-bind configure → coercion post-configure → range validate)
  * wrapped in `Options.watch` over the config's reload token, so `.value` re-runs
  * the pipeline live and `subscribe` fires on every reload. This assembly needs
  * no DI token, so it is identical across both dialects' apps.
  */
-function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
+function makeServerOptions(config: ConfigurationRoot): IOptions<ServerOptions> {
   const bindConfig: IConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
@@ -153,7 +153,7 @@ class InteropWorker implements IHostedLifecycleService {
     const report = this.#resolver.resolve<IServerReport>();
     const banner = await this.#resolver.resolveAsync<IBanner>();
 
-    const optionsView = this.#resolver.resolve<Options<ServerOptions>>();
+    const optionsView = this.#resolver.resolve<IOptions<ServerOptions>>();
     const updates: string[] = [];
     const subscription = optionsView.subscribe!((next: ServerOptions) => {
       updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);
@@ -222,9 +222,9 @@ services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
 
 // The reactive server options — registered as a value so every consumer shares
 // the one live instance.
-services.addValue<Options<ServerOptions>>(serverOptions);
+services.addValue<IOptions<ServerOptions>>(serverOptions);
 
-// A config-independent policy, delivered as a static Options<GreetingPolicy>
+// A config-independent policy, delivered as a static IOptions<GreetingPolicy>
 // through the explicit-wrap addOptions<T>() sugar (#34). The satellite lowers
 // `addOptions<T>()` but not the trailing `.as<>()`, so the lifetime is named in
 // the value form (`"singleton"` is a scope name, not a token).

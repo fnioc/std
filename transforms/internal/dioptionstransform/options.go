@@ -13,11 +13,11 @@ import (
 // a package named `@rhombus-std/options` is the ONLY way that base can arise — it
 // also names exactly what `resolveOptionsBase` looks for. The emitted wrapper is
 // always `optionsBaseToken<element>`.
-const optionsBaseToken = "@rhombus-std/options:Options"
+const optionsBaseToken = "@rhombus-std/options:IOptions"
 
 const (
 	optionsPackageName = "@rhombus-std/options"
-	optionsExportName  = "Options"
+	optionsExportName  = "IOptions"
 )
 
 // packageInfo is a package the resolver walked to: its declared name, its
@@ -32,7 +32,7 @@ type packageInfo struct {
 // returns its base token, or ok=false when it is absent (the caller then leaves
 // every sugar call in place with a diagnostic).
 //
-// A package-public `Options` base is `@rhombus-std/options:Options` exactly when
+// A package-public `Options` base is `@rhombus-std/options:IOptions` exactly when
 // a generic interface named `Options` is reachable through the ROOT export of a
 // package named `@rhombus-std/options` — which is what this scan checks against
 // the checker export graph (so a barrel that re-exports a deeply-declared

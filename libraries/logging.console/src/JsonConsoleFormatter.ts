@@ -14,7 +14,7 @@
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
@@ -102,7 +102,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
   /** The live options — reassigned on reload (internal, as upstream). */
   public formatterOptions: JsonConsoleFormatterOptions;
 
-  public constructor(options: Options<JsonConsoleFormatterOptions>) {
+  public constructor(options: IOptions<JsonConsoleFormatterOptions>) {
     super(ConsoleFormatterNames.json);
     this.formatterOptions = options.value;
     this.#optionsReloadToken = options.subscribe?.((reloaded) => {

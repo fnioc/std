@@ -12,7 +12,7 @@
 // §12) is the idiomatic accumulator, so `validateOnStart` appends the target
 // token to a collection slot and this validator is injected with the live
 // {@link IResolver} plus that resolved list. Forcing evaluation is
-// `resolver.resolve<Options<unknown>>(token).value`: resolving assembles the
+// `resolver.resolve<IOptions<unknown>>(token).value`: resolving assembles the
 // value through the OptionsFactory pipeline (running validate steps, §4.5), and
 // reading `.value` additionally re-runs the pipeline for a reactive
 // (`Options.watch`) registration -- either shape throws OptionsValidationError on
@@ -20,8 +20,8 @@
 
 import type { IResolver, Token } from '@rhombus-std/di.core';
 
+import type { IOptions } from './IOptions.js';
 import type { IStartupValidator } from './IStartupValidator.js';
-import type { Options } from './options.js';
 import { OptionsValidationError } from './OptionsValidationError.js';
 
 /**
@@ -55,7 +55,7 @@ export class StartupValidator implements IStartupValidator {
       try {
         // Resolving assembles the value (running validate steps); reading
         // `.value` re-runs the pipeline for a reactive registration.
-        void this.#resolver.resolve<Options<unknown>>(token).value;
+        void this.#resolver.resolve<IOptions<unknown>>(token).value;
       } catch (error) {
         if (error instanceof OptionsValidationError) {
           failures.push(error);

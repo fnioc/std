@@ -84,7 +84,7 @@ beforeAll(() => {
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(DI_OPTIONS, join(nm, '@rhombus-std', 'di.transformer.options'));
 
-  // The package-public Options<T> whose base the wrapper token is built over:
+  // The package-public IOptions<T> whose base the wrapper token is built over:
   // an `@rhombus-std/options`-named package exporting a generic Options interface
   // at its ROOT specifier — exactly the shape resolveOptionsBase recognizes.
   const options = join(nm, '@rhombus-std', 'options');
@@ -93,7 +93,7 @@ beforeAll(() => {
     join(options, 'package.json'),
     JSON.stringify({ name: '@rhombus-std/options', version: '1.0.0', exports: { '.': './index.js' } }),
   );
-  writeFileSync(join(options, 'index.d.ts'), `export interface Options<T> { readonly value: T; }\n`);
+  writeFileSync(join(options, 'index.d.ts'), `export interface IOptions<T> { readonly value: T; }\n`);
 
   // A package-public element type, to prove the wrapper composes over a Tier-1
   // element token (not just an app-internal one).
@@ -132,10 +132,10 @@ beforeAll(() => {
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
-import type { Options } from "@rhombus-std/options";
+import type { IOptions } from "@rhombus-std/options";
 import { IFoo } from "your-lib/contracts";
 import type { Nested, IServiceManifestBase } from "@rhombus-std/di.core";
-export type __KeepOptions<T> = Options<T>;
+export type __KeepOptions<T> = IOptions<T>;
 declare const services: IServiceManifestBase<"singleton">;
 interface AppConfig { host: string; port: number; }
 
@@ -211,7 +211,7 @@ export const viaNamespace = nested.addOptions<AppConfig>();
 describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity', () => {
   test('app-internal element → wrapper over rootless element token', () => {
     expect(app).toContain(
-      `addOptions("@rhombus-std/options:Options<./app:AppConfig>", "./app:AppConfig")`,
+      `addOptions("@rhombus-std/options:IOptions<./app:AppConfig>", "./app:AppConfig")`,
     );
     // No manifest sugar call keeps its `<T>` type argument (the `declare class`
     // overloads and the untouched non-manifest call below legitimately do).
@@ -224,14 +224,14 @@ describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity',
 
   test('package-public element → wrapper over Tier-1 import-specifier token', () => {
     expect(app).toContain(
-      `addOptions("@rhombus-std/options:Options<your-lib/contracts:IFoo>", "your-lib/contracts:IFoo")`,
+      `addOptions("@rhombus-std/options:IOptions<your-lib/contracts:IFoo>", "your-lib/contracts:IFoo")`,
     );
   });
 
   test('every receiver whose addOptions resolves to di.core is lowered', () => {
     // Interface-typed variable, subinterface, class extends-merge, and generic
     // bound all lower over the app-internal element token.
-    const wrapperCount = app.split('@rhombus-std/options:Options<./app:AppConfig>').length - 1;
+    const wrapperCount = app.split('@rhombus-std/options:IOptions<./app:AppConfig>').length - 1;
     // appInternal + chained + viaSubinterface + viaClassMerge + viaGeneric = 5.
     expect(wrapperCount).toBe(5);
   });
@@ -247,7 +247,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity',
     expect(app).toContain('other.addOptions<');
     expect(app).toContain('local.addOptions<');
     // Total wrappers: the 5 app-internal calls above + packagePublic (IFoo) = 6.
-    const wrapperCount = app.split('@rhombus-std/options:Options<').length - 1;
+    const wrapperCount = app.split('@rhombus-std/options:IOptions<').length - 1;
     expect(wrapperCount).toBe(6);
   });
 

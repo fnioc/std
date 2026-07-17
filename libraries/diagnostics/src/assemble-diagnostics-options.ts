@@ -6,20 +6,20 @@
 //
 // It resolves every `IConfigureOptions<T>` step and every IOptionsChangeTokenSource
 // registered for the family (as di collections), builds `T` by running the steps
-// over a fresh base, and delivers a reactive `Options<T>` (Options.watch) when any
+// over a fresh base, and delivers a reactive `IOptions<T>` (Options.watch) when any
 // change-token source is present -- so a config reload re-runs the parse -- or a
 // static snapshot (Options.of) otherwise.
 
 import type { IResolver, Token } from '@rhombus-std/di.core';
 import { collectionToken } from '@rhombus-std/diagnostics.core';
-import { type IConfigureOptions, Options } from '@rhombus-std/options';
+import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { CompositeChangeToken } from './composite-change-token';
 
 /**
- * Assembles the `Options<T>` for a diagnostics options type from the configure
+ * Assembles the `IOptions<T>` for a diagnostics options type from the configure
  * steps and change-token sources registered at `configureToken` / `sourceToken`.
  *
  * @param resolver The live provider view (injected as the factory's `IResolver`).
@@ -32,7 +32,7 @@ export function assembleDiagnosticsOptions<T>(
   configureToken: Token,
   sourceToken: Token,
   makeBase: Func<[], T>,
-): Options<T> {
+): IOptions<T> {
   const steps = resolver.resolve<readonly IConfigureOptions<T>[]>(collectionToken(configureToken));
   const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(collectionToken(sourceToken));
 

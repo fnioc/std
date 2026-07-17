@@ -1,10 +1,10 @@
 // End-to-end proof of the #40 seam: @rhombus-std/config's getReloadToken()
 // feeds @rhombus-std/options' Options.watch() directly -- config.reload()
-// (or a provider-driven refresh) is observable through a plain Options<T>
+// (or a provider-driven refresh) is observable through a plain IOptions<T>
 // subscription, with no config-specific glue in `options` itself.
 
 import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
-import { Options, type Options as OptionsType } from '@rhombus-std/options';
+import { type IOptions as OptionsType, Options } from '@rhombus-std/options';
 import { describe, expect, test } from 'bun:test';
 
 function watchPort(root: IConfigurationRoot): OptionsType<number | undefined> {

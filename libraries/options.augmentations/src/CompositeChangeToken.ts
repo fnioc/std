@@ -3,7 +3,7 @@
 // not the composite yet; porting the composite into primitives is out of scope
 // for #40 -- YAGNI until a second consumer needs it).
 //
-// An assembled reactive `Options<T>` may watch MULTIPLE change-token sources
+// An assembled reactive `IOptions<T>` may watch MULTIPLE change-token sources
 // (two `configure` calls binding two sections). `Options.watch` takes ONE
 // producer, so the sources' tokens compose into one token that has changed when
 // any child has, and registers a callback against every child.

@@ -5,8 +5,8 @@
 // diagnostics it raised. ts-patch is the production runner; tests invoke the
 // factory against a Program directly (it needs `ts.Program` + `addDiagnostic`).
 //
-// A fixture ships a virtual `@rhombus-std/options` package (so the `Options<T>`
-// wrapper base tokenizes package-public as `@rhombus-std/options:Options`) plus an
+// A fixture ships a virtual `@rhombus-std/options` package (so the `IOptions<T>`
+// wrapper base tokenizes package-public as `@rhombus-std/options:IOptions`) plus an
 // AMBIENT `declare module '@rhombus-std/di.core'` file declaring
 // `IServiceManifestBase` with the `addOptions` overloads. The matcher anchors on
 // that declaration site (§41), so the receiver is recognized because its
@@ -212,9 +212,9 @@ declare module "@rhombus-std/di.core" {
  * program for the wrapper-base lookup.
  */
 const APP_HEADER = `
-import type { Options } from "@rhombus-std/options";
+import type { IOptions } from "@rhombus-std/options";
 import type { IServiceManifestBase } from "@rhombus-std/di.core";
-export type __KeepOptions<T> = Options<T>;
+export type __KeepOptions<T> = IOptions<T>;
 declare const services: IServiceManifestBase<"singleton">;
 `;
 
@@ -230,7 +230,7 @@ export function optionsFixture(appSource: string): VirtualFiles {
       version: '1.0.0',
       exports: { '.': './index.js' },
     }),
-    '/proj/node_modules/@rhombus-std/options/index.d.ts': 'export interface Options<T> { readonly value: T; }\n',
+    '/proj/node_modules/@rhombus-std/options/index.d.ts': 'export interface IOptions<T> { readonly value: T; }\n',
     [DI_CORE_PATH]: DI_CORE_AMBIENT,
     [APP_PATH]: APP_HEADER + appSource,
   };
@@ -255,7 +255,7 @@ declare const services: IServiceManifestBase<"singleton">;
 /**
  * The two string arguments of the single `addOptions(a, b)` call in `output`, or
  * `undefined` when the call is not present / not lowered. Quote-aware over the
- * closed-generic `Options<...>` token (which contains no quotes at this layer).
+ * closed-generic `IOptions<...>` token (which contains no quotes at this layer).
  */
 export function addOptionsArgs(
   output: string,

@@ -8,7 +8,7 @@
 // bare form, which was implemented but had no manifest-surface caller (#128).
 
 import { ServiceManifest } from '@rhombus-std/di';
-import type { IPostConfigureOptions, Options } from '@rhombus-std/options';
+import type { IOptions, IPostConfigureOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -30,7 +30,7 @@ describe('postConfigure — bare form', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
 
     // 'base!' proves ordering: the post-configure ran after the configure and
     // appended to its result, not before it.
@@ -51,7 +51,7 @@ describe('postConfigure — bare form', () => {
     services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, step);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
 
     expect(options.value.suffix).toBe('base!');
   });
@@ -69,7 +69,7 @@ describe('postConfigure — bare form', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<Options<WidgetOptions>>(OPTIONS_TOKEN);
+    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
 
     expect(options.value.suffix).toBe('base-a-b');
   });
