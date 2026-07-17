@@ -21,7 +21,7 @@
 
 import { createTokenContext, type TokenContext, type TokenContextOptions } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 import { isAddOptionsSugarCall } from './match.js';
 import { optionTokensFor, resolveOptionsBase } from './option-tokens.js';
 
@@ -32,7 +32,7 @@ import { optionTokensFor, resolveOptionsBase } from './option-tokens.js';
  */
 export function createTransformerFactory(
   program: ts.Program,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
   options: TokenContextOptions = {},
 ): ts.TransformerFactory<ts.SourceFile> {
   const tokenContext = createTokenContext(program, options);
@@ -61,7 +61,7 @@ function rewriteAddOptions(
   call: ts.CallExpression,
   program: ts.Program,
   ctx: TokenContext,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
   sourceFile: ts.SourceFile,
   factory: ts.NodeFactory,
 ): ts.Expression {
@@ -139,7 +139,7 @@ export function transform(
   _config: unknown,
   extras: ProgramTransformerExtras,
 ): { before: ts.TransformerFactory<ts.SourceFile>; } {
-  const sink: DiagnosticSink = {
+  const sink: IDiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };
   return { before: createTransformerFactory(program, sink) };

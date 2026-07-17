@@ -24,11 +24,11 @@ import { type CheckContext, checkExtractedRegistration } from './checks.js';
 import { type ConstructorExtraction, type DepContext, extractCtorReferenceSignature, extractFactoryReferenceSignature,
   extractFromExpression, extractInstantiatedSignature, extractSignatureFromFunction, isFactorySlot, isLiteralSlot,
   isTypeArgSlot, isUnionSlot, type Signature, type Slot } from './deps.js';
-import { DiagnosticCode, type DiagnosticSink, error, warning } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink, warning } from './diagnostics.js';
 
 export interface LowerContext extends CheckContext, DepContext {
   readonly factory: ts.NodeFactory;
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
   readonly sourceFile: ts.SourceFile;
 }
 

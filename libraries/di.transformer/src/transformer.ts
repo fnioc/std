@@ -20,7 +20,7 @@ import { createTokenContext, deriveToken, injectTokenFor, singletonValue, type T
 import type { Func } from '@rhombus-toolkit/func';
 import ts from 'typescript';
 import { IS_SERVICE_INTERFACES, memberAnchoredOnDiCore, RESOLVE_INTERFACES } from './anchor.js';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 import { literalExpression, type LowerContext, lowerStatement } from './lower.js';
 
 /**
@@ -30,7 +30,7 @@ import { literalExpression, type LowerContext, lowerStatement } from './lower.js
  */
 export function createTransformerFactory(
   program: ts.Program,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
   options: { readFile?: Func<[string], string | undefined>; } = {},
 ): ts.TransformerFactory<ts.SourceFile> {
   const tokenContext = createTokenContext(program, options);
@@ -44,7 +44,7 @@ export function createTransformerFactory(
 
 interface FileContext extends TokenContext {
   readonly factory: ts.NodeFactory;
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
 }
 
 function transformSourceFile(
@@ -365,7 +365,7 @@ export function transform(
   _config: unknown,
   extras: ProgramTransformerExtras,
 ): { before: ts.TransformerFactory<ts.SourceFile>; } {
-  const sink: DiagnosticSink = {
+  const sink: IDiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };
   return { before: createTransformerFactory(program, sink) };

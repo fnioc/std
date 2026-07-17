@@ -20,4 +20,4 @@ export { createTransformerFactory, default as transformer, transform } from './t
 
 // Diagnostic surface -- exported so downstream tooling (and tests) can assert on
 // stable codes without matching message text.
-export { type Diagnostic, DiagnosticCode, type DiagnosticSink } from './diagnostics.js';
+export { type Diagnostic, DiagnosticCode, type IDiagnosticSink } from './diagnostics.js';

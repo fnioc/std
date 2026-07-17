@@ -11,7 +11,7 @@ import ts from 'typescript';
 export type Diagnostic = ts.Diagnostic;
 
 /** The sink the transformer writes diagnostics to (ts-patch supplies this). */
-export interface DiagnosticSink {
+export interface IDiagnosticSink {
   addDiagnostic(diagnostic: Diagnostic): number;
 }
 

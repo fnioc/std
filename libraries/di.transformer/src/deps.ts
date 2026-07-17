@@ -16,7 +16,7 @@ import { type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, isPureL
   literalUnionTokenForOptional, type LiteralValue, singletonValue, type TokenContext, tokenForReturnType,
   tokenForType } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 
 /**
  * A factory slot in an extracted signature — the transformer's in-memory mirror
@@ -184,7 +184,7 @@ export interface ConstructorExtraction {
  * Extends TokenContext with the diagnostic sink and anchor source file.
  */
 export interface DepContext extends TokenContext {
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
   readonly sourceFile: ts.SourceFile;
 }
 
