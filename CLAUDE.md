@@ -422,21 +422,27 @@ shared root fragments `tsconfig.lib.json` (typecheck profile) / `tsconfig.tspc.j
 stage); `include`, `rootDir`/`outDir`, and a self-augmenting core's `customConditions: ["<pkg>-source"]`
 (§78) stay leaf-side.
 
-### Two transformer engines — dual-track (§41)
+### Two transformer engines — dual-track (§41/§90)
 
 The four authoring-time transformers exist twice. The **ts-patch/TS5** sources
 (`libraries/*.transformer`) stay the **lint/typecheck gate** (`tspc --noEmit`, eslint) — unchanged.
 A **Go/`ttsc`** port under the root `transforms/` module
-(`go.mod` `github.com/fnioc/std/transforms`, one `cmd/ttsc-*` per plugin, shared `internal/`) is
-the **build/emit engine**: it lowers `nameof`/`add`/`addOptions`/`withType` into the shipped JS.
-The two must lower **identically — token strings byte-for-byte** (the parity invariant); code shape
-may differ. Go comes from **mise only** (`mise.toml` pin), never system-wide.
+(`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std` linking all stages,
+shared `internal/`) is the **build/emit engine**: it lowers `nameof`/`add`/`addOptions`/`withType`
+into the shipped JS. The two must lower **identically — token strings byte-for-byte** (the parity
+invariant); code shape may differ. Go comes from **mise only** (`mise.toml` pin), never
+system-wide.
 
-- **Descriptor wiring** mirrors the canonical `ttsc` recipe: each transformer keeps its ts-patch
-  `.` entry and adds a `./ttsc` subpath → thin `ttsc.mjs` shim that `path.resolve`s the Go
-  `cmd/ttsc-<name>` source, plus a `"ttsc": { "plugin": { "transform": "…/ttsc" } }` marker.
-- **One native backend per pass** — `ttsc` errors on two plugins, so a consumer needing both di +
-  di-options wires ONE aggregate host (`cmd/ttsc-di-app`, `di.transformer.options/ttsc-app`).
+- **Descriptor wiring** — every transformer's `./ttsc` subpath descriptor resolves to the SAME
+  `cmd/ttsc-std` source dir (so `ttsc` dedupes every consumer to one cache key), plus a
+  per-consumer `--plugins-json` list in `tsconfig.ttsc.json` declaring which stages that consumer
+  wants; `ttsc-std` activates only the declared stages at runtime, always executing in the
+  hardcoded canonical order (nameof → di → di-options → config) regardless of declaration order
+  (§90).
+- **One native backend per pass** — `ttsc` still errors on two plugins, but that's moot now: every
+  consumer's descriptor resolves to the one shared `ttsc-std` source, so there is only ever one
+  plugin in play; no per-combination aggregate host (§90 rejects that shape — see the decision for
+  why).
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside `Bun.build`: `buildPackage`'s
   `ttscProject` (parallel to `tspcProject`, one XOR the other) via `ttscBunPlugin`. Toolchain pinned
