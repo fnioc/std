@@ -21,7 +21,8 @@ describe('repo eslint config wires the inline-authoring rule', () => {
     expect(rule).toBeDefined();
     // Flat config normalizes severity to a numeric level in position 0; 2 = error.
     expect(Array.isArray(rule) ? rule[0] : rule).toBe(2);
-  });
+    // Computing the repo's full type-aware flat config from cold takes >5s in CI.
+  }, 60_000);
 
   test('the rule actually fires on a violating body under that filename', async () => {
     // A two-statement body violates singleReturn; lintText runs the real config's
@@ -35,5 +36,5 @@ describe('repo eslint config wires the inline-authoring rule', () => {
     const [result] = await eslint.lintText(violating, { filePath: INLINE_FILE });
     const ids = result.messages.map((m) => m.ruleId);
     expect(ids).toContain('rhombus-inline/inline-authoring');
-  });
+  }, 60_000);
 });
