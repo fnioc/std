@@ -154,12 +154,12 @@ describe('dependency extraction', () => {
     expect(depsArrayFor(output, 'Svc')).toBe('[["./app:Logger"]]');
   });
 
-  test('a `Resolver`-typed param emits the intrinsic provider token, not a scope slot', () => {
-    // The provider is a normally-resolvable type now: a `Resolver` parameter
+  test('a `IResolver`-typed param emits the intrinsic provider token, not a scope slot', () => {
+    // The provider is a normally-resolvable type now: a `IResolver` parameter
     // tokenizes like any other named type (no dedicated `{ scope: true }` slot).
     // The derived token is the one the engine recognizes as the provider.
     // A REAL `@rhombus-std/di.core` package (not the ambient module) so a
-    // `Resolver` param tokenizes as the package `@rhombus-std/di.core:Resolver`.
+    // `IResolver` param tokenizes as the package `@rhombus-std/di.core:IResolver`.
     // Its index self-augments a `declare module` block with the sugar overload, so
     // the `services` receiver's `add` still anchors on the declaration site.
     const files = {
@@ -170,14 +170,14 @@ describe('dependency extraction', () => {
       }),
       '/proj/node_modules/@rhombus-std/di.core/index.d.ts': `
         export interface AddBuilder<Scopes extends string = string> { as(scope: Scopes): void; }
-        export interface RequiredResolver { resolve<T>(token: string): T; }
-        export interface ServiceQuery { isService(token: string): boolean; }
-        export interface Resolver extends RequiredResolver, ServiceQuery {}
-        export interface ServiceProvider<S extends string = string> extends Resolver {}
+        export interface IRequiredResolver { resolve<T>(token: string): T; }
+        export interface IServiceQuery { isService(token: string): boolean; }
+        export interface IResolver extends IRequiredResolver, IServiceQuery {}
+        export interface IServiceProvider<S extends string = string> extends IResolver {}
         export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
           add(token: string, ctor: new(...a: any[]) => unknown, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
         }
-        export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
+        export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, IServiceProvider<S>>;
         declare module "@rhombus-std/di.core" {
           interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
             add<I>(ctor: new(...a: any[]) => I): AddBuilder<Scopes>;
@@ -189,17 +189,17 @@ describe('dependency extraction', () => {
         declare global { const services: ServiceManifest<string>; }
       `,
       '/proj/src/app.ts': `
-        import type { Resolver } from "@rhombus-std/di.core";
+        import type { IResolver } from "@rhombus-std/di.core";
         interface IMarker {}
         class Svc implements IMarker {
-          constructor(sp: Resolver) {}
+          constructor(sp: IResolver) {}
         }
         services.add<IMarker>(Svc).as<"singleton">();
       `,
     };
     const { outputs } = transform(files, { entry: ['/proj/src/app.ts'] });
     const out = outputs['/proj/src/app.ts']!;
-    expect(depsArrayFor(out, 'Svc')).toBe('[["@rhombus-std/di.core:Resolver"]]');
+    expect(depsArrayFor(out, 'Svc')).toBe('[["@rhombus-std/di.core:IResolver"]]');
     expect(out).not.toContain('scope: true');
   });
 });

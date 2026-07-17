@@ -10,7 +10,7 @@
 // change-token source is present -- so a config reload re-runs the parse -- or a
 // static snapshot (Options.of) otherwise.
 
-import type { Resolver, Token } from '@rhombus-std/di.core';
+import type { IResolver, Token } from '@rhombus-std/di.core';
 import { collectionToken } from '@rhombus-std/diagnostics.core';
 import { type ConfigureOptions, Options } from '@rhombus-std/options';
 import type { OptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
@@ -22,13 +22,13 @@ import { CompositeChangeToken } from './composite-change-token';
  * Assembles the `Options<T>` for a diagnostics options type from the configure
  * steps and change-token sources registered at `configureToken` / `sourceToken`.
  *
- * @param resolver The live provider view (injected as the factory's `Resolver`).
+ * @param resolver The live provider view (injected as the factory's `IResolver`).
  * @param configureToken The collection slot holding the `ConfigureOptions<T>` steps.
  * @param sourceToken The collection slot holding the change-token sources.
  * @param makeBase Produces the base instance each build starts from.
  */
 export function assembleDiagnosticsOptions<T>(
-  resolver: Resolver,
+  resolver: IResolver,
   configureToken: Token,
   sourceToken: Token,
   makeBase: Func<[], T>,

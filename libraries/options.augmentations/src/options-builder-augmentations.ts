@@ -20,7 +20,7 @@
 // built-in {@link StartupValidator} under `nameof<IStartupValidator>()`. The host
 // resolves that (optionally) and calls `validate()`.
 
-import { type Resolver, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass,
+import { type IResolver, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass,
   type Token } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
@@ -74,7 +74,7 @@ export const OptionsBuilderExtensions = {
     // (the `addLogging` "add, not TryAdd" precedent).
     manifest.addFactory(
       nameof<IStartupValidator>(),
-      (resolver: Resolver): IStartupValidator =>
+      (resolver: IResolver): IStartupValidator =>
         new StartupValidator(
           resolver,
           resolver.resolve<readonly Token[]>(collectionToken(startupValidationTargetToken())),

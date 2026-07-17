@@ -37,7 +37,7 @@ import '@rhombus-std/options.augmentations';
 
 // `MemoryCacheOptions` is a named import so its unqualified name resolves
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
-import type { Resolver, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
+import type { IResolver, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
 import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { Options } from '@rhombus-std/options';
@@ -129,7 +129,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     // selection falls back to the logger-less constructor -- `tryResolve`
     // reproduces exactly that.
     manifest
-      .tryAddFactory(MEMORY_CACHE_TOKEN, (resolver: Resolver) =>
+      .tryAddFactory(MEMORY_CACHE_TOKEN, (resolver: IResolver) =>
         new MemoryCache(
           resolver.resolve<Options<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
@@ -152,7 +152,7 @@ export const MemoryCacheServiceCollectionExtensions = {
       manifest.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, setup);
     }
     manifest
-      .tryAddFactory(DISTRIBUTED_CACHE_TOKEN, (resolver: Resolver) =>
+      .tryAddFactory(DISTRIBUTED_CACHE_TOKEN, (resolver: IResolver) =>
         new MemoryDistributedCache(
           resolver.resolve<Options<MemoryDistributedCacheOptions>>(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),

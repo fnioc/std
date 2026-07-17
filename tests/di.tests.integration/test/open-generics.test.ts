@@ -129,17 +129,17 @@ services.add<ICategoryLogger<$<1>>>(CategoryLogger<$<1>>).as<"singleton">();
 services.add("fnioc-integration-sample/_/contracts:IAudit<$1>", AuditTrail, [["fnioc-integration-sample/_/contracts:IRepository<$1>", typeArg(1)]]).as("singleton");
 `,
   'app.ts': `
-import type { ServiceProvider } from "@rhombus-std/di";
+import type { IServiceProvider } from "@rhombus-std/di";
 import type { IAudit, ICategoryLogger, ILogger, IRepository } from "./contracts.js";
 import { Invoice, Order, User } from "./contracts.js";
 import { services, type Scopes } from "./wiring.js";
 
-export function rootScope(): ServiceProvider<Scopes> {
+export function rootScope(): IServiceProvider<Scopes> {
   return services.build().createScope("singleton");
 }
 
 export interface Observations {
-  readonly root: ServiceProvider<Scopes>;
+  readonly root: IServiceProvider<Scopes>;
   readonly orderA: IRepository<Order>;
   readonly orderB: IRepository<Order>;
   readonly invoice: IRepository<Invoice>;

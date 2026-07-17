@@ -25,7 +25,7 @@
 import { ConfigurationBuilder } from '@rhombus-std/config';
 import type { ConfigurationRoot } from '@rhombus-std/config';
 import { RESOLVER_TOKEN } from '@rhombus-std/di';
-import type { Resolver } from '@rhombus-std/di';
+import type { IResolver } from '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
@@ -109,13 +109,13 @@ function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
  * injected `ILogger` — mirroring the canonical worker+lifecycle sample.
  */
 class InteropWorker implements IHostedLifecycleService {
-  readonly #resolver: Resolver;
+  readonly #resolver: IResolver;
   readonly #lifetime: IHostApplicationLifetime;
   readonly #logger: ILogger;
   readonly #config: ConfigurationRoot;
 
   public constructor(
-    resolver: Resolver,
+    resolver: IResolver,
     lifetime: IHostApplicationLifetime,
     loggerFactory: ILoggerFactory,
     config: ConfigurationRoot,

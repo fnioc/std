@@ -15,8 +15,8 @@
 // params list.
 //
 // Container redesign: `Scope` is now a pure frame (cache + disposal + parent
-// link), and `ServiceProvider` is the public container surface implementing
-// `Resolver` + `ScopeFactory` + Disposable.
+// link), and `IServiceProvider` is the public container surface implementing
+// `IResolver` + `IScopeFactory` + Disposable.
 
 // The registration builder now lives in @rhombus-std/di.core (the abstractions
 // package ships the concrete collection). di re-exports the class, supplies the
@@ -36,37 +36,37 @@ export { ServiceCollectionContainerBuilderExtensions } from './service-manifest.
 // the single @rhombus-std/di import, exactly as before the split.
 export type { AddBuilder, ServiceManifestBase } from '@rhombus-std/di.core';
 
-// The concrete container impl. Consumers hold the `ServiceProvider` INTERFACE
+// The concrete container impl. Consumers hold the `IServiceProvider` INTERFACE
 // (re-exported from types.js below); the class is exported for white-box use
 // (tests, advanced wiring) — never as the consumer-facing provider type.
 //
 // The internal `Scope` frame (cache + disposal + parent link) is deliberately NOT
 // exported: it is a pure implementation type, not public surface. A consumer sees
-// only the `ServiceProvider` interface a scope frame backs (#24).
+// only the `IServiceProvider` interface a scope frame backs (#24).
 export { ServiceProviderClass } from './ServiceProviderClass.js';
 
 export type {
   Ctor,
   Factory,
+  // The named reference capability analogs IResolver composes.
+  IRequiredResolver,
+  IResolver,
+  // Backwards-compat alias.
+  IResolveScope,
+  IScopeFactory,
+  // The public provider surface — the abstractions interface (di.core), not the
+  // impl class. What `build()` / `createScope()` return.
+  IServiceProvider,
+  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
+  IServiceProviderFactory,
+  IServiceQuery,
   Lifetime,
   OpenRegistration,
   Producer,
   Registration,
-  // The named reference capability analogs Resolver composes.
-  RequiredResolver,
-  Resolver,
-  // Backwards-compat alias.
-  ResolveScope,
-  ScopeFactory,
-  // The public provider surface — the abstractions interface (di.core), not the
-  // impl class. What `build()` / `createScope()` return.
-  ServiceProvider,
-  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
-  ServiceProviderFactory,
   // The provider-construction options `build(options?)` accepts (the reference
   // `ServiceProviderOptions` analog): `validateScopes` / `validateOnBuild`.
   ServiceProviderOptions,
-  ServiceQuery,
 } from './types.js';
 
 export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError,
@@ -82,7 +82,7 @@ export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredErr
 export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from '@rhombus-std/di.core';
 export { typeArg, union } from '@rhombus-std/di.core';
 export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from '@rhombus-std/di.core';
-// The intrinsic provider token — a `Resolver`-typed param derives it, and the
+// The intrinsic provider token — a `IResolver`-typed param derives it, and the
 // engine resolves it to the live provider view.
 export { isProviderToken, RESOLVER_TOKEN } from '@rhombus-std/di.core';
 

@@ -12,7 +12,7 @@
 import { ConfigurationManager } from '@rhombus-std/config';
 import type { IConfigurationBuilder } from '@rhombus-std/config.core';
 import { ServiceManifest } from '@rhombus-std/di';
-import type { ServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -67,7 +67,7 @@ export class HostBuilder implements IHostBuilder {
    * See diNotes.
    */
   public useServiceProviderFactory<TContainerBuilder>(
-    _factory: ServiceProviderFactory<TContainerBuilder>,
+    _factory: IServiceProviderFactory<TContainerBuilder>,
   ): this {
     return this;
   }

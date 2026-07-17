@@ -19,7 +19,7 @@
 // Both sidestep the frozen nameof stage without touching it.
 
 import { nameof } from '@rhombus-std/primitives';
-import type { ServiceQuery } from './provider.js';
+import type { IServiceQuery } from './provider.js';
 
 /**
  * `isService<T>()` sugar body — the tokenless registration predicate. It is the
@@ -27,7 +27,7 @@ import type { ServiceQuery } from './provider.js';
  * `this.isService(nameof<T>())`.
  */
 export const ServiceQueryInline = {
-  isService<T>(this: ServiceQuery): boolean {
+  isService<T>(this: IServiceQuery): boolean {
     return this.isService(nameof<T>());
   },
 };

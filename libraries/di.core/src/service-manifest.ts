@@ -1,5 +1,5 @@
 // The registration builder. Holds the base token → registration list map and
-// builds the ServiceProvider. Three registration surfaces:
+// builds the IServiceProvider. Three registration surfaces:
 //   - `add`        — a class (its ctor deps are injected),
 //   - `addFactory` — a factory function (its call-param deps are injected),
 //   - `addValue`   — an already-built instance (no deps, no lifetime).
@@ -16,7 +16,7 @@ import type { Func } from '@rhombus-toolkit/func';
 
 import type { AddBuilder, ServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';
-import type { ServiceProvider } from './provider.js';
+import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './service-provider-options.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
@@ -75,7 +75,7 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  */
 @augment(nameof<ServiceManifest>())
 export class ServiceManifestClass<Scopes extends string = 'singleton'>
-  implements ServiceManifestBase<Scopes, ServiceProvider<Scopes>>
+  implements ServiceManifestBase<Scopes, IServiceProvider<Scopes>>
 {
   /**
    * The service collection: each token maps to a LIST of registrations in
@@ -242,7 +242,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * runtime form the transformer emits for an authored `add<I>(fn)` /
    * `addFactory<I>(fn)`, and what a plugin-less caller writes directly.
    *
-   * Parameter injection follows the metadata rule (see `ServiceProvider`): each
+   * Parameter injection follows the metadata rule (see `IServiceProvider`): each
    * parameter is injected by its slot from the registration-carried signatures
    * (the optional third arg, emitted inline by the transformer). A factory that
    * wants the live provider declares it as an ordinary parameter (a provider-typed
@@ -379,7 +379,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * and its descendants see — the container's view is fixed at build time.
    *
    * This is the collection's own concern, so it lives here in di.core. The
-   * ENGINE-CONSTRUCTING half — turning this snapshot into a `ServiceProvider` —
+   * ENGINE-CONSTRUCTING half — turning this snapshot into a `IServiceProvider` —
    * is a `@rhombus-std/di` extension (`build()` below), because it needs the
    * runtime resolution engine di.core deliberately does not depend on.
    */
@@ -405,7 +405,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   }
 
   /**
-   * Seals the collection and returns the built `ServiceProvider`.
+   * Seals the collection and returns the built `IServiceProvider`.
    *
    * The IMPLEMENTATION lives in `@rhombus-std/di`, not here — mirroring the
    * reference DI split where the collection ships in the abstractions package
@@ -424,7 +424,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * `options` configures the provider's validation behaviors
    * (`validateScopes` / `validateOnBuild`); see `ServiceProviderOptions`.
    */
-  public build(_options?: ServiceProviderOptions): ServiceProvider<Scopes> {
+  public build(_options?: ServiceProviderOptions): IServiceProvider<Scopes> {
     throw new TypeError(
       'ServiceManifest.build() requires the @rhombus-std/di runtime. Import '
         + '@rhombus-std/di (which constructs the resolution engine) before '
@@ -448,5 +448,5 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
  */
 export type ServiceManifest<S extends string = 'singleton'> = ServiceManifestBase<
   S,
-  ServiceProvider<S>
+  IServiceProvider<S>
 >;

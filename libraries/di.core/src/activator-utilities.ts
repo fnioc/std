@@ -9,7 +9,7 @@
 // runtime reflection and no runtime parameter types, so activation is driven by
 // the SAME explicit dependency signature (`DepSlot[]`) the rest of di.core uses:
 // a `nameof`-free caller hand-feeds it, exactly as `add(token, ctor, [[...]])`
-// does. Each slot is resolved against the provider through its PUBLIC `Resolver`
+// does. Each slot is resolved against the provider through its PUBLIC `IResolver`
 // surface — activation never enters the `@rhombus-std/di` resolution engine, just
 // as the reference never routes through the container's own construction path.
 //
@@ -32,13 +32,13 @@
 //     non-service slots from the caller) without the type-assignability matching
 //     std cannot perform.
 //   - The slot resolver here is a di.core-local, synchronous mirror of the
-//     engine's private `#resolveSlot` over the public `Resolver`. Async unions and
+//     engine's private `#resolveSlot` over the public `IResolver`. Async unions and
 //     the `Promise<T>` fallback are engine-only; activation is synchronous, as in
 //     the reference.
 
 import { ActivationError } from './errors.js';
 import { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from './guards.js';
-import type { Resolver } from './provider.js';
+import type { IResolver } from './provider.js';
 import type { Ctor } from './registrations.js';
 import type { DepSlot, Token } from './types.js';
 
@@ -49,7 +49,7 @@ import type { DepSlot, Token } from './types.js';
  * rest are drawn from `args` left to right (see `createFactory`).
  */
 export type ObjectFactory<T = unknown> = (
-  provider: Resolver,
+  provider: IResolver,
   args?: readonly unknown[],
 ) => T;
 
@@ -59,10 +59,10 @@ export type ObjectFactory<T = unknown> = (
  * satisfiable iff some member is; a raw `TypeArgRef` never is (only substitution
  * closes it); a string token is satisfiable iff the provider reports it a service
  * (`isService` also answers true for the intrinsic provider token). The public
- * mirror of the engine's `#isResolvableSlot`, restricted to what the `Resolver`
+ * mirror of the engine's `#isResolvableSlot`, restricted to what the `IResolver`
  * surface exposes.
  */
-function slotResolvable(provider: Resolver, slot: DepSlot): boolean {
+function slotResolvable(provider: IResolver, slot: DepSlot): boolean {
   if (isFactoryRef(slot) || isLiteralRef(slot)) {
     return true;
   }
@@ -84,7 +84,7 @@ function slotResolvable(provider: Resolver, slot: DepSlot): boolean {
  * has already cleared, so the `resolve` call misses only for a downstream reason
  * (a missing nested dep, a cycle) — which is the faithful build-time failure.
  */
-function resolveSlot(provider: Resolver, slot: DepSlot, ctorName: string): unknown {
+function resolveSlot(provider: IResolver, slot: DepSlot, ctorName: string): unknown {
   if (isFactoryRef(slot)) {
     return provider.resolveFactory(slot.type, slot.params);
   }
@@ -113,7 +113,7 @@ function resolveSlot(provider: Resolver, slot: DepSlot, ctorName: string): unkno
  * with no source).
  */
 function buildArguments(
-  provider: Resolver,
+  provider: IResolver,
   ctor: Ctor,
   signature: readonly DepSlot[],
   args: readonly unknown[],
@@ -148,7 +148,7 @@ export const ActivatorUtilities = {
    * dependencies, in which case `args` are passed positionally: `new ctor(...args)`.
    */
   createInstance(
-    provider: Resolver,
+    provider: IResolver,
     ctor: Ctor,
     signature?: readonly DepSlot[],
     ...args: readonly unknown[]
@@ -187,7 +187,7 @@ export const ActivatorUtilities = {
    * constructed on a miss.
    */
   getServiceOrCreateInstance(
-    provider: Resolver,
+    provider: IResolver,
     token: Token,
     ctor: Ctor,
     signature?: readonly DepSlot[],

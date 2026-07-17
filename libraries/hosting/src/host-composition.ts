@@ -23,7 +23,7 @@
 
 import type { IConfiguration } from '@rhombus-std/config.core';
 import type { ServiceManifest } from '@rhombus-std/di';
-import type { ServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
   type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rhombus-std/logging';
@@ -207,7 +207,7 @@ export function resolveHost(
   configuration: IConfiguration,
   serviceProviderOptions?: ServiceProviderOptions,
 ): IHost {
-  const provider: ServiceProvider = services.build(serviceProviderOptions);
+  const provider: IServiceProvider = services.build(serviceProviderOptions);
 
   const loggerProviders = provider.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
   for (const loggerProvider of loggerProviders) {

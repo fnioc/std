@@ -74,7 +74,7 @@ export interface AddBuilder<Scopes extends string> {
  * runtime registration methods (`add` / `addFactory` / `addValue`) plus `build`.
  *
  * It is also the interface-first public surface a di consumer holds: di's public
- * `ServiceManifest` type is `ServiceManifestBase<S, ServiceProvider<S>>` (not the
+ * `ServiceManifest` type is `ServiceManifestBase<S, IServiceProvider<S>>` (not the
  * impl class), so the type-driven authoring forms (`add<I>(C)`, `addFactory<I>(fn)`,
  * `addValue<I>(v)`) the `@rhombus-std/di.transformer` DECLARATION-MERGES onto this
  * interface surface on a consumer's `services.add<I>(...)`. An interface picks up
@@ -83,7 +83,7 @@ export interface AddBuilder<Scopes extends string> {
  *
  * `Provider` is the type `build()` returns. A core-only lib author never calls
  * `build()` (the application does), so it defaults to `unknown`; `@rhombus-std/di`
- * binds it to the concrete `ServiceProvider<Scopes>` when its class implements
+ * binds it to the concrete `IServiceProvider<Scopes>` when its class implements
  * this interface. Keeping it generic is what lets this interface live in the
  * types-only substrate without referencing di's runtime provider type.
  */
@@ -125,7 +125,7 @@ export interface ServiceManifestBase<
 }
 
 // The public authoring INTERFACE `ServiceManifest<S>` — `ServiceManifestBase`
-// bound to the concrete `ServiceProvider<S>` that `build()` returns — is defined
+// bound to the concrete `IServiceProvider<S>` that `build()` returns — is defined
 // in `./service-manifest.ts` alongside the `ServiceManifestClass` that implements
 // it. The static / constructor side (`ServiceManifestCtor`) and the constructible
 // `ServiceManifest` VALUE are a RUNTIME concern and live in `@rhombus-std/di`,

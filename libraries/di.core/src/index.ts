@@ -35,12 +35,12 @@ export type { ServiceManifest } from './service-manifest.js';
 
 export type { Ctor, Factory, OpenRegistration, Producer, Registration } from './registrations.js';
 
-export type { Lifetime, RequiredResolver, Resolver, ResolveScope, ScopeFactory, ServiceProvider,
-  ServiceQuery } from './provider.js';
+export type { IRequiredResolver, IResolver, IResolveScope, IScopeFactory, IServiceProvider, IServiceQuery,
+  Lifetime } from './provider.js';
 
 // The pluggable provider-factory seam (the reference `IServiceProviderFactory`
 // analog). A single-container no-op here, but named so hosting shares one type.
-export type { ServiceProviderFactory } from './ServiceProviderFactory.js';
+export type { IServiceProviderFactory } from './IServiceProviderFactory.js';
 
 // The provider-construction options `build(options?)` accepts (the reference
 // `ServiceProviderOptions` analog) — pure data; the engine reads the flags.
@@ -53,12 +53,12 @@ export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from './guards.
 export { typeArg, union } from './slots.js';
 export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from './tokens.js';
 
-// The intrinsic provider token — a `Resolver`-typed parameter derives it, and
+// The intrinsic provider token — a `IResolver`-typed parameter derives it, and
 // the engine resolves it to the live provider view (see `provider-token.ts`).
 export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';
 
 // The shared null-object provider singleton (the reference `EmptyServiceProvider`
-// analog) — a `ServiceProvider` with no application services.
+// analog) — a `IServiceProvider` with no application services.
 export { EmptyServiceProvider } from './empty-service-provider.js';
 
 // `ActivatorUtilities` — activate an UNREGISTERED class against a provider,

@@ -70,7 +70,7 @@ export interface IBanner {
  * The report the with-transformer library assembles from the whole container:
  * the aggregated greetings (#48), the live server options (#6/#40), the greeting
  * policy (#34), and whether a health check is present (#23/#25). Its factory
- * pulls every input through an injected `Resolver` (#49), resolving each
+ * pulls every input through an injected `IResolver` (#49), resolving each
  * TOKENLESSLY — which is why that library must ship its build (the raw source's
  * un-lowered `resolve<T>()` calls would throw).
  */

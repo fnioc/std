@@ -1,4 +1,4 @@
-// `EmptyServiceProvider` — a shared null-object `ServiceProvider` that contains no
+// `EmptyServiceProvider` — a shared null-object `IServiceProvider` that contains no
 // application services. Mirrors the reference DI `EmptyServiceProvider`
 // (DependencyInjection.Abstractions/src): a lightweight singleton to hand where a
 // provider is required but none is available, instead of standing up a real
@@ -6,13 +6,13 @@
 //
 // It lives in di.core (not `@rhombus-std/di`) for the same reason the reference
 // puts it in the abstractions package: it is a hand-written implementation of the
-// PUBLIC `ServiceProvider` surface (§27's `Resolver` capabilities plus scope /
+// PUBLIC `IServiceProvider` surface (§27's `IResolver` capabilities plus scope /
 // disposal), with no resolution engine behind it. Placed beside `provider.ts`,
 // whose capability interfaces it satisfies.
 //
 // Behavior — everything is empty except the ONE intrinsic std built-in, the
 // provider itself:
-//   - the intrinsic provider token (a `Resolver`-typed dependency) resolves to
+//   - the intrinsic provider token (a `IResolver`-typed dependency) resolves to
 //     THIS provider — the reference likewise returns itself for `IServiceProvider`
 //     / `IServiceProviderIsService`. `isService` reports true for it alone;
 //   - every other token is unregistered: `tryResolve` → `undefined`, `resolve` /
@@ -30,7 +30,7 @@
 
 import { DiError } from './errors.js';
 import { isProviderToken } from './provider-token.js';
-import type { ServiceProvider } from './provider.js';
+import type { IServiceProvider } from './provider.js';
 import type { Token } from './types.js';
 
 /** The error a miss on the empty provider raises — every token is unregistered. */
@@ -42,11 +42,11 @@ function unregistered(token: Token): DiError {
 }
 
 /**
- * A `ServiceProvider` with no application services. Use the shared `instance`
+ * A `IServiceProvider` with no application services. Use the shared `instance`
  * singleton rather than constructing one — every instance is behaviorally
  * identical and stateless.
  */
-export class EmptyServiceProvider implements ServiceProvider<string> {
+export class EmptyServiceProvider implements IServiceProvider<string> {
   /** The shared empty-provider singleton (the reference `Instance`). */
   public static readonly instance: EmptyServiceProvider = new EmptyServiceProvider();
 
@@ -88,7 +88,7 @@ export class EmptyServiceProvider implements ServiceProvider<string> {
     throw unregistered(type);
   }
 
-  public createScope(_name?: string): ServiceProvider<string> {
+  public createScope(_name?: string): IServiceProvider<string> {
     // The empty provider is its own scope — the reference's empty scope factory
     // returns itself. A name may be passed but is irrelevant: an empty provider
     // caches nothing, so every frame is equivalent.

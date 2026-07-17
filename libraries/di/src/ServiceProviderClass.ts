@@ -5,12 +5,12 @@
 //   `Scope` (frame) — a node in a parent-linked chain. Holds a name, a cache
 //   of owned instances, a list for disposal ordering, and an optional parent
 //   pointer. It does NOT hold registrations. There is no root frame: scopes are
-//   uniform tags, and a `ServiceProvider` with no frame (the one `build()`
+//   uniform tags, and a `IServiceProvider` with no frame (the one `build()`
 //   returns) resolves everything transiently until a scope is opened.
 //
 //   `ServiceProviderClass` — the concrete container impl behind the public
-//   `ServiceProvider` interface (di.core). Implements `Resolver` (resolve +
-//   resolveFactory) and `ScopeFactory` (createScope), plus native
+//   `IServiceProvider` interface (di.core). Implements `IResolver` (resolve +
+//   resolveFactory) and `IScopeFactory` (createScope), plus native
 //   `Disposable`/`AsyncDisposable`. Holds a sealed registration map (shared
 //   across the tree) and an optional Scope frame.
 //
@@ -29,7 +29,7 @@ import type { Func } from '@rhombus-toolkit/func';
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
   MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
   RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
-import type { OpenRegistration, Registration, Resolver, ScopeFactory, ServiceProvider } from './types.js';
+import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Registration } from './types.js';
 
 /** True when a value implements the native synchronous `Disposable`. */
 function isDisposable(value: unknown): value is Disposable {
@@ -248,15 +248,15 @@ function throwDisposalFailures(failures: readonly unknown[]): void {
 /**
  * A scope frame — a node in the parent-linked chain. Holds this scope's name,
  * its instance cache, an ordered list for disposal, and an optional parent.
- * It does NOT hold registrations (those live sealed on the ServiceProvider).
+ * It does NOT hold registrations (those live sealed on the IServiceProvider).
  *
- * A `ServiceProvider` with "no frame" resolves everything transiently — a
+ * A `IServiceProvider` with "no frame" resolves everything transiently — a
  * tagged registration whose frame is not open resolves to a fresh instance,
  * exactly like an untagged (transient) one. Frames are opened with
  * `createScope(name)`, never auto-created.
  *
  * INTERNAL — never exported from the package barrel (#24). A consumer holds only
- * the `ServiceProvider` interface a frame backs, never the frame itself.
+ * the `IServiceProvider` interface a frame backs, never the frame itself.
  */
 class Scope {
   /**
@@ -281,10 +281,10 @@ class Scope {
 
 /**
  * The concrete container IMPLEMENTATION — the internal impl behind the public
- * `ServiceProvider` interface (`@rhombus-std/di.core`), mirroring MEDI's concrete
- * `ServiceProvider` vs. its `IServiceProvider` abstraction. Implements
- * `Resolver` (resolve + resolveFactory) and `ScopeFactory` (createScope), plus
- * native `Disposable`/`AsyncDisposable` — all composed by the `ServiceProvider`
+ * `IServiceProvider` interface (`@rhombus-std/di.core`), mirroring MEDI's concrete
+ * `IServiceProvider` vs. its `IServiceProvider` abstraction. Implements
+ * `IResolver` (resolve + resolveFactory) and `IScopeFactory` (createScope), plus
+ * native `Disposable`/`AsyncDisposable` — all composed by the `IServiceProvider`
  * interface it satisfies. Consumers hold the interface (what `build()` /
  * `createScope()` return), never this class.
  *
@@ -295,7 +295,7 @@ class Scope {
  * it is just a tag you typically open once at the top via
  * `createScope("singleton")`.
  */
-export class ServiceProviderClass<S extends string = string> implements ServiceProvider<S> {
+export class ServiceProviderClass<S extends string = string> implements IServiceProvider<S> {
   #disposed = false;
 
   /**
@@ -357,15 +357,15 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    */
   public get name(): S {
     if (this.#frame === undefined) {
-      throw new TypeError('This ServiceProvider has no scope frame open.');
+      throw new TypeError('This IServiceProvider has no scope frame open.');
     }
     return this.#frame.name as S;
   }
 
-  // ── ScopeFactory ─────────────────────────────────────────────────────────────
+  // ── IScopeFactory ─────────────────────────────────────────────────────────────
 
   /**
-   * Creates a child `ServiceProvider` whose scope frame is a new `Scope` named
+   * Creates a child `IServiceProvider` whose scope frame is a new `Scope` named
    * `name`, parented to this provider's frame (or a top-level frame if this
    * provider is unscoped).
    *
@@ -374,17 +374,17 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
    */
   public createScope(
     ...args: 'scoped' extends S ? [name?: S] : [name: S]
-  ): ServiceProvider<S> {
+  ): IServiceProvider<S> {
     return this.#childScope((args[0] ?? 'scoped') as string, this.#frame);
   }
 
   /**
-   * Builds a child `ServiceProvider` whose frame is a new `Scope` named `name`
+   * Builds a child `IServiceProvider` whose frame is a new `Scope` named `name`
    * parented to `parentFrame`, sharing this tree's sealed maps and closed memo.
    * The shared body behind both the public `createScope` and the resolution
    * view's `createScope`.
    */
-  #childScope(name: string, parentFrame: Scope | undefined): ServiceProvider<S> {
+  #childScope(name: string, parentFrame: Scope | undefined): IServiceProvider<S> {
     return new ServiceProviderClass<S>(
       this.#registrations,
       this.#openRegistrations,
@@ -394,7 +394,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     );
   }
 
-  // ── Resolver ─────────────────────────────────────────────────────────────────
+  // ── IResolver ─────────────────────────────────────────────────────────────────
 
   /**
    * Resolves synchronously. Runs the spine in sync mode — async never enters
@@ -707,7 +707,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       throw new CircularDependencyError([...stack, token]);
     }
 
-    // The provider is an intrinsic resolvable: a `Resolver`-typed dependency
+    // The provider is an intrinsic resolvable: a `IResolver`-typed dependency
     // (the token `RESOLVER_TOKEN`) resolves to the live provider VIEW relative to
     // the resolving frame, never a registration. This is what makes "I want the
     // provider" plain DI — it subsumes the retired `ScopeRef` slot.
@@ -1023,7 +1023,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
 
   /**
    * The provider VIEW handed back when the intrinsic provider token resolves (a
-   * `Resolver` / `ScopeFactory` typed parameter). A ServiceProvider-like view
+   * `IResolver` / `IScopeFactory` typed parameter). A IServiceProvider-like view
    * that continues the active cycle `stack` and resolves relative to
    * `owningFrame`.
    */
@@ -1031,7 +1031,7 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
     owningFrame: Scope | undefined,
     stack: Token[],
     captor?: Captor,
-  ): Resolver & ScopeFactory<S> {
+  ): IResolver & IScopeFactory<S> {
     const sp = this;
     return {
       resolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] => {
@@ -1076,9 +1076,9 @@ export class ServiceProviderClass<S extends string = string> implements ServiceP
       isService: (depToken: Token): boolean => sp.#isKnown(depToken),
       resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
         sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
-      createScope: (...args: ['scoped'?] | [S]): ServiceProvider<S> =>
+      createScope: (...args: ['scoped'?] | [S]): IServiceProvider<S> =>
         sp.#childScope((args[0] ?? 'scoped') as string, owningFrame),
-    } as Resolver & ScopeFactory<S>;
+    } as IResolver & IScopeFactory<S>;
   }
 
   /**

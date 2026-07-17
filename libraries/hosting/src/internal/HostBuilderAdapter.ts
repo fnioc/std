@@ -15,7 +15,7 @@
 
 import type { IConfigurationBuilder, IConfigurationManager } from '@rhombus-std/config.core';
 import type { ServiceManifest } from '@rhombus-std/di';
-import type { ServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -78,7 +78,7 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   /** No-op single-container hook (docs §24), mirroring the application builder. */
   public useServiceProviderFactory<TContainerBuilder>(
-    _factory: ServiceProviderFactory<TContainerBuilder>,
+    _factory: IServiceProviderFactory<TContainerBuilder>,
   ): this {
     return this;
   }

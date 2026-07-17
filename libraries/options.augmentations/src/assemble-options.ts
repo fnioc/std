@@ -12,7 +12,7 @@
 // `subscribe` fires on every composed reload. With no source it is a static
 // snapshot (`Options.of`).
 
-import type { Resolver, Token } from '@rhombus-std/di.core';
+import type { IResolver, Token } from '@rhombus-std/di.core';
 import { type ConfigureOptions, Options, OptionsFactory, type PostConfigureOptions,
   type ValidateOptions } from '@rhombus-std/options';
 import type { Func } from '@rhombus-toolkit/func';
@@ -25,11 +25,11 @@ import type { OptionsChangeTokenSource } from './OptionsChangeTokenSource.js';
 /**
  * Assembles the `Options<T>` for `optionsToken` from the pipeline steps
  * registered against its derived slots. `resolver` is the live provider view
- * (injected as the factory's `Resolver` parameter); `makeBase` produces the
+ * (injected as the factory's `IResolver` parameter); `makeBase` produces the
  * base instance every pipeline run starts from.
  */
 export function assembleOptions<T>(
-  resolver: Resolver,
+  resolver: IResolver,
   optionsToken: Token,
   makeBase: Func<[], T>,
 ): Options<T> {

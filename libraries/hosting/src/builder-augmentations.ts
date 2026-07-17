@@ -15,7 +15,7 @@
 // collapse into their async forms -- JS cannot block a thread.
 
 import { MemoryConfigurationSource } from '@rhombus-std/config';
-import { type Resolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di.core';
+import { type IResolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostingAbstractionsHostExtensions,
   type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
@@ -209,7 +209,7 @@ export const HostingHostBuilderExtensions = {
       services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
       services.addFactory(
         HOST_LIFETIME_TOKEN,
-        (resolver: Resolver) =>
+        (resolver: IResolver) =>
           new ConsoleLifetime(
             resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN),
             resolver.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN),

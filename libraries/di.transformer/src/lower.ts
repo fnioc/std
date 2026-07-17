@@ -602,7 +602,7 @@ function signaturesLiteral(
 
 /**
  * Render one signature slot as its emitted literal:
- *   - a string literal for a token (a `Resolver`-typed param emits the intrinsic
+ *   - a string literal for a token (a `IResolver`-typed param emits the intrinsic
  *     provider token string, like any other token)
  *   - `{ type: "<token>" }` (or `{ type: "<token>", params: [...] }`) for a factory ref
  *   - `{ union: [slot, slot, ...] }` for a union slot (recursive)

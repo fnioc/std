@@ -24,7 +24,7 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
 // importable here.
-import { type AddBuilder, type DepSlot, type Resolver, RESOLVER_TOKEN, type ServiceManifest,
+import { type AddBuilder, type DepSlot, type IResolver, RESOLVER_TOKEN, type ServiceManifest,
   type ServiceManifestClass } from '@rhombus-std/di.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -51,7 +51,7 @@ declare module '@rhombus-std/di.core' {
      * resolver parameter; a class value is disambiguated by type (not arity) and
      * still resolves to the ctor overload below.
      */
-    addHostedService(implementationFactory: Func<[Resolver], IHostedService>): this;
+    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): this;
     /**
      * Registers `ctor` as an {@link IHostedService} the host will start and stop
      * alongside its lifetime. The singleton lifetime is applied here (the host
@@ -63,7 +63,7 @@ declare module '@rhombus-std/di.core' {
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    addHostedService(implementationFactory: Func<[Resolver], IHostedService>): this;
+    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): this;
     addHostedService(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
   }
 }
@@ -72,7 +72,7 @@ declare module '@rhombus-std/di.core' {
 // `class …` head, a factory (arrow or plain function) does not. Realistic hosted
 // services are classes and factories are lambdas, so this cleanly separates the
 // construct-signature form from the provider-taking one.
-function isConstructor(target: Ctor | Func<[Resolver], IHostedService>): target is Ctor {
+function isConstructor(target: Ctor | Func<[IResolver], IHostedService>): target is Ctor {
   return /^class[\s{]/.test(Function.prototype.toString.call(target));
 }
 
@@ -87,7 +87,7 @@ export const ServiceCollectionHostedServiceExtensions = {
     // construct-signature arm, an arrow/function the call-signature arm.
     ...rest:
       | [ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]]
-      | [implementationFactory: Func<[Resolver], IHostedService>]
+      | [implementationFactory: Func<[IResolver], IHostedService>]
   ): ServiceManifestClass<string> {
     const [target, signatures] = rest;
     // Both forms register the shared enumerable-singleton hosted-service token.

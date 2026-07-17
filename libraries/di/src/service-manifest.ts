@@ -16,8 +16,9 @@
 // import-time side effect. The core `build()` interface member already exists —
 // this only supplies the runtime.
 
-import { type OpenRegistration, type Registration, type ServiceManifest as ServiceManifestInterface,
-  ServiceManifestClass, type ServiceProvider, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
+import { type IServiceProvider, type OpenRegistration, type Registration,
+  type ServiceManifest as ServiceManifestInterface, ServiceManifestClass, type ServiceProviderOptions,
+  type Token } from '@rhombus-std/di.core';
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 
@@ -48,7 +49,7 @@ export const ServiceCollectionContainerBuilderExtensions = {
   build(
     manifest: ServiceManifestClass<string>,
     options?: ServiceProviderOptions,
-  ): ServiceProvider<string> {
+  ): IServiceProvider<string> {
     const { registrations, openRegistrations } = manifest.seal();
     return new ServiceProviderClass<string>(
       registrations as ReadonlyMap<Token, Registration[]>,

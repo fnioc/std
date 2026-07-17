@@ -8,22 +8,22 @@
 export type {
   Ctor,
   Factory,
+  // The named reference capability analogs IResolver composes.
+  IRequiredResolver,
+  IResolver,
+  // Backwards-compat alias.
+  IResolveScope,
+  IScopeFactory,
+  // The public provider surface — the abstractions interface, not the impl class.
+  IServiceProvider,
+  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
+  IServiceProviderFactory,
+  IServiceQuery,
   Lifetime,
   OpenRegistration,
   Producer,
   Registration,
-  // The named reference capability analogs Resolver composes.
-  RequiredResolver,
-  Resolver,
-  // Backwards-compat alias.
-  ResolveScope,
-  ScopeFactory,
-  // The public provider surface — the abstractions interface, not the impl class.
-  ServiceProvider,
-  // The pluggable provider-factory seam (reference `IServiceProviderFactory`).
-  ServiceProviderFactory,
   // The provider-construction options `build(options?)` accepts.
   ServiceProviderOptions,
-  ServiceQuery,
   Union,
 } from '@rhombus-std/di.core';

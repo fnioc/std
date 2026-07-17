@@ -1,6 +1,6 @@
 // StartupValidator (white-box via internal/*): forces evaluation of each
 // collected options token and aggregates validation failures. Exercised against
-// a hand-built fake Resolver so the unit stays independent of the DI runtime --
+// a hand-built fake IResolver so the unit stays independent of the DI runtime --
 // the augmentation wiring is covered black-box in options.augmentations.test.
 
 import type { Options } from '@rhombus-std/options/_/options';
@@ -8,11 +8,11 @@ import { OptionsValidationError } from '@rhombus-std/options/_/OptionsValidation
 import { StartupValidator } from '@rhombus-std/options/_/StartupValidator';
 import { describe, expect, test } from 'bun:test';
 
-// The constructor's first parameter is di.core's `Resolver`; reference it
+// The constructor's first parameter is di.core's `IResolver`; reference it
 // structurally so the test needs no di.core dependency.
 type FakeResolver = ConstructorParameters<typeof StartupValidator>[0];
 
-/** A Resolver whose `resolve(token)` returns the token's mapped `Options`. */
+/** A IResolver whose `resolve(token)` returns the token's mapped `Options`. */
 function resolverOf(map: Record<string, Options<unknown>>): FakeResolver {
   return {
     resolve(token: string): Options<unknown> {
@@ -35,7 +35,7 @@ function failing(error: unknown): Options<unknown> {
 }
 
 /**
- * A Resolver whose `resolve(token)` throws `error` outright -- models the
+ * A IResolver whose `resolve(token)` throws `error` outright -- models the
  * non-reactive assembly path, where `assembleOptions` builds eagerly at resolve
  * time so a failed validate step surfaces from `resolve()` itself, before any
  * `.value` read.

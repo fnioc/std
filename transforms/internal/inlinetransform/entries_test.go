@@ -14,7 +14,7 @@ func TestEntryKindInference(t *testing.T) {
 		status KindStatus
 	}{
 		// The four grammar rows.
-		{"interface member", Entry{Type: "@rhombus-std/di.core:ServiceQuery", Impl: "ServiceQueryInline", Member: "isService"}, KindMember, StatusCertified},
+		{"interface member", Entry{Type: "@rhombus-std/di.core:IServiceQuery", Impl: "ServiceQueryInline", Member: "isService"}, KindMember, StatusCertified},
 		{"free function (impl only)", Entry{Impl: "tokenOf"}, KindFunction, StatusCertified},
 		{"class member", Entry{Type: "@rhombus-std/di.core:Foo", Member: "bar"}, KindClassMember, StatusUncertified},
 		{"object-literal member", Entry{Impl: "FooLiteral", Member: "bar"}, KindObjectLiteralMember, StatusUncertified},

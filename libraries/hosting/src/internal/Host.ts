@@ -12,7 +12,7 @@
 // resolves the hosted services from THAT scope, and `stop` disposes it -- that
 // scope is what gives singleton semantics and deterministic disposal.
 
-import type { Resolver, ServiceProvider } from '@rhombus-std/di.core';
+import type { IResolver, IServiceProvider } from '@rhombus-std/di.core';
 import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
   type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
@@ -102,13 +102,13 @@ export interface Host extends IHost {}
 /** The internal {@link IHost} implementation. */
 @augment(nameof<IHost>())
 export class Host implements IHost, AsyncDisposable {
-  readonly #services: ServiceProvider;
+  readonly #services: IServiceProvider;
   readonly #applicationLifetime: ApplicationLifetime;
   readonly #logger: ILogger;
   readonly #hostLifetime: IHostLifetime;
   readonly #options: HostOptions;
 
-  #singletonScope?: ServiceProvider;
+  #singletonScope?: IServiceProvider;
   #hostedServices?: IHostedService[];
   #hostedLifecycleServices?: IHostedLifecycleService[];
   #hostStarting = false;
@@ -116,7 +116,7 @@ export class Host implements IHost, AsyncDisposable {
   #backgroundServiceErrors?: unknown[];
 
   public constructor(
-    services: ServiceProvider,
+    services: IServiceProvider,
     applicationLifetime: IHostApplicationLifetime,
     logger: ILogger,
     hostLifetime: IHostLifetime,
@@ -133,7 +133,7 @@ export class Host implements IHost, AsyncDisposable {
   }
 
   /** The services configured for the program (the non-generic resolver view). */
-  public get services(): Resolver {
+  public get services(): IResolver {
     return this.#services;
   }
 

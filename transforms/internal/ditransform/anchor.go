@@ -14,14 +14,14 @@ const declaringModule = "@rhombus-std/di.core"
 //
 //	add / addFactory / addValue → ServiceManifestBase
 //	as                          → AddBuilder
-//	resolve                     → RequiredResolver
-//	resolveAsync / tryResolve   → Resolver
-//	isService                   → ServiceQuery
+//	resolve                     → IRequiredResolver
+//	resolveAsync / tryResolve   → IResolver
+//	isService                   → IServiceQuery
 var (
 	registrationInterfaces = map[string]bool{"ServiceManifestBase": true}
 	asInterfaces           = map[string]bool{"AddBuilder": true}
-	resolveInterfaces      = map[string]bool{"RequiredResolver": true, "Resolver": true}
-	isServiceInterfaces    = map[string]bool{"ServiceQuery": true}
+	resolveInterfaces      = map[string]bool{"IRequiredResolver": true, "IResolver": true}
+	isServiceInterfaces    = map[string]bool{"IServiceQuery": true}
 )
 
 // memberAnchoredOnDiCore reports whether the member referenced at name resolves to

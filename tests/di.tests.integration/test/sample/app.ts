@@ -5,7 +5,7 @@
 // repo, a bare zero-arg factory param, the named-callable opt-out, and the
 // async-config value path.
 
-import type { ServiceProvider } from '@rhombus-std/di';
+import type { IServiceProvider } from '@rhombus-std/di';
 import type { IConfig } from './contracts.js';
 import type { ConfigConsumer, ConsoleLogger, ReportService, RequestContext, SqlDb, SqlUserRepo,
   ThunkConsumer } from './services.js';
@@ -31,7 +31,7 @@ export { resetConfigFactoryRuns, T };
  * registrations. `build()` is frameless (no root); opening the "singleton" frame
  * here is what lets singleton-tagged registrations cache for the app's lifetime.
  */
-export function rootScope(): ServiceProvider<SampleScopes> {
+export function rootScope(): IServiceProvider<SampleScopes> {
   return services.build().createScope('singleton');
 }
 
@@ -50,8 +50,8 @@ export interface ResolvedGraph {
  * returns the live instances so a test can assert wiring + scoping.
  */
 export function resolveGraph(): {
-  root: ServiceProvider<SampleScopes>;
-  req: ServiceProvider<SampleScopes>;
+  root: IServiceProvider<SampleScopes>;
+  req: IServiceProvider<SampleScopes>;
   resolved: ResolvedGraph;
 } {
   const root = rootScope();

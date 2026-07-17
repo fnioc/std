@@ -17,7 +17,7 @@ var tokenlessResolveMethods = map[string]bool{
 
 // isTokenlessResolveCall reports a tokenless `*.resolve<I>()` /
 // `*.resolveAsync<I>()` / `*.tryResolve<I>()` (1 type arg, 0 value args) whose
-// method resolves to RequiredResolver / Resolver inside
+// method resolves to IRequiredResolver / IResolver inside
 // `declare module '@rhombus-std/di.core'` — so `resolve<T>()` on an unrelated
 // object is never lowered.
 func isTokenlessResolveCall(checker *shimchecker.Checker, call *shimast.Node) bool {
@@ -38,7 +38,7 @@ func isTokenlessResolveCall(checker *shimchecker.Checker, call *shimast.Node) bo
 }
 
 // isTokenlessIsServiceCall reports a tokenless `*.isService<I>()` predicate whose
-// isService member resolves to ServiceQuery inside
+// isService member resolves to IServiceQuery inside
 // `declare module '@rhombus-std/di.core'`.
 func isTokenlessIsServiceCall(checker *shimchecker.Checker, call *shimast.Node) bool {
 	callee := call.AsCallExpression().Expression

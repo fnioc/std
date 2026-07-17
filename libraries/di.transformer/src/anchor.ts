@@ -11,7 +11,7 @@
 // overload declarations — the runtime explicit form AND the transformer's sugar
 // overload — so an explicit-form call anchors through the sugar's declare-module
 // declaration. This kills the false positives a pure name+arity match admits
-// (`new Set().add(v)`, an unrelated `repo.add(entity)`, `resolve` on a non-Resolver)
+// (`new Set().add(v)`, an unrelated `repo.add(entity)`, `resolve` on a non-IResolver)
 // while still matching a user's own concrete class that implements the interface and
 // carries the empty extends-merge — its member resolves back to the same interface.
 // An `any` receiver yields no symbol and is rejected.
@@ -24,13 +24,13 @@ const DECLARING_MODULE = '@rhombus-std/di.core';
 // overloads AND the transformer's sugar overloads share one interface:
 //   add / addFactory / addValue → ServiceManifestBase
 //   as                          → AddBuilder
-//   resolve                     → RequiredResolver
-//   resolveAsync / tryResolve   → Resolver
-//   isService                   → ServiceQuery
+//   resolve                     → IRequiredResolver
+//   resolveAsync / tryResolve   → IResolver
+//   isService                   → IServiceQuery
 export const REGISTRATION_INTERFACES: ReadonlySet<string> = new Set(['ServiceManifestBase']);
 export const AS_INTERFACES: ReadonlySet<string> = new Set(['AddBuilder']);
-export const RESOLVE_INTERFACES: ReadonlySet<string> = new Set(['RequiredResolver', 'Resolver']);
-export const IS_SERVICE_INTERFACES: ReadonlySet<string> = new Set(['ServiceQuery']);
+export const RESOLVE_INTERFACES: ReadonlySet<string> = new Set(['IRequiredResolver', 'IResolver']);
+export const IS_SERVICE_INTERFACES: ReadonlySet<string> = new Set(['IServiceQuery']);
 
 /**
  * True when the member referenced at `name` resolves to a symbol with ≥1

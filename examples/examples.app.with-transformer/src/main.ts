@@ -21,7 +21,7 @@
 //   - the report factory (from the built with-transformer lib) resolves the
 //     IGreeting COLLECTION aggregating BOTH libraries (#48), the live options,
 //     the policy wrap, and probes the health check (#23/#25) — all TOKENLESSLY
-//     through an injected Resolver (#49);
+//     through an injected IResolver (#49);
 //   - the async banner is reached with resolveAsync (#45);
 //   - a config reload fires a live options update through the subscription
 //     (#6/#40).
@@ -41,7 +41,7 @@
 import { ConfigurationBuilder } from '@rhombus-std/config';
 import type { ConfigurationRoot } from '@rhombus-std/config';
 import { RESOLVER_TOKEN } from '@rhombus-std/di';
-import type { Resolver } from '@rhombus-std/di';
+import type { IResolver } from '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
@@ -125,13 +125,13 @@ function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
  * constructor signature (below, at `addHostedService`) names explicit tokens.
  */
 class InteropWorker implements IHostedLifecycleService {
-  readonly #resolver: Resolver;
+  readonly #resolver: IResolver;
   readonly #lifetime: IHostApplicationLifetime;
   readonly #logger: ILogger;
   readonly #config: ConfigurationRoot;
 
   public constructor(
-    resolver: Resolver,
+    resolver: IResolver,
     lifetime: IHostApplicationLifetime,
     loggerFactory: ILoggerFactory,
     config: ConfigurationRoot,
