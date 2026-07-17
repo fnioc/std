@@ -171,8 +171,9 @@ Reasons to build it, premise-independent:
 - `IOptionsMonitor` = the `subscribe?` capability, present only when the source is
   reload-capable (= issue #6).
 - **Named options** = distinct registrations (tokens / sections), not a `.Get(name)` API.
-- **Validation / post-configure** = at bind time (`bindConfig` aggregates into one
-  `ConfigBindError`); a future `options.data-annotations` if richer validation is wanted.
+- ~~**Validation / post-configure** = at bind time (`bindConfig` aggregates into one
+  `ConfigBindError`); a future `options.data-annotations` if richer validation is wanted.~~
+  ~~Superseded by §4.5 below; struck — never read for behavior.~~
 
 ### 4.3 Dependency invariants
 
@@ -238,10 +239,11 @@ validators until a consumer asks for one.
 
 ## 6. Open / not yet decided
 
-- **Live-reload / monitoring (#6)** sub-decisions — _leaning_: type-driven opt-in;
+- ~~**Live-reload / monitoring (#6)** sub-decisions — _leaning_: type-driven opt-in;
   dependency-free structural observable (no rxjs); lazy / source-emits (C2) over a
   background file-watch (C1). **Not finalized.** Surfaces as the `Options<T>.subscribe?`
-  capability (§4.2).
+  capability (§4.2).~~
+  ~~Settled by §8 below; struck — never read for behavior.~~
 - Whether to split the config-bridge into `options.configuration` now vs. later.
 - Explicit walk-through of the §2 transformer invariant with the team (pending; #27
   satisfies it for `di.transformer`).
@@ -709,11 +711,12 @@ established for `addJsonFile` (§14), with the same `"sideEffects": true` packag
   `AddConsole`) — depends on the deferred listener runtime above.
 - **`ME.Http.Diagnostics`, `ME.Diagnostics.ResourceMonitoring`, `ME.Diagnostics.ExceptionSummarization`
   — not built.** YAGNI: no concrete consumer.
-- **`CompositeChangeToken` duplication.** `diagnostics` needs the same composite-token merge
+- ~~**`CompositeChangeToken` duplication.** `diagnostics` needs the same composite-token merge
   `options.augmentations` already built locally for §14's multi-`configure` case. `options.augmentations`'
   copy already anticipated a "second consumer" promotion into `primitives`; `diagnostics` is now
   that second consumer — promoting one `CompositeChangeToken` into `primitives` and deleting both
-  local copies is an open follow-up, not done this pass.
+  local copies is an open follow-up, not done this pass.~~
+  ~~Superseded by §58 below (promoted into `primitives`); struck — never read for behavior.~~
 - **`addMetrics`/`addTracing` are not idempotent** — `di.core` has no `TryAdd`/has surface, so a
   second call re-registers the identical assembly factory (benign under last-wins bare-token
   resolution, but pollutes `Array<token>` collection aggregation, §12). Mirrors the same gap in
@@ -756,38 +759,50 @@ exists to depend on, rather than leaving a permanent fork.
 
 **Explicit deferrals:**
 
-- **No concrete sinks this pass.** `ME.Logging.Console`, `.Debug`, `.EventLog`, `.EventSource`,
+- ~~**No concrete sinks this pass.** `ME.Logging.Console`, `.Debug`, `.EventLog`, `.EventSource`,
   `.TraceSource` are all excluded per direct instruction (issue #75). `ILoggerProvider`/
   `ILoggerFactory` ship so a consumer can supply their own provider; what a provider set should
   look like here is still an open design question, likely an adaptation rather than a straight
-  port.
-- **`setMinimumLevel` stubbed (throws).** The reference registers an `IConfigureOptions<LoggerFilterOptions>`
+  port.~~
+  ~~Superseded by §23 below (a real console sink landed) and completed by §53; struck — never read
+  for behavior.~~
+- ~~**`setMinimumLevel` stubbed (throws).** The reference registers an `IConfigureOptions<LoggerFilterOptions>`
   via `IServiceCollection.Configure` — an options-DI-builder surface `options` deliberately defers
-  — plus it needs the (also deferred) filter-consumption layer below.
-- **`clearProviders` stubbed (throws).** `di.core` registrations are append-only/last-wins with no
-  remove-all surface, so `RemoveAll<ILoggerProvider>()` has no mechanical port.
-- **`LoggerFactory.create(configure)` static stubbed (throws).** The reference builds a full DI
+  — plus it needs the (also deferred) filter-consumption layer below.~~
+  ~~Superseded by §62 below (unstubbed); struck — never read for behavior.~~
+- ~~**`clearProviders` stubbed (throws).** `di.core` registrations are append-only/last-wins with no
+  remove-all surface, so `RemoveAll<ILoggerProvider>()` has no mechanical port.~~
+  ~~Superseded by §38 below (`removeAll` unstubs it); struck — never read for behavior.~~
+- ~~**`LoggerFactory.create(configure)` static stubbed (throws).** The reference builds a full DI
   container and resolves `ILoggerFactory` from it; that needs the `di` RUNTIME, but the graph edge
-  is `logging → di.core` only. Instance construction and `manifest.addLogging(...)` work for real.
-- **`addLogging` omits** the reference's `AddOptions()` call, the open `ILogger<TCategory> →
+  is `logging → di.core` only. Instance construction and `manifest.addLogging(...)` work for real.~~
+  ~~Superseded by §62 below (unstubbed via a real `@rhombus-std/di` container); struck — never read
+  for behavior.~~
+- ~~**`addLogging` omits** the reference's `AddOptions()` call, the open `ILogger<TCategory> →
   Logger<TCategory>` registration (needs runtime type-name reflection TS lacks), and the default
-  `IConfigureOptions<LoggerFilterOptions>` (needs the deferred options-DI integration).
-- **Filter-rule SELECTION is not applied.** The composite `Logger` does not apply per-
+  `IConfigureOptions<LoggerFilterOptions>` (needs the deferred options-DI integration).~~
+  ~~Superseded by §62 below (the open registration and options assembly both land); struck — never
+  read for behavior.~~
+- ~~**Filter-rule SELECTION is not applied.** The composite `Logger` does not apply per-
   `(provider, category)` `LoggerFilterRule` selection — each sink's own `isEnabled` gates it
   (correct for a no-filter setup). `LoggerFilterOptions`/`Rule` are real data holders; their
   consumption is deferred with the options-monitor DI integration. Cross-sink `AggregateException`
-  aggregation is also omitted — a throwing sink propagates.
+  aggregation is also omitted — a throwing sink propagates.~~
+  ~~Superseded by §62 below (rules are consumed at log time via `LoggerRuleSelector`); struck — never
+  read for behavior.~~
 - **`addFilter` ports only the two unambiguous overloads** (`(category, level)` rule, and raw
   `(provider, category, level) => bool` filter); the wider provider-scoped `<T>`/per-category
   function-filter overload matrix is deferred sugar adding no new capability.
-- **`logging.configuration`'s `addConfiguration` binds EAGERLY**, at call time, and registers a
+- ~~**`logging.configuration`'s `addConfiguration` binds EAGERLY**, at call time, and registers a
   resolvable value — real behavior minus reload reactivity. The reference registers a LAZY
   `IConfigureOptions<LoggerFilterOptions>` + an `IOptionsChangeTokenSource` (needs the deferred
   options-monitor DI integration). The no-arg `AddConfiguration()` overload and the
   `ILoggerProviderConfigurationFactory`/`LoggerProviderConfigurationExtensions` provider-oriented
-  services are deferred alongside the provider work (issue #75).
-- **`FormattedLogValues` renders strings only** — full structured name/value key extraction (for a
-  structured sink) is deferred, exposed via the raw `message`/`args` fields until then.
+  services are deferred alongside the provider work (issue #75).~~
+  ~~Superseded by §54 below (both deferments revoked); struck — never read for behavior.~~
+- ~~**`FormattedLogValues` renders strings only** — full structured name/value key extraction (for a
+  structured sink) is deferred, exposed via the raw `message`/`args` fields until then.~~
+  ~~Superseded by §63 below; struck — never read for behavior.~~
 - **`LoggerExtensions` EventId-carrying overloads dropped** — a bare integer event id vs. a message
   string is ambiguous at runtime with no overload dispatch; callers needing an explicit event id
   call `logger.log(level, EventId.from(n), ...)` directly.
@@ -824,17 +839,20 @@ idiom (§14), with `caching.memory`'s `package.json` carrying `"sideEffects": tr
 
 **Explicit deferrals:**
 
-- **`addMemoryCache` is not idempotent and does no DI-pipeline wiring.** `di.core` has no `TryAdd`,
+- ~~**`addMemoryCache` is not idempotent and does no DI-pipeline wiring.** `di.core` has no `TryAdd`,
   so a second call re-registers (whereas the reference keeps the first registration via `TryAdd`).
   No `IOptions` pipeline and no `ILoggerFactory` injection are wired — the setup callback runs
   EAGERLY at registration time and `MemoryCache` is built with a private null-logger fallback
   (`logging.core` does not yet export a `NullLogger`/`NullLoggerFactory` — provider work is issue
-  #75 scope; swap in the real one once it exists).
+  #75 scope; swap in the real one once it exists).~~
+  ~~Superseded by §65 below (a real options pipeline + `tryAddFactory` land); struck — never read
+  for behavior.~~
 - **Statistics/metrics surface not ported** — `GetCurrentStatistics`, `MemoryCacheStatistics`, the
   observable-counter metrics, and `MemoryCacheOptions.TrackStatistics`/`Name`. No consumer.
-- **Linked-entry tracking not ported** — the `AsyncLocal` parent/child propagation and
+- ~~**Linked-entry tracking not ported** — the `AsyncLocal` parent/child propagation and
   `MemoryCacheOptions.TrackLinkedCacheEntries` (kept as a field, always `false`); `CacheEntry`
-  commit is unconditional.
+  commit is unconditional.~~
+  ~~Superseded by §65 below; struck — never read for behavior.~~
 - **Background scheduling replaced with synchronous inline equivalents** — single-threaded JS has
   no analog for the reference's Task-scheduled expiration scan or background-thread overcapacity
   compaction; behavior is preserved via inline, frequency-gated checks triggered by subsequent
@@ -860,20 +878,24 @@ request out across 0..N inner providers — the 0- and 1-provider cases are full
 
 **Explicit deferrals (both held for the same reason: no design yet, not YAGNI-forever):**
 
-- **No disk-backed provider.** `ME.FileProviders.Physical` is deliberately deferred — not even a
+- ~~**No disk-backed provider.** `ME.FileProviders.Physical` is deliberately deferred — not even a
   stub package was created. What a physical (or non-disk) file provider means for this repo is an
-  open design question to resolve separately.
+  open design question to resolve separately.~~
+  ~~Superseded by §73 below (`fileproviders.physical` has landed); struck — never read for
+  behavior.~~
 - **`ME.FileSystemGlobbing` not ported.** Upstream it is pulled in only by `ME.FileProviders.Physical`;
   since Physical is deferred it has no consumer yet (YAGNI). Port it only if/when a disk-backed
   provider that needs glob matching is designed.
-- **`CompositeFileProvider.watch` over 2+ change-emitting providers is a hosting-style stub
+- ~~**`CompositeFileProvider.watch` over 2+ change-emitting providers is a hosting-style stub
   (throws).** Merging N inner `IChangeToken`s needs a `CompositeChangeToken` — upstream that type
   lives in `ME.Primitives`, and `primitives` does not port it yet (no consumer needed it until
   now). Where it should live — promoted into `primitives` as its natural home, vs. a private local
   port in `fileproviders.composite` — is a `primitives`-family design call, out of scope for this
   pass and tracked against issue #77. (§17's `diagnostics` section above independently hit the same
   gap via `options.augmentations`' local `CompositeChangeToken` copy — three packages now want this
-  one primitive.)
+  one primitive.)~~
+  ~~Superseded by §58 below (`CompositeChangeToken` promoted into `primitives`, unstubbing this);
+  struck — never read for behavior.~~
 
 ## 21. Skipped MECA abstraction APIs ported into `config`, not `config.core` — #79
 
@@ -896,9 +918,10 @@ The helpers are free functions (mirroring `compareConfigurationKeys`, not extens
   reference's `is IConfigurationSection` check maps to `instanceof ConfigurationSection` — the
   enumeration root is only yielded, and only contributes a `makePathsRelative` prefix, when it is a
   genuine section. Every node reached via `getChildren()` is a section by contract.
-- **`getDebugView` provider labels are `String(provider)`.** The port's providers do not override
+- ~~**`getDebugView` provider labels are `String(provider)`.** The port's providers do not override
   `toString`, so labels are currently the default object tag rather than a friendly name —
-  acceptable until a provider identity is designed.
+  acceptable until a provider identity is designed.~~
+  ~~Superseded by §33 below; struck — never read for behavior.~~
 - **`Add<TSource>(configureSource)` deliberately not ported** (candidate intentional deviation).
   The generic factory-add depends on `new TSource()` with a `new()` constraint, which has no
   faithful TS analog, and there is no consumer.
@@ -1048,9 +1071,11 @@ over the gap itself.
   analog in `di.core` to swap in — `useServiceProviderFactory` is accepted and ignored, and
   `configureContainer`'s delegate runs against the one real `ServiceManifest` rather than a
   pluggable builder type.
-- **`useDefaultServiceProvider` ignores `ServiceProviderOptions`.** `validateScopes`/
+- ~~**`useDefaultServiceProvider` ignores `ServiceProviderOptions`.** `validateScopes`/
   `validateOnBuild` have no scope-validation surface to bind to in `di`/`di.core` yet; the option
-  shape is accepted (for call-site compatibility) and no-ops.
+  shape is accepted (for call-site compatibility) and no-ops.~~
+  ~~Superseded by §57/§67 below (`validateScopes`/`validateOnBuild` land and `useDefaultServiceProvider`
+  becomes real); struck — never read for behavior.~~
 
 **Runtime-identity reaffirmation (ties to §9).** `hosting.core` now emits real runtime —
 `BackgroundService`, the `Environments`/`HostDefaults` const objects, and the `addHostedService`
@@ -1482,25 +1507,31 @@ two sides. §28's authoring shape is unchanged; only the install path for OPEN r
   already-decorated class — import order stops mattering. No Proxy, no observable; re-install is an
   idempotent `Object.assign`. `Token` itself is hoisted from di.core to primitives (di.core
   re-exports it), since config-family tokens can't depend on di.core (di ⊥ config).
-- **Token constants**, one per OPEN receiver, named `<RECEIVER>_AUGMENTATION_TOKEN` with
+- ~~**Token constants**, one per OPEN receiver, named `<RECEIVER>_AUGMENTATION_TOKEN` with
   nameof-format values (`"<package>:<TypeName>"`), each owned by the `.core` package that owns the
   receiver interface. One token can decorate several classes (`ConfigurationBuilder` AND
   `ConfigurationManager`; diagnostics' AND hosting's `MetricsBuilder` — fixing the orphaned-builder
-  bug for good, regression-covered in `tests/augmentations.test`).
+  bug for good, regression-covered in `tests/augmentations.test`).~~
+  ~~Superseded by §40 below (the consts are gone; tokens derive inline via `nameof<Receiver>()`);
+  struck — never read for behavior.~~
 - **Self-registration moves consts' interface merges into `.core` (retires §28's
   "merge lives downstream" rule for OPEN receivers).** Because the registry decouples install from
   the concrete class, a const authored in a `.core` package now registers its own runtime there,
-  and its interface-side `declare module` merge moves in beside it. Class-side merges (needed so a
+  and its interface-side `declare module` merge moves in beside it. ~~Class-side merges (needed so a
   src-compiled concrete class still satisfies `implements` once the interface grows members) stay
-  downstream next to each class; they are retired per-lib as libs convert to dist builds (#68).
+  downstream next to each class; they are retired per-lib as libs convert to dist builds (#68).~~
+  ~~Superseded by §71 below (class-side merges are retired outright, not per-lib); struck — never
+  read for behavior.~~
 - **Merge-identity rule (hard-won):** every interface-side merge for one interface must target the
   interface's DECLARING module — same resolved file, any specifier. Mixing a package-barrel
   augmentation (`declare module "@rhombus-std/diagnostics.core"`) with a declaring-module one
   (`declare module "./metrics-builder"`) makes TS treat the accumulated `this`-returning members as
-  having unrelated this-types, and the concrete classes stop satisfying `implements`. Downstream
+  having unrelated this-types, and the concrete classes stop satisfying `implements`. ~~Downstream
   packages therefore merge via the `internal/*` subpath (e.g.
   `"@rhombus-std/diagnostics.core/internal/metrics-builder"`), which resolves to the same source
-  file as the owning package's relative merge.
+  file as the owning package's relative merge.~~
+  ~~Superseded/refined by §47 below (a published-facing downstream author must resolve through the
+  owning package's public barrel, never `internal/*`); struck — never read for behavior.~~
 - **Runtime-identity invariant (§9 extension):** every bundling package keeps
   `@rhombus-std/primitives` EXTERNAL — an inlined copy forks the registry's Map + bus and the
   whole mechanism silently splits. Same for `@rhombus-std/config.core`, which loses its pure-types
