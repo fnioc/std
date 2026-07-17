@@ -15,9 +15,20 @@ import { join, resolve } from 'node:path';
 //      itself) emits the identical isService line. The pilot changes the path,
 //      never the output.
 //
+// The two compilations run in ONE stable project dir with two tsconfigs
+// (tsconfig.inline.json / tsconfig.semantic.json), and BOTH point ttsc at a
+// single pinned plugin cache (TTSC_CACHE_DIR, see goEnv). This matters: ttsc's
+// plugin cache is resolved per project root, so two sibling project dirs — or an
+// unpinned cache that lands under each project's own node_modules — each get a
+// PRIVATE cache, and a cold run builds the SAME Go sidecar TWICE (~2× the
+// multi-minute cold compile: deterministically over budget, and a timeout-kill
+// then abandons a build lock the next run must reclaim). One dir + one pinned
+// cache → the sidecar builds once cold and the second compilation is warm. This
+// mirrors the di.transformer.ttsc.e2e harness.
+//
 // The inline stage reads di.core's REAL src (its rhombus.inline entry + the
 // out-of-barrel src/inline.ts body), so the real di.core is symlinked, not
-// mocked. Toolchain pinning mirrors the di.transformer.ttsc.e2e harness.
+// mocked. Toolchain pinning mirrors that sibling harness.
 
 const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
 const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
@@ -33,7 +44,10 @@ const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
 
 const projDir = join(tmpdir(), 'fnioc-ttsc-inline-e2e');
-const COLD_BUILD_MS = 420_000;
+// One honest cold Go-sidecar compile fits comfortably here; the second (warm)
+// compilation is seconds. Sized against the sibling suite's single-cold budget
+// with headroom, now that the shared cache guarantees a single cold build.
+const COLD_BUILD_MS = 600_000;
 
 function link(target: string, linkPath: string): void {
   try {
@@ -44,6 +58,14 @@ function link(target: string, linkPath: string): void {
 }
 
 const goBuildTmp = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-inline-gobuild');
+// Pin the ttsc plugin cache (compiled sidecar binary AND its go-build object
+// cache) to a stable home-backed dir under the repo, NOT the project-local
+// default. The project dir lives in the OS tmpdir, a size-capped tmpfs here; a
+// cold typescript-go plugin compile would otherwise write its Go object cache
+// (hundreds of MB) onto that tmpfs and risk ENOSPC. Anchoring it under the repo
+// keeps the heavy cache off tmpfs and — being one fixed path — is what makes the
+// two compilations share the cache and the sidecar build exactly once.
+const ttscCache = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-inline-e2e');
 
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
@@ -52,6 +74,8 @@ function goEnv(): NodeJS.ProcessEnv {
   env.GOTOOLCHAIN = 'local';
   mkdirSync(goBuildTmp, { recursive: true });
   env.GOTMPDIR = goBuildTmp;
+  mkdirSync(ttscCache, { recursive: true });
+  env.TTSC_CACHE_DIR = ttscCache;
   const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
   const goBin = miseGo.status === 0 ? miseGo.stdout.trim() : '';
   if (goBin) {
@@ -78,12 +102,37 @@ declare const provider: ServiceProvider<string>;
 export const known = provider.isService<ILogger>();
 `;
 
-function writeProject(dir: string, plugins: Array<{ transform: string; }>): void {
-  const nm = join(dir, 'node_modules');
+// Both compilations live in ONE project dir under ONE node_modules, so they
+// share the plugin cache (see the file header). Each tsconfig differs only in
+// its plugin list and its outDir, so their emit never collides.
+function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
+  writeFileSync(
+    join(projDir, name),
+    JSON.stringify({
+      compilerOptions: {
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        lib: ['ES2022'],
+        strict: true,
+        outDir: outDir,
+        rootDir: 'src',
+        skipLibCheck: true,
+        noEmitOnError: false,
+        plugins,
+      },
+      include: ['src/**/*'],
+    }),
+  );
+}
+
+function setupWorkspace(): void {
+  const nm = join(projDir, 'node_modules');
   mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
   mkdirSync(join(nm, '@ttsc'), { recursive: true });
-  mkdirSync(join(dir, 'src'), { recursive: true });
-  rmSync(join(dir, 'dist'), { recursive: true, force: true });
+  mkdirSync(join(projDir, 'src'), { recursive: true });
+  rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
+  rmSync(join(projDir, 'dist-semantic'), { recursive: true, force: true });
 
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
@@ -96,39 +145,31 @@ function writeProject(dir: string, plugins: Array<{ transform: string; }>): void
   // The consumer must depend on di.core so the collector reaches its
   // rhombus.inline entry.
   writeFileSync(
-    join(dir, 'package.json'),
+    join(projDir, 'package.json'),
     JSON.stringify({ name: 'inline-e2e-app', version: '0.0.0',
       dependencies: { '@rhombus-std/di.core': 'workspace:*' } }),
   );
-  writeFileSync(join(dir, 'src', 'app.ts'), APP_SOURCE);
-  writeFileSync(
-    join(dir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: 'dist',
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-        plugins,
-      },
-      include: ['src/**/*'],
-    }),
-  );
+  writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
+
+  writeTsconfig('tsconfig.inline.json', 'dist-inline', [
+    { transform: '@rhombus-std/primitives.transformer/inline-ttsc' },
+    { transform: '@rhombus-std/primitives.transformer/ttsc' },
+    { transform: '@rhombus-std/di.transformer/ttsc' },
+  ]);
+  writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
+    { transform: '@rhombus-std/primitives.transformer/ttsc' },
+    { transform: '@rhombus-std/di.transformer/ttsc' },
+  ]);
 }
 
-function lower(dir: string): string {
-  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: dir, encoding: 'utf8', env: goEnv() });
+function lower(tsconfig: string, outDir: string): string {
+  const result = spawnSync('node', [TTSC, '-p', tsconfig], { cwd: projDir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
     throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
   }
   let lowered: string;
   try {
-    lowered = readFileSync(join(dir, 'dist', 'app.js'), 'utf8');
+    lowered = readFileSync(join(projDir, outDir, 'app.js'), 'utf8');
   } catch {
     const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
     lowered = envelope.typescript['src/app.ts'] ?? '';
@@ -143,19 +184,11 @@ beforeAll(() => {
   if (!toolchainReady) {
     return;
   }
-  const inlineDir = join(projDir, 'with-inline');
-  const semanticDir = join(projDir, 'without-inline');
-  writeProject(inlineDir, [
-    { transform: '@rhombus-std/primitives.transformer/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.transformer/ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
-  ]);
-  writeProject(semanticDir, [
-    { transform: '@rhombus-std/primitives.transformer/ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
-  ]);
-  withInline = lower(inlineDir);
-  withoutInline = lower(semanticDir);
+  setupWorkspace();
+  // First compilation pays the one cold sidecar build; the second reuses it warm
+  // through the shared project-local plugin cache.
+  withInline = lower('tsconfig.inline.json', 'dist-inline');
+  withoutInline = lower('tsconfig.semantic.json', 'dist-semantic');
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () => {
