@@ -15,7 +15,7 @@
 import { CacheEntryExtensions, CacheExtensions, CacheItemPriority } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigurationBuilder, MemoryConfigurationBuilderExtensions } from '@rhombus-std/config';
-import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, MetricsOptions,
   MetricsOptionsExtensions, TracingOptions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
@@ -72,7 +72,7 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
         recorded.push([token, value]);
       },
       build: () => undefined,
-    } as unknown as ServiceManifestBase;
+    } as unknown as IServiceManifestBase;
 
     const builder = new MetricsBuilder(services);
     const listener = { name: 'listener' } as IMetricsListener;

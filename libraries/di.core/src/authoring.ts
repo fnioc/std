@@ -19,7 +19,7 @@
 //   import type { AugmentationSet } from "@rhombus-std/primitives";
 //   import { nameof } from "@rhombus-std/primitives";
 //   declare module "@rhombus-std/di.core" {
-//     interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+//     interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
 //       addMyThing(): this;
 //     }
 //     interface ServiceManifestClass<Scopes extends string = "singleton"> {
@@ -29,7 +29,7 @@
 //   export const MyThingExtensions = {
 //     addMyThing(manifest: ServiceManifestClass<string>) { … return manifest; },
 //   } satisfies AugmentationSet<ServiceManifestClass<string>>;
-//   registerAugmentations(nameof<ServiceManifest>(), MyThingExtensions);
+//   registerAugmentations(nameof<IServiceManifest>(), MyThingExtensions);
 //
 // This mirrors how `@rhombus-std/config` adds `addJsonFile` to
 // `ConfigurationBuilder`, and depends on di.core ALONE — never the di runtime. The
@@ -74,7 +74,7 @@ export interface AddBuilder<Scopes extends string> {
  * runtime registration methods (`add` / `addFactory` / `addValue`) plus `build`.
  *
  * It is also the interface-first public surface a di consumer holds: di's public
- * `ServiceManifest` type is `ServiceManifestBase<S, IServiceProvider<S>>` (not the
+ * `ServiceManifest` type is `IServiceManifestBase<S, IServiceProvider<S>>` (not the
  * impl class), so the type-driven authoring forms (`add<I>(C)`, `addFactory<I>(fn)`,
  * `addValue<I>(v)`) the `@rhombus-std/di.transformer` DECLARATION-MERGES onto this
  * interface surface on a consumer's `services.add<I>(...)`. An interface picks up
@@ -87,7 +87,7 @@ export interface AddBuilder<Scopes extends string> {
  * this interface. Keeping it generic is what lets this interface live in the
  * types-only substrate without referencing di's runtime provider type.
  */
-export interface ServiceManifestBase<
+export interface IServiceManifestBase<
   Scopes extends string = 'singleton',
   Provider = unknown,
 > {
@@ -124,9 +124,9 @@ export interface ServiceManifestBase<
   build(options?: ServiceProviderOptions): Provider;
 }
 
-// The public authoring INTERFACE `ServiceManifest<S>` — `ServiceManifestBase`
+// The public authoring INTERFACE `ServiceManifest<S>` — `IServiceManifestBase`
 // bound to the concrete `IServiceProvider<S>` that `build()` returns — is defined
-// in `./service-manifest.ts` alongside the `ServiceManifestClass` that implements
+// in `./IServiceManifest.ts` alongside the `ServiceManifestClass` that implements
 // it. The static / constructor side (`ServiceManifestCtor`) and the constructible
 // `ServiceManifest` VALUE are a RUNTIME concern and live in `@rhombus-std/di`,
 // which also patches `build()` onto the concrete class's prototype.

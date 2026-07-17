@@ -11,11 +11,11 @@
 // The receiver is matched at the member's DECLARATION SITE, not by the receiver
 // type's symbol name: we resolve the `addOptions` symbol at the call site and
 // accept only when one of its declarations is an interface member on
-// `ServiceManifestBase` / `ServiceManifestClass` declared inside the
+// `IServiceManifestBase` / `ServiceManifestClass` declared inside the
 // `declare module '@rhombus-std/di.core'` block that authors this augmentation.
 // An inherited member keeps its original declaration, so a subinterface, a class
 // carrying the repo's empty extends-merge, an interface-typed variable, or a
-// generic `<M extends ServiceManifestBase>` all resolve back to that same
+// generic `<M extends IServiceManifestBase>` all resolve back to that same
 // declaration. An unrelated type that merely happens to spell a same-named
 // `addOptions<T>()` resolves to its own declaration and is rejected.
 
@@ -24,11 +24,11 @@ import ts from 'typescript';
 const ADD_OPTIONS_NAME = 'addOptions';
 
 // The registration-builder interfaces the augmentation merges the sugar onto:
-// `ServiceManifestBase` (which the public `ServiceManifest` alias resolves to)
+// `IServiceManifestBase` (which the public `ServiceManifest` alias resolves to)
 // and the concrete `ServiceManifestClass`. `ServiceManifest` itself is a type
 // ALIAS and declares no members, so it never anchors a declaration here.
 const DECLARING_INTERFACES: ReadonlySet<string> = new Set([
-  'ServiceManifestBase',
+  'IServiceManifestBase',
   'ServiceManifestClass',
 ]);
 
@@ -81,7 +81,7 @@ function memberDeclaredOnManifest(
 }
 
 /**
- * True when `declaration`'s parent is a `ServiceManifestBase` /
+ * True when `declaration`'s parent is a `IServiceManifestBase` /
  * `ServiceManifestClass` interface declared inside the
  * `declare module '@rhombus-std/di.core'` block.
  */

@@ -110,7 +110,7 @@ beforeAll(() => {
     as(scope: Scopes): void;
     as<S extends Scopes>(): void;
   }
-  export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+  export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
     add(token: string, ctor: Ctor, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
     add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     add<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
@@ -130,9 +130,9 @@ beforeAll(() => {
     tryResolve<T>(): T | undefined;
   }
   export interface IServiceProvider<S extends string = string> extends IResolver {}
-  export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, IServiceProvider<S>>;
+  export type IServiceManifest<S extends string = string> = IServiceManifestBase<S, IServiceProvider<S>>;
   export namespace Nested {
-    export interface ServiceManifestBase<Scopes extends string = string> {
+    export interface IServiceManifestBase<Scopes extends string = string> {
       add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     }
     export interface IResolver {
@@ -148,7 +148,7 @@ beforeAll(() => {
     `
 import { nameof } from "./nameof";
 import { IUserRepo } from "your-lib/contracts";
-import type { Nested, IResolver as DiResolver, ServiceManifest, ServiceManifestBase, IServiceProvider } from "@rhombus-std/di.core";
+import type { Nested, IResolver as DiResolver, IServiceManifest, IServiceManifestBase, IServiceProvider } from "@rhombus-std/di.core";
 
 // The Keyed<T, K> phantom brand (declared locally — the transformer detects it
 // structurally by the computed-symbol \`[KEY]\` property, not by import source):
@@ -181,7 +181,7 @@ class ThingRepo<T> implements IRepo<T> {
   constructor(thing: Keyed<IThing<T>, "redis">) {}
 }
 
-declare const services: ServiceManifest<string>;
+declare const services: IServiceManifest<string>;
 declare const provider: IServiceProvider<string>;
 
 services.add<ILogger>(ConsoleLogger).as<"singleton">();
@@ -202,15 +202,15 @@ class SubImpl implements ISub {}
 class RegImpl implements IReg {}
 
 // (b) subinterface receiver
-interface MyManifest extends ServiceManifestBase {}
+interface MyManifest extends IServiceManifestBase {}
 declare const sub: MyManifest;
 sub.add<ISub>(SubImpl).as<"singleton">();
 
 // (c) user concrete class + @augment + empty extends-merge
 declare function augment(token: string): <T>(target: T) => T;
-@augment("@rhombus-std/di.core:ServiceManifest")
+@augment("@rhombus-std/di.core:IServiceManifest")
 class MyRegistry {}
-interface MyRegistry extends ServiceManifestBase {}
+interface MyRegistry extends IServiceManifestBase {}
 declare const reg: MyRegistry;
 reg.add<IReg>(RegImpl).as<"singleton">();
 
@@ -260,7 +260,7 @@ const rbag = { resolve<T>(): T { return {} as T; } };
 export const rbagDep = rbag.resolve<IRbag>();
 
 // (i) namespace-nested declaring interfaces (add + resolve)
-declare const nested: Nested.ServiceManifestBase;
+declare const nested: Nested.IServiceManifestBase;
 export const nestedReg = nested.add<INested>(FakeImpl);
 declare const nestedResolver: Nested.IResolver;
 export const nestedDep = nestedResolver.resolve<INested>();

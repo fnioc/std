@@ -6,14 +6,14 @@
 // declaration merging onto the interface + a runtime install through the
 // augmentation registry.
 //
-// OPEN receiver (docs §38): `ServiceManifest` is extended by many downstream
+// OPEN receiver (docs §38): `IServiceManifest` is extended by many downstream
 // packages, so this const registers against
-// `nameof<ServiceManifest>()` (owned by di.core). The concrete
+// `nameof<IServiceManifest>()` (owned by di.core). The concrete
 // `ServiceManifestClass` -- in `@rhombus-std/di.core` -- is decorated with
-// `@augment(nameof<ServiceManifest>())` there, so it pulls this bag
+// `@augment(nameof<IServiceManifest>())` there, so it pulls this bag
 // (and every other cross-package set on the same token) onto its prototype. As
 // this is a FOREIGN receiver class, both the interface-side merge (onto
-// `ServiceManifestBase`) and the class-side merge (onto `ServiceManifestClass`)
+// `IServiceManifestBase`) and the class-side merge (onto `ServiceManifestClass`)
 // live here in the extending package.
 //
 // The reference registers `IHostedService` specifically (an enumerable
@@ -24,7 +24,7 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
 // importable here.
-import { type AddBuilder, type DepSlot, type IResolver, RESOLVER_TOKEN, type ServiceManifest,
+import { type AddBuilder, type DepSlot, type IResolver, type IServiceManifest, RESOLVER_TOKEN,
   type ServiceManifestClass } from '@rhombus-std/di.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -32,13 +32,13 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TOKEN } from './tokens';
 
-// The authored method merges onto core's `ServiceManifestBase` interface -- the
-// surface the public `ServiceManifest` resolves to -- AND onto the concrete
+// The authored method merges onto core's `IServiceManifestBase` interface -- the
+// surface the public `IServiceManifest` resolves to -- AND onto the concrete
 // `ServiceManifestClass`, so the class still SATISFIES the interface once the new
 // name is on it. `Provider` is defaulted so the merge matches the target's
 // type-parameter list (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers a factory as an {@link IHostedService} — the reference's
      * `AddHostedService(Func<IServiceProvider, THostedService>)` overload. Use it
@@ -102,4 +102,4 @@ export const ServiceCollectionHostedServiceExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<ServiceManifest>(), ServiceCollectionHostedServiceExtensions);
+registerAugmentations(nameof<IServiceManifest>(), ServiceCollectionHostedServiceExtensions);

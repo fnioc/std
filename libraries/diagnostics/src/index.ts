@@ -35,7 +35,7 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
+import { type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass } from '@rhombus-std/di.core';
 import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
   METRICS_CONFIGURATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
   METRICS_OPTIONS_TOKEN, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
@@ -58,14 +58,14 @@ import { MetricsBuilder } from './metrics/MetricsBuilder';
 import { DefaultActivityListenerConfigurationFactory } from './tracing/configuration/DefaultActivityListenerConfigurationFactory';
 import { TracingBuilder } from './tracing/TracingBuilder';
 
-// The authored methods merge onto core's `ServiceManifestBase` interface -- the
+// The authored methods merge onto core's `IServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` a consumer holds resolves to -- AND onto
 // the concrete `ServiceManifestClass`, so the class still SATISFIES `implements
-// ServiceManifestBase` once these NEW method names are on the interface.
+// IServiceManifestBase` once these NEW method names are on the interface.
 // `Provider`/`Scopes` are defaulted so each merge matches its target's
 // type-parameter list (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers the metrics options assembly and, if `configure` is supplied,
      * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
@@ -166,10 +166,10 @@ export const TracingServiceExtensions = {
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
 // OPEN receiver: register both sets against di.core's ServiceManifest token
-// (docs §38). The `ServiceManifestClass` decorated `@augment(nameof<ServiceManifest>())`
+// (docs §38). The `ServiceManifestClass` decorated `@augment(nameof<IServiceManifest>())`
 // in di.core pulls `addMetrics`/`addTracing` onto its prototype.
-registerAugmentations(nameof<ServiceManifest>(), MetricsServiceExtensions);
-registerAugmentations(nameof<ServiceManifest>(), TracingServiceExtensions);
+registerAugmentations(nameof<IServiceManifest>(), MetricsServiceExtensions);
+registerAugmentations(nameof<IServiceManifest>(), TracingServiceExtensions);
 
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).

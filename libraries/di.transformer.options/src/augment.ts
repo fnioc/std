@@ -9,7 +9,7 @@
 // program. Without the transformer the 0-arg form does not exist — which is the
 // truth at runtime, killing the "compiles but throws" footgun.
 //
-// It DECLARATION-MERGES a new overload onto `ServiceManifestBase` (the interface
+// It DECLARATION-MERGES a new overload onto `IServiceManifestBase` (the interface
 // the public `ServiceManifest` resolves to), composing with the explicit
 // `addOptions(token, tToken)` / `addOptions(token, makeBase)` overloads that
 // `@rhombus-std/options.augmentations` contributes. `Provider` is defaulted so the
@@ -24,7 +24,7 @@
 import type { AddBuilder } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Type-driven options sugar — registers an `Options<T>` at `token(Options<T>)`
      * that wraps the `T` resolved from `token(T)`. Lowers to the explicit

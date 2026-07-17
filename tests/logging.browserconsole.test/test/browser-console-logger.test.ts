@@ -1,4 +1,4 @@
-import type { ServiceManifest, Token } from '@rhombus-std/di.core';
+import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import { BrowserConsoleLogger, BrowserConsoleLoggerExtensions, BrowserConsoleLoggerProvider, type ConsoleLike,
   consoleMethodFor } from '@rhombus-std/logging.browserconsole';
@@ -6,13 +6,13 @@ import { EventId, LogLevel } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: ServiceManifest; values: [Token, unknown][]; } {
+function fakeServices(): { services: IServiceManifest; values: [Token, unknown][]; } {
   const values: [Token, unknown][] = [];
   const services = {
     addValue(token: Token, value: unknown): void {
       values.push([token, value]);
     },
-  } as unknown as ServiceManifest;
+  } as unknown as IServiceManifest;
   return { services, values };
 }
 

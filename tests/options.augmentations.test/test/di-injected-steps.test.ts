@@ -5,7 +5,7 @@
 // (no transformer) -- the caller supplies <T, Deps> explicitly, since the token
 // array alone (all strings) can't recover the Deps tuple by inference.
 
-import { ServiceManifest } from '@rhombus-std/di';
+import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import { type Options, OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -117,7 +117,7 @@ describe('postConfigure — DI-injected', () => {
 describe('validate — DI-injected', () => {
   const LIMIT_TOKEN = 'test:Limit';
 
-  function servicesWithLimit(size: number, max: number): ServiceManifest<'singleton'> {
+  function servicesWithLimit(size: number, max: number): IServiceManifest<'singleton'> {
     const services = new ServiceManifest<'singleton'>();
     services.addValue(LIMIT_TOKEN, { max });
     services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size })).as('singleton');

@@ -12,7 +12,7 @@
 
 import { ConfigurationManager } from '@rhombus-std/config';
 import type { IConfigurationManager } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
+import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import type { IServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
@@ -136,7 +136,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The collection of services for the application to compose. */
-  public get services(): ServiceManifest {
+  public get services(): IServiceManifest {
     return this.#services;
   }
 

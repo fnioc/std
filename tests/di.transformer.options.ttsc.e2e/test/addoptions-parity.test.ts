@@ -106,19 +106,19 @@ beforeAll(() => {
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IFoo { flag: boolean; }\n`);
 
   // The ambient `declare module "@rhombus-std/di.core"` fixture: a script `.d.ts`
-  // declaring `ServiceManifestBase` with the sugar + explicit overloads. The
+  // declaring `IServiceManifestBase` with the sugar + explicit overloads. The
   // matcher anchors on this declaration site, so every receiver whose `addOptions`
   // resolves back here is lowered — regardless of the receiver's own symbol name.
   writeFileSync(
     join(projDir, 'src', 'di-core.d.ts'),
     `declare module "@rhombus-std/di.core" {
   export type AddBuilder<Scopes extends string = "singleton"> = { as(scope: Scopes): void };
-  export interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+  export interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
     addOptions<T>(): AddBuilder<Scopes>;
     addOptions(token: string, tToken: string): AddBuilder<Scopes>;
   }
   export namespace Nested {
-    export interface ServiceManifestBase<Scopes extends string = "singleton"> {
+    export interface IServiceManifestBase<Scopes extends string = "singleton"> {
       addOptions<T>(): AddBuilder<Scopes>;
     }
   }
@@ -128,31 +128,31 @@ beforeAll(() => {
   // Fixture calls in every receiver shape under test: an interface-typed
   // variable, a subinterface, a class carrying the empty extends-merge, and a
   // generic bound by the interface all lower; the explicit verb, an anonymous
-  // object, and a local type merely NAMED `ServiceManifest` do not.
+  // object, and a local type merely NAMED `IServiceManifest` do not.
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
 import type { Options } from "@rhombus-std/options";
 import { IFoo } from "your-lib/contracts";
-import type { Nested, ServiceManifestBase } from "@rhombus-std/di.core";
+import type { Nested, IServiceManifestBase } from "@rhombus-std/di.core";
 export type __KeepOptions<T> = Options<T>;
-declare const services: ServiceManifestBase<"singleton">;
+declare const services: IServiceManifestBase<"singleton">;
 interface AppConfig { host: string; port: number; }
 
 export const appInternal = services.addOptions<AppConfig>();
 export const chained = services.addOptions<AppConfig>().as("singleton");
 export const packagePublic = services.addOptions<IFoo>();
 
-interface MyManifest extends ServiceManifestBase {}
+interface MyManifest extends IServiceManifestBase {}
 declare const sub: MyManifest;
 export const viaSubinterface = sub.addOptions<AppConfig>();
 
 declare class MyThing {}
-interface MyThing extends ServiceManifestBase {}
+interface MyThing extends IServiceManifestBase {}
 declare const thing: MyThing;
 export const viaClassMerge = thing.addOptions<AppConfig>();
 
-function useGeneric<M extends ServiceManifestBase>(m: M) {
+function useGeneric<M extends IServiceManifestBase>(m: M) {
   return m.addOptions<AppConfig>();
 }
 export const viaGeneric = useGeneric(services);
@@ -161,13 +161,13 @@ export const explicitVerb = services.addOptions("some:OptionsToken", "some:Eleme
 const other = { addOptions<T>(): void {} } as { addOptions<T>(): void };
 export const nonManifest = other.addOptions<{ a: number }>();
 
-declare class ServiceManifest<S extends string = "singleton"> {
+declare class IServiceManifest<S extends string = "singleton"> {
   addOptions<T>(): { as(scope: S): void };
 }
-declare const local: ServiceManifest<"singleton">;
+declare const local: IServiceManifest<"singleton">;
 export const viaLocalName = local.addOptions<AppConfig>();
 
-declare const nested: Nested.ServiceManifestBase;
+declare const nested: Nested.IServiceManifestBase;
 export const viaNamespace = nested.addOptions<AppConfig>();
 `,
   );
@@ -240,8 +240,8 @@ describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity',
     expect(app).toContain(`addOptions("some:OptionsToken", "some:ElementToken")`);
   });
 
-  test('a non-ServiceManifest and a merely same-named receiver are not lowered', () => {
-    // The plain-object receiver and the local `ServiceManifest`-named class both
+  test('a non-IServiceManifest and a merely same-named receiver are not lowered', () => {
+    // The plain-object receiver and the local `IServiceManifest`-named class both
     // keep their `<T>` type argument — the old name-based matcher would have
     // wrongly lowered the latter.
     expect(app).toContain('other.addOptions<');

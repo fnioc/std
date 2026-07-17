@@ -2,7 +2,7 @@
 // internal `LoggingBuilder`. A thin wrapper exposing the registration builder
 // as `.services`, handed to the `configure` delegate by `addLogging`.
 
-import type { ServiceManifest } from '@rhombus-std/di.core';
+import type { IServiceManifest } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -21,9 +21,9 @@ export interface LoggingBuilder extends ILoggingBuilder {}
 // (re)installed onto the prototype, whatever the import order.
 @augment(nameof<ILoggingBuilder>())
 export class LoggingBuilder implements ILoggingBuilder {
-  public readonly services: ServiceManifest;
+  public readonly services: IServiceManifest;
 
-  public constructor(services: ServiceManifest) {
+  public constructor(services: IServiceManifest) {
     this.services = services;
   }
 }

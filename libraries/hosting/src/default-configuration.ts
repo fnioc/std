@@ -24,7 +24,7 @@ import { CommandLineConfigurationSource } from '@rhombus-std/config.commandline'
 import type { IConfigurationBuilder } from '@rhombus-std/config.core';
 import { EnvironmentVariablesConfigurationSource } from '@rhombus-std/config.env';
 import { JsonConfigurationSource } from '@rhombus-std/config.json';
-import { ServiceManifest } from '@rhombus-std/di';
+import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import type { ServiceProviderOptions } from '@rhombus-std/di.core';
 import { HostDefaults, HostEnvironmentEnvExtensions, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder, LoggingBuilderExtensions } from '@rhombus-std/logging';
@@ -87,7 +87,7 @@ export function applyDefaultAppConfiguration(
  * providers; those provider packages do not exist in this repo, so only the
  * console provider is registered (see scaffoldedIncomplete for the missing sinks).
  */
-export function addDefaultServices(services: ServiceManifest): void {
+export function addDefaultServices(services: IServiceManifest): void {
   LoggingBuilderExtensions.addProvider(new LoggingBuilder(services), new ConsoleLoggerProvider());
 }
 

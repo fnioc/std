@@ -10,13 +10,13 @@
 // and which kills the "compiles but throws at runtime" footgun.
 //
 // The augmentation DECLARATION-MERGES onto `@rhombus-std/di.core`'s public
-// interfaces — `ServiceManifestBase` (registration forms), `AddBuilder` (the
+// interfaces — `IServiceManifestBase` (registration forms), `AddBuilder` (the
 // `.as` form), and the resolution surface `IResolver` composes: `IRequiredResolver`
 // (the tokenless `resolve` forms), `IServiceQuery` (`isService`), and `IResolver`
 // itself (`resolveAsync` / `tryResolve`). Each tokenless overload merges onto the
 // interface that DECLARES its explicit-token form, so the two combine on one
 // interface. Because di's consumer-facing types are those interfaces
-// (interface-first: `ServiceManifest` = `ServiceManifestBase<…>`, and the public
+// (interface-first: `ServiceManifest` = `IServiceManifestBase<…>`, and the public
 // provider is the `IServiceProvider` interface that extends `IResolver`), the merged
 // overloads surface on what a consumer holds — an interface inherits a base
 // interface's merged overloads; a class would not. Declaration merging (adding overloads to the SAME interface)
@@ -48,11 +48,11 @@ export type { $, Hole, Inject, OverloadedConstructorParameters, OverloadedParame
   Typeof } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
-  // The type-driven registration forms merge onto core's `ServiceManifestBase`
-  // interface — which the public `ServiceManifest` (`= ServiceManifestBase<…>`) a
+  // The type-driven registration forms merge onto core's `IServiceManifestBase`
+  // interface — which the public `ServiceManifest` (`= IServiceManifestBase<…>`) a
   // consumer holds resolves to. `Provider` is defaulted so the merge matches the
   // interface's type-parameter list.
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Type-driven class authoring — lowers to `add("token", C)`. The ctor is
      * typed `Ctor<any[], I>` (a plain construct signature, so an abstract class

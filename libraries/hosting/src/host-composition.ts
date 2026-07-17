@@ -22,7 +22,7 @@
 //     own loggers -- and any composite logger already handed out -- light up.
 
 import type { IConfiguration } from '@rhombus-std/config.core';
-import type { ServiceManifest } from '@rhombus-std/di';
+import type { IServiceManifest } from '@rhombus-std/di';
 import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
   type IHostLifetime } from '@rhombus-std/hosting.core';
@@ -166,7 +166,7 @@ export function createFrameworkServices(): FrameworkServices {
  * {@link NullLifetime} registered here.
  */
 export function populateFrameworkServices(
-  services: ServiceManifest,
+  services: IServiceManifest,
   context: HostBuilderContext,
   environment: HostingEnvironment,
   configuration: IConfiguration,
@@ -192,7 +192,7 @@ export function populateFrameworkServices(
  * lifetime, and hands the internal host its dependencies directly.
  *
  * `@rhombus-std/di` MUST be imported by the caller before this runs so
- * `ServiceManifest.build()` is patched on (di.core alone throws in `build()`).
+ * `IServiceManifest.build()` is patched on (di.core alone throws in `build()`).
  *
  * `configuration` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
@@ -202,7 +202,7 @@ export function populateFrameworkServices(
  * an unvalidated build.
  */
 export function resolveHost(
-  services: ServiceManifest,
+  services: IServiceManifest,
   framework: FrameworkServices,
   configuration: IConfiguration,
   serviceProviderOptions?: ServiceProviderOptions,

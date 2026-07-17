@@ -1,6 +1,6 @@
 // Rolls the public type surface of @rhombus-std/diagnostics.core into a single
 // dist/index.d.ts. The workspace/toolkit type dependencies stay EXTERNAL
-// (respectExternal: true) so the published declaration imports `ServiceManifestBase`
+// (respectExternal: true) so the published declaration imports `IServiceManifestBase`
 // / `Token` / `ConfigureOptions` / `Func` from their real packages rather than
 // inlining a private copy.
 

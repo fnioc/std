@@ -37,7 +37,7 @@ import '@rhombus-std/options.augmentations';
 
 // `MemoryCacheOptions` is a named import so its unqualified name resolves
 // inside the `declare module` body below (see @rhombus-std/options.augmentations).
-import type { IResolver, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
+import type { IResolver, IServiceManifest, ServiceManifestClass } from '@rhombus-std/di.core';
 import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { Options } from '@rhombus-std/options';
@@ -66,13 +66,13 @@ import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 // every caching consumer.
 const LOGGER_FACTORY_TOKEN = '@rhombus-std/logging:ILoggerFactory';
 
-// Merge `addMemoryCache` onto core's `ServiceManifestBase` interface (the
+// Merge `addMemoryCache` onto core's `IServiceManifestBase` interface (the
 // surface a consumer holding `ServiceManifest<S>` resolves to) AND onto the
 // concrete `ServiceManifestClass` (so the class still SATISFIES the interface
 // once this new method name is on it). `Provider` is defaulted so each merge
 // matches its target's type-parameter list (TS2428 requires identical params).
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers a singleton {@link MemoryCache} as `IMemoryCache` (resolvable
      * at {@link MEMORY_CACHE_TOKEN}), assembled from the
@@ -105,7 +105,7 @@ declare module '@rhombus-std/di.core' {
 
 // One named object literal mirroring the reference `MemoryCacheServiceCollectionExtensions`
 // static class (docs §28/§38), registered against the OPEN `ServiceManifest`
-// augmentation token so the `@augment(nameof<ServiceManifest>())`
+// augmentation token so the `@augment(nameof<IServiceManifest>())`
 // decoration in di.core pulls `addMemoryCache` onto the `ServiceManifestClass`
 // prototype (the fluent path) AND exported so the member is the standalone form.
 export const MemoryCacheServiceCollectionExtensions = {
@@ -162,7 +162,7 @@ export const MemoryCacheServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<ServiceManifest>(), MemoryCacheServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), MemoryCacheServiceCollectionExtensions);
 
 export { MemoryCache } from './MemoryCache';
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in

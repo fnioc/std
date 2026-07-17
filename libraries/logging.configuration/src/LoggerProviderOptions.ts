@@ -30,7 +30,7 @@
 //     this twice for one (options, provider) pair appends the step twice
 //     (an idempotent re-bind — harmless, but not deduped).
 
-import type { ServiceManifest, Token, Typeof } from '@rhombus-std/di.core';
+import type { IServiceManifest, Token, Typeof } from '@rhombus-std/di.core';
 import type { Options } from '@rhombus-std/options';
 import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
 import { loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
@@ -55,7 +55,7 @@ export const LoggerProviderOptions = {
    * @param providerType The provider type's token (`nameof<TProvider>()`).
    */
   registerProviderOptions<TOptions, TProvider>(
-    services: ServiceManifest,
+    services: IServiceManifest,
     optionsToken: Typeof<Options<TOptions>>,
     providerType: Typeof<TProvider>,
   ): void {

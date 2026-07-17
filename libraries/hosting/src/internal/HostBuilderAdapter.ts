@@ -14,7 +14,7 @@
 //     application builder it wraps.
 
 import type { IConfigurationBuilder, IConfigurationManager } from '@rhombus-std/config.core';
-import type { ServiceManifest } from '@rhombus-std/di';
+import type { IServiceManifest } from '@rhombus-std/di';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
@@ -37,16 +37,16 @@ export interface HostBuilderAdapter extends IHostBuilder {}
 @augment(nameof<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {
   readonly #configuration: IConfigurationManager;
-  readonly #services: ServiceManifest;
+  readonly #services: IServiceManifest;
   readonly #context: HostBuilderContext;
 
   readonly #configureHostConfigActions: Action<[IConfigurationBuilder]>[] = [];
   readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigurationBuilder]>[] = [];
-  readonly #configureServicesActions: Action<[HostBuilderContext, ServiceManifest]>[] = [];
+  readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
 
   public constructor(
     configuration: IConfigurationManager,
-    services: ServiceManifest,
+    services: IServiceManifest,
     context: HostBuilderContext,
   ) {
     this.#configuration = configuration;
@@ -71,7 +71,7 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureServices(configureDelegate: Action<[HostBuilderContext, ServiceManifest]>): this {
+  public configureServices(configureDelegate: Action<[HostBuilderContext, IServiceManifest]>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }

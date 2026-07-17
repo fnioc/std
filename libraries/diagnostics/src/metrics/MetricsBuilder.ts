@@ -5,7 +5,7 @@
 // (@rhombus-std/diagnostics.core's addMetricsListener/enableMetrics/... and this
 // package's addMetricsConfiguration).
 
-import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -27,10 +27,10 @@ export interface MetricsBuilder extends IMetricsBuilder {}
  */
 @augment(nameof<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
-  readonly services: ServiceManifestBase;
+  readonly services: IServiceManifestBase;
 
   /** @param services The registration surface extension functions register against. */
-  public constructor(services: ServiceManifestBase) {
+  public constructor(services: IServiceManifestBase) {
     this.services = services;
   }
 }

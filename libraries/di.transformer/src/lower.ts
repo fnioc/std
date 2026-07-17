@@ -163,7 +163,7 @@ export function lowerStatement(
  * and the first arg is a string literal, leave it untouched.
  *
  * The receiver is anchored at the member's DECLARATION SITE (`./anchor.ts`): the
- * called `add` / `addFactory` / `addValue` must resolve to `ServiceManifestBase`
+ * called `add` / `addFactory` / `addValue` must resolve to `IServiceManifestBase`
  * inside `declare module '@rhombus-std/di.core'`, so an unrelated `.add()` (e.g.
  * `new Set().add(v)`) is never lowered.
  */

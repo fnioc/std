@@ -13,8 +13,8 @@
 // builder's `configureContainer` name one shared di.core type. Pure type-level; it
 // erases completely.
 
+import type { IServiceManifest } from './IServiceManifest.js';
 import type { IResolver } from './provider.js';
-import type { ServiceManifest } from './service-manifest.js';
 
 /**
  * The reference `IServiceProviderFactory<TContainerBuilder>` analog — a pluggable
@@ -27,7 +27,7 @@ import type { ServiceManifest } from './service-manifest.js';
  */
 export interface IServiceProviderFactory<TContainerBuilder> {
   /** Adapts the collected service registrations into a container-specific builder. */
-  createBuilder(services: ServiceManifest): TContainerBuilder;
+  createBuilder(services: IServiceManifest): TContainerBuilder;
   /** Turns the (configured) container builder into the resolvable provider. */
   createServiceProvider(containerBuilder: TContainerBuilder): IResolver;
 }

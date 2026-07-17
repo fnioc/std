@@ -21,20 +21,20 @@
 // The registration builder now lives in @rhombus-std/di.core (the abstractions
 // package ships the concrete collection). di re-exports the class, supplies the
 // constructible `ServiceManifest` value + its ctor type, and — via importing
-// ./service-manifest.js — PROTOTYPE-PATCHES the engine-constructing half of
+// ./ServiceManifest.js — PROTOTYPE-PATCHES the engine-constructing half of
 // `build()` onto the class as a load-time side effect.
 export { ServiceManifestClass } from '@rhombus-std/di.core';
-export { ServiceManifest } from './service-manifest.js';
-export type { ServiceManifestCtor } from './service-manifest.js';
+export { ServiceManifest } from './ServiceManifest.js';
+export type { IServiceManifest, ServiceManifestCtor } from './ServiceManifest.js';
 // The `build()` augmentation const (mirrors the reference
 // `ServiceCollectionContainerBuilderExtensions`) — the standalone call surface;
 // importing it here also runs its registry registration side effect.
-export { ServiceCollectionContainerBuilderExtensions } from './service-manifest.js';
+export { ServiceCollectionContainerBuilderExtensions } from './ServiceManifest.js';
 
 // The authoring TYPE-machinery lives in @rhombus-std/di.core alongside the builder.
 // Re-exported here so a di consumer reaches the whole authoring surface through
 // the single @rhombus-std/di import, exactly as before the split.
-export type { AddBuilder, ServiceManifestBase } from '@rhombus-std/di.core';
+export type { AddBuilder, IServiceManifestBase } from '@rhombus-std/di.core';
 
 // The concrete container impl. Consumers hold the `IServiceProvider` INTERFACE
 // (re-exported from types.js below); the class is exported for white-box use

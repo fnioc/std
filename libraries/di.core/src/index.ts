@@ -26,12 +26,12 @@ export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Keyed, Typeof
 // The overload-faithful `Parameters<T>` / `ConstructorParameters<T>` analogs.
 export type { OverloadedConstructorParameters, OverloadedParameters } from './overloads.js';
 
-export type { AddBuilder, ServiceManifestBase } from './authoring.js';
+export type { AddBuilder, IServiceManifestBase } from './authoring.js';
 
 // The concrete registration builder plus the public authoring interface it is
 // bound to. The class is a runtime value; augmentations prototype-patch it.
-export { ServiceManifestClass } from './service-manifest.js';
-export type { ServiceManifest } from './service-manifest.js';
+export { ServiceManifestClass } from './IServiceManifest.js';
+export type { IServiceManifest } from './IServiceManifest.js';
 
 export type { Ctor, Factory, OpenRegistration, Producer, Registration } from './registrations.js';
 

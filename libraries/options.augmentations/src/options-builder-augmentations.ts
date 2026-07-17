@@ -20,7 +20,7 @@
 // built-in {@link StartupValidator} under `nameof<IStartupValidator>()`. The host
 // resolves that (optionally) and calls `validate()`.
 
-import { type IResolver, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass,
+import { type IResolver, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass,
   type Token } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
@@ -29,13 +29,13 @@ import { nameof } from '@rhombus-std/primitives';
 import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
 
 // `validateOnStart` is a BRAND-NEW method name, so it must merge onto BOTH the
-// `ServiceManifestBase` interface (the surface the public `ServiceManifest` type
+// `IServiceManifestBase` interface (the surface the public `ServiceManifest` type
 // resolves to) AND the concrete `ServiceManifestClass`, so the class still
-// SATISFIES `implements ServiceManifestBase` once the new name is on the
+// SATISFIES `implements IServiceManifestBase` once the new name is on the
 // interface -- exactly as the other verbs in this package do. Type-parameter
 // lists MUST match each target's declaration (TS2428).
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Marks the options registered at `token` for eager validation at host
      * startup: the host forces the registration's evaluation (running its
@@ -57,7 +57,7 @@ declare module '@rhombus-std/di.core' {
 // One named object literal mirroring the reference `OptionsBuilderExtensions`
 // static class (docs §28), registered against the `ServiceManifest` augmentation
 // token (docs §38) -- the concrete `ServiceManifestClass`, decorated with
-// `@augment(nameof<ServiceManifest>())` in di.core, pulls the member onto its
+// `@augment(nameof<IServiceManifest>())` in di.core, pulls the member onto its
 // prototype -- AND exported so the member is the standalone form.
 export const OptionsBuilderExtensions = {
   validateOnStart(
@@ -85,4 +85,4 @@ export const OptionsBuilderExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<ServiceManifest>(), OptionsBuilderExtensions);
+registerAugmentations(nameof<IServiceManifest>(), OptionsBuilderExtensions);

@@ -26,7 +26,7 @@ import type { IConfiguration } from '@rhombus-std/config.core';
 // `AddBuilder` and `Token` are named imports (not member references inside the
 // augmentation block) because unqualified names in a `declare module` body
 // resolve in THIS file's scope.
-import { type AddBuilder, RESOLVER_TOKEN, type ServiceManifest, ServiceManifestClass,
+import { type AddBuilder, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass,
   type Token } from '@rhombus-std/di.core';
 import { type ConfigureOptions, Options, type PostConfigureOptions, type ValidateOptions,
   ValidateOptionsResult } from '@rhombus-std/options';
@@ -50,16 +50,16 @@ const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 // its callback. A typed caller writes `[nameof<Dep1>(), nameof<Dep2>()]`.
 type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token; };
 
-// The authored methods merge onto core's `ServiceManifestBase` interface -- the
-// surface the public `ServiceManifest` (`= ServiceManifestBase<…>`) a consumer
+// The authored methods merge onto core's `IServiceManifestBase` interface -- the
+// surface the public `ServiceManifest` (`= IServiceManifestBase<…>`) a consumer
 // holds resolves to -- AND onto the concrete `ServiceManifestClass`, so the
-// class still SATISFIES `implements ServiceManifestBase` once these NEW method
+// class still SATISFIES `implements IServiceManifestBase` once these NEW method
 // names are on the interface. (di.transformer only merges OVERLOADS of existing
 // methods, so it needs no class-side merge; a brand-new name does.) `Provider`
 // is defaulted so each merge matches its target's type-parameter list (TS2428
 // requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers an `Options<T>` at `token` that WRAPS the `T` resolved from
      * `tToken`. The explicit, complete, transformer-free verb (#34): internally
@@ -333,8 +333,8 @@ export const OptionsConfigurationServiceCollectionExtensions = {
 // packages, so they register into the primitives augmentation registry beside
 // this declare-module merge. The `ServiceManifestClass` decorated with the same
 // token (di.core) pulls these members onto its prototype (§38).
-registerAugmentations(nameof<ServiceManifest>(), OptionsServiceCollectionExtensions);
-registerAugmentations(nameof<ServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), OptionsServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
 
 // `validateOnStart` lives in its own file named after its reference static class
 // (`OptionsBuilderExtensions`, §28) with `Extensions` -> `augmentations`, matching

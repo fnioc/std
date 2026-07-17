@@ -1,5 +1,5 @@
 import type { IConfigurationManager } from '@rhombus-std/config.core';
-import type { IServiceProviderFactory, ServiceManifest } from '@rhombus-std/di.core';
+import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { Action } from '@rhombus-toolkit/func';
@@ -32,7 +32,7 @@ export interface IHostApplicationBuilder {
   readonly metrics: IMetricsBuilder;
 
   /** A collection of services for the application to compose. */
-  readonly services: ServiceManifest;
+  readonly services: IServiceManifest;
 
   /**
    * Registers a factory used to create the service provider. The `configure`

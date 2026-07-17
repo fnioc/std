@@ -14,7 +14,7 @@ import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import type { AddBuilder, ServiceManifestBase } from './authoring.js';
+import type { AddBuilder, IServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
@@ -23,7 +23,7 @@ import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
 import type { DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — `AddBuilder` and the collection interface
-// `ServiceManifestBase` — lives alongside this builder in the abstractions
+// `IServiceManifestBase` — lives alongside this builder in the abstractions
 // package `@rhombus-std/di.core`. The runtime `ServiceManifestClass` implements
 // the interface; the engine-constructing half of `build()` is a
 // `@rhombus-std/di` extension (see `build()` below).
@@ -69,13 +69,13 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  * augmentation token: every cross-package registration augmentation (`build`,
  * `addOptions`, `addLogging`, `addMetrics`, `addMemoryCache`,
  * `addHostedService`, `removeAll`, ...) registers its set against
- * `nameof<ServiceManifest>()`, and the decorator subscribes the class
+ * `nameof<IServiceManifest>()`, and the decorator subscribes the class
  * so each set — including those registered by DOWNSTREAM packages loaded after
  * this one — is (re)installed onto the prototype (docs/decisions.md §38).
  */
-@augment(nameof<ServiceManifest>())
+@augment(nameof<IServiceManifest>())
 export class ServiceManifestClass<Scopes extends string = 'singleton'>
-  implements ServiceManifestBase<Scopes, IServiceProvider<Scopes>>
+  implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>>
 {
   /**
    * The service collection: each token maps to a LIST of registrations in
@@ -332,7 +332,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * `ServiceCollectionDescriptorExtensions.removeAll` augmentation
    * (`service-collection-descriptor-augmentations.ts`), which cannot reach these
    * private tables from a separate module. Not part of the public authoring
-   * interface (`ServiceManifestBase`) — a consumer reaches the mutation through
+   * interface (`IServiceManifestBase`) — a consumer reaches the mutation through
    * the fluent `removeAll` augmentation, exactly as `build()` is reached through
    * the di runtime, never as a raw method on the collection surface.
    */
@@ -347,7 +347,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * "already registered?" PRIMITIVE behind the `tryAdd*` augmentations
    * (`ServiceCollectionDescriptorExtensions`), which cannot reach these private
    * tables from a separate module. Like `removeRegistrations`, it is not part of
-   * the public authoring interface (`ServiceManifestBase`): a consumer reaches
+   * the public authoring interface (`IServiceManifestBase`): a consumer reaches
    * the conditional-add behavior through the fluent `tryAdd`/`replace`
    * augmentations, never as a raw method on the collection surface.
    *
@@ -435,10 +435,10 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
 
 /**
  * The public registration-builder INTERFACE a di consumer holds — the
- * `ServiceManifestBase` interface bound to the concrete provider `build()`
+ * `IServiceManifestBase` interface bound to the concrete provider `build()`
  * returns (the ME `IServiceCollection` analog). Interface-first (not the impl
  * class) so the `@rhombus-std/di.transformer` augmentation — which merges the
- * authored `add<I>()` / `.as<"scope">()` forms onto `ServiceManifestBase` —
+ * authored `add<I>()` / `.as<"scope">()` forms onto `IServiceManifestBase` —
  * surfaces on a consumer typing against `ServiceManifest<S>`. A class would not
  * inherit those augmented overloads; the interface does.
  *
@@ -446,7 +446,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
  * `ServiceManifest` VALUE live in `@rhombus-std/di`, alongside the `build()`
  * prototype-patch that makes `new ServiceManifest().build()` produce a provider.
  */
-export type ServiceManifest<S extends string = 'singleton'> = ServiceManifestBase<
+export type IServiceManifest<S extends string = 'singleton'> = IServiceManifestBase<
   S,
   IServiceProvider<S>
 >;

@@ -7,7 +7,7 @@
 // and resolves it. Covers both dual-export forms, both overload shapes, rule
 // accumulation across calls, and chaining.
 
-import { ServiceManifest } from '@rhombus-std/di';
+import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_TOKEN, LoggerFilterOptions,
   LoggingBuilder } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -20,7 +20,7 @@ import { describe, expect, test } from 'bun:test';
  * resolves the materialized value — the consumer-side wiring that runs every
  * configure step `addFilter` registered on `services`.
  */
-function resolveFilterOptions(services: ServiceManifest<'singleton'>): LoggerFilterOptions {
+function resolveFilterOptions(services: IServiceManifest<'singleton'>): LoggerFilterOptions {
   services.addOptions(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions()).as('singleton');
   const provider = services.build().createScope('singleton');
   return provider.resolve<Options<LoggerFilterOptions>>(LOGGER_FILTER_OPTIONS_TOKEN).value;

@@ -8,7 +8,7 @@
 // so a bare `{ services }` literal no longer satisfies the interfaces).
 
 import { ServiceManifest } from '@rhombus-std/di';
-import type { ServiceManifest as Manifest } from '@rhombus-std/di.core';
+import type { IServiceManifest as Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TOKEN,
   METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN,

@@ -22,12 +22,12 @@ const DECLARING_MODULE = '@rhombus-std/di.core';
 
 // The di.core authoring interface each matched member is declared on — its runtime
 // overloads AND the transformer's sugar overloads share one interface:
-//   add / addFactory / addValue → ServiceManifestBase
+//   add / addFactory / addValue → IServiceManifestBase
 //   as                          → AddBuilder
 //   resolve                     → IRequiredResolver
 //   resolveAsync / tryResolve   → IResolver
 //   isService                   → IServiceQuery
-export const REGISTRATION_INTERFACES: ReadonlySet<string> = new Set(['ServiceManifestBase']);
+export const REGISTRATION_INTERFACES: ReadonlySet<string> = new Set(['IServiceManifestBase']);
 export const AS_INTERFACES: ReadonlySet<string> = new Set(['AddBuilder']);
 export const RESOLVE_INTERFACES: ReadonlySet<string> = new Set(['IRequiredResolver', 'IResolver']);
 export const IS_SERVICE_INTERFACES: ReadonlySet<string> = new Set(['IServiceQuery']);

@@ -174,19 +174,19 @@ describe('dependency extraction', () => {
         export interface IServiceQuery { isService(token: string): boolean; }
         export interface IResolver extends IRequiredResolver, IServiceQuery {}
         export interface IServiceProvider<S extends string = string> extends IResolver {}
-        export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+        export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
           add(token: string, ctor: new(...a: any[]) => unknown, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
         }
-        export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, IServiceProvider<S>>;
+        export type IServiceManifest<S extends string = string> = IServiceManifestBase<S, IServiceProvider<S>>;
         declare module "@rhombus-std/di.core" {
-          interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+          interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
             add<I>(ctor: new(...a: any[]) => I): AddBuilder<Scopes>;
           }
         }
       `,
       '/proj/di-core.receivers.d.ts': `
-        import type { ServiceManifest } from "@rhombus-std/di.core";
-        declare global { const services: ServiceManifest<string>; }
+        import type { IServiceManifest } from "@rhombus-std/di.core";
+        declare global { const services: IServiceManifest<string>; }
       `,
       '/proj/src/app.ts': `
         import type { IResolver } from "@rhombus-std/di.core";

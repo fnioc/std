@@ -4,8 +4,8 @@
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
 // — a class this package does NOT own, and an OPEN receiver — so it follows the
 // augmentation-registry path (docs §38): register the set against the shared
-// `nameof<ServiceManifest>()` token and declaration-merge the method onto the
-// di.core `ServiceManifestBase` interface. The `@augment`-decorated
+// `nameof<IServiceManifest>()` token and declaration-merge the method onto the
+// di.core `IServiceManifestBase` interface. The `@augment`-decorated
 // `ServiceManifestClass` (in di.core) pulls the member onto its prototype. This is
 // why the package sets `"sideEffects": true` — a consumer who only wants the sugar
 // writes a bare `import "@rhombus-std/logging";`.
@@ -33,7 +33,7 @@
 // types `manifest.addOptions(...)` below into the program.
 import '@rhombus-std/options.augmentations';
 
-import { closeToken, type ServiceManifest, type ServiceManifestClass, typeArg } from '@rhombus-std/di.core';
+import { closeToken, type IServiceManifest, type ServiceManifestClass, typeArg } from '@rhombus-std/di.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
@@ -57,14 +57,14 @@ import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKE
 const ILOGGER_TOKEN_BASE = '@rhombus-std/logging.core:ILogger';
 
 // `addLogging` is a BRAND-NEW method name, so it must merge onto BOTH the
-// `ServiceManifestBase` interface (the surface the public `ServiceManifest` type
+// `IServiceManifestBase` interface (the surface the public `ServiceManifest` type
 // resolves to) AND the concrete `ServiceManifestClass`, so the class still
-// SATISFIES `implements ServiceManifestBase` once the new name is on the
+// SATISFIES `implements IServiceManifestBase` once the new name is on the
 // interface — exactly as @rhombus-std/options.augmentations does. Type-parameter
-// lists MUST match each target's declaration (TS2428): `ServiceManifestBase`
+// lists MUST match each target's declaration (TS2428): `IServiceManifestBase`
 // takes `<Scopes, Provider>`, `ServiceManifestClass` takes `<Scopes>`.
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers the logging services and runs the optional {@link ILoggingBuilder}
      * configuration delegate. Returns `this` for chaining.
@@ -80,7 +80,7 @@ declare module '@rhombus-std/di.core' {
 // One named object literal mirroring the reference `LoggingServiceCollectionExtensions`
 // static class (docs §28), registered against the `ServiceManifest` augmentation
 // token (docs §38) — the concrete `ServiceManifestClass`, decorated with
-// `@augment(nameof<ServiceManifest>())` in di.core, pulls the member onto
+// `@augment(nameof<IServiceManifest>())` in di.core, pulls the member onto
 // its prototype — AND exported so the member is the standalone form.
 export const LoggingServiceCollectionExtensions = {
   addLogging(
@@ -117,9 +117,9 @@ export const LoggingServiceCollectionExtensions = {
     // are singleton-only. Narrow the scope phantom here: LoggingBuilder merely
     // stores the manifest and never calls the scope-sensitive `build()`, so the
     // phantom is inert.
-    configure?.(new LoggingBuilder(manifest as unknown as ServiceManifest));
+    configure?.(new LoggingBuilder(manifest as unknown as IServiceManifest));
     return manifest;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<ServiceManifest>(), LoggingServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), LoggingServiceCollectionExtensions);

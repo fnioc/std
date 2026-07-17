@@ -16,9 +16,8 @@
 // import-time side effect. The core `build()` interface member already exists —
 // this only supplies the runtime.
 
-import { type IServiceProvider, type OpenRegistration, type Registration,
-  type ServiceManifest as ServiceManifestInterface, ServiceManifestClass, type ServiceProviderOptions,
-  type Token } from '@rhombus-std/di.core';
+import { type IServiceManifest as ServiceManifestInterface, type IServiceProvider, type OpenRegistration,
+  type Registration, ServiceManifestClass, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 
@@ -29,9 +28,9 @@ import { ServiceProviderClass } from './ServiceProviderClass.js';
  * `ServiceManifest<S>`, re-declared locally so it merges with the constructible
  * VALUE of the same name below (one name carrying both type and value through the
  * barrel). The `@rhombus-std/di.transformer` augmentation surfaces through it: it
- * merges onto `ServiceManifestBase`, which this resolves to.
+ * merges onto `IServiceManifestBase`, which this resolves to.
  */
-export type ServiceManifest<S extends string = 'singleton'> = ServiceManifestInterface<S>;
+export type IServiceManifest<S extends string = 'singleton'> = ServiceManifestInterface<S>;
 
 // The engine-constructing half of `build()`: seal the registrations (the
 // collection's own half, done in di.core) and hand the frozen snapshot to the
@@ -87,7 +86,7 @@ registerAugmentations(
  * `build()` runtime this module has registered against the augmentation token).
  */
 export interface ServiceManifestCtor {
-  new<S extends string = 'singleton'>(): ServiceManifest<S>;
+  new<S extends string = 'singleton'>(): IServiceManifest<S>;
 }
 
 /** The public registration-builder VALUE. It IS `ServiceManifestClass`. */

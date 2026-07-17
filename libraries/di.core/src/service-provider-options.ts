@@ -1,7 +1,7 @@
 // The provider-construction options — the reference `ServiceProviderOptions`
 // analog. The reference declares this type in its concrete container package
 // (beside its `BuildServiceProvider` extensions); here the TYPE is hoisted into
-// di.core because `build(options?)` is declared on the `ServiceManifestBase`
+// di.core because `build(options?)` is declared on the `IServiceManifestBase`
 // authoring interface (this package), so the parameter type must be reachable
 // without the runtime engine. Pure data — the engine (`@rhombus-std/di`) is the
 // only reader of the flags.

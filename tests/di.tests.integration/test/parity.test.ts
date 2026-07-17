@@ -1,4 +1,4 @@
-import { NoSatisfiableSignatureError, ServiceManifest, union } from '@rhombus-std/di';
+import { type IServiceManifest, NoSatisfiableSignatureError, ServiceManifest, union } from '@rhombus-std/di';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -44,7 +44,7 @@ let handFedConfigRuns = 0;
 const theThunk = () => 'thunk-result';
 
 /** Build the identical graph WITHOUT the transformer — the plugin-less path. */
-function buildHandFed(): ServiceManifest<'singleton' | 'request'> {
+function buildHandFed(): IServiceManifest<'singleton' | 'request'> {
   handFedConfigRuns = 0;
 
   // Path 2: hand-feed each class's ctor signature inline as the third `add`

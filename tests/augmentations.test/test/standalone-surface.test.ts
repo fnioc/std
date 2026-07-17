@@ -26,7 +26,7 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
     expect(keys(MemoryConfigurationBuilderExtensions)).toEqual(['addInMemoryCollection']);
   });
 
-  test('ServiceManifest augmentations', () => {
+  test('IServiceManifest augmentations', () => {
     expect(keys(MetricsServiceExtensions)).toEqual(['addMetrics']);
     expect(keys(TracingServiceExtensions)).toEqual(['addTracing']);
     expect(keys(LoggingServiceCollectionExtensions)).toEqual(['addLogging']);

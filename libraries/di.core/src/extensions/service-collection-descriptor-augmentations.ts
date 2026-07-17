@@ -5,12 +5,12 @@
 // registration-collection receiver.
 //
 // This is an OPEN set (the `ServiceManifest` receiver is extended by many
-// downstream families), so it registers against `nameof<ServiceManifest>()`
+// downstream families), so it registers against `nameof<IServiceManifest>()`
 // through the primitives augmentation registry rather than a direct
 // `applyAugmentations` at the class -- the same token every cross-package
 // registration augmentation (`addOptions`, `addLogging`, `addMetrics`, ...)
 // derives inline. `ServiceManifestClass` is decorated with `@augment(token)` in
-// `service-manifest.ts`, so registering here reaches its prototype.
+// `IServiceManifest.ts`, so registering here reaches its prototype.
 //
 // Ported members:
 //   - `removeAll(token)` -- removes EVERY registration bound to `token` (the
@@ -64,7 +64,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 // (the `satisfies` bound and the receiver annotation); the runtime install goes
 // through the registry, not a direct `applyAugmentations(ServiceManifestClass, …)`.
 import type { AddBuilder } from '../authoring.js';
-import type { ServiceManifest, ServiceManifestClass } from '../service-manifest.js';
+import type { IServiceManifest, ServiceManifestClass } from '../IServiceManifest.js';
 import type { DepSlot, Token } from '../types.js';
 
 // A no-op `.as(scope?)` continuation for the "already registered" branch of a
@@ -76,16 +76,16 @@ const NO_OP_CONTINUATION: AddBuilder<string> = {
   as(): void {},
 };
 
-// The authored verbs merge onto core's `ServiceManifestBase` interface -- the
+// The authored verbs merge onto core's `IServiceManifestBase` interface -- the
 // surface the public `ServiceManifest` a consumer holds resolves to -- AND onto
 // the concrete `ServiceManifestClass`, so the class still SATISFIES
-// `implements ServiceManifestBase` once the new names are on the interface.
+// `implements IServiceManifestBase` once the new names are on the interface.
 // `Token`, `DepSlot`, `Ctor`, `Func`, and `AddBuilder` are named imports because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
 // `Provider` is defaulted so each merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Removes every registration bound to `token` (exact and open). The
      * reference `RemoveAll(Type)` / `RemoveAll<T>()` analog -- a `Token` is our
@@ -247,4 +247,4 @@ export const ServiceCollectionDescriptorExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<ServiceManifest>(), ServiceCollectionDescriptorExtensions);
+registerAugmentations(nameof<IServiceManifest>(), ServiceCollectionDescriptorExtensions);

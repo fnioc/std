@@ -2,10 +2,10 @@
 //
 // The reference interface exposes `IServiceCollection Services { get; }`; the
 // @rhombus-std analog of `IServiceCollection` is di.core's registration builder
-// surface `ServiceManifestBase`. Extension methods (AddListener/EnableMetrics)
+// surface `IServiceManifestBase`. Extension methods (AddListener/EnableMetrics)
 // register services against `services`.
 
-import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { IServiceManifestBase } from '@rhombus-std/di.core';
 
 /**
  * Configures the metrics system by registering listeners and rules. Mirrors
@@ -14,5 +14,5 @@ import type { ServiceManifestBase } from '@rhombus-std/di.core';
  */
 export interface IMetricsBuilder {
   /** The registration builder that extension functions register services against. */
-  readonly services: ServiceManifestBase;
+  readonly services: IServiceManifestBase;
 }

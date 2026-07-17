@@ -11,7 +11,7 @@
 
 import { ConfigurationManager } from '@rhombus-std/config';
 import type { IConfigurationBuilder } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
+import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
@@ -35,7 +35,7 @@ export class HostBuilder implements IHostBuilder {
 
   readonly #configureHostConfigActions: Action<[IConfigurationBuilder]>[] = [];
   readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigurationBuilder]>[] = [];
-  readonly #configureServicesActions: Action<[HostBuilderContext, ServiceManifest]>[] = [];
+  readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
   readonly #configureContainerActions: Action<[HostBuilderContext, unknown]>[] = [];
 
   #hostBuilt = false;
@@ -55,7 +55,7 @@ export class HostBuilder implements IHostBuilder {
   }
 
   /** Adds services to the container. Additive across calls. */
-  public configureServices(configureDelegate: Action<[HostBuilderContext, ServiceManifest]>): this {
+  public configureServices(configureDelegate: Action<[HostBuilderContext, IServiceManifest]>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
