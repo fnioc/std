@@ -81,7 +81,7 @@ const rule = {
     /** @type {Set<string>} */
     const freeFns = new Set();
     for (const e of entries) {
-      const kind = entryKind(e);
+      const { kind } = entryKind(e);
       if (kind === 'member') {
         if (!implMembers.has(e.impl)) {
           implMembers.set(e.impl, new Set());

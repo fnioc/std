@@ -8,39 +8,85 @@ import (
 	"strings"
 )
 
-// EntryKind classifies a publish-list entry by which fields it carries.
+// EntryKind classifies a publish-list entry by the TS namespace it anchors to.
+// Field names map to namespaces: type is a type-namespace export (a token
+// string "@pkg:Name"); impl is a value-namespace export (self-relative to the
+// declaring package); member is shared.
 type EntryKind int
 
 const (
-	// KindMember is an interface-member sugar entry: type + impl + member all
-	// present. The body lives on the impl export's member of the same name.
+	// KindMember is an interface-member sugar entry: type + impl + member. The
+	// body lives on the impl export's member of the same name. CERTIFIED.
 	KindMember EntryKind = iota
-	// KindFunction is a free-function sugar entry: member absent. The token's
-	// TypeName names the exported function itself, so type's TypeName == impl.
+	// KindFunction is a free-function sugar entry: impl only. There is no
+	// type-side anchor; the module specifier is the owning package's own name
+	// and the export is impl. CERTIFIED.
 	KindFunction
+	// KindClassMember is a class-member sugar entry: type + member. SPECCED but
+	// NOT CERTIFIED — recognized only so it can be rejected distinctly.
+	KindClassMember
+	// KindObjectLiteralMember is an object-literal-member sugar entry: impl +
+	// member. SPECCED but NOT CERTIFIED — recognized for a distinct rejection.
+	KindObjectLiteralMember
 )
 
-// Kind infers the entry kind from field presence, per the owner schema. An
-// entry that fits neither certified shape is reported as ok == false; the caller
-// raises INLINE_ENTRY_SHAPE.
-func (e Entry) Kind() (EntryKind, bool) {
-	if e.Type == "" || e.Impl == "" {
-		return 0, false
-	}
-	if e.Member != "" {
-		// member present → interface-member sugar. member must differ from impl
-		// (member == impl on a member entry is a malformed shape).
+// KindStatus is the certification verdict for an entry's recognized shape.
+type KindStatus int
+
+const (
+	// StatusMalformed: the field-presence pattern matches none of the four
+	// grammar rows (a both+neither mixture, a lone/paired field that fits no
+	// row, or a member==impl / malformed-token violation of an otherwise
+	// certified row). The caller raises INLINE_ENTRY_SHAPE.
+	StatusMalformed KindStatus = iota
+	// StatusCertified: an inlineable shape — interface-member or free-function.
+	StatusCertified
+	// StatusUncertified: a recognized shape that is specced but not yet
+	// certified — class-member or object-literal-member. The caller raises
+	// INLINE_KIND_UNCERTIFIED.
+	StatusUncertified
+)
+
+// Kind classifies e by field presence into one of the four grammar rows and
+// returns the row's kind plus its certification status:
+//
+//	type + impl + member  → interface member        (certified)
+//	impl only             → free function            (certified)
+//	type + member         → class member             (uncertified)
+//	impl + member         → object-literal member    (uncertified)
+//
+// Any other field-presence pattern — a type+impl pair, a lone type/impl/member,
+// the empty entry, or a member==impl / malformed-type-token violation of the
+// interface-member row — is StatusMalformed. Uncertified rows are recognized by
+// presence alone; their finer fields are not validated (they are rejected
+// regardless).
+func (e Entry) Kind() (EntryKind, KindStatus) {
+	hasType := e.Type != ""
+	hasImpl := e.Impl != ""
+	hasMember := e.Member != ""
+	switch {
+	case hasType && hasImpl && hasMember:
+		// interface member: member must differ from impl, and type must be a
+		// well-formed "<package>:<TypeName>" token.
 		if e.Member == e.Impl {
-			return 0, false
+			return 0, StatusMalformed
 		}
-		return KindMember, true
+		if _, _, ok := splitTypeToken(e.Type); !ok {
+			return 0, StatusMalformed
+		}
+		return KindMember, StatusCertified
+	case hasImpl && !hasType && !hasMember:
+		// free function: no type-side anchor exists.
+		return KindFunction, StatusCertified
+	case hasType && hasMember && !hasImpl:
+		// class member: recognized, not yet certified.
+		return KindClassMember, StatusUncertified
+	case hasImpl && hasMember && !hasType:
+		// object-literal member: recognized, not yet certified.
+		return KindObjectLiteralMember, StatusUncertified
+	default:
+		return 0, StatusMalformed
 	}
-	// member absent → free function. The token's TypeName must name the export.
-	_, typeName, ok := splitTypeToken(e.Type)
-	if !ok || typeName != e.Impl {
-		return 0, false
-	}
-	return KindFunction, true
 }
 
 // rawInlineConfig is the "rhombus.inline" object literal in a package.json.
@@ -90,8 +136,11 @@ func loadFromPackageJSON(packageDir, rootDir string, seen map[string]bool) ([]En
 func composeInline(cfg *rawInlineConfig, rootDir string, seen map[string]bool, from string) ([]Entry, error) {
 	out := make([]Entry, 0, len(cfg.Entries))
 	for i, e := range cfg.Entries {
-		if _, ok := e.Kind(); !ok {
-			return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d is not a certified shape (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
+		switch _, status := e.Kind(); status {
+		case StatusMalformed:
+			return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d matches no grammar row (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
+		case StatusUncertified:
+			return nil, fmt.Errorf("INLINE_KIND_UNCERTIFIED: %s entry %d is a specced-but-not-yet-certified shape (class-member and object-literal-member are not certified) (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
 		}
 		out = append(out, e)
 	}

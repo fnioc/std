@@ -14,7 +14,7 @@ import rhombusInline from '../../../scripts/eslint/rhombus-inline.mjs';
 const DEFAULT_ENTRIES = {
   entries: [
     { type: 'p:Foo', impl: 'Foo', member: 'bar' },
-    { type: '@rhombus-std/primitives:tokenOf', impl: 'tokenOf' },
+    { impl: 'tokenOf' },
   ],
 };
 

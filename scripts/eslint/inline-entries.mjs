@@ -11,21 +11,47 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 /**
  * @typedef {{ type?: string, impl?: string, member?: string }} InlineEntry
+ * @typedef {'member' | 'function' | 'class-member' | 'object-literal-member' | null} InlineKind
+ * @typedef {'certified' | 'uncertified' | 'malformed'} InlineStatus
  */
 
-/** Infers an entry's kind, or returns null when it fits no certified shape. */
+/**
+ * Classifies an entry by field presence into one of the four grammar rows and
+ * returns its kind plus certification status. Field names map to TS namespaces:
+ * `type` is a type-namespace export (a `@pkg:Name` token), `impl` a value-namespace
+ * export (self-relative to the declaring package), `member` shared.
+ *
+ *   type + impl + member  → interface member        (certified)
+ *   impl only             → free function            (certified)
+ *   type + member         → class member             (uncertified)
+ *   impl + member         → object-literal member    (uncertified)
+ *
+ * Anything else — a type+impl pair, a lone field, the empty entry, or a
+ * member==impl / malformed-type-token violation of the interface-member row — is
+ * malformed. The JS twin of transforms/internal/inlinetransform/entries.go's
+ * Kind(); kept byte-semantically identical.
+ * @returns {{ kind: InlineKind, status: InlineStatus }}
+ */
 export function entryKind(/** @type {InlineEntry} */ e) {
-  if (!e.type || !e.impl) {
-    return null;
+  const hasType = !!e.type;
+  const hasImpl = !!e.impl;
+  const hasMember = !!e.member;
+  if (hasType && hasImpl && hasMember) {
+    if (e.member === e.impl || splitTypeToken(e.type) === null) {
+      return { kind: null, status: 'malformed' };
+    }
+    return { kind: 'member', status: 'certified' };
   }
-  if (e.member) {
-    return e.member === e.impl ? null : 'member';
+  if (hasImpl && !hasType && !hasMember) {
+    return { kind: 'function', status: 'certified' };
   }
-  const typeName = splitTypeToken(e.type);
-  if (typeName === null || typeName !== e.impl) {
-    return null;
+  if (hasType && hasMember && !hasImpl) {
+    return { kind: 'class-member', status: 'uncertified' };
   }
-  return 'function';
+  if (hasImpl && hasMember && !hasType) {
+    return { kind: 'object-literal-member', status: 'uncertified' };
+  }
+  return { kind: null, status: 'malformed' };
 }
 
 /** Splits "<package>:<TypeName>" at the first colon, returning the TypeName. */
@@ -62,8 +88,15 @@ function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /*
   const out = [];
   const entries = Array.isArray(cfg.entries) ? cfg.entries : [];
   for (let i = 0; i < entries.length; i++) {
-    if (entryKind(entries[i]) === null) {
-      throw new Error(`INLINE_ENTRY_SHAPE: ${from} entry ${i} is not a certified shape`);
+    const { status } = entryKind(entries[i]);
+    if (status === 'malformed') {
+      throw new Error(`INLINE_ENTRY_SHAPE: ${from} entry ${i} matches no grammar row`);
+    }
+    if (status === 'uncertified') {
+      throw new Error(
+        `INLINE_KIND_UNCERTIFIED: ${from} entry ${i} is a specced-but-not-yet-certified shape `
+          + `(class-member and object-literal-member are not certified)`,
+      );
     }
     out.push(entries[i]);
   }
