@@ -21,7 +21,7 @@ export const HOST_ENVIRONMENT_TOKEN: Token = nameof<IHostEnvironment>();
 export const HOST_BUILDER_CONTEXT_TOKEN: Token = nameof<HostBuilderContext>();
 
 /** Token the merged application {@link IConfig} is registered under. */
-export const CONFIGURATION_TOKEN: Token = nameof<IConfig>();
+export const CONFIG_TOKEN: Token = nameof<IConfig>();
 
 /** Token the host's {@link IHostLifetime} is registered under. */
 export const HOST_LIFETIME_TOKEN: Token = nameof<IHostLifetime>();
