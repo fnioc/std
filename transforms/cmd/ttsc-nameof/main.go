@@ -7,12 +7,13 @@ package main
 import (
 	"os"
 
+	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
 func main() {
 	os.Exit(plugin.Run(plugin.Spec{
 		Name:    "ttsc-nameof",
-		Factory: nameofTransform,
+		Factory: nameoftransform.New,
 	}, os.Args[1:]))
 }

@@ -1,4 +1,4 @@
-package main
+package configtransform
 
 // Recognizing `.withType<T>()` on a ConfigurationBuilder.
 //

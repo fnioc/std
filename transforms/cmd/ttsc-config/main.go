@@ -8,12 +8,13 @@ package main
 import (
 	"os"
 
+	"github.com/fnioc/std/transforms/internal/configtransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
 func main() {
 	os.Exit(plugin.Run(plugin.Spec{
 		Name:    "ttsc-config",
-		Factory: configTransform,
+		Factory: configtransform.New,
 	}, os.Args[1:]))
 }
