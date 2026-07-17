@@ -148,14 +148,28 @@ A library declares its inlineable members in a `"rhombus.inline"` key in `packag
 }
 ```
 
-- `type` — a nameof token (`<package>:<TypeName>`, barrel-relative). The match anchor.
-- `impl` — the export in the declaring package that holds the body (self-relative, resolved to the
-  package's real src).
+The three fields map to TypeScript namespaces:
+
+- `type` — a **type-namespace** export, written as a nameof token (`<package>:<TypeName>`,
+  barrel-relative). The match anchor.
+- `impl` — a **value-namespace** export in the declaring package that holds the body (self-relative,
+  resolved to the package's real src).
 - `member` — the member name, shared by the interface side and the impl side.
 
-Kinds are inferred by field presence: `type` + `impl` + `member` → interface-member sugar;
-`member` absent → free function (the token's TypeName names the function export). Only these two
-kinds are certified today; anything else is rejected loudly.
+Kinds are inferred by field presence, into one of four grammar rows:
+
+| Fields                     | Kind                  | Status                         |
+| -------------------------- | --------------------- | ------------------------------ |
+| `type` + `impl` + `member` | interface member      | **certified**                  |
+| `impl` only                | free function         | **certified**                  |
+| `type` + `member`          | class member          | specced, **not yet certified** |
+| `impl` + `member`          | object-literal member | specced, **not yet certified** |
+
+A free function has **no type-side anchor** — its module specifier is the owning package's own name
+and its export is `impl`. The two uncertified rows are recognized so they can be rejected with a
+distinct `INLINE_KIND_UNCERTIFIED` error rather than the malformed-shape error. Any other
+field-presence pattern — a `type` + `impl` pair, a lone field, or a `member` == `impl` /
+malformed-token violation of the interface-member row — is rejected loudly as `INLINE_ENTRY_SHAPE`.
 
 ### How matching works
 
