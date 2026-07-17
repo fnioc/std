@@ -26,7 +26,6 @@ describe('dependency extraction', () => {
           c: boolean,
         ) {}
       }
-      declare const services: any;
       services.add<IMarker>(Prims).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -46,7 +45,6 @@ describe('dependency extraction', () => {
       class Tops implements IMarker {
         constructor(a: any, b: unknown, c: void) {}
       }
-      declare const services: any;
       services.add<IMarker>(Tops).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -64,7 +62,6 @@ describe('dependency extraction', () => {
       class Nullish implements IMarker {
         constructor(a: undefined, b: null) {}
       }
-      declare const services: any;
       services.add<IMarker>(Nullish).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -88,7 +85,6 @@ describe('dependency extraction', () => {
       class Anon implements IMarker {
         constructor(a: { x: number }) {}
       }
-      declare const services: any;
       services.add<IMarker>(Anon).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -105,7 +101,6 @@ describe('dependency extraction', () => {
       class Svc implements IMarker {
         constructor(log: ILogger, db: IDb) {}
       }
-      declare const services: any;
       services.add<IMarker>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -120,7 +115,6 @@ describe('dependency extraction', () => {
       class SqlUserRepo implements IUserRepo {
         constructor(log: ILogger, db: IDbConnection, table: string) {}
       }
-      declare const services: any;
       services.add<IUserRepo>(SqlUserRepo).as<"request">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -137,7 +131,6 @@ describe('dependency extraction', () => {
     const src = `
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
-      declare const services: any;
       services.add<IFoo>(Foo).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -155,7 +148,6 @@ describe('dependency extraction', () => {
       class Svc implements IMarker {
         constructor(log: Logger) {}
       }
-      declare const services: any;
       services.add<IMarker>(Svc).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -166,21 +158,42 @@ describe('dependency extraction', () => {
     // The provider is a normally-resolvable type now: a `Resolver` parameter
     // tokenizes like any other named type (no dedicated `{ scope: true }` slot).
     // The derived token is the one the engine recognizes as the provider.
+    // A REAL `@rhombus-std/di.core` package (not the ambient module) so a
+    // `Resolver` param tokenizes as the package `@rhombus-std/di.core:Resolver`.
+    // Its index self-augments a `declare module` block with the sugar overload, so
+    // the `services` receiver's `add` still anchors on the declaration site.
     const files = {
       '/proj/node_modules/@rhombus-std/di.core/package.json': JSON.stringify({
         name: '@rhombus-std/di.core',
         version: '1.0.0',
         exports: { '.': './index.js' },
       }),
-      '/proj/node_modules/@rhombus-std/di.core/index.d.ts':
-        'export interface Resolver { resolve<T>(token: string): T; }\n',
+      '/proj/node_modules/@rhombus-std/di.core/index.d.ts': `
+        export interface AddBuilder<Scopes extends string = string> { as(scope: Scopes): void; }
+        export interface RequiredResolver { resolve<T>(token: string): T; }
+        export interface ServiceQuery { isService(token: string): boolean; }
+        export interface Resolver extends RequiredResolver, ServiceQuery {}
+        export interface ServiceProvider<S extends string = string> extends Resolver {}
+        export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+          add(token: string, ctor: new(...a: any[]) => unknown, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
+        }
+        export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
+        declare module "@rhombus-std/di.core" {
+          interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+            add<I>(ctor: new(...a: any[]) => I): AddBuilder<Scopes>;
+          }
+        }
+      `,
+      '/proj/di-core.receivers.d.ts': `
+        import type { ServiceManifest } from "@rhombus-std/di.core";
+        declare global { const services: ServiceManifest<string>; }
+      `,
       '/proj/src/app.ts': `
         import type { Resolver } from "@rhombus-std/di.core";
         interface IMarker {}
         class Svc implements IMarker {
           constructor(sp: Resolver) {}
         }
-        declare const services: any;
         services.add<IMarker>(Svc).as<"singleton">();
       `,
     };

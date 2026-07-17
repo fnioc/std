@@ -105,27 +105,70 @@ beforeAll(() => {
   );
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IFoo { flag: boolean; }\n`);
 
-  // A local ServiceManifest stub the receiver check matches, carrying both
-  // addOptions overloads, plus fixture calls in every shape under test.
+  // The ambient `declare module "@rhombus-std/di.core"` fixture: a script `.d.ts`
+  // declaring `ServiceManifestBase` with the sugar + explicit overloads. The
+  // matcher anchors on this declaration site, so every receiver whose `addOptions`
+  // resolves back here is lowered — regardless of the receiver's own symbol name.
+  writeFileSync(
+    join(projDir, 'src', 'di-core.d.ts'),
+    `declare module "@rhombus-std/di.core" {
+  export type AddBuilder<Scopes extends string = "singleton"> = { as(scope: Scopes): void };
+  export interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+    addOptions<T>(): AddBuilder<Scopes>;
+    addOptions(token: string, tToken: string): AddBuilder<Scopes>;
+  }
+  export namespace Nested {
+    export interface ServiceManifestBase<Scopes extends string = "singleton"> {
+      addOptions<T>(): AddBuilder<Scopes>;
+    }
+  }
+}
+`,
+  );
+  // Fixture calls in every receiver shape under test: an interface-typed
+  // variable, a subinterface, a class carrying the empty extends-merge, and a
+  // generic bound by the interface all lower; the explicit verb, an anonymous
+  // object, and a local type merely NAMED `ServiceManifest` do not.
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
 import type { Options } from "@rhombus-std/options";
 import { IFoo } from "your-lib/contracts";
+import type { Nested, ServiceManifestBase } from "@rhombus-std/di.core";
 export type __KeepOptions<T> = Options<T>;
-type AddBuilder<S extends string> = { as(scope: S): void };
-declare class ServiceManifest<S extends string = "singleton"> {
-  addOptions<T>(): AddBuilder<S>;
-  addOptions(token: string, tToken: string): AddBuilder<S>;
-}
-declare const services: ServiceManifest<"singleton">;
+declare const services: ServiceManifestBase<"singleton">;
 interface AppConfig { host: string; port: number; }
+
 export const appInternal = services.addOptions<AppConfig>();
 export const chained = services.addOptions<AppConfig>().as("singleton");
 export const packagePublic = services.addOptions<IFoo>();
+
+interface MyManifest extends ServiceManifestBase {}
+declare const sub: MyManifest;
+export const viaSubinterface = sub.addOptions<AppConfig>();
+
+declare class MyThing {}
+interface MyThing extends ServiceManifestBase {}
+declare const thing: MyThing;
+export const viaClassMerge = thing.addOptions<AppConfig>();
+
+function useGeneric<M extends ServiceManifestBase>(m: M) {
+  return m.addOptions<AppConfig>();
+}
+export const viaGeneric = useGeneric(services);
+
 export const explicitVerb = services.addOptions("some:OptionsToken", "some:ElementToken");
 const other = { addOptions<T>(): void {} } as { addOptions<T>(): void };
 export const nonManifest = other.addOptions<{ a: number }>();
+
+declare class ServiceManifest<S extends string = "singleton"> {
+  addOptions<T>(): { as(scope: S): void };
+}
+declare const local: ServiceManifest<"singleton">;
+export const viaLocalName = local.addOptions<AppConfig>();
+
+declare const nested: Nested.ServiceManifestBase;
+export const viaNamespace = nested.addOptions<AppConfig>();
 `,
   );
   writeFileSync(
@@ -185,16 +228,32 @@ describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity',
     );
   });
 
+  test('every receiver whose addOptions resolves to di.core is lowered', () => {
+    // Interface-typed variable, subinterface, class extends-merge, and generic
+    // bound all lower over the app-internal element token.
+    const wrapperCount = app.split('@rhombus-std/options:Options<./app:AppConfig>').length - 1;
+    // appInternal + chained + viaSubinterface + viaClassMerge + viaGeneric = 5.
+    expect(wrapperCount).toBe(5);
+  });
+
   test('the explicit two-argument verb is left untouched', () => {
     expect(app).toContain(`addOptions("some:OptionsToken", "some:ElementToken")`);
   });
 
-  test('addOptions on a non-ServiceManifest receiver is not lowered', () => {
-    // The plain-object receiver keeps its `<T>` type argument — no wrapper token
-    // was minted for it, so the only lowered wrappers are the three manifest
-    // calls above (appInternal, chained, packagePublic).
+  test('a non-ServiceManifest and a merely same-named receiver are not lowered', () => {
+    // The plain-object receiver and the local `ServiceManifest`-named class both
+    // keep their `<T>` type argument — the old name-based matcher would have
+    // wrongly lowered the latter.
     expect(app).toContain('other.addOptions<');
+    expect(app).toContain('local.addOptions<');
+    // Total wrappers: the 5 app-internal calls above + packagePublic (IFoo) = 6.
     const wrapperCount = app.split('@rhombus-std/options:Options<').length - 1;
-    expect(wrapperCount).toBe(3);
+    expect(wrapperCount).toBe(6);
+  });
+
+  test('an interface nested in a namespace inside di.core is not lowered', () => {
+    // The nearest enclosing module scope is the `Nested` namespace, not the
+    // `@rhombus-std/di.core` module — both engines reject it.
+    expect(app).toContain('nested.addOptions<');
   });
 });

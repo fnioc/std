@@ -14,7 +14,6 @@ describe('rest-parameter expansion (overload-faithful factory params)', () => {
       interface IA {}
       interface IB {}
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((...args: [IA, IB]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -26,7 +25,6 @@ describe('rest-parameter expansion (overload-faithful factory params)', () => {
       interface IA {}
       interface IB {}
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((...args: [a: IA, b: IB]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -36,7 +34,6 @@ describe('rest-parameter expansion (overload-faithful factory params)', () => {
   test('empty tuple (...args: []) expands into a zero-slot signature', () => {
     const src = `
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((...args: []) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -51,7 +48,6 @@ describe('rest-parameter expansion (overload-faithful factory params)', () => {
       interface IB {}
       interface IC {}
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((...args: [IA] | [IB, IC]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -65,7 +61,6 @@ describe('rest-parameter expansion (overload-faithful factory params)', () => {
       interface IB {}
       interface IC {}
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((a: IA, ...args: [IB, IC]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -78,7 +73,6 @@ describe('rest-parameter expansion (overload-faithful factory params)', () => {
       interface IA {}
       interface IB {}
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((...args: [IA, IB?]) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -116,7 +110,6 @@ describe('OverloadedConstructorParameters end-to-end', () => {
         Exclude<OverloadUnionRecursive<(new () => never) & T>, T extends new () => never ? never : new () => never>;
       type OverloadedConstructorParameters<T extends new (...args: any[]) => any> =
         ConstructorParameters<OverloadUnion<T>>;
-      declare const services: any;
       services.addFactory<IThing>((...args: OverloadedConstructorParameters<typeof C>) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));

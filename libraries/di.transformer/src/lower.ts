@@ -19,6 +19,7 @@
 import { deriveToken, isOpenToken, keyedTokenFor, type LiteralValue, parseToken,
   type TokenContext } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
+import { AS_INTERFACES, memberAnchoredOnDiCore, REGISTRATION_INTERFACES } from './anchor.js';
 import { type CheckContext, checkExtractedRegistration } from './checks.js';
 import { type ConstructorExtraction, type DepContext, extractCtorReferenceSignature, extractFactoryReferenceSignature,
   extractFromExpression, extractInstantiatedSignature, extractSignatureFromFunction, isFactorySlot, isLiteralSlot,
@@ -91,7 +92,7 @@ export function lowerStatement(
     return undefined;
   }
 
-  const registrations = findRegistrationCalls(statement.expression);
+  const registrations = findRegistrationCalls(statement.expression, ctx.checker);
   if (!registrations.length) {
     return undefined;
   }
@@ -160,8 +161,16 @@ export function lowerStatement(
  *
  * We detect the already-lowered form by checking: if the call has NO type arg
  * and the first arg is a string literal, leave it untouched.
+ *
+ * The receiver is anchored at the member's DECLARATION SITE (`./anchor.ts`): the
+ * called `add` / `addFactory` / `addValue` must resolve to `ServiceManifestBase`
+ * inside `declare module '@rhombus-std/di.core'`, so an unrelated `.add()` (e.g.
+ * `new Set().add(v)`) is never lowered.
  */
-function registrationMethod(call: ts.CallExpression): MatchedMethod | undefined {
+function registrationMethod(
+  call: ts.CallExpression,
+  checker: ts.TypeChecker,
+): MatchedMethod | undefined {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {
     return undefined;
@@ -170,6 +179,12 @@ function registrationMethod(call: ts.CallExpression): MatchedMethod | undefined 
     return undefined;
   }
   const name = callee.name.text;
+  if (name !== 'add' && name !== 'addValue' && name !== 'addFactory') {
+    return undefined;
+  }
+  if (!memberAnchoredOnDiCore(callee.name, checker, REGISTRATION_INTERFACES)) {
+    return undefined;
+  }
 
   // `addFactory<I>(fn)` — the explicit tokenless factory authoring form. EXACTLY
   // one value argument (the factory function); the token rides on `<I>`. The
@@ -202,8 +217,12 @@ function registrationMethod(call: ts.CallExpression): MatchedMethod | undefined 
   return undefined;
 }
 
-/** True when `call` is a `*.as<"x">()` fluent scope tag. */
-function isAsCall(call: ts.CallExpression): boolean {
+/**
+ * True when `call` is a `*.as<"x">()` fluent scope tag whose `as` member is
+ * `AddBuilder.as` from `declare module '@rhombus-std/di.core'` — never an
+ * unrelated same-named `.as<T>()`.
+ */
+function isAsCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {
     return false;
@@ -214,7 +233,7 @@ function isAsCall(call: ts.CallExpression): boolean {
   if (!call.typeArguments || call.typeArguments.length !== 1) {
     return false;
   }
-  return true;
+  return memberAnchoredOnDiCore(callee.name, checker, AS_INTERFACES);
 }
 
 /** True when `arg` is a factory function literal (arrow or function expr). */
@@ -225,11 +244,11 @@ function isFactoryArg(
 }
 
 /** Collect every `add<I>(…)` / `addValue<I>(…)` call reachable within `expr`. */
-function findRegistrationCalls(expr: ts.Node): FoundReg[] {
+function findRegistrationCalls(expr: ts.Node, checker: ts.TypeChecker): FoundReg[] {
   const found: FoundReg[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isCallExpression(node)) {
-      const matched = registrationMethod(node);
+      const matched = registrationMethod(node, checker);
       if (matched) {
         found.push({
           call: node,
@@ -704,7 +723,7 @@ function lowerRegistrationExpression(
       }
     }
     const visited = ts.visitEachChild(node, visit, undefined);
-    if (ts.isCallExpression(visited) && isAsCall(visited)) {
+    if (ts.isCallExpression(visited) && isAsCall(visited, ctx.checker)) {
       return lowerAsCall(visited, ctx.factory);
     }
     return visited;

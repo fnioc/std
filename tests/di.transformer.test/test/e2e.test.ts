@@ -39,6 +39,25 @@ beforeAll(() => {
   link(TRANSFORMER_ROOT, join(nm, '@rhombus-std', 'di.transformer'));
   link(join(REPO_ROOT, 'libraries', 'di.core'), join(nm, '@rhombus-std', 'di.core'));
 
+  // The type-driven authoring sugar the transformer merges onto di.core's
+  // `ServiceManifestBase` / `AddBuilder`. In a real consumer this rides in via
+  // `types: ["@rhombus-std/di.transformer"]`; here it is declared directly against
+  // the linked di.core so the receivers below anchor without pulling the
+  // transformer's whole type-dependency closure into the temp project.
+  writeFileSync(
+    join(projDir, 'src', 'di-augment.d.ts'),
+    `import type { AddBuilder } from "@rhombus-std/di.core";
+declare module "@rhombus-std/di.core" {
+  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+    add<I>(ctor: new(...args: any[]) => I): AddBuilder<Scopes>;
+  }
+  interface AddBuilder<Scopes extends string> {
+    as<S extends Scopes>(): void;
+  }
+}
+`,
+  );
+
   writeFileSync(
     join(projDir, 'src', 'services.ts'),
     `
@@ -59,9 +78,8 @@ export class WidgetHost implements IWidget {
     join(projDir, 'src', 'main.ts'),
     `
 import { SqlUserRepo, ConsoleLogger, WidgetHost, ILogger, IUserRepo, IWidget } from "./services.js";
-declare const services: {
-  add<I>(c: new (...a: any[]) => I): { as<S extends string>(): void };
-};
+import type { ServiceManifest } from "@rhombus-std/di.core";
+declare const services: ServiceManifest<string>;
 services.add<ILogger>(ConsoleLogger).as<"singleton">();
 services.add<IUserRepo>(SqlUserRepo).as<"request">();
 services.add<IWidget>(WidgetHost).as<"singleton">();
@@ -85,11 +103,9 @@ export class SqlRepository<T> implements IRepository<T> {
   writeFileSync(
     join(projDir, 'src', 'wiring-generics.ts'),
     `
-import type { $ } from "@rhombus-std/di.core";
+import type { $, ServiceManifest } from "@rhombus-std/di.core";
 import { SqlRepository, IRepository, User } from "./generics.js";
-declare const services: {
-  add<I>(c: new (...a: any[]) => I): { as<S extends string>(): void };
-};
+declare const services: ServiceManifest<string>;
 services.add<IRepository<$<1>>>(SqlRepository<$<1>>).as<"singleton">();
 services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
 `,

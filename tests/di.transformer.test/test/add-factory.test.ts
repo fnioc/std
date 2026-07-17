@@ -13,7 +13,6 @@ describe('addFactory<I>(fn) recognition + lowering', () => {
       interface IA {}
       interface IB {}
       interface IThing {}
-      declare const services: any;
       services.addFactory<IThing>((a: IA, b: IB) => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -25,7 +24,6 @@ describe('addFactory<I>(fn) recognition + lowering', () => {
   test('no-type-arg addFactory(fn) infers the token from the produced type', () => {
     const src = `
       interface IThing {}
-      declare const services: any;
       services.addFactory((): IThing => ({} as IThing));
     `;
     const { output } = transform(fixture(src));
@@ -38,7 +36,6 @@ describe('addFactory<I>(fn) recognition + lowering', () => {
       interface IA {}
       interface IThing {}
       declare function makeThing(a: IA): IThing;
-      declare const services: any;
       services.addFactory<IThing>(makeThing);
     `;
     const { output } = transform(fixture(src));
@@ -49,7 +46,6 @@ describe('addFactory<I>(fn) recognition + lowering', () => {
     const src = `
       interface IA {}
       declare function makeThing(a: IA): unknown;
-      declare const services: any;
       services.addFactory("my:tok", makeThing, [["my:dep"]]);
     `;
     const { output } = transform(fixture(src));

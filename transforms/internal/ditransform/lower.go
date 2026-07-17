@@ -80,7 +80,7 @@ func regAnchor(reg foundReg) *shimast.Node {
 }
 
 // registrationMethod returns the registration method a call invokes, or ok=false.
-func registrationMethod(call *shimast.Node) (string, bool) {
+func registrationMethod(checker *shimchecker.Checker, call *shimast.Node) (string, bool) {
 	callee := call.AsCallExpression().Expression
 	if callee.Kind != shimast.KindPropertyAccessExpression {
 		return "", false
@@ -90,6 +90,15 @@ func registrationMethod(call *shimast.Node) (string, bool) {
 		return "", false
 	}
 	name := callee.Name().Text()
+	if name != "add" && name != "addValue" && name != "addFactory" {
+		return "", false
+	}
+	// Anchor the receiver at the member's declaration site: the called verb must
+	// resolve to ServiceManifestBase inside `declare module '@rhombus-std/di.core'`,
+	// so an unrelated `.add()` (e.g. `new Set().add(v)`) is never lowered.
+	if !memberAnchoredOnDiCore(checker, callee.Name(), registrationInterfaces) {
+		return "", false
+	}
 	argCount := len(callArguments(call))
 
 	if name == "addFactory" {
@@ -144,7 +153,7 @@ func (c *context) findRegistrationCalls(expr *shimast.Node) []foundReg {
 			return
 		}
 		if node.Kind == shimast.KindCallExpression {
-			if method, ok := registrationMethod(node); ok {
+			if method, ok := registrationMethod(c.checker, node); ok {
 				args := callArguments(node)
 				typeArgs := callTypeArgs(node)
 				reg := foundReg{call: node, method: method}
@@ -169,7 +178,7 @@ func (c *context) findRegistrationCalls(expr *shimast.Node) []foundReg {
 	return found
 }
 
-func isAsCall(call *shimast.Node) bool {
+func isAsCall(checker *shimchecker.Checker, call *shimast.Node) bool {
 	callee := call.AsCallExpression().Expression
 	if callee.Kind != shimast.KindPropertyAccessExpression {
 		return false
@@ -177,7 +186,10 @@ func isAsCall(call *shimast.Node) bool {
 	if callee.Name().Text() != "as" {
 		return false
 	}
-	return len(callTypeArgs(call)) == 1
+	if len(callTypeArgs(call)) != 1 {
+		return false
+	}
+	return memberAnchoredOnDiCore(checker, callee.Name(), asInterfaces)
 }
 
 func isFactoryArg(arg *shimast.Node) bool {
@@ -476,7 +488,7 @@ func (c *context) lowerRegistrationExpression(expr *shimast.Node, plans map[*shi
 			}
 		}
 		visited := visitor.VisitEachChild(node)
-		if visited.Kind == shimast.KindCallExpression && isAsCall(visited) {
+		if visited.Kind == shimast.KindCallExpression && isAsCall(c.checker, visited) {
 			return c.lowerAsCall(visited)
 		}
 		return visited

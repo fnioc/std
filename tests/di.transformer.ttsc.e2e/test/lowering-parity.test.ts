@@ -97,11 +97,58 @@ beforeAll(() => {
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IUserRepo {}\n`);
 
   writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
+
+  // The ambient `declare module "@rhombus-std/di.core"` — the authoring interfaces
+  // (runtime + sugar overloads) the transformer's forms anchor on. A script
+  // `.d.ts` so the block is an ambient module declaration.
+  writeFileSync(
+    join(projDir, 'src', 'di-core.d.ts'),
+    `declare module "@rhombus-std/di.core" {
+  export type Ctor<A extends any[] = any[], I = unknown> = new(...args: A) => I;
+  export type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
+  export interface AddBuilder<Scopes extends string = string> {
+    as(scope: Scopes): void;
+    as<S extends Scopes>(): void;
+  }
+  export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+    add(token: string, ctor: Ctor, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
+    add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+    add<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    addValue<I>(value: I): void;
+  }
+  export interface RequiredResolver {
+    resolve<T>(token: string): T;
+    resolve<T>(): T;
+  }
+  export interface ServiceQuery {
+    isService(token: string): boolean;
+    isService<T>(): boolean;
+  }
+  export interface Resolver extends RequiredResolver, ServiceQuery {
+    resolveAsync<T>(): Promise<T>;
+    tryResolve<T>(): T | undefined;
+  }
+  export interface ServiceProvider<S extends string = string> extends Resolver {}
+  export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
+  export namespace Nested {
+    export interface ServiceManifestBase<Scopes extends string = string> {
+      add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+    }
+    export interface Resolver {
+      resolve<T>(): T;
+    }
+  }
+}
+`,
+  );
+
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
 import { nameof } from "./nameof";
 import { IUserRepo } from "your-lib/contracts";
+import type { Nested, Resolver as DiResolver, ServiceManifest, ServiceManifestBase, ServiceProvider } from "@rhombus-std/di.core";
 
 // The Keyed<T, K> phantom brand (declared locally — the transformer detects it
 // structurally by the computed-symbol \`[KEY]\` property, not by import source):
@@ -134,13 +181,8 @@ class ThingRepo<T> implements IRepo<T> {
   constructor(thing: Keyed<IThing<T>, "redis">) {}
 }
 
-declare const services: {
-  add<I>(c: unknown): { as<S extends string>(): void };
-};
-declare const provider: {
-  resolve<I>(): I;
-  isService<I>(): boolean;
-};
+declare const services: ServiceManifest<string>;
+declare const provider: ServiceProvider<string>;
 
 services.add<ILogger>(ConsoleLogger).as<"singleton">();
 services.add<IUserRepo>(SqlUserRepo).as<"request">();
@@ -151,6 +193,77 @@ services.add<IRepo<$<1>>>(ThingRepo<$<1>>).as<"singleton">();
 export const marker = nameof<IUserRepo>();
 export const dep = provider.resolve<ILogger>();
 export const known = provider.isService<ILogger>();
+
+// ── receiver-shape POSITIVES (every receiver whose member resolves to di.core) ──
+interface ISub {}
+interface IReg {}
+interface IGen {}
+class SubImpl implements ISub {}
+class RegImpl implements IReg {}
+
+// (b) subinterface receiver
+interface MyManifest extends ServiceManifestBase {}
+declare const sub: MyManifest;
+sub.add<ISub>(SubImpl).as<"singleton">();
+
+// (c) user concrete class + @augment + empty extends-merge
+declare function augment(token: string): <T>(target: T) => T;
+@augment("@rhombus-std/di.core:ServiceManifest")
+class MyRegistry {}
+interface MyRegistry extends ServiceManifestBase {}
+declare const reg: MyRegistry;
+reg.add<IReg>(RegImpl).as<"singleton">();
+
+// (d) generic bound by Resolver — pinned via the resolve family (registration is
+// top-level-only by design)
+function wireGeneric<R extends DiResolver>(r: R) {
+  return r.resolve<IGen>();
+}
+export const gen = wireGeneric(provider);
+
+// ── receiver-shape NEGATIVES (unrelated members must be left verbatim) ──────────
+interface IFake {}
+interface IEntity {}
+interface INr {}
+interface IBag {}
+interface IRbag {}
+interface INested {}
+class FakeImpl implements IFake {}
+class BagImpl implements IBag {}
+
+// (e) an unrelated same-named local stub class
+class FakeManifest {
+  add<I>(ctor: new() => I): { as<S extends string>(): void } {
+    return { as() {} };
+  }
+}
+declare const fake: FakeManifest;
+export const fakeReg = fake.add<IFake>(FakeImpl);
+
+// (g) Set.add / repo.add-style false positives
+const nums = new Set<number>();
+nums.add(1);
+class Repo { add<T>(entity: T): void {} }
+declare const repo: Repo;
+declare const entity: IEntity;
+repo.add<IEntity>(entity);
+
+// (h) resolve family on a non-Resolver receiver
+class NotResolver { resolve<T>(): T { return {} as T; } }
+declare const nr: NotResolver;
+export const notDep = nr.resolve<INr>();
+
+// (f) anonymous / structural object receivers (add + resolve)
+const bag = { add<I>(ctor: new() => I): { as(s: string): void } { return { as() {} }; } };
+export const bagReg = bag.add<IBag>(BagImpl);
+const rbag = { resolve<T>(): T { return {} as T; } };
+export const rbagDep = rbag.resolve<IRbag>();
+
+// (i) namespace-nested declaring interfaces (add + resolve)
+declare const nested: Nested.ServiceManifestBase;
+export const nestedReg = nested.add<INested>(FakeImpl);
+declare const nestedResolver: Nested.Resolver;
+export const nestedDep = nestedResolver.resolve<INested>();
 `,
   );
   writeFileSync(
@@ -253,5 +366,48 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     // (a non-hole-aware derivation drops the key and hard-errors instead).
     expect(app).toContain(`services.add("./app:IRepo<$1>", ThingRepo,`);
     expect(app).toContain(`[["./app:IThing<$1>#redis"]]`);
+  });
+
+  // ── receiver-shape POSITIVES ────────────────────────────────────────────────
+  test('(b) a subinterface receiver is lowered', () => {
+    expect(app).toContain(`sub.add("./app:ISub", SubImpl,`);
+  });
+
+  test('(c) a user concrete class with @augment + extends-merge is lowered', () => {
+    expect(app).toContain(`reg.add("./app:IReg", RegImpl,`);
+  });
+
+  test('(d) a generic bound by Resolver is lowered via the resolve family', () => {
+    expect(app).toContain(`resolve("./app:IGen")`);
+  });
+
+  // ── receiver-shape NEGATIVES (no token minted, member left verbatim) ─────────
+  test('(e) an unrelated same-named local manifest class is NOT lowered', () => {
+    expect(app).not.toContain('fake.add("');
+    expect(app).not.toContain('./app:IFake');
+  });
+
+  test('(g) Set.add / repo.add-style calls are NOT lowered', () => {
+    expect(app).not.toContain('nums.add("');
+    expect(app).not.toContain('repo.add("');
+    expect(app).not.toContain('./app:IEntity');
+  });
+
+  test('(h) resolve on a non-Resolver receiver is NOT lowered', () => {
+    expect(app).not.toContain('nr.resolve("');
+    expect(app).not.toContain('./app:INr');
+  });
+
+  test('(f) anonymous/structural object receivers are NOT lowered (add + resolve)', () => {
+    expect(app).not.toContain('bag.add("');
+    expect(app).not.toContain('rbag.resolve("');
+    expect(app).not.toContain('./app:IBag');
+    expect(app).not.toContain('./app:IRbag');
+  });
+
+  test('(i) namespace-nested declaring interfaces are NOT lowered (add + resolve)', () => {
+    expect(app).not.toContain('nested.add("');
+    expect(app).not.toContain('nestedResolver.resolve("');
+    expect(app).not.toContain('./app:INested');
   });
 });

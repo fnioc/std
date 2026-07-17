@@ -16,8 +16,11 @@ var tokenlessResolveMethods = map[string]bool{
 }
 
 // isTokenlessResolveCall reports a tokenless `*.resolve<I>()` /
-// `*.resolveAsync<I>()` / `*.tryResolve<I>()` (1 type arg, 0 value args).
-func isTokenlessResolveCall(call *shimast.Node) bool {
+// `*.resolveAsync<I>()` / `*.tryResolve<I>()` (1 type arg, 0 value args) whose
+// method resolves to RequiredResolver / Resolver inside
+// `declare module '@rhombus-std/di.core'` — so `resolve<T>()` on an unrelated
+// object is never lowered.
+func isTokenlessResolveCall(checker *shimchecker.Checker, call *shimast.Node) bool {
 	callee := call.AsCallExpression().Expression
 	if callee.Kind != shimast.KindPropertyAccessExpression {
 		return false
@@ -28,11 +31,16 @@ func isTokenlessResolveCall(call *shimast.Node) bool {
 	if len(callTypeArgs(call)) != 1 {
 		return false
 	}
-	return len(callArguments(call)) == 0
+	if len(callArguments(call)) != 0 {
+		return false
+	}
+	return memberAnchoredOnDiCore(checker, callee.Name(), resolveInterfaces)
 }
 
-// isTokenlessIsServiceCall reports a tokenless `*.isService<I>()` predicate.
-func isTokenlessIsServiceCall(call *shimast.Node) bool {
+// isTokenlessIsServiceCall reports a tokenless `*.isService<I>()` predicate whose
+// isService member resolves to ServiceQuery inside
+// `declare module '@rhombus-std/di.core'`.
+func isTokenlessIsServiceCall(checker *shimchecker.Checker, call *shimast.Node) bool {
 	callee := call.AsCallExpression().Expression
 	if callee.Kind != shimast.KindPropertyAccessExpression {
 		return false
@@ -43,7 +51,10 @@ func isTokenlessIsServiceCall(call *shimast.Node) bool {
 	if len(callTypeArgs(call)) != 1 {
 		return false
 	}
-	return len(callArguments(call)) == 0
+	if len(callArguments(call)) != 0 {
+		return false
+	}
+	return memberAnchoredOnDiCore(checker, callee.Name(), isServiceInterfaces)
 }
 
 // lowerIsServiceCall rewrites `*.isService<I>()` to `*.isService("<token>")`.
@@ -197,10 +208,10 @@ func (c *context) rewriteResolve(node *shimast.Node) *shimast.Node {
 		}
 		visited := visitor.VisitEachChild(n)
 		if visited.Kind == shimast.KindCallExpression {
-			if isTokenlessResolveCall(visited) {
+			if isTokenlessResolveCall(c.checker, visited) {
 				return c.lowerResolveCall(visited)
 			}
-			if isTokenlessIsServiceCall(visited) {
+			if isTokenlessIsServiceCall(c.checker, visited) {
 				return c.lowerIsServiceCall(visited)
 			}
 		}

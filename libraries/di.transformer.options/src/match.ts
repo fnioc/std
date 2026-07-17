@@ -1,33 +1,46 @@
 // Recognizing the `addOptions<T>()` sugar on a registration builder.
 //
 // The type-driven sugar is a property-access call named `addOptions`, exactly
-// one type argument, ZERO value arguments, whose receiver is a `ServiceManifest`
-// (the registration builder). The explicit verbs — `addOptions(token, tToken)`
-// and the pipeline `addOptions(token, makeBase)` — carry value arguments and are
-// left untouched (they are already the lowered form this sugar produces).
+// one type argument, ZERO value arguments, whose called member is the
+// `addOptions<T>()` overload this satellite declaration-merges onto
+// `@rhombus-std/di.core`'s registration-builder interfaces. The explicit verbs —
+// `addOptions(token, tToken)` and the pipeline `addOptions(token, makeBase)` —
+// carry value arguments and are left untouched (they are already the lowered
+// form this sugar produces).
 //
-// The receiver check mirrors the sibling config transformer's `ConfigurationBuilder`
-// match: a user-defined `addOptions<T>()` on a ServiceManifest-symboled receiver
-// is expected to be this augmentation's sugar.
+// The receiver is matched at the member's DECLARATION SITE, not by the receiver
+// type's symbol name: we resolve the `addOptions` symbol at the call site and
+// accept only when one of its declarations is an interface member on
+// `ServiceManifestBase` / `ServiceManifestClass` declared inside the
+// `declare module '@rhombus-std/di.core'` block that authors this augmentation.
+// An inherited member keeps its original declaration, so a subinterface, a class
+// carrying the repo's empty extends-merge, an interface-typed variable, or a
+// generic `<M extends ServiceManifestBase>` all resolve back to that same
+// declaration. An unrelated type that merely happens to spell a same-named
+// `addOptions<T>()` resolves to its own declaration and is rejected.
 
 import ts from 'typescript';
 
 const ADD_OPTIONS_NAME = 'addOptions';
 
-// The registration builder's type symbol names: the public `ServiceManifest`
-// alias, the `ServiceManifestBase` interface it expands to, and the concrete
-// `ServiceManifestClass` a runtime `new ServiceManifest()` produces.
-const MANIFEST_NAMES: ReadonlySet<string> = new Set([
-  'ServiceManifest',
+// The registration-builder interfaces the augmentation merges the sugar onto:
+// `ServiceManifestBase` (which the public `ServiceManifest` alias resolves to)
+// and the concrete `ServiceManifestClass`. `ServiceManifest` itself is a type
+// ALIAS and declares no members, so it never anchors a declaration here.
+const DECLARING_INTERFACES: ReadonlySet<string> = new Set([
   'ServiceManifestBase',
   'ServiceManifestClass',
 ]);
 
+// The `declare module` specifier the sugar (and the explicit verbs) are declared
+// against — the package that owns the registration-builder interfaces.
+const DECLARING_MODULE = '@rhombus-std/di.core';
+
 /**
  * True when `call` is a tokenless `<manifest>.addOptions<T>()` sugar call:
  * callee is a property access named `addOptions`, exactly ONE type argument,
- * ZERO value arguments, and the receiver's type is (or resolves through) a
- * ServiceManifest.
+ * ZERO value arguments, and the resolved `addOptions` member is declared on a
+ * di.core registration-builder interface.
  */
 export function isAddOptionsSugarCall(
   call: ts.CallExpression,
@@ -46,24 +59,55 @@ export function isAddOptionsSugarCall(
   if (call.arguments.length !== 0) {
     return false;
   }
-  return receiverIsManifest(callee.expression, checker);
+  return memberDeclaredOnManifest(callee.name, checker);
 }
 
-/** True when `expr`'s type is (or resolves to) a ServiceManifest. */
-function receiverIsManifest(
-  expr: ts.Expression,
+/**
+ * True when the `addOptions` member referenced at `name` resolves to a symbol
+ * with a declaration on a di.core registration-builder interface. A merged
+ * property symbol carries declarations from every contributing merge, so any one
+ * matching declaration suffices.
+ */
+function memberDeclaredOnManifest(
+  name: ts.MemberName,
   checker: ts.TypeChecker,
 ): boolean {
-  const type = checker.getTypeAtLocation(expr);
-  if (typeNamedManifest(type)) {
-    return true;
+  const symbol = checker.getSymbolAtLocation(name);
+  const declarations = symbol?.getDeclarations();
+  if (!declarations) {
+    return false;
   }
-  // A generic instance surfaces its symbol through the apparent type.
-  return typeNamedManifest(checker.getApparentType(type));
+  return declarations.some(declaredOnManifestInterface);
 }
 
-/** True when `type`'s symbol (or alias symbol) is a ServiceManifest name. */
-function typeNamedManifest(type: ts.Type): boolean {
-  const name = (type.getSymbol() ?? type.aliasSymbol)?.getName();
-  return name !== undefined && MANIFEST_NAMES.has(name);
+/**
+ * True when `declaration`'s parent is a `ServiceManifestBase` /
+ * `ServiceManifestClass` interface declared inside the
+ * `declare module '@rhombus-std/di.core'` block.
+ */
+function declaredOnManifestInterface(declaration: ts.Declaration): boolean {
+  const parent = declaration.parent;
+  if (!ts.isInterfaceDeclaration(parent)) {
+    return false;
+  }
+  if (!DECLARING_INTERFACES.has(parent.name.text)) {
+    return false;
+  }
+  return interfaceIsInDeclaringModule(parent);
+}
+
+/**
+ * True when `iface`'s NEAREST enclosing module declaration is
+ * `declare module '<DECLARING_MODULE>'`. The nearest module scope decides: an
+ * interface nested in a `namespace` inside the declaring module belongs to that
+ * namespace, not the module, so it is rejected (mirrors the Go twin).
+ */
+function interfaceIsInDeclaringModule(iface: ts.InterfaceDeclaration): boolean {
+  for (let node: ts.Node = iface.parent; node; node = node.parent) {
+    if (!ts.isModuleDeclaration(node)) {
+      continue;
+    }
+    return ts.isStringLiteral(node.name) && node.name.text === DECLARING_MODULE;
+  }
+  return false;
 }

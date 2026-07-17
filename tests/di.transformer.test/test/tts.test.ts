@@ -27,7 +27,6 @@ describe('Inject brand detection (§3 / §5)', () => {
         class Svc implements ISvc {
           constructor(cache: Inject<ICache, "pkg:redis-cache">) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs } = transform(files, { entry: [CORE_BRAND_APP] });
@@ -47,7 +46,6 @@ describe('Inject brand detection (§3 / §5)', () => {
         class Svc implements ISvc {
           constructor(opts: Inject<{ n: number }, "my:opts">) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, {
@@ -74,7 +72,6 @@ describe('Inject brand detection (§3 / §5)', () => {
         class Svc implements ISvc {
           constructor(opts?: Inject<{ n: number }, "my:opts">) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, {
@@ -99,7 +96,6 @@ describe('Inject brand detection (§3 / §5)', () => {
         class Svc implements ISvc {
           constructor(opts: Inject<{ n: number }, "my:opts"> | undefined) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, {
@@ -126,7 +122,6 @@ describe('Inject brand detection (§3 / §5)', () => {
         class Svc implements ISvc {
           constructor(dep: Inject<IFoo, "pkg:x"> | IBar) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs, diagnostics } = transform(files, {
@@ -153,7 +148,6 @@ describe('Inject brand detection (§3 / §5)', () => {
             log: ILogger,
           ) {}
         }
-        declare const services: any;
         services.add<ISvc>(Svc).as<"singleton">();
       `);
     const { outputs } = transform(files, { entry: [CORE_BRAND_APP] });
@@ -177,7 +171,6 @@ describe('inline union lowering (§8)', () => {
       class Handler implements IHandler {
         constructor(cache: IRedis | IMemoryCache) {}
       }
-      declare const services: any;
       services.add<IHandler>(Handler).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -195,7 +188,6 @@ describe('inline union lowering (§8)', () => {
       class Handler implements IHandler {
         constructor(dep: IA | IB | IC) {}
       }
-      declare const services: any;
       services.add<IHandler>(Handler).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -213,7 +205,6 @@ describe('inline union lowering (§8)', () => {
       class Handler implements IHandler {
         constructor(cache: IRedis | IMemoryCache, log: ILogger) {}
       }
-      declare const services: any;
       services.add<IHandler>(Handler).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -235,7 +226,6 @@ describe('inline union lowering (§8)', () => {
       class Handler implements IHandler {
         constructor(cache: CacheProvider) {}
       }
-      declare const services: any;
       services.add<IHandler>(Handler).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -256,7 +246,6 @@ describe('inline union lowering (§8)', () => {
       class Handler implements IHandler {
         constructor(dep?: IFoo) {}
       }
-      declare const services: any;
       services.add<IHandler>(Handler).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -277,7 +266,6 @@ describe('hard error on unresolvable token (§5)', () => {
       class Svc implements ISvc {
         constructor(name: string) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -291,7 +279,6 @@ describe('hard error on unresolvable token (§5)', () => {
       class Svc implements ISvc {
         constructor(opts: { port: number }) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -306,7 +293,6 @@ describe('hard error on unresolvable token (§5)', () => {
       class Svc implements ISvc {
         constructor(log: ILogger) {}
       }
-      declare const services: any;
       services.add<ISvc>(Svc).as<"singleton">();
     `;
     const { diagnostics } = transform(fixture(src));
@@ -323,7 +309,6 @@ describe('resolveFactory lowering with params (§2)', () => {
       interface IA {}
       interface IB {}
       interface IT {}
-      declare const scope: any;
       scope.resolve<(a: IA, b: IB) => IT>();
     `;
     const { output } = transform(fixture(src));
@@ -336,7 +321,6 @@ describe('resolveFactory lowering with params (§2)', () => {
   test("resolve<() => T>() → resolveFactory('T') — zero params, no array emitted", () => {
     const src = `
       interface IT {}
-      declare const scope: any;
       scope.resolve<() => IT>();
     `;
     const { output } = transform(fixture(src));
@@ -349,7 +333,6 @@ describe('resolveFactory lowering with params (§2)', () => {
     const src = `
       interface IA {}
       interface IT {}
-      declare const scope: any;
       scope.resolve<(a: IA) => IT>();
     `;
     const { output } = transform(fixture(src));
@@ -363,7 +346,6 @@ describe('resolveFactory lowering with params (§2)', () => {
     // bare token "string" in the resolveFactory params array.
     const src = `
       interface IT {}
-      declare const scope: any;
       scope.resolve<(name: string) => IT>();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -386,7 +368,6 @@ describe('registration-time override merge (§6)', () => {
       class RedisCache implements ICache {
         constructor(client: IRedisClient, log: ILogger) {}
       }
-      declare const services: any;
       services.add<ICache>(RedisCache, [undefined, "pkg:ILogger"]).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -407,7 +388,6 @@ describe('registration-time override merge (§6)', () => {
       class RedisCache implements ICache {
         constructor(client: IRedisClient, log: ILogger) {}
       }
-      declare const services: any;
       services.add<ICache>(RedisCache, ["pkg:IRedisClient", "pkg:ILogger"]).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -430,7 +410,6 @@ describe('registration-time override merge (§6)', () => {
       class RedisCache implements ICache {
         constructor(client: IRedisClient, log: ILogger) {}
       }
-      declare const services: any;
       services.add<ICache>(RedisCache, [{ factory: "manual:x" }, "pkg:ILogger"]).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));

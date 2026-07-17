@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { transform, type VirtualFiles } from './harness.js';
+import { DI_CORE_FILES, transform, type VirtualFiles } from './harness.js';
 
 // Token generation (PRD §8). Every token is `<source>:<exportName>`, exercised
 // through the lowered output:
@@ -13,6 +13,7 @@ import { transform, type VirtualFiles } from './harness.js';
 // A library installed under node_modules with an `exports` subpath map.
 function withLib(appSource: string): VirtualFiles {
   return {
+    ...DI_CORE_FILES,
     '/proj/node_modules/your-lib/package.json': JSON.stringify({
       name: 'your-lib',
       version: '3.4.5',
@@ -37,7 +38,6 @@ describe('token generation', () => {
     const files = withLib(`
       import { IFoo } from "your-lib/contracts";
       class Foo implements IFoo { constructor() {} }
-      declare const services: any;
       services.add<IFoo>(Foo).as<"singleton">();
     `);
     const { outputs } = transform(files, { entry: ['/proj/src/app.ts'] });
@@ -49,7 +49,6 @@ describe('token generation', () => {
     const files = withLib(`
       import { IRoot } from "your-lib";
       class RootImpl implements IRoot { constructor() {} }
-      declare const services: any;
       services.add<IRoot>(RootImpl).as<"singleton">();
     `);
     const { outputs } = transform(files, { entry: ['/proj/src/app.ts'] });
@@ -61,7 +60,6 @@ describe('token generation', () => {
     const files = withLib(`
       import { IFoo } from "your-lib/contracts";
       class Foo implements IFoo { constructor() {} }
-      declare const services: any;
       services.add<IFoo>(Foo).as<"singleton">();
     `);
     const { outputs } = transform(files, { entry: ['/proj/src/app.ts'] });
@@ -74,12 +72,12 @@ describe('token generation', () => {
     // No package.json provides this interface's file as a public export, and the
     // interface lives in the app's own src tree → a `./...` token.
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/package.json': JSON.stringify({ name: 'the-app', version: '1.0.0' }),
       '/proj/src/services/IUserRepo.ts': `export interface IUserRepo {}`,
       '/proj/src/app.ts': `
         import { IUserRepo } from "./services/IUserRepo";
         class SqlUserRepo implements IUserRepo { constructor() {} }
-        declare const services: any;
         services.add<IUserRepo>(SqlUserRepo).as<"request">();
       `,
     };
@@ -97,12 +95,12 @@ describe('token generation', () => {
     // No basename-dedup any more — the token is uniformly `packageName/path:Symbol`
     // even when the file basename differs from the declared symbol.
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/package.json': JSON.stringify({ name: 'the-app', version: '1.0.0' }),
       '/proj/src/contracts.ts': `export interface IThing {}`,
       '/proj/src/app.ts': `
         import { IThing } from "./contracts";
         class Thing implements IThing { constructor() {} }
-        declare const services: any;
         services.add<IThing>(Thing).as<"singleton">();
       `,
     };
@@ -122,7 +120,6 @@ describe('token generation', () => {
         constructor(foo: Promise<IFoo>) {}
       }
       class Marker {}
-      declare const services: any;
       services.add<IFoo>(Foo).as<"singleton">();
       services.add<Marker>(NeedsAsync).as<"singleton">();
     `);
@@ -141,6 +138,7 @@ describe('token generation', () => {
     // the token is the bare package `your-lib:Deep` — stem matching (which sees
     // only the nested declaration file) could never produce this.
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/node_modules/your-lib/package.json': JSON.stringify({
         name: 'your-lib',
         version: '1.0.0',
@@ -151,7 +149,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { Deep } from "your-lib";
         class DeepImpl implements Deep { constructor() {} }
-        declare const services: any;
         services.add<Deep>(DeepImpl).as<"singleton">();
       `,
     };
@@ -178,6 +175,7 @@ describe('token generation', () => {
     extra: VirtualFiles = {},
   ): VirtualFiles {
     return {
+      ...DI_CORE_FILES,
       '/proj/package.json': JSON.stringify({
         name: 'my-lib',
         version: '1.0.0',
@@ -207,7 +205,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { IFoo } from "./foo";
         class Foo implements IFoo { constructor() {} }
-        declare const services: any;
         services.add<IFoo>(Foo).as<"singleton">();
       `,
     });
@@ -222,6 +219,7 @@ describe('token generation', () => {
     // The identity-critical pairing: a consumer resolving the built dist d.ts
     // must derive the exact string the self-compile above did.
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/node_modules/my-lib/package.json': JSON.stringify({
         name: 'my-lib',
         version: '1.0.0',
@@ -233,7 +231,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { IFoo } from "my-lib";
         class Foo implements IFoo { constructor() {} }
-        declare const services: any;
         services.add<IFoo>(Foo).as<"singleton">();
       `,
     };
@@ -250,7 +247,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { IHidden } from "./internal";
         class Hidden implements IHidden { constructor() {} }
-        declare const services: any;
         services.add<IHidden>(Hidden).as<"singleton">();
       `,
     });
@@ -272,7 +268,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { IRenamed } from "./index";
         class Foo implements IRenamed { constructor() {} }
-        declare const services: any;
         services.add<IRenamed>(Foo).as<"singleton">();
       `,
     });
@@ -284,6 +279,7 @@ describe('token generation', () => {
     // A type re-exported from BOTH the root and a subpath entry tokenizes as the
     // shortest (root) specifier — the deterministic winner the sort implies.
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/package.json': JSON.stringify({
         name: 'my-lib',
         version: '1.0.0',
@@ -302,7 +298,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { IFoo } from "./foo";
         class Foo implements IFoo { constructor() {} }
-        declare const services: any;
         services.add<IFoo>(Foo).as<"singleton">();
       `,
     };
@@ -316,6 +311,7 @@ describe('token generation', () => {
     // Exported ONLY from a subpath entry (`./extras`) → the subpath specifier
     // `my-lib/extras:IFoo`, resolved from `src/extras.ts` via the dist→src twin.
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/package.json': JSON.stringify({
         name: 'my-lib',
         version: '1.0.0',
@@ -334,7 +330,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { IFoo } from "./foo";
         class Foo implements IFoo { constructor() {} }
-        declare const services: any;
         services.add<IFoo>(Foo).as<"singleton">();
       `,
     };
@@ -346,6 +341,7 @@ describe('token generation', () => {
 
   test('nested namespace type → module-qualified export name A.Foo', () => {
     const files: VirtualFiles = {
+      ...DI_CORE_FILES,
       '/proj/node_modules/your-lib/package.json': JSON.stringify({
         name: 'your-lib',
         version: '1.0.0',
@@ -359,7 +355,6 @@ describe('token generation', () => {
       '/proj/src/app.ts': `
         import { A } from "your-lib";
         class FooImpl implements A.Foo { constructor() {} }
-        declare const services: any;
         services.add<A.Foo>(FooImpl).as<"singleton">();
       `,
     };

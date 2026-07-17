@@ -21,7 +21,6 @@ function emitFor(ctorBody: string, extra = ''): string {
     class C implements IMarker {
       ${ctorBody}
     }
-    declare const services: any;
     services.add<IMarker>(C).as<"singleton">();
   `;
   const { output, diagnostics } = transform(fixture(src));
@@ -203,7 +202,6 @@ describe('declared constructor overloads → one signature each (impl ignored)',
         constructor(a: IFoo, b: IBar);
         constructor(a: IFoo, b?: IBar) {}
       }
-      declare const services: any;
       services.add<IMarker>(C).as<"singleton">();
     `;
     const { output, diagnostics } = transform(fixture(src));
@@ -226,7 +224,6 @@ describe('declared constructor overloads → one signature each (impl ignored)',
         constructor(a: IFoo, b?: IBar);
         constructor(a: IFoo, b?: IBar) {}
       }
-      declare const services: any;
       services.add<IMarker>(C).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -329,7 +326,7 @@ describe('index-access types and unique symbol (regression pins)', () => {
 
 describe('resolve<T>() singular-literal lowering (Rule 2)', () => {
   function resolveEmit(typeArg: string): string {
-    const src = `declare const scope: any; const x = scope.resolve<${typeArg}>();`;
+    const src = `const x = scope.resolve<${typeArg}>();`;
     const { output } = transform(fixture(src));
     return output.match(/const x = (.*);/)![1]!;
   }
@@ -361,7 +358,6 @@ describe('resolveAsync<T>() tokenless lowering (parity)', () => {
   test('bare-T: resolveAsync<IFoo>() lowers to resolveAsync("token") exactly as resolve<IFoo>() would', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const x = scope.resolveAsync<IFoo>();
     `;
     const { output } = transform(fixture(src));
@@ -369,7 +365,6 @@ describe('resolveAsync<T>() tokenless lowering (parity)', () => {
     // The lowered token is identical to the sync form's — same derivation rule.
     const syncSrc = `
       interface IFoo {}
-      declare const scope: any;
       const y = scope.resolve<IFoo>();
     `;
     const { output: syncOutput } = transform(fixture(syncSrc));
@@ -386,7 +381,6 @@ describe('resolveAsync<T>() tokenless lowering (parity)', () => {
     const src = `
       interface IRemoteConfig {}
       interface IRemoteConfigConsumer {}
-      declare const root: any;
       const remoteConfig = await root.resolveAsync<IRemoteConfig>();
       const remoteConfigConsumer = await root.resolveAsync<IRemoteConfigConsumer>();
     `;
@@ -398,7 +392,6 @@ describe('resolveAsync<T>() tokenless lowering (parity)', () => {
   test('nested resolveAsync<T>() (inside a function body) is still rewritten — not confined to top-level statements', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       async function load() {
         return scope.resolveAsync<IFoo>();
       }
@@ -414,7 +407,6 @@ describe('tryResolve<T>() tokenless lowering (parity)', () => {
   test('bare-T: tryResolve<IFoo>() lowers to tryResolve("token") exactly as resolve<IFoo>() would', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const x = scope.tryResolve<IFoo>();
     `;
     const { output } = transform(fixture(src));
@@ -422,7 +414,6 @@ describe('tryResolve<T>() tokenless lowering (parity)', () => {
     // Same token derivation as the throwing form — only the method name differs.
     const syncSrc = `
       interface IFoo {}
-      declare const scope: any;
       const y = scope.resolve<IFoo>();
     `;
     const { output: syncOutput } = transform(fixture(syncSrc));
@@ -432,7 +423,6 @@ describe('tryResolve<T>() tokenless lowering (parity)', () => {
   test('nested tryResolve<T>() (inside a function body) is still rewritten', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       function probe() {
         return scope.tryResolve<IFoo>();
       }
@@ -446,7 +436,6 @@ describe('tryResolve<T>() tokenless lowering (parity)', () => {
     // preserved verbatim, exactly as the explicit resolve<T>(token) form is.
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const x = scope.tryResolve<IFoo>("./app:IFoo");
     `;
     const { output } = transform(fixture(src));
@@ -460,7 +449,6 @@ describe('isService<T>() tokenless lowering', () => {
   test('bare-T: isService<IFoo>() lowers to isService("token")', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const ok = scope.isService<IFoo>();
     `;
     const { output } = transform(fixture(src));
@@ -470,7 +458,6 @@ describe('isService<T>() tokenless lowering', () => {
   test('nested isService<T>() (inside a function body) is still rewritten', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       function probe() {
         return scope.isService<IFoo>();
       }
@@ -482,7 +469,6 @@ describe('isService<T>() tokenless lowering', () => {
   test('explicit isService<T>(token) with a value arg is left untouched', () => {
     const src = `
       interface IFoo {}
-      declare const scope: any;
       const ok = scope.isService<IFoo>("./app:IFoo");
     `;
     const { output } = transform(fixture(src));

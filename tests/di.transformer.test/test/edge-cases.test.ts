@@ -11,7 +11,6 @@ describe('statically-resolved classes always carry an inline signature', () => {
     const src = `
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
-      declare const services: any;
       services.add<IFoo>(Foo).as<"singleton">();
     `;
     const { output } = transform(fixture(src));
@@ -25,7 +24,6 @@ describe('fully-dynamic classes', () => {
     const src = `
       interface IFoo {}
       class Foo implements IFoo { constructor(x: string) {} }
-      declare const services: any;
       const Ctor: any = Foo;
       services.add<IFoo>(Ctor).as<"singleton">();
     `;
@@ -42,7 +40,6 @@ describe('fully-dynamic classes', () => {
     const src = `
       interface IFoo {}
       declare function makeCtor(): any;
-      declare const services: any;
       services.add<IFoo>(makeCtor()).as<"singleton">();
     `;
     const { output } = transform(fixture(src));

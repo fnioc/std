@@ -19,6 +19,7 @@ import { createTokenContext, deriveToken, injectTokenFor, singletonValue, type T
   tokenForType } from '@rhombus-std/primitives.transformer';
 import type { Func } from '@rhombus-toolkit/func';
 import ts from 'typescript';
+import { IS_SERVICE_INTERFACES, memberAnchoredOnDiCore, RESOLVE_INTERFACES } from './anchor.js';
 import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
 import { literalExpression, type LowerContext, lowerStatement } from './lower.js';
 
@@ -101,10 +102,10 @@ function rewriteResolve(node: ts.Node, ctx: LowerContext): ts.Node {
   const visit = (n: ts.Node): ts.Node => {
     const visited = ts.visitEachChild(n, visit, undefined);
     if (ts.isCallExpression(visited)) {
-      if (isTokenlessResolveCall(visited)) {
+      if (isTokenlessResolveCall(visited, ctx.checker)) {
         return lowerResolveCall(visited, ctx);
       }
-      if (isTokenlessIsServiceCall(visited)) {
+      if (isTokenlessIsServiceCall(visited, ctx.checker)) {
         return lowerIsServiceCall(visited, ctx);
       }
     }
@@ -122,9 +123,11 @@ const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
 
 /**
  * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` /
- * `*.tryResolve<I>()` (1 type arg, 0 value args).
+ * `*.tryResolve<I>()` (1 type arg, 0 value args) whose method resolves to
+ * `RequiredResolver` / `Resolver` inside `declare module '@rhombus-std/di.core'` —
+ * so `resolve<T>()` on an unrelated object is never lowered.
  */
-function isTokenlessResolveCall(call: ts.CallExpression): boolean {
+function isTokenlessResolveCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {
     return false;
@@ -135,16 +138,20 @@ function isTokenlessResolveCall(call: ts.CallExpression): boolean {
   if (!call.typeArguments || call.typeArguments.length !== 1) {
     return false;
   }
-  return !call.arguments.length;
+  if (call.arguments.length) {
+    return false;
+  }
+  return memberAnchoredOnDiCore(callee.name, checker, RESOLVE_INTERFACES);
 }
 
 /**
  * True when `call` is a tokenless `*.isService<I>()` predicate (1 type arg, 0
- * value args). Distinct from the resolve family: it lowers to `isService("tok")`
- * with NO Rule-2 singleton path and NO factory form — a predicate always wants
- * the derived token, never the type's value.
+ * value args) whose `isService` member resolves to `ServiceQuery` inside
+ * `declare module '@rhombus-std/di.core'`. Distinct from the resolve family: it
+ * lowers to `isService("tok")` with NO Rule-2 singleton path and NO factory form —
+ * a predicate always wants the derived token, never the type's value.
  */
-function isTokenlessIsServiceCall(call: ts.CallExpression): boolean {
+function isTokenlessIsServiceCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {
     return false;
@@ -155,7 +162,10 @@ function isTokenlessIsServiceCall(call: ts.CallExpression): boolean {
   if (!call.typeArguments || call.typeArguments.length !== 1) {
     return false;
   }
-  return !call.arguments.length;
+  if (call.arguments.length) {
+    return false;
+  }
+  return memberAnchoredOnDiCore(callee.name, checker, IS_SERVICE_INTERFACES);
 }
 
 /**

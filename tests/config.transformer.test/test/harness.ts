@@ -6,11 +6,13 @@
 // runner; tests invoke the transformer factory against a Program directly (the
 // factory only needs `ts.Program` + `addDiagnostic`).
 //
-// Fixtures prepend `BUILDER_STUB`: a local `ConfigurationBuilder<T>` class so
-// the checker sees a `ConfigurationBuilder`-symboled receiver without the real
-// package. The injected `@rhombus-std/config` import is never resolved -- it only
-// affects printed text (what the injection tests assert); `ts.transform` prints
-// without re-checking, so the unresolved specifier is fine.
+// Fixtures ship an AMBIENT `declare module '@rhombus-std/config'` file that
+// declares the `ConfigurationBuilder` class (its runtime value) MERGED with a
+// same-name interface carrying `withType<U>()` — exactly the class/augment split
+// the real package uses. The matcher anchors on that interface's declaration
+// site (§41): a receiver is recognized because its `withType` member resolves
+// back to the ambient config interface, not because a type is symbol-named
+// `ConfigurationBuilder`. The app imports `ConfigurationBuilder` from the barrel.
 
 import type { Diagnostic } from '@rhombus-std/config.transformer/_/diagnostics';
 import { createTransformerFactory } from '@rhombus-std/config.transformer/_/transformer';
@@ -30,6 +32,12 @@ export interface TransformResult {
 
 const DEFAULT_ROOT = '/virtual';
 
+// The ambient `declare module '@rhombus-std/config'` fixture path — a script
+// `.d.ts` (no top-level import/export) so the block is an ambient module
+// DECLARATION, resolvable without node_modules. Added to the program ROOTS but
+// never a transform target.
+const CONFIG_PATH = `${DEFAULT_ROOT}/config.ambient.d.ts`;
+
 export interface TransformOptions {
   /** Entry files to transform (absolute virtual paths). Defaults to all `.ts`. */
   readonly entry?: readonly string[];
@@ -38,19 +46,38 @@ export interface TransformOptions {
 }
 
 /**
- * A local `ConfigurationBuilder<T>` stub with the shape the transformer matches
- * against: `add`, `withType<U>()`, and `withSchema`. Prepended to fixtures so
- * the checker resolves a `ConfigurationBuilder`-symboled receiver without the
- * real `@rhombus-std/config` package.
+ * The ambient `@rhombus-std/config` module: the `ConfigurationBuilder` class (the
+ * runtime value, with `add`/`withSchema`) declaration-MERGED with a same-name
+ * interface carrying `withType<U>()`, plus `OPTIONAL`. The matcher anchors on the
+ * interface's `withType` declaration HERE — a receiver whose `withType` resolves
+ * back to it is recognized regardless of the receiver's own symbol name.
  */
-export const BUILDER_STUB = `
-declare const OPTIONAL: unique symbol;
-class ConfigurationBuilder<T = unknown> {
-  add(source: unknown): this { return this; }
-  withType<U>(): ConfigurationBuilder<U> { return this as any; }
-  withSchema(schema: unknown): ConfigurationBuilder<unknown> { return this as any; }
+const CONFIG_AMBIENT = `
+declare module "@rhombus-std/config" {
+  export const OPTIONAL: unique symbol;
+  export class ConfigurationBuilder<T = unknown> {
+    add(source: unknown): this;
+    withSchema(schema: unknown): ConfigurationBuilder<unknown>;
+  }
+  export interface ConfigurationBuilder<T = unknown> {
+    withType<U>(): ConfigurationBuilder<U>;
+  }
+  // A same-named interface NESTED in a namespace inside the declaring module.
+  // The nearest enclosing module scope is \`Nested\` (identifier-named), not the
+  // module, so a receiver typed \`Nested.ConfigurationBuilder\` must NOT match.
+  export namespace Nested {
+    export interface ConfigurationBuilder<T = unknown> {
+      withType<U>(): ConfigurationBuilder<U>;
+    }
+  }
 }
 `;
+
+/**
+ * App header: imports `ConfigurationBuilder` from the config barrel (the positive
+ * class-value receiver whose `withType` resolves to the ambient interface).
+ */
+const APP_HEADER = `import { ConfigurationBuilder } from "@rhombus-std/config";\n`;
 
 /**
  * Compile `files` into an in-memory Program and run the transformer over the
@@ -113,10 +140,18 @@ export function transform(
     realpath: (f) => f,
   };
 
+  // Program roots include every non-node_modules `.ts`/`.d.ts` fixture (so the
+  // ambient config `.d.ts` is loaded and its module declaration registered);
+  // transform targets are the emittable `.ts` app files only.
+  const roots = Object.keys(files).filter(
+    (f) => (f.endsWith('.ts') || f.endsWith('.d.ts')) && !f.includes('/node_modules/'),
+  );
   const entry = options.entry
-    ?? Object.keys(files).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
+    ?? Object.keys(files).filter(
+      (f) => f.endsWith('.ts') && !f.endsWith('.d.ts') && !f.includes('/node_modules/'),
+    );
 
-  const program = ts.createProgram(entry.slice(), compilerOptions, host);
+  const program = ts.createProgram(roots.slice(), compilerOptions, host);
 
   const diagnostics: Diagnostic[] = [];
   const factory = createTransformerFactory(program, {
@@ -169,11 +204,16 @@ function anyFileUnder(files: VirtualFiles, dir: string): boolean {
 }
 
 /**
- * Build a one-file fixture under the default virtual root, with the
- * {@link BUILDER_STUB} prepended so `ConfigurationBuilder` resolves.
+ * Build a fixture: the ambient `@rhombus-std/config` module plus an app file
+ * ({@link APP_HEADER} + `source`) under the default virtual root. The header
+ * imports `ConfigurationBuilder` from the barrel so the receiver's `withType`
+ * resolves to the ambient interface the matcher anchors on.
  */
 export function fixture(source: string, name = 'app.ts'): VirtualFiles {
-  return { [`${DEFAULT_ROOT}/${name}`]: BUILDER_STUB + source };
+  return {
+    [CONFIG_PATH]: CONFIG_AMBIENT,
+    [`${DEFAULT_ROOT}/${name}`]: APP_HEADER + source,
+  };
 }
 
 export const ROOT = DEFAULT_ROOT;

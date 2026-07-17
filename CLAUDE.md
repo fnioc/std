@@ -310,6 +310,9 @@ before touching):
   `extends`. The accepted trade-off is that every implementer (real or test-fake) carries the merged
   members via `extends`; the `log`/`beginScope`/`set` primitive-collision exclusions stay
   standalone-only.
+- **Transformer lowering matches at the declaration site** — every sugar-call matcher anchors on
+  the resolved member's declaration inside its declaring interface's `declare module`, never on
+  receiver type names or call shape alone (§88).
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
