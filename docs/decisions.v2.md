@@ -121,51 +121,14 @@ and callers must know which they are relying on:
 A persisted (bfcache) pagehide never stops the host (suspend≠stop, §69). `sendBeacon` is a plain
 global a caller uses inside its own `onFlush`. _Owner-approved._
 
-## §87 — Augmentation authoring stays first-party
+## §89 — Augmentations are the sole extension mechanism; no deviation
 
-Consumers being able to author augmentations is **not** a goal. Consumers authoring
-**concretes** that implement an augmented interface **is** a goal — a distinct thing from
-authoring the augmentation itself. This ruling drives the scoping of the default-merge-strategy
-transformer (#213). _Owner-approved._
-
-## §88 — Transformer receiver matching anchors at the declaration site
-
-**The logical goal is C#'s interface-targeted extension-method pattern:** an extension method
-declared against an interface (`static R M(this I self, …)`) applies to EVERY value statically
-carrying `I` —
-a consumer concrete implementing it (+ `@augment`, the §87 first-party split), a subinterface, an
-interface-typed reference, a generic constrained to it. The transformers must reproduce exactly
-that dispatch surface when deciding what to lower: target the interface the member is defined on,
-never a concrete or a spelling of its name. Declaration-site anchoring is the MECHANISM that
-reproduces this nominal dispatch inside TS's structural type system — which is also what makes it
-false-positive-free, since a structurally identical but unrelated type doesn't carry the
-interface and so never had the extension member in the first place.
-
-Solved via: every receiver-borne authored form a transformer lowers is matched by resolving the called
-member's symbol at the call site and accepting only when ≥1 of its declarations sits on the
-declaring interface inside the declaring `declare module` block — the NEAREST enclosing module
-declaration decides, and its name must be the string-literal specifier:
-
-- `add`/`addFactory`/`addValue` → `ServiceManifestBase`, `.as()` → `AddBuilder`, `resolve` →
-  `RequiredResolver`, `resolveAsync`/`tryResolve` → `Resolver`, `isService` → `ServiceQuery` (all
-  in `declare module '@rhombus-std/di.core'`)
-- `addOptions` → `ServiceManifestBase`/`ServiceManifestClass` (same module; the sugar stays
-  di.transformer.options's satellite entry point, §15)
-- `withType` → `ConfigurationBuilder` (`declare module '@rhombus-std/config'`)
-
-The prior matchers keyed on receiver-type NAME sets (di.transformer.options, config.transformer)
-or pure call shape with no receiver check at all (di.transformer). A name set misses every
-legitimate receiver not literally so named — a concrete class implementing the interface via
-`@augment` + the §71 empty extends-merge, a subinterface, an interface-typed variable, a generic
-constrained to the interface — and false-positives on an unrelated same-named type; shape matching
-lowers any `x.add(y)` (`Set.add` included). An inherited member keeps its original declaration, so
-every legitimate receiver's member resolves back to the declaring interface while a stranger's
-same-named member resolves to its own — zero false positives is the contract.
-
-Consequences: anchoring needs the transformer's sugar augment types loaded in the program —
-already required for the authored forms to typecheck, which surfaced that the ttsc example build
-configs had dropped di.transformer's `types` entry and worked only by name-luck (restored, now
-matching tspc's type-loading). The `ServiceManifest` type alias drops out of matching entirely
-(aliases declare no members). The Go/ttsc twins mirror the rule byte-for-byte per the §41
-dual-track parity invariant. Test fixtures now author receivers via ambient `declare module`
-stubs; the old name-lucky local stubs are retained as NEGATIVE cases. _Owner-approved._
+The full system — authoring, the OPEN/CLOSED install split, the token registry, the `@augment`
+collision model, and the transformer's declaration-site matching — is documented once, in full, at
+`docs/augmentations.md`. That doc supersedes and retires §87 and §88 (folded in, no longer listed
+here). It is the ONLY mechanism this monorepo uses to add a member to an interface after the fact —
+no package substitutes a bespoke mixin, a runtime monkey-patch, or a free-function-only surface to
+route around it, and no receiver skips the OPEN/CLOSED split or the `@augment`/registry install path
+the doc describes. Its package placement and dependency shape mirror the reference implementation's
+own static-extension-class placement and dependencies exactly (§0) — never a shortcut taken to save
+porting effort. _Owner-approved._
