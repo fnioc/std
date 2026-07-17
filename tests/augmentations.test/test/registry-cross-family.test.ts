@@ -31,7 +31,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     expect(builder.metrics.enableMetrics).toBeInstanceOf(Function);
     builder.metrics.enableMetrics('some-meter');
 
-    // The call registered a ConfigureOptions<MetricsOptions> step on the
+    // The call registered a IConfigureOptions<MetricsOptions> step on the
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
     const configureSteps = builder.services.build().resolve<unknown[]>(`Array<${METRICS_CONFIGURE_TOKEN}>`);

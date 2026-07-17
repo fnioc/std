@@ -1,9 +1,9 @@
 // Behavior tests for the OptionsFactory pipeline (docs/decisions.md §4.5):
 // make base -> configure steps -> post-configure steps -> validate -> return.
 
+import type { IValidateOptions } from '@rhombus-std/options/_/IValidateOptions';
 import { OptionsFactory } from '@rhombus-std/options/_/OptionsFactory';
 import { OptionsValidationError } from '@rhombus-std/options/_/OptionsValidationError';
-import type { ValidateOptions } from '@rhombus-std/options/_/ValidateOptions';
 import { ValidateOptionsResult } from '@rhombus-std/options/_/ValidateOptionsResult';
 import { describe, expect, test } from 'bun:test';
 
@@ -55,7 +55,7 @@ describe('OptionsFactory.create', () => {
 
   test('validate sees the post-configured value, not the mid-configure one', () => {
     const seen: number[] = [];
-    const recordPort: ValidateOptions<Settings> = {
+    const recordPort: IValidateOptions<Settings> = {
       validate: (o) => {
         seen.push(o.port);
         return ValidateOptionsResult.success;

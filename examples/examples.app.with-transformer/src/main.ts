@@ -47,7 +47,7 @@ import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
-import type { ConfigureOptions, PostConfigureOptions, ValidateOptions } from '@rhombus-std/options';
+import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
 import { Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 // Brings the config-bind configure step + the runtime `addOptions` verb the
 // `addOptions<T>()` sugar lowers to. Side-effect import — MUST stay for the
@@ -85,17 +85,17 @@ function buildConfig(): ConfigurationRoot {
  * no DI token, so it is identical across both dialects' apps.
  */
 function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
-  const bindConfig: ConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
+  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
-  const coerce: PostConfigureOptions<ServerOptions> = {
+  const coerce: IPostConfigureOptions<ServerOptions> = {
     postConfigure(options: ServerOptions): void {
       // Config leaves are strings; coerce the numeric fields after the bind.
       options.Port = Number(options.Port);
       options.MaxConnections = Number(options.MaxConnections);
     },
   };
-  const validate: ValidateOptions<ServerOptions> = {
+  const validate: IValidateOptions<ServerOptions> = {
     validate(options: ServerOptions): ValidateOptionsResult {
       if (options.Port > 0 && options.MaxConnections > 0) {
         return ValidateOptionsResult.success;

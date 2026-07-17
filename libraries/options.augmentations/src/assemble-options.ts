@@ -13,14 +13,14 @@
 // snapshot (`Options.of`).
 
 import type { IResolver, Token } from '@rhombus-std/di.core';
-import { type ConfigureOptions, Options, OptionsFactory, type PostConfigureOptions,
-  type ValidateOptions } from '@rhombus-std/options';
+import { type IConfigureOptions, type IPostConfigureOptions, type IValidateOptions, Options,
+  OptionsFactory } from '@rhombus-std/options';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { CompositeChangeToken } from './CompositeChangeToken.js';
+import type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 import { changeTokenSourceToken, collectionToken, configureStepToken, postConfigureStepToken,
   validateStepToken } from './option-tokens.js';
-import type { OptionsChangeTokenSource } from './OptionsChangeTokenSource.js';
 
 /**
  * Assembles the `Options<T>` for `optionsToken` from the pipeline steps
@@ -33,16 +33,16 @@ export function assembleOptions<T>(
   optionsToken: Token,
   makeBase: Func<[], T>,
 ): Options<T> {
-  const configures = resolver.resolve<readonly ConfigureOptions<T>[]>(
+  const configures = resolver.resolve<readonly IConfigureOptions<T>[]>(
     collectionToken(configureStepToken(optionsToken)),
   );
-  const postConfigures = resolver.resolve<readonly PostConfigureOptions<T>[]>(
+  const postConfigures = resolver.resolve<readonly IPostConfigureOptions<T>[]>(
     collectionToken(postConfigureStepToken(optionsToken)),
   );
-  const validates = resolver.resolve<readonly ValidateOptions<T>[]>(
+  const validates = resolver.resolve<readonly IValidateOptions<T>[]>(
     collectionToken(validateStepToken(optionsToken)),
   );
-  const sources = resolver.resolve<readonly OptionsChangeTokenSource[]>(
+  const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(
     collectionToken(changeTokenSourceToken(optionsToken)),
   );
 

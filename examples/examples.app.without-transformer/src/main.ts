@@ -31,7 +31,7 @@ import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
-import type { ConfigureOptions, PostConfigureOptions, ValidateOptions } from '@rhombus-std/options';
+import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
 import { Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 import { ConfigurationConfigureOptions } from '@rhombus-std/options.augmentations';
 
@@ -72,16 +72,16 @@ function buildConfig(): ConfigurationRoot {
  * identical to the with-transformer app's assembly.
  */
 function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
-  const bindConfig: ConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
+  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
-  const coerce: PostConfigureOptions<ServerOptions> = {
+  const coerce: IPostConfigureOptions<ServerOptions> = {
     postConfigure(options: ServerOptions): void {
       options.Port = Number(options.Port);
       options.MaxConnections = Number(options.MaxConnections);
     },
   };
-  const validate: ValidateOptions<ServerOptions> = {
+  const validate: IValidateOptions<ServerOptions> = {
     validate(options: ServerOptions): ValidateOptionsResult {
       if (options.Port > 0 && options.MaxConnections > 0) {
         return ValidateOptionsResult.success;

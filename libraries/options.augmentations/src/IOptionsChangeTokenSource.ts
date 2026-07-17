@@ -1,4 +1,4 @@
-// OptionsChangeTokenSource -- ported from MEO's IOptionsChangeTokenSource<T>
+// IOptionsChangeTokenSource -- ported from MEO's IOptionsChangeTokenSource<T>
 // (the `I` prefix dropped, and the name parameter dropped: named options are
 // distinct registrations here, so a source is tied to the one options
 // registration it was added for -- see docs/decisions.md §4.2).
@@ -11,7 +11,7 @@ import type { IChangeToken } from '@rhombus-std/primitives';
  * every source registered for its options token; each fire re-runs the
  * pipeline and pushes the fresh value to subscribers.
  */
-export interface OptionsChangeTokenSource {
+export interface IOptionsChangeTokenSource {
   /**
    * The change token to watch for the NEXT change. Called once per fire (and
    * on first subscribe): each call must hand back a token representing the

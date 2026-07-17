@@ -4,7 +4,7 @@
 // metrics/tracing pipeline (only configure steps + change-token sources -- there
 // are no post-configure/validate steps in the diagnostics options model).
 //
-// It resolves every `ConfigureOptions<T>` step and every OptionsChangeTokenSource
+// It resolves every `IConfigureOptions<T>` step and every IOptionsChangeTokenSource
 // registered for the family (as di collections), builds `T` by running the steps
 // over a fresh base, and delivers a reactive `Options<T>` (Options.watch) when any
 // change-token source is present -- so a config reload re-runs the parse -- or a
@@ -12,8 +12,8 @@
 
 import type { IResolver, Token } from '@rhombus-std/di.core';
 import { collectionToken } from '@rhombus-std/diagnostics.core';
-import { type ConfigureOptions, Options } from '@rhombus-std/options';
-import type { OptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
+import { type IConfigureOptions, Options } from '@rhombus-std/options';
+import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { CompositeChangeToken } from './composite-change-token';
@@ -23,7 +23,7 @@ import { CompositeChangeToken } from './composite-change-token';
  * steps and change-token sources registered at `configureToken` / `sourceToken`.
  *
  * @param resolver The live provider view (injected as the factory's `IResolver`).
- * @param configureToken The collection slot holding the `ConfigureOptions<T>` steps.
+ * @param configureToken The collection slot holding the `IConfigureOptions<T>` steps.
  * @param sourceToken The collection slot holding the change-token sources.
  * @param makeBase Produces the base instance each build starts from.
  */
@@ -33,8 +33,8 @@ export function assembleDiagnosticsOptions<T>(
   sourceToken: Token,
   makeBase: Func<[], T>,
 ): Options<T> {
-  const steps = resolver.resolve<readonly ConfigureOptions<T>[]>(collectionToken(configureToken));
-  const sources = resolver.resolve<readonly OptionsChangeTokenSource[]>(collectionToken(sourceToken));
+  const steps = resolver.resolve<readonly IConfigureOptions<T>[]>(collectionToken(configureToken));
+  const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(collectionToken(sourceToken));
 
   const build = (): T => {
     const options = makeBase();

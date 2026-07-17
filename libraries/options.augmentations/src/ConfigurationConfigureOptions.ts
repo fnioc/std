@@ -10,7 +10,7 @@
 // is a schema/data-annotations concern deferred to a later satellite (§4.4).
 
 import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config.core';
-import type { ConfigureOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 
 /**
  * Deep-merges a configuration node's key/value subtree onto `target`, mutating
@@ -37,13 +37,13 @@ function bindSection(config: IConfiguration, target: Record<string, unknown>): v
 }
 
 /**
- * A {@link ConfigureOptions} step that binds an {@link IConfiguration} section
+ * A {@link IConfigureOptions} step that binds an {@link IConfiguration} section
  * into the options value. Mirrors MEO's
  * `NamedConfigureFromConfigurationOptions<TOptions>` -- registered as one
  * configure source among several (code defaults, overrides, config bind), it is
  * a pipeline participant, not a replacement for the pipeline (§4.5).
  */
-export class ConfigurationConfigureOptions<T> implements ConfigureOptions<T> {
+export class ConfigurationConfigureOptions<T> implements IConfigureOptions<T> {
   readonly #config: IConfiguration;
 
   /**

@@ -4,7 +4,7 @@
 // installed onto the concrete builder in ./builder-augmentations.
 //
 // Registers the config-binding pipeline the assembly reads, following the
-// @rhombus-std/options.augmentations config-binding pattern: a ConfigureOptions
+// @rhombus-std/options.augmentations config-binding pattern: a IConfigureOptions
 // step (the MetricsConfigureOptions parse) plus a ConfigurationChangeTokenSource
 // wired to the configuration's reload token, so the assembled reactive
 // `Options<MetricsOptions>` re-parses on reload. The reference additionally

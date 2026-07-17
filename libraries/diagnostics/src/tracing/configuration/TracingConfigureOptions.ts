@@ -13,7 +13,7 @@
 import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes, TracingOptions,
   TracingRule } from '@rhombus-std/diagnostics.core';
-import type { ConfigureOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 
 import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool,
   sectionExists } from '../../config-rule-parsing';
@@ -61,11 +61,11 @@ function loadActivitySourceRules(
 }
 
 /**
- * A {@link ConfigureOptions} step that binds the tracing enablement schema of an
+ * A {@link IConfigureOptions} step that binds the tracing enablement schema of an
  * {@link IConfiguration} into a {@link TracingOptions}. Mirrors MED.Tracing's
  * `TracingConfigureOptions`.
  */
-export class TracingConfigureOptions implements ConfigureOptions<TracingOptions> {
+export class TracingConfigureOptions implements IConfigureOptions<TracingOptions> {
   readonly #configuration: IConfiguration;
 
   /** @param configuration The configuration section to read tracing rules from. */

@@ -2,7 +2,7 @@
 // configuration project's internal `LoggerFilterConfigureOptions`
 // (`Configure` / `LoadDefaultConfigValues` / `LoadRules` / `TryGetSwitch`).
 //
-// A LAZY configure step (a `ConfigureOptions<LoggerFilterOptions>` pipeline
+// A LAZY configure step (a `IConfigureOptions<LoggerFilterOptions>` pipeline
 // participant): nothing is read until the `Options<LoggerFilterOptions>`
 // assembly materializes the value, and every re-run (a configuration reload)
 // re-walks the tree. Expected shape:
@@ -21,7 +21,7 @@
 import type { IConfiguration } from '@rhombus-std/config.core';
 import { LoggerFilterOptions, LoggerFilterRule } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
-import type { ConfigureOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 
 const LOG_LEVEL_KEY = 'loglevel';
 const DEFAULT_CATEGORY = 'default';
@@ -76,7 +76,7 @@ function loadRules(
  * per-provider). Registered by `addConfiguration` as one configure source in
  * the options pipeline.
  */
-export class LoggerFilterConfigureOptions implements ConfigureOptions<LoggerFilterOptions> {
+export class LoggerFilterConfigureOptions implements IConfigureOptions<LoggerFilterOptions> {
   readonly #configuration: IConfiguration;
 
   /** @param configuration The configuration walked on every {@link configure}. */

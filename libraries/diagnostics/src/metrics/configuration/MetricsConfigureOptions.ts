@@ -1,5 +1,5 @@
 // MetricsConfigureOptions -- ported from MED.Metrics's internal
-// `MetricsConfigureOptions`. A ConfigureOptions<MetricsOptions> step that reads
+// `MetricsConfigureOptions`. A IConfigureOptions<MetricsOptions> step that reads
 // the metrics enablement schema from an IConfiguration and appends the matching
 // InstrumentRules.
 //
@@ -13,7 +13,7 @@
 
 import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config';
 import { InstrumentRule, METER_SCOPE_ALL, MeterScope, MetricsOptions } from '@rhombus-std/diagnostics.core';
-import type { ConfigureOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 
 import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool,
   sectionExists } from '../../config-rule-parsing';
@@ -61,11 +61,11 @@ function loadMeterRules(
 }
 
 /**
- * A {@link ConfigureOptions} step that binds the metrics enablement schema of an
+ * A {@link IConfigureOptions} step that binds the metrics enablement schema of an
  * {@link IConfiguration} into a {@link MetricsOptions}. Mirrors MED.Metrics's
  * `MetricsConfigureOptions`.
  */
-export class MetricsConfigureOptions implements ConfigureOptions<MetricsOptions> {
+export class MetricsConfigureOptions implements IConfigureOptions<MetricsOptions> {
   readonly #configuration: IConfiguration;
 
   /** @param configuration The configuration section to read metrics rules from. */

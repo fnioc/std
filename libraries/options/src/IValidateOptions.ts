@@ -1,4 +1,4 @@
-// ValidateOptions<T> -- a validate step, ported from MEO's
+// IValidateOptions<T> -- a validate step, ported from MEO's
 // IValidateOptions<T> (I prefix dropped, name parameter dropped -- see
 // configure-options.ts).
 
@@ -10,7 +10,7 @@ import type { ValidateOptionsResult } from './ValidateOptionsResult.js';
  * validate step runs against the post-configured value, and any failures are
  * aggregated into a single thrown {@link OptionsValidationError}.
  */
-export interface ValidateOptions<T> {
+export interface IValidateOptions<T> {
   /**
    * Validates `options`.
    *

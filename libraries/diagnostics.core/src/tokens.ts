@@ -14,7 +14,7 @@ const NAMESPACE = '@rhombus-std/diagnostics';
 
 /** Collection slot: every registered {@link IMetricsListener}. */
 export const METRICS_LISTENER_TOKEN: Token = `${NAMESPACE}/metrics-listener`;
-/** Collection slot: every `ConfigureOptions<MetricsOptions>` step. */
+/** Collection slot: every `IConfigureOptions<MetricsOptions>` step. */
 export const METRICS_CONFIGURE_TOKEN: Token = `${NAMESPACE}/metrics-configure`;
 /** Collection slot: every change-token source feeding the reactive `Options<MetricsOptions>`. */
 export const METRICS_CHANGE_TOKEN_SOURCE_TOKEN: Token = `${NAMESPACE}/metrics-change-token-source`;
@@ -28,7 +28,7 @@ export const METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN: Token =
 
 /** Collection slot: every registered tracing `ActivityListenerBuilder`. */
 export const TRACING_LISTENER_TOKEN: Token = `${NAMESPACE}/tracing-listener`;
-/** Collection slot: every `ConfigureOptions<TracingOptions>` step. */
+/** Collection slot: every `IConfigureOptions<TracingOptions>` step. */
 export const TRACING_CONFIGURE_TOKEN: Token = `${NAMESPACE}/tracing-configure`;
 /** Collection slot: every change-token source feeding the reactive `Options<TracingOptions>`. */
 export const TRACING_CHANGE_TOKEN_SOURCE_TOKEN: Token = `${NAMESPACE}/tracing-change-token-source`;

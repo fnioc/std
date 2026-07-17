@@ -6,15 +6,15 @@
 import type { IConfiguration } from '@rhombus-std/config.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
 
-import type { OptionsChangeTokenSource } from './OptionsChangeTokenSource.js';
+import type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 
 /**
- * An {@link OptionsChangeTokenSource} backed by an {@link IConfiguration}:
+ * An {@link IOptionsChangeTokenSource} backed by an {@link IConfiguration}:
  * {@link getChangeToken} returns the configuration's reload token, so a change
  * to the configuration (a provider reload) notifies the reactive `Options<T>`
  * watching it. Mirrors MEO's `ConfigurationChangeTokenSource<TOptions>`.
  */
-export class ConfigurationChangeTokenSource implements OptionsChangeTokenSource {
+export class ConfigurationChangeTokenSource implements IOptionsChangeTokenSource {
   readonly #config: IConfiguration;
 
   /**

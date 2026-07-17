@@ -23,7 +23,7 @@
 // is dropped (#105).
 
 import type { Ctor, DepSlot, Token } from '@rhombus-std/di.core';
-import type { ConfigureOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -73,9 +73,9 @@ export const MetricsOptionsExtensions = {
   },
 } satisfies AugmentationSet<MetricsOptions>;
 
-/** Registers a `ConfigureOptions<MetricsOptions>` step at `token` that runs `apply`. */
+/** Registers a `IConfigureOptions<MetricsOptions>` step at `token` that runs `apply`. */
 function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: MetricsOptions], void>): IMetricsBuilder {
-  const step: ConfigureOptions<MetricsOptions> = {
+  const step: IConfigureOptions<MetricsOptions> = {
     configure(options: MetricsOptions): void {
       apply(options);
     },

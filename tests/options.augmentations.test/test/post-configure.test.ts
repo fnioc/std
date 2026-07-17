@@ -1,6 +1,6 @@
 // The bare (non-DI-injected) postConfigure form, exercised end-to-end through
 // the public manifest augmentation: `postConfigure(token, delegate)` and
-// `postConfigure(token, PostConfigureOptions-object)`. Both append to the
+// `postConfigure(token, IPostConfigureOptions-object)`. Both append to the
 // token's post-configure slot, which the assembly runs AFTER every configure
 // step -- so each case registers a configure step first and asserts the
 // post-configure observed (and built on) the configured value. The
@@ -8,7 +8,7 @@
 // bare form, which was implemented but had no manifest-surface caller (#128).
 
 import { ServiceManifest } from '@rhombus-std/di';
-import type { Options, PostConfigureOptions } from '@rhombus-std/options';
+import type { IPostConfigureOptions, Options } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -37,13 +37,13 @@ describe('postConfigure — bare form', () => {
     expect(options.value.suffix).toBe('base!');
   });
 
-  test('a pre-built PostConfigureOptions object runs after configure', () => {
+  test('a pre-built IPostConfigureOptions object runs after configure', () => {
     const services = new ServiceManifest<'singleton'>();
     services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' })).as('singleton');
     services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix = 'base';
     });
-    const step: PostConfigureOptions<WidgetOptions> = {
+    const step: IPostConfigureOptions<WidgetOptions> = {
       postConfigure(options) {
         options.suffix += '!';
       },

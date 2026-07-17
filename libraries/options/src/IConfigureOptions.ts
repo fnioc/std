@@ -1,4 +1,4 @@
-// ConfigureOptions<T> -- a configure step, ported from MEO's
+// IConfigureOptions<T> -- a configure step, ported from MEO's
 // IConfigureOptions<T> (the `I` prefix is dropped to match this family's
 // naming, e.g. Options<T>).
 //
@@ -12,7 +12,7 @@
  * registration order to compose the value from its sources (code defaults,
  * overrides, and -- via `@rhombus-std/options.augmentations` -- config bind).
  */
-export interface ConfigureOptions<T> {
+export interface IConfigureOptions<T> {
   /**
    * Applies this step's contribution to `options`, mutating it in place.
    *

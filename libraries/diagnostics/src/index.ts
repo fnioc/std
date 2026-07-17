@@ -3,7 +3,7 @@
 //
 // Ships the concrete MetricsBuilder/TracingBuilder, the config-binding
 // augmentation sets (Metrics/TracingBuilderConfigurationExtensions), the config-bind
-// ConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
+// IConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
 // registration builder AND the metrics/tracing builder extensions as instance
 // methods on the family's own builders (both via the dual-export convention,
@@ -185,7 +185,7 @@ export { TracingBuilder } from './tracing/TracingBuilder';
 export { MetricsBuilderConfigurationExtensions } from './metrics/configuration/metrics-builder-configuration-augmentations';
 export { TracingBuilderConfigurationExtensions } from './tracing/configuration/tracing-builder-configuration-augmentations';
 
-// The config-bind ConfigureOptions steps (the reference's internal
+// The config-bind IConfigureOptions steps (the reference's internal
 // Metrics/TracingConfigureOptions), exposed so a plugin-less consumer can bind a
 // configuration section without the addMetricsConfiguration wrapper.
 export { MetricsConfigureOptions } from './metrics/configuration/MetricsConfigureOptions';
@@ -196,7 +196,7 @@ export { TracingConfigureOptions } from './tracing/configuration/TracingConfigur
 // a consumer resolves it as IMetricListenerConfigurationFactory /
 // ActivityListenerConfigurationFactory and asks for a listener's merged view.
 // The concrete factories and the Metrics/TracingConfiguration markers are
-// internal in the reference, exposed here (like the ConfigureOptions steps
+// internal in the reference, exposed here (like the IConfigureOptions steps
 // above) so a plugin-less consumer can wire the same path by hand.
 export type { IMetricListenerConfigurationFactory } from './metrics/configuration/IMetricListenerConfigurationFactory';
 export { MetricListenerConfigurationFactory } from './metrics/configuration/MetricListenerConfigurationFactory';

@@ -15,17 +15,17 @@ import type { Token } from '@rhombus-std/di.core';
 // registration token, whatever the options token happens to be.
 const NAMESPACE = '@rhombus-std/options.augmentations';
 
-/** The slot token whose collection holds the {@link ConfigureOptions} steps for `optionsToken`. */
+/** The slot token whose collection holds the {@link IConfigureOptions} steps for `optionsToken`. */
 export function configureStepToken(optionsToken: Token): Token {
   return `${NAMESPACE}/configure/${optionsToken}`;
 }
 
-/** The slot token whose collection holds the {@link PostConfigureOptions} steps for `optionsToken`. */
+/** The slot token whose collection holds the {@link IPostConfigureOptions} steps for `optionsToken`. */
 export function postConfigureStepToken(optionsToken: Token): Token {
   return `${NAMESPACE}/post-configure/${optionsToken}`;
 }
 
-/** The slot token whose collection holds the {@link ValidateOptions} steps for `optionsToken`. */
+/** The slot token whose collection holds the {@link IValidateOptions} steps for `optionsToken`. */
 export function validateStepToken(optionsToken: Token): Token {
   return `${NAMESPACE}/validate/${optionsToken}`;
 }
