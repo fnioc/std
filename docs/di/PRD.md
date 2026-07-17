@@ -1,4 +1,4 @@
-> **Historical.** Written for the standalone `fnioc/ioc` (di) repo before the `@rhombus-std` monorepo consolidation. Package names (`@fnioc/*`), `packages/*` paths, and `moon`/`release-please` references reflect that era — the code now lives under `libraries/di*` in this repo, built with bun workspaces (no moon), releases deferred.
+> **Historical.** Written for the standalone `fnioc/ioc` (di) repo before the `@rhombus-std` monorepo consolidation. Package names (`@fnioc/*`), `packages/*` paths, and `moon`/`release-please` references reflect that era — the code now lives under `libraries/di*` in this repo, built with bun workspaces (no moon), releases deferred. Background/rationale only — verify any specific claim against the current `libraries/di*` source before relying on it; nothing here is guaranteed to match current behavior 1:1.
 
 ---
 
