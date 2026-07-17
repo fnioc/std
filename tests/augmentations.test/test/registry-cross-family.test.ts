@@ -40,7 +40,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
 
   test('the config-binding member registered downstream reaches it too', () => {
     const metrics = new HostingMetricsBuilder(new ServiceManifest());
-    expect(metrics.addMetricsConfiguration).toBeInstanceOf(Function);
+    expect(metrics.addMetricsConfig).toBeInstanceOf(Function);
   });
 });
 

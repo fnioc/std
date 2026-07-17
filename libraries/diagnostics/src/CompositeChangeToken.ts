@@ -2,7 +2,7 @@
 // internal to this package.
 //
 // An assembled reactive `IOptions<MetricsOptions>` / `IOptions<TracingOptions>` may
-// watch MULTIPLE change-token sources (e.g. two addConfiguration calls binding
+// watch MULTIPLE change-token sources (e.g. two addConfig calls binding
 // two sections). `Options.watch` takes ONE producer, so the sources' tokens
 // compose into one token that has changed when any child has, and registers a
 // callback against every child.
