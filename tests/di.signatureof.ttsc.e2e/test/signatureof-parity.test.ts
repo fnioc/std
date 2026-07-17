@@ -1,0 +1,227 @@
+import { beforeAll, describe, expect, test } from 'bun:test';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+// Production-path e2e for the signatureof primitive. It drives the REAL ttsc
+// over a temp project TWO ways over the IDENTICAL source, then asserts they emit
+// byte-identical output:
+//
+//   inline path   — inline + nameof + signatureof + di. The type-driven
+//     `add<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.core's rhombus.inline
+//     entries) substitute to `this.add(nameof<I>(), C, signatureof(C))`; nameof
+//     lowers the token, signatureof lowers the dependency-signature array, and
+//     the di stage leaves the resulting 3-argument `add(...)` untouched.
+//   semantic path — nameof + di. The di registration stage lowers the SAME
+//     `add<I>(C)` directly to `add("token", C, [[...]])`.
+//
+// The load-bearing guarantee is that the signatureof array is byte-identical to
+// the third argument the di stage synthesizes for the same value: the new
+// inline+signatureof lowering changes the PATH, never the emitted bytes. This
+// mirrors the inline.ttsc.e2e isService pilot, extended to the value-argument
+// signatureof primitive and a non-trivial (dependency-carrying) signature.
+//
+// Toolchain pinning, the single shared plugin cache, and the one-project-dir /
+// two-tsconfig layout all mirror that sibling harness; see its header for why.
+
+const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
+const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
+
+const PKG_ROOT = resolve(import.meta.dir, '..');
+const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
+const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
+const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
+const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
+const DI_CORE = join(REPO_ROOT, 'libraries', 'di.core');
+const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
+const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
+const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
+
+const projDir = join(tmpdir(), 'fnioc-ttsc-signatureof-e2e');
+const COLD_BUILD_MS = 600_000;
+
+function link(target: string, linkPath: string): void {
+  try {
+    symlinkSync(target, linkPath);
+  } catch {
+    // Ignore EEXIST from a re-run; link targets are stable.
+  }
+}
+
+const goBuildTmp = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-signatureof-gobuild');
+const ttscCache = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-signatureof-e2e');
+
+function goEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env } as NodeJS.ProcessEnv;
+  delete env.GOROOT;
+  delete env.GOBIN;
+  env.GOTOOLCHAIN = 'local';
+  mkdirSync(goBuildTmp, { recursive: true });
+  env.GOTMPDIR = goBuildTmp;
+  mkdirSync(ttscCache, { recursive: true });
+  env.TTSC_CACHE_DIR = ttscCache;
+  const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
+  const goBin = miseGo.status === 0 ? miseGo.stdout.trim() : '';
+  if (goBin) {
+    env.TTSC_GO_BINARY = goBin;
+  }
+  return env;
+}
+
+// The type-driven sugar overloads are hand-declared here (as the inline.ttsc.e2e
+// pilot hand-declares isService<T>) so the program carries them without wiring
+// the ts-patch transformer's own types — the merge target is the real di.core
+// IServiceManifestBase, and the parameter NAMES (ctor / factory) match the inline
+// bodies' so the structural overload discriminator resolves each call to the
+// sugar overload. A class with a real constructor dependency (IDep) and a factory
+// with a real parameter dependency give a NON-TRIVIAL signature array, so parity
+// pins the actual slot derivation, not just an empty `[[]]`.
+const APP_SOURCE = `
+import type { AddBuilder, IServiceManifest } from "@rhombus-std/di.core";
+
+// Minimal local constructor / factory types, so the source is self-contained
+// (no @rhombus-toolkit/func resolution needed). The overload discriminator reads
+// parameter NAMES, not types, so these stand in for the real ones.
+type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
+type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
+
+declare module "@rhombus-std/di.core" {
+  interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+    add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+  }
+}
+
+interface IDep {}
+interface IFoo {}
+interface IBar {}
+
+class Foo implements IFoo {
+  constructor(dep: IDep) { void dep; }
+}
+class BarImpl implements IBar {
+  constructor(dep: IDep) { void dep; }
+}
+
+declare const services: IServiceManifest<"singleton">;
+
+// Top-level registration statements: the di registration stage lowers
+// registrations that appear as top-level expression statements, so the semantic
+// (di-only) comparison path exercises the same shape the inline path does.
+services.add<IFoo>(Foo);
+services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
+`;
+
+function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
+  writeFileSync(
+    join(projDir, name),
+    JSON.stringify({
+      compilerOptions: {
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        lib: ['ES2022'],
+        strict: true,
+        outDir: outDir,
+        rootDir: 'src',
+        skipLibCheck: true,
+        noEmitOnError: false,
+        plugins,
+      },
+      include: ['src/**/*'],
+    }),
+  );
+}
+
+function setupWorkspace(): void {
+  const nm = join(projDir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  mkdirSync(join(nm, '@ttsc'), { recursive: true });
+  mkdirSync(join(projDir, 'src'), { recursive: true });
+  rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
+  rmSync(join(projDir, 'dist-semantic'), { recursive: true, force: true });
+
+  link(TS7, join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
+  link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
+  link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
+  link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
+  link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
+
+  // The consumer must depend on di.core so the inline collector reaches its
+  // rhombus.inline entries.
+  writeFileSync(
+    join(projDir, 'package.json'),
+    // A package name WITHOUT "nameof"/"signatureof" substrings so the derived
+    // tokens (which embed the package name) don't collide with the primitive-call
+    // survival assertions below.
+    JSON.stringify({ name: 'di-sig-app', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*' } }),
+  );
+  writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
+
+  writeTsconfig('tsconfig.inline.json', 'dist-inline', [
+    { transform: '@rhombus-std/primitives.transformer/inline-ttsc' },
+    { transform: '@rhombus-std/primitives.transformer/ttsc' },
+    { transform: '@rhombus-std/primitives.transformer/signatureof-ttsc' },
+    { transform: '@rhombus-std/di.transformer/ttsc' },
+  ]);
+  writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
+    { transform: '@rhombus-std/primitives.transformer/ttsc' },
+    { transform: '@rhombus-std/di.transformer/ttsc' },
+  ]);
+}
+
+function lower(tsconfig: string, outDir: string): string {
+  const result = spawnSync('node', [TTSC, '-p', tsconfig], { cwd: projDir, encoding: 'utf8', env: goEnv() });
+  if (result.status !== 0) {
+    throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
+  }
+  let lowered: string;
+  try {
+    lowered = readFileSync(join(projDir, outDir, 'app.js'), 'utf8');
+  } catch {
+    const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
+    lowered = envelope.typescript['src/app.ts'] ?? '';
+  }
+  return new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered);
+}
+
+let withInline = '';
+let withoutInline = '';
+
+beforeAll(() => {
+  if (!toolchainReady) {
+    return;
+  }
+  setupWorkspace();
+  withInline = lower('tsconfig.inline.json', 'dist-inline');
+  withoutInline = lower('tsconfig.semantic.json', 'dist-semantic');
+}, COLD_BUILD_MS);
+
+describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFactory<I>(fn)', () => {
+  test('the sugar is lowered: string token + signature array, no generics or primitives survive', () => {
+    // add lowered to a 3-arg call carrying a token and a signature array.
+    expect(withInline).toContain('.add("');
+    expect(withInline).toContain('.addFactory("');
+    expect(withInline).not.toContain('add<');
+    expect(withInline).not.toContain('addFactory<');
+    // No un-lowered primitive CALL survives (assert the call form, not a bare
+    // substring, which could appear inside a derived token string).
+    expect(withInline).not.toContain('nameof<');
+    expect(withInline).not.toContain('nameof(');
+    expect(withInline).not.toContain('signatureof(');
+  });
+
+  test('byte parity: inline+signatureof path vs di semantic path emit the identical output', () => {
+    // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
+    // PATH (inline -> synthetic nameof + signatureof) but never the emitted bytes.
+    // Whole-output equality also pins import elision, the derived signature array,
+    // and surrounding whitespace.
+    const addLine = (src: string) => src.split('\n').find((l) => l.includes('.add('))?.trim();
+    expect(addLine(withInline)).toBeDefined();
+    expect(addLine(withInline)).toEqual(addLine(withoutInline));
+    expect(withInline).toEqual(withoutInline);
+  });
+});
