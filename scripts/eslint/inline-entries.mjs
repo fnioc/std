@@ -109,7 +109,21 @@ function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /*
       throw new Error(`INLINE_ENTRY_IMPORT_CYCLE: import cycle reaching ${abs}`);
     }
     seen.add(abs);
-    const nested = JSON.parse(readFileSync(abs, 'utf8'));
+    // Wrap read/parse failures as INLINE_ENTRY_IMPORT, matching the Go twin
+    // (entries.go's loadImportFile) — a bare SyntaxError here would diverge from
+    // the build's coded diagnostic.
+    let text;
+    try {
+      text = readFileSync(abs, 'utf8');
+    } catch (err) {
+      throw new Error(`INLINE_ENTRY_IMPORT: cannot read ${abs}: ${err instanceof Error ? err.message : err}`);
+    }
+    let nested;
+    try {
+      nested = JSON.parse(text);
+    } catch (err) {
+      throw new Error(`INLINE_ENTRY_IMPORT: malformed ${abs}: ${err instanceof Error ? err.message : err}`);
+    }
     out.push(...composeInline(nested, rootDir, seen, abs));
   }
   return out;
