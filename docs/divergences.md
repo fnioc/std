@@ -2,9 +2,11 @@
 
 Accepted, owner-signed-off departures from the ME reference. Each is deliberate and justified. Foundational patterns are specified in the requirements doc; this file records only the sanctioned divergences, and grows as more are reviewed and signed off.
 
-## Foundational pattern — recorded here, specified in requirements
+## Foundational pattern — recorded here, specified elsewhere
 
-**The augmentations pattern.** We emulate C#'s extension methods with a named object-literal set installed on the receiver's prototype at runtime (the registry + `@augment`) plus a `declare module` interface merge for the types — because TypeScript has no non-invasive way to attach a method to a type. Load-bearing; its full treatment lives in the requirements doc. Recorded here only so the departure from ME's extension-method mechanism is on the books.
+**The augmentations pattern** (our stand-in for C#'s extension methods) is documented in full at
+`docs/augmentations.md`; `docs/decisions.v2.md` §89 rules that doc the sole place it's described.
+Recorded here only so the departure from ME's extension-method mechanism is on the books.
 
 ## Divergences
 
