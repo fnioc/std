@@ -121,14 +121,60 @@ and callers must know which they are relying on:
 A persisted (bfcache) pagehide never stops the host (suspend≠stop, §69). `sendBeacon` is a plain
 global a caller uses inside its own `onFlush`. _Owner-approved._
 
+## §87 — Augmentation authoring stays first-party
+
+Consumers being able to author augmentations is **not** a goal. Consumers authoring
+**concretes** that implement an augmented interface **is** a goal — a distinct thing from
+authoring the augmentation itself. This ruling drives the scoping of the default-merge-strategy
+transformer (#213). Full elaboration lives in `docs/augmentations.md` (§89). _Owner-approved._
+
+## §88 — Transformer receiver matching anchors at the declaration site
+
+Full text now lives in `docs/augmentations.md` (§89) — the declaration-site-anchoring mechanism
+described there. Kept here only as a citation anchor (cited as `(§88)` from `CLAUDE.md`).
+_Owner-approved._
+
 ## §89 — Augmentations are the sole extension mechanism; no deviation
 
 The full system — authoring, the OPEN/CLOSED install split, the token registry, the `@augment`
 collision model, and the transformer's declaration-site matching — is documented once, in full, at
-`docs/augmentations.md`. That doc supersedes and retires §87 and §88 (folded in, no longer listed
-here). It is the ONLY mechanism this monorepo uses to add a member to an interface after the fact —
-no package substitutes a bespoke mixin, a runtime monkey-patch, or a free-function-only surface to
-route around it, and no receiver skips the OPEN/CLOSED split or the `@augment`/registry install path
-the doc describes. Its package placement and dependency shape mirror the reference implementation's
-own static-extension-class placement and dependencies exactly (§0) — never a shortcut taken to save
-porting effort. _Owner-approved._
+`docs/augmentations.md`. It is the ONLY mechanism this monorepo uses to add a member to an
+interface after the fact — no package substitutes a bespoke mixin, a runtime monkey-patch, or a
+free-function-only surface to route around it, and no receiver skips the OPEN/CLOSED split or the
+`@augment`/registry install path the doc describes. Its package placement and dependency shape
+mirror the reference implementation's own static-extension-class placement and dependencies
+exactly (§0) — never a shortcut taken to save porting effort. _Owner-approved._
+
+## §90 — One owner `ttsc` binary, runtime stage selection from a per-consumer declared list
+
+The Go/`ttsc` build engine (§41) ships as **one owner binary**, `transforms/cmd/ttsc-std`, linking
+every transform stage. A consumer's `tsconfig.ttsc.json` declares which stages it wants; the
+binary parses that declared list at runtime and activates only those stages, always executing in
+the hardcoded canonical order (nameof → di → di-options → config) — declaration order is
+irrelevant. Every consumer's `ttsc` descriptor resolves to this same source dir, so `ttsc` dedupes
+every consumer to one cache key and one spawn.
+
+Rejected alternatives:
+
+- **Per-combination hand-authored hosts** — the original disease this decision fixes: a bespoke
+  binary per stage-combination a consumer happens to need.
+- **Family-partitioned hosts** — just recreates curated aggregates against the same opening
+  constraint, one layer removed.
+- **Multipass source-to-source chaining** — corrupts source maps, since later passes' positions
+  anchor to the previous pass's intermediate text rather than the original source.
+- **Dynamic loading** (`.so`/wasm/gRPC) — conceded value collapse: a wasm host-mediated ABI was
+  buildable, but shipping once collapses into a re-ship-per-`ttsc`-pin treadmill.
+- **Build-time generated hosts** — whole-module cache-key poisoning plus `v0.0.0` resolve
+  mechanics.
+
+Typia/mergesynth (issue #213) stays scoped **in-repo-only** per §87: it runs as an in-process embed
+inside a separate in-repo-only host variant, never in the published `ttsc-std` binary — the
+published/external host stays typia-free and offline-capable.
+
+Declare-by-depending (a marker that lets `ttsc` auto-discover a consumer's declared stages from its
+dependency graph rather than a hand-authored list) is a supported nice-to-have, not a requirement
+of this decision.
+
+Mechanics — descriptor/source dedup, `--plugins-json` shape, the stage-selection error contract,
+the publish story — live in `docs/transformer-architecture.md`, the canonical reference; this
+entry records only the ruling. _Owner-approved 2026-07-16._
