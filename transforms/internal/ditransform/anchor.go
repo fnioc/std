@@ -34,6 +34,15 @@ func memberAnchoredOnDiCore(checker *shimchecker.Checker, name *shimast.Node, de
 	if name == nil {
 		return false
 	}
+	// A SYNTHETIC name node (no program position) carries no checker symbol — e.g.
+	// the callee of a registration the inline stage already substituted and lowered
+	// (`services.add("tok", C, [[...]])`, whose `add` is a side-parsed clone). The
+	// checker panics on GetSymbolAtLocation for such a node; guard on the position
+	// so a synthetic callee is a clean non-match (the call is already fully lowered),
+	// mirroring the nameof / resolve stages' own `Pos() < 0` guards.
+	if name.Pos() < 0 {
+		return false
+	}
 	symbol := checker.GetSymbolAtLocation(name)
 	if symbol == nil {
 		return false
