@@ -1,18 +1,18 @@
 # Justified divergences from ME
 
-Accepted, owner-signed-off departures from the ME reference. Each is deliberate and justified. Foundational patterns are specified in the requirements doc; this file records only the sanctioned divergences, and grows as more are reviewed and signed off.
+Accepted, owner-signed-off departures from the ME reference. Each is deliberate and justified. Foundational patterns are specified in the requirements docs (`docs/features/augmentations.md`, each family's own `docs/libraries/*.md`); this file records only the sanctioned divergences, and grows as more are reviewed and signed off.
 
 ## Foundational pattern — recorded here, specified elsewhere
 
 **The augmentations pattern** (our stand-in for C#'s extension methods) is documented in full at
-`docs/augmentations.md`; `docs/decisions.v2.md` §89 rules that doc the sole place it's described.
+`docs/features/augmentations.md`; `docs/decisions.v2.md` §89 rules that doc the sole place it's described.
 Recorded here only so the departure from ME's extension-method mechanism is on the books.
 
 ## Divergences
 
 ### MECB (configuration Binder) — not ported
 
-We do not port ME's reflective `ConfigurationBinder` (`Get<T>` / `Bind` / `GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1) plus `config.transformer`'s `withType<T>` codegen (Tier 2), and the factory-driven `IConfiguration.get<T>(path, factory)` — is documented as a positive feature in `config-beyond-reference.md` §2 and §6.
+We do not port ME's reflective `ConfigurationBinder` (`Get<T>` / `Bind` / `GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1) plus `config.transformer`'s `withType<T>` codegen (Tier 2), and the factory-driven `IConfiguration.get<T>(path, factory)` — is documented as a positive feature in `docs/libraries/config.md` §2 and §6.
 
 ### Environment-agnosticism, declared via `types[]`
 

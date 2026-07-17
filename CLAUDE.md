@@ -277,7 +277,7 @@ before touching):
   AugmentationSet<R>`), authored first-party-only, installed via direct `applyAugmentations` for
   CLOSED receivers or the token registry + `@augment` decorator for OPEN ones; the transformer
   matches sugar calls at the receiver's declaration site, never by type name or call shape. Full
-  mechanics, authoring steps, and gotchas: `docs/augmentations.md` (§89).
+  mechanics, authoring steps, and gotchas: `docs/features/augmentations.md` (§89).
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the

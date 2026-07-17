@@ -178,4 +178,4 @@ unknown stage, not a silent no-op.
 
 This doc is the canonical reference for this architecture. Augmentation authoring, the `@augment`
 registry, and how the transformers match a member to its declaring interface are a separate
-system — see `docs/augmentations.md` for all of that.
+system — see `docs/features/augmentations.md` for all of that.

@@ -126,11 +126,11 @@ global a caller uses inside its own `onFlush`. _Owner-approved._
 Consumers being able to author augmentations is **not** a goal. Consumers authoring
 **concretes** that implement an augmented interface **is** a goal — a distinct thing from
 authoring the augmentation itself. This ruling drives the scoping of the default-merge-strategy
-transformer (#213). Full elaboration lives in `docs/augmentations.md` (§89). _Owner-approved._
+transformer (#213). Full elaboration lives in `docs/features/augmentations.md` (§89). _Owner-approved._
 
 ## §88 — Transformer receiver matching anchors at the declaration site
 
-Full text now lives in `docs/augmentations.md` (§89) — the declaration-site-anchoring mechanism
+Full text now lives in `docs/features/augmentations.md` (§89) — the declaration-site-anchoring mechanism
 described there. Kept here only as a citation anchor (cited as `(§88)` from `CLAUDE.md`).
 _Owner-approved._
 
@@ -138,7 +138,7 @@ _Owner-approved._
 
 The full system — authoring, the OPEN/CLOSED install split, the token registry, the `@augment`
 collision model, and the transformer's declaration-site matching — is documented once, in full, at
-`docs/augmentations.md`. It is the ONLY mechanism this monorepo uses to add a member to an
+`docs/features/augmentations.md`. It is the ONLY mechanism this monorepo uses to add a member to an
 interface after the fact — no package substitutes a bespoke mixin, a runtime monkey-patch, or a
 free-function-only surface to route around it, and no receiver skips the OPEN/CLOSED split or the
 `@augment`/registry install path the doc describes. Its package placement and dependency shape
@@ -176,5 +176,5 @@ dependency graph rather than a hand-authored list) is a supported nice-to-have, 
 of this decision.
 
 Mechanics — descriptor/source dedup, `--plugins-json` shape, the stage-selection error contract,
-the publish story — live in `docs/transformer-architecture.md`, the canonical reference; this
+the publish story — live in `docs/features/transformer-architecture.md`, the canonical reference; this
 entry records only the ruling. _Owner-approved 2026-07-16._
