@@ -23,6 +23,7 @@
     "@rhombus-std/options.augmentations": "workspace:*"
   },
   "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
     "@rhombus-std/di.transformer.options": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*",

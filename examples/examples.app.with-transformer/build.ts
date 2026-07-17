@@ -1,11 +1,12 @@
 // Build @rhombus-std/examples.app.with-transformer via the ttsc/Go engine.
 //
 // The with-transformer composition root: src/main.ts is authored in the
-// tokenless dialect and needs BOTH the di.transformer (registration + tokenless
-// resolve/resolveAsync) and its di.transformer.options (addOptions<T>) plugins to
-// lower. This is the ttsc/Go analog of the former `tspc -p tsconfig.json` build:
-// @ttsc/unplugin/bun runs the two Go plugins as onLoad transforms while Bun.build
-// emits dist/main.js.
+// tokenless dialect and needs BOTH the di.core preset bundle (registration sugar
+// via inline -> nameof -> signatureof -> di, plus the di stage's addValue +
+// tokenless resolve/resolveAsync + `.as<>` lowering) and its di.transformer.options
+// (addOptions<T>) plugin to lower. This is the ttsc/Go analog of the former
+// `tspc -p tsconfig.json` build: @ttsc/unplugin/bun runs the Go plugins as onLoad
+// transforms while Bun.build emits dist/main.js.
 //
 // Every workspace dependency stays EXTERNAL so main.js imports the SAME
 // @rhombus-std/* runtime a published consumer would — the augmentation registry
@@ -20,9 +21,10 @@ const dir = import.meta.dir;
 const dist = join(dir, 'dist');
 rmSync(dist, { recursive: true, force: true });
 
-// Thread the tsconfig.ttsc.json plugin list EXPLICITLY (both di.transformer/ttsc
-// and di.transformer.options/ttsc), suppressing the adapter's auto-discovery.
-// Both resolve to the one owner host, which runs each declared stage in order.
+// Thread the tsconfig.ttsc.json plugin list EXPLICITLY (di.core/ttsc — the
+// preset bundle — and di.transformer.options/ttsc), suppressing the adapter's
+// auto-discovery. Both resolve to the one owner host, which expands the bundle
+// and runs each declared stage in canonical order.
 const ttscTransforms = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
 
 const js = await Bun.build({
@@ -42,10 +44,10 @@ const js = await Bun.build({
     '@rhombus-std/options',
     '@rhombus-std/options.augmentations',
   ],
-  // Pass the plugins EXPLICITLY: the app installs both di.transformer and
-  // di.transformer.options (each carries a ttsc.plugin marker); passing the
-  // declared list suppresses the adapter's auto-discovery. Both descriptors
-  // resolve to the one owner host, which ttsc dedupes to a single spawn.
+  // Pass the plugins EXPLICITLY: the app installs the di.core preset bundle and
+  // di.transformer.options; passing the declared list suppresses the adapter's
+  // auto-discovery. Both descriptors resolve to the one owner host, which ttsc
+  // dedupes to a single spawn.
   plugins: [
     await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms),
   ],
