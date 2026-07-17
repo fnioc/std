@@ -487,7 +487,7 @@ describe('union runtime regression pins', () => {
 
 // ── resolveFactory(type, params) ─────────────────────────────────────────────
 
-describe('ServiceProvider.resolveFactory(type, params)', () => {
+describe('IServiceProvider.resolveFactory(type, params)', () => {
   test('no params — strict zero-arg factory, every slot resolves from container', () => {
     class Target {
       public static built = 0;

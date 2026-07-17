@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/options.augmentations",
   "version": "0.0.0",
-  "description": "The config -> Options bridge for @rhombus-std/options: the addOptions/configure authoring augmentation that binds a configuration section into an Options<T> and wires it reactive via the section's reload token.",
+  "description": "The config -> Options bridge for @rhombus-std/options: the addOptions/configure authoring augmentation that binds a configuration section into an IOptions<T> and wires it reactive via the section's reload token.",
   "keywords": [
     "options",
     "configuration",

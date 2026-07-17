@@ -7,9 +7,9 @@
 // never drift apart. The discriminated `ParseResult` lets each consumer pick
 // its own failure mode.
 
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { exists } from './configuration-augmentations';
+import { exists } from './ConfigExtensions';
 import { OPTIONAL, type Schema } from './schema';
 
 export type ParseResult<T> =
@@ -74,12 +74,12 @@ function isOptional(s: Schema): s is { readonly [OPTIONAL]: Schema; } {
   return typeof s === 'object' && s !== null && OPTIONAL in s;
 }
 
-function present(node: IConfiguration, inner: Schema, key: string): boolean {
+function present(node: IConfig, inner: Schema, key: string): boolean {
   return isLeaf(inner) ? node.get(key) !== undefined : exists(node.getSection(key));
 }
 
 function walkRequired(
-  node: IConfiguration,
+  node: IConfig,
   schema: Schema,
   key: string,
   path: readonly string[],
@@ -126,7 +126,7 @@ function walkRequired(
 }
 
 function walkObject(
-  node: IConfiguration,
+  node: IConfig,
   schema: Record<PropertyKey, Schema>,
   path: readonly string[],
   issues: string[],
@@ -154,7 +154,7 @@ function walkObject(
  * exactly, so `build()`'s cast to `Infer<S>` never lies: a field typed `number`
  * is always a real, finite `number`.
  */
-export function coerceBySchema(config: IConfiguration, schema: Schema): unknown {
+export function coerceBySchema(config: IConfig, schema: Schema): unknown {
   const issues: string[] = [];
   const value = walkObject(config, schema as Record<PropertyKey, Schema>, [], issues);
   if (issues.length > 0) {

@@ -90,7 +90,7 @@ describe('nameof<T>() defaulted-generic alias normalization (§40)', () => {
   // same-file reference but omits it for an imported one, yet both spell the
   // identical type. When every recorded argument equals its parameter's
   // declared default, the token drops the args: the augmentation-token shape
-  // (`nameof<ServiceManifest>()` on `type ServiceManifest<S extends string =
+  // (`nameof<IServiceManifest>()` on `type IServiceManifest<S extends string =
   // "singleton"> = …`). An explicit non-default argument keeps the args.
 
   test('bare reference to a defaulted-generic alias drops the default → bare token', () => {

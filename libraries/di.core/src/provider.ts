@@ -2,9 +2,9 @@
 //
 // This mirrors the reference runtime's MEDI / MEDI.Abstractions split: consumers hold the
 // `IServiceProvider` INTERFACE (declared in the abstractions package), while the
-// concrete `ServiceProvider` is an internal implementation detail of the
+// concrete `IServiceProvider` is an internal implementation detail of the
 // non-abstractions runtime package. Here the same shape applies — `di.core`
-// owns the `ServiceProvider` interface (plus the `Resolver` / `ScopeFactory`
+// owns the `IServiceProvider` interface (plus the `IResolver` / `IScopeFactory`
 // seams it composes); `@rhombus-std/di`'s `ServiceProviderClass` is the internal
 // impl that `implements` it, and `build()` / `createScope()` return the
 // interface, never the class.
@@ -23,14 +23,14 @@ import type { Token } from './types.js';
  * `@rhombus-std/di.transformer` DECLARATION-MERGES onto THIS interface (via
  * `declare module "@rhombus-std/di.core"`), so it lights up only when the transformer
  * is in the TypeScript program. Merging onto the interface that DECLARES `resolve`
- * (rather than a separate carrier) is what lets a factory parameter typed `Resolver`
- * AND the `ServiceProvider` interface a consumer holds pick up the authored form — an
+ * (rather than a separate carrier) is what lets a factory parameter typed `IResolver`
+ * AND the `IServiceProvider` interface a consumer holds pick up the authored form — an
  * interface inherits a base interface's merged overloads; a class would not, which is
  * exactly why the public provider surface is this interface, not the impl class.
  *   - `resolve<T>(token)`   — explicit token, typed return.
  *   - `resolve(token)`      — explicit token, `unknown` return (dynamic).
  */
-export interface RequiredResolver {
+export interface IRequiredResolver {
   /**
    * Keyed PLURAL resolve — scans `token`'s key-space and returns EVERY
    * registration whose key portion matches `pattern`, in registration order,
@@ -67,23 +67,23 @@ export interface RequiredResolver {
  * The tokenless authoring form `isService<T>()` is the pure typing the
  * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
  */
-export interface ServiceQuery {
+export interface IServiceQuery {
   isService(token: Token): boolean;
 }
 
 /**
  * The minimal resolution surface — resolve tokens and get factories. A factory
- * (or ctor) parameter typed `Resolver` is injected with the live provider view:
+ * (or ctor) parameter typed `IResolver` is injected with the live provider view:
  * the type derives the intrinsic provider token (`RESOLVER_TOKEN`), which the
  * engine resolves to the view relative to the resolving frame — "I want the
  * provider" is plain DI, no dedicated slot kind.
  *
- * Composes the named reference capability analogs — `RequiredResolver`
- * (`ISupportRequiredService`) and `ServiceQuery` (`IServiceProviderIsService`) — while
+ * Composes the named reference capability analogs — `IRequiredResolver`
+ * (`ISupportRequiredService`) and `IServiceQuery` (`IServiceProviderIsService`) — while
  * staying ONE bundled surface a consumer programs against; `resolveAsync`, `tryResolve`,
  * and `resolveFactory` are declared here directly.
  */
-export interface Resolver extends RequiredResolver, ServiceQuery {
+export interface IResolver extends IRequiredResolver, IServiceQuery {
   /**
    * Resolves asynchronously — the only path that may satisfy `T` via a
    * `Promise<T>` registration. Always returns a Promise; a lookup miss whose
@@ -147,28 +147,28 @@ export interface Resolver extends RequiredResolver, ServiceQuery {
 
 /**
  * The scope-creation surface. Injected into factory parameters typed
- * `ScopeFactory`, and implemented by the provider impl. `createScope` returns
- * the `ServiceProvider` INTERFACE (the abstractions seam), never the impl class.
+ * `IScopeFactory`, and implemented by the provider impl. `createScope` returns
+ * the `IServiceProvider` INTERFACE (the abstractions seam), never the impl class.
  */
-export interface ScopeFactory<S extends string = string> {
+export interface IScopeFactory<S extends string = string> {
   createScope(
     ...args: 'scoped' extends S ? [name?: S] : [name: S]
-  ): ServiceProvider<S>;
+  ): IServiceProvider<S>;
 }
 
 /**
  * The PUBLIC container surface a consumer holds — the abstractions seam mirroring
- * MEDI's `IServiceProvider`. Composes the resolution surface (`Resolver`, which
+ * MEDI's `IServiceProvider`. Composes the resolution surface (`IResolver`, which
  * carries the tokenless authoring forms via `ResolverAuthoring`), scope creation
- * (`ScopeFactory`), and native `Disposable` / `AsyncDisposable`. The concrete
+ * (`IScopeFactory`), and native `Disposable` / `AsyncDisposable`. The concrete
  * `ServiceProviderClass` in `@rhombus-std/di` implements this; `build()` and
  * `createScope()` return it rather than the class so consumers program against
  * the interface.
  *
  * `S` is the user-declared scope-name union.
  */
-export interface ServiceProvider<S extends string = string>
-  extends Resolver, ScopeFactory<S>, Disposable, AsyncDisposable
+export interface IServiceProvider<S extends string = string>
+  extends IResolver, IScopeFactory<S>, Disposable, AsyncDisposable
 {
   /**
    * The name of this provider's open scope frame. Throws if the provider is
@@ -189,14 +189,14 @@ export interface ServiceProvider<S extends string = string>
 }
 
 /**
- * @deprecated Use `Resolver` instead. Kept for backwards compatibility.
+ * @deprecated Use `IResolver` instead. Kept for backwards compatibility.
  *
  * The resolution surface a factory receives when it declares a provider-typed
- * parameter. Like `Resolver`, its token is intrinsic — the engine fills the
+ * parameter. Like `IResolver`, its token is intrinsic — the engine fills the
  * parameter with the live provider view — with `createScope` added.
  */
-export interface ResolveScope extends Resolver {
-  createScope(name: string): ServiceProvider;
+export interface IResolveScope extends IResolver {
+  createScope(name: string): IServiceProvider;
 }
 
 /**

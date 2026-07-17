@@ -16,7 +16,7 @@ import { type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, isPureL
   literalUnionTokenForOptional, type LiteralValue, singletonValue, type TokenContext, tokenForReturnType,
   tokenForType } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 
 /**
  * A factory slot in an extracted signature — the transformer's in-memory mirror
@@ -70,7 +70,7 @@ export interface TypeArgSlot {
  * One positional slot: a token string, a factory ref, a union of alternatives, a
  * literal value, or a type-arg ref. There is no `null` / hole sentinel — an
  * unresolvable (anonymous-structure) type causes a hard compile error
- * (`UnderivableToken`). A parameter typed `Resolver` derives an ordinary token
+ * (`UnderivableToken`). A parameter typed `IResolver` derives an ordinary token
  * string (the intrinsic provider token) — no dedicated slot kind.
  */
 export type Slot =
@@ -164,7 +164,7 @@ export function slotsEqual(a: Slot, b: Slot): boolean {
 /**
  * The name of the `Typeof<T>` brand alias (the `typeof(T)` analog for
  * open generics). Matched by alias/symbol name — same convention as
- * `ResolveScope` above. The binding `T` is read from `aliasTypeArguments[0]`.
+ * `IResolveScope` above. The binding `T` is read from `aliasTypeArguments[0]`.
  */
 const TYPE_ARG_TOKEN_NAME = 'Typeof';
 
@@ -184,7 +184,7 @@ export interface ConstructorExtraction {
  * Extends TokenContext with the diagnostic sink and anchor source file.
  */
 export interface DepContext extends TokenContext {
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
   readonly sourceFile: ts.SourceFile;
 }
 
@@ -372,7 +372,7 @@ function tupleElementSlots(
  *   4. Inline union type annotation (`A | B`) → UnionSlot (`| undefined` becomes
  *      the optional fallback below; `| null` survives as a real member).
  *   5a. Singular literal (`"dev"` / `42` / `true` / `1n`) → LiteralSlot (Rule 2).
- *   5b. Normal type → string token via `tokenForType`. A `Resolver`-typed param
+ *   5b. Normal type → string token via `tokenForType`. A `IResolver`-typed param
  *       derives the intrinsic provider token here, like any other named type.
  *   6. Anonymous structure + no brand → hard diagnostic (UnderivableToken).
  *
@@ -408,7 +408,7 @@ function extractParamSlot(
   // 1. A `Typeof<T>`-typed parameter receives the token STRING of a
   //    registration type argument: a Hole binding stays an open `{ typeArg: N }`
   //    slot; a concrete binding closes to its derived token as a literal value
-  //    slot. (A `Resolver`-typed param is NOT special-cased — it derives the
+  //    slot. (A `IResolver`-typed param is NOT special-cased — it derives the
   //    intrinsic provider token through normal derivation at step 5.)
   const typeArgSlot = typeArgSlotFor(rawType, param, ctx);
   if (typeArgSlot !== undefined) {
@@ -829,7 +829,7 @@ function slotForType(
   ctx: DepContext,
 ): Slot {
   // 1. A `Typeof<T>` element receives a type-arg slot (open hole) or its closed
-  //    token. (A `Resolver`-typed element is not special-cased — it derives the
+  //    token. (A `IResolver`-typed element is not special-cased — it derives the
   //    intrinsic provider token through normal derivation at step 7.)
   const typeArgSlot = typeArgSlotFor(type, anchor, ctx);
   if (typeArgSlot !== undefined) {

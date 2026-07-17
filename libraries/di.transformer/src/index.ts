@@ -47,4 +47,4 @@ export { type CheckContext } from './checks.js';
 export { type ConstructorExtraction, type DepContext, extractFromExpression, extractInstantiatedSignature,
   extractSignatureFromClass, type FactorySlot, isFactorySlot, isTypeArgSlot, isUnionSlot, type Signature, type Slot,
   slotsEqual, type TypeArgSlot, type UnionSlot } from './deps.js';
-export { type Diagnostic, DiagnosticCode, type DiagnosticSink, error, warning } from './diagnostics.js';
+export { type Diagnostic, DiagnosticCode, error, type IDiagnosticSink, warning } from './diagnostics.js';

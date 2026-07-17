@@ -12,7 +12,7 @@
 
 export { BrowserConsoleLogger, type ConsoleMethod, consoleMethodFor } from './BrowserConsoleLogger';
 export { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
-export type { ConsoleLike } from './console-global';
+export type { ConsoleLike } from './ConsoleLike';
 
 // The ILoggingBuilder augmentation set (+ its side-effect registration).
-export { BrowserConsoleLoggerExtensions } from './browser-console-logger-augmentations';
+export { BrowserConsoleLoggerExtensions } from './BrowserConsoleLoggerExtensions';

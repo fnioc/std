@@ -55,7 +55,7 @@ const manifest = new ServiceManifest()
   });
 ```
 
-`addMemoryCache` registers the `Options<MemoryCacheOptions>` pipeline plus a
+`addMemoryCache` registers the `IOptions<MemoryCacheOptions>` pipeline plus a
 singleton `IMemoryCache`, resolvable through the `MEMORY_CACHE_TOKEN` string
 this package exports. The `setup` callback runs lazily, the first time the
 options resolve, so it's safe to call `addMemoryCache` more than once and

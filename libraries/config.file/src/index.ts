@@ -1,26 +1,26 @@
 // Public entry point for @rhombus-std/config.file -- the shared base layer for
 // file-backed configuration providers (JSON, INI, XML).
 //
-// Exports the abstract FileConfigurationSource/FileConfigurationProvider pair
+// Exports the abstract FileConfigSource/FileConfigProvider pair
 // every file-format provider derives from, the FileLoadErrorContext handed to
 // a load-error handler, the FormatError/InvalidDataError types, and installs
 // the `setFileProvider`/`getFileProvider`/`setBasePath`/`setFileLoadErrorHandler`/
 // `getFileLoadErrorHandler` builder augmentations.
 //
-// The augmentation is registered against the shared IConfigurationBuilder
-// token, so it reaches BOTH decorated builders (ConfigurationBuilder and
-// ConfigurationManager). Its members are merged onto three declaration spaces:
-// the config.core IConfigurationBuilder INTERFACE (so a source's
+// The augmentation is registered against the shared IConfigBuilder
+// token, so it reaches BOTH decorated builders (ConfigBuilder and
+// ConfigManager). Its members are merged onto three declaration spaces:
+// the config.core IConfigBuilder INTERFACE (so a source's
 // `ensureDefaults`, which only sees the interface, can call
 // `builder.getFileProvider()`), and the two concrete classes (so user code
-// reaches `setBasePath` etc. on a ConfigurationBuilder/ConfigurationManager).
+// reaches `setBasePath` etc. on a ConfigBuilder/ConfigManager).
 //
 // A consumer who only wants the augmentation needs a bare side-effect import:
 // `import "@rhombus-std/config.file";`. `sideEffects: true` in package.json
 // keeps a bundler from tree-shaking the registration away.
 
-import type { ConfigurationBuilder } from '@rhombus-std/config';
-import type { IConfigurationBuilder, IndexedSection } from '@rhombus-std/config.core';
+import type { ConfigBuilder } from '@rhombus-std/config';
+import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import { type AugmentationSet, process, registerAugmentations } from '@rhombus-std/primitives';
@@ -39,12 +39,12 @@ const FILE_LOAD_ERROR_HANDLER_KEY = 'FileLoadExceptionHandler';
 /** The load-error-handler callback stashed on the builder. */
 type FileLoadErrorHandler = Func<[FileLoadErrorContext], void>;
 
-// Interface-side merge onto config.core's IConfigurationBuilder (the public
+// Interface-side merge onto config.core's IConfigBuilder (the public
 // barrel -- config.file doesn't own the interface, §38): gives the interface
-// the file-default hooks a FileConfigurationSource.ensureDefaults calls
-// through the plain IConfigurationBuilder type.
+// the file-default hooks a FileConfigSource.ensureDefaults calls
+// through the plain IConfigBuilder type.
 declare module '@rhombus-std/config.core' {
-  interface IConfigurationBuilder {
+  interface IConfigBuilder {
     /** Sets the default file provider for file-based sources. */
     setFileProvider(fileProvider: IFileProvider): this;
     /** Gets the default file provider (a cwd-rooted PhysicalFileProvider when unset). */
@@ -62,10 +62,10 @@ declare module '@rhombus-std/config.core' {
 // (config is dist-referenced, so its flat dist/index.d.ts declares both classes
 // directly -- a barrel merge lands cleanly even with other provider
 // augmentations present; see config.json's addJsonFile install), so
-// `new ConfigurationManager().setBasePath('/x')` type-checks against the
+// `new ConfigManager().setBasePath('/x')` type-checks against the
 // prototype methods the registry installs.
 declare module '@rhombus-std/config' {
-  interface ConfigurationBuilder<T = IndexedSection> {
+  interface ConfigBuilder<T = IndexedSection> {
     setFileProvider(fileProvider: IFileProvider): this;
     getFileProvider(): IFileProvider;
     setBasePath(basePath: string): this;
@@ -75,7 +75,7 @@ declare module '@rhombus-std/config' {
 }
 
 declare module '@rhombus-std/config' {
-  interface ConfigurationManager {
+  interface ConfigManager {
     setFileProvider(fileProvider: IFileProvider): this;
     getFileProvider(): IFileProvider;
     setBasePath(basePath: string): this;
@@ -85,16 +85,16 @@ declare module '@rhombus-std/config' {
 }
 
 /**
- * One named object literal mirroring the reference `FileConfigurationExtensions`
- * static class (docs §28/§38): receiver-first members over IConfigurationBuilder,
+ * One named object literal mirroring the reference `FileConfigExtensions`
+ * static class (docs §28/§38): receiver-first members over IConfigBuilder,
  * registered against the shared token AND exported as the standalone form.
  */
-export const FileConfigurationExtensions = {
-  setFileProvider(builder: IConfigurationBuilder, fileProvider: IFileProvider): IConfigurationBuilder {
+export const FileConfigExtensions = {
+  setFileProvider(builder: IConfigBuilder, fileProvider: IFileProvider): IConfigBuilder {
     builder.properties.set(FILE_PROVIDER_KEY, fileProvider);
     return builder;
   },
-  getFileProvider(builder: IConfigurationBuilder): IFileProvider {
+  getFileProvider(builder: IConfigBuilder): IFileProvider {
     const provider = builder.properties.get(FILE_PROVIDER_KEY);
     if (provider !== undefined) {
       return provider as IFileProvider;
@@ -102,21 +102,21 @@ export const FileConfigurationExtensions = {
     // The AppContext.BaseDirectory analog: a physical provider rooted at cwd.
     return new PhysicalFileProvider(process.cwd());
   },
-  setBasePath(builder: IConfigurationBuilder, basePath: string): IConfigurationBuilder {
-    return FileConfigurationExtensions.setFileProvider(builder, new PhysicalFileProvider(basePath));
+  setBasePath(builder: IConfigBuilder, basePath: string): IConfigBuilder {
+    return FileConfigExtensions.setFileProvider(builder, new PhysicalFileProvider(basePath));
   },
-  setFileLoadErrorHandler(builder: IConfigurationBuilder, handler: FileLoadErrorHandler): IConfigurationBuilder {
+  setFileLoadErrorHandler(builder: IConfigBuilder, handler: FileLoadErrorHandler): IConfigBuilder {
     builder.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
     return builder;
   },
-  getFileLoadErrorHandler(builder: IConfigurationBuilder): FileLoadErrorHandler | undefined {
+  getFileLoadErrorHandler(builder: IConfigBuilder): FileLoadErrorHandler | undefined {
     return builder.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
   },
-} satisfies AugmentationSet<IConfigurationBuilder>;
+} satisfies AugmentationSet<IConfigBuilder>;
 
-registerAugmentations(nameof<IConfigurationBuilder>(), FileConfigurationExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), FileConfigExtensions);
 
 export { FormatError, InvalidDataError } from './errors';
-export { FileConfigurationProvider } from './FileConfigurationProvider';
-export { FileConfigurationSource } from './FileConfigurationSource';
+export { FileConfigProvider } from './FileConfigProvider';
+export { FileConfigSource } from './FileConfigSource';
 export type { FileLoadErrorContext } from './FileLoadErrorContext';

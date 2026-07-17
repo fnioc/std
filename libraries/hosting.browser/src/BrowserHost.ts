@@ -17,8 +17,8 @@
 // wait-for-shutdown -> stop) via hosting's `runAsync`, so the caller no longer
 // wires the stop by hand.
 
-import { MemoryConfigurationSource } from '@rhombus-std/config';
-import type { ConfigurationData } from '@rhombus-std/config';
+import { MemoryConfigSource } from '@rhombus-std/config';
+import type { ConfigData } from '@rhombus-std/config';
 import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from '@rhombus-std/hosting';
 import { BrowserConsoleLoggerExtensions } from '@rhombus-std/logging.browserconsole';
 import type { Action, Func } from '@rhombus-toolkit/func';
@@ -33,7 +33,7 @@ export interface BrowserHostApplicationBuilderSettings {
   /** The application name. */
   applicationName?: string;
   /** Key/value seed data for the in-memory configuration source. */
-  initialData?: ConfigurationData;
+  initialData?: ConfigData;
   /** Configures the {@link BrowserLifetimeOptions} (e.g. `stopOnPagehide`). */
   configureLifetime?: Func<[BrowserLifetimeOptions], void>;
   /**
@@ -61,7 +61,7 @@ export const BrowserHost = {
     const builder = Host.createEmptyApplicationBuilder(hostSettings);
 
     if (settings?.initialData !== undefined) {
-      builder.configuration.add(new MemoryConfigurationSource({ initialData: settings.initialData }));
+      builder.configuration.add(new MemoryConfigSource({ initialData: settings.initialData }));
     }
 
     // The builder's environment is already browser-shaped: content root "/"

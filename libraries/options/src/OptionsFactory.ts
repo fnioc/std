@@ -13,10 +13,10 @@
 
 import type { Func } from '@rhombus-toolkit/func';
 
-import type { ConfigureOptions } from './ConfigureOptions.js';
+import type { IConfigureOptions } from './IConfigureOptions.js';
+import type { IPostConfigureOptions } from './IPostConfigureOptions.js';
+import type { IValidateOptions } from './IValidateOptions.js';
 import { OptionsValidationError } from './OptionsValidationError.js';
-import type { PostConfigureOptions } from './PostConfigureOptions.js';
-import type { ValidateOptions } from './ValidateOptions.js';
 
 /**
  * Builds bound options of type `T` by running configure, post-configure, and
@@ -25,9 +25,9 @@ import type { ValidateOptions } from './ValidateOptions.js';
  */
 export class OptionsFactory<T> {
   readonly #makeBase: Func<[], T>;
-  readonly #configures: readonly ConfigureOptions<T>[];
-  readonly #postConfigures: readonly PostConfigureOptions<T>[];
-  readonly #validates: readonly ValidateOptions<T>[];
+  readonly #configures: readonly IConfigureOptions<T>[];
+  readonly #postConfigures: readonly IPostConfigureOptions<T>[];
+  readonly #validates: readonly IValidateOptions<T>[];
 
   /**
    * @param makeBase Produces the base instance every {@link create} starts
@@ -40,9 +40,9 @@ export class OptionsFactory<T> {
    */
   constructor(
     makeBase: Func<[], T>,
-    configures: Iterable<ConfigureOptions<T>>,
-    postConfigures: Iterable<PostConfigureOptions<T>>,
-    validates: Iterable<ValidateOptions<T>> = [],
+    configures: Iterable<IConfigureOptions<T>>,
+    postConfigures: Iterable<IPostConfigureOptions<T>>,
+    validates: Iterable<IValidateOptions<T>> = [],
   ) {
     this.#makeBase = makeBase;
     this.#configures = [...configures];

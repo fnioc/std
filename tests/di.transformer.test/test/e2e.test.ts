@@ -40,7 +40,7 @@ beforeAll(() => {
   link(join(REPO_ROOT, 'libraries', 'di.core'), join(nm, '@rhombus-std', 'di.core'));
 
   // The type-driven authoring sugar the transformer merges onto di.core's
-  // `ServiceManifestBase` / `AddBuilder`. In a real consumer this rides in via
+  // `IServiceManifestBase` / `AddBuilder`. In a real consumer this rides in via
   // `types: ["@rhombus-std/di.transformer"]`; here it is declared directly against
   // the linked di.core so the receivers below anchor without pulling the
   // transformer's whole type-dependency closure into the temp project.
@@ -48,7 +48,7 @@ beforeAll(() => {
     join(projDir, 'src', 'di-augment.d.ts'),
     `import type { AddBuilder } from "@rhombus-std/di.core";
 declare module "@rhombus-std/di.core" {
-  interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
     add<I>(ctor: new(...args: any[]) => I): AddBuilder<Scopes>;
   }
   interface AddBuilder<Scopes extends string> {
@@ -78,8 +78,8 @@ export class WidgetHost implements IWidget {
     join(projDir, 'src', 'main.ts'),
     `
 import { SqlUserRepo, ConsoleLogger, WidgetHost, ILogger, IUserRepo, IWidget } from "./services.js";
-import type { ServiceManifest } from "@rhombus-std/di.core";
-declare const services: ServiceManifest<string>;
+import type { IServiceManifest } from "@rhombus-std/di.core";
+declare const services: IServiceManifest<string>;
 services.add<ILogger>(ConsoleLogger).as<"singleton">();
 services.add<IUserRepo>(SqlUserRepo).as<"request">();
 services.add<IWidget>(WidgetHost).as<"singleton">();
@@ -103,9 +103,9 @@ export class SqlRepository<T> implements IRepository<T> {
   writeFileSync(
     join(projDir, 'src', 'wiring-generics.ts'),
     `
-import type { $, ServiceManifest } from "@rhombus-std/di.core";
+import type { $, IServiceManifest } from "@rhombus-std/di.core";
 import { SqlRepository, IRepository, User } from "./generics.js";
-declare const services: ServiceManifest<string>;
+declare const services: IServiceManifest<string>;
 services.add<IRepository<$<1>>>(SqlRepository<$<1>>).as<"singleton">();
 services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
 `,
@@ -118,7 +118,7 @@ services.add<IRepository<User>>(SqlRepository<User>).as<"singleton">();
         module: 'ESNext',
         moduleResolution: 'Bundler',
         // ESNext.Disposable supplies the global `Disposable`/`AsyncDisposable`
-        // the `@rhombus-std/di.core` `ServiceProvider` interface extends — this
+        // the `@rhombus-std/di.core` `IServiceProvider` interface extends — this
         // temp project compiles core's source, so it needs the lib. DOM supplies
         // `EventTarget`/`Event`/`AbortSignal` for @rhombus-std/primitives, whose
         // source the program now also compiles (di.core imports the augmentation

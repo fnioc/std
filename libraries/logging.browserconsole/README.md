@@ -77,7 +77,7 @@ side-effect import, the same way
 [`@rhombus-std/logging.console`](../logging.console/README.md) does for
 non-browser environments. Install `@rhombus-std/logging` and
 `@rhombus-std/logging.core` alongside it; add
-[`@rhombus-std/logging.configuration`](../logging.configuration/README.md) if
+[`@rhombus-std/logging.config`](../logging.config/README.md) if
 you also want filter rules bound from configuration.
 
 If you're assembling a full page-hosted application, this is the sink meant

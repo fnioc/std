@@ -1,63 +1,63 @@
 // Public entry point for @rhombus-std/config.xml.
 //
-// Exports XmlConfigurationSource/Provider (+ the XmlStream* pair for in-memory
+// Exports XmlConfigSource/Provider (+ the XmlStream* pair for in-memory
 // payloads) and installs `addXmlFile` / `addXmlStream` onto config's
-// ConfigurationBuilder AND ConfigurationManager via the augmentation registry.
+// ConfigBuilder AND ConfigManager via the augmentation registry.
 // Mirrors config.json/config.ini's install exactly.
 //
 // A consumer who only wants the sugar needs a bare side-effect import:
 // `import "@rhombus-std/config.xml";`. `sideEffects: true` in package.json keeps
 // a bundler from tree-shaking the registration away.
 
-import type { ConfigurationBuilder, StreamPayload } from '@rhombus-std/config';
-import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
+import type { ConfigBuilder, StreamPayload } from '@rhombus-std/config';
+import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { XmlConfigurationSource, type XmlConfigurationSourceOptions } from './XmlConfigurationSource';
-import { XmlStreamConfigurationSource } from './XmlStreamConfigurationSource';
+import { XmlConfigSource, type XmlConfigSourceOptions } from './XmlConfigSource';
+import { XmlStreamConfigSource } from './XmlStreamConfigSource';
 
 // Declare-merge onto the config barrel (dist-referenced flat dist/index.d.ts
 // declares the classes directly, so the merge lands cleanly even with other
 // provider augmentations present -- see config.json's addJsonFile install).
 declare module '@rhombus-std/config' {
-  interface ConfigurationBuilder<T = IndexedSection> {
-    /** Registers an {@link XmlConfigurationSource} reading `path`. */
-    addXmlFile(path: string, opts?: XmlConfigurationSourceOptions): this;
-    /** Registers an {@link XmlStreamConfigurationSource} reading the in-memory `stream`. */
+  interface ConfigBuilder<T = IndexedSection> {
+    /** Registers an {@link XmlConfigSource} reading `path`. */
+    addXmlFile(path: string, opts?: XmlConfigSourceOptions): this;
+    /** Registers an {@link XmlStreamConfigSource} reading the in-memory `stream`. */
     addXmlStream(stream: StreamPayload): this;
   }
 }
 
 declare module '@rhombus-std/config' {
-  interface ConfigurationManager {
-    /** Registers an {@link XmlConfigurationSource} reading `path`. */
-    addXmlFile(path: string, opts?: XmlConfigurationSourceOptions): this;
-    /** Registers an {@link XmlStreamConfigurationSource} reading the in-memory `stream`. */
+  interface ConfigManager {
+    /** Registers an {@link XmlConfigSource} reading `path`. */
+    addXmlFile(path: string, opts?: XmlConfigSourceOptions): this;
+    /** Registers an {@link XmlStreamConfigSource} reading the in-memory `stream`. */
     addXmlStream(stream: StreamPayload): this;
   }
 }
 
-/** One named object literal mirroring the reference `XmlConfigurationExtensions`. */
-export const XmlConfigurationExtensions = {
-  addXmlFile<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
+/** One named object literal mirroring the reference `XmlConfigExtensions`. */
+export const XmlConfigExtensions = {
+  addXmlFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     path: string,
-    opts?: XmlConfigurationSourceOptions,
+    opts?: XmlConfigSourceOptions,
   ): TBuilder {
-    return builder.add(new XmlConfigurationSource(path, opts));
+    return builder.add(new XmlConfigSource(path, opts));
   },
-  addXmlStream<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
+  addXmlStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     stream: StreamPayload,
   ): TBuilder {
-    return builder.add(new XmlStreamConfigurationSource(stream));
+    return builder.add(new XmlStreamConfigSource(stream));
   },
-} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
+} satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigurationBuilder>(), XmlConfigurationExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), XmlConfigExtensions);
 
-export { XmlConfigurationProvider } from './XmlConfigurationProvider';
-export { XmlConfigurationSource } from './XmlConfigurationSource';
-export type { XmlConfigurationSourceOptions } from './XmlConfigurationSource';
-export { XmlStreamConfigurationProvider } from './XmlStreamConfigurationProvider';
-export { XmlStreamConfigurationSource } from './XmlStreamConfigurationSource';
+export { XmlConfigProvider } from './XmlConfigProvider';
+export { XmlConfigSource } from './XmlConfigSource';
+export type { XmlConfigSourceOptions } from './XmlConfigSource';
+export { XmlStreamConfigProvider } from './XmlStreamConfigProvider';
+export { XmlStreamConfigSource } from './XmlStreamConfigSource';

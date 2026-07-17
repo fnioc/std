@@ -28,7 +28,7 @@ export interface IGreeting {
 /**
  * The application's server options — the type the config sources bind into,
  * post-configure coerces, and validate guards. Delivered as a reactive
- * `Options<ServerOptions>` that re-runs the pipeline on every config reload.
+ * `IOptions<ServerOptions>` that re-runs the pipeline on every config reload.
  * PascalCase members mirror the PascalCase configuration keys they bind from.
  */
 export interface ServerOptions {
@@ -40,7 +40,7 @@ export interface ServerOptions {
 /**
  * A config-INDEPENDENT policy value delivered through the explicit-wrap
  * `addOptions<T>()` verb (#34): a pre-built default is registered and wrapped as
- * a static `Options<GreetingPolicy>` — the MEO-faithful config-free options
+ * a static `IOptions<GreetingPolicy>` — the MEO-faithful config-free options
  * shape. The greeting report reads it to punctuate each greeting.
  */
 export interface GreetingPolicy {
@@ -70,7 +70,7 @@ export interface IBanner {
  * The report the with-transformer library assembles from the whole container:
  * the aggregated greetings (#48), the live server options (#6/#40), the greeting
  * policy (#34), and whether a health check is present (#23/#25). Its factory
- * pulls every input through an injected `Resolver` (#49), resolving each
+ * pulls every input through an injected `IResolver` (#49), resolving each
  * TOKENLESSLY — which is why that library must ship its build (the raw source's
  * un-lowered `resolve<T>()` calls would throw).
  */

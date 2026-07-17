@@ -10,7 +10,7 @@
 //
 // Per SourceFile the visitor walks depth-first; when a visited node is a
 // `<manifest>.addOptions<T>()` sugar call, it is rewritten to the explicit verb
-// `<manifest>.addOptions(token(Options<T>), token(T))` with the `<T>` type
+// `<manifest>.addOptions(token(IOptions<T>), token(T))` with the `<T>` type
 // argument dropped. On a derivation failure the ORIGINAL call is left in place
 // and a hard diagnostic surfaces — never a silent partial.
 //
@@ -21,9 +21,9 @@
 
 import { createTokenContext, type TokenContext, type TokenContextOptions } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 import { isAddOptionsSugarCall } from './match.js';
-import { optionTokensFor, resolveOptionsBase } from './option-tokens.js';
+import { optionTokensFor, resolveOptionsBase } from './OptionTokens.js';
 
 /**
  * Create the `ts.TransformerFactory` that rewrites a SourceFile. Exposed so the
@@ -32,7 +32,7 @@ import { optionTokensFor, resolveOptionsBase } from './option-tokens.js';
  */
 export function createTransformerFactory(
   program: ts.Program,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
   options: TokenContextOptions = {},
 ): ts.TransformerFactory<ts.SourceFile> {
   const tokenContext = createTokenContext(program, options);
@@ -54,14 +54,14 @@ export function createTransformerFactory(
 }
 
 /**
- * Rewrite `<manifest>.addOptions<T>()` → `<manifest>.addOptions("<Options<T>>", "<T>")`.
+ * Rewrite `<manifest>.addOptions<T>()` → `<manifest>.addOptions("<IOptions<T>>", "<T>")`.
  * On any derivation failure returns the original call and emits a diagnostic.
  */
 function rewriteAddOptions(
   call: ts.CallExpression,
   program: ts.Program,
   ctx: TokenContext,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
   sourceFile: ts.SourceFile,
   factory: ts.NodeFactory,
 ): ts.Expression {
@@ -76,7 +76,7 @@ function rewriteAddOptions(
         typeArg,
         DiagnosticCode.UnlowerableAddOptions,
         'cannot lower addOptions<T>(): the @rhombus-std/options `Options` type is '
-          + 'not in the program, so the Options<T> wrapper token cannot be derived. '
+          + 'not in the program, so the IOptions<T> wrapper token cannot be derived. '
           + 'Ensure @rhombus-std/options is a dependency.',
       ),
     );
@@ -139,7 +139,7 @@ export function transform(
   _config: unknown,
   extras: ProgramTransformerExtras,
 ): { before: ts.TransformerFactory<ts.SourceFile>; } {
-  const sink: DiagnosticSink = {
+  const sink: IDiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };
   return { before: createTransformerFactory(program, sink) };

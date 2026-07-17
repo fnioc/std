@@ -11,17 +11,17 @@
 // constraint holds here: collection resolution (`Array<T>`, docs/decisions.md
 // §12) is the idiomatic accumulator, so `validateOnStart` appends the target
 // token to a collection slot and this validator is injected with the live
-// {@link Resolver} plus that resolved list. Forcing evaluation is
-// `resolver.resolve<Options<unknown>>(token).value`: resolving assembles the
+// {@link IResolver} plus that resolved list. Forcing evaluation is
+// `resolver.resolve<IOptions<unknown>>(token).value`: resolving assembles the
 // value through the OptionsFactory pipeline (running validate steps, §4.5), and
 // reading `.value` additionally re-runs the pipeline for a reactive
 // (`Options.watch`) registration -- either shape throws OptionsValidationError on
 // a failed validate step, which is exactly what forcing is for.
 
-import type { Resolver, Token } from '@rhombus-std/di.core';
+import type { IResolver, Token } from '@rhombus-std/di.core';
 
+import type { IOptions } from './IOptions.js';
 import type { IStartupValidator } from './IStartupValidator.js';
-import type { Options } from './options.js';
 import { OptionsValidationError } from './OptionsValidationError.js';
 
 /**
@@ -33,14 +33,14 @@ import { OptionsValidationError } from './OptionsValidationError.js';
  * immediately, matching the reference's catch of only `OptionsValidationException`.
  */
 export class StartupValidator implements IStartupValidator {
-  readonly #resolver: Resolver;
+  readonly #resolver: IResolver;
   readonly #targets: readonly Token[];
 
   /**
    * @param resolver The live provider view forcing evaluation resolves against.
    * @param targets The options tokens marked for startup validation.
    */
-  public constructor(resolver: Resolver, targets: readonly Token[]) {
+  public constructor(resolver: IResolver, targets: readonly Token[]) {
     this.#resolver = resolver;
     this.#targets = targets;
   }
@@ -55,7 +55,7 @@ export class StartupValidator implements IStartupValidator {
       try {
         // Resolving assembles the value (running validate steps); reading
         // `.value` re-runs the pipeline for a reactive registration.
-        void this.#resolver.resolve<Options<unknown>>(token).value;
+        void this.#resolver.resolve<IOptions<unknown>>(token).value;
       } catch (error) {
         if (error instanceof OptionsValidationError) {
           failures.push(error);

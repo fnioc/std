@@ -2,7 +2,7 @@
 // lifetime (no reference-stack counterpart: the browser lifetime is native to
 // this port).
 
-/** Options for the {@link import("./browser-lifetime").BrowserLifetime}. */
+/** Options for the {@link import("./BrowserLifetime").BrowserLifetime}. */
 export class BrowserLifetimeOptions {
   /**
    * Whether a terminal `pagehide` (persisted === false — the page is being

@@ -1,6 +1,6 @@
-import { closeToken, NoSatisfiableSignatureError, type OpenRegistration, OpenTokenRegistrationError,
-  OpenTokenResolutionError, type Registration, type Resolver, RESOLVER_TOKEN, ServiceManifest, ServiceProviderClass,
-  type Token, typeArg, union, UnregisteredTokenError } from '@rhombus-std/di';
+import { closeToken, type IResolver, NoSatisfiableSignatureError, type OpenRegistration, OpenTokenRegistrationError,
+  OpenTokenResolutionError, type Registration, RESOLVER_TOKEN, ServiceManifest, ServiceProviderClass, type Token,
+  typeArg, union, UnregisteredTokenError } from '@rhombus-std/di';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
 import { AsyncDisposableThing, defineDeps, DisposeLog, G, SyncDisposable, T } from './fixtures.js';
@@ -124,7 +124,7 @@ describe('substitution across slot kinds', () => {
   test('provider token, LiteralRef, TypeArgRef, hole token, and Union-with-hole all close', () => {
     class KitchenSink {
       public constructor(
-        public readonly sp: Resolver,
+        public readonly sp: IResolver,
         public readonly lit: unknown,
         public readonly argToken: unknown,
         public readonly dep: unknown,

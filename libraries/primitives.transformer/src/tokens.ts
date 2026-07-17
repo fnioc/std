@@ -588,8 +588,8 @@ export function deriveToken(
  * declaration.
  *
  * Used by the `@rhombus-std/di.transformer.options` satellite to derive the
- * `Options` wrapper's base (`@rhombus-std/options:Options`) so it can assemble
- * the closed token `Options<T>` = `<base><` + token(T) + `>` — the same
+ * `Options` wrapper's base (`@rhombus-std/options:IOptions`) so it can assemble
+ * the closed token `IOptions<T>` = `<base><` + token(T) + `>` — the same
  * `base<arg>` composition {@link deriveToken} performs, for a wrapper the author
  * never spelled out. Deriving (not hard-coding) the base keeps the satellite's
  * tokens in lockstep with this transformer's own derivation.

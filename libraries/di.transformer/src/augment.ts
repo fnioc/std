@@ -10,14 +10,14 @@
 // and which kills the "compiles but throws at runtime" footgun.
 //
 // The augmentation DECLARATION-MERGES onto `@rhombus-std/di.core`'s public
-// interfaces — `ServiceManifestBase` (registration forms), `AddBuilder` (the
-// `.as` form), and the resolution surface `Resolver` composes: `RequiredResolver`
-// (the tokenless `resolve` forms), `ServiceQuery` (`isService`), and `Resolver`
+// interfaces — `IServiceManifestBase` (registration forms), `AddBuilder` (the
+// `.as` form), and the resolution surface `IResolver` composes: `IRequiredResolver`
+// (the tokenless `resolve` forms), `IServiceQuery` (`isService`), and `IResolver`
 // itself (`resolveAsync` / `tryResolve`). Each tokenless overload merges onto the
 // interface that DECLARES its explicit-token form, so the two combine on one
 // interface. Because di's consumer-facing types are those interfaces
-// (interface-first: `ServiceManifest` = `ServiceManifestBase<…>`, and the public
-// provider is the `ServiceProvider` interface that extends `Resolver`), the merged
+// (interface-first: `ServiceManifest` = `IServiceManifestBase<…>`, and the public
+// provider is the `IServiceProvider` interface that extends `IResolver`), the merged
 // overloads surface on what a consumer holds — an interface inherits a base
 // interface's merged overloads; a class would not. Declaration merging (adding overloads to the SAME interface)
 // is used rather than a separate carrier + `extends`, because the runtime forms
@@ -48,11 +48,11 @@ export type { $, Hole, Inject, OverloadedConstructorParameters, OverloadedParame
   Typeof } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
-  // The type-driven registration forms merge onto core's `ServiceManifestBase`
-  // interface — which the public `ServiceManifest` (`= ServiceManifestBase<…>`) a
+  // The type-driven registration forms merge onto core's `IServiceManifestBase`
+  // interface — which the public `ServiceManifest` (`= IServiceManifestBase<…>`) a
   // consumer holds resolves to. `Provider` is defaulted so the merge matches the
   // interface's type-parameter list.
-  interface ServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Type-driven class authoring — lowers to `add("token", C)`. The ctor is
      * typed `Ctor<any[], I>` (a plain construct signature, so an abstract class
@@ -112,16 +112,16 @@ declare module '@rhombus-std/di.core' {
   }
 
   // The tokenless resolve forms merge onto the SAME di.core interface that DECLARES
-  // each method — `resolve` onto `RequiredResolver`, `isService` onto `ServiceQuery`,
-  // and `resolveAsync`/`tryResolve` onto `Resolver` — so each authored overload
+  // each method — `resolve` onto `IRequiredResolver`, `isService` onto `IServiceQuery`,
+  // and `resolveAsync`/`tryResolve` onto `IResolver` — so each authored overload
   // combines with the explicit-token form it shadows on one interface (an overload
   // merged onto a DERIVED interface would not combine with a base's declaration).
-  // `Resolver` composes `RequiredResolver` + `ServiceQuery`, so both a factory
-  // parameter typed `Resolver` and the `ServiceProvider` interface a consumer holds
-  // (which extends `Resolver`) inherit the full merged overload set. The public
+  // `IResolver` composes `IRequiredResolver` + `IServiceQuery`, so both a factory
+  // parameter typed `IResolver` and the `IServiceProvider` interface a consumer holds
+  // (which extends `IResolver`) inherit the full merged overload set. The public
   // provider being an INTERFACE (not the impl class) is what makes this work: an
   // interface inherits its base interface's merged overloads; a class would not.
-  interface RequiredResolver {
+  interface IRequiredResolver {
     /**
      * Tokenless authored resolve — `resolve<IFoo>()`. The transformer lowers it
      * to an explicit-token `resolve("token")` (or `resolveFactory` for a
@@ -137,7 +137,7 @@ declare module '@rhombus-std/di.core' {
     resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
   }
 
-  interface ServiceQuery {
+  interface IServiceQuery {
     /**
      * Tokenless registration predicate — `isService<IFoo>()`. `true` when `IFoo`
      * would resolve. The transformer lowers it to an explicit-token
@@ -147,7 +147,7 @@ declare module '@rhombus-std/di.core' {
     isService<T>(): boolean;
   }
 
-  interface Resolver {
+  interface IResolver {
     /**
      * Tokenless async resolve — `resolveAsync<IFoo>()`. The transformer lowers
      * it to an explicit-token `resolveAsync("token")` before runtime — the

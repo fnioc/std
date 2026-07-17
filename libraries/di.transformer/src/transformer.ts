@@ -20,7 +20,7 @@ import { createTokenContext, deriveToken, injectTokenFor, singletonValue, type T
 import type { Func } from '@rhombus-toolkit/func';
 import ts from 'typescript';
 import { IS_SERVICE_INTERFACES, memberAnchoredOnDiCore, RESOLVE_INTERFACES } from './anchor.js';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 import { literalExpression, type LowerContext, lowerStatement } from './lower.js';
 
 /**
@@ -30,7 +30,7 @@ import { literalExpression, type LowerContext, lowerStatement } from './lower.js
  */
 export function createTransformerFactory(
   program: ts.Program,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
   options: { readFile?: Func<[string], string | undefined>; } = {},
 ): ts.TransformerFactory<ts.SourceFile> {
   const tokenContext = createTokenContext(program, options);
@@ -44,7 +44,7 @@ export function createTransformerFactory(
 
 interface FileContext extends TokenContext {
   readonly factory: ts.NodeFactory;
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
 }
 
 function transformSourceFile(
@@ -124,7 +124,7 @@ const TOKENLESS_RESOLVE_METHODS: ReadonlySet<string> = new Set([
 /**
  * True when `call` is a tokenless `*.resolve<I>()` / `*.resolveAsync<I>()` /
  * `*.tryResolve<I>()` (1 type arg, 0 value args) whose method resolves to
- * `RequiredResolver` / `Resolver` inside `declare module '@rhombus-std/di.core'` —
+ * `IRequiredResolver` / `IResolver` inside `declare module '@rhombus-std/di.core'` —
  * so `resolve<T>()` on an unrelated object is never lowered.
  */
 function isTokenlessResolveCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
@@ -146,7 +146,7 @@ function isTokenlessResolveCall(call: ts.CallExpression, checker: ts.TypeChecker
 
 /**
  * True when `call` is a tokenless `*.isService<I>()` predicate (1 type arg, 0
- * value args) whose `isService` member resolves to `ServiceQuery` inside
+ * value args) whose `isService` member resolves to `IServiceQuery` inside
  * `declare module '@rhombus-std/di.core'`. Distinct from the resolve family: it
  * lowers to `isService("tok")` with NO Rule-2 singleton path and NO factory form —
  * a predicate always wants the derived token, never the type's value.
@@ -365,7 +365,7 @@ export function transform(
   _config: unknown,
   extras: ProgramTransformerExtras,
 ): { before: ts.TransformerFactory<ts.SourceFile>; } {
-  const sink: DiagnosticSink = {
+  const sink: IDiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };
   return { before: createTransformerFactory(program, sink) };

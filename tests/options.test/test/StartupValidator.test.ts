@@ -1,21 +1,21 @@
 // StartupValidator (white-box via internal/*): forces evaluation of each
 // collected options token and aggregates validation failures. Exercised against
-// a hand-built fake Resolver so the unit stays independent of the DI runtime --
+// a hand-built fake IResolver so the unit stays independent of the DI runtime --
 // the augmentation wiring is covered black-box in options.augmentations.test.
 
-import type { Options } from '@rhombus-std/options/_/options';
+import type { IOptions } from '@rhombus-std/options/_/IOptions';
 import { OptionsValidationError } from '@rhombus-std/options/_/OptionsValidationError';
 import { StartupValidator } from '@rhombus-std/options/_/StartupValidator';
 import { describe, expect, test } from 'bun:test';
 
-// The constructor's first parameter is di.core's `Resolver`; reference it
+// The constructor's first parameter is di.core's `IResolver`; reference it
 // structurally so the test needs no di.core dependency.
 type FakeResolver = ConstructorParameters<typeof StartupValidator>[0];
 
-/** A Resolver whose `resolve(token)` returns the token's mapped `Options`. */
-function resolverOf(map: Record<string, Options<unknown>>): FakeResolver {
+/** A IResolver whose `resolve(token)` returns the token's mapped `Options`. */
+function resolverOf(map: Record<string, IOptions<unknown>>): FakeResolver {
   return {
-    resolve(token: string): Options<unknown> {
+    resolve(token: string): IOptions<unknown> {
       const options = map[token];
       if (options === undefined) {
         throw new Error(`no registration for ${token}`);
@@ -26,7 +26,7 @@ function resolverOf(map: Record<string, Options<unknown>>): FakeResolver {
 }
 
 /** An `Options` that throws `error` the moment `.value` is read. */
-function failing(error: unknown): Options<unknown> {
+function failing(error: unknown): IOptions<unknown> {
   return {
     get value(): unknown {
       throw error;
@@ -35,14 +35,14 @@ function failing(error: unknown): Options<unknown> {
 }
 
 /**
- * A Resolver whose `resolve(token)` throws `error` outright -- models the
+ * A IResolver whose `resolve(token)` throws `error` outright -- models the
  * non-reactive assembly path, where `assembleOptions` builds eagerly at resolve
  * time so a failed validate step surfaces from `resolve()` itself, before any
  * `.value` read.
  */
 function resolverThrowing(error: unknown): FakeResolver {
   return {
-    resolve(): Options<unknown> {
+    resolve(): IOptions<unknown> {
       throw error;
     },
   } as unknown as FakeResolver;
@@ -51,7 +51,7 @@ function resolverThrowing(error: unknown): FakeResolver {
 describe('StartupValidator.validate', () => {
   test('all targets pass -> does not throw, forcing each value', () => {
     let reads = 0;
-    const passing: Options<unknown> = {
+    const passing: IOptions<unknown> = {
       get value(): unknown {
         reads += 1;
         return { ok: true };
@@ -103,7 +103,7 @@ describe('StartupValidator.validate', () => {
 
   test('duplicate tokens are forced only once', () => {
     let reads = 0;
-    const counted: Options<unknown> = {
+    const counted: IOptions<unknown> = {
       get value(): unknown {
         reads += 1;
         return 1;

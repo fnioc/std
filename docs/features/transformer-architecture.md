@@ -138,7 +138,7 @@ A library declares its inlineable members in a `"rhombus.inline"` key in `packag
   "rhombus.inline": {
     "entries": [
       {
-        "type": "@rhombus-std/di.core:ServiceQuery",
+        "type": "@rhombus-std/di.core:IServiceQuery",
         "impl": "ServiceQueryInline",
         "member": "isService",
       },

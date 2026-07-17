@@ -18,7 +18,7 @@
 import { NAMEOF_NAME } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import ts from 'typescript';
-import { createTokenContext } from './context.js';
+import { createTokenContext } from './TokenContextOptions.js';
 import { deriveToken, type TokenContext } from './tokens.js';
 
 /**

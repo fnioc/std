@@ -5,7 +5,7 @@
 // (`undefined`) name fields match anything. This ports cleanly with no
 // metrics runtime behind it -- it is only strings + a scope enum + a boolean.
 
-import { MeterScope } from './meter-scope';
+import { MeterScope } from './MeterScope';
 
 /**
  * A single metrics enablement rule: determines which instruments are enabled

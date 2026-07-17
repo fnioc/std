@@ -7,23 +7,23 @@
 // `"sideEffects": true` so a bundler cannot tree-shake the augmentation away.
 
 // Side-effect + standalone surface: registers the `addLogging` augmentation against
-// the di.core ServiceManifest token, merges the method onto the ServiceManifestBase
+// the di.core ServiceManifest token, merges the method onto the IServiceManifestBase
 // interface, and exports the `LoggingServiceCollectionExtensions` set (docs §28/§38).
-export { LoggingServiceCollectionExtensions } from './add-logging';
+export { LoggingServiceCollectionExtensions } from './LoggingServiceCollectionExtensions';
 // Side-effect + standalone surface: registers the ILoggingBuilder augmentations
 // (addProvider/…) against the logging-builder token so the @augment-decorated
 // LoggingBuilder pulls them onto its prototype, and exports the set (docs §38).
-export { LoggingBuilderExtensions } from './builder-augmentations';
+export { LoggingBuilderExtensions } from './LoggingBuilderExtensions';
 // Side-effect + standalone surface: installs the LoggerFilterOptions augmentation
 // (addFilter) directly onto the concrete value object (CLOSED set, #105), registers
 // the ILoggingBuilder half (the builder-level addFilter, routed through the
 // options-configure pipeline) against the logging-builder token, and exports both
 // sets.
 export { FilterLoggingBuilderExtensions, LoggerFilterOptionsExtensions } from './filter-augmentations';
-export { Logger } from './logger';
-export { LoggerExternalScopeProvider } from './logger-external-scope-provider';
-export { LoggerFilterOptions, LoggerFilterRule } from './logger-filter-options';
+export { Logger } from './Logger';
+export { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
 export { LoggerFactory } from './LoggerFactory';
+export { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 export { LoggingBuilder } from './LoggingBuilder';
 export { NullLogger, NullLoggerFactory, NullLoggerProvider } from './null-logger';
 export { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';

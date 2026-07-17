@@ -6,7 +6,7 @@ describe('OPTIONAL import injection', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface T { ssl?: boolean }
-        const b = new ConfigurationBuilder().withType<T>();
+        const b = new ConfigBuilder().withType<T>();
       `),
     );
     expect(diagnostics).toHaveLength(0);
@@ -19,7 +19,7 @@ describe('OPTIONAL import injection', () => {
       fixture(`
         import { OPTIONAL } from "@rhombus-std/config";
         interface T { ssl?: boolean }
-        const b = new ConfigurationBuilder().withType<T>();
+        const b = new ConfigBuilder().withType<T>();
       `),
     );
     expect(diagnostics).toHaveLength(0);
@@ -33,7 +33,7 @@ describe('OPTIONAL import injection', () => {
       fixture(`
         import { OPTIONAL as OPT } from "@rhombus-std/config";
         interface T { ssl?: boolean }
-        const b = new ConfigurationBuilder().withType<T>();
+        const b = new ConfigBuilder().withType<T>();
       `),
     );
     expect(diagnostics).toHaveLength(0);
@@ -47,7 +47,7 @@ describe('OPTIONAL import injection', () => {
       fixture(`
         import * as cfg from "@rhombus-std/config";
         interface T { ssl?: boolean }
-        const b = new ConfigurationBuilder().withType<T>();
+        const b = new ConfigBuilder().withType<T>();
       `),
     );
     expect(diagnostics).toHaveLength(0);
@@ -59,7 +59,7 @@ describe('OPTIONAL import injection', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface T { host: string; port: number }
-        const b = new ConfigurationBuilder().withType<T>();
+        const b = new ConfigBuilder().withType<T>();
       `),
     );
     expect(diagnostics).toHaveLength(0);

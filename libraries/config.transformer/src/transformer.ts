@@ -20,7 +20,7 @@
 
 import ts from 'typescript';
 import { type CodegenContext, schemaLiteralForTypeNode } from './codegen.js';
-import type { DiagnosticSink } from './diagnostics.js';
+import type { IDiagnosticSink } from './diagnostics.js';
 import { ensureOptionalImport, type OptionalRef, resolveOptionalBinding } from './inject.js';
 import { isWithTypeCall } from './match.js';
 
@@ -31,7 +31,7 @@ import { isWithTypeCall } from './match.js';
  */
 export function createTransformerFactory(
   program: ts.Program,
-  sink: DiagnosticSink,
+  sink: IDiagnosticSink,
 ): ts.TransformerFactory<ts.SourceFile> {
   const checker = program.getTypeChecker();
 
@@ -118,7 +118,7 @@ export function transform(
   _config: unknown,
   extras: ProgramTransformerExtras,
 ): { before: ts.TransformerFactory<ts.SourceFile>; } {
-  const sink: DiagnosticSink = {
+  const sink: IDiagnosticSink = {
     addDiagnostic: (d) => extras.addDiagnostic(d),
   };
   return { before: createTransformerFactory(program, sink) };

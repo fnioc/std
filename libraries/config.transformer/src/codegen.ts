@@ -19,7 +19,7 @@
 //     never a silent partial.
 
 import ts from 'typescript';
-import { DiagnosticCode, type DiagnosticSink, error } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 import type { OptionalRef } from './inject.js';
 
 /** The result of synthesizing a schema literal for a type node. */
@@ -31,7 +31,7 @@ export type CodegenResult =
 export interface CodegenContext {
   readonly checker: ts.TypeChecker;
   readonly factory: ts.NodeFactory;
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
   readonly program: ts.Program;
   readonly sourceFile: ts.SourceFile;
   readonly optionalRef: OptionalRef;

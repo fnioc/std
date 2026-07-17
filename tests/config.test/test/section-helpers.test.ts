@@ -2,7 +2,7 @@
 // the value/key/path root sentinels. These throw on a present-but-malformed
 // leaf and name the full path in the message.
 
-import type { IConfigurationRoot } from '@rhombus-std/config';
+import type { IConfigRoot } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 
@@ -91,7 +91,7 @@ describe('toObject', () => {
 
 describe('root sentinels', () => {
   test('value is undefined; key and path are empty strings', () => {
-    const root = rootOf({ X: '1' }) as unknown as IConfigurationRoot & { key: string; path: string; };
+    const root = rootOf({ X: '1' }) as unknown as IConfigRoot & { key: string; path: string; };
     expect(root.value).toBeUndefined();
     expect(root.key).toBe('');
     expect(root.path).toBe('');

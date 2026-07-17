@@ -5,7 +5,7 @@
 Most apps end up with three ways to read the same settings object: a
 singleton snapshot, a per-request snapshot, and a reactive "give me the
 latest" monitor. `@rhombus-std/options` collapses that down to one type,
-`Options<T>`, with an optional `subscribe` for values that can change at
+`IOptions<T>`, with an optional `subscribe` for values that can change at
 runtime. It also ships the `OptionsFactory` pipeline that assembles, checks,
 and validates the value in the first place — independent of where that value
 came from. This package knows nothing about configuration files, environment
@@ -128,13 +128,13 @@ function validate(o: { port: number; host: string; }) {
 
 | Export                                  | What it is                                                                     |
 | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `Options<T>`                            | The accessor interface: a `value` getter plus an optional `subscribe`.         |
+| `IOptions<T>`                           | The accessor interface: a `value` getter plus an optional `subscribe`.         |
 | `Options.of(value)`                     | A static snapshot — `value` never changes, no `subscribe`.                     |
 | `Options.watch(getValue, produceToken)` | A reactive value backed by a change-token producer.                            |
 | `OptionsFactory<T>`                     | Runs the configure / post-configure / validate pipeline and returns the value. |
-| `ConfigureOptions<T>`                   | A configure step: `configure(options)`.                                        |
-| `PostConfigureOptions<T>`               | A post-configure step: `postConfigure(options)`.                               |
-| `ValidateOptions<T>`                    | A validate step: `validate(options): ValidateOptionsResult`.                   |
+| `IConfigureOptions<T>`                  | A configure step: `configure(options)`.                                        |
+| `IPostConfigureOptions<T>`              | A post-configure step: `postConfigure(options)`.                               |
+| `IValidateOptions<T>`                   | A validate step: `validate(options): ValidateOptionsResult`.                   |
 | `ValidateOptionsResult`                 | Outcome of a validate step — succeeded, skipped, or failed with messages.      |
 | `ValidateOptionsResultBuilder`          | Accumulates several failures into one `ValidateOptionsResult`.                 |
 | `OptionsValidationError`                | Thrown by `OptionsFactory.create()` when a validate step fails.                |
@@ -155,17 +155,17 @@ That's [`@rhombus-std/options.augmentations`](../options.augmentations/README.md
 it's the package that adds `addOptions`/`configure`/`postConfigure`/
 `validate`/`validateOnStart` onto a service registration builder, and — for
 consumers who also install configuration — binds a configuration section
-into an `Options<T>` that stays reactive through the section's reload token.
+into an `IOptions<T>` that stays reactive through the section's reload token.
 Install `options.augmentations` alongside this package if you want either of
 those capabilities; install `@rhombus-std/options` alone if you just need
-the `Options<T>` accessor shape or the `OptionsFactory` pipeline in
+the `IOptions<T>` accessor shape or the `OptionsFactory` pipeline in
 isolation (for example, in a library that builds its own settings object
 without a full container).
 
 ## Notes
 
 - There's no per-name accessor (a `.get(name)` on a shared monitor). A
-  differently-named configuration is a distinct `Options<T>` registration,
+  differently-named configuration is a distinct `IOptions<T>` registration,
   not a parameter on a shared one.
 - There's no options cache type here — how long a built value lives is a
   registration-lifetime concern for whatever wires this package up, not

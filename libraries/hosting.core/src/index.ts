@@ -30,9 +30,9 @@ export type { IHostLifetime } from './IHostLifetime';
 
 // Concrete values the reference ships in the abstractions package.
 export { BackgroundService } from './BackgroundService';
-export { Environments } from './environments';
-export { HostDefaults } from './host-defaults';
+export { Environments } from './Environments';
 export { HostAbortedError } from './HostAbortedError';
+export { HostDefaults } from './HostDefaults';
 
 // The shared DI-slot token ABI (registration + resolution travel through these),
 // plus the augmentation-registry tokens for the OPEN host/builder/environment
@@ -44,13 +44,13 @@ export { HOST_APPLICATION_LIFETIME_TOKEN, HOSTED_SERVICE_TOKEN, hostedServiceCol
 // against their receiver tokens. Their members are the standalone call surface;
 // the fluent method form is pulled onto the concrete classes downstream via
 // `@augment`.
-export { HostingAbstractionsHostExtensions } from './host-augmentations';
-export { HostingAbstractionsHostBuilderExtensions } from './host-builder-augmentations';
+export { HostingAbstractionsHostBuilderExtensions } from './HostingAbstractionsHostBuilderExtensions';
+export { HostingAbstractionsHostExtensions } from './HostingAbstractionsHostExtensions';
 
 // Environment predicates (reference HostEnvironmentEnvExtensions).
-export { HostEnvironmentEnvExtensions } from './host-environment-augmentations';
+export { HostEnvironmentEnvExtensions } from './HostEnvironmentEnvExtensions';
 
 // The `addHostedService` registration augmentation (reference
 // ServiceCollectionHostedServiceExtensions) + its side-effect registration
 // against di.core's ServiceManifest augmentation token.
-export { ServiceCollectionHostedServiceExtensions } from './hosted-service-augmentations';
+export { ServiceCollectionHostedServiceExtensions } from './ServiceCollectionHostedServiceExtensions';

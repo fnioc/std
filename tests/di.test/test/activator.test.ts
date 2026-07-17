@@ -1,5 +1,5 @@
 import { ActivatorUtilities, RESOLVER_TOKEN, ServiceManifest } from '@rhombus-std/di';
-import type { Resolver } from '@rhombus-std/di';
+import type { IResolver } from '@rhombus-std/di';
 import { ActivationError } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 import { T } from './fixtures.js';
@@ -20,14 +20,14 @@ class Greeter {
   ) {}
 }
 
-/** Ctor taking the provider itself (a `Resolver`-typed parameter). */
+/** Ctor taking the provider itself (a `IResolver`-typed parameter). */
 class NeedsProvider {
-  public constructor(public readonly resolver: Resolver) {}
+  public constructor(public readonly resolver: IResolver) {}
 }
 
 const NAME_TOKEN = 'pkg:name' as const;
 
-function providerWithLogger(): Resolver {
+function providerWithLogger(): IResolver {
   const services = new ServiceManifest<'singleton'>();
   services.add(T.Logger, Logger); // transient — resolvable on the frameless provider
   return services.build();

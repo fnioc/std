@@ -1,7 +1,7 @@
 // The factory/provider contracts, ported from ME.Logging.Abstractions'
 // `ILoggerFactory` / `ILoggerProvider`.
 
-import type { ILogger } from './logger';
+import type { ILogger } from './ILogger';
 
 /**
  * Creates {@link ILogger} instances. A `ILoggerProvider` is one sink family

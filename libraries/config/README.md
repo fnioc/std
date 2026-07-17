@@ -7,7 +7,7 @@ object back — merged from JSON files, environment variables, and CLI flags —
 with zero hand-written schema and zero reflection.
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config/with-type-augment';
 import '@rhombus-std/config.json';
 import '@rhombus-std/config.env';
@@ -18,7 +18,7 @@ interface AppConfig {
   Database: { Primary: { Host: string; PoolSize: number; }; };
 }
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addJsonFile('appsettings.json')
   .addJsonFile('appsettings.Development.json', { optional: true })
   .addEnvironmentVariables({ prefix: 'APP_' })
@@ -101,7 +101,7 @@ not three functions deep into a request handler:
 
 ```ts
 // appsettings.json is missing Database.Primary.PoolSize
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addJsonFile('appsettings.json')
   .withType<AppConfig>()
   .build();
@@ -142,7 +142,7 @@ import '@rhombus-std/config.json';
 import '@rhombus-std/config.env';
 import '@rhombus-std/config.commandline';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addInMemoryCollection({ 'Server:Port': '3000' }) // 1. baseline defaults
   .addJsonFile('appsettings.json') // 2. checked-in config
   .addJsonFile('appsettings.Development.json', { optional: true }) // 2b. overlay, ok if absent
@@ -178,9 +178,9 @@ schema.
 **Tier 1 — hand-write the schema once.**
 
 ```ts
-import { ConfigurationBuilder, OPTIONAL } from '@rhombus-std/config';
+import { ConfigBuilder, OPTIONAL } from '@rhombus-std/config';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addJsonFile('appsettings.json')
   .withSchema({
     Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } },
@@ -193,7 +193,7 @@ config.Server.Port; // number — same typed, coerced tree as the transformer pa
 **Tier 0 — skip the schema, coerce ad hoc.**
 
 ```ts
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addJsonFile('appsettings.json')
   .build();
 
@@ -245,18 +245,18 @@ source is read, merged, and coerced at runtime, on every process start. Add
 
 ## Key exports
 
-| Export                                                             | What it is                                                                                               |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `ConfigurationBuilder`                                             | Stacks sources into layers; `.withSchema()`/`.withType<T>()` + `.build()`.                               |
-| `ConfigurationManager`                                             | A builder and a live, already-built config in one — `.set()` works before any source is added.           |
-| `ConfigurationRoot`, `ConfigurationSection`                        | The built, navigable config tree — dot/bracket access, `getSection`, reload tokens.                      |
-| `ConfigurationProvider`                                            | Abstract base a configuration source's provider extends.                                                 |
-| `addInMemoryCollection`                                            | Bundled in-memory source — set config values directly, no file or env involved.                          |
-| `addConfiguration`                                                 | Wraps an already-built `IConfiguration` as a source layer inside another builder.                        |
-| `Schema`, `Infer`, `OPTIONAL`                                      | The hand-written schema surface (Tier 1) — `Infer<S>` gives you the resulting TypeScript type.           |
-| `SchemaCoercionError`                                              | Thrown by `build()` when a required key is missing or fails coercion; lists every offending key at once. |
-| `compareConfigurationKeys`                                         | The `:`-segment-aware comparer configuration keys sort by.                                               |
-| `exists`, `ConfigurationExtensions`, `ConfigurationRootExtensions` | Small convenience helpers over a built config (existence checks, debug views).                           |
+| Export                                               | What it is                                                                                               |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `ConfigBuilder`                                      | Stacks sources into layers; `.withSchema()`/`.withType<T>()` + `.build()`.                               |
+| `ConfigManager`                                      | A builder and a live, already-built config in one — `.set()` works before any source is added.           |
+| `ConfigRoot`, `ConfigSection`                        | The built, navigable config tree — dot/bracket access, `getSection`, reload tokens.                      |
+| `ConfigProvider`                                     | Abstract base a configuration source's provider extends.                                                 |
+| `addInMemoryCollection`                              | Bundled in-memory source — set config values directly, no file or env involved.                          |
+| `addConfiguration`                                   | Wraps an already-built `IConfig` as a source layer inside another builder.                               |
+| `Schema`, `Infer`, `OPTIONAL`                        | The hand-written schema surface (Tier 1) — `Infer<S>` gives you the resulting TypeScript type.           |
+| `SchemaCoercionError`                                | Thrown by `build()` when a required key is missing or fails coercion; lists every offending key at once. |
+| `compareConfigKeys`                                  | The `:`-segment-aware comparer configuration keys sort by.                                               |
+| `exists`, `ConfigExtensions`, `ConfigRootExtensions` | Small convenience helpers over a built config (existence checks, debug views).                           |
 
 ## How it fits
 
@@ -264,7 +264,7 @@ source is read, merged, and coerced at runtime, on every process start. Add
 reload tokens, the in-memory and chained-config sources, and the runtime
 schema. It depends on
 [`@rhombus-std/config.core`](../config.core/README.md) for the
-`IConfiguration*` interfaces and on
+`IConfig*` interfaces and on
 [`@rhombus-std/primitives`](../primitives/README.md) for change tokens.
 
 Install source packages alongside it as needed —

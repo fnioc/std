@@ -77,7 +77,7 @@ export interface TypeArgRef {
 
 /**
  * One positional slot in a constructor / factory signature:
- *   - a `Token` string  — a container-resolved dependency (a plain `Resolver`
+ *   - a `Token` string  — a container-resolved dependency (a plain `IResolver`
  *     token resolves to the live provider view — see `RESOLVER_TOKEN`),
  *   - a `FactoryRef`    — a factory-injected parameter (see `FactoryRef`),
  *   - a `Union`         — member-level alternatives tried in order,

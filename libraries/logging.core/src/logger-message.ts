@@ -19,9 +19,9 @@
 // typed overloads below already fix the value-arg count the returned delegate
 // accepts, so the define-time hole/arity cross-check is intentionally dropped.
 
-import { EventId, type EventIdLike } from './event-id';
+import { EventId, type EventIdLike } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
-import type { ILogger } from './logger';
+import type { ILogger } from './ILogger';
 import type { LogLevel } from './LogLevel';
 
 /** Options for {@link LoggerMessage.define} and its overloads. */

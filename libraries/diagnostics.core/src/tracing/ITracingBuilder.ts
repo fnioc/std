@@ -2,7 +2,7 @@
 // analog of IMetricsBuilder; `services` maps the reference `IServiceCollection`
 // to di.core's registration surface.
 
-import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { IServiceManifestBase } from '@rhombus-std/di.core';
 
 /**
  * Configures the tracing system by registering listeners and rules. Mirrors
@@ -10,5 +10,5 @@ import type { ServiceManifestBase } from '@rhombus-std/di.core';
  */
 export interface ITracingBuilder {
   /** The registration builder that extension functions register services against. */
-  readonly services: ServiceManifestBase;
+  readonly services: IServiceManifestBase;
 }

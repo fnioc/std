@@ -5,7 +5,7 @@
 //
 // Adaptations, each argued at its site:
 //   - `IOptionsMonitor<ConsoleLoggerOptions>` → the repo's collapsed
-//     `Options<ConsoleLoggerOptions>`, and OPTIONAL: a bare
+//     `IOptions<ConsoleLoggerOptions>`, and OPTIONAL: a bare
 //     `new ConsoleLoggerProvider()` (hosting's default services) gets default
 //     options — the reference reaches the same defaults through DI.
 //   - The reference picks an ANSI-passthrough vs ANSI-parsing console by
@@ -19,12 +19,12 @@
 
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
-import { Options } from '@rhombus-std/options';
+import { type IOptions, Options } from '@rhombus-std/options';
 import { AnsiLogConsole } from './AnsiLogConsole';
-import { ConsoleLogger } from './console-logger';
 import { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
 import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
+import { ConsoleLogger } from './ConsoleLogger';
 import { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
 import { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
 import { ConsoleLoggerProcessor } from './ConsoleLoggerProcessor';
@@ -42,7 +42,7 @@ function normalizeName(name: string): string {
 
 /** An {@link ILoggerProvider} that creates {@link ConsoleLogger}s. */
 export class ConsoleLoggerProvider implements ILoggerProvider {
-  readonly #options: Options<ConsoleLoggerOptions>;
+  readonly #options: IOptions<ConsoleLoggerOptions>;
   readonly #loggers = new Map<string, ConsoleLogger>();
   readonly #formatters = new Map<string, ConsoleFormatter>();
   readonly #messageQueue: ConsoleLoggerProcessor;
@@ -57,7 +57,7 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
    * json) are seeded with default options.
    */
   public constructor(
-    options?: Options<ConsoleLoggerOptions>,
+    options?: IOptions<ConsoleLoggerOptions>,
     formatters?: Iterable<ConsoleFormatter>,
   ) {
     this.#options = options ?? Options.of(new ConsoleLoggerOptions());

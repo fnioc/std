@@ -14,10 +14,10 @@
 import { intrinsicToken, singletonValue, type TokenContext } from '@rhombus-std/primitives.transformer';
 import ts from 'typescript';
 import { classDeclarationOfType, type ConstructorExtraction, findConstructor, slotForParam } from './deps.js';
-import { DiagnosticCode, type DiagnosticSink, warning } from './diagnostics.js';
+import { DiagnosticCode, type IDiagnosticSink, warning } from './diagnostics.js';
 
 export interface CheckContext extends TokenContext {
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
   readonly sourceFile: ts.SourceFile;
 }
 

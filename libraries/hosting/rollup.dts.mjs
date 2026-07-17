@@ -3,7 +3,7 @@
 // is kept EXTERNAL -- the output re-exports their interfaces FROM them rather
 // than inlining. This is load-bearing for the declaration-merging augmentations
 // (`@rhombus-std/di.core`'s ServiceManifest, `@rhombus-std/config`'s
-// ConfigurationBuilder, `@rhombus-std/hosting.core`'s addHostedService): the
+// ConfigBuilder, `@rhombus-std/hosting.core`'s addHostedService): the
 // types a consumer holds must carry the declaring module's identity for the
 // merges to attach. Inlining would fork that identity.
 //

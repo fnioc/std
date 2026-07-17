@@ -85,19 +85,19 @@ function goEnv(): NodeJS.ProcessEnv {
 }
 
 const APP_SOURCE = `
-import type { ServiceProvider } from "@rhombus-std/di.core";
+import type { IServiceProvider } from "@rhombus-std/di.core";
 
-// The sugar overload the di.transformer declaration-merges onto ServiceQuery —
+// The sugar overload the di.transformer declaration-merges onto IServiceQuery —
 // hand-declared here so the program carries it without wiring the transformer's
-// own types (the merge target is the real di.core ServiceQuery).
+// own types (the merge target is the real di.core IServiceQuery).
 declare module "@rhombus-std/di.core" {
-  interface ServiceQuery {
+  interface IServiceQuery {
     isService<T>(): boolean;
   }
 }
 
 interface ILogger {}
-declare const provider: ServiceProvider<string>;
+declare const provider: IServiceProvider<string>;
 
 export const known = provider.isService<ILogger>();
 `;

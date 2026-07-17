@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.json",
   "version": "0.0.0",
-  "description": "JSON file configuration provider for @rhombus-std/config: JsonConfigurationSource/Provider + the addJsonFile augmentation.",
+  "description": "JSON file configuration provider for @rhombus-std/config: JsonConfigSource/Provider + the addJsonFile augmentation.",
   "keywords": [
     "configuration",
     "config",

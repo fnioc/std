@@ -1,0 +1,21 @@
+{
+  "name": "@rhombus-std/logging.config.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for @rhombus-std/logging.config. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/logging": "workspace:*",
+    "@rhombus-std/logging.config": "workspace:*",
+    "@rhombus-std/logging.core": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*"
+  }
+}

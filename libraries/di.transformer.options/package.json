@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.transformer.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.transformer satellite: lowers the type-driven addOptions<T>() sugar to the explicit addOptions(token(Options<T>), token(T)) verb at compile time.",
+  "description": "A @rhombus-std/di.transformer satellite: lowers the type-driven addOptions<T>() sugar to the explicit addOptions(token(IOptions<T>), token(T)) verb at compile time.",
   "keywords": [
     "options",
     "dependency-injection",

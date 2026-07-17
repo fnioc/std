@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.core",
   "version": "0.0.0",
-  "description": "Types-only configuration abstractions: the IConfiguration* interfaces and ITryGetResult. Zero runtime; depends on @rhombus-std/primitives for the IChangeToken type only.",
+  "description": "Types-only configuration abstractions: the IConfig* interfaces and ITryGetResult. Zero runtime; depends on @rhombus-std/primitives for the IChangeToken type only.",
   "keywords": [
     "configuration",
     "config",

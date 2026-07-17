@@ -60,7 +60,7 @@ describe('addMemoryCache', () => {
     expect(cache.getCurrentStatistics()?.totalMisses).toBe(1);
   });
 
-  test('the assembled Options<MemoryCacheOptions> is itself resolvable at its token', () => {
+  test('the assembled IOptions<MemoryCacheOptions> is itself resolvable at its token', () => {
     const services = new ServiceManifest<'singleton'>();
     services.addMemoryCache((options) => {
       options.name = 'configured';

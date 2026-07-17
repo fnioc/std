@@ -6,7 +6,7 @@
 // malformed rule surfaces at construction rather than on the hot path -- ported
 // verbatim.
 
-import { ActivitySourceScopes } from './activity-source-scopes';
+import { ActivitySourceScopes } from './ActivitySourceScopes';
 
 /**
  * A single tracing enablement rule: determines which activities are enabled for

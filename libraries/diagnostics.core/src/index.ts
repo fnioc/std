@@ -22,14 +22,14 @@ export { getMostSpecificInstrumentRule, instrumentRuleMatches,
   isMoreSpecificInstrumentRule } from './metrics/instrument-rule-matching';
 export type { InstrumentRuleQuery } from './metrics/instrument-rule-matching';
 export { InstrumentRule } from './metrics/InstrumentRule';
-export { METER_SCOPE_ALL, MeterScope } from './metrics/meter-scope';
+export { METER_SCOPE_ALL, MeterScope } from './metrics/MeterScope';
 export { MetricsBuilderExtensions, MetricsOptionsExtensions } from './metrics/metrics-builder-augmentations';
 export type { IMetricsListener, IObservableInstrumentsSource } from './metrics/metrics-listener';
 export { MetricsOptions } from './metrics/MetricsOptions';
 
 // Tracing.
-export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './tracing/activity-source-scopes';
 export { ActivityListenerBuilder } from './tracing/ActivityListenerBuilder';
+export { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './tracing/ActivitySourceScopes';
 export type { ITracingBuilder } from './tracing/ITracingBuilder';
 export { TracingBuilderExtensions, TracingOptionsExtensions } from './tracing/tracing-builder-augmentations';
 export { getMostSpecificTracingRule, isMoreSpecificTracingRule,

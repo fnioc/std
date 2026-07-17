@@ -2,7 +2,7 @@ import { ServiceManifest, UnregisteredTokenError } from '@rhombus-std/di';
 import { describe, expect, test } from 'bun:test';
 import { defineDeps, T } from './fixtures.js';
 
-// ServiceProvider / Scope chain + hierarchical lookup, transient fallback when
+// IServiceProvider / Scope chain + hierarchical lookup, transient fallback when
 // no matching frame is open, and THE critical rule (§"construct relative to the
 // owning scope"). Scope-local registration was removed in the container
 // redesign — all registrations are sealed on ServiceManifest.build().

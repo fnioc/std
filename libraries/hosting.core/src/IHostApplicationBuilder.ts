@@ -1,5 +1,5 @@
-import type { IConfigurationManager } from '@rhombus-std/config.core';
-import type { ServiceManifest, ServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IConfigManager } from '@rhombus-std/config.core';
+import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { Action } from '@rhombus-toolkit/func';
@@ -20,7 +20,7 @@ export interface IHostApplicationBuilder {
    * The set of key/value configuration properties. Mutable: adding more
    * configuration sources updates its current view.
    */
-  readonly configuration: IConfigurationManager;
+  readonly configuration: IConfigManager;
 
   /** Information about the hosting environment an application is running in. */
   readonly environment: IHostEnvironment;
@@ -32,7 +32,7 @@ export interface IHostApplicationBuilder {
   readonly metrics: IMetricsBuilder;
 
   /** A collection of services for the application to compose. */
-  readonly services: ServiceManifest;
+  readonly services: IServiceManifest;
 
   /**
    * Registers a factory used to create the service provider. The `configure`
@@ -40,11 +40,11 @@ export interface IHostApplicationBuilder {
    * replace the previously stored factory and delegate.
    *
    * As on {@link IHostBuilder.useServiceProviderFactory}, the single-container
-   * model accepts di.core's shared {@link ServiceProviderFactory} but always uses
+   * model accepts di.core's shared {@link IServiceProviderFactory} but always uses
    * the one real container. See diNotes.
    */
   configureContainer<TContainerBuilder>(
-    factory: ServiceProviderFactory<TContainerBuilder>,
+    factory: IServiceProviderFactory<TContainerBuilder>,
     configure?: Action<[TContainerBuilder]>,
   ): void;
 }

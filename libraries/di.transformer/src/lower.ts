@@ -24,11 +24,11 @@ import { type CheckContext, checkExtractedRegistration } from './checks.js';
 import { type ConstructorExtraction, type DepContext, extractCtorReferenceSignature, extractFactoryReferenceSignature,
   extractFromExpression, extractInstantiatedSignature, extractSignatureFromFunction, isFactorySlot, isLiteralSlot,
   isTypeArgSlot, isUnionSlot, type Signature, type Slot } from './deps.js';
-import { DiagnosticCode, type DiagnosticSink, error, warning } from './diagnostics.js';
+import { DiagnosticCode, error, type IDiagnosticSink, warning } from './diagnostics.js';
 
 export interface LowerContext extends CheckContext, DepContext {
   readonly factory: ts.NodeFactory;
-  readonly sink: DiagnosticSink;
+  readonly sink: IDiagnosticSink;
   readonly sourceFile: ts.SourceFile;
 }
 
@@ -163,7 +163,7 @@ export function lowerStatement(
  * and the first arg is a string literal, leave it untouched.
  *
  * The receiver is anchored at the member's DECLARATION SITE (`./anchor.ts`): the
- * called `add` / `addFactory` / `addValue` must resolve to `ServiceManifestBase`
+ * called `add` / `addFactory` / `addValue` must resolve to `IServiceManifestBase`
  * inside `declare module '@rhombus-std/di.core'`, so an unrelated `.add()` (e.g.
  * `new Set().add(v)`) is never lowered.
  */
@@ -602,7 +602,7 @@ function signaturesLiteral(
 
 /**
  * Render one signature slot as its emitted literal:
- *   - a string literal for a token (a `Resolver`-typed param emits the intrinsic
+ *   - a string literal for a token (a `IResolver`-typed param emits the intrinsic
  *     provider token string, like any other token)
  *   - `{ type: "<token>" }` (or `{ type: "<token>", params: [...] }`) for a factory ref
  *   - `{ union: [slot, slot, ...] }` for a union slot (recursive)

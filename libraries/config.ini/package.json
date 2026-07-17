@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.ini",
   "version": "0.0.0",
-  "description": "INI file configuration provider for @rhombus-std/config: IniConfigurationSource/Provider + IniStream* + the addIniFile/addIniStream augmentations, on the config.file base.",
+  "description": "INI file configuration provider for @rhombus-std/config: IniConfigSource/Provider + IniStream* + the addIniFile/addIniStream augmentations, on the config.file base.",
   "keywords": [
     "configuration",
     "config",

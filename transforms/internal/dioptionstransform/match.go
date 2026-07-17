@@ -9,12 +9,12 @@ import (
 const addOptionsName = "addOptions"
 
 // declaringInterfaces are the registration-builder interfaces the sugar (and the
-// explicit verbs) declaration-merge onto: `ServiceManifestBase` (which the public
+// explicit verbs) declaration-merge onto: `IServiceManifestBase` (which the public
 // `ServiceManifest` alias resolves to) and the concrete `ServiceManifestClass`.
 // `ServiceManifest` is a type ALIAS and declares no members, so it never anchors a
 // declaration here.
 var declaringInterfaces = map[string]bool{
-	"ServiceManifestBase":  true,
+	"IServiceManifestBase": true,
 	"ServiceManifestClass": true,
 }
 
@@ -32,7 +32,7 @@ const declaringModule = "@rhombus-std/di.core"
 // The receiver is matched at the member's DECLARATION SITE, not by the receiver
 // type's symbol name: an inherited member keeps its original declaration, so a
 // subinterface, a class carrying the repo's empty extends-merge, an
-// interface-typed variable, or a generic `<M extends ServiceManifestBase>` all
+// interface-typed variable, or a generic `<M extends IServiceManifestBase>` all
 // resolve back to that same declaration; an unrelated same-named `addOptions`
 // resolves to its own declaration and is rejected.
 func isAddOptionsSugarCall(checker *shimchecker.Checker, call *shimast.CallExpression) bool {
@@ -75,7 +75,7 @@ func memberDeclaredOnManifest(checker *shimchecker.Checker, name *shimast.Node) 
 }
 
 // declaredOnManifestInterface reports whether decl's parent is a
-// `ServiceManifestBase` / `ServiceManifestClass` interface declared inside the
+// `IServiceManifestBase` / `ServiceManifestClass` interface declared inside the
 // `declare module '@rhombus-std/di.core'` block.
 func declaredOnManifestInterface(decl *shimast.Node) bool {
 	if decl == nil {

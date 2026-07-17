@@ -5,14 +5,14 @@
 // `LoggerInformation` per provider, then runs `applyFilters` — which selects the
 // governing `LoggerFilterOptions` rule per (provider, category) via
 // `LoggerRuleSelector` — to compute the composite's `messageLoggers` /
-// `scopeLoggers`. The filter source is an `Options<LoggerFilterOptions>` (the
+// `scopeLoggers`. The filter source is an `IOptions<LoggerFilterOptions>` (the
 // reference's `IOptionsMonitor<LoggerFilterOptions>`): when it is reactive the
 // factory re-runs `applyFilters` for every existing logger on each change, so a
 // configuration reload re-filters live.
 //
 // Adaptations from the reference:
 //   - `StaticFilterOptionsMonitor` collapses into `Options.of(...)` — the repo's
-//     `Options<T>` already unifies the static/monitor split (§4.2), so a raw
+//     `IOptions<T>` already unifies the static/monitor split (§4.2), so a raw
 //     `LoggerFilterOptions` (or none) is wrapped in a static `Options.of`.
 //   - The internal `LoggerFactoryScopeProvider` (activity-tracking) is not
 //     ported — activity tracking has no analog here (diagnostics defers it), so
@@ -20,18 +20,18 @@
 //   - `LoggerFactoryOptions` / `ActivityTrackingOptions` are omitted (same
 //     reason); the scope-provider constructor parameter is kept.
 
-import { ServiceManifest, type ServiceProvider } from '@rhombus-std/di';
+import { type IServiceProvider, ServiceManifest } from '@rhombus-std/di';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
-import { Options } from '@rhombus-std/options';
+import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { Logger } from './logger';
-import { LoggerExternalScopeProvider } from './logger-external-scope-provider';
-import { LoggerFilterOptions } from './logger-filter-options';
-import { LoggerInformation, MessageLogger, ScopeLogger } from './logger-information';
-import { LoggerRuleSelector } from './logger-rule-selector';
+import { Logger } from './Logger';
+import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
+import { LoggerFilterOptions } from './LoggerFilterOptions';
+import { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformation';
+import { LoggerRuleSelector } from './LoggerRuleSelector';
 import { NullLogger } from './null-logger';
 import { isSupportExternalScope } from './support-external-scope-guard';
 import { LOGGER_FACTORY_TOKEN } from './tokens';
@@ -56,12 +56,12 @@ export class LoggerFactory implements ILoggerFactory {
 
   public constructor(
     providers: Iterable<ILoggerProvider> = [],
-    filterOptions?: LoggerFilterOptions | Options<LoggerFilterOptions>,
+    filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>,
     scopeProvider?: IExternalScopeProvider,
   ) {
     this.#scopeProvider = scopeProvider;
 
-    const source: Options<LoggerFilterOptions> = filterOptions === undefined
+    const source: IOptions<LoggerFilterOptions> = filterOptions === undefined
       ? Options.of(new LoggerFilterOptions())
       : filterOptions instanceof LoggerFilterOptions
       ? Options.of(filterOptions)
@@ -209,7 +209,7 @@ export class LoggerFactory implements ILoggerFactory {
 class DisposingLoggerFactory implements ILoggerFactory {
   public constructor(
     private readonly factory: ILoggerFactory,
-    private readonly scope: ServiceProvider,
+    private readonly scope: IServiceProvider,
   ) {}
 
   public createLogger(categoryName: string): ILogger {

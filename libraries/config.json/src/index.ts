@@ -1,12 +1,12 @@
 // Public entry point for @rhombus-std/config.json.
 //
-// Exports JsonConfigurationSource/JsonConfigurationProvider (+ the
+// Exports JsonConfigSource/JsonConfigProvider (+ the
 // JsonStream* pair for in-memory payloads) and installs the `addJsonFile` /
-// `addJsonStream` sugar onto `@rhombus-std/config`'s ConfigurationBuilder AND
-// ConfigurationManager via the augmentation registry (TS declaration merging +
-// a `registerAugmentations` call against the shared IConfigurationBuilder
-// token) -- the reference extension methods target IConfigurationBuilder, which
-// ConfigurationManager implements too. Both concrete builders are decorated
+// `addJsonStream` sugar onto `@rhombus-std/config`'s ConfigBuilder AND
+// ConfigManager via the augmentation registry (TS declaration merging +
+// a `registerAugmentations` call against the shared IConfigBuilder
+// token) -- the reference extension methods target IConfigBuilder, which
+// ConfigManager implements too. Both concrete builders are decorated
 // with that one token, so a single registration reaches BOTH, and
 // `manager.addJsonFile(...)` works the same way `builder.addJsonFile(...)` does.
 //
@@ -15,16 +15,16 @@
 // This package must NOT set `"sideEffects": false` in package.json (would
 // let a bundler tree-shake the augmentation away).
 
-import type { ConfigurationBuilder, StreamPayload } from '@rhombus-std/config';
-import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
+import type { ConfigBuilder, StreamPayload } from '@rhombus-std/config';
+import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { JsonConfigurationSource, type JsonConfigurationSourceOptions } from './json-configuration-source';
-import { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
+import { JsonConfigSource, type JsonConfigSourceOptions } from './JsonConfigSource';
+import { JsonStreamConfigSource } from './JsonStreamConfigSource';
 
 // Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
 // providers typecheck against its rolled, flat dist/index.d.ts, where
-// ConfigurationBuilder is declared directly (no re-export chain) -- a
+// ConfigBuilder is declared directly (no re-export chain) -- a
 // declare-module merge onto the barrel lands on the same class the barrel
 // exposes, even with 2+ provider augmentations in one program. (Pre-#199 this
 // had to target a `./configuration-builder` subpath: providers then saw
@@ -33,54 +33,54 @@ import { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
 declare module '@rhombus-std/config' {
   // Generic arity + default MUST match the class (TS2428) -- `<T =
   // IndexedSection>`, same IndexedSection imported from @rhombus-std/config.core.
-  interface ConfigurationBuilder<T = IndexedSection> {
-    /** Registers a {@link JsonConfigurationSource} reading `path` (resolved against `process.cwd()`). */
-    addJsonFile(path: string, opts?: JsonConfigurationSourceOptions): this;
-    /** Registers a {@link JsonStreamConfigurationSource} reading the in-memory `stream` payload. */
+  interface ConfigBuilder<T = IndexedSection> {
+    /** Registers a {@link JsonConfigSource} reading `path` (resolved against `process.cwd()`). */
+    addJsonFile(path: string, opts?: JsonConfigSourceOptions): this;
+    /** Registers a {@link JsonStreamConfigSource} reading the in-memory `stream` payload. */
     addJsonStream(stream: StreamPayload): this;
   }
 }
 
-// Same barrel merge for ConfigurationManager -- see the builder note above.
-// ConfigurationManager has no generic type parameter, so no TS2428 arity concern.
+// Same barrel merge for ConfigManager -- see the builder note above.
+// ConfigManager has no generic type parameter, so no TS2428 arity concern.
 declare module '@rhombus-std/config' {
-  interface ConfigurationManager {
-    /** Registers a {@link JsonConfigurationSource} reading `path` (resolved against `process.cwd()`). */
-    addJsonFile(path: string, opts?: JsonConfigurationSourceOptions): this;
-    /** Registers a {@link JsonStreamConfigurationSource} reading the in-memory `stream` payload. */
+  interface ConfigManager {
+    /** Registers a {@link JsonConfigSource} reading `path` (resolved against `process.cwd()`). */
+    addJsonFile(path: string, opts?: JsonConfigSourceOptions): this;
+    /** Registers a {@link JsonStreamConfigSource} reading the in-memory `stream` payload. */
     addJsonStream(stream: StreamPayload): this;
   }
 }
 
-// One named object literal mirroring the reference `JsonConfigurationExtensions`
+// One named object literal mirroring the reference `JsonConfigExtensions`
 // static class (docs §28/§38): its members are the class's static methods,
-// receiver-first. Registered against the shared IConfigurationBuilder token
+// receiver-first. Registered against the shared IConfigBuilder token
 // (the primary path -- both decorated builders receive it) AND exported so the
 // member is the standalone form. `TBuilder` is bounded by "has an add() that
-// returns itself" rather than pinned to ConfigurationBuilder<T> -- see
+// returns itself" rather than pinned to ConfigBuilder<T> -- see
 // @rhombus-std/config's memory/index.ts for the full rationale -- so this one
 // object literal satisfies `AugmentationSet` for both classes while
 // preserving each receiver's own concrete return type.
-export const JsonConfigurationExtensions = {
-  addJsonFile<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
+export const JsonConfigExtensions = {
+  addJsonFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     path: string,
-    opts?: JsonConfigurationSourceOptions,
+    opts?: JsonConfigSourceOptions,
   ): TBuilder {
-    return builder.add(new JsonConfigurationSource(path, opts));
+    return builder.add(new JsonConfigSource(path, opts));
   },
-  addJsonStream<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
+  addJsonStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     stream: StreamPayload,
   ): TBuilder {
-    return builder.add(new JsonStreamConfigurationSource(stream));
+    return builder.add(new JsonStreamConfigSource(stream));
   },
-} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
+} satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigurationBuilder>(), JsonConfigurationExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), JsonConfigExtensions);
 
-export { JsonConfigurationSource } from './json-configuration-source';
-export type { JsonConfigurationSourceOptions } from './json-configuration-source';
-export { JsonConfigurationProvider } from './JsonConfigurationProvider';
-export { JsonStreamConfigurationProvider } from './JsonStreamConfigurationProvider';
-export { JsonStreamConfigurationSource } from './JsonStreamConfigurationSource';
+export { JsonConfigProvider } from './JsonConfigProvider';
+export { JsonConfigSource } from './JsonConfigSource';
+export type { JsonConfigSourceOptions } from './JsonConfigSource';
+export { JsonStreamConfigProvider } from './JsonStreamConfigProvider';
+export { JsonStreamConfigSource } from './JsonStreamConfigSource';

@@ -2,7 +2,7 @@
 // to a consumer's configure callback. Mirrors the reference's private
 // `TracingServiceExtensions.TracingBuilder`.
 
-import type { ServiceManifestBase } from '@rhombus-std/di.core';
+import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -24,10 +24,10 @@ export interface TracingBuilder extends ITracingBuilder {}
  */
 @augment(nameof<ITracingBuilder>())
 export class TracingBuilder implements ITracingBuilder {
-  readonly services: ServiceManifestBase;
+  readonly services: IServiceManifestBase;
 
   /** @param services The registration surface extension functions register against. */
-  public constructor(services: ServiceManifestBase) {
+  public constructor(services: IServiceManifestBase) {
     this.services = services;
   }
 }

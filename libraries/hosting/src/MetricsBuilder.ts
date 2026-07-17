@@ -12,7 +12,7 @@
 // satisfying `IMetricsBuilder` once diagnostics.core merges those members onto the
 // interface (rule 0.6).
 
-import type { ServiceManifest } from '@rhombus-std/di.core';
+import type { IServiceManifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -27,9 +27,9 @@ export interface MetricsBuilder extends IMetricsBuilder {}
 /** Carries the service-registration surface the metrics extension functions register against. */
 @augment(nameof<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
-  public readonly services: ServiceManifest;
+  public readonly services: IServiceManifest;
 
-  public constructor(services: ServiceManifest) {
+  public constructor(services: IServiceManifest) {
     this.services = services;
   }
 }

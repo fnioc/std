@@ -119,34 +119,34 @@ function setupProject(dir: string): void {
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(CONFIG_TR, join(nm, '@rhombus-std', 'config.transformer'));
 
-  // The ambient `@rhombus-std/config` module: OPTIONAL, the `ConfigurationBuilder`
+  // The ambient `@rhombus-std/config` module: OPTIONAL, the `ConfigBuilder`
   // class (its runtime value), and the same-name interface carrying `withType<U>()`
   // — the class/augment split the real package uses. The matcher anchors on the
   // interface's `withType` declaration inside this `declare module` block, so a
   // receiver is recognized because its `withType` resolves back here, not because
-  // a type is symbol-named `ConfigurationBuilder`. A script `.d.ts` under `src/`
+  // a type is symbol-named `ConfigBuilder`. A script `.d.ts` under `src/`
   // makes it an ambient declaration, resolvable without a node_modules package.
   writeFileSync(join(dir, 'src', 'config.ambient.d.ts'), CONFIG_AMBIENT);
 }
 
 const CONFIG_AMBIENT = `declare module "@rhombus-std/config" {
   export const OPTIONAL: unique symbol;
-  export class ConfigurationBuilder<T = unknown> {
+  export class ConfigBuilder<T = unknown> {
     add(source: unknown): this;
-    withSchema(schema: unknown): ConfigurationBuilder<unknown>;
+    withSchema(schema: unknown): ConfigBuilder<unknown>;
   }
-  export interface ConfigurationBuilder<T = unknown> {
-    withType<U>(): ConfigurationBuilder<U>;
+  export interface ConfigBuilder<T = unknown> {
+    withType<U>(): ConfigBuilder<U>;
   }
   export namespace Nested {
-    export interface ConfigurationBuilder<T = unknown> {
-      withType<U>(): ConfigurationBuilder<U>;
+    export interface ConfigBuilder<T = unknown> {
+      withType<U>(): ConfigBuilder<U>;
     }
   }
 }
 `;
 
-const APP_HEADER = `import { ConfigurationBuilder } from "@rhombus-std/config";\n`;
+const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";\n`;
 
 function tsconfig(withPlugin: boolean): string {
   return JSON.stringify({
@@ -220,7 +220,7 @@ beforeAll(() => {
   writeFileSync(
     join(hsrc, 'server.ts'),
     `${APP_HEADER}interface ServerConfig { host: string; port: number; ssl?: boolean }
-export const b = new ConfigurationBuilder().withType<ServerConfig>();
+export const b = new ConfigBuilder().withType<ServerConfig>();
 `,
   );
   writeFileSync(
@@ -229,20 +229,20 @@ export const b = new ConfigurationBuilder().withType<ServerConfig>();
   Server: { Host: string; Port: number };
   Database: { Primary: { Host: string; PoolSize: number } };
 }
-export const b = new ConfigurationBuilder().withType<AppConfig>();
+export const b = new ConfigBuilder().withType<AppConfig>();
 `,
   );
   writeFileSync(
     join(hsrc, 'flags.ts'),
     `${APP_HEADER}interface Flags { flag: boolean }
-export const b = new ConfigurationBuilder().withType<Flags>();
+export const b = new ConfigBuilder().withType<Flags>();
 `,
   );
   writeFileSync(
     join(hsrc, 'chain.ts'),
     `${APP_HEADER}interface Server { Host: string; Port: number }
 declare const src: unknown;
-export const b = new ConfigurationBuilder().add(src).withType<Server>();
+export const b = new ConfigBuilder().add(src).withType<Server>();
 class Other { withType<U>(): Other { return this; } }
 interface OT { a: string }
 export const o = new Other().withType<OT>();
@@ -253,7 +253,7 @@ export const o = new Other().withType<OT>();
     `import * as cfg from "@rhombus-std/config";
 ${APP_HEADER}void cfg;
 interface T { ssl?: boolean }
-export const b = new ConfigurationBuilder().withType<T>();
+export const b = new ConfigBuilder().withType<T>();
 `,
   );
   writeFileSync(
@@ -261,7 +261,7 @@ export const b = new ConfigurationBuilder().withType<T>();
     `import { OPTIONAL as OPT } from "@rhombus-std/config";
 ${APP_HEADER}void OPT;
 interface T { ssl?: boolean }
-export const b = new ConfigurationBuilder().withType<T>();
+export const b = new ConfigBuilder().withType<T>();
 `,
   );
   // Receiver shapes whose withType resolves back to the ambient interface: a
@@ -269,29 +269,29 @@ export const b = new ConfigurationBuilder().withType<T>();
   writeFileSync(
     join(hsrc, 'shapes.ts'),
     `${APP_HEADER}interface T { Host: string }
-interface MySub extends ConfigurationBuilder {}
+interface MySub extends ConfigBuilder {}
 declare const sub: MySub;
 export const viaSub = sub.withType<T>();
 declare class MyBuilder {}
-interface MyBuilder extends ConfigurationBuilder {}
+interface MyBuilder extends ConfigBuilder {}
 declare const merged: MyBuilder;
 export const viaMerge = merged.withType<T>();
-export function useGeneric<B extends ConfigurationBuilder>(b: B) {
+export function useGeneric<B extends ConfigBuilder>(b: B) {
   return b.withType<T>();
 }
 `,
   );
-  // A local class merely NAMED ConfigurationBuilder — no barrel import, so no
+  // A local class merely NAMED ConfigBuilder — no barrel import, so no
   // collision. The old name-based matcher WOULD have lowered it; declaration-site
   // matching does not (its withType resolves to a local class).
   writeFileSync(
     join(hsrc, 'localname.ts'),
-    `class ConfigurationBuilder<T = unknown> {
-  withType<U>(): ConfigurationBuilder<U> { return this as any; }
-  withSchema(schema: unknown): ConfigurationBuilder<unknown> { return this as any; }
+    `class ConfigBuilder<T = unknown> {
+  withType<U>(): ConfigBuilder<U> { return this as any; }
+  withSchema(schema: unknown): ConfigBuilder<unknown> { return this as any; }
 }
 interface T { a: string }
-export const b = new ConfigurationBuilder().withType<T>();
+export const b = new ConfigBuilder().withType<T>();
 `,
   );
   // (f) a TRUE anonymous / structural object receiver — its withType resolves to a
@@ -303,13 +303,13 @@ const bag = { withType<U>(): { schema: U } { return {} as any; } };
 export const b = bag.withType<T>();
 `,
   );
-  // (i) a namespace-nested ConfigurationBuilder — the nearest enclosing module
+  // (i) a namespace-nested ConfigBuilder — the nearest enclosing module
   // scope is the \`Nested\` namespace, not the \`@rhombus-std/config\` module.
   writeFileSync(
     join(hsrc, 'nestedns.ts'),
     `import type { Nested } from "@rhombus-std/config";
 interface T { host: string }
-declare const nested: Nested.ConfigurationBuilder;
+declare const nested: Nested.ConfigBuilder;
 export const b = nested.withType<T>();
 `,
   );
@@ -336,24 +336,24 @@ export const b = nested.withType<T>();
   writeFileSync(
     join(dsrc, 'array.ts'),
     `${APP_HEADER}interface Bad { tags: string[] }
-export const b = new ConfigurationBuilder().withType<Bad>();
+export const b = new ConfigBuilder().withType<Bad>();
 `,
   );
   writeFileSync(
     join(dsrc, 'union.ts'),
     `${APP_HEADER}interface Bad { mode: string | number }
-export const b = new ConfigurationBuilder().withType<Bad>();
+export const b = new ConfigBuilder().withType<Bad>();
 `,
   );
   writeFileSync(
     join(dsrc, 'date.ts'),
     `${APP_HEADER}interface Bad { when: Date }
-export const b = new ConfigurationBuilder().withType<Bad>();
+export const b = new ConfigBuilder().withType<Bad>();
 `,
   );
   writeFileSync(
     join(dsrc, 'bareleaf.ts'),
-    `${APP_HEADER}export const b = new ConfigurationBuilder().withType<string>();
+    `${APP_HEADER}export const b = new ConfigBuilder().withType<string>();
 `,
   );
   writeFileSync(join(projDiag, 'tsconfig.json'), tsconfig(false));
@@ -406,7 +406,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     expect(chain).toContain(`Host: "string"`);
     expect(chain).toContain(`Port: "number"`);
     expect(chain).not.toContain('withSchema<');
-    // A non-ConfigurationBuilder `.withType` is left untouched.
+    // A non-ConfigBuilder `.withType` is left untouched.
     expect(chain).toContain('.withType<OT>()');
   });
 
@@ -430,7 +430,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     expect(schemaCount).toBe(3);
   });
 
-  test('host: a local class merely NAMED ConfigurationBuilder is not lowered', () => {
+  test('host: a local class merely NAMED ConfigBuilder is not lowered', () => {
     const local = happy('localname');
     // The old name-based matcher would have lowered this; declaration-site
     // matching leaves it untouched.
@@ -444,7 +444,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     expect(anon).not.toContain('.withSchema(');
   });
 
-  test('host: (i) a namespace-nested ConfigurationBuilder is not lowered', () => {
+  test('host: (i) a namespace-nested ConfigBuilder is not lowered', () => {
     const nested = happy('nestedns');
     expect(nested).toContain('nested.withType<T>()');
     expect(nested).not.toContain('.withSchema(');

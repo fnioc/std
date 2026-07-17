@@ -3,8 +3,8 @@
 // by the injected `ILoggerFactory` under the category derived from `T`.
 //
 // The reference derives the category from `typeof(T)`'s display name. This
-// platform erases `T`, so — exactly like `LoggerProviderConfiguration<T>` in
-// logging.configuration — the di engine supplies the closing type's token as a
+// platform erases `T`, so — exactly like `LoggerProviderConfig<T>` in
+// logging.config — the di engine supplies the closing type's token as a
 // `Typeof<T>` constructor parameter (from the open registration's `typeArg(1)`
 // slot; see `@rhombus-std/logging`'s `addLogging`). The category is the token's
 // type-name segment (`"@pkg/x:HomeController"` → `"HomeController"`), the
@@ -15,8 +15,8 @@ import type { Typeof } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import type { EventId } from './event-id';
-import type { ILogger } from './logger';
+import type { EventId } from './EventId';
+import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
 import type { LogLevel } from './LogLevel';
 

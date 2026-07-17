@@ -13,7 +13,7 @@
 //
 // Divergence from the browser-hosting memo, noted against current source: a
 // whole-graph bundle of the public entry is NOT a clean regression guard for
-// hosting's own `node:*` surface, because `default-configuration.ts` still
+// hosting's own `node:*` surface, because `default-config.ts` still
 // statically imports `@rhombus-std/config.json` (which imports `node:fs` /
 // `node:path`) and `logging` re-exports the `node:async_hooks`-backed
 // `LoggerExternalScopeProvider`. Bun's browser target polyfills `node:path`

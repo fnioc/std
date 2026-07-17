@@ -24,14 +24,14 @@
 // members of the two literals; the former `*Rule` suffix (a free-function-clash
 // workaround) is dropped now that #115 gives each its own literal (#105).
 
-import type { ConfigureOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { nameof } from '@rhombus-std/primitives';
 import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
-import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './activity-source-scopes';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
+import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import type { ITracingBuilder } from './ITracingBuilder';
 import { TracingOptions } from './TracingOptions';
 import { TracingRule } from './TracingRule';
@@ -73,9 +73,9 @@ export const TracingOptionsExtensions = {
   },
 } satisfies AugmentationSet<TracingOptions>;
 
-/** Registers a `ConfigureOptions<TracingOptions>` step that runs `apply`. */
+/** Registers a `IConfigureOptions<TracingOptions>` step that runs `apply`. */
 function configureTracing(builder: ITracingBuilder, apply: Func<[options: TracingOptions], void>): ITracingBuilder {
-  const step: ConfigureOptions<TracingOptions> = {
+  const step: IConfigureOptions<TracingOptions> = {
     configure(options: TracingOptions): void {
       apply(options);
     },

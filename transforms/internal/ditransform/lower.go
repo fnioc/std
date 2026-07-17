@@ -94,7 +94,7 @@ func registrationMethod(checker *shimchecker.Checker, call *shimast.Node) (strin
 		return "", false
 	}
 	// Anchor the receiver at the member's declaration site: the called verb must
-	// resolve to ServiceManifestBase inside `declare module '@rhombus-std/di.core'`,
+	// resolve to IServiceManifestBase inside `declare module '@rhombus-std/di.core'`,
 	// so an unrelated `.add()` (e.g. `new Set().add(v)`) is never lowered.
 	if !memberAnchoredOnDiCore(checker, callee.Name(), registrationInterfaces) {
 		return "", false

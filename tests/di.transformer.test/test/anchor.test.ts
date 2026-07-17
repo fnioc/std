@@ -21,10 +21,10 @@ describe('registration receiver-shape anchoring', () => {
     expect(output).toContain('services.add("./app:IFoo", Foo, [[]]).as("singleton")');
   });
 
-  test('a subinterface of ServiceManifestBase is lowered', () => {
+  test('a subinterface of IServiceManifestBase is lowered', () => {
     const src = `
-      import type { ServiceManifestBase } from "@rhombus-std/di.core";
-      interface MyManifest extends ServiceManifestBase {}
+      import type { IServiceManifestBase } from "@rhombus-std/di.core";
+      interface MyManifest extends IServiceManifestBase {}
       declare const reg: MyManifest;
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
@@ -40,14 +40,14 @@ describe('registration receiver-shape anchoring', () => {
     // The owner's named scenario: a user-defined registration class implementing
     // the interface and decorated `@augment(...)`. The empty extends-merge binds
     // the interface's members onto the class, so `add` resolves to di.core's
-    // ServiceManifestBase and anchors — the @augment decoration is runtime-only
+    // IServiceManifestBase and anchors — the @augment decoration is runtime-only
     // and irrelevant to the type-level match.
     const src = `
-      import type { ServiceManifestBase } from "@rhombus-std/di.core";
+      import type { IServiceManifestBase } from "@rhombus-std/di.core";
       declare function augment(token: string): <T>(target: T) => T;
-      @augment("@rhombus-std/di.core:ServiceManifest")
+      @augment("@rhombus-std/di.core:IServiceManifest")
       class MyRegistry {}
-      interface MyRegistry extends ServiceManifestBase {}
+      interface MyRegistry extends IServiceManifestBase {}
       declare const reg: MyRegistry;
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
@@ -113,10 +113,10 @@ describe('registration receiver-shape anchoring', () => {
     expect(output).not.toContain('bag.add("');
   });
 
-  test('a namespace-nested ServiceManifestBase receiver is NOT lowered', () => {
+  test('a namespace-nested IServiceManifestBase receiver is NOT lowered', () => {
     const src = `
       import type { Nested } from "@rhombus-std/di.core";
-      declare const nested: Nested.ServiceManifestBase;
+      declare const nested: Nested.IServiceManifestBase;
       interface IFoo {}
       class Foo implements IFoo { constructor() {} }
       nested.add<IFoo>(Foo);
@@ -130,7 +130,7 @@ describe('registration receiver-shape anchoring', () => {
 });
 
 describe('resolution receiver-shape anchoring', () => {
-  test('resolve<T>() on a ServiceProvider receiver is lowered', () => {
+  test('resolve<T>() on a IServiceProvider receiver is lowered', () => {
     const src = `
       interface IFoo {}
       const foo = scope.resolve<IFoo>();
@@ -141,11 +141,11 @@ describe('resolution receiver-shape anchoring', () => {
     expect(output).not.toContain('scope.resolve<');
   });
 
-  test('resolve<T>() on a generic bound by Resolver is lowered', () => {
+  test('resolve<T>() on a generic bound by IResolver is lowered', () => {
     const src = `
-      import type { Resolver } from "@rhombus-std/di.core";
+      import type { IResolver } from "@rhombus-std/di.core";
       interface IFoo {}
-      function wire<R extends Resolver>(r: R) {
+      function wire<R extends IResolver>(r: R) {
         return r.resolve<IFoo>();
       }
     `;
@@ -155,7 +155,7 @@ describe('resolution receiver-shape anchoring', () => {
     expect(output).not.toContain('r.resolve<');
   });
 
-  test('resolve<T>() on a non-Resolver object is NOT lowered', () => {
+  test('resolve<T>() on a non-IResolver object is NOT lowered', () => {
     const src = `
       class NotResolver { resolve<T>(): T { return {} as T; } }
       declare const nr: NotResolver;
@@ -167,7 +167,7 @@ describe('resolution receiver-shape anchoring', () => {
     expect(output).not.toContain('nr.resolve("');
   });
 
-  test('isService<T>() on a non-Resolver object is NOT lowered', () => {
+  test('isService<T>() on a non-IResolver object is NOT lowered', () => {
     const src = `
       class NotResolver { isService<T>(): boolean { return false; } }
       declare const nr: NotResolver;
@@ -189,10 +189,10 @@ describe('resolution receiver-shape anchoring', () => {
     expect(output).not.toContain('bag.resolve("');
   });
 
-  test('resolve<T>() on a namespace-nested Resolver receiver is NOT lowered', () => {
+  test('resolve<T>() on a namespace-nested IResolver receiver is NOT lowered', () => {
     const src = `
       import type { Nested } from "@rhombus-std/di.core";
-      declare const nested: Nested.Resolver;
+      declare const nested: Nested.IResolver;
       interface IFoo {}
       const foo = nested.resolve<IFoo>();
     `;

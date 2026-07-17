@@ -12,7 +12,7 @@
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ConsoleControlCharacterSanitizer } from './ConsoleControlCharacterSanitizer';
 import { ConsoleFormatter } from './ConsoleFormatter';
@@ -56,7 +56,7 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
   /** The live options — reassigned on reload (internal, as upstream). */
   public formatterOptions: ConsoleFormatterOptions;
 
-  public constructor(options: Options<ConsoleFormatterOptions>) {
+  public constructor(options: IOptions<ConsoleFormatterOptions>) {
     super(ConsoleFormatterNames.systemd);
     this.formatterOptions = options.value;
     this.#optionsReloadToken = options.subscribe?.((reloaded) => {

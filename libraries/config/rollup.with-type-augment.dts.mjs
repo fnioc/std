@@ -6,7 +6,7 @@
 // Both @rhombus-std/config.core and the package barrel "@rhombus-std/config"
 // stay EXTERNAL (respectExternal), so the emitted `declare module
 // "@rhombus-std/config"` augmentation is preserved verbatim (never rewritten to a
-// self-referential module) and merges onto the consumer's real ConfigurationBuilder.
+// self-referential module) and merges onto the consumer's real ConfigBuilder.
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

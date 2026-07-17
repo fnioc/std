@@ -186,8 +186,8 @@ describe.skipIf(!toolchainReady)('ttsc/Go nameof lowering byte-parity', () => {
   test('defaulted-generic alias, referenced bare → bare alias token (defaults dropped)', () => {
     // A fully-defaulted instantiation IS the bare alias, so nameof<Local>() /
     // nameof<Scoped>() drop the "singleton" default rather than closing it in —
-    // the augmentation-token shape (`nameof<ServiceManifest>()`, whose
-    // `type ServiceManifest<S extends string = "singleton"> = …<S>` mirrors the
+    // the augmentation-token shape (`nameof<IServiceManifest>()`, whose
+    // `type IServiceManifest<S extends string = "singleton"> = …<S>` mirrors the
     // fixture's `Local`/`Scoped`). Anchor each token to its own export name so
     // the sibling explicit-arg alias in the same file can't cross-match. The
     // emit escapes inner quotes (`\"request\"`), so the default form we must

@@ -18,7 +18,7 @@
   "sideEffects": true,
   "rhombus.inline": {
     "entries": [
-      { "type": "@rhombus-std/di.core:ServiceQuery", "impl": "ServiceQueryInline", "member": "isService" }
+      { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" }
     ]
   },
   "main": "./dist/index.js",

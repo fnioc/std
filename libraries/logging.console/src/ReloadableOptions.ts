@@ -1,4 +1,4 @@
-// ReloadableOptions — a mutable, subscribable Options<T>, the console
+// ReloadableOptions — a mutable, subscribable IOptions<T>, the console
 // package's stand-in for the reference DI options-monitor pipeline.
 //
 // The reference wires `AddConsole`'s configure delegates through DI
@@ -14,11 +14,11 @@
 // monitor — collapses to `Options.of` from @rhombus-std/options and needs no
 // port.)
 
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import type { Func } from '@rhombus-toolkit/func';
 
 /** A mutable {@link Options} whose {@link reload} notifies subscribers. */
-export class ReloadableOptions<T> implements Options<T> {
+export class ReloadableOptions<T> implements IOptions<T> {
   readonly #value: T;
   readonly #listeners = new Set<Func<[T], void>>();
 

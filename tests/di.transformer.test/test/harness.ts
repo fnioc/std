@@ -53,7 +53,7 @@ declare module "@rhombus-std/di.core" {
     as(scope: Scopes): void;
     as<S extends Scopes>(): void;
   }
-  export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+  export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
     add(token: Token, ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): AddBuilder<Scopes>;
     add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     add<I>(ctor: Ctor<any[], I>, overrides: readonly (string | undefined)[]): AddBuilder<Scopes>;
@@ -64,17 +64,17 @@ declare module "@rhombus-std/di.core" {
     addValue<I>(value: I): void;
     build(options?: unknown): Provider;
   }
-  export interface RequiredResolver {
+  export interface IRequiredResolver {
     resolve<T>(token: Token, key?: string): T;
     resolve(token: Token, key?: string): unknown;
     resolve<T>(): T;
     resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
   }
-  export interface ServiceQuery {
+  export interface IServiceQuery {
     isService(token: Token): boolean;
     isService<T>(): boolean;
   }
-  export interface Resolver extends RequiredResolver, ServiceQuery {
+  export interface IResolver extends IRequiredResolver, IServiceQuery {
     resolveAsync<T>(token: Token): Promise<T>;
     resolveAsync<T>(): Promise<T>;
     resolveAsync<F extends (...args: any[]) => any>(): Promise<Awaited<ReturnType<F>>>;
@@ -82,22 +82,22 @@ declare module "@rhombus-std/di.core" {
     tryResolve<T>(): T | undefined;
     resolveFactory<F>(type: Token, params?: readonly Token[]): F;
   }
-  export interface ServiceProvider<S extends string = string> extends Resolver {
-    createScope(name?: S): ServiceProvider<S>;
+  export interface IServiceProvider<S extends string = string> extends IResolver {
+    createScope(name?: S): IServiceProvider<S>;
     readonly name: S;
     dispose(): void;
   }
-  export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
+  export type IServiceManifest<S extends string = string> = IServiceManifestBase<S, IServiceProvider<S>>;
 
   // Same-named authoring interfaces NESTED in a namespace inside the declaring
   // module. The nearest enclosing module scope is \`Nested\` (identifier-named),
-  // not the module, so a receiver typed \`Nested.ServiceManifestBase\` /
-  // \`Nested.Resolver\` must NOT match.
+  // not the module, so a receiver typed \`Nested.IServiceManifestBase\` /
+  // \`Nested.IResolver\` must NOT match.
   export namespace Nested {
-    export interface ServiceManifestBase<Scopes extends string = string> {
+    export interface IServiceManifestBase<Scopes extends string = string> {
       add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     }
-    export interface Resolver {
+    export interface IResolver {
       resolve<T>(): T;
     }
   }
@@ -119,12 +119,12 @@ declare module "@rhombus-std/di.core" {
 // interfaces (not `any`) is what lets the declaration-site matcher resolve their
 // members back to the ambient module. A module `.d.ts` (the `import type` makes it
 // one) whose `declare global` publishes the receivers program-wide.
-const DI_CORE_RECEIVERS = `import type { ServiceManifest, ServiceProvider } from "@rhombus-std/di.core";
+const DI_CORE_RECEIVERS = `import type { IServiceManifest, IServiceProvider } from "@rhombus-std/di.core";
 declare global {
-  const services: ServiceManifest<string>;
-  const scope: ServiceProvider<string>;
-  const provider: ServiceProvider<string>;
-  const root: ServiceProvider<string>;
+  const services: IServiceManifest<string>;
+  const scope: IServiceProvider<string>;
+  const provider: IServiceProvider<string>;
+  const root: IServiceProvider<string>;
 }
 `;
 

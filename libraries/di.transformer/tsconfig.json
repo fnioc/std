@@ -1,7 +1,7 @@
 {
   // This program carries the `declare module "@rhombus-std/di.core"` augmentation
   // (`./augment.ts`) that merges the tokenless authoring overloads onto
-  // `ServiceManifestBase` / `AddBuilder` / `Resolver`. Under those merges di.core's
+  // `IServiceManifestBase` / `AddBuilder` / `IResolver`. Under those merges di.core's
   // SOURCE cannot co-compile — the concrete `ServiceManifestClass` no longer
   // satisfies its own augmented base interface (TS2416). Now that di.core is
   // dist-referenced (§72), its `.` export's `types` resolves the built,

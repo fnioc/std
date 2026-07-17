@@ -110,32 +110,32 @@ beforeAll(() => {
     as(scope: Scopes): void;
     as<S extends Scopes>(): void;
   }
-  export interface ServiceManifestBase<Scopes extends string = string, Provider = unknown> {
+  export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
     add(token: string, ctor: Ctor, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
     add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     add<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
     addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
     addValue<I>(value: I): void;
   }
-  export interface RequiredResolver {
+  export interface IRequiredResolver {
     resolve<T>(token: string): T;
     resolve<T>(): T;
   }
-  export interface ServiceQuery {
+  export interface IServiceQuery {
     isService(token: string): boolean;
     isService<T>(): boolean;
   }
-  export interface Resolver extends RequiredResolver, ServiceQuery {
+  export interface IResolver extends IRequiredResolver, IServiceQuery {
     resolveAsync<T>(): Promise<T>;
     tryResolve<T>(): T | undefined;
   }
-  export interface ServiceProvider<S extends string = string> extends Resolver {}
-  export type ServiceManifest<S extends string = string> = ServiceManifestBase<S, ServiceProvider<S>>;
+  export interface IServiceProvider<S extends string = string> extends IResolver {}
+  export type IServiceManifest<S extends string = string> = IServiceManifestBase<S, IServiceProvider<S>>;
   export namespace Nested {
-    export interface ServiceManifestBase<Scopes extends string = string> {
+    export interface IServiceManifestBase<Scopes extends string = string> {
       add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     }
-    export interface Resolver {
+    export interface IResolver {
       resolve<T>(): T;
     }
   }
@@ -148,7 +148,7 @@ beforeAll(() => {
     `
 import { nameof } from "./nameof";
 import { IUserRepo } from "your-lib/contracts";
-import type { Nested, Resolver as DiResolver, ServiceManifest, ServiceManifestBase, ServiceProvider } from "@rhombus-std/di.core";
+import type { Nested, IResolver as DiResolver, IServiceManifest, IServiceManifestBase, IServiceProvider } from "@rhombus-std/di.core";
 
 // The Keyed<T, K> phantom brand (declared locally — the transformer detects it
 // structurally by the computed-symbol \`[KEY]\` property, not by import source):
@@ -181,8 +181,8 @@ class ThingRepo<T> implements IRepo<T> {
   constructor(thing: Keyed<IThing<T>, "redis">) {}
 }
 
-declare const services: ServiceManifest<string>;
-declare const provider: ServiceProvider<string>;
+declare const services: IServiceManifest<string>;
+declare const provider: IServiceProvider<string>;
 
 services.add<ILogger>(ConsoleLogger).as<"singleton">();
 services.add<IUserRepo>(SqlUserRepo).as<"request">();
@@ -202,19 +202,19 @@ class SubImpl implements ISub {}
 class RegImpl implements IReg {}
 
 // (b) subinterface receiver
-interface MyManifest extends ServiceManifestBase {}
+interface MyManifest extends IServiceManifestBase {}
 declare const sub: MyManifest;
 sub.add<ISub>(SubImpl).as<"singleton">();
 
 // (c) user concrete class + @augment + empty extends-merge
 declare function augment(token: string): <T>(target: T) => T;
-@augment("@rhombus-std/di.core:ServiceManifest")
+@augment("@rhombus-std/di.core:IServiceManifest")
 class MyRegistry {}
-interface MyRegistry extends ServiceManifestBase {}
+interface MyRegistry extends IServiceManifestBase {}
 declare const reg: MyRegistry;
 reg.add<IReg>(RegImpl).as<"singleton">();
 
-// (d) generic bound by Resolver — pinned via the resolve family (registration is
+// (d) generic bound by IResolver — pinned via the resolve family (registration is
 // top-level-only by design)
 function wireGeneric<R extends DiResolver>(r: R) {
   return r.resolve<IGen>();
@@ -248,7 +248,7 @@ declare const repo: Repo;
 declare const entity: IEntity;
 repo.add<IEntity>(entity);
 
-// (h) resolve family on a non-Resolver receiver
+// (h) resolve family on a non-IResolver receiver
 class NotResolver { resolve<T>(): T { return {} as T; } }
 declare const nr: NotResolver;
 export const notDep = nr.resolve<INr>();
@@ -260,9 +260,9 @@ const rbag = { resolve<T>(): T { return {} as T; } };
 export const rbagDep = rbag.resolve<IRbag>();
 
 // (i) namespace-nested declaring interfaces (add + resolve)
-declare const nested: Nested.ServiceManifestBase;
+declare const nested: Nested.IServiceManifestBase;
 export const nestedReg = nested.add<INested>(FakeImpl);
-declare const nestedResolver: Nested.Resolver;
+declare const nestedResolver: Nested.IResolver;
 export const nestedDep = nestedResolver.resolve<INested>();
 `,
   );
@@ -377,7 +377,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     expect(app).toContain(`reg.add("./app:IReg", RegImpl,`);
   });
 
-  test('(d) a generic bound by Resolver is lowered via the resolve family', () => {
+  test('(d) a generic bound by IResolver is lowered via the resolve family', () => {
     expect(app).toContain(`resolve("./app:IGen")`);
   });
 
@@ -393,7 +393,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     expect(app).not.toContain('./app:IEntity');
   });
 
-  test('(h) resolve on a non-Resolver receiver is NOT lowered', () => {
+  test('(h) resolve on a non-IResolver receiver is NOT lowered', () => {
     expect(app).not.toContain('nr.resolve("');
     expect(app).not.toContain('./app:INr');
   });

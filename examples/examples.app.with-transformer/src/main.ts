@@ -5,14 +5,14 @@
 // `addOptions` in the CONTAINER SETUP below is authored tokenlessly and lowered
 // during the build. The ONE exception is the hosted-worker wiring at the very
 // bottom: there is no `@rhombus-std/di.transformer` plugin for the hosting
-// family yet, so `addHostedService(...)` and the small `ConfigurationRoot` value
+// family yet, so `addHostedService(...)` and the small `ConfigRoot` value
 // it needs are registered with EXPLICIT, hand-written tokens — the guard test in
 // di.transformer.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
 // `tryResolve<T>()` CALL to stay tokenless (see below), which the hosted worker
 // still honors.
 //
 // The scenario, everything in concert:
-//   - config sources feed a reactive Options<ServerOptions> through the full
+//   - config sources feed a reactive IOptions<ServerOptions> through the full
 //     configure → post-configure → validate pipeline (#41);
 //   - both example libraries' services are registered into ONE container — the
 //     with-transformer lib's FormalGreeting + report factory + async banner, and
@@ -21,7 +21,7 @@
 //   - the report factory (from the built with-transformer lib) resolves the
 //     IGreeting COLLECTION aggregating BOTH libraries (#48), the live options,
 //     the policy wrap, and probes the health check (#23/#25) — all TOKENLESSLY
-//     through an injected Resolver (#49);
+//     through an injected IResolver (#49);
 //   - the async banner is reached with resolveAsync (#45);
 //   - a config reload fires a live options update through the subscription
 //     (#6/#40).
@@ -38,21 +38,21 @@
 // `IHostApplicationLifetime.stopApplication()` once its work is done, so
 // `runAsync` returns deterministically with no reliance on Ctrl+C / signals.
 
-import { ConfigurationBuilder } from '@rhombus-std/config';
-import type { ConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
+import type { ConfigRoot } from '@rhombus-std/config';
 import { RESOLVER_TOKEN } from '@rhombus-std/di';
-import type { Resolver } from '@rhombus-std/di';
+import type { IResolver } from '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
-import type { ConfigureOptions, PostConfigureOptions, ValidateOptions } from '@rhombus-std/options';
-import { Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
+import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
+import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 // Brings the config-bind configure step + the runtime `addOptions` verb the
 // `addOptions<T>()` sugar lowers to. Side-effect import — MUST stay for the
 // prototype patch to land.
-import { ConfigurationConfigureOptions } from '@rhombus-std/options.augmentations';
+import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IGreeting, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { fetchBanner, FormalGreeting, makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
@@ -60,42 +60,42 @@ import { addCasualServices } from '@rhombus-std/examples.lib.without-transformer
 
 // The ONE hand-written token in this file — see the header note. It has no
 // transformer-derived counterpart to match; it exists purely to thread the
-// manually-built `ConfigurationRoot` into the hosted worker's explicit-token
+// manually-built `ConfigRoot` into the hosted worker's explicit-token
 // `addHostedService` signature below.
-const CONFIG_TOKEN = '@rhombus-std/config:ConfigurationRoot';
+const CONFIG_TOKEN = '@rhombus-std/config:ConfigRoot';
 
 // ── config ───────────────────────────────────────────────────────────────────
 
 /** The layered configuration root — an in-memory source seeds the server keys. */
-function buildConfig(): ConfigurationRoot {
-  return new ConfigurationBuilder()
+function buildConfig(): ConfigRoot {
+  return new ConfigBuilder()
     .addInMemoryCollection({
       'Server:Host': '0.0.0.0',
       'Server:Port': '8080',
       'Server:MaxConnections': '100',
     })
-    .build() as unknown as ConfigurationRoot;
+    .build() as unknown as ConfigRoot;
 }
 
 /**
- * Assembles the reactive `Options<ServerOptions>`: the full OptionsFactory
+ * Assembles the reactive `IOptions<ServerOptions>`: the full OptionsFactory
  * pipeline (config-bind configure → coercion post-configure → range validate)
  * wrapped in `Options.watch` over the config's reload token, so `.value` re-runs
  * the pipeline live and `subscribe` fires on every reload. This assembly needs
  * no DI token, so it is identical across both dialects' apps.
  */
-function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
-  const bindConfig: ConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
+function makeServerOptions(config: ConfigRoot): IOptions<ServerOptions> {
+  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
-  const coerce: PostConfigureOptions<ServerOptions> = {
+  const coerce: IPostConfigureOptions<ServerOptions> = {
     postConfigure(options: ServerOptions): void {
       // Config leaves are strings; coerce the numeric fields after the bind.
       options.Port = Number(options.Port);
       options.MaxConnections = Number(options.MaxConnections);
     },
   };
-  const validate: ValidateOptions<ServerOptions> = {
+  const validate: IValidateOptions<ServerOptions> = {
     validate(options: ServerOptions): ValidateOptionsResult {
       if (options.Port > 0 && options.MaxConnections > 0) {
         return ValidateOptionsResult.success;
@@ -125,16 +125,16 @@ function makeServerOptions(config: ConfigurationRoot): Options<ServerOptions> {
  * constructor signature (below, at `addHostedService`) names explicit tokens.
  */
 class InteropWorker implements IHostedLifecycleService {
-  readonly #resolver: Resolver;
+  readonly #resolver: IResolver;
   readonly #lifetime: IHostApplicationLifetime;
   readonly #logger: ILogger;
-  readonly #config: ConfigurationRoot;
+  readonly #config: ConfigRoot;
 
   public constructor(
-    resolver: Resolver,
+    resolver: IResolver,
     lifetime: IHostApplicationLifetime,
     loggerFactory: ILoggerFactory,
-    config: ConfigurationRoot,
+    config: ConfigRoot,
   ) {
     this.#resolver = resolver;
     this.#lifetime = lifetime;
@@ -153,7 +153,7 @@ class InteropWorker implements IHostedLifecycleService {
     const report = this.#resolver.resolve<IServerReport>();
     const banner = await this.#resolver.resolveAsync<IBanner>();
 
-    const optionsView = this.#resolver.resolve<Options<ServerOptions>>();
+    const optionsView = this.#resolver.resolve<IOptions<ServerOptions>>();
     const updates: string[] = [];
     const subscription = optionsView.subscribe!((next: ServerOptions) => {
       updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);
@@ -222,9 +222,9 @@ services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
 
 // The reactive server options — registered as a value so every consumer shares
 // the one live instance.
-services.addValue<Options<ServerOptions>>(serverOptions);
+services.addValue<IOptions<ServerOptions>>(serverOptions);
 
-// A config-independent policy, delivered as a static Options<GreetingPolicy>
+// A config-independent policy, delivered as a static IOptions<GreetingPolicy>
 // through the explicit-wrap addOptions<T>() sugar (#34). The satellite lowers
 // `addOptions<T>()` but not the trailing `.as<>()`, so the lifetime is named in
 // the value form (`"singleton"` is a scope name, not a token).

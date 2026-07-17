@@ -5,13 +5,13 @@
 // diagnostics it raised. ts-patch is the production runner; tests invoke the
 // factory against a Program directly (it needs `ts.Program` + `addDiagnostic`).
 //
-// A fixture ships a virtual `@rhombus-std/options` package (so the `Options<T>`
-// wrapper base tokenizes package-public as `@rhombus-std/options:Options`) plus an
+// A fixture ships a virtual `@rhombus-std/options` package (so the `IOptions<T>`
+// wrapper base tokenizes package-public as `@rhombus-std/options:IOptions`) plus an
 // AMBIENT `declare module '@rhombus-std/di.core'` file declaring
-// `ServiceManifestBase` with the `addOptions` overloads. The matcher anchors on
+// `IServiceManifestBase` with the `addOptions` overloads. The matcher anchors on
 // that declaration site (§41), so the receiver is recognized because its
 // `addOptions` member resolves back to the ambient di.core interface — not because
-// a type happens to be symbol-named `ServiceManifest`. Token generation reads the
+// a type happens to be symbol-named `IServiceManifest`. Token generation reads the
 // virtual `package.json` through the injected `readFile`.
 
 import type { Diagnostic } from '@rhombus-std/di.transformer.options/_/diagnostics';
@@ -181,7 +181,7 @@ function anyFileUnder(files: VirtualFiles, dir: string): boolean {
 
 /**
  * The ambient `declare module '@rhombus-std/di.core'` fixture: a script file
- * declaring `ServiceManifestBase` with the type-driven sugar overload plus the
+ * declaring `IServiceManifestBase` with the type-driven sugar overload plus the
  * explicit two-arg verb, and its `AddBuilder` continuation. The matcher anchors
  * on the sugar overload's declaration HERE — a receiver whose `addOptions`
  * resolves back to this interface is recognized regardless of the receiver's own
@@ -190,15 +190,15 @@ function anyFileUnder(files: VirtualFiles, dir: string): boolean {
 const DI_CORE_AMBIENT = `
 declare module "@rhombus-std/di.core" {
   export type AddBuilder<Scopes extends string = "singleton"> = { as(scope: Scopes): void };
-  export interface ServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
+  export interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
     addOptions<T>(): AddBuilder<Scopes>;
     addOptions(token: string, tToken: string): AddBuilder<Scopes>;
   }
   // A same-named interface NESTED in a namespace inside the declaring module.
   // The nearest enclosing module scope is \`Nested\` (identifier-named), not the
-  // module, so a receiver typed \`Nested.ServiceManifestBase\` must NOT match.
+  // module, so a receiver typed \`Nested.IServiceManifestBase\` must NOT match.
   export namespace Nested {
-    export interface ServiceManifestBase<Scopes extends string = "singleton"> {
+    export interface IServiceManifestBase<Scopes extends string = "singleton"> {
       addOptions<T>(): AddBuilder<Scopes>;
     }
   }
@@ -206,16 +206,16 @@ declare module "@rhombus-std/di.core" {
 `;
 
 /**
- * App header for {@link optionsFixture}: imports `ServiceManifestBase` from the
+ * App header for {@link optionsFixture}: imports `IServiceManifestBase` from the
  * ambient di.core module (the positive interface-typed-receiver shape) and keeps
  * a reference to `@rhombus-std/options`'s `Options` so that package is in the
  * program for the wrapper-base lookup.
  */
 const APP_HEADER = `
-import type { Options } from "@rhombus-std/options";
-import type { ServiceManifestBase } from "@rhombus-std/di.core";
-export type __KeepOptions<T> = Options<T>;
-declare const services: ServiceManifestBase<"singleton">;
+import type { IOptions } from "@rhombus-std/options";
+import type { IServiceManifestBase } from "@rhombus-std/di.core";
+export type __KeepOptions<T> = IOptions<T>;
+declare const services: IServiceManifestBase<"singleton">;
 `;
 
 /**
@@ -230,7 +230,7 @@ export function optionsFixture(appSource: string): VirtualFiles {
       version: '1.0.0',
       exports: { '.': './index.js' },
     }),
-    '/proj/node_modules/@rhombus-std/options/index.d.ts': 'export interface Options<T> { readonly value: T; }\n',
+    '/proj/node_modules/@rhombus-std/options/index.d.ts': 'export interface IOptions<T> { readonly value: T; }\n',
     [DI_CORE_PATH]: DI_CORE_AMBIENT,
     [APP_PATH]: APP_HEADER + appSource,
   };
@@ -243,8 +243,8 @@ export function optionsFixture(appSource: string): VirtualFiles {
  */
 export function fixtureWithoutOptions(appSource: string): VirtualFiles {
   const header = `
-import type { ServiceManifestBase } from "@rhombus-std/di.core";
-declare const services: ServiceManifestBase<"singleton">;
+import type { IServiceManifestBase } from "@rhombus-std/di.core";
+declare const services: IServiceManifestBase<"singleton">;
 `;
   return {
     [DI_CORE_PATH]: DI_CORE_AMBIENT,
@@ -255,7 +255,7 @@ declare const services: ServiceManifestBase<"singleton">;
 /**
  * The two string arguments of the single `addOptions(a, b)` call in `output`, or
  * `undefined` when the call is not present / not lowered. Quote-aware over the
- * closed-generic `Options<...>` token (which contains no quotes at this layer).
+ * closed-generic `IOptions<...>` token (which contains no quotes at this layer).
  */
 export function addOptionsArgs(
   output: string,

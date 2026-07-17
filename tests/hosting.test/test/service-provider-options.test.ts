@@ -1,4 +1,4 @@
-import { createDefaultServiceProviderOptions } from '@rhombus-std/hosting/_/default-configuration';
+import { createDefaultServiceProviderOptions } from '@rhombus-std/hosting/_/default-config';
 import { HostBuilder, type IHostEnvironment } from '@rhombus-std/hosting/_/index';
 import { expect, test } from 'bun:test';
 

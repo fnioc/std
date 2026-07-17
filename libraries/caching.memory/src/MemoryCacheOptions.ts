@@ -1,7 +1,7 @@
 // MemoryCacheOptions -- ported from ME.Caching.Memory's MemoryCacheOptions.
 //
 // The reference implements `IOptions<MemoryCacheOptions>` (Value => this); this
-// repo's collapsed accessor is @rhombus-std/options' `Options<T>`, so this
+// repo's collapsed accessor is @rhombus-std/options' `IOptions<T>`, so this
 // class implements that instead -- `value` returns itself, so a MemoryCache
 // can be constructed straight from a `new MemoryCacheOptions()`.
 //
@@ -10,11 +10,11 @@
 // The obsolete `CompactOnMemoryPressure` is dropped -- the reference marks it
 // `Obsolete(error: true)`.
 
-import type { Options } from '@rhombus-std/options';
+import type { IOptions } from '@rhombus-std/options';
 import type { ISystemClock } from './ISystemClock';
 
 /** Options controlling a {@link MemoryCache}. */
-export class MemoryCacheOptions implements Options<MemoryCacheOptions> {
+export class MemoryCacheOptions implements IOptions<MemoryCacheOptions> {
   #sizeLimit: number | undefined = undefined;
   #compactionPercentage = 0.05;
 

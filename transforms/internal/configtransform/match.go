@@ -1,6 +1,6 @@
 package configtransform
 
-// Recognizing `.withType<T>()` on a ConfigurationBuilder.
+// Recognizing `.withType<T>()` on a ConfigBuilder.
 //
 // `.withType` is the config family's opt-in authoring surface. It is matched
 // structurally: a property-access call named `withType`, exactly one type
@@ -9,7 +9,7 @@ package configtransform
 //
 // The receiver is matched at the member's DECLARATION SITE, not by the receiver
 // type's symbol name: we resolve the `withType` symbol at the call site and accept
-// only when one of its declarations is a member of the `ConfigurationBuilder`
+// only when one of its declarations is a member of the `ConfigBuilder`
 // interface declared inside the `declare module '@rhombus-std/config'` block that
 // authors this augmentation. An inherited member keeps its original declaration,
 // so a subinterface, a class carrying an empty extends-merge, or an
@@ -24,16 +24,16 @@ import (
 const (
 	withTypeName = "withType"
 	// declaringInterface is the interface config declaration-merges withType onto.
-	declaringInterface = "ConfigurationBuilder"
+	declaringInterface = "ConfigBuilder"
 	// declaringModule is the `declare module` specifier the augmentation targets.
 	declaringModule = "@rhombus-std/config"
 )
 
 // isWithTypeCall reports whether call is a `<receiver>.withType<T>()` call whose
-// called member is config's `ConfigurationBuilder.withType<U>()` augmentation. It
+// called member is config's `ConfigBuilder.withType<U>()` augmentation. It
 // requires a property-access callee named `withType`, exactly ONE type argument,
 // ZERO value arguments, and a resolved `withType` member declared on the
-// `ConfigurationBuilder` interface inside `declare module '@rhombus-std/config'`.
+// `ConfigBuilder` interface inside `declare module '@rhombus-std/config'`.
 func isWithTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression) bool {
 	callee := call.Expression
 	if callee == nil || callee.Kind != shimast.KindPropertyAccessExpression {
@@ -53,7 +53,7 @@ func isWithTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression) 
 }
 
 // memberDeclaredOnBuilder reports whether the `withType` member referenced at name
-// resolves to a symbol with a declaration on config's `ConfigurationBuilder`
+// resolves to a symbol with a declaration on config's `ConfigBuilder`
 // interface. A merged property symbol carries declarations from every contributing
 // merge, so any one matching declaration suffices.
 func memberDeclaredOnBuilder(checker *shimchecker.Checker, name *shimast.Node) bool {
@@ -70,7 +70,7 @@ func memberDeclaredOnBuilder(checker *shimchecker.Checker, name *shimast.Node) b
 }
 
 // declaredOnBuilderInterface reports whether decl's parent is the
-// `ConfigurationBuilder` interface declared inside the
+// `ConfigBuilder` interface declared inside the
 // `declare module '@rhombus-std/config'` block.
 func declaredOnBuilderInterface(decl *shimast.Node) bool {
 	if decl == nil {

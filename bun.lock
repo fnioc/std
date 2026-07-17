@@ -513,8 +513,8 @@
         "typescript": "^5.9.0",
       },
     },
-    "libraries/logging.configuration": {
-      "name": "@rhombus-std/logging.configuration",
+    "libraries/logging.config": {
+      "name": "@rhombus-std/logging.config",
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
@@ -931,14 +931,14 @@
         "@rhombus-std/logging.core": "workspace:*",
       },
     },
-    "tests/logging.configuration.test": {
-      "name": "@rhombus-std/logging.configuration.test",
+    "tests/logging.config.test": {
+      "name": "@rhombus-std/logging.config.test",
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/logging": "workspace:*",
-        "@rhombus-std/logging.configuration": "workspace:*",
+        "@rhombus-std/logging.config": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
@@ -1466,9 +1466,9 @@
 
     "@rhombus-std/logging.browserconsole.test": ["@rhombus-std/logging.browserconsole.test@workspace:tests/logging.browserconsole.test"],
 
-    "@rhombus-std/logging.configuration": ["@rhombus-std/logging.configuration@workspace:libraries/logging.configuration"],
+    "@rhombus-std/logging.config": ["@rhombus-std/logging.config@workspace:libraries/logging.config"],
 
-    "@rhombus-std/logging.configuration.test": ["@rhombus-std/logging.configuration.test@workspace:tests/logging.configuration.test"],
+    "@rhombus-std/logging.config.test": ["@rhombus-std/logging.config.test@workspace:tests/logging.config.test"],
 
     "@rhombus-std/logging.console": ["@rhombus-std/logging.console@workspace:libraries/logging.console"],
 

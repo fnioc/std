@@ -2,7 +2,7 @@
 // surface (the barrel), plus @rhombus-std/logging's LoggingBuilder for the
 // registry-installed method forms.
 
-import type { ServiceManifest, Token } from '@rhombus-std/di.core';
+import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerExtensions, ConsoleLoggerFormat, ConsoleLoggerOptions,
   ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
@@ -12,17 +12,17 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: ServiceManifest; values: [Token, unknown][]; } {
+function fakeServices(): { services: IServiceManifest; values: [Token, unknown][]; } {
   const values: [Token, unknown][] = [];
   const services = {
     addValue(token: Token, value: unknown): void {
       values.push([token, value]);
     },
-  } as unknown as ServiceManifest;
+  } as unknown as IServiceManifest;
   return { services, values };
 }
 
-function builderOver(services: ServiceManifest): ILoggingBuilder {
+function builderOver(services: IServiceManifest): ILoggingBuilder {
   return new LoggingBuilder(services);
 }
 

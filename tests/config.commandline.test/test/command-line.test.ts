@@ -1,29 +1,29 @@
-// Behavior tests for CommandLineConfigurationSource/Provider -- flattens
+// Behavior tests for CommandLineConfigSource/Provider -- flattens
 // process.argv-style tokens into the case-insensitive store every
-// ConfigurationProvider maintains.
+// ConfigProvider maintains.
 //
 // Migrated from the pre-monorepo test/sources/command-line.test.ts: every
 // existing fail-loud assertion is kept unchanged (just re-pointed at the new
 // source/provider construction), plus new tests for the construction-time
 // switchMappings validation and the "/switch" -> "--switch" rewrite.
 
-import { ConfigurationBuilder, ConfigurationManager } from '@rhombus-std/config';
-import { CommandLineConfigurationSource } from '@rhombus-std/config.commandline/_/command-line-configuration-source';
+import { ConfigBuilder, ConfigManager } from '@rhombus-std/config';
+import { CommandLineConfigSource } from '@rhombus-std/config.commandline/_/CommandLineConfigSource';
 import { describe, expect, test } from 'bun:test';
-// Side-effect import: installs `addCommandLine` onto ConfigurationBuilder/ConfigurationManager.
+// Side-effect import: installs `addCommandLine` onto ConfigBuilder/ConfigManager.
 import '@rhombus-std/config.commandline/_/index';
 
 /** Builds a provider from `args`/`switchMappings`, loads it, and returns the
  * flattened key -> value map it produced (via getChildKeys + tryGet, since
- * ConfigurationProvider has no public "dump everything" API -- so we walk the
+ * ConfigProvider has no public "dump everything" API -- so we walk the
  * top-level and nested keys explicitly through the same public surface a
- * ConfigurationRoot would use). */
+ * ConfigRoot would use). */
 function load(
   args: readonly string[],
   switchMappings?: Record<string, string>,
 ): Record<string, string> {
-  const source = new CommandLineConfigurationSource(args, { switchMappings });
-  const provider = source.build(new ConfigurationBuilder());
+  const source = new CommandLineConfigSource(args, { switchMappings });
+  const provider = source.build(new ConfigBuilder());
   provider.load();
 
   const result: Record<string, string> = {};
@@ -42,7 +42,7 @@ function load(
   return result;
 }
 
-describe('CommandLineConfigurationProvider -- long form (--Key)', () => {
+describe('CommandLineConfigProvider -- long form (--Key)', () => {
   test('parses --Key value (space-separated) into the flat map', () => {
     expect(load(['--Key', 'value'])).toEqual({ Key: 'value' });
   });
@@ -117,7 +117,7 @@ describe('CommandLineConfigurationProvider -- long form (--Key)', () => {
   });
 });
 
-describe('CommandLineConfigurationProvider -- short form (-x)', () => {
+describe('CommandLineConfigProvider -- short form (-x)', () => {
   test('parses a mapped short switch with a space-separated value', () => {
     expect(load(['-p', '8080'], { '-p': 'Server:Port' })).toEqual({
       'Server:Port': '8080',
@@ -140,7 +140,7 @@ describe('CommandLineConfigurationProvider -- short form (-x)', () => {
   });
 });
 
-describe('CommandLineConfigurationProvider -- positional args', () => {
+describe('CommandLineConfigProvider -- positional args', () => {
   test('ignores bare positional args with no leading dash', () => {
     expect(load(['serve', '--Key', 'value', 'now'])).toEqual({ Key: 'value' });
   });
@@ -150,7 +150,7 @@ describe('CommandLineConfigurationProvider -- positional args', () => {
   });
 });
 
-describe('CommandLineConfigurationProvider -- bare key=value tokens', () => {
+describe('CommandLineConfigProvider -- bare key=value tokens', () => {
   test("a bare token with '=' is honored as a key/value pair", () => {
     expect(load(['Key=Value'])).toEqual({ Key: 'Value' });
   });
@@ -171,7 +171,7 @@ describe('CommandLineConfigurationProvider -- bare key=value tokens', () => {
   });
 });
 
-describe('CommandLineConfigurationProvider -- mixed', () => {
+describe('CommandLineConfigProvider -- mixed', () => {
   test('combines long form, mapped short form, and ignored positionals', () => {
     expect(
       load(['deploy', '--Env=prod', '-p', '8080', 'extra'], { '-p': 'Server:Port' }),
@@ -182,15 +182,15 @@ describe('CommandLineConfigurationProvider -- mixed', () => {
   });
 });
 
-describe('CommandLineConfigurationSource -- switchMappings validation', () => {
+describe('CommandLineConfigSource -- switchMappings validation', () => {
   test("throws at construction when a mapping key does not start with '-'", () => {
-    expect(() => new CommandLineConfigurationSource([], { switchMappings: { p: 'Server:Port' } }))
+    expect(() => new CommandLineConfigSource([], { switchMappings: { p: 'Server:Port' } }))
       .toThrow(/-/);
   });
 
   test('throws at construction for case-insensitive duplicate mapping keys', () => {
     expect(() =>
-      new CommandLineConfigurationSource([], {
+      new CommandLineConfigSource([], {
         switchMappings: { '-p': 'Server:Port', '-P': 'Other:Key' },
       })
     ).toThrow();
@@ -198,7 +198,7 @@ describe('CommandLineConfigurationSource -- switchMappings validation', () => {
 
   test('does not throw for distinct mapping keys with mixed casing', () => {
     expect(() =>
-      new CommandLineConfigurationSource([], {
+      new CommandLineConfigSource([], {
         switchMappings: { '-p': 'Server:Port', '-q': 'Other:Key' },
       })
     ).not.toThrow();
@@ -207,12 +207,12 @@ describe('CommandLineConfigurationSource -- switchMappings validation', () => {
   test('validation runs even for an empty args array (construction-time, not parse-time)', () => {
     // The malformed table is rejected before load() ever runs -- confirms
     // this isn't accidentally deferred to parse time.
-    expect(() => new CommandLineConfigurationSource([], { switchMappings: { p: 'x' } }))
+    expect(() => new CommandLineConfigSource([], { switchMappings: { p: 'x' } }))
       .toThrow();
   });
 });
 
-describe("CommandLineConfigurationProvider -- '/switch' rewrite", () => {
+describe("CommandLineConfigProvider -- '/switch' rewrite", () => {
   test("rewrites a leading '/switch' to '--switch' (long form)", () => {
     expect(load(['/Key', 'value'])).toEqual({ Key: 'value' });
   });
@@ -238,13 +238,13 @@ describe("CommandLineConfigurationProvider -- '/switch' rewrite", () => {
 });
 
 describe('addCommandLine augmentation', () => {
-  test('registers a CommandLineConfigurationSource on the builder', () => {
-    const config = new ConfigurationBuilder().addCommandLine(['--Key', 'value']).build();
+  test('registers a CommandLineConfigSource on the builder', () => {
+    const config = new ConfigBuilder().addCommandLine(['--Key', 'value']).build();
     expect(config.get('Key')).toBe('value');
   });
 
-  test('installs on ConfigurationManager, not just ConfigurationBuilder', () => {
-    const manager = new ConfigurationManager().addCommandLine(['--Key', 'value'], { '-k': 'Key' });
+  test('installs on ConfigManager, not just ConfigBuilder', () => {
+    const manager = new ConfigManager().addCommandLine(['--Key', 'value'], { '-k': 'Key' });
     expect(manager.get('Key')).toBe('value');
   });
 });

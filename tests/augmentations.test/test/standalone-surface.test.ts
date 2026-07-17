@@ -5,14 +5,14 @@
 // commit that changes the surface.
 
 import { MemoryCacheServiceCollectionExtensions } from '@rhombus-std/caching.memory';
-import { MemoryConfigurationBuilderExtensions } from '@rhombus-std/config';
-import { CommandLineConfigurationExtensions } from '@rhombus-std/config.commandline';
+import { MemoryConfigBuilderExtensions } from '@rhombus-std/config';
+import { CommandLineConfigExtensions } from '@rhombus-std/config.commandline';
 import { EnvironmentVariablesExtensions } from '@rhombus-std/config.env';
-import { JsonConfigurationExtensions } from '@rhombus-std/config.json';
+import { JsonConfigExtensions } from '@rhombus-std/config.json';
 import { MetricsServiceExtensions, TracingServiceExtensions } from '@rhombus-std/diagnostics';
 import { MetricsOptionsExtensions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptionsExtensions, LoggingServiceCollectionExtensions } from '@rhombus-std/logging';
-import { OptionsConfigurationServiceCollectionExtensions,
+import { OptionsConfigServiceCollectionExtensions,
   OptionsServiceCollectionExtensions } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -20,19 +20,19 @@ const keys = (set: object): string[] => Object.keys(set).sort();
 
 describe('standalone augmentation surface (member-name snapshots)', () => {
   test('config providers', () => {
-    expect(keys(JsonConfigurationExtensions)).toEqual(['addJsonFile', 'addJsonStream']);
+    expect(keys(JsonConfigExtensions)).toEqual(['addJsonFile', 'addJsonStream']);
     expect(keys(EnvironmentVariablesExtensions)).toEqual(['addEnvironmentVariables']);
-    expect(keys(CommandLineConfigurationExtensions)).toEqual(['addCommandLine']);
-    expect(keys(MemoryConfigurationBuilderExtensions)).toEqual(['addInMemoryCollection']);
+    expect(keys(CommandLineConfigExtensions)).toEqual(['addCommandLine']);
+    expect(keys(MemoryConfigBuilderExtensions)).toEqual(['addInMemoryCollection']);
   });
 
-  test('ServiceManifest augmentations', () => {
+  test('IServiceManifest augmentations', () => {
     expect(keys(MetricsServiceExtensions)).toEqual(['addMetrics']);
     expect(keys(TracingServiceExtensions)).toEqual(['addTracing']);
     expect(keys(LoggingServiceCollectionExtensions)).toEqual(['addLogging']);
     expect(keys(MemoryCacheServiceCollectionExtensions)).toEqual(['addDistributedMemoryCache', 'addMemoryCache']);
     expect(keys(OptionsServiceCollectionExtensions)).toEqual(['addOptions', 'postConfigure', 'validate']);
-    expect(keys(OptionsConfigurationServiceCollectionExtensions)).toEqual(['configure']);
+    expect(keys(OptionsConfigServiceCollectionExtensions)).toEqual(['configure']);
   });
 
   test('value-object augmentations (§29/#105)', () => {
@@ -44,16 +44,16 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
   test('every member is a receiver-first function', () => {
     for (
       const set of [
-        JsonConfigurationExtensions,
+        JsonConfigExtensions,
         EnvironmentVariablesExtensions,
-        CommandLineConfigurationExtensions,
-        MemoryConfigurationBuilderExtensions,
+        CommandLineConfigExtensions,
+        MemoryConfigBuilderExtensions,
         MetricsServiceExtensions,
         TracingServiceExtensions,
         LoggingServiceCollectionExtensions,
         MemoryCacheServiceCollectionExtensions,
         OptionsServiceCollectionExtensions,
-        OptionsConfigurationServiceCollectionExtensions,
+        OptionsConfigServiceCollectionExtensions,
         LoggerFilterOptionsExtensions,
         MetricsOptionsExtensions,
         TracingOptionsExtensions,

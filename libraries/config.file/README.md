@@ -28,11 +28,11 @@ builder (and manager). Set a base directory once and every file provider added
 afterward resolves its paths against it:
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.file';
 import '@rhombus-std/config.json';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .setBasePath('/etc/myapp')
   .addJsonFile('appsettings.json', { optional: true })
   .build();
@@ -42,7 +42,7 @@ Install a load-error handler to decide, per failure, whether to swallow the
 error or let it throw:
 
 ```ts
-new ConfigurationBuilder()
+new ConfigBuilder()
   .setFileLoadErrorHandler((ctx) => {
     console.warn(`could not load config: ${ctx.error}`);
     ctx.ignore = true; // swallow it; leave `ignore` false to rethrow
@@ -56,7 +56,7 @@ A file source can watch its file and reload when it changes. Pair a
 file-format provider with a watching file provider and set `reloadOnChange`:
 
 ```ts
-new ConfigurationBuilder()
+new ConfigBuilder()
   .addJsonFile('appsettings.json', { reloadOnChange: true });
 ```
 
@@ -66,22 +66,21 @@ disappears from configuration on the next load rather than lingering.
 
 ## Writing a file-format provider
 
-Derive a source from `FileConfigurationSource` and a provider from
-`FileConfigurationProvider`, implementing just the parse step:
+Derive a source from `FileConfigSource` and a provider from
+`FileConfigProvider`, implementing just the parse step:
 
 ```ts
-import type { IConfigurationBuilder } from '@rhombus-std/config.core';
-import { FileConfigurationProvider,
-  FileConfigurationSource } from '@rhombus-std/config.file';
+import type { IConfigBuilder } from '@rhombus-std/config.core';
+import { FileConfigProvider, FileConfigSource } from '@rhombus-std/config.file';
 
-class MyConfigurationSource extends FileConfigurationSource {
-  build(builder: IConfigurationBuilder) {
+class MyConfigurationSource extends FileConfigSource {
+  build(builder: IConfigBuilder) {
     this.ensureDefaults(builder);
     return new MyConfigurationProvider(this);
   }
 }
 
-class MyConfigurationProvider extends FileConfigurationProvider {
+class MyConfigurationProvider extends FileConfigProvider {
   protected loadContent(content: string): void {
     for (const [key, value] of parseMyFormat(content)) {
       this.set(key, value);
@@ -95,14 +94,14 @@ routing; your `loadContent` only turns decoded text into key/value pairs.
 
 ## Key exports
 
-| Export                        | What it is                                                                                                                              |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `FileConfigurationSource`     | Abstract source base — file provider, path, `optional`, `reloadOnChange`, `reloadDelay`, plus `ensureDefaults` / `resolveFileProvider`. |
-| `FileConfigurationProvider`   | Abstract provider base — reads the file, calls your `loadContent`, reloads on change, and is disposable.                                |
-| `FileLoadErrorContext`        | The value passed to a load-error handler — the `provider`, the `error`, and a settable `ignore` flag.                                   |
-| `FormatError`                 | Thrown by a parser when a file's contents are malformed.                                                                                |
-| `InvalidDataError`            | The base's wrapper around a parse failure, carrying the original as `cause`.                                                            |
-| `FileConfigurationExtensions` | The builder methods — `setFileProvider` / `getFileProvider` / `setBasePath` / `setFileLoadErrorHandler` / `getFileLoadErrorHandler`.    |
+| Export                 | What it is                                                                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `FileConfigSource`     | Abstract source base — file provider, path, `optional`, `reloadOnChange`, `reloadDelay`, plus `ensureDefaults` / `resolveFileProvider`. |
+| `FileConfigProvider`   | Abstract provider base — reads the file, calls your `loadContent`, reloads on change, and is disposable.                                |
+| `FileLoadErrorContext` | The value passed to a load-error handler — the `provider`, the `error`, and a settable `ignore` flag.                                   |
+| `FormatError`          | Thrown by a parser when a file's contents are malformed.                                                                                |
+| `InvalidDataError`     | The base's wrapper around a parse failure, carrying the original as `cause`.                                                            |
+| `FileConfigExtensions` | The builder methods — `setFileProvider` / `getFileProvider` / `setBasePath` / `setFileLoadErrorHandler` / `getFileLoadErrorHandler`.    |
 
 ## How it fits
 

@@ -12,16 +12,16 @@ const declaringModule = "@rhombus-std/di.core"
 // The di.core authoring interface each matched member is declared on — its runtime
 // overloads AND the transformer's sugar overloads share one interface:
 //
-//	add / addFactory / addValue → ServiceManifestBase
+//	add / addFactory / addValue → IServiceManifestBase
 //	as                          → AddBuilder
-//	resolve                     → RequiredResolver
-//	resolveAsync / tryResolve   → Resolver
-//	isService                   → ServiceQuery
+//	resolve                     → IRequiredResolver
+//	resolveAsync / tryResolve   → IResolver
+//	isService                   → IServiceQuery
 var (
-	registrationInterfaces = map[string]bool{"ServiceManifestBase": true}
+	registrationInterfaces = map[string]bool{"IServiceManifestBase": true}
 	asInterfaces           = map[string]bool{"AddBuilder": true}
-	resolveInterfaces      = map[string]bool{"RequiredResolver": true, "Resolver": true}
-	isServiceInterfaces    = map[string]bool{"ServiceQuery": true}
+	resolveInterfaces      = map[string]bool{"IRequiredResolver": true, "IResolver": true}
+	isServiceInterfaces    = map[string]bool{"IServiceQuery": true}
 )
 
 // memberAnchoredOnDiCore reports whether the member referenced at name resolves to

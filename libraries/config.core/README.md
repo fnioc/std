@@ -18,16 +18,15 @@ bun add @rhombus-std/config.core
 You'll rarely install this on its own for application code — `@rhombus-std/config`
 already re-exports every type here, so depending on it pulls these in for
 free. Reach for `config.core` directly when you're writing a package that
-needs the types (for example, a custom `IConfigurationSource`) without
+needs the types (for example, a custom `IConfigSource`) without
 depending on the engine that implements them.
 
 ## Usage
 
 ```ts
-import type { IConfiguration,
-  IConfigurationSource } from '@rhombus-std/config.core';
+import type { IConfig, IConfigSource } from '@rhombus-std/config.core';
 
-function readPort(config: IConfiguration): string | undefined {
+function readPort(config: IConfig): string | undefined {
   return config.get('Server:Port');
 }
 ```
@@ -40,18 +39,18 @@ runtime implementation to type-check against.
 
 All of these are types/interfaces — no runtime values.
 
-| Export                   | Describes                                                                                                                                                                     |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `IConfiguration`         | A node in the configuration tree: `get`/`getNum`/`getBool` leaf reads, `set`, `getSection`, `getChildren`, `toObject`, `getReloadToken`.                                      |
-| `IConfigurationSection`  | An `IConfiguration` node that also knows its own `key`, `path`, and settable `value` — a sub-tree, not the root.                                                              |
-| `IConfigurationRoot`     | An `IConfiguration` that owns `providers` and can `reload()` them.                                                                                                            |
-| `IConfigurationBuilder`  | Accumulates `IConfigurationSource`s via `add()` and turns them into an `IConfigurationRoot` via `build()`. Exposes a shared `properties` bag for builder↔source coordination. |
-| `IConfigurationManager`  | Both an `IConfigurationBuilder` and an `IConfiguration` at once — a mutable object you can keep adding sources to while also reading it live.                                 |
-| `IConfigurationSource`   | A factory: `build(builder)` returns the `IConfigurationProvider` for this source.                                                                                             |
-| `IConfigurationProvider` | The read/write backend behind one source: `tryGet`, `set`, `load`, `getChildKeys`, `getReloadToken`.                                                                          |
-| `ITryGetResult<T>`       | The tuple `[false]` on a miss or `[true, value]` on a hit — the return shape for lookups that need to distinguish "absent" from "present but falsy."                          |
-| `ConfigObject`           | The nested plain-string-object shape returned by `IConfiguration.toObject()`.                                                                                                 |
-| `IndexedSection`         | An `IConfigurationSection` with an index signature, so `config.Server.Port`-style dot/bracket navigation type-checks on an untyped tree.                                      |
+| Export             | Describes                                                                                                                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IConfig`          | A node in the configuration tree: `get`/`getNum`/`getBool` leaf reads, `set`, `getSection`, `getChildren`, `toObject`, `getReloadToken`.                        |
+| `IConfigSection`   | An `IConfig` node that also knows its own `key`, `path`, and settable `value` — a sub-tree, not the root.                                                       |
+| `IConfigRoot`      | An `IConfig` that owns `providers` and can `reload()` them.                                                                                                     |
+| `IConfigBuilder`   | Accumulates `IConfigSource`s via `add()` and turns them into an `IConfigRoot` via `build()`. Exposes a shared `properties` bag for builder↔source coordination. |
+| `IConfigManager`   | Both an `IConfigBuilder` and an `IConfig` at once — a mutable object you can keep adding sources to while also reading it live.                                 |
+| `IConfigSource`    | A factory: `build(builder)` returns the `IConfigProvider` for this source.                                                                                      |
+| `IConfigProvider`  | The read/write backend behind one source: `tryGet`, `set`, `load`, `getChildKeys`, `getReloadToken`.                                                            |
+| `ITryGetResult<T>` | The tuple `[false]` on a miss or `[true, value]` on a hit — the return shape for lookups that need to distinguish "absent" from "present but falsy."            |
+| `ConfigObject`     | The nested plain-string-object shape returned by `IConfig.toObject()`.                                                                                          |
+| `IndexedSection`   | An `IConfigSection` with an index signature, so `config.Server.Port`-style dot/bracket navigation type-checks on an untyped tree.                               |
 
 Every accessor here is deliberately one-type-per-input: `get` returns a raw
 string or a caller-supplied factory's result, `getNum`/`getBool` coerce and
@@ -68,10 +67,10 @@ type used by `getReloadToken()`, and on nothing else.
   root, and section tree that actually implement these interfaces, plus
   reload tokens and a runtime schema.
 - The source packages — `config.json`, `config.env`, `config.commandline` —
-  each implement `IConfigurationSource`/`IConfigurationProvider` and register
-  themselves onto `IConfigurationBuilder`/`IConfigurationManager`.
+  each implement `IConfigSource`/`IConfigProvider` and register
+  themselves onto `IConfigBuilder`/`IConfigManager`.
 - [`options.augmentations`](../options.augmentations/README.md) binds an
-  `IConfiguration` section into an `Options<T>`, using these same interfaces
+  `IConfig` section into an `IOptions<T>`, using these same interfaces
   as its input.
 
 If you're building an application, install `@rhombus-std/config` (and the
@@ -83,5 +82,5 @@ the shape without the implementation.
 - Zero runtime means zero side effects: importing this package never runs
   any code, registers anything, or touches a builder. It only exists at the
   type level.
-- `IConfigurationManager` is a structural combination (`extends IConfiguration, IConfigurationBuilder`) —
+- `IConfigManager` is a structural combination (`extends IConfig, IConfigBuilder`) —
   any object satisfying both shapes satisfies it, with no marker or brand required.

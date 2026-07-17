@@ -1,4 +1,4 @@
-import { MemoryConfigurationSource } from '@rhombus-std/config';
+import { MemoryConfigSource } from '@rhombus-std/config';
 import { Host } from '@rhombus-std/hosting/_/index';
 import { expect, test } from 'bun:test';
 
@@ -38,7 +38,7 @@ test('asHostBuilder replays configureAppConfiguration onto the shared configurat
 
   let seenDuringCompose: string | undefined;
   hostBuilder.configureAppConfiguration((_context, config) => {
-    config.add(new MemoryConfigurationSource({ initialData: { 'Custom:Key': 'fromAdapter' } }));
+    config.add(new MemoryConfigSource({ initialData: { 'Custom:Key': 'fromAdapter' } }));
     seenDuringCompose = config.build().get('Custom:Key');
   });
 
@@ -55,7 +55,7 @@ test('asHostBuilder rejects a late host-configuration change to the environment'
   // The environment was already read to build the defaults, so changing it via a
   // late host-configuration callback is unsupported.
   hostBuilder.configureHostConfiguration((config) => {
-    config.add(new MemoryConfigurationSource({ initialData: { environment: 'Staging' } }));
+    config.add(new MemoryConfigSource({ initialData: { environment: 'Staging' } }));
   });
 
   expect(() => appBuilder.build()).toThrow(/environment changed/i);

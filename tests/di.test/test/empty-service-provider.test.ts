@@ -1,7 +1,7 @@
 import { DiError, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 
-// `EmptyServiceProvider` — a null-object `ServiceProvider` with no application
+// `EmptyServiceProvider` — a null-object `IServiceProvider` with no application
 // services. Every token is unregistered except the ONE intrinsic built-in, the
 // provider itself.
 

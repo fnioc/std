@@ -1,4 +1,4 @@
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 import type { IHostEnvironment } from './IHostEnvironment';
 
 /**
@@ -10,10 +10,10 @@ export interface HostBuilderContext {
   hostingEnvironment: IHostEnvironment;
 
   /**
-   * The {@link IConfiguration} containing the merged configuration of the
+   * The {@link IConfig} containing the merged configuration of the
    * application and the host.
    */
-  configuration: IConfiguration;
+  configuration: IConfig;
 
   /**
    * A central location for sharing state between components during the host

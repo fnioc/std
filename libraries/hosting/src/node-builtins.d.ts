@@ -3,7 +3,7 @@
 // §39/§44), so the modules are declared here with exactly the signatures the
 // call sites use. None of these is imported by hosting itself any longer:
 // `node:fs` and `node:path` come in because hosting is still src-referenced
-// onto config.json (see #68), whose `JsonConfigurationProvider` source
+// onto config.json (see #68), whose `JsonConfigProvider` source
 // co-compiles in this program and imports both; likewise `node:async_hooks`
 // comes in through logging's src-referenced `LoggerExternalScopeProvider`.
 // (host-composition dropped its own `node:path` import so hosting bundles for

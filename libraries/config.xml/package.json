@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.xml",
   "version": "0.0.0",
-  "description": "XML file configuration provider for @rhombus-std/config: XmlConfigurationSource/Provider + XmlStream* + the addXmlFile/addXmlStream augmentations, on the config.file base.",
+  "description": "XML file configuration provider for @rhombus-std/config: XmlConfigSource/Provider + XmlStream* + the addXmlFile/addXmlStream augmentations, on the config.file base.",
   "keywords": [
     "configuration",
     "config",

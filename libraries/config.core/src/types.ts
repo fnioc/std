@@ -4,17 +4,17 @@
 // pattern. Grouped here (rather than split further) because none of these has
 // its own ME source file to mirror -- see docs/decisions.md's split-oracle note.
 
-import type { IConfigurationSection } from './IConfigurationSection';
+import type { IConfigSection } from './IConfigSection';
 
 /**
  * A node's subtree as a nested plain string object. A node that has children
  * is a nested record (its own scalar value, if any, is dropped -- see
- * {@link IConfiguration.toObject}); a pure leaf is its string value.
+ * {@link IConfig.toObject}); a pure leaf is its string value.
  */
 export type ConfigObject = { readonly [key: string]: string | ConfigObject; };
 
 /**
- * The index-navigable Section type: an {@link IConfigurationSection} whose
+ * The index-navigable Section type: an {@link IConfigSection} whose
  * unknown string keys resolve to further sections, so `config.Server.Port`
  * dot/bracket navigation type-checks.
  *
@@ -26,10 +26,10 @@ export type ConfigObject = { readonly [key: string]: string | ConfigObject; };
  * (`config.Server`) types as `IndexedSection | undefined` -- a conservative
  * false-positive for navigation (runtime always returns a Section for a string
  * key), by design. The typed path without that tax is a runtime schema
- * (`ConfigurationBuilder.withSchema`), whose result has named keys and no
+ * (`ConfigBuilder.withSchema`), whose result has named keys and no
  * index signature.
  */
-export type IndexedSection = IConfigurationSection & {
+export type IndexedSection = IConfigSection & {
   readonly [key: string]: IndexedSection;
 };
 

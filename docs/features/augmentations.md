@@ -12,19 +12,19 @@ C# lets you declare a **static method that behaves like an instance member of an
 doesn't own**:
 
 ```csharp
-public static class JsonConfigurationExtensions
+public static class JsonConfigExtensions
 {
-    public static IConfigurationBuilder AddJsonFile(this IConfigurationBuilder builder, string path)
+    public static IConfigBuilder AddJsonFile(this IConfigBuilder builder, string path)
     {
-        return builder.Add(new JsonConfigurationSource(path));
+        return builder.Add(new JsonConfigSource(path));
     }
 }
 ```
 
 Once this exists, `builder.AddJsonFile("appsettings.json")` compiles for **every** value statically
-known as an `IConfigurationBuilder` — a concrete class that implements it, a subinterface of it, an
+known as an `IConfigBuilder` — a concrete class that implements it, a subinterface of it, an
 interface-typed variable or field, a generic type parameter constrained to it. Nobody who writes a
-new `IConfigurationBuilder` implementation has to do anything for `AddJsonFile` to show up on it;
+new `IConfigBuilder` implementation has to do anything for `AddJsonFile` to show up on it;
 the dispatch is **nominal** (by declared interface identity), not structural, and it is resolved at
 compile time against the interface, never against a concrete type's name or shape.
 
@@ -53,10 +53,10 @@ first-party-only capability. Downstream/consumer packages implement receivers an
 augmentation for free (next section); they don't get to mint new ones. This is a deliberate design
 boundary, not a temporary gap.
 
-Steps, for a receiver interface `IConfigurationBuilder`:
+Steps, for a receiver interface `IConfigBuilder`:
 
 **1. Decide OPEN or CLOSED.** A receiver is **OPEN** if it's extended by downstream packages that
-load after its concrete class already exists (`ServiceManifest`, `IConfigurationBuilder`,
+load after its concrete class already exists (`ServiceManifest`, `IConfigBuilder`,
 `ILoggingBuilder`, `IMetricsBuilder`, `ITracingBuilder`, `IHost`, `IHostBuilder`,
 `IHostEnvironment`) — these need the token registry (see below). A receiver is **CLOSED** if the
 interface and every one of its augmentations live inside one family's own package (`IMemoryCache`,
@@ -68,14 +68,14 @@ satisfying `AugmentationSet<Receiver>`:
 ```ts
 import type { AugmentationSet } from '@rhombus-std/primitives';
 
-export const JsonConfigurationExtensions = {
-  addJsonFile(builder: IConfigurationBuilder, path: string, optional = false) {
-    return builder.add(new JsonConfigurationSource(path, optional));
+export const JsonConfigExtensions = {
+  addJsonFile(builder: IConfigBuilder, path: string, optional = false) {
+    return builder.add(new JsonConfigSource(path, optional));
   },
-} satisfies AugmentationSet<IConfigurationBuilder>;
+} satisfies AugmentationSet<IConfigBuilder>;
 ```
 
-This const **is** the callable surface — `JsonConfigurationExtensions.addJsonFile(builder, path)`
+This const **is** the callable surface — `JsonConfigExtensions.addJsonFile(builder, path)`
 already works, with no installation step, as a plain function. Installation (below) is what makes
 `builder.addJsonFile(path)` also work.
 
@@ -84,8 +84,8 @@ declaring module (this placement matters — see Gotchas):
 
 ```ts
 declare module './configuration-builder.js' {
-  interface IConfigurationBuilder {
-    addJsonFile(path: string, optional?: boolean): IConfigurationBuilder;
+  interface IConfigBuilder {
+    addJsonFile(path: string, optional?: boolean): IConfigBuilder;
   }
 }
 ```
@@ -98,11 +98,10 @@ declare module './configuration-builder.js' {
   `nameof<Receiver>()` call (never an exported constant — see Gotchas):
 
   ```ts
-  registerAugmentations(nameof<IConfigurationBuilder>(),
-    JsonConfigurationExtensions);
+  registerAugmentations(nameof<IConfigBuilder>(), JsonConfigExtensions);
   ```
 
-  Any class decorated `@augment(nameof<IConfigurationBuilder>())` — anywhere, imported in any
+  Any class decorated `@augment(nameof<IConfigBuilder>())` — anywhere, imported in any
   order, defined before or after this call runs — picks the new member up automatically.
 
 ## Implementing an augmented interface (the supported consumer feature)
@@ -114,9 +113,9 @@ augmentations registered _after_ your class is defined).
 **1. Implement the interface normally:**
 
 ```ts
-export class MyConfigurationBuilder implements IConfigurationBuilder {
-  add(source: IConfigurationSource): IConfigurationBuilder {/* ... */}
-  build(): IConfiguration {/* ... */}
+export class MyConfigurationBuilder implements IConfigBuilder {
+  add(source: IConfigSource): IConfigBuilder {/* ... */}
+  build(): IConfig {/* ... */}
 }
 ```
 
@@ -124,10 +123,10 @@ export class MyConfigurationBuilder implements IConfigurationBuilder {
 under:**
 
 ```ts
-@augment(nameof<IConfigurationBuilder>())
-export class MyConfigurationBuilder implements IConfigurationBuilder {
-  add(source: IConfigurationSource): IConfigurationBuilder {/* ... */}
-  build(): IConfiguration {/* ... */}
+@augment(nameof<IConfigBuilder>())
+export class MyConfigurationBuilder implements IConfigBuilder {
+  add(source: IConfigSource): IConfigBuilder {/* ... */}
+  build(): IConfig {/* ... */}
 }
 ```
 
@@ -135,12 +134,12 @@ export class MyConfigurationBuilder implements IConfigurationBuilder {
 class's own type**, not just the bare interface's:
 
 ```ts
-export interface MyConfigurationBuilder extends IConfigurationBuilder {}
+export interface MyConfigurationBuilder extends IConfigBuilder {}
 ```
 
 Without this step, callers holding a `MyConfigurationBuilder`-typed reference (rather than an
-`IConfigurationBuilder`-typed one) won't see the augmented members in their type, even though the
-class still satisfies `implements IConfigurationBuilder`. The extends-merge closes that gap.
+`IConfigBuilder`-typed one) won't see the augmented members in their type, even though the
+class still satisfies `implements IConfigBuilder`. The extends-merge closes that gap.
 
 That's it. Every augmentation on that token — the ones that existed when you wrote this class, and
 every one registered on it afterward, by any package — now shows up as a real, typed, callable
@@ -186,8 +185,8 @@ quietly overwriting the other.
 
 **Tokens are values, not names.** `Token` (defined in `primitives`, re-exported by `di.core`) is
 derived inline at every call site via `nameof<Receiver>()` — there are no exported token constants.
-A transformer lowers `nameof<IConfigurationBuilder>()` to the literal string
-`"@rhombus-std/config:IConfigurationBuilder"`; a hand-written, no-transformer caller just writes
+A transformer lowers `nameof<IConfigBuilder>()` to the literal string
+`"@rhombus-std/config:IConfigBuilder"`; a hand-written, no-transformer caller just writes
 that string directly. Two calls naming the same interface always produce the same token, regardless
 of which package or file they're in.
 

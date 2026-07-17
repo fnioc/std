@@ -54,11 +54,11 @@ beforeAll(() => {
   );
   writeFileSync(
     join(projDir, 'src', 'main.ts'),
-    `import { ConfigurationBuilder } from "@rhombus-std/config";
+    `import { ConfigBuilder } from "@rhombus-std/config";
 import "@rhombus-std/config/with-type-augment";
 import type { ServerConfig } from "./config.js";
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addInMemoryCollection({ host: "example.com", port: "8443", ssl: "true" })
   .withType<ServerConfig>()
   .build();
