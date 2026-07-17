@@ -44,7 +44,14 @@ func (c *context) lowerStatement(statement *shimast.Node) []*shimast.Node {
 	}
 	expr := statement.AsExpressionStatement().Expression
 	registrations := c.findRegistrationCalls(expr)
-	if len(registrations) == 0 {
+	// A statement with no recognized registration is still kept in the lowering
+	// path when it carries a trailing `.as<"x">()`: the inline stage substitutes
+	// `add<I>(C)` into a 3-argument `add(...)` the di stage deliberately no longer
+	// recognizes, so the `.as` chained onto it would otherwise survive un-lowered.
+	// `.as` lowering lives in lowerRegistrationExpression, which tolerates an empty
+	// plan map, so an empty registration set with an `.as` present just rewrites
+	// the `.as`.
+	if len(registrations) == 0 && !c.hasAsCall(expr) {
 		return nil
 	}
 
@@ -168,6 +175,30 @@ func (c *context) findRegistrationCalls(expr *shimast.Node) []foundReg {
 				}
 				found = append(found, reg)
 			}
+		}
+		node.ForEachChild(func(child *shimast.Node) bool {
+			walk(child)
+			return false
+		})
+	}
+	walk(expr)
+	return found
+}
+
+// hasAsCall reports whether expr contains an `.as<"x">()` chain call. It mirrors
+// findRegistrationCalls' walk, short-circuiting on the first hit, and lets a
+// statement whose registration call was pre-empted by the inline stage still
+// reach `.as` lowering.
+func (c *context) hasAsCall(expr *shimast.Node) bool {
+	found := false
+	var walk func(node *shimast.Node)
+	walk = func(node *shimast.Node) {
+		if node == nil || found {
+			return
+		}
+		if node.Kind == shimast.KindCallExpression && isAsCall(c.checker, node) {
+			found = true
+			return
 		}
 		node.ForEachChild(func(child *shimast.Node) bool {
 			walk(child)
