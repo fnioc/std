@@ -12,6 +12,7 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
+	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
@@ -24,7 +25,14 @@ const nameofName = "nameof"
 // New builds the per-file transform: it visits every call expression, and
 // replaces each single-type-argument call to `nameof` with a string literal
 // holding the token derived from the type argument.
-func New(prog *driver.Program, ctx *tokens.Context, _ func(plugin.Diagnostic)) plugin.FileTransform {
+//
+// artifacts is the inline stage's per-run state (nil when the inline stage did
+// not run — behavior is then bit-for-bit the original). A substituted `nameof`
+// call carries no checker symbol (its callee is a side-parsed clone), so
+// isNameofCall can never anchor it; instead the inline stage registered it in
+// artifacts.PrimitiveCalls with the type it resolved at the original call site,
+// and this stage derives the SAME token from that registered type.
+func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, _ func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		var visitor *shimast.NodeVisitor
@@ -40,6 +48,10 @@ func New(prog *driver.Program, ctx *tokens.Context, _ func(plugin.Diagnostic)) p
 					token, _ := tokens.DeriveToken(ctx, t)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
+				if use, ok := registeredNameof(artifacts, node); ok {
+					token, _ := tokens.DeriveToken(ctx, use.TypeArgs[0])
+					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+				}
 			}
 			return visitor.VisitEachChild(node)
 		}
@@ -50,6 +62,19 @@ func New(prog *driver.Program, ctx *tokens.Context, _ func(plugin.Diagnostic)) p
 		}
 		return elideNameofImports(ec.Factory.AsNodeFactory(), output.AsSourceFile())
 	}
+}
+
+// registeredNameof reports whether node is a synthetic `nameof` call the inline
+// stage registered with a resolved type argument.
+func registeredNameof(artifacts *inlinetransform.Artifacts, node *shimast.Node) (inlinetransform.PrimitiveUse, bool) {
+	if artifacts == nil {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	use, ok := artifacts.PrimitiveCalls[node]
+	if !ok || use.Name != nameofName || len(use.TypeArgs) == 0 {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	return use, true
 }
 
 // elideNameofImports drops the now-unreferenced `nameof` binding from the file's

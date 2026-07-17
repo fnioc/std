@@ -138,11 +138,20 @@ func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[
 	return rewrite(ec, body, params, func() *shimast.Node { return temp })
 }
 
-// substituteIntoReceiver is substituteInto with a fresh receiver clone minted
-// for each `this` site rather than a shared temp reference.
+// substituteIntoReceiver is substituteInto with the ORIGINAL receiver node
+// spliced at the first `this` site and fresh clones at any further sites. The
+// original is program-bound, so downstream stages that checker-query the
+// receiver get an answerable node; the extra clones are bare and nothing
+// downstream queries them (a duplicated `this` site only ever holds a simple,
+// side-effect-free receiver by the effectful ≥2× path being handled separately).
 func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
+	first := true
 	return rewrite(ec, body, params, func() *shimast.Node {
+		if first {
+			first = false
+			return receiver
+		}
 		return factory.DeepCloneNode(receiver)
 	})
 }
@@ -166,7 +175,12 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 			return node
 		case shimast.KindIdentifier:
 			if arg, ok := params[node.Text()]; ok {
-				return factory.DeepCloneNode(arg)
+				// Splice the ORIGINAL argument node (same pointer at every site):
+				// positioned nodes print from source text, so reuse is print-safe,
+				// and checker queries hit the one real binding. The authoring lint
+				// bounds a value param to at most one runtime-position occurrence;
+				// primitive-position occurrences may repeat and deliberately alias.
+				return arg
 			}
 			return node
 		case shimast.KindPropertyAccessExpression:
