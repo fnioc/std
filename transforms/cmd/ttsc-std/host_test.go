@@ -118,6 +118,76 @@ func swapStreams(out, err *bytes.Buffer) func() {
 	return func() { stdout, stderr = prevOut, prevErr }
 }
 
+// TestSelectStagesBundleExpandsToOrderedSet is the preset core: a consumer that
+// declares ONLY the di.core bundle descriptor (rhombusstd_di_bundle) must get its
+// four constituent stages selected in canonical order — inline -> nameof ->
+// signatureof -> di — without ever listing them by hand. The binary owns both the
+// membership and the order.
+func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
+	got, err := selectStages([]pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{
+		stagePrefix + "inline",
+		stagePrefix + "nameof",
+		stagePrefix + "signatureof",
+		stagePrefix + "di",
+	}
+	names := stageNames(got)
+	if len(names) != len(want) {
+		t.Fatalf("bundle selection = %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("bundle selection = %v, want %v", names, want)
+		}
+	}
+}
+
+// TestSelectStagesBundlePlusExtraStageDedups: declaring the bundle AND one of its
+// own constituents (or a stage outside it) must not double-run any stage, and the
+// result stays in canonical order. Here the manifest carries the bundle plus an
+// explicit `di` (already in the bundle) and `di_options` (outside it).
+func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
+	got, err := selectStages([]pluginEntry{
+		{Name: stagePrefix + "di_options"},
+		{Name: stagePrefix + "di_bundle"},
+		{Name: stagePrefix + "di"},
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{
+		stagePrefix + "inline",
+		stagePrefix + "nameof",
+		stagePrefix + "signatureof",
+		stagePrefix + "di",
+		stagePrefix + "di_options",
+	}
+	names := stageNames(got)
+	if len(names) != len(want) {
+		t.Fatalf("bundle+extra selection = %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("bundle+extra selection = %v, want %v", names, want)
+		}
+	}
+}
+
+// TestSelectStagesUnknownBundleIsHardError: a prefixed name that is neither a
+// stage nor a bundle stays a hard error naming it.
+func TestSelectStagesUnknownBundleIsHardError(t *testing.T) {
+	_, err := selectStages([]pluginEntry{{Name: stagePrefix + "mystery_bundle"}}, nil)
+	if err == nil {
+		t.Fatal("expected UNKNOWN_STAGE error for an unknown bundle, got nil")
+	}
+	if got := err.Error(); !contains(got, "UNKNOWN_STAGE") {
+		t.Fatalf("error %q does not mention UNKNOWN_STAGE", got)
+	}
+}
+
 func TestSelectStagesScopesToDeclaredStages(t *testing.T) {
 	// A nameof-only consumer activates ONLY the nameof stage — di must not run.
 	got, err := selectStages([]pluginEntry{{Name: stagePrefix + "nameof"}}, nil)
