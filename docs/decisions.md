@@ -1676,7 +1676,7 @@ and their test packages stay and keep passing verbatim.
   `add<T>()` / `addOptions<T>()` / `withType<T>()` into the shipped JS. The two must produce
   **semantically equivalent lowering** — token strings byte-identical — and that equivalence is
   the load-bearing invariant, not the code shape.
-- **Descriptor wiring mirrors the canonical `ttsc` recipe.** Each transformer package keeps its
+- ~~**Descriptor wiring mirrors the canonical `ttsc` recipe.** Each transformer package keeps its
   untouched ts-patch entry on the `.` export (`transform`), and gains a parallel `./ttsc` subpath
   pointing at a thin `ttsc.mjs` descriptor plus a `"ttsc": { "plugin": { "transform":
   "@rhombus-std/<pkg>/ttsc" } }` marker in its `package.json`. The descriptor is a JS shim whose
@@ -1684,15 +1684,20 @@ and their test packages stay and keep passing verbatim.
   it hands `ttsc` the ABSOLUTE PATH to the Go plugin source shipped in the monorepo, and `ttsc`
   compiles+runs it as a native sidecar with the local Go toolchain. `ttsc` / `typescript@^7` /
   `@ttsc/unplugin` are worktree-local bun devDeps; the isolated linker keeps the existing
-  `typescript@5.9.3` packages untouched.
-- **One native backend per pass → the aggregate host.** `ttsc` runs a single native plugin per
+  `typescript@5.9.3` packages untouched.~~
+  ~~Superseded by `decisions.v2.md` §90 (every transformer's `/ttsc` subpath resolves to the same
+  owner `ttsc-std` binary, not a distinctly-named `cmd/ttsc-<name>` per plugin); struck — never
+  read for behavior.~~
+- ~~**One native backend per pass → the aggregate host.** `ttsc` runs a single native plugin per
   source-to-source pass and hard-errors on two. A consumer needing both the registration transform
   AND its `addOptions` satellite (the app example) therefore cannot list two `/ttsc` plugins;
   it wires ONE aggregate — `transforms/cmd/ttsc-di-app`, exposed as
   `@rhombus-std/di.transformer.options/ttsc-app` — that composes both stages back-to-back over one
   loaded program. The satellite's transform is extracted to `internal/dioptionstransform` so the
   aggregate and the standalone `cmd/ttsc-di-options` share it; the call shapes are disjoint and
-  order-independent, so tokens are identical to the two standalone sidecars.
+  order-independent, so tokens are identical to the two standalone sidecars.~~
+  ~~Superseded by `decisions.v2.md` §90 (one owner `ttsc-std` binary linking every stage, selected
+  at runtime — no per-combination aggregate host); struck — never read for behavior.~~
 - **The alias-symbol shim.** The checker records the type ALIAS a reference was spelled through in
   an unexported `alias` field; the `ttsc` shim surfaces it only as audit metadata, never as an
   accessor. `internal/tokens/alias.go` reads it via a layout-mirrored, offset-checked
