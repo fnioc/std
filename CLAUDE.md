@@ -273,46 +273,11 @@ before touching):
   a private inlined copy forks identity and breaks the install (§9). config keeps providers
   external for the same reason. **Every bundling package keeps `@rhombus-std/primitives`
   external** — an inlined copy forks the augmentation registry's Map + event bus (§38).
-- **Augmentations, one object literal per ME static class** — every augmentation is a single named
-  exported const mirroring exactly one reference-stack static extension class (e.g.
-  `JsonConfigurationExtensions`), `satisfies AugmentationSet<R>`, with camelCased receiver-first
-  members; there are no floating standalone `addX(receiver, …)` functions — the object-literal
-  member (`JsonConfigurationExtensions.addJsonFile(builder, …)`) IS the functional call surface
-  (§28). Install path (§38): CLOSED receivers (interface + all augmentations in one family) use
-  direct `applyAugmentations`; OPEN receivers (extended by downstream packages) register via
-  `registerAugmentations(nameof<Receiver>(), TheConst)` beside the const, and each concrete class
-  is decorated `@augment(nameof<Receiver>())` — one token can decorate several classes. Tokens are
-  derived INLINE at each use site (`nameof<Interface>()`, lowered to
-  `"<declaring-package>:<TypeName>"`); there are NO exported token consts (§40). A hand-written
-  (no-transformer) consumer writes the literal string directly. A
-  `.core`-authored const's interface-side `declare module` merge lives beside it in `.core`.
-  **Implementer class-side merges are retired (§71, supersedes §38's "stays downstream" text):**
-  a concrete class that implements an augmented interface gets a same-name empty extends-merge
-  beside its `@augment` decoration (`export interface C extends I {}`) instead of restating
-  members — the extends binds the interface symbol onto the class so every augmentation flows
-  through live, present or future. Cross-package class-side merges (a downstream package widening
-  an upstream `internal/*`-reached class) are banned outright as the #168 publish-hazard class,
-  not merely retired. The carve-out: a class with no augmented-interface counterpart (a CLOSED
-  value-object receiver, a many-implementers receiver left deliberately unmerged, or a class that
-  intentionally doesn't implement its family's base interface) keeps a direct class-side merge —
-  flagged per-site for owner review, not auto-converted. `publishConfig.exports` is now derived by
-  `scripts/derive-publish-config.ts` (`--check` wired into the root `lint` script) rather than
-  hand-authored, closing the matching #168 hazard on the publish-config side. **Merge-identity
-  rule:** every interface-side merge for one interface must
-  resolve to the interface's declaring module file — but a DOWNSTREAM/published-facing author
-  merging onto an OPEN receiver it doesn't own must resolve through the receiver's PUBLIC BARREL,
-  never `internal/*` (the publish-time scrub makes `internal/*` unreachable for a published
-  extender, §47; `di.core`'s `authoring.ts` documents the barrel form). Mixing barrel and
-  declaring-module specifiers for the SAME interface makes TS treat the `this`-returning members as
-  unrelated this-types and breaks `implements` (§38). **Many-implementers rule — RETIRED (§80):**
-  there is no single- vs many-implementer distinction; every augmented receiver, `ILogger` and
-  `IDistributedCache` included, takes the standard `declare module` interface merge + per-class
-  `extends`. The accepted trade-off is that every implementer (real or test-fake) carries the merged
-  members via `extends`; the `log`/`beginScope`/`set` primitive-collision exclusions stay
-  standalone-only.
-- **Transformer lowering matches at the declaration site** — every sugar-call matcher anchors on
-  the resolved member's declaration inside its declaring interface's `declare module`, never on
-  receiver type names or call shape alone (§88).
+- **Augmentations** — one named object literal per augmentation set (`satisfies
+  AugmentationSet<R>`), authored first-party-only, installed via direct `applyAugmentations` for
+  CLOSED receivers or the token registry + `@augment` decorator for OPEN ones; the transformer
+  matches sugar calls at the receiver's declaration site, never by type name or call shape. Full
+  mechanics, authoring steps, and gotchas: `docs/augmentations.md` (§89).
 
 **Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
