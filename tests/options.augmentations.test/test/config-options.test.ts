@@ -2,7 +2,7 @@
 // the container, and observe reactivity across a reload -- the config -> Options
 // bridge (#40) exercised through its public authoring surface only.
 
-import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import type { IOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
@@ -15,10 +15,10 @@ interface WidgetOptions {
 
 const TOKEN = 'test:WidgetOptions';
 
-function rootWith(data: Record<string, string>): IConfigurationRoot {
+function rootWith(data: Record<string, string>): IConfigRoot {
   // build() is typed to the index-navigable Section (the coercion seam); the
-  // runtime object IS the ConfigurationRoot, so cast to reach reload()/set().
-  return new ConfigurationBuilder().addInMemoryCollection(data).build() as unknown as IConfigurationRoot;
+  // runtime object IS the ConfigRoot, so cast to reach reload()/set().
+  return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
 }
 
 describe('configure — section-to-options binding', () => {

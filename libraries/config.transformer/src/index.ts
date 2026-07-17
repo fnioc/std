@@ -1,6 +1,6 @@
 // @rhombus-std/config.transformer -- the @rhombus-std/config ts-patch compiler transformer.
 //
-// Build-time only. It rewrites `.withType<T>()` on a `ConfigurationBuilder` into
+// Build-time only. It rewrites `.withType<T>()` on a `ConfigBuilder` into
 // a generated `.withSchema({...})` runtime schema literal at compile time, so a
 // plain interface yields fully-typed, fully-coerced configuration with zero
 // hand-written schema. The runtime (`@rhombus-std/config`) does all coercion; this

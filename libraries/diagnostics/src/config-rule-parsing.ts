@@ -1,11 +1,11 @@
 // Shared helpers for parsing the metrics/tracing rule configuration schema out of
-// an IConfiguration. The metrics and tracing binders (MetricsConfigureOptions /
+// an IConfig. The metrics and tracing binders (MetricsConfigureOptions /
 // TracingConfigureOptions) share the exact same shape -- section keys naming a
 // scope, then per-meter/per-source bool leaves or nested per-instrument/
 // per-operation bool leaves, with "Default" as the match-all synonym -- so the
 // tree-walking primitives live here once.
 
-import type { IConfiguration, IConfigurationSection } from '@rhombus-std/config';
+import type { IConfig, IConfigSection } from '@rhombus-std/config';
 
 /** The match-all key used at meter/instrument and source/operation levels. */
 export const DEFAULT_KEY = 'Default';
@@ -36,7 +36,7 @@ export function parseBool(value: string | undefined): boolean | undefined {
 }
 
 /** Whether `section` has at least one immediate child sub-section. */
-export function hasChildren(section: IConfiguration): boolean {
+export function hasChildren(section: IConfig): boolean {
   for (const _child of section.getChildren()) {
     return true;
   }
@@ -47,19 +47,19 @@ export function hasChildren(section: IConfiguration): boolean {
  * Whether `section` exists -- it has a value or at least one child. The
  * @rhombus-std config surface returns an empty section (never `null`) for an
  * absent key, so "exists" is this presence test rather than a null check.
- * Mirrors the reference `ConfigurationExtensions.Exists()`.
+ * Mirrors the reference `ConfigExtensions.Exists()`.
  */
-export function sectionExists(section: IConfigurationSection): boolean {
+export function sectionExists(section: IConfigSection): boolean {
   return section.value !== undefined || hasChildren(section);
 }
 
 /**
  * Yields every descendant leaf of `section` as `[relativePath, value]`, where
  * `relativePath` is the colon-joined key path below `section` and `value` is the
- * leaf's string value. Mirrors the reference `IConfigurationSection.AsEnumerable(makePathsRelative: true)`
+ * leaf's string value. Mirrors the reference `IConfigSection.AsEnumerable(makePathsRelative: true)`
  * restricted to leaves (the only entries the rule parser consumes).
  */
-export function* flattenLeaves(section: IConfigurationSection): Generator<[string, string]> {
+export function* flattenLeaves(section: IConfigSection): Generator<[string, string]> {
   for (const child of section.getChildren()) {
     if (hasChildren(child)) {
       for (const [path, value] of flattenLeaves(child)) {

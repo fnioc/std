@@ -1,4 +1,4 @@
-import { MemoryConfigurationSource } from '@rhombus-std/config';
+import { MemoryConfigSource } from '@rhombus-std/config';
 import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TOKEN, HOST_ENVIRONMENT_TOKEN, HostBuilder,
   type IHostApplicationLifetime, type IHostedLifecycleService,
   type IHostEnvironment } from '@rhombus-std/hosting/_/index';
@@ -187,7 +187,7 @@ test('addHostedService registers many under one shared token; the host resolves 
 test("IHostEnvironment predicates reflect the built host's environment", async () => {
   const builder = new HostBuilder();
   builder.configureHostConfiguration((config) => {
-    config.add(new MemoryConfigurationSource({ initialData: { environment: 'Development' } }));
+    config.add(new MemoryConfigSource({ initialData: { environment: 'Development' } }));
   });
 
   const host = builder.build();
@@ -206,7 +206,7 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
 test('host configuration values flow into the application configuration (chained, not snapshotted)', () => {
   const builder = new HostBuilder();
   builder.configureHostConfiguration((config) => {
-    config.add(new MemoryConfigurationSource({ initialData: { 'Custom:Key': 'fromHost' } }));
+    config.add(new MemoryConfigSource({ initialData: { 'Custom:Key': 'fromHost' } }));
   });
 
   // Observed from inside the configureAppConfiguration callback -- by this

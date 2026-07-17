@@ -90,7 +90,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
   // The shape that used to re-install a member once per later registration:
   // MANY packages register DIFFERENT-named members onto ONE shared token, and
   // TWO concrete classes (a builder and a manager) are decorated with it -- the
-  // real `nameof<IConfigurationBuilder>()` fan-out across config.json / .env /
+  // real `nameof<IConfigBuilder>()` fan-out across config.json / .env /
   // .commandline / .ini / .xml / .file plus config's memory + chained sources.
   // The live proof runs in `config.tests.integration`; this reproduces the shape
   // over synthetic classes so the mechanism is pinned in the leaf package too.
@@ -98,14 +98,14 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
   test('every member is callable, NOTHING throws, and no member is re-installed', () => {
     const TOKEN = freshToken();
 
-    class ConfigurationBuilder {
+    class ConfigBuilder {
       readonly added: string[] = [];
     }
-    class ConfigurationManager {
+    class ConfigManager {
       readonly added: string[] = [];
     }
-    interface ConfigurationBuilder extends Verbs {}
-    interface ConfigurationManager extends Verbs {}
+    interface ConfigBuilder extends Verbs {}
+    interface ConfigManager extends Verbs {}
     interface Verbs {
       addJsonFile(): void;
       addEnvironmentVariables(): void;
@@ -120,8 +120,8 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
     // Both concrete classes are decorated up front, BEFORE any provider registers
     // (config's classes load first, then each provider package registers as it
     // is imported) -- so every member arrives as a delta onto both prototypes.
-    augment(TOKEN)(ConfigurationBuilder);
-    augment(TOKEN)(ConfigurationManager);
+    augment(TOKEN)(ConfigBuilder);
+    augment(TOKEN)(ConfigManager);
 
     const names = [
       'addJsonFile',
@@ -149,8 +149,8 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
     // is a delta, a member is mounted once and never re-touched by a later,
     // differently-named registration. (The old full-bag re-pull replaced every
     // slot on every dispatch.)
-    const builderProto = ConfigurationBuilder.prototype as unknown as Record<string, unknown>;
-    const managerProto = ConfigurationManager.prototype as unknown as Record<string, unknown>;
+    const builderProto = ConfigBuilder.prototype as unknown as Record<string, unknown>;
+    const managerProto = ConfigManager.prototype as unknown as Record<string, unknown>;
     const slotsAfterAll = names.map(name => builderProto[name]);
 
     // Re-register a fresh distinct member: the eight existing slots must be the
@@ -165,8 +165,8 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
     });
 
     // Every member is callable on BOTH concrete classes.
-    const builder = new ConfigurationBuilder();
-    const manager = new ConfigurationManager();
+    const builder = new ConfigBuilder();
+    const manager = new ConfigManager();
     for (const name of names) {
       (builder as unknown as Record<string, () => void>)[name]!();
       (manager as unknown as Record<string, () => void>)[name]!();

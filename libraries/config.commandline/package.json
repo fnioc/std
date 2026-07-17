@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.commandline",
   "version": "0.0.0",
-  "description": "Command-line configuration provider for @rhombus-std/config: CommandLineConfigurationSource/Provider + the addCommandLine augmentation.",
+  "description": "Command-line configuration provider for @rhombus-std/config: CommandLineConfigSource/Provider + the addCommandLine augmentation.",
   "keywords": [
     "configuration",
     "config",

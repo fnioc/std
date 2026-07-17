@@ -1,4 +1,4 @@
-// Reload + provider-backed coverage for JsonConfigurationSource now that it
+// Reload + provider-backed coverage for JsonConfigSource now that it
 // derives from the config.file base. The generic file-base mechanics (debounce,
 // dispose, error routing) are proven in config.file.test; these tests assert
 // the JSON-specific slice: the read flows through an injected IFileProvider,
@@ -7,8 +7,8 @@
 // Reload is driven by a FAKE provider with a hand-fired change token, so it's
 // deterministic and fast (no real filesystem watcher, no 4-second poll).
 
-import { ConfigurationBuilder } from '@rhombus-std/config';
-import { JsonConfigurationSource } from '@rhombus-std/config.json/_/json-configuration-source';
+import { ConfigBuilder } from '@rhombus-std/config';
+import { JsonConfigSource } from '@rhombus-std/config.json/_/JsonConfigSource';
 import '@rhombus-std/config.json/_/index';
 import type { IDirectoryContents, IFileInfo, IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
@@ -100,32 +100,32 @@ function afterReloadDelay(): Promise<void> {
 
 // -- tests -----------------------------------------------------------------
 
-describe('JsonConfigurationSource provider-backed read', () => {
+describe('JsonConfigSource provider-backed read', () => {
   test('reads the file through an injected file provider', () => {
     const { dir: root } = tempDirWith('app.json', JSON.stringify({ Server: { Host: 'injected' } }));
-    const root2 = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource('app.json', { fileProvider: new PhysicalFileProvider(root) }))
+    const root2 = new ConfigBuilder()
+      .add(new JsonConfigSource('app.json', { fileProvider: new PhysicalFileProvider(root) }))
       .build();
 
     expect(root2.get('Server:Host')).toBe('injected');
   });
 
   test('a relative path with no provider stays cwd-relative (back-compat)', () => {
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource(`${FIXTURES}/nested.json`, { optional: true }))
+    const root = new ConfigBuilder()
+      .add(new JsonConfigSource(`${FIXTURES}/nested.json`, { optional: true }))
       .build();
 
     expect(root.get('Server:Host')).toBe('localhost');
   });
 });
 
-describe('JsonConfigurationSource reloadOnChange', () => {
+describe('JsonConfigSource reloadOnChange', () => {
   test('re-parses the JSON when the watch token fires', async () => {
     const { file } = tempDirWith('app.json', JSON.stringify({ Value: 'one' }));
     const fake = new FakeFileProvider(file);
 
-    const root = new ConfigurationBuilder()
-      .add(new JsonConfigurationSource('app.json', { fileProvider: fake, reloadOnChange: true, reloadDelay: 5 }))
+    const root = new ConfigBuilder()
+      .add(new JsonConfigSource('app.json', { fileProvider: fake, reloadOnChange: true, reloadDelay: 5 }))
       .build();
     expect(root.get('Value')).toBe('one');
 

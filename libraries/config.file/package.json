@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.file",
   "version": "0.0.0",
-  "description": "Shared base classes for file-backed configuration providers in @rhombus-std/config: FileConfigurationSource/FileConfigurationProvider, reloadOnChange wiring over an IFileProvider, and the setFileProvider/setBasePath builder augmentations.",
+  "description": "Shared base classes for file-backed configuration providers in @rhombus-std/config: FileConfigSource/FileConfigProvider, reloadOnChange wiring over an IFileProvider, and the setFileProvider/setBasePath builder augmentations.",
   "keywords": [
     "configuration",
     "config",

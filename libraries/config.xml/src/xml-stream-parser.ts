@@ -1,6 +1,6 @@
 // XmlStreamParser -- the XML text -> flat key/value pairs parser shared by
-// XmlConfigurationProvider (file) and XmlStreamConfigurationProvider (in-memory
-// payload); mirrors the reference `XmlStreamConfigurationProvider.Read` +
+// XmlConfigProvider (file) and XmlStreamConfigProvider (in-memory
+// payload); mirrors the reference `XmlStreamConfigProvider.Read` +
 // `ProvideConfiguration`.
 //
 // A minimal, self-contained tokenizer + tree walk -- NO XML-parser dependency

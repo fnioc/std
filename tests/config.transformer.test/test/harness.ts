@@ -7,12 +7,12 @@
 // factory only needs `ts.Program` + `addDiagnostic`).
 //
 // Fixtures ship an AMBIENT `declare module '@rhombus-std/config'` file that
-// declares the `ConfigurationBuilder` class (its runtime value) MERGED with a
+// declares the `ConfigBuilder` class (its runtime value) MERGED with a
 // same-name interface carrying `withType<U>()` — exactly the class/augment split
 // the real package uses. The matcher anchors on that interface's declaration
 // site (§41): a receiver is recognized because its `withType` member resolves
 // back to the ambient config interface, not because a type is symbol-named
-// `ConfigurationBuilder`. The app imports `ConfigurationBuilder` from the barrel.
+// `ConfigBuilder`. The app imports `ConfigBuilder` from the barrel.
 
 import type { Diagnostic } from '@rhombus-std/config.transformer/_/diagnostics';
 import { createTransformerFactory } from '@rhombus-std/config.transformer/_/transformer';
@@ -46,7 +46,7 @@ export interface TransformOptions {
 }
 
 /**
- * The ambient `@rhombus-std/config` module: the `ConfigurationBuilder` class (the
+ * The ambient `@rhombus-std/config` module: the `ConfigBuilder` class (the
  * runtime value, with `add`/`withSchema`) declaration-MERGED with a same-name
  * interface carrying `withType<U>()`, plus `OPTIONAL`. The matcher anchors on the
  * interface's `withType` declaration HERE — a receiver whose `withType` resolves
@@ -55,29 +55,29 @@ export interface TransformOptions {
 const CONFIG_AMBIENT = `
 declare module "@rhombus-std/config" {
   export const OPTIONAL: unique symbol;
-  export class ConfigurationBuilder<T = unknown> {
+  export class ConfigBuilder<T = unknown> {
     add(source: unknown): this;
-    withSchema(schema: unknown): ConfigurationBuilder<unknown>;
+    withSchema(schema: unknown): ConfigBuilder<unknown>;
   }
-  export interface ConfigurationBuilder<T = unknown> {
-    withType<U>(): ConfigurationBuilder<U>;
+  export interface ConfigBuilder<T = unknown> {
+    withType<U>(): ConfigBuilder<U>;
   }
   // A same-named interface NESTED in a namespace inside the declaring module.
   // The nearest enclosing module scope is \`Nested\` (identifier-named), not the
-  // module, so a receiver typed \`Nested.ConfigurationBuilder\` must NOT match.
+  // module, so a receiver typed \`Nested.ConfigBuilder\` must NOT match.
   export namespace Nested {
-    export interface ConfigurationBuilder<T = unknown> {
-      withType<U>(): ConfigurationBuilder<U>;
+    export interface ConfigBuilder<T = unknown> {
+      withType<U>(): ConfigBuilder<U>;
     }
   }
 }
 `;
 
 /**
- * App header: imports `ConfigurationBuilder` from the config barrel (the positive
+ * App header: imports `ConfigBuilder` from the config barrel (the positive
  * class-value receiver whose `withType` resolves to the ambient interface).
  */
-const APP_HEADER = `import { ConfigurationBuilder } from "@rhombus-std/config";\n`;
+const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";\n`;
 
 /**
  * Compile `files` into an in-memory Program and run the transformer over the
@@ -206,7 +206,7 @@ function anyFileUnder(files: VirtualFiles, dir: string): boolean {
 /**
  * Build a fixture: the ambient `@rhombus-std/config` module plus an app file
  * ({@link APP_HEADER} + `source`) under the default virtual root. The header
- * imports `ConfigurationBuilder` from the barrel so the receiver's `withType`
+ * imports `ConfigBuilder` from the barrel so the receiver's `withType`
  * resolves to the ambient interface the matcher anchors on.
  */
 export function fixture(source: string, name = 'app.ts'): VirtualFiles {

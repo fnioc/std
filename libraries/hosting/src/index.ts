@@ -49,7 +49,7 @@ export { HostingHostBuilderExtensions } from './builder-augmentations';
 export type { ServiceProviderOptions } from '@rhombus-std/di.core';
 
 // The environment-variable prefix the default host configuration reads.
-export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-configuration';
+export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-config';
 
 // The framework-service DI tokens (a consumer resolves these off `IHost.services`).
 export { CONFIGURATION_TOKEN, CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN,

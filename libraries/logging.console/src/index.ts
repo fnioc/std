@@ -21,7 +21,7 @@
 //   - The config-binding wiring (ConsoleLoggerConfigureOptions,
 //     ConsoleFormatterConfigureOptions, the formatter change-token sources,
 //     `AddConsole`'s no-arg `addConfiguration()` call) needs
-//     @rhombus-std/logging.configuration's `ILoggerProviderConfiguration<T>`
+//     @rhombus-std/logging.configuration's `ILoggerProviderConfig<T>`
 //     provider-configuration factory, which doesn't exist yet.
 
 // LogEntry is re-exported from its reference home (the abstractions package)

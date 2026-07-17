@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config",
   "version": "0.0.0",
-  "description": "Layered configuration engine: ConfigurationBuilder/Root/Section, compareConfigurationKeys, the Memory provider, an index-navigable Section tree, and a runtime schema (Schema/Infer/OPTIONAL) that coerces on build().",
+  "description": "Layered configuration engine: ConfigBuilder/Root/Section, compareConfigKeys, the Memory provider, an index-navigable Section tree, and a runtime schema (Schema/Infer/OPTIONAL) that coerces on build().",
   "keywords": [
     "configuration",
     "config",
@@ -19,7 +19,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": true,
-  "//config-source": "config self-augments: memory/chained/with-type-augment.ts all `declare module \"@rhombus-std/config\"` (the barrel) and import ConfigurationBuilder from it, so every one of config's own ConfigurationBuilder augmenters merges onto ONE type -- mixing the barrel with a relative `../ConfigurationBuilder` phantom-splits the class and `return this` fails. But config's own compile has no built dist to resolve its own name against (TS2664/TS2307 the moment dist is absent). The package-unique `config-source` condition, listed FIRST on the `.` export (ahead of `types`), routes config's OWN program back to ./src/index.ts so the self-`declare module` and self-imports resolve during the not-yet-built compile; every external consumer (which never sets this condition) resolves `types` -> the rolled ./dist/index.d.ts. This is di.core's `di-core-source` self-source pattern (§72/§74); config was the last self-augmenting core carrying its source condition on a subpath instead of `.`. Dev-only: absent from publishConfig, where `.` collapses onto ./dist/index.* like the reference. No merge-anchor subpaths remain.",
+  "//config-source": "config self-augments: memory/chained/with-type-augment.ts all `declare module \"@rhombus-std/config\"` (the barrel) and import ConfigBuilder from it, so every one of config's own ConfigBuilder augmenters merges onto ONE type -- mixing the barrel with a relative `../ConfigBuilder` phantom-splits the class and `return this` fails. But config's own compile has no built dist to resolve its own name against (TS2664/TS2307 the moment dist is absent). The package-unique `config-source` condition, listed FIRST on the `.` export (ahead of `types`), routes config's OWN program back to ./src/index.ts so the self-`declare module` and self-imports resolve during the not-yet-built compile; every external consumer (which never sets this condition) resolves `types` -> the rolled ./dist/index.d.ts. This is di.core's `di-core-source` self-source pattern (§72/§74); config was the last self-augmenting core carrying its source condition on a subpath instead of `.`. Dev-only: absent from publishConfig, where `.` collapses onto ./dist/index.* like the reference. No merge-anchor subpaths remain.",
   "exports": {
     ".": {
       "config-source": "./src/index.ts",

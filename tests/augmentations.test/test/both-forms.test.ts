@@ -3,7 +3,7 @@
 // the prototype/instance method must produce identical results.
 //
 //   - foreign-class direction (a class owned by another package): config's
-//     addInMemoryCollection on ConfigurationBuilder.
+//     addInMemoryCollection on ConfigBuilder.
 //   - reverse direction (a package-owned interface, method installed on the
 //     downstream concrete class): caching's get/set/setPriority on
 //     MemoryCache/ICacheEntry, and diagnostics' addMetricsListener on the
@@ -14,7 +14,7 @@
 
 import { CacheEntryExtensions, CacheExtensions, CacheItemPriority } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
-import { ConfigurationBuilder, MemoryConfigurationBuilderExtensions } from '@rhombus-std/config';
+import { ConfigBuilder, MemoryConfigBuilderExtensions } from '@rhombus-std/config';
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, MetricsOptions,
@@ -25,9 +25,9 @@ import { describe, expect, test } from 'bun:test';
 
 describe('foreign-class direction — addInMemoryCollection', () => {
   test('method form and standalone form yield the same configuration', () => {
-    const viaMethod = new ConfigurationBuilder().addInMemoryCollection({ Key: 'value' }).build();
-    const viaMember = MemoryConfigurationBuilderExtensions
-      .addInMemoryCollection(new ConfigurationBuilder(), { Key: 'value' })
+    const viaMethod = new ConfigBuilder().addInMemoryCollection({ Key: 'value' }).build();
+    const viaMember = MemoryConfigBuilderExtensions
+      .addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
       .build();
 
     expect(viaMethod.get('Key')).toBe('value');

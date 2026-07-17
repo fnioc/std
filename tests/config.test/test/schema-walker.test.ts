@@ -1,12 +1,12 @@
 // The Tier 1 schema-walker: withSchema(...).build() coerces the config into a
 // typed POJO, or throws an aggregating SchemaCoercionError.
 
-import { ConfigurationBuilder, OPTIONAL, SchemaCoercionError } from '@rhombus-std/config';
+import { ConfigBuilder, OPTIONAL, SchemaCoercionError } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 
 describe('withSchema(...).build()', () => {
   test('coerces leaves and threads the inferred type', () => {
-    const config = new ConfigurationBuilder()
+    const config = new ConfigBuilder()
       .addInMemoryCollection({
         'Server:Host': 'h',
         'Server:Port': '8080',
@@ -24,7 +24,7 @@ describe('withSchema(...).build()', () => {
   });
 
   test('an absent optional leaf coerces to undefined without raising an issue', () => {
-    const config = new ConfigurationBuilder()
+    const config = new ConfigBuilder()
       .addInMemoryCollection({ Host: 'h', Port: '1' })
       .withSchema({ Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } })
       .build();
@@ -34,14 +34,14 @@ describe('withSchema(...).build()', () => {
 
   test('a missing required leaf throws SchemaCoercionError naming the path', () => {
     expect(() =>
-      new ConfigurationBuilder()
+      new ConfigBuilder()
         .addInMemoryCollection({ Port: '1' })
         .withSchema({ Host: 'string', Port: 'number' })
         .build()
     ).toThrow(SchemaCoercionError);
 
     try {
-      new ConfigurationBuilder()
+      new ConfigBuilder()
         .addInMemoryCollection({ Port: '1' })
         .withSchema({ Host: 'string', Port: 'number' })
         .build();
@@ -52,7 +52,7 @@ describe('withSchema(...).build()', () => {
 
   test('aggregates a missing top-level key AND a bad deep number into one throw', () => {
     try {
-      new ConfigurationBuilder()
+      new ConfigBuilder()
         .addInMemoryCollection({ 'Server:Db:Pool': 'not-a-number' })
         .withSchema({
           Host: 'string',
@@ -70,7 +70,7 @@ describe('withSchema(...).build()', () => {
   });
 
   test('coerces nested objects', () => {
-    const config = new ConfigurationBuilder()
+    const config = new ConfigBuilder()
       .addInMemoryCollection({
         'Database:Primary:Host': 'db',
         'Database:Primary:PoolSize': '10',
@@ -82,7 +82,7 @@ describe('withSchema(...).build()', () => {
   });
 
   test('resolves schema keys case-insensitively against the store', () => {
-    const config = new ConfigurationBuilder()
+    const config = new ConfigBuilder()
       .addInMemoryCollection({ PORT: '8080' })
       .withSchema({ Port: 'number' })
       .build();

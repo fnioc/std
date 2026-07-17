@@ -21,7 +21,7 @@
 //     off the built container and folded into the owned factory, so the host's
 //     own loggers -- and any composite logger already handed out -- light up.
 
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 import type { IServiceManifest } from '@rhombus-std/di';
 import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
@@ -124,7 +124,7 @@ export function resolveContentRootPath(
  * §20). `basePath` defaults to the current working directory, the analog of the
  * reference `AppContext.BaseDirectory`.
  */
-export function createHostingEnvironment(configuration: IConfiguration): HostingEnvironment {
+export function createHostingEnvironment(configuration: IConfig): HostingEnvironment {
   const environment = new HostingEnvironment();
   environment.environmentName = configuration.get(HostDefaults.environmentKey) ?? Environments.Production;
   // `process.cwd()` is reached only when the configured content root doesn't
@@ -147,7 +147,7 @@ export function createHostingEnvironment(configuration: IConfiguration): Hosting
  * the {@link ApplicationLifetime} (logging through it), and an un-initialized
  * {@link HostOptions}. {@link resolveHost} folds the final configuration into
  * `hostOptions` and applies the `configureHostOptions` mutations at build time
- * -- deferred to then so the modern builder's live {@link IConfiguration} is
+ * -- deferred to then so the modern builder's live {@link IConfig} is
  * fully populated first.
  */
 export function createFrameworkServices(): FrameworkServices {
@@ -169,7 +169,7 @@ export function populateFrameworkServices(
   services: IServiceManifest,
   context: HostBuilderContext,
   environment: HostingEnvironment,
-  configuration: IConfiguration,
+  configuration: IConfig,
   framework: FrameworkServices,
 ): void {
   services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
@@ -204,7 +204,7 @@ export function populateFrameworkServices(
 export function resolveHost(
   services: IServiceManifest,
   framework: FrameworkServices,
-  configuration: IConfiguration,
+  configuration: IConfig,
   serviceProviderOptions?: ServiceProviderOptions,
 ): IHost {
   const provider: IServiceProvider = services.build(serviceProviderOptions);

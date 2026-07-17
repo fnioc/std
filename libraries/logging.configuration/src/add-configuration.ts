@@ -20,10 +20,10 @@
 //
 //   - the no-arg provider-configuration services (the reference's first line);
 //   - a `LoggerFilterConfigureOptions` configure step + a
-//     `ConfigurationChangeTokenSource` at the `IOptions<LoggerFilterOptions>`
+//     `ConfigChangeTokenSource` at the `IOptions<LoggerFilterOptions>`
 //     token's pipeline slots (the reference's `IConfigureOptions` /
 //     `IOptionsChangeTokenSource` singletons);
-//   - the `LoggingConfiguration` holder (accumulated — the provider-
+//   - the `LoggingConfig` holder (accumulated — the provider-
 //     configuration factory injects the whole collection);
 //   - the `IOptions<LoggerFilterOptions>` ASSEMBLY itself. The reference gets
 //     this from `AddLogging`'s ambient `services.AddOptions()` open-generic
@@ -38,21 +38,21 @@
 // docs §40) — the same token the logging family's own consumers derive from
 // the type, with no shared const.
 
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 import { closeToken, typeArg } from '@rhombus-std/di.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceToken, ConfigurationChangeTokenSource,
+import { changeTokenSourceToken, ConfigChangeTokenSource,
   configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
-import type { ILoggerProviderConfigurationFactory } from './ILoggerProviderConfigurationFactory';
+import { loggerProviderConfigToken } from './ILoggerProviderConfig';
+import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
-import { LoggerProviderConfiguration } from './LoggerProviderConfiguration';
-import { LoggerProviderConfigurationFactory } from './LoggerProviderConfigurationFactory';
-import { LoggingConfiguration } from './LoggingConfiguration';
+import { LoggerProviderConfig } from './LoggerProviderConfig';
+import { LoggerProviderConfigFactory } from './LoggerProviderConfigFactory';
+import { LoggingConfig } from './LoggingConfig';
 
 /**
  * The `LoggingBuilderExtensions` augmentation set for {@link ILoggingBuilder}
@@ -63,31 +63,31 @@ import { LoggingConfiguration } from './LoggingConfiguration';
 export const LoggingBuilderExtensions = {
   /**
    * No-arg: adds the services required to consume
-   * {@link ILoggerProviderConfigurationFactory} or
-   * `ILoggerProviderConfiguration<T>` (the `LoggingBuilderConfiguration
+   * {@link ILoggerProviderConfigFactory} or
+   * `ILoggerProviderConfig<T>` (the `LoggingBuilderConfiguration
    * Extensions.AddConfiguration` mirror). One-arg: additionally configures
    * `LoggerFilterOptions` from `configuration` — a lazy, reload-reactive
    * options pipeline. Returns the builder for chaining.
    */
-  addConfiguration(builder: ILoggingBuilder, ...rest: [] | [configuration: IConfiguration]): ILoggingBuilder {
+  addConfiguration(builder: ILoggingBuilder, ...rest: [] | [configuration: IConfig]): ILoggingBuilder {
     // ── The no-arg provider-configuration services (always registered — the
     // reference one-arg form calls the no-arg form first). The factory
-    // injects the accumulated LoggingConfiguration collection; the open
-    // ILoggerProviderConfiguration<$1> template closes per provider, its
+    // injects the accumulated LoggingConfig collection; the open
+    // ILoggerProviderConfig<$1> template closes per provider, its
     // typeArg(1) slot reifying the closing token as the constructor's
     // provider-type argument.
     builder.services
       .add(
-        nameof<ILoggerProviderConfigurationFactory>(),
-        LoggerProviderConfigurationFactory,
-        [[closeToken('Array', nameof<LoggingConfiguration>())]],
+        nameof<ILoggerProviderConfigFactory>(),
+        LoggerProviderConfigFactory,
+        [[closeToken('Array', nameof<LoggingConfig>())]],
       )
       .as('singleton');
     builder.services
       .add(
-        loggerProviderConfigurationToken('$1'),
-        LoggerProviderConfiguration,
-        [[nameof<ILoggerProviderConfigurationFactory>(), typeArg(1)]],
+        loggerProviderConfigToken('$1'),
+        LoggerProviderConfig,
+        [[nameof<ILoggerProviderConfigFactory>(), typeArg(1)]],
       )
       .as('singleton');
 
@@ -101,9 +101,9 @@ export const LoggingBuilderExtensions = {
     const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
     builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
     builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(configuration));
-    builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigurationChangeTokenSource(configuration));
+    builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigChangeTokenSource(configuration));
 
-    builder.services.addValue(nameof<LoggingConfiguration>(), new LoggingConfiguration(configuration));
+    builder.services.addValue(nameof<LoggingConfig>(), new LoggingConfig(configuration));
     return builder;
   },
 } satisfies AugmentationSet<ILoggingBuilder>;
@@ -118,7 +118,7 @@ declare module '@rhombus-std/logging.core' {
     /** Instance-method form of the no-arg {@link addConfiguration}. */
     addConfiguration(): void;
     /** Instance-method form of the one-arg {@link addConfiguration}. */
-    addConfiguration(configuration: IConfiguration): this;
+    addConfiguration(configuration: IConfig): this;
   }
 }
 

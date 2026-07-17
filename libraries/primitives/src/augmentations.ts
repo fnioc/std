@@ -17,7 +17,7 @@
 //     no registry).
 //   - the augmentation registry (`augmentation-registry.ts`) -- the OPEN-set
 //     path for builder interfaces downstream packages extend (ServiceManifest,
-//     ConfigurationBuilder, ILoggingBuilder, ...). It calls `installSet`
+//     ConfigBuilder, ILoggingBuilder, ...). It calls `installSet`
 //     through a token + a synchronous per-token subscriber list so
 //     late-registered augmentations still reach an already-decorated class
 //     prototype.

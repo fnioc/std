@@ -4,10 +4,10 @@
 // can append a step or source directly — no `configure(...)` call — and the
 // assembly picks it up like any other.
 
-import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceToken, ConfigurationChangeTokenSource, configureStepToken, postConfigureStepToken,
+import { changeTokenSourceToken, ConfigChangeTokenSource, configureStepToken, postConfigureStepToken,
   validateStepToken } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -27,9 +27,9 @@ describe('the public slot-token grammar', () => {
   });
 
   test("a directly-registered step and source join the token's assembly", () => {
-    const config = new ConfigurationBuilder()
+    const config = new ConfigBuilder()
       .addInMemoryCollection({ 'Widget:Url': 'http://first' })
-      .build() as unknown as IConfigurationRoot;
+      .build() as unknown as IConfigRoot;
 
     const services = new ServiceManifest<'singleton'>();
     services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
@@ -40,7 +40,7 @@ describe('the public slot-token grammar', () => {
         options.Url = config.get('Widget:Url') ?? '';
       },
     });
-    services.addValue(changeTokenSourceToken(TOKEN), new ConfigurationChangeTokenSource(config));
+    services.addValue(changeTokenSourceToken(TOKEN), new ConfigChangeTokenSource(config));
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);

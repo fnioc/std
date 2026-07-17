@@ -30,7 +30,7 @@
 //     reference gets from DI's lazy construction.
 //
 // RESIDUAL: the reference `AddConsole` also calls the no-argument
-// `AddConfiguration()` and registers the `ILoggerProviderConfiguration<
+// `AddConfiguration()` and registers the `ILoggerProviderConfig<
 // ConsoleLoggerProvider>`-driven config binding (`ConsoleLoggerConfigureOptions`,
 // `ConsoleFormatterConfigureOptions`, `ConsoleLoggerFormatterConfigureOptions`,
 // the formatter change-token sources, and `getFormatterOptionsSection`). That

@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.env",
   "version": "0.0.0",
-  "description": "process.env configuration provider for @rhombus-std/config: EnvironmentVariablesConfigurationSource/Provider + the addEnvironmentVariables augmentation.",
+  "description": "process.env configuration provider for @rhombus-std/config: EnvironmentVariablesConfigSource/Provider + the addEnvironmentVariables augmentation.",
   "keywords": [
     "configuration",
     "config",

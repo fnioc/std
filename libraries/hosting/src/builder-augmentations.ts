@@ -14,7 +14,7 @@
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
 
-import { MemoryConfigurationSource } from '@rhombus-std/config';
+import { MemoryConfigSource } from '@rhombus-std/config';
 import { type IResolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostingAbstractionsHostExtensions,
@@ -25,8 +25,8 @@ import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
-import { addDefaultServices, applyDefaultAppConfiguration, applyDefaultHostConfiguration,
-  createDefaultServiceProviderOptions } from './default-configuration';
+import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
+  createDefaultServiceProviderOptions } from './default-config';
 import { CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
   HOST_OPTIONS_CONFIGURE_TOKEN } from './framework-tokens';
 import type { HostOptions } from './HostOptions';
@@ -82,9 +82,9 @@ export const HostingHostBuilderExtensions = {
    * `appsettings(.{env}).json` + env vars + args, and the console logging provider.
    */
   configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
-    hostBuilder.configureHostConfiguration((configBuilder) => applyDefaultHostConfiguration(configBuilder, args));
+    hostBuilder.configureHostConfiguration((configBuilder) => applyDefaultHostConfig(configBuilder, args));
     hostBuilder.configureAppConfiguration((context, configBuilder) =>
-      applyDefaultAppConfiguration(configBuilder, context.hostingEnvironment, args)
+      applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args)
     );
     hostBuilder.configureServices((_context, services) => addDefaultServices(services));
     // The reference finishes with a default service-provider factory carrying the
@@ -102,7 +102,7 @@ export const HostingHostBuilderExtensions = {
   useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
     return hostBuilder.configureHostConfiguration((configBuilder) => {
       configBuilder.add(
-        new MemoryConfigurationSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
+        new MemoryConfigSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
       );
     });
   },
@@ -111,7 +111,7 @@ export const HostingHostBuilderExtensions = {
   useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
     return hostBuilder.configureHostConfiguration((configBuilder) => {
       configBuilder.add(
-        new MemoryConfigurationSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
+        new MemoryConfigSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
       );
     });
   },

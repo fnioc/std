@@ -4,13 +4,13 @@
 // pipeline: host configuration -> hosting environment -> host-builder context ->
 // application configuration -> framework services -> the internal host.
 //
-// Configuration flows through `@rhombus-std/config`'s `ConfigurationBuilder`
+// Configuration flows through `@rhombus-std/config`'s `ConfigBuilder`
 // (the provider `add*` sugar is installed by the `configureDefaults` extension,
 // which side-effect-imports the provider packages). Service registration flows
 // through `@rhombus-std/di`'s `ServiceManifest`.
 
-import { ConfigurationManager } from '@rhombus-std/config';
-import type { IConfigurationBuilder } from '@rhombus-std/config.core';
+import { ConfigManager } from '@rhombus-std/config';
+import type { IConfigBuilder } from '@rhombus-std/config.core';
 import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
@@ -33,22 +33,22 @@ export interface HostBuilder extends IHostBuilder {}
 export class HostBuilder implements IHostBuilder {
   readonly properties = new Map<string | symbol, unknown>();
 
-  readonly #configureHostConfigActions: Action<[IConfigurationBuilder]>[] = [];
-  readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigurationBuilder]>[] = [];
+  readonly #configureHostConfigActions: Action<[IConfigBuilder]>[] = [];
+  readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigBuilder]>[] = [];
   readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
   readonly #configureContainerActions: Action<[HostBuilderContext, unknown]>[] = [];
 
   #hostBuilt = false;
 
   /** Sets up the configuration for the builder itself. Additive across calls. */
-  public configureHostConfiguration(configureDelegate: Action<[IConfigurationBuilder]>): this {
+  public configureHostConfiguration(configureDelegate: Action<[IConfigBuilder]>): this {
     this.#configureHostConfigActions.push(configureDelegate);
     return this;
   }
 
   /** Sets up the configuration for the remainder of the build and application. Additive. */
   public configureAppConfiguration(
-    configureDelegate: Action<[HostBuilderContext, IConfigurationBuilder]>,
+    configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
   ): this {
     this.#configureAppConfigActions.push(configureDelegate);
     return this;
@@ -89,10 +89,10 @@ export class HostBuilder implements IHostBuilder {
     }
     this.#hostBuilt = true;
 
-    // 1. Host configuration. A `ConfigurationManager` is used (not the
-    // `ConfigurationBuilder`, which does not implement `IConfigurationBuilder`)
-    // so it satisfies the `Action<[IConfigurationBuilder]>` delegate type.
-    const hostConfigBuilder = new ConfigurationManager();
+    // 1. Host configuration. A `ConfigManager` is used (not the
+    // `ConfigBuilder`, which does not implement `IConfigBuilder`)
+    // so it satisfies the `Action<[IConfigBuilder]>` delegate type.
+    const hostConfigBuilder = new ConfigManager();
     for (const action of this.#configureHostConfigActions) {
       action(hostConfigBuilder);
     }
@@ -111,7 +111,7 @@ export class HostBuilder implements IHostBuilder {
     // 4. Application configuration (host configuration chained in first --
     // a live read-through, not a snapshot, so a later host-configuration
     // reload propagates into the application configuration too).
-    const appConfigBuilder = new ConfigurationManager();
+    const appConfigBuilder = new ConfigManager();
     appConfigBuilder.addConfiguration(hostConfiguration);
     for (const action of this.#configureAppConfigActions) {
       action(hostBuilderContext, appConfigBuilder);

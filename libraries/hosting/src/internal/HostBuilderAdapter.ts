@@ -13,7 +13,7 @@
 //   - `build()` is unsupported (as in the reference); the adapter only mutates the
 //     application builder it wraps.
 
-import type { IConfigurationBuilder, IConfigurationManager } from '@rhombus-std/config.core';
+import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
 import type { IServiceManifest } from '@rhombus-std/di';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
@@ -36,16 +36,16 @@ export interface HostBuilderAdapter extends IHostBuilder {}
 /** The classic-builder adapter over a modern application builder. */
 @augment(nameof<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {
-  readonly #configuration: IConfigurationManager;
+  readonly #configuration: IConfigManager;
   readonly #services: IServiceManifest;
   readonly #context: HostBuilderContext;
 
-  readonly #configureHostConfigActions: Action<[IConfigurationBuilder]>[] = [];
-  readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigurationBuilder]>[] = [];
+  readonly #configureHostConfigActions: Action<[IConfigBuilder]>[] = [];
+  readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigBuilder]>[] = [];
   readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
 
   public constructor(
-    configuration: IConfigurationManager,
+    configuration: IConfigManager,
     services: IServiceManifest,
     context: HostBuilderContext,
   ) {
@@ -59,13 +59,13 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this.#context.properties;
   }
 
-  public configureHostConfiguration(configureDelegate: Action<[IConfigurationBuilder]>): this {
+  public configureHostConfiguration(configureDelegate: Action<[IConfigBuilder]>): this {
     this.#configureHostConfigActions.push(configureDelegate);
     return this;
   }
 
   public configureAppConfiguration(
-    configureDelegate: Action<[HostBuilderContext, IConfigurationBuilder]>,
+    configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
   ): this {
     this.#configureAppConfigActions.push(configureDelegate);
     return this;

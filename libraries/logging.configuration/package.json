@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.configuration",
   "version": "0.0.0",
-  "description": "The logging config-binding surface ported from ME.Logging.Configuration: binds LoggerFilterOptions/LoggerFilterRule from an @rhombus-std/config IConfiguration via addConfiguration.",
+  "description": "The logging config-binding surface ported from ME.Logging.Configuration: binds LoggerFilterOptions/LoggerFilterRule from an @rhombus-std/config IConfig via addConfiguration.",
   "keywords": [
     "logging",
     "configuration",

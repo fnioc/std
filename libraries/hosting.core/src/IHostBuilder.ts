@@ -1,4 +1,4 @@
-import type { IConfigurationBuilder } from '@rhombus-std/config.core';
+import type { IConfigBuilder } from '@rhombus-std/config.core';
 import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { Action } from '@rhombus-toolkit/func';
 import type { HostBuilderContext } from './HostBuilderContext';
@@ -21,7 +21,7 @@ export interface IHostBuilder {
    * Sets up the configuration for the builder itself. Used to initialize the
    * {@link IHostEnvironment} for later in the build. Additive across calls.
    */
-  configureHostConfiguration(configureDelegate: Action<[IConfigurationBuilder]>): this;
+  configureHostConfiguration(configureDelegate: Action<[IConfigBuilder]>): this;
 
   /**
    * Sets up the configuration for the remainder of the build and the
@@ -29,7 +29,7 @@ export interface IHostBuilder {
    * {@link HostBuilderContext.configuration} and in {@link IHost.services}.
    *
    * This is the reference's context form (the `IHostBuilder` interface method).
-   * The reference also offers a no-context `Action<IConfigurationBuilder>`
+   * The reference also offers a no-context `Action<IConfigBuilder>`
    * convenience extension; it is intentionally not surfaced here — a TS overload
    * on this method can't distinguish the two forms for an un-annotated lambda
    * without degrading contextual typing of this dominant context form, and every
@@ -37,7 +37,7 @@ export interface IHostBuilder {
    * form with an unused first parameter.
    */
   configureAppConfiguration(
-    configureDelegate: Action<[HostBuilderContext, IConfigurationBuilder]>,
+    configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
   ): this;
 
   /** Adds services to the container. Additive across calls. (Context form; see {@link configureAppConfiguration} on the omitted no-context convenience.) */

@@ -1,10 +1,10 @@
 // Public entry point for @rhombus-std/config.commandline.
 //
 // Importing this module installs the `addCommandLine` sugar method onto
-// `ConfigurationBuilder` AND `ConfigurationManager` via the augmentation
+// `ConfigBuilder` AND `ConfigManager` via the augmentation
 // registry (TS declaration merging + a `registerAugmentations` call against the
-// shared IConfigurationBuilder token) -- the reference extension method targets
-// IConfigurationBuilder, which ConfigurationManager implements too, and both
+// shared IConfigBuilder token) -- the reference extension method targets
+// IConfigBuilder, which ConfigManager implements too, and both
 // concrete builders are decorated with that one token. A consumer who never
 // names a runtime symbol from this package (only wants the sugar) needs a bare
 // side-effect import: `import "@rhombus-std/config.commandline";`.
@@ -16,71 +16,70 @@
 // same holds for `@rhombus-std/primitives`, which MUST stay external so the
 // registry's Map + bus are not forked (docs/decisions.md §9/§38).
 
-import type { ConfigurationBuilder } from '@rhombus-std/config';
-import type { IConfigurationBuilder, IConfigurationSource, IndexedSection } from '@rhombus-std/config.core';
+import type { ConfigBuilder } from '@rhombus-std/config';
+import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { CommandLineConfigurationSource,
-  type CommandLineConfigurationSourceOptions } from './command-line-configuration-source';
+import { CommandLineConfigSource, type CommandLineConfigSourceOptions } from './CommandLineConfigSource';
 
 // Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
 // providers typecheck against its rolled, flat dist/index.d.ts, where
-// ConfigurationBuilder is declared directly (no re-export chain) -- a
+// ConfigBuilder is declared directly (no re-export chain) -- a
 // declare-module merge onto the barrel lands on the class the barrel exposes,
 // even with 2+ provider augmentations in one program (pre-#199 this needed a
 // `./configuration-builder` subpath; the src barrel re-export split the class).
 declare module '@rhombus-std/config' {
   // Generic arity + default MUST match the class (TS2428).
-  interface ConfigurationBuilder<T = IndexedSection> {
+  interface ConfigBuilder<T = IndexedSection> {
     /**
      * Registers a command-line configuration source over `args` (typically
      * `process.argv.slice(2)`), optionally with `switchMappings` for
-     * short-switch (`-x`) support. See {@link CommandLineConfigurationSource}
-     * for construction-time validation and {@link CommandLineConfigurationProvider}
+     * short-switch (`-x`) support. See {@link CommandLineConfigSource}
+     * for construction-time validation and {@link CommandLineConfigProvider}
      * for the parse behavior.
      */
     addCommandLine(
       args: readonly string[],
-      switchMappings?: CommandLineConfigurationSourceOptions['switchMappings'],
+      switchMappings?: CommandLineConfigSourceOptions['switchMappings'],
     ): this;
   }
 }
 
-// Same barrel merge for ConfigurationManager -- see the builder note above.
+// Same barrel merge for ConfigManager -- see the builder note above.
 declare module '@rhombus-std/config' {
-  interface ConfigurationManager {
+  interface ConfigManager {
     /**
      * Registers a command-line configuration source over `args` (typically
      * `process.argv.slice(2)`), optionally with `switchMappings` for
-     * short-switch (`-x`) support. See {@link CommandLineConfigurationSource}
-     * for construction-time validation and {@link CommandLineConfigurationProvider}
+     * short-switch (`-x`) support. See {@link CommandLineConfigSource}
+     * for construction-time validation and {@link CommandLineConfigProvider}
      * for the parse behavior.
      */
     addCommandLine(
       args: readonly string[],
-      switchMappings?: CommandLineConfigurationSourceOptions['switchMappings'],
+      switchMappings?: CommandLineConfigSourceOptions['switchMappings'],
     ): this;
   }
 }
 
-// One named object literal mirroring the reference `CommandLineConfigurationExtensions`
+// One named object literal mirroring the reference `CommandLineConfigExtensions`
 // static class (docs §28/§38), registered against the shared
-// IConfigurationBuilder token (both decorated builders receive it) AND exported
+// IConfigBuilder token (both decorated builders receive it) AND exported
 // so the member is the standalone form. `TBuilder` is bounded by "has an add()
-// that returns itself" rather than pinned to ConfigurationBuilder<T> -- see
+// that returns itself" rather than pinned to ConfigBuilder<T> -- see
 // @rhombus-std/config's memory/index.ts for the full rationale.
-export const CommandLineConfigurationExtensions = {
-  addCommandLine<TBuilder extends { add(source: IConfigurationSource): TBuilder; }>(
+export const CommandLineConfigExtensions = {
+  addCommandLine<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     args: readonly string[],
-    switchMappings?: CommandLineConfigurationSourceOptions['switchMappings'],
+    switchMappings?: CommandLineConfigSourceOptions['switchMappings'],
   ): TBuilder {
-    return builder.add(new CommandLineConfigurationSource(args, { switchMappings }));
+    return builder.add(new CommandLineConfigSource(args, { switchMappings }));
   },
-} satisfies AugmentationSet<ConfigurationBuilder<unknown>>;
+} satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigurationBuilder>(), CommandLineConfigurationExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), CommandLineConfigExtensions);
 
-export { CommandLineConfigurationSource } from './command-line-configuration-source';
-export type { CommandLineConfigurationSourceOptions } from './command-line-configuration-source';
-export { CommandLineConfigurationProvider } from './CommandLineConfigurationProvider';
+export { CommandLineConfigProvider } from './CommandLineConfigProvider';
+export { CommandLineConfigSource } from './CommandLineConfigSource';
+export type { CommandLineConfigSourceOptions } from './CommandLineConfigSource';

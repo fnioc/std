@@ -1,4 +1,4 @@
-// Recognizing `.withType<T>()` on a ConfigurationBuilder.
+// Recognizing `.withType<T>()` on a ConfigBuilder.
 //
 // `.withType` is @rhombus-std/config's documented Tier 2 authoring surface (opt-in
 // via `import "@rhombus-std/config/with-type-augment"`). We match it structurally:
@@ -8,7 +8,7 @@
 // The receiver is matched at the member's DECLARATION SITE, not by the receiver
 // type's symbol name: we resolve the `withType` symbol at the call site and
 // accept only when one of its declarations is a member of the
-// `ConfigurationBuilder` interface declared inside the
+// `ConfigBuilder` interface declared inside the
 // `declare module '@rhombus-std/config'` block that authors this augmentation. An
 // inherited member keeps its original declaration, so a subinterface, a class
 // carrying an empty extends-merge, or an interface-typed variable all resolve
@@ -20,18 +20,18 @@ import ts from 'typescript';
 const WITH_TYPE_NAME = 'withType';
 
 // The interface config declaration-merges `withType<U>()` onto.
-const DECLARING_INTERFACE = 'ConfigurationBuilder';
+const DECLARING_INTERFACE = 'ConfigBuilder';
 
 // The `declare module` specifier the augmentation is declared against.
 const DECLARING_MODULE = '@rhombus-std/config';
 
 /**
  * True when `call` is a `<receiver>.withType<T>()` call whose called member is
- * config's `ConfigurationBuilder.withType<U>()` augmentation.
+ * config's `ConfigBuilder.withType<U>()` augmentation.
  *
  * Requires: callee is a property access named `withType`; exactly ONE type
  * argument; ZERO value arguments; the resolved `withType` member is declared on
- * the `ConfigurationBuilder` interface inside `declare module '@rhombus-std/config'`.
+ * the `ConfigBuilder` interface inside `declare module '@rhombus-std/config'`.
  */
 export function isWithTypeCall(
   call: ts.CallExpression,
@@ -55,7 +55,7 @@ export function isWithTypeCall(
 
 /**
  * True when the `withType` member referenced at `name` resolves to a symbol with
- * a declaration on config's `ConfigurationBuilder` interface. A merged property
+ * a declaration on config's `ConfigBuilder` interface. A merged property
  * symbol carries declarations from every contributing merge, so any one matching
  * declaration suffices.
  */
@@ -72,7 +72,7 @@ function memberDeclaredOnBuilder(
 }
 
 /**
- * True when `declaration`'s parent is the `ConfigurationBuilder` interface
+ * True when `declaration`'s parent is the `ConfigBuilder` interface
  * declared inside the `declare module '@rhombus-std/config'` block.
  */
 function declaredOnBuilderInterface(declaration: ts.Declaration): boolean {

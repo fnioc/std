@@ -6,7 +6,7 @@
 //
 //   1. each provider package exports its Source/Provider runtime symbols,
 //   2. the three external-provider add* augmentations are actually installed on
-//      the SAME ConfigurationBuilder the consumer imports (they survived
+//      the SAME ConfigBuilder the consumer imports (they survived
 //      bundling with @rhombus-std/config kept external, and the `declare module`
 //      survived rollup-plugin-dts), and
 //   3. the Tier 2 with-type-augment subpath ships its throwing stub in dist and
@@ -16,35 +16,33 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { ConfigurationBuilder } from '@rhombus-std/config';
-import { CommandLineConfigurationProvider, CommandLineConfigurationSource,
-  type CommandLineConfigurationSourceOptions } from '@rhombus-std/config.commandline';
-import { defaultVariableNameTransformation, EnvironmentVariablesConfigurationProvider,
-  EnvironmentVariablesConfigurationSource,
-  type EnvironmentVariablesConfigurationSourceOptions } from '@rhombus-std/config.env';
-import { JsonConfigurationProvider, JsonConfigurationSource,
-  type JsonConfigurationSourceOptions } from '@rhombus-std/config.json';
+import { ConfigBuilder } from '@rhombus-std/config';
+import { CommandLineConfigProvider, CommandLineConfigSource,
+  type CommandLineConfigSourceOptions } from '@rhombus-std/config.commandline';
+import { defaultVariableNameTransformation, EnvironmentVariablesConfigProvider, EnvironmentVariablesConfigSource,
+  type EnvironmentVariablesConfigSourceOptions } from '@rhombus-std/config.env';
+import { JsonConfigProvider, JsonConfigSource, type JsonConfigSourceOptions } from '@rhombus-std/config.json';
 
 describe('cross-package public surface (built dist)', () => {
   test('each provider package exports its Source and Provider runtime bindings', () => {
-    assert.equal(typeof JsonConfigurationSource, 'function');
-    assert.equal(typeof JsonConfigurationProvider, 'function');
-    assert.equal(typeof EnvironmentVariablesConfigurationSource, 'function');
-    assert.equal(typeof EnvironmentVariablesConfigurationProvider, 'function');
+    assert.equal(typeof JsonConfigSource, 'function');
+    assert.equal(typeof JsonConfigProvider, 'function');
+    assert.equal(typeof EnvironmentVariablesConfigSource, 'function');
+    assert.equal(typeof EnvironmentVariablesConfigProvider, 'function');
     assert.equal(typeof defaultVariableNameTransformation, 'function');
-    assert.equal(typeof CommandLineConfigurationSource, 'function');
-    assert.equal(typeof CommandLineConfigurationProvider, 'function');
+    assert.equal(typeof CommandLineConfigSource, 'function');
+    assert.equal(typeof CommandLineConfigProvider, 'function');
   });
 
-  test("the add* augmentations are installed on ConfigurationBuilder's prototype", () => {
-    const builder = new ConfigurationBuilder();
+  test("the add* augmentations are installed on ConfigBuilder's prototype", () => {
+    const builder = new ConfigBuilder();
     assert.equal(typeof builder.addJsonFile, 'function');
     assert.equal(typeof builder.addEnvironmentVariables, 'function');
     assert.equal(typeof builder.addCommandLine, 'function');
   });
 
   test('withSchema(...).build() coerces through the command-line provider, and the generic threads', () => {
-    const config: { readonly Host: string; readonly Port: number; } = new ConfigurationBuilder()
+    const config: { readonly Host: string; readonly Port: number; } = new ConfigBuilder()
       .addCommandLine(['--Host=localhost', '--Port=8080'])
       .withSchema({ Host: 'string', Port: 'number' })
       .build();
@@ -57,15 +55,15 @@ describe('cross-package public surface (built dist)', () => {
 
   test('the with-type-augment subpath ships its throwing stub in dist and throws under node', async () => {
     await import('@rhombus-std/config/with-type-augment');
-    const builder = new ConfigurationBuilder();
+    const builder = new ConfigBuilder();
     assert.equal(typeof builder.withType, 'function');
     assert.throws(() => builder.withType(), /@rhombus-std\/config.transformer/);
   });
 
   test('provider option types are usable in a type position', () => {
-    type _Json = JsonConfigurationSourceOptions;
-    type _Env = EnvironmentVariablesConfigurationSourceOptions;
-    type _Cli = CommandLineConfigurationSourceOptions;
+    type _Json = JsonConfigSourceOptions;
+    type _Env = EnvironmentVariablesConfigSourceOptions;
+    type _Cli = CommandLineConfigSourceOptions;
     const _optional: _Json = { optional: true };
     const _prefix: _Env = { prefix: 'APP_' };
     const _mappings: _Cli = { switchMappings: { '-h': 'Host' } };

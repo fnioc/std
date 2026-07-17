@@ -4,12 +4,12 @@
 // per the error-not-exception convention; the `error` field is likewise the
 // renamed `Exception` member.
 
-import type { FileConfigurationProvider } from './FileConfigurationProvider';
+import type { FileConfigProvider } from './FileConfigProvider';
 
 /** Contains information about a file load error. */
 export interface FileLoadErrorContext {
   /** The provider whose load raised the error. */
-  provider: FileConfigurationProvider;
+  provider: FileConfigProvider;
   /** The error that occurred during load. */
   error: unknown;
   /**

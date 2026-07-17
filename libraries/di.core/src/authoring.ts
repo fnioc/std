@@ -32,7 +32,7 @@
 //   registerAugmentations(nameof<IServiceManifest>(), MyThingExtensions);
 //
 // This mirrors how `@rhombus-std/config` adds `addJsonFile` to
-// `ConfigurationBuilder`, and depends on di.core ALONE — never the di runtime. The
+// `ConfigBuilder`, and depends on di.core ALONE — never the di runtime. The
 // exported const's member (`MyThingExtensions.addMyThing(services, …)`) is also the
 // standalone call surface; slots are authored as plain `DepSlot` data literals
 // either way.

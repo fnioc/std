@@ -5,7 +5,7 @@
 // `addOptions` in the CONTAINER SETUP below is authored tokenlessly and lowered
 // during the build. The ONE exception is the hosted-worker wiring at the very
 // bottom: there is no `@rhombus-std/di.transformer` plugin for the hosting
-// family yet, so `addHostedService(...)` and the small `ConfigurationRoot` value
+// family yet, so `addHostedService(...)` and the small `ConfigRoot` value
 // it needs are registered with EXPLICIT, hand-written tokens — the guard test in
 // di.transformer.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
 // `tryResolve<T>()` CALL to stay tokenless (see below), which the hosted worker
@@ -38,8 +38,8 @@
 // `IHostApplicationLifetime.stopApplication()` once its work is done, so
 // `runAsync` returns deterministically with no reliance on Ctrl+C / signals.
 
-import { ConfigurationBuilder } from '@rhombus-std/config';
-import type { ConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
+import type { ConfigRoot } from '@rhombus-std/config';
 import { RESOLVER_TOKEN } from '@rhombus-std/di';
 import type { IResolver } from '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
@@ -52,7 +52,7 @@ import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@
 // Brings the config-bind configure step + the runtime `addOptions` verb the
 // `addOptions<T>()` sugar lowers to. Side-effect import — MUST stay for the
 // prototype patch to land.
-import { ConfigurationConfigureOptions } from '@rhombus-std/options.augmentations';
+import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IGreeting, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { fetchBanner, FormalGreeting, makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
@@ -60,21 +60,21 @@ import { addCasualServices } from '@rhombus-std/examples.lib.without-transformer
 
 // The ONE hand-written token in this file — see the header note. It has no
 // transformer-derived counterpart to match; it exists purely to thread the
-// manually-built `ConfigurationRoot` into the hosted worker's explicit-token
+// manually-built `ConfigRoot` into the hosted worker's explicit-token
 // `addHostedService` signature below.
-const CONFIG_TOKEN = '@rhombus-std/config:ConfigurationRoot';
+const CONFIG_TOKEN = '@rhombus-std/config:ConfigRoot';
 
 // ── config ───────────────────────────────────────────────────────────────────
 
 /** The layered configuration root — an in-memory source seeds the server keys. */
-function buildConfig(): ConfigurationRoot {
-  return new ConfigurationBuilder()
+function buildConfig(): ConfigRoot {
+  return new ConfigBuilder()
     .addInMemoryCollection({
       'Server:Host': '0.0.0.0',
       'Server:Port': '8080',
       'Server:MaxConnections': '100',
     })
-    .build() as unknown as ConfigurationRoot;
+    .build() as unknown as ConfigRoot;
 }
 
 /**
@@ -84,8 +84,8 @@ function buildConfig(): ConfigurationRoot {
  * the pipeline live and `subscribe` fires on every reload. This assembly needs
  * no DI token, so it is identical across both dialects' apps.
  */
-function makeServerOptions(config: ConfigurationRoot): IOptions<ServerOptions> {
-  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
+function makeServerOptions(config: ConfigRoot): IOptions<ServerOptions> {
+  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
   const coerce: IPostConfigureOptions<ServerOptions> = {
@@ -128,13 +128,13 @@ class InteropWorker implements IHostedLifecycleService {
   readonly #resolver: IResolver;
   readonly #lifetime: IHostApplicationLifetime;
   readonly #logger: ILogger;
-  readonly #config: ConfigurationRoot;
+  readonly #config: ConfigRoot;
 
   public constructor(
     resolver: IResolver,
     lifetime: IHostApplicationLifetime,
     loggerFactory: ILoggerFactory,
-    config: ConfigurationRoot,
+    config: ConfigRoot,
   ) {
     this.#resolver = resolver;
     this.#lifetime = lifetime;

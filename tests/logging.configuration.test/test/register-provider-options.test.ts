@@ -6,10 +6,10 @@
 //
 // The whole chain the reference wires through DI is exercised: the step
 // classes are constructed lazily by the container (their dep is the CLOSED
-// `ILoggerProviderConfiguration<TProvider>` resolved through the open
+// `ILoggerProviderConfig<TProvider>` resolved through the open
 // template), so nothing touches configuration until `IOptions<T>` materializes.
 
-import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.configuration';
@@ -25,8 +25,8 @@ interface FakeProviderOptions {
 const OPTIONS_TOKEN = 'test:FakeProviderOptions';
 const FAKE_PROVIDER_TOKEN = 'test:FakeProvider';
 
-function rootWith(data: Record<string, string>): IConfigurationRoot {
-  return new ConfigurationBuilder().addInMemoryCollection(data).build() as unknown as IConfigurationRoot;
+function rootWith(data: Record<string, string>): IConfigRoot {
+  return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
 }
 
 describe('LoggerProviderOptions.registerProviderOptions', () => {

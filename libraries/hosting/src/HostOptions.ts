@@ -5,7 +5,7 @@
 // (no timeout). `initialize` reads the same configuration keys the reference
 // reads, folding them onto the defaults.
 
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 import type { BackgroundService, IHost, IHostedLifecycleService } from '@rhombus-std/hosting.core';
 import { BackgroundServiceErrorBehavior } from './BackgroundServiceErrorBehavior';
 
@@ -68,7 +68,7 @@ export class HostOptions {
   public backgroundServiceErrorBehavior = BackgroundServiceErrorBehavior.StopHost;
 
   /** Folds the host-option configuration keys onto these options. */
-  public initialize(configuration: IConfiguration): void {
+  public initialize(configuration: IConfig): void {
     const shutdownSeconds = parseNonNegativeInt(configuration.get('shutdownTimeoutSeconds'));
     if (shutdownSeconds !== undefined) {
       this.shutdownTimeout = shutdownSeconds * 1000;

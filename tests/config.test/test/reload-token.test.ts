@@ -4,7 +4,7 @@
 // their root. No OS file-watching lives here (out of v0 scope) -- every fire
 // below is either root.reload() or a provider explicitly reporting a refresh.
 
-import { ConfigurationBuilder, ConfigurationProvider, type IConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder, ConfigProvider, type IConfigRoot } from '@rhombus-std/config';
 import { ChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
@@ -13,24 +13,24 @@ import { rootOf } from './support';
  * a key, then reports the refresh via the protected `onReload` hook every
  * concrete provider (json/env/cli) also calls once its data has actually
  * changed. */
-class RefreshableProvider extends ConfigurationProvider {
+class RefreshableProvider extends ConfigProvider {
   public refresh(key: string, value: string): void {
     this.set(key, value);
     this.onReload();
   }
 }
 
-function rootOfRefreshable(): { root: IConfigurationRoot; provider: RefreshableProvider; } {
+function rootOfRefreshable(): { root: IConfigRoot; provider: RefreshableProvider; } {
   const provider = new RefreshableProvider();
-  // ConfigurationBuilder has no add(provider) sugar -- a source that just
+  // ConfigBuilder has no add(provider) sugar -- a source that just
   // hands back the pre-built provider mirrors how a real
-  // IConfigurationSource.build() works.
+  // IConfigSource.build() works.
   const source = { build: () => provider };
-  const root = new ConfigurationBuilder().add(source).build() as unknown as IConfigurationRoot;
+  const root = new ConfigBuilder().add(source).build() as unknown as IConfigRoot;
   return { root, provider };
 }
 
-describe('ConfigurationProvider.getReloadToken', () => {
+describe('ConfigProvider.getReloadToken', () => {
   test('hasChanged flips only after onReload runs', () => {
     const provider = new RefreshableProvider();
     const before = provider.getReloadToken();
@@ -57,7 +57,7 @@ describe('ConfigurationProvider.getReloadToken', () => {
   });
 });
 
-describe('ConfigurationRoot.getReloadToken', () => {
+describe('ConfigRoot.getReloadToken', () => {
   test("root.reload() fires the root's token exactly once", () => {
     const root = rootOf({ 'Server:Port': '8080' });
     let fires = 0;
@@ -98,7 +98,7 @@ describe('ConfigurationRoot.getReloadToken', () => {
   });
 });
 
-describe('ConfigurationSection.getReloadToken', () => {
+describe('ConfigSection.getReloadToken', () => {
   test('delegates to the owning root -- a section has no reload state of its own', () => {
     const root = rootOf({ 'Server:Port': '8080' });
     const section = root.getSection('Server');

@@ -3,13 +3,13 @@
 // `LoggerProviderOptionsChangeTokenSource<TOptions, TProvider>`.
 //
 // `TOptions` is a compile-time phantom here: the base
-// `ConfigurationChangeTokenSource` dropped its options type parameter in the
+// `ConfigChangeTokenSource` dropped its options type parameter in the
 // port (a source is tied to the one options registration it was added for —
 // docs/decisions.md §4.2), so the parameter survives only to mirror the
 // reference signature.
 
-import { ConfigurationChangeTokenSource } from '@rhombus-std/options.augmentations';
-import type { ILoggerProviderConfiguration } from './ILoggerProviderConfiguration';
+import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
+import type { ILoggerProviderConfig } from './ILoggerProviderConfig';
 
 /**
  * A change-token source wired to provider `TProvider`'s configuration section,
@@ -17,8 +17,8 @@ import type { ILoggerProviderConfiguration } from './ILoggerProviderConfiguratio
  * registered per options token by
  * `LoggerProviderOptions.registerProviderOptions`.
  */
-export class LoggerProviderOptionsChangeTokenSource<TOptions, TProvider> extends ConfigurationChangeTokenSource {
-  public constructor(providerConfiguration: ILoggerProviderConfiguration<TProvider>) {
+export class LoggerProviderOptionsChangeTokenSource<TOptions, TProvider> extends ConfigChangeTokenSource {
+  public constructor(providerConfiguration: ILoggerProviderConfig<TProvider>) {
     super(providerConfiguration.configuration);
   }
 }

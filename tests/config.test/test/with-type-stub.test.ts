@@ -9,17 +9,17 @@
 // actually lands in dist/with-type-augment.js and throws under node) is covered
 // by the integration package, which runs against built dist.
 
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 import '@rhombus-std/config/with-type-augment';
 
 describe('withType() Tier 2 stub', () => {
   test('is installed as a function on the builder prototype', () => {
-    expect(typeof new ConfigurationBuilder().withType).toBe('function');
+    expect(typeof new ConfigBuilder().withType).toBe('function');
   });
 
   test("throws the 'transform did not run' error when called without the transformer", () => {
-    expect(() => new ConfigurationBuilder().withType<{ Port: number; }>())
+    expect(() => new ConfigBuilder().withType<{ Port: number; }>())
       .toThrow(/@rhombus-std\/config.transformer/);
   });
 });

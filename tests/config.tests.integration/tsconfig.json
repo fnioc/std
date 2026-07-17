@@ -1,5 +1,5 @@
 {
-  "//": "Lint-time typecheck config for the integration tests. The tests run under `node --test` (which strips types), so this is purely the `lint` script's target. `types: [node]` pulls in node:test / node:assert / process without dragging @types/bun's globals in. tsc resolves each @rhombus-std/config.* import via the `types` export condition -> src, so the provider `declare module` augmentations enter this program and addJsonFile/addEnvironmentVariables/addCommandLine typecheck on ConfigurationBuilder.",
+  "//": "Lint-time typecheck config for the integration tests. The tests run under `node --test` (which strips types), so this is purely the `lint` script's target. `types: [node]` pulls in node:test / node:assert / process without dragging @types/bun's globals in. tsc resolves each @rhombus-std/config.* import via the `types` export condition -> src, so the provider `declare module` augmentations enter this program and addJsonFile/addEnvironmentVariables/addCommandLine typecheck on ConfigBuilder.",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,

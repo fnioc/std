@@ -2,7 +2,7 @@
 // `HostApplicationBuilderSettings`. Controls the initial configuration and
 // whether the modern builder applies its pre-configured defaults.
 
-import type { IConfigurationManager } from '@rhombus-std/config.core';
+import type { IConfigManager } from '@rhombus-std/config.core';
 
 /** Settings for constructing a {@link import("./HostApplicationBuilder").HostApplicationBuilder}. */
 export class HostApplicationBuilderSettings {
@@ -21,9 +21,9 @@ export class HostApplicationBuilderSettings {
    * The initial configuration object. These sources can influence the
    * {@link import("@rhombus-std/hosting.core").IHostEnvironment} through the
    * {@link import("@rhombus-std/hosting.core").HostDefaults} keys. When omitted,
-   * a fresh {@link IConfigurationManager} is created.
+   * a fresh {@link IConfigManager} is created.
    */
-  public configuration?: IConfigurationManager;
+  public configuration?: IConfigManager;
 
   /** The environment name. */
   public environmentName?: string;

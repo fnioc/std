@@ -9,7 +9,7 @@
 // the hand-written literal a no-transformer consumer writes — byte-identical
 // to the inline `nameof<IOptions<LoggerFilterOptions>>()` the library derives.
 
-import { ConfigurationBuilder, type IConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import { LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import '@rhombus-std/logging.configuration';
@@ -19,13 +19,13 @@ import { describe, expect, test } from 'bun:test';
 
 const FILTER_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/logging:LoggerFilterOptions>';
 
-function rootWith(data: Record<string, string>): IConfigurationRoot {
+function rootWith(data: Record<string, string>): IConfigRoot {
   // build() is typed to the index-navigable Section (the coercion seam); the
-  // runtime object IS the ConfigurationRoot, so cast to reach reload()/set().
-  return new ConfigurationBuilder().addInMemoryCollection(data).build() as unknown as IConfigurationRoot;
+  // runtime object IS the ConfigRoot, so cast to reach reload()/set().
+  return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
 }
 
-function filterOptionsFor(config: IConfigurationRoot): IOptions<LoggerFilterOptions> {
+function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   const services = new ServiceManifest<'singleton'>();
   new LoggingBuilder(services).addConfiguration(config);
   const provider = services.build().createScope('singleton');

@@ -1,6 +1,6 @@
 // Rolls the public type surface of @rhombus-std/config.env into a single
 // dist/index.d.ts. @rhombus-std/config stays external (a peer dep -- consumers have
-// it, and the augmentation depends on it being the SAME ConfigurationBuilder
+// it, and the augmentation depends on it being the SAME ConfigBuilder
 // class, not an inlined copy). rollup-plugin-dts drives the TypeScript
 // compiler with this package's tsconfig, so extensionless relative specifiers
 // resolve through `moduleResolution: bundler`.

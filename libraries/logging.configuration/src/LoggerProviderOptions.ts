@@ -11,11 +11,11 @@
 //
 // The reference registers `IConfigureOptions<TOptions>` /
 // `IOptionsChangeTokenSource<TOptions>` service descriptors whose
-// constructors inject `ILoggerProviderConfiguration<TProvider>`; the analog
+// constructors inject `ILoggerProviderConfig<TProvider>`; the analog
 // here is a CLASS registration at the options token's derived pipeline slots
 // (the open service contract @rhombus-std/options.augmentations exports as
 // `configureStepToken`/`changeTokenSourceToken`), with the closed
-// `ILoggerProviderConfiguration<TProvider>` token as the dep slot — resolved
+// `ILoggerProviderConfig<TProvider>` token as the dep slot — resolved
 // through the open template the no-arg `addConfiguration` registers, so the
 // whole chain stays lazy: nothing touches configuration until the
 // `IOptions<TOptions>` assembly materializes.
@@ -33,7 +33,7 @@
 import type { IServiceManifest, Token, Typeof } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
-import { loggerProviderConfigurationToken } from './ILoggerProviderConfiguration';
+import { loggerProviderConfigToken } from './ILoggerProviderConfig';
 import { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
 import { LoggerProviderOptionsChangeTokenSource } from './LoggerProviderOptionsChangeTokenSource';
 
@@ -59,7 +59,7 @@ export const LoggerProviderOptions = {
     optionsToken: Typeof<IOptions<TOptions>>,
     providerType: Typeof<TProvider>,
   ): void {
-    const providerConfiguration: Token = loggerProviderConfigurationToken(providerType);
+    const providerConfiguration: Token = loggerProviderConfigToken(providerType);
     services
       .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfiguration]])
       .as('singleton');

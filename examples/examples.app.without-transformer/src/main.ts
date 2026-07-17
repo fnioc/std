@@ -22,8 +22,8 @@
 // `IHostApplicationLifetime.stopApplication()` once its work is done, so
 // `runAsync` returns deterministically with no reliance on Ctrl+C / signals.
 
-import { ConfigurationBuilder } from '@rhombus-std/config';
-import type { ConfigurationRoot } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
+import type { ConfigRoot } from '@rhombus-std/config';
 import { RESOLVER_TOKEN } from '@rhombus-std/di';
 import type { IResolver } from '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
@@ -33,7 +33,7 @@ import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
 import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
 import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
-import { ConfigurationConfigureOptions } from '@rhombus-std/options.augmentations';
+import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { fetchBanner, FormalGreeting, makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
@@ -44,25 +44,25 @@ import { addCasualServices, GREETING_TOKEN } from '@rhombus-std/examples.lib.wit
 // one shared element token; the rest follow the same `<import-specifier>:<name>`
 // / closed-generic `base<arg>` grammar. CONFIG_TOKEN has no transformer-derived
 // counterpart to match — it exists purely to thread the manually-built
-// `ConfigurationRoot` into the hosted worker below.
+// `ConfigRoot` into the hosted worker below.
 const BANNER_TOKEN = 'Promise<@rhombus-std/examples.contracts:IBanner>';
 const REPORT_TOKEN = '@rhombus-std/examples.contracts:IServerReport';
 const SERVER_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/examples.contracts:ServerOptions>';
 const POLICY_TOKEN = '@rhombus-std/examples.contracts:GreetingPolicy';
 const POLICY_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/examples.contracts:GreetingPolicy>';
-const CONFIG_TOKEN = '@rhombus-std/config:ConfigurationRoot';
+const CONFIG_TOKEN = '@rhombus-std/config:ConfigRoot';
 
 // ── config ───────────────────────────────────────────────────────────────────
 
 /** The layered configuration root — an in-memory source seeds the server keys. */
-function buildConfig(): ConfigurationRoot {
-  return new ConfigurationBuilder()
+function buildConfig(): ConfigRoot {
+  return new ConfigBuilder()
     .addInMemoryCollection({
       'Server:Host': '0.0.0.0',
       'Server:Port': '8080',
       'Server:MaxConnections': '100',
     })
-    .build() as unknown as ConfigurationRoot;
+    .build() as unknown as ConfigRoot;
 }
 
 /**
@@ -71,8 +71,8 @@ function buildConfig(): ConfigurationRoot {
  * wrapped in `Options.watch` over the config's reload token. Token-free, so it is
  * identical to the with-transformer app's assembly.
  */
-function makeServerOptions(config: ConfigurationRoot): IOptions<ServerOptions> {
-  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigurationConfigureOptions<ServerOptions>(
+function makeServerOptions(config: ConfigRoot): IOptions<ServerOptions> {
+  const bindConfig: IConfigureOptions<ServerOptions> = new ConfigConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
   const coerce: IPostConfigureOptions<ServerOptions> = {
@@ -112,13 +112,13 @@ class InteropWorker implements IHostedLifecycleService {
   readonly #resolver: IResolver;
   readonly #lifetime: IHostApplicationLifetime;
   readonly #logger: ILogger;
-  readonly #config: ConfigurationRoot;
+  readonly #config: ConfigRoot;
 
   public constructor(
     resolver: IResolver,
     lifetime: IHostApplicationLifetime,
     loggerFactory: ILoggerFactory,
-    config: ConfigurationRoot,
+    config: ConfigRoot,
   ) {
     this.#resolver = resolver;
     this.#lifetime = lifetime;

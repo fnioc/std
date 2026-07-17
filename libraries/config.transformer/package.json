@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.transformer",
   "version": "0.0.0",
-  "description": "The @rhombus-std/config ts-patch transformer: rewrites .withType<T>() on a ConfigurationBuilder into a generated .withSchema({...}) runtime schema literal at compile time.",
+  "description": "The @rhombus-std/config ts-patch transformer: rewrites .withType<T>() on a ConfigBuilder into a generated .withSchema({...}) runtime schema literal at compile time.",
   "keywords": [
     "configuration",
     "config",

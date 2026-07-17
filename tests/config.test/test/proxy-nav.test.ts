@@ -1,12 +1,11 @@
 // Proxy integration: dot/bracket navigation over the Section tree via
 // @rhombus-toolkit/proxy-base's IndexAccessed, plus every guarded hazard.
 
-import { ConfigurationBuilder, ConfigurationRoot, ConfigurationSection,
-  type IndexedSection } from '@rhombus-std/config';
+import { ConfigBuilder, ConfigRoot, ConfigSection, type IndexedSection } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 
 function navRoot(): IndexedSection {
-  return new ConfigurationBuilder()
+  return new ConfigBuilder()
     .addInMemoryCollection({ 'Server:Host': 'localhost', 'Server:Port': '8080' })
     .build();
 }
@@ -17,8 +16,8 @@ describe('proxy navigation', () => {
     expect(config.get('Server:Port')).toBe('8080');
   });
 
-  test('index nav returns a ConfigurationSection', () => {
-    expect(navRoot().Server).toBeInstanceOf(ConfigurationSection);
+  test('index nav returns a ConfigSection', () => {
+    expect(navRoot().Server).toBeInstanceOf(ConfigSection);
   });
 
   test('3-level dot navigation reaches the leaf value', () => {
@@ -53,8 +52,8 @@ describe('proxy navigation', () => {
 
   test('instanceof stays intact through the attached proxy', () => {
     const config = navRoot();
-    expect(config).toBeInstanceOf(ConfigurationRoot);
-    expect(config.Server).toBeInstanceOf(ConfigurationSection);
+    expect(config).toBeInstanceOf(ConfigRoot);
+    expect(config.Server).toBeInstanceOf(ConfigSection);
   });
 
   test('index writes throw; set() and the value setter still work', () => {
@@ -69,7 +68,7 @@ describe('proxy navigation', () => {
   });
 
   test('a config key named like a member is shadowed but reachable via getSection', () => {
-    const config = new ConfigurationBuilder()
+    const config = new ConfigBuilder()
       .addInMemoryCollection({ value: 'shadowed' })
       .build();
     // `config.value` returns the member (undefined on the root), not the key.

@@ -1,6 +1,6 @@
 // Rolls the public type surface of @rhombus-std/config into a single dist/index.d.ts.
 // @rhombus-std/config.core stays EXTERNAL (respectExternal) so the published declaration
-// imports the IConfiguration* types from @rhombus-std/config.core rather than inlining a
+// imports the IConfig* types from @rhombus-std/config.core rather than inlining a
 // private copy; rollup-plugin-dts drives the TypeScript compiler with this
 // package's tsconfig, so extensionless relative specifiers resolve through
 // `moduleResolution: bundler`.

@@ -4,14 +4,14 @@
 // `environment`, `logging`, `metrics`, and `services` as live properties the
 // caller mutates directly, then `build()` runs the same composition tail.
 //
-// `configuration` is a live `ConfigurationManager` (both an
-// `IConfigurationBuilder` and an `IConfiguration`): adding a source updates its
+// `configuration` is a live `ConfigManager` (both an
+// `IConfigBuilder` and an `IConfig`): adding a source updates its
 // current view immediately, which is why the framework services are populated
 // eagerly in the constructor but `HostOptions` is folded from the configuration
 // at `build()` time (in the composition tail), once every source is present.
 
-import { ConfigurationManager } from '@rhombus-std/config';
-import type { IConfigurationManager } from '@rhombus-std/config.core';
+import { ConfigManager } from '@rhombus-std/config';
+import type { IConfigManager } from '@rhombus-std/config.core';
 import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
 import type { IServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
@@ -20,8 +20,8 @@ import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicatio
 import { LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { Action } from '@rhombus-toolkit/func';
-import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfiguration, createDefaultServiceProviderOptions,
-  HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-configuration';
+import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfig, createDefaultServiceProviderOptions,
+  HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-config';
 import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices,
   resolveHost } from './host-composition';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
@@ -30,7 +30,7 @@ import { MetricsBuilder } from './MetricsBuilder';
 
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */
 export class HostApplicationBuilder implements IHostApplicationBuilder {
-  readonly #configuration: ConfigurationManager;
+  readonly #configuration: ConfigManager;
   readonly #services = new ServiceManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
@@ -44,17 +44,17 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
 
   public constructor(settings?: HostApplicationBuilderSettings) {
     const resolved = settings ?? new HostApplicationBuilderSettings();
-    this.#configuration = resolved.configuration instanceof ConfigurationManager
+    this.#configuration = resolved.configuration instanceof ConfigManager
       ? resolved.configuration
-      : new ConfigurationManager();
+      : new ConfigManager();
     this.#framework = createFrameworkServices();
 
     // Calls made directly on `this.#configuration` (a concrete
-    // `ConfigurationManager`) below use the fluent `add*` sugar; calls routed
-    // through a `default-configuration.ts` helper (`setDefaultContentRoot`,
-    // `addCommandLineConfig`, `applyDefaultAppConfiguration`) stay in the raw
+    // `ConfigManager`) below use the fluent `add*` sugar; calls routed
+    // through a `default-config.ts` helper (`setDefaultContentRoot`,
+    // `addCommandLineConfig`, `applyDefaultAppConfig`) stay in the raw
     // `.add(new Source(...))` form, because those helpers are typed against
-    // the plain `IConfigurationBuilder` interface to stay reusable by the
+    // the plain `IConfigBuilder` interface to stay reusable by the
     // classic `HostBuilder`'s delegate-typed configuration callbacks, which
     // never see a concrete class to hang the sugar off of.
     if (!resolved.disableDefaults) {
@@ -95,7 +95,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     populateFrameworkServices(this.#services, this.#context, this.#environment, this.#configuration, this.#framework);
 
     if (!resolved.disableDefaults) {
-      applyDefaultAppConfiguration(this.#configuration, this.#environment, resolved.args);
+      applyDefaultAppConfig(this.#configuration, this.#environment, resolved.args);
       addDefaultServices(this.#services);
     }
 
@@ -116,7 +116,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The mutable set of key/value configuration properties. */
-  public get configuration(): IConfigurationManager {
+  public get configuration(): IConfigManager {
     return this.#configuration;
   }
 

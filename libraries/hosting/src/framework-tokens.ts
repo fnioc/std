@@ -15,8 +15,8 @@ export const HOST_ENVIRONMENT_TOKEN: Token = '@rhombus-std/hosting/IHostEnvironm
 /** Token the {@link import("@rhombus-std/hosting.core").HostBuilderContext} is registered under. */
 export const HOST_BUILDER_CONTEXT_TOKEN: Token = '@rhombus-std/hosting/HostBuilderContext';
 
-/** Token the merged application {@link import("@rhombus-std/config.core").IConfiguration} is registered under. */
-export const CONFIGURATION_TOKEN: Token = '@rhombus-std/hosting/IConfiguration';
+/** Token the merged application {@link import("@rhombus-std/config.core").IConfig} is registered under. */
+export const CONFIGURATION_TOKEN: Token = '@rhombus-std/hosting/IConfig';
 
 /** Token the host's {@link import("@rhombus-std/hosting.core").IHostLifetime} is registered under. */
 export const HOST_LIFETIME_TOKEN: Token = '@rhombus-std/hosting/IHostLifetime';

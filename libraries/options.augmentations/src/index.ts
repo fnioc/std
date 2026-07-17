@@ -1,10 +1,10 @@
 // Public entry point for @rhombus-std/options.augmentations -- the config -> Options
-// bridge (MEO's Options.ConfigurationExtensions analog; docs/decisions.md §4.1).
+// bridge (MEO's Options.ConfigExtensions analog; docs/decisions.md §4.1).
 //
 // Installs fluent authoring methods onto di.core's registration builder via the
 // augmentation pattern (TS declaration merging + a runtime prototype assignment
 // through the OPEN-set registry), exactly how @rhombus-std/config.json adds
-// `addJsonFile` to ConfigurationBuilder:
+// `addJsonFile` to ConfigBuilder:
 //
 //   - `addOptions<T>(token, makeBase)` -- registers the `IOptions<T>` assembly
 //     (the OptionsFactory pipeline, §4.5) for `token`. Returns the `.as(scope)`
@@ -13,8 +13,8 @@
 //   - `configure(token, section)` -- registers a config-bind configure step
 //     PLUS a change-token source wired to the section's reload token, so the
 //     delivered `IOptions<T>` binds the section and reacts to reloads (#6).
-//     Mirrors ME's Configure<TOptions>(IConfiguration) =
-//     NamedConfigureFromConfigurationOptions + ConfigurationChangeTokenSource.
+//     Mirrors ME's Configure<TOptions>(IConfig) =
+//     NamedConfigureFromConfigurationOptions + ConfigChangeTokenSource.
 //
 // A consumer who only wants the sugar takes a bare side-effect import:
 // `import "@rhombus-std/options.augmentations";`. This package MUST keep
@@ -22,7 +22,7 @@
 //
 // di and config stay mutually unaware -- the bridge code lives ONLY here (§4.3).
 
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 // `AddBuilder` and `Token` are named imports (not member references inside the
 // augmentation block) because unqualified names in a `declare module` body
 // resolve in THIS file's scope.
@@ -35,8 +35,8 @@ import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleOptions } from './assemble-options.js';
-import { ConfigurationChangeTokenSource } from './ConfigurationChangeTokenSource.js';
-import { ConfigurationConfigureOptions } from './ConfigurationConfigureOptions.js';
+import { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
+import { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
 import { changeTokenSourceToken, configureStepToken, postConfigureStepToken,
   validateStepToken } from './option-tokens.js';
 
@@ -89,7 +89,7 @@ declare module '@rhombus-std/di.core' {
      * change-token source wired to the section's reload token. Requires a prior
      * {@link addOptions} for the same `token`.
      */
-    configure(token: Token, section: IConfiguration): this;
+    configure(token: Token, section: IConfig): this;
     /**
      * Registers a code configure step for `token`: `configureOptions` runs
      * against the value as one configure source among several (no config
@@ -154,7 +154,7 @@ declare module '@rhombus-std/di.core' {
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addOptions(token: Token, tToken: Token): AddBuilder<Scopes>;
     addOptions<T>(token: Token, makeBase: Func<[], T>): AddBuilder<Scopes>;
-    configure(token: Token, section: IConfiguration): this;
+    configure(token: Token, section: IConfig): this;
     configure<T>(token: Token, configureOptions: Func<[T], void>): this;
     configure<T, Deps extends readonly unknown[]>(
       token: Token,
@@ -179,7 +179,7 @@ declare module '@rhombus-std/di.core' {
 
 // One named object literal per ME static class (docs §28/§38): `addOptions`,
 // `postConfigure`, `validate` mirror `OptionsServiceCollectionExtensions`;
-// `configure` mirrors `OptionsConfigurationServiceCollectionExtensions` -- two
+// `configure` mirrors `OptionsConfigServiceCollectionExtensions` -- two
 // ME classes over the same receiver, so two literals. Each is registered into
 // the OPEN-set augmentation registry (below) so the decorated
 // `ServiceManifestClass` mounts its members as prototype methods (the primary
@@ -287,11 +287,11 @@ export const OptionsServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-export const OptionsConfigurationServiceCollectionExtensions = {
+export const OptionsConfigServiceCollectionExtensions = {
   configure<T, Deps extends readonly unknown[]>(
     manifest: ServiceManifestClass<string>,
     token: Token,
-    source: IConfiguration | Func<[T], void> | DepTokens<Deps>,
+    source: IConfig | Func<[T], void> | DepTokens<Deps>,
     configureWithDeps?: (options: T, ...deps: Deps) => void,
   ): ServiceManifestClass<string> {
     // DI-injected form (§42): `source` is the dep-token tuple and
@@ -318,13 +318,13 @@ export const OptionsConfigurationServiceCollectionExtensions = {
     // (rule §38) forbids a second `configure` member on the token, so the
     // config-section member absorbs the delegate by arg type -- the same
     // disambiguation precedent `addOptions` uses.
-    const configSource = source as IConfiguration | Func<[T], void>;
+    const configSource = source as IConfig | Func<[T], void>;
     if (typeof configSource === 'function') {
       manifest.addValue(configureStepToken(token), { configure: configSource });
       return manifest;
     }
-    manifest.addValue(configureStepToken(token), new ConfigurationConfigureOptions(configSource));
-    manifest.addValue(changeTokenSourceToken(token), new ConfigurationChangeTokenSource(configSource));
+    manifest.addValue(configureStepToken(token), new ConfigConfigureOptions(configSource));
+    manifest.addValue(changeTokenSourceToken(token), new ConfigChangeTokenSource(configSource));
     return manifest;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
@@ -334,7 +334,7 @@ export const OptionsConfigurationServiceCollectionExtensions = {
 // this declare-module merge. The `ServiceManifestClass` decorated with the same
 // token (di.core) pulls these members onto its prototype (§38).
 registerAugmentations(nameof<IServiceManifest>(), OptionsServiceCollectionExtensions);
-registerAugmentations(nameof<IServiceManifest>(), OptionsConfigurationServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), OptionsConfigServiceCollectionExtensions);
 
 // `validateOnStart` lives in its own file named after its reference static class
 // (`OptionsBuilderExtensions`, §28) with `Extensions` -> `augmentations`, matching
@@ -343,8 +343,8 @@ registerAugmentations(nameof<IServiceManifest>(), OptionsConfigurationServiceCol
 // installs the verb onto the manifest.
 export { OptionsBuilderExtensions } from './options-builder-augmentations.js';
 
-export { ConfigurationChangeTokenSource } from './ConfigurationChangeTokenSource.js';
-export { ConfigurationConfigureOptions } from './ConfigurationConfigureOptions.js';
+export { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
+export { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
 // The slot-token grammar is public surface: in the reference stack the
 // per-options configure / post-configure / validate steps and change-token
 // sources are ordinary OPEN service contracts — any downstream package may

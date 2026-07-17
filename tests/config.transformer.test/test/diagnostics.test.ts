@@ -7,7 +7,7 @@ describe('hard diagnostics for unsupported types', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface Bad { tags: string[] }
-        const b = new ConfigurationBuilder().withType<Bad>();
+        const b = new ConfigBuilder().withType<Bad>();
       `),
     );
     expect(diagnostics).toHaveLength(1);
@@ -21,7 +21,7 @@ describe('hard diagnostics for unsupported types', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface Bad { mode: string | number }
-        const b = new ConfigurationBuilder().withType<Bad>();
+        const b = new ConfigBuilder().withType<Bad>();
       `),
     );
     expect(diagnostics).toHaveLength(1);
@@ -33,7 +33,7 @@ describe('hard diagnostics for unsupported types', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface Bad { when: Date }
-        const b = new ConfigurationBuilder().withType<Bad>();
+        const b = new ConfigBuilder().withType<Bad>();
       `),
     );
     expect(diagnostics).toHaveLength(1);
@@ -44,7 +44,7 @@ describe('hard diagnostics for unsupported types', () => {
   test('a bare-leaf type argument raises NonObjectRoot', () => {
     const { output, diagnostics } = transform(
       fixture(`
-        const b = new ConfigurationBuilder().withType<string>();
+        const b = new ConfigBuilder().withType<string>();
       `),
     );
     expect(diagnostics).toHaveLength(1);
@@ -56,7 +56,7 @@ describe('hard diagnostics for unsupported types', () => {
     const { output, diagnostics } = transform(
       fixture(`
         interface Bad { a: { bad: string[] } }
-        const b = new ConfigurationBuilder().withType<Bad>();
+        const b = new ConfigBuilder().withType<Bad>();
       `),
     );
     expect(diagnostics).toHaveLength(1);

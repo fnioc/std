@@ -18,7 +18,7 @@
 // scoped to that provider (its key). A category of "Default" maps to the
 // catch-all rule (category = undefined).
 
-import type { IConfiguration } from '@rhombus-std/config.core';
+import type { IConfig } from '@rhombus-std/config.core';
 import { LoggerFilterOptions, LoggerFilterRule } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
@@ -55,7 +55,7 @@ export function parseLogLevel(value: string): LogLevel {
 
 function loadRules(
   options: LoggerFilterOptions,
-  levelSection: IConfiguration,
+  levelSection: IConfig,
   provider: string | undefined,
 ): void {
   for (const entry of levelSection.getChildren()) {
@@ -71,16 +71,16 @@ function loadRules(
 
 /**
  * The configure step binding `LoggerFilterOptions` from an
- * {@link IConfiguration} — sets `captureScopes` and appends a
+ * {@link IConfig} — sets `captureScopes` and appends a
  * {@link LoggerFilterRule} for every `LogLevel` entry (global and
  * per-provider). Registered by `addConfiguration` as one configure source in
  * the options pipeline.
  */
 export class LoggerFilterConfigureOptions implements IConfigureOptions<LoggerFilterOptions> {
-  readonly #configuration: IConfiguration;
+  readonly #configuration: IConfig;
 
   /** @param configuration The configuration walked on every {@link configure}. */
-  public constructor(configuration: IConfiguration) {
+  public constructor(configuration: IConfig) {
     this.#configuration = configuration;
   }
 
@@ -94,7 +94,7 @@ export class LoggerFilterConfigureOptions implements IConfigureOptions<LoggerFil
         loadRules(options, section, undefined);
       } else {
         // Provider-specific rules under `<provider>:LogLevel`. A missing
-        // section is an empty IConfiguration (never null), so this is a safe
+        // section is an empty IConfig (never null), so this is a safe
         // no-op.
         loadRules(options, section.getSection('LogLevel'), section.key);
       }
