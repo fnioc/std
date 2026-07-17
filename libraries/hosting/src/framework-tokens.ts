@@ -7,25 +7,30 @@
 // register the framework singletons, and user code resolves them off
 // `IHost.services`), so they live with the runtime rather than the abstractions.
 
+import type { IConfig } from '@rhombus-std/config.core';
 import type { Token } from '@rhombus-std/di.core';
+import type { HostBuilderContext, IHostEnvironment, IHostLifetime } from '@rhombus-std/hosting.core';
+import { nameof } from '@rhombus-std/primitives';
+import type { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
+import type { HostOptions } from './HostOptions';
 
-/** Token the built {@link import("@rhombus-std/hosting.core").IHostEnvironment} is registered under. */
-export const HOST_ENVIRONMENT_TOKEN: Token = '@rhombus-std/hosting/IHostEnvironment';
+/** Token the built {@link IHostEnvironment} is registered under. */
+export const HOST_ENVIRONMENT_TOKEN: Token = nameof<IHostEnvironment>();
 
-/** Token the {@link import("@rhombus-std/hosting.core").HostBuilderContext} is registered under. */
-export const HOST_BUILDER_CONTEXT_TOKEN: Token = '@rhombus-std/hosting/HostBuilderContext';
+/** Token the {@link HostBuilderContext} is registered under. */
+export const HOST_BUILDER_CONTEXT_TOKEN: Token = nameof<HostBuilderContext>();
 
-/** Token the merged application {@link import("@rhombus-std/config.core").IConfig} is registered under. */
-export const CONFIGURATION_TOKEN: Token = '@rhombus-std/hosting/IConfig';
+/** Token the merged application {@link IConfig} is registered under. */
+export const CONFIG_TOKEN: Token = nameof<IConfig>();
 
-/** Token the host's {@link import("@rhombus-std/hosting.core").IHostLifetime} is registered under. */
-export const HOST_LIFETIME_TOKEN: Token = '@rhombus-std/hosting/IHostLifetime';
+/** Token the host's {@link IHostLifetime} is registered under. */
+export const HOST_LIFETIME_TOKEN: Token = nameof<IHostLifetime>();
 
-/** Token the resolved {@link import("./HostOptions").HostOptions} value is registered under. */
-export const HOST_OPTIONS_TOKEN: Token = '@rhombus-std/hosting/HostOptions';
+/** Token the resolved {@link HostOptions} value is registered under. */
+export const HOST_OPTIONS_TOKEN: Token = nameof<HostOptions>();
 
-/** Token the {@link import("./ConsoleLifetimeOptions").ConsoleLifetimeOptions} value is registered under. */
-export const CONSOLE_LIFETIME_OPTIONS_TOKEN: Token = '@rhombus-std/hosting/ConsoleLifetimeOptions';
+/** Token the {@link ConsoleLifetimeOptions} value is registered under. */
+export const CONSOLE_LIFETIME_OPTIONS_TOKEN: Token = nameof<ConsoleLifetimeOptions>();
 
 /**
  * Collection token each `configureHostOptions` mutation registers under. The

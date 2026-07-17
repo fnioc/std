@@ -30,7 +30,7 @@ import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rho
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
 import { process } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { CONFIGURATION_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
+import { CONFIG_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
   HOST_OPTIONS_CONFIGURE_TOKEN, HOST_OPTIONS_TOKEN } from './framework-tokens';
 import { HostOptions } from './HostOptions';
 import { ApplicationLifetime } from './internal/ApplicationLifetime';
@@ -174,7 +174,7 @@ export function populateFrameworkServices(
 ): void {
   services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
   services.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
-  services.addValue(CONFIGURATION_TOKEN, configuration);
+  services.addValue(CONFIG_TOKEN, configuration);
   services.addValue(HOST_APPLICATION_LIFETIME_TOKEN, framework.applicationLifetime);
   services.addValue(HOST_OPTIONS_TOKEN, framework.hostOptions);
   services.addValue(LOGGER_FACTORY_TOKEN, framework.loggerFactory);
