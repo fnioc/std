@@ -162,8 +162,17 @@ func exportedName(element *shimast.Node) string {
 
 // isNameofCall reports whether call is a single-type-argument call whose callee
 // resolves to the `nameof` symbol (following an import alias).
+//
+// It anchors on the checker, which panics on a SYNTHETIC callee (a node with no
+// program position — e.g. one the inline stage substituted). Such nodes are
+// never a source-written nameof; a substituted nameof is handled via the inline
+// artifacts instead. Guard on the callee's position so a synthetic node is a
+// clean skip, not a nil-deref inside GetSymbolAtLocation.
 func isNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) bool {
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+		return false
+	}
+	if call.Expression.Pos() < 0 {
 		return false
 	}
 	symbol := checker.GetSymbolAtLocation(call.Expression)
