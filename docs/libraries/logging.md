@@ -161,9 +161,9 @@ const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
 builder.services.addOptions<LoggerFilterOptions>(optionsToken,
   () => new LoggerFilterOptions()).as('singleton');
 builder.services.addValue(configureStepToken(optionsToken),
-  new LoggerFilterConfigureOptions(configuration));
+  new LoggerFilterConfigureOptions(config));
 builder.services.addValue(changeTokenSourceToken(optionsToken),
-  new ConfigChangeTokenSource(configuration));
+  new ConfigChangeTokenSource(config));
 ```
 
 A reload delivers a fresh rule set and fires every subscriber
