@@ -73,7 +73,7 @@ hosted service and starts/stops it as a group.
 | `BackgroundService`                        | Base class for a hosted service that's really one long-running loop — implement `execute`.                                         |
 | `IHostApplicationLifetime`                 | Lifetime signals (`applicationStarted`/`applicationStopping`/`applicationStopped`) plus `stopApplication()` to request a shutdown. |
 | `IHostLifetime`                            | Hook a host calls into around `start`/`stop` — for example, to wait on an external signal before starting.                         |
-| `IHostBuilder`                             | Assembles a host: `configureHostConfiguration`, `configureAppConfiguration`, `configureServices`, `build()`.                       |
+| `IHostBuilder`                             | Assembles a host: `configureHostConfig`, `configureAppConfig`, `configureServices`, `build()`.                                     |
 | `IHostApplicationBuilder`                  | The newer builder shape: exposes `configuration`, `environment`, `logging`, `metrics`, and `services` directly as properties.      |
 | `IHostEnvironment`                         | Where the app is running: `environmentName`, `applicationName`, `contentRootPath`, `contentRootFileProvider`.                      |
 | `HostBuilderContext`                       | Carries `hostingEnvironment`, `configuration`, and `properties` through the build process.                                         |

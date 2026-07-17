@@ -11,10 +11,10 @@ export interface IMetricListenerConfigFactory {
   /**
    * Gets the configuration for the given listener -- the merge of every
    * `{listenerName}` section across the configurations registered through
-   * `addMetricsConfiguration`, later registrations winning on key conflicts.
+   * `addMetricsConfig`, later registrations winning on key conflicts.
    *
    * @param listenerName The name of the listener.
    * @returns The configuration for this listener type.
    */
-  getConfiguration(listenerName: string): IConfig;
+  getConfig(listenerName: string): IConfig;
 }

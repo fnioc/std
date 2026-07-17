@@ -66,16 +66,16 @@ function loadMeterRules(
  * `MetricsConfigureOptions`.
  */
 export class MetricsConfigureOptions implements IConfigureOptions<MetricsOptions> {
-  readonly #configuration: IConfig;
+  readonly #config: IConfig;
 
-  /** @param configuration The configuration section to read metrics rules from. */
-  public constructor(configuration: IConfig) {
-    this.#configuration = configuration;
+  /** @param config The configuration section to read metrics rules from. */
+  public constructor(config: IConfig) {
+    this.#config = config;
   }
 
   /** Reads the schema and appends the matching {@link InstrumentRule}s to `options`. */
   public configure(options: MetricsOptions): void {
-    for (const section of this.#configuration.getChildren()) {
+    for (const section of this.#config.getChildren()) {
       if (equalsIgnoreCase(section.key, ENABLED_METRICS_KEY)) {
         loadMeterRules(options, section, METER_SCOPE_ALL, undefined);
       } else if (equalsIgnoreCase(section.key, ENABLED_GLOBAL_METRICS_KEY)) {

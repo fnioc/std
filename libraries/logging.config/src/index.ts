@@ -1,7 +1,7 @@
 // Public entry point for @rhombus-std/logging.config — the reference
 // logging configuration project's analog, at full surface parity:
 //
-//   - `addConfiguration` (the `LoggingBuilderExtensions` augmentation set) —
+//   - `addConfig` (the `LoggingBuilderExtensions` augmentation set) —
 //     the lazy, reload-reactive `IOptions<LoggerFilterOptions>` pipeline plus
 //     (no-arg arity) the provider-configuration services;
 //   - the provider-configuration surface: `ILoggerProviderConfigFactory`
@@ -13,12 +13,12 @@
 //   - the `LoggerFilterConfigureOptions` configure step and the
 //     `LoggingConfig` holder.
 //
-// Importing this module also installs the `addConfiguration` sugar onto
+// Importing this module also installs the `addConfig` sugar onto
 // ILoggingBuilder via the augmentation registry (./add-configuration). This
 // package MUST keep `"sideEffects": true` so a bundler cannot tree-shake that
 // registration away.
 
-// Side-effect + standalone surface: registers the `addConfiguration`
+// Side-effect + standalone surface: registers the `addConfig`
 // augmentation against the logging-builder token and exports the set (docs §38).
 export { LoggingBuilderExtensions } from './add-configuration';
 export { type ILoggerProviderConfig, loggerProviderConfigToken } from './ILoggerProviderConfig';

@@ -36,7 +36,7 @@ export interface HostBuilderAdapter extends IHostBuilder {}
 /** The classic-builder adapter over a modern application builder. */
 @augment(nameof<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {
-  readonly #configuration: IConfigManager;
+  readonly #config: IConfigManager;
   readonly #services: IServiceManifest;
   readonly #context: HostBuilderContext;
 
@@ -45,11 +45,11 @@ export class HostBuilderAdapter implements IHostBuilder {
   readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
 
   public constructor(
-    configuration: IConfigManager,
+    config: IConfigManager,
     services: IServiceManifest,
     context: HostBuilderContext,
   ) {
-    this.#configuration = configuration;
+    this.#config = config;
     this.#services = services;
     this.#context = context;
   }
@@ -59,12 +59,12 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this.#context.properties;
   }
 
-  public configureHostConfiguration(configureDelegate: Action<[IConfigBuilder]>): this {
+  public configureHostConfig(configureDelegate: Action<[IConfigBuilder]>): this {
     this.#configureHostConfigActions.push(configureDelegate);
     return this;
   }
 
-  public configureAppConfiguration(
+  public configureAppConfig(
     configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
   ): this {
     this.#configureAppConfigActions.push(configureDelegate);
@@ -103,7 +103,7 @@ export class HostBuilderAdapter implements IHostBuilder {
    * unsupported and throws.
    */
   public applyChanges(): void {
-    const config = this.#configuration;
+    const config = this.#config;
 
     if (this.#configureHostConfigActions.length > 0) {
       const previousApplicationName = config.get(HostDefaults.applicationKey);

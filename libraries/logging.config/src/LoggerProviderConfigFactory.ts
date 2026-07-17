@@ -36,21 +36,21 @@ function sectionKeyFor(providerType: Token): string {
  * one live configuration.
  */
 export class LoggerProviderConfigFactory implements ILoggerProviderConfigFactory {
-  readonly #configurations: readonly LoggingConfig[];
+  readonly #configs: readonly LoggingConfig[];
 
   /**
-   * @param configurations Every {@link LoggingConfig} registered by
-   * `addConfiguration` (injected as the di collection of that token).
+   * @param configs Every {@link LoggingConfig} registered by
+   * `addConfig` (injected as the di collection of that token).
    */
-  public constructor(configurations: readonly LoggingConfig[]) {
-    this.#configurations = configurations;
+  public constructor(configs: readonly LoggingConfig[]) {
+    this.#configs = configs;
   }
 
-  public getConfiguration(providerType: Token): IConfig {
+  public getConfig(providerType: Token): IConfig {
     const sectionKey = sectionKeyFor(providerType);
     const builder = new ConfigBuilder();
-    for (const configuration of this.#configurations) {
-      builder.addConfiguration(configuration.configuration.getSection(sectionKey));
+    for (const config of this.#configs) {
+      builder.addConfig(config.config.getSection(sectionKey));
     }
     return builder.build();
   }

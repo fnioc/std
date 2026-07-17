@@ -147,7 +147,7 @@ export function logInformation(logger: ILogger, error: Error, message: string,
 
 ### 7. A reload-reactive `LoggerFilterOptions` pipeline over one converged token
 
-`logging.config`'s `addConfiguration` wires the config→filter binding as a LAZY,
+`logging.config`'s `addConfig` wires the config→filter binding as a LAZY,
 reload-reactive `IOptions<LoggerFilterOptions>` pipeline through `options.augmentations`: a
 `LoggerFilterConfigureOptions` step plus a `ConfigChangeTokenSource`, both keyed at the
 options-assembly token. Nothing binds until the assembly materializes; a configuration reload
@@ -178,6 +178,6 @@ expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Critical);
 
 That single `IOptions<LoggerFilterOptions>` token is the convergence point (#146): `addLogging`
 registers the assembly and its default (Information) min level, builder-level
-`addFilter`/`setMinimumLevel` append configure steps, and `addConfiguration` derives the SAME token
+`addFilter`/`setMinimumLevel` append configure steps, and `addConfig` derives the SAME token
 inline from the type — so all three compose into one filter-options value the `LoggerFactory`
 consumes, where the reference keys the pipeline by the options type itself.

@@ -41,7 +41,7 @@ export { ConfigSection } from './ConfigSection';
 // IConfigBuilder token (docs §38), reaching both decorated builders.
 export * from './memory';
 
-// Chained provider. Side-effectful re-export: registers the `addConfiguration`
+// Chained provider. Side-effectful re-export: registers the `addConfig`
 // augmentation against the same IConfigBuilder token, wrapping an
 // already-built IConfig as a live source.
 export * from './chained';

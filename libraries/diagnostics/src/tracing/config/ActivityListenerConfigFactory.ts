@@ -10,7 +10,7 @@ import type { IConfig } from '@rhombus-std/config';
  * Resolves an {@link IConfig} view for a named activity listener.
  *
  * Implementations merge every configuration section registered through
- * `addTracingConfiguration` that targets the supplied listener name, returning
+ * `addTracingConfig` that targets the supplied listener name, returning
  * a single merged {@link IConfig} instance per call.
  */
 export abstract class ActivityListenerConfigFactory {
@@ -20,5 +20,5 @@ export abstract class ActivityListenerConfigFactory {
    *
    * @param listenerName The name of the listener whose configuration is requested.
    */
-  public abstract getConfiguration(listenerName: string): IConfig;
+  public abstract getConfig(listenerName: string): IConfig;
 }

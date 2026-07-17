@@ -5,7 +5,7 @@
 // phantom (exactly as in the reference, where it only selects the closed
 // generic to inject). The runtime identity is the closed di token
 // {@link loggerProviderConfigToken} derives; the open template
-// (`...<$1>`) is registered by the no-arg `addConfiguration`, so resolving any
+// (`...<$1>`) is registered by the no-arg `addConfig`, so resolving any
 // closing constructs a `LoggerProviderConfig` for that provider.
 
 import type { IConfig } from '@rhombus-std/config.core';
@@ -21,7 +21,7 @@ import { closeToken, type Token } from '@rhombus-std/di.core';
  */
 export interface ILoggerProviderConfig<T> {
   /** The configuration section for the requested logger provider. */
-  readonly configuration: IConfig;
+  readonly config: IConfig;
 }
 
 // The token base — what `nameof<ILoggerProviderConfig<…>>()` derives as

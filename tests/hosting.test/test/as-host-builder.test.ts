@@ -32,12 +32,12 @@ test('asHostBuilder replays accumulated configureServices onto the application b
   host[Symbol.dispose]();
 });
 
-test('asHostBuilder replays configureAppConfiguration onto the shared configuration', () => {
+test('asHostBuilder replays configureAppConfig onto the shared configuration', () => {
   const appBuilder = Host.createApplicationBuilder([]);
   const hostBuilder = appBuilder.asHostBuilder();
 
   let seenDuringCompose: string | undefined;
-  hostBuilder.configureAppConfiguration((_context, config) => {
+  hostBuilder.configureAppConfig((_context, config) => {
     config.add(new MemoryConfigSource({ initialData: { 'Custom:Key': 'fromAdapter' } }));
     seenDuringCompose = config.build().get('Custom:Key');
   });
@@ -54,7 +54,7 @@ test('asHostBuilder rejects a late host-configuration change to the environment'
 
   // The environment was already read to build the defaults, so changing it via a
   // late host-configuration callback is unsupported.
-  hostBuilder.configureHostConfiguration((config) => {
+  hostBuilder.configureHostConfig((config) => {
     config.add(new MemoryConfigSource({ initialData: { environment: 'Staging' } }));
   });
 

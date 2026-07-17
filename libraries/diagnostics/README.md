@@ -69,7 +69,7 @@ const configuration = new ConfigBuilder()
   .build();
 
 manifest.addMetrics((builder) => {
-  builder.addMetricsConfiguration(configuration);
+  builder.addMetricsConfig(configuration);
 });
 ```
 
@@ -78,16 +78,16 @@ underlying configuration reloads — no manual re-subscription needed.
 
 ## Key exports
 
-| Export                                                                                                             | What it is                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `addMetrics` / `addTracing` (installed on `ServiceManifest`)                                                       | Registers the resolvable, reload-reactive `IOptions<MetricsOptions>` / `IOptions<TracingOptions>` assembly and, if given a callback, runs it over a concrete builder. |
-| `MetricsBuilder`, `TracingBuilder`                                                                                 | The concrete builder classes handed to your `configure` callback — construct one directly if you're not using the augmentation form.                                  |
-| `MetricsServiceExtensions`, `TracingServiceExtensions`                                                             | The standalone function form of `addMetrics`/`addTracing`, for callers who don't want the method installed on their builder.                                          |
-| `MetricsBuilderConfigExtensions.addMetricsConfiguration`, `TracingBuilderConfigExtensions.addTracingConfiguration` | Binds an `IConfig` into the metrics/tracing rule pipeline, reactive to reload.                                                                                        |
-| `MetricsConfigureOptions`, `TracingConfigureOptions`                                                               | The configuration-parsing steps behind `addMetricsConfiguration`/`addTracingConfiguration`, exposed for manual wiring.                                                |
-| `IMetricListenerConfigFactory`, `MetricListenerConfigFactory`                                                      | Builds a per-listener merged configuration view out of every `addMetricsConfiguration` call registered.                                                               |
-| `ActivityListenerConfigFactory`, `DefaultActivityListenerConfigFactory`                                            | The tracing counterpart of the above.                                                                                                                                 |
-| `MetricsConfig`, `TracingConfig`                                                                                   | Markers tracking each configuration source bound in, consumed by the listener configuration factories.                                                                |
+| Export                                                                                               | What it is                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `addMetrics` / `addTracing` (installed on `ServiceManifest`)                                         | Registers the resolvable, reload-reactive `IOptions<MetricsOptions>` / `IOptions<TracingOptions>` assembly and, if given a callback, runs it over a concrete builder. |
+| `MetricsBuilder`, `TracingBuilder`                                                                   | The concrete builder classes handed to your `configure` callback — construct one directly if you're not using the augmentation form.                                  |
+| `MetricsServiceExtensions`, `TracingServiceExtensions`                                               | The standalone function form of `addMetrics`/`addTracing`, for callers who don't want the method installed on their builder.                                          |
+| `MetricsBuilderConfigExtensions.addMetricsConfig`, `TracingBuilderConfigExtensions.addTracingConfig` | Binds an `IConfig` into the metrics/tracing rule pipeline, reactive to reload.                                                                                        |
+| `MetricsConfigureOptions`, `TracingConfigureOptions`                                                 | The configuration-parsing steps behind `addMetricsConfig`/`addTracingConfig`, exposed for manual wiring.                                                              |
+| `IMetricListenerConfigFactory`, `MetricListenerConfigFactory`                                        | Builds a per-listener merged configuration view out of every `addMetricsConfig` call registered.                                                                      |
+| `ActivityListenerConfigFactory`, `DefaultActivityListenerConfigFactory`                              | The tracing counterpart of the above.                                                                                                                                 |
+| `MetricsConfig`, `TracingConfig`                                                                     | Markers tracking each configuration source bound in, consumed by the listener configuration factories.                                                                |
 
 ## How it fits
 

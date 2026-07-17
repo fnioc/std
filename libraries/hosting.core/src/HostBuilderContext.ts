@@ -13,7 +13,7 @@ export interface HostBuilderContext {
    * The {@link IConfig} containing the merged configuration of the
    * application and the host.
    */
-  configuration: IConfig;
+  config: IConfig;
 
   /**
    * A central location for sharing state between components during the host

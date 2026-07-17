@@ -23,7 +23,7 @@ export class HostApplicationBuilderSettings {
    * {@link import("@rhombus-std/hosting.core").HostDefaults} keys. When omitted,
    * a fresh {@link IConfigManager} is created.
    */
-  public configuration?: IConfigManager;
+  public config?: IConfigManager;
 
   /** The environment name. */
   public environmentName?: string;

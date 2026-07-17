@@ -21,12 +21,12 @@ export interface IHostBuilder {
    * Sets up the configuration for the builder itself. Used to initialize the
    * {@link IHostEnvironment} for later in the build. Additive across calls.
    */
-  configureHostConfiguration(configureDelegate: Action<[IConfigBuilder]>): this;
+  configureHostConfig(configureDelegate: Action<[IConfigBuilder]>): this;
 
   /**
    * Sets up the configuration for the remainder of the build and the
    * application. Additive across calls; results are exposed at
-   * {@link HostBuilderContext.configuration} and in {@link IHost.services}.
+   * {@link HostBuilderContext.config} and in {@link IHost.services}.
    *
    * This is the reference's context form (the `IHostBuilder` interface method).
    * The reference also offers a no-context `Action<IConfigBuilder>`
@@ -36,11 +36,11 @@ export interface IHostBuilder {
    * in-repo caller uses the context form. A hand author writes the two-parameter
    * form with an unused first parameter.
    */
-  configureAppConfiguration(
+  configureAppConfig(
     configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
   ): this;
 
-  /** Adds services to the container. Additive across calls. (Context form; see {@link configureAppConfiguration} on the omitted no-context convenience.) */
+  /** Adds services to the container. Additive across calls. (Context form; see {@link configureAppConfig} on the omitted no-context convenience.) */
   configureServices(configureDelegate: Action<[HostBuilderContext, IServiceManifest]>): this;
 
   /**
@@ -55,7 +55,7 @@ export interface IHostBuilder {
     factory: IServiceProviderFactory<TContainerBuilder>,
   ): this;
 
-  /** Enables configuring the instantiated dependency container. Additive across calls. (Context form; see {@link configureAppConfiguration} on the omitted no-context convenience.) */
+  /** Enables configuring the instantiated dependency container. Additive across calls. (Context form; see {@link configureAppConfig} on the omitted no-context convenience.) */
   configureContainer<TContainerBuilder>(
     configureDelegate: Action<[HostBuilderContext, TContainerBuilder]>,
   ): this;

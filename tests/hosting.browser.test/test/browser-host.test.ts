@@ -43,7 +43,7 @@ test('the facade composes settings config, browser environment, console logging,
   expect(builder.environment.contentRootFileProvider.getFileInfo('x').exists).toBe(false);
 
   // Configuration: seeded from settings.initialData.
-  expect(builder.configuration.get('feature:flag')).toBe('on');
+  expect(builder.config.get('feature:flag')).toBe('on');
 
   const host = builder.build();
 

@@ -26,14 +26,14 @@ import { MetricsConfigureOptions } from './MetricsConfigureOptions';
 /** The `MetricsBuilderConfigExtensions` augmentation set for {@link IMetricsBuilder} (docs §28). */
 export const MetricsBuilderConfigExtensions = {
   /**
-   * Reads metrics enablement rules from `configuration` and configures which
+   * Reads metrics enablement rules from `config` and configures which
    * meters, instruments, and listeners are enabled. Mirrors
    * `MetricsBuilderConfigExtensions.AddConfiguration`.
    */
-  addMetricsConfiguration(builder: IMetricsBuilder, configuration: IConfig): IMetricsBuilder {
-    builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(configuration));
-    builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(configuration));
-    builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(configuration));
+  addMetricsConfig(builder: IMetricsBuilder, config: IConfig): IMetricsBuilder {
+    builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(config));
+    builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(config));
+    builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<IMetricsBuilder>;
@@ -50,13 +50,13 @@ export const MetricsBuilderConfigExtensions = {
 // kept verbatim in the rolled `.d.ts` (rollup-dts `respectExternal`), so it only
 // reaches a published consumer if the specifier survives publish -- the
 // `internal/*` subpath this used to target is scrubbed at publish (docs §7), so
-// consumers of `@rhombus-std/diagnostics` silently lost `addMetricsConfiguration`.
+// consumers of `@rhombus-std/diagnostics` silently lost `addMetricsConfig`.
 // The barrel is publish-resolvable and, shared with diagnostics.core's merge,
 // keeps every site for this interface on one module file (the §38 merge-identity
 // rule), so the concrete builders still satisfy `implements IMetricsBuilder`.
 declare module '@rhombus-std/diagnostics.core' {
   interface IMetricsBuilder {
-    addMetricsConfiguration(configuration: IConfig): this;
+    addMetricsConfig(config: IConfig): this;
   }
 }
 

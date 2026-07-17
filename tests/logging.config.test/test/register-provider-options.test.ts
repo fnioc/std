@@ -1,6 +1,6 @@
 // End-to-end: `LoggerProviderOptions.registerProviderOptions` — a provider
 // package's options type binds from ITS configuration section (chained across
-// every `addConfiguration`'d configuration by the provider-configuration
+// every `addConfig`'d configuration by the provider-configuration
 // factory), lazily and reload-reactively, through the standard
 // `addOptions(token, makeBase)` assembly.
 //
@@ -38,7 +38,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     });
 
     const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfiguration(config);
+    new LoggingBuilder(services).addConfig(config);
     services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
     LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
@@ -54,7 +54,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
     const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfiguration(config);
+    new LoggingBuilder(services).addConfig(config);
     services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
     LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
@@ -78,7 +78,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
     const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfiguration(config);
+    new LoggingBuilder(services).addConfig(config);
     services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
     LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
     // The reference's services.Configure<TOptions>(delegate) analog: one more

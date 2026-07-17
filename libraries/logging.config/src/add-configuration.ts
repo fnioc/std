@@ -1,17 +1,17 @@
-// addConfiguration — the ILoggingBuilder configuration surface, ported from
+// addConfig — the ILoggingBuilder configuration surface, ported from
 // the reference logging configuration project's `LoggingBuilderExtensions.
 // AddConfiguration(builder, configuration)` AND `LoggingBuilderConfiguration
 // Extensions.AddConfiguration(builder)` (the no-arg provider-configuration
 // registration). Two reference static classes share the one member name over
 // the one receiver, and the registry's flat per-token bag forbids a second
-// `addConfiguration` member on the `ILoggingBuilder` token (docs §38), so the
+// `addConfig` member on the `ILoggingBuilder` token (docs §38), so the
 // one-arg member absorbs the no-arg by arity — the same disambiguation
 // precedent options.augmentations' `configure` uses. Union-tuple rest, §42.
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface and an OPEN
 // receiver, so this downstream extender registers the set against the shared
 // `nameof<ILoggingBuilder>()` token; the @augment-decorated LoggingBuilder
-// pulls `builder.addConfiguration(…)` onto its prototype. The exported const
+// pulls `builder.addConfig(…)` onto its prototype. The exported const
 // IS the standalone call surface.
 //
 // What the one-arg form registers — the faithful LAZY pipeline (nothing binds
@@ -28,7 +28,7 @@
 //   - the `IOptions<LoggerFilterOptions>` ASSEMBLY itself. The reference gets
 //     this from `AddLogging`'s ambient `services.AddOptions()` open-generic
 //     infrastructure; per-token assembly registration is explicit here, and
-//     `addLogging` does not register it, so `addConfiguration` does.
+//     `addLogging` does not register it, so `addConfig` does.
 //     Re-registration on repeat calls is append-only last-wins — same net
 //     behavior as the reference's TryAdd (di.core has no add-if-absent
 //     surface; see @rhombus-std/logging's addLogging precedent note).
@@ -66,10 +66,10 @@ export const LoggingBuilderExtensions = {
    * {@link ILoggerProviderConfigFactory} or
    * `ILoggerProviderConfig<T>` (the `LoggingBuilderConfiguration
    * Extensions.AddConfiguration` mirror). One-arg: additionally configures
-   * `LoggerFilterOptions` from `configuration` — a lazy, reload-reactive
+   * `LoggerFilterOptions` from `config` — a lazy, reload-reactive
    * options pipeline. Returns the builder for chaining.
    */
-  addConfiguration(builder: ILoggingBuilder, ...rest: [] | [configuration: IConfig]): ILoggingBuilder {
+  addConfig(builder: ILoggingBuilder, ...rest: [] | [config: IConfig]): ILoggingBuilder {
     // ── The no-arg provider-configuration services (always registered — the
     // reference one-arg form calls the no-arg form first). The factory
     // injects the accumulated LoggingConfig collection; the open
@@ -94,16 +94,16 @@ export const LoggingBuilderExtensions = {
     if (!rest.length) {
       return builder;
     }
-    const [configuration] = rest;
+    const [config] = rest;
 
     // ── The LoggerFilterOptions pipeline (the LoggingBuilderExtensions
     // mirror): assembly + custom configure step + reload change-token source.
     const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
     builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
-    builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(configuration));
-    builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigChangeTokenSource(configuration));
+    builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(config));
+    builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigChangeTokenSource(config));
 
-    builder.services.addValue(nameof<LoggingConfig>(), new LoggingConfig(configuration));
+    builder.services.addValue(nameof<LoggingConfig>(), new LoggingConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<ILoggingBuilder>;
@@ -115,10 +115,10 @@ export const LoggingBuilderExtensions = {
 // reference's `void` return.
 declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
-    /** Instance-method form of the no-arg {@link addConfiguration}. */
-    addConfiguration(): void;
-    /** Instance-method form of the one-arg {@link addConfiguration}. */
-    addConfiguration(configuration: IConfig): this;
+    /** Instance-method form of the no-arg {@link addConfig}. */
+    addConfig(): void;
+    /** Instance-method form of the one-arg {@link addConfig}. */
+    addConfig(config: IConfig): this;
   }
 }
 

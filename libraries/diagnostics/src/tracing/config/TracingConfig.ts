@@ -1,6 +1,6 @@
 // TracingConfig -- ported from MED.Tracing's internal
-// `TracingConfig`. The tracing twin of ../../metrics/configuration's
-// MetricsConfig: the marker `addTracingConfiguration` registers (one per
+// `TracingConfig`. The tracing twin of ../../metrics/config's
+// MetricsConfig: the marker `addTracingConfig` registers (one per
 // call, as a TRACING_CONFIGURATION_TOKEN collection value) so
 // DefaultActivityListenerConfigFactory can enumerate every configuration
 // bound to tracing and merge their per-listener sections. Internal in the
@@ -9,13 +9,13 @@
 
 import type { IConfig } from '@rhombus-std/config';
 
-/** Marks an {@link IConfig} as bound to tracing via `addTracingConfiguration`. */
+/** Marks an {@link IConfig} as bound to tracing via `addTracingConfig`. */
 export class TracingConfig {
-  /** The configuration section `addTracingConfiguration` was given. */
-  public readonly configuration: IConfig;
+  /** The configuration section `addTracingConfig` was given. */
+  public readonly config: IConfig;
 
-  /** @param configuration The configuration section bound to tracing. */
-  public constructor(configuration: IConfig) {
-    this.configuration = configuration;
+  /** @param config The configuration section bound to tracing. */
+  public constructor(config: IConfig) {
+    this.config = config;
   }
 }

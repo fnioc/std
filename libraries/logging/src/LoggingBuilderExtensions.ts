@@ -6,7 +6,7 @@
 // the names are on it) and the runtime registration live here.
 //
 // This is an OPEN receiver (ILoggingBuilder is extended by downstream packages —
-// logging.config's addConfiguration, logging.console's addConsole), so the
+// logging.config's addConfig, logging.console's addConsole), so the
 // install goes through the augmentation registry (docs §38): register the set
 // against the `ILoggingBuilder` token — derived inline by `nameof<ILoggingBuilder>()`
 // and lowered to its string literal by the primitives.transformer build stage —

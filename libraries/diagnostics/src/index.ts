@@ -28,7 +28,7 @@
 // config-reactive rule set), the per-listener configuration factory
 // (IMetricListenerConfigFactory / ActivityListenerConfigFactory,
 // which merges the `{listenerName}` sections of every configuration bound via
-// addMetricsConfiguration/addTracingConfiguration), and running the consumer's
+// addMetricsConfig/addTracingConfig), and running the consumer's
 // configure callback over a concrete builder. See the package tbd notes for what
 // the missing runtime would add.
 
@@ -121,7 +121,7 @@ export const MetricsServiceExtensions = {
     ).as('singleton');
     // The per-listener configuration factory (the reference's TryAddSingleton of
     // IMetricListenerConfigFactory): ctor-injected with the collection of
-    // every MetricsConfig marker addMetricsConfiguration registered.
+    // every MetricsConfig marker addMetricsConfig registered.
     manifest.add(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
       MetricListenerConfigFactory,
@@ -152,7 +152,7 @@ export const TracingServiceExtensions = {
     ).as('singleton');
     // The per-listener configuration factory (the reference's TryAddSingleton of
     // ActivityListenerConfigFactory): ctor-injected with the collection of
-    // every TracingConfig marker addTracingConfiguration registered.
+    // every TracingConfig marker addTracingConfig registered.
     manifest.add(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
       DefaultActivityListenerConfigFactory,
@@ -179,15 +179,15 @@ export { TracingBuilder } from './tracing/TracingBuilder';
 // The config-binding augmentation sets. Their receiver is the family's OWN
 // builder interface; each self-registers against the builder token (docs §38) so
 // the `@augment`'d MetricsBuilder/TracingBuilder gain the instance-method form,
-// so both `MetricsBuilderConfigExtensions.addMetricsConfiguration(builder, cfg)`
-// and `builder.addMetricsConfiguration(cfg)` work. The method form is primary.
+// so both `MetricsBuilderConfigExtensions.addMetricsConfig(builder, cfg)`
+// and `builder.addMetricsConfig(cfg)` work. The method form is primary.
 // Re-exporting the consts also runs each module's registerAugmentations side effect.
 export { MetricsBuilderConfigExtensions } from './metrics/config/MetricsBuilderConfigExtensions';
 export { TracingBuilderConfigExtensions } from './tracing/config/TracingBuilderConfigExtensions';
 
 // The config-bind IConfigureOptions steps (the reference's internal
 // Metrics/TracingConfigureOptions), exposed so a plugin-less consumer can bind a
-// configuration section without the addMetricsConfiguration wrapper.
+// configuration section without the addMetricsConfig wrapper.
 export { MetricsConfigureOptions } from './metrics/config/MetricsConfigureOptions';
 export { TracingConfigureOptions } from './tracing/config/TracingConfigureOptions';
 
