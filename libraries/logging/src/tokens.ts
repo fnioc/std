@@ -1,20 +1,27 @@
 // The di.core string tokens the logging registrations bind to. Namespaced by
 // the package name per the di.core "pkg:IFace" token convention.
 
+import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { nameof } from '@rhombus-std/primitives';
 import type { LoggerFilterOptions } from './LoggerFilterOptions';
 
-/** Token for the singleton {@link ILoggerFactory} registered by `addLogging`. */
-export const LOGGER_FACTORY_TOKEN = '@rhombus-std/logging:ILoggerFactory';
+/**
+ * Token for the singleton {@link ILoggerFactory} registered by `addLogging`.
+ * Derived via `nameof<ILoggerFactory>()` so it keys the type's DECLARING
+ * package (logging.core), the grammar every other framework token uses.
+ */
+export const LOGGER_FACTORY_TOKEN = nameof<ILoggerFactory>();
 
 /**
  * Token each {@link ILoggerProvider} registered via `addProvider` binds to.
  * Registered as an ENUMERABLE (repeated `addValue` under one token) so the
  * `LoggerFactory` registration resolves the whole set — the di.core analog of
  * the reference `IEnumerable<ILoggerProvider>` injection.
+ * Derived via `nameof<ILoggerProvider>()` so it keys the type's DECLARING
+ * package (logging.core).
  */
-export const LOGGER_PROVIDER_TOKEN = '@rhombus-std/logging:ILoggerProvider';
+export const LOGGER_PROVIDER_TOKEN = nameof<ILoggerProvider>();
 
 /**
  * Token the `IOptions<LoggerFilterOptions>` assembly is keyed at — the
