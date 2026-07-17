@@ -43,9 +43,13 @@ func run(args []string) int {
 	case "-v", "--version", "version":
 		fmt.Fprintf(stdout, "%s dev\n", hostName)
 		return 0
-	case "transform":
-		return runTransform(args[1:])
-	case "check":
+	case "transform", "check", "build":
+		// Strip the subcommand token so the flag parser sees the flags that
+		// follow it. ttsc drives an emitting build via the `build` subcommand
+		// (source-to-source hosts still answer it with the envelope on stdout);
+		// leaving "build" in front of the flags makes flag.Parse stop at that
+		// positional and silently drop every flag after it — including
+		// --plugins-json, which selection depends on.
 		return runTransform(args[1:])
 	default:
 		return runTransform(args)
@@ -62,7 +66,7 @@ func runTransform(args []string) int {
 	_ = fs.String("rewrite-mode", "", "unused: native rewrite backend id")
 	_ = fs.String("output", "ts", "unused: single-file output kind")
 	pluginsJSON := fs.String("plugins-json", "", "ordered ttsc plugin manifest")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(filterKnownArgs(args)); err != nil {
 		return 2
 	}
 
@@ -154,6 +158,59 @@ func runTransform(args []string) int {
 		return 3
 	}
 	return 0
+}
+
+// knownValueFlags names the flags this host reads, each of which takes a value.
+// Every other flag ttsc forwards to a native host (--emit, --quiet, --verbose,
+// --outDir, --tsgo-args, threading/diagnostics knobs) is not ours to interpret.
+var knownValueFlags = map[string]bool{
+	"file":         true,
+	"tsconfig":     true,
+	"cwd":          true,
+	"out":          true,
+	"rewrite-mode": true,
+	"output":       true,
+	"plugins-json": true,
+}
+
+// filterKnownArgs keeps only this host's own flags (with their values, inline or
+// space-separated) and drops every other flag ttsc forwards, so the strict Go
+// flag parser does not reject an unknown one like `--quiet`. It mirrors the
+// reference sidecar's filterHostArgs: an unknown flag is dropped, and a trailing
+// bare value it might carry is consumed only when the next token is not itself a
+// flag. The subcommand token is already stripped by the router.
+func filterKnownArgs(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		current := args[i]
+		if current == "--" {
+			break
+		}
+		if !strings.HasPrefix(current, "-") {
+			continue
+		}
+		name, hasInlineValue := flagBase(current)
+		if knownValueFlags[name] {
+			out = append(out, current)
+			if !hasInlineValue && i+1 < len(args) {
+				i++
+				out = append(out, args[i])
+			}
+			continue
+		}
+		if !hasInlineValue && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			i++
+		}
+	}
+	return out
+}
+
+// flagBase strips leading dashes from a flag token and reports whether it
+// carries an inline `=value`, returning the bare flag name.
+func flagBase(arg string) (string, bool) {
+	name := strings.TrimLeft(arg, "-")
+	before, _, found := strings.Cut(name, "=")
+	return before, found
 }
 
 // pluginEntry is the manifest shape ttsc serializes into --plugins-json (and the

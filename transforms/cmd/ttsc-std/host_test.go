@@ -86,6 +86,36 @@ func TestSelectStagesForeignUnlinkedEntryIsHardError(t *testing.T) {
 	}
 }
 
+func TestFilterKnownArgsDropsForwardedFlagsKeepsOurs(t *testing.T) {
+	// The `build` subcommand token is already stripped by the router. ttsc then
+	// forwards --quiet / --emit / --outDir / --tsgo-args, none of which this host
+	// defines; they must be dropped while our own flags (inline and
+	// space-separated) survive with their values.
+	in := []string{
+		"--tsconfig=/p/tsconfig.json",
+		"--plugins-json", `[{"name":"rhombusstd_nameof"}]`,
+		"--cwd=/p",
+		"--emit",
+		"--outDir=/p/dist",
+		"--quiet",
+		"--tsgo-args=[\"--x\"]",
+	}
+	got := filterKnownArgs(in)
+	want := []string{
+		"--tsconfig=/p/tsconfig.json",
+		"--plugins-json", `[{"name":"rhombusstd_nameof"}]`,
+		"--cwd=/p",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("filterKnownArgs = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("filterKnownArgs = %q, want %q", got, want)
+		}
+	}
+}
+
 func contains(haystack, needle string) bool {
 	for i := 0; i+len(needle) <= len(haystack); i++ {
 		if haystack[i:i+len(needle)] == needle {
