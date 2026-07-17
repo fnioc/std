@@ -12,7 +12,7 @@
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import { LoggingBuilder } from '@rhombus-std/logging';
-import { LoggerProviderOptions } from '@rhombus-std/logging.configuration';
+import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';

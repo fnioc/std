@@ -4,7 +4,7 @@
 //
 // The reference derives the category from `typeof(T)`'s display name. This
 // platform erases `T`, so — exactly like `LoggerProviderConfig<T>` in
-// logging.configuration — the di engine supplies the closing type's token as a
+// logging.config — the di engine supplies the closing type's token as a
 // `Typeof<T>` constructor parameter (from the open registration's `typeArg(1)`
 // slot; see `@rhombus-std/logging`'s `addLogging`). The category is the token's
 // type-name segment (`"@pkg/x:HomeController"` → `"HomeController"`), the

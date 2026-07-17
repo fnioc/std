@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/logging.configuration into a
+// Rolls the public type surface of @rhombus-std/logging.config into a
 // single dist/index.d.ts. Every @rhombus-std sibling stays EXTERNAL
 // (respectExternal) so the published declaration imports their types rather
 // than inlining private copies.

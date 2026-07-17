@@ -35,7 +35,7 @@
 // `ConsoleFormatterConfigureOptions`, `ConsoleLoggerFormatterConfigureOptions`,
 // the formatter change-token sources, and `getFormatterOptionsSection`). That
 // provider-configuration factory does not exist in
-// @rhombus-std/logging.configuration yet, so none of the config-binding wiring
+// @rhombus-std/logging.config yet, so none of the config-binding wiring
 // is ported — see the package index.
 
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';

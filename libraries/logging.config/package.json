@@ -1,5 +1,5 @@
 {
-  "name": "@rhombus-std/logging.configuration",
+  "name": "@rhombus-std/logging.config",
   "version": "0.0.0",
   "description": "The logging config-binding surface ported from ME.Logging.Configuration: binds LoggerFilterOptions/LoggerFilterRule from an @rhombus-std/config IConfig via addConfiguration.",
   "keywords": [
@@ -12,7 +12,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/fnioc/std.git",
-    "directory": "libraries/logging.configuration"
+    "directory": "libraries/logging.config"
   },
   "type": "module",
   "sideEffects": true,

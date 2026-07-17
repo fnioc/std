@@ -12,7 +12,7 @@
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import { LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
-import '@rhombus-std/logging.configuration';
+import '@rhombus-std/logging.config';
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { describe, expect, test } from 'bun:test';
@@ -103,7 +103,7 @@ describe('addConfiguration — the LoggerFilterOptions pipeline', () => {
   });
 
   test('the standalone member form registers the identical pipeline', async () => {
-    const { LoggingBuilderExtensions } = await import('@rhombus-std/logging.configuration');
+    const { LoggingBuilderExtensions } = await import('@rhombus-std/logging.config');
     const config = rootWith({ 'LogLevel:Default': 'Debug' });
 
     const services = new ServiceManifest<'singleton'>();

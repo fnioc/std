@@ -26,7 +26,7 @@
 //
 // `add`, not TryAdd: di.core registrations are append-only last-wins; there is
 // no add-if-absent surface. Re-calling addLogging appends duplicates — harmless,
-// last wins (same precedent logging.configuration's addConfiguration records).
+// last wins (same precedent logging.config's addConfiguration records).
 
 // Side-effect + merge: installs `addOptions`/`configure` (the options pipeline
 // verbs) onto di.core's ServiceManifest, and brings the interface merge that
@@ -53,7 +53,7 @@ import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKE
 // clean service-token base. An explicit `nameof<ILogger<Foo>>()` derives
 // `"…:ILogger<pkg:Foo>"` off this same base, so the open template matches. A
 // no-transformer consumer writes this literal directly (docs §40); mirrors
-// logging.configuration's `LOGGER_PROVIDER_CONFIGURATION_BASE`.
+// logging.config's `LOGGER_PROVIDER_CONFIGURATION_BASE`.
 const ILOGGER_TOKEN_BASE = '@rhombus-std/logging.core:ILogger';
 
 // `addLogging` is a BRAND-NEW method name, so it must merge onto BOTH the

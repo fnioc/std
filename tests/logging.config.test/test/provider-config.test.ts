@@ -10,10 +10,10 @@ import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory,
-  loggerProviderConfigToken } from '@rhombus-std/logging.configuration';
+  loggerProviderConfigToken } from '@rhombus-std/logging.config';
 import { describe, expect, test } from 'bun:test';
 
-const FACTORY_TOKEN = '@rhombus-std/logging.configuration:ILoggerProviderConfigFactory';
+const FACTORY_TOKEN = '@rhombus-std/logging.config:ILoggerProviderConfigFactory';
 const FAKE_PROVIDER_TOKEN = 'test:FakeProvider';
 
 function rootWith(data: Record<string, string>): IConfigRoot {
@@ -23,7 +23,7 @@ function rootWith(data: Record<string, string>): IConfigRoot {
 describe('addConfiguration() — provider-configuration services', () => {
   test('loggerProviderConfigToken derives the closed-generic token', () => {
     expect(loggerProviderConfigToken(FAKE_PROVIDER_TOKEN)).toBe(
-      '@rhombus-std/logging.configuration:ILoggerProviderConfig<test:FakeProvider>',
+      '@rhombus-std/logging.config:ILoggerProviderConfig<test:FakeProvider>',
     );
   });
 

@@ -1,4 +1,4 @@
-// Public entry point for @rhombus-std/logging.configuration — the reference
+// Public entry point for @rhombus-std/logging.config — the reference
 // logging configuration project's analog, at full surface parity:
 //
 //   - `addConfiguration` (the `LoggingBuilderExtensions` augmentation set) —

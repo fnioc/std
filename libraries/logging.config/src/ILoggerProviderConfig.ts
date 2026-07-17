@@ -28,7 +28,7 @@ export interface ILoggerProviderConfig<T> {
 // the generic's base for this declaring package. Kept module-local; every
 // external use site goes through the closing helper below (or derives the
 // closed token inline with `nameof`).
-const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.configuration:ILoggerProviderConfig';
+const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.config:ILoggerProviderConfig';
 
 /**
  * The closed di token for {@link ILoggerProviderConfig}`<providerType>`
