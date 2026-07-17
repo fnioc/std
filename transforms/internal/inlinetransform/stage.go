@@ -260,7 +260,15 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 				}
 			}
 		}
-		st.artifacts.PrimitiveCalls[n] = PrimitiveUse{Name: prim, TypeArgs: bound}
+		use := PrimitiveUse{Name: prim, TypeArgs: bound}
+		// A VALUE-argument primitive (signatureof(ctor)) records its spliced
+		// argument node — the ORIGINAL call-site expression, still program-bound,
+		// so the signatureof stage can checker-query it. A TYPE-argument primitive
+		// (nameof<T>()) has no value argument and leaves this nil.
+		if args := n.AsCallExpression().Arguments; args != nil && len(args.Nodes) == 1 {
+			use.ValueArg = args.Nodes[0]
+		}
+		st.artifacts.PrimitiveCalls[n] = use
 		return false
 	})
 }
