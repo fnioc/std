@@ -26,6 +26,7 @@
       "default": "./dist/index.js"
     },
     "./ttsc": "./ttsc.mjs",
+    "./inline-ttsc": "./ttsc-inline.mjs",
     "./_/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
@@ -39,7 +40,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs"
+    "ttsc.mjs",
+    "ttsc-inline.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -67,7 +69,8 @@
         "import": "./dist/index.js",
         "default": "./dist/index.js"
       },
-      "./ttsc": "./ttsc.mjs"
+      "./ttsc": "./ttsc.mjs",
+      "./inline-ttsc": "./ttsc-inline.mjs"
     }
   }
 }

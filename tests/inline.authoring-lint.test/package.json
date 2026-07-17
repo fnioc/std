@@ -1,0 +1,15 @@
+{
+  "name": "@rhombus-std/inline.authoring-lint.test",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for the rhombus.inline authoring ESLint rule and the shared entries loader. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "eslint": "10.6.0",
+    "typescript-eslint": "8.62.1"
+  }
+}

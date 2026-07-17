@@ -14,6 +14,7 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
@@ -90,6 +91,14 @@ func runTransform(args []string) int {
 		return 2
 	}
 
+	// Task #2 — zero-stage guard: with no rhombusstd_* stage selected and no
+	// linked plugin, this run would load the program and emit it unchanged, which
+	// is never what a plugins array intends. Fail loud rather than silently no-op.
+	if len(selected) == 0 && len(linked) == 0 {
+		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected and no linked plugins present — this run would load the program and emit it unchanged; check the tsconfig plugins array\n", hostName)
+		return 2
+	}
+
 	cwd := *cwdOverride
 	if cwd == "" {
 		var derr error
@@ -134,9 +143,11 @@ func runTransform(args []string) int {
 		}
 	}
 
+	artifacts := inlinetransform.NewArtifacts()
+	env := &stageEnv{cwd: cwd, artifacts: artifacts}
 	transforms := make([]plugin.FileTransform, 0, len(selected))
 	for _, stage := range selected {
-		transforms = append(transforms, stage.build(prog, ctx, emit))
+		transforms = append(transforms, stage.build(prog, ctx, env, emit))
 	}
 
 	for _, sf := range prog.SourceFiles() {
@@ -147,7 +158,7 @@ func runTransform(args []string) int {
 		if filepath.IsAbs(key) || key == ".." || strings.HasPrefix(key, "../") {
 			continue
 		}
-		out.TypeScript[key] = transformFileToTypeScript(prog, transforms, sf)
+		out.TypeScript[key] = transformFileToTypeScript(prog, transforms, sf, artifacts, emit)
 	}
 
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
@@ -279,8 +290,11 @@ func selectStages(entries []pluginEntry, linkedNames map[string]bool) ([]stageDe
 
 // transformFileToTypeScript lowers one file through every selected stage in a
 // single EmitContext — canonical order, back-to-back — and prints the result
-// back as TypeScript for the ttsc host to type-strip.
-func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTransform, sf *shimast.SourceFile) string {
+// back as TypeScript for the ttsc host to type-strip. When the inline stage was
+// active it runs the emit sweep (tripwire 2) over the fully-lowered output after
+// parent pointers are fixed up, so a synthetic node can walk to a positioned
+// ancestor, before printing.
+func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit func(envelopeDiagnostic)) string {
 	options := prog.TSProgram.Options()
 	ec := shimprinter.NewEmitContext()
 	result := sf
@@ -290,6 +304,11 @@ func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTra
 		}
 	}
 	shimast.SetParentInChildrenUnset(result.AsNode())
+	if artifacts != nil && artifacts.Active {
+		for _, d := range inlinetransform.Sweep(result, artifacts) {
+			emit(envelopeFromPlugin(d, categoryError))
+		}
+	}
 	writer := shimprinter.NewTextWriter(options.NewLine.GetNewLineCharacter(), 0)
 	printer := shimprinter.NewPrinter(shimprinter.PrinterOptions{NewLine: options.NewLine}, shimprinter.PrintHandlers{}, ec)
 	printer.Write(result.AsNode(), result, writer, nil)
