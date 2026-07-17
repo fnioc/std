@@ -224,14 +224,6 @@ new ConfigurationBuilder().withType<BadConfig>().build();
 // .withType call is left un-rewritten, never partially codegen'd
 ```
 
-### 12. The reference's reflective config binder is not ported
-
-We do not port the reference's reflective `ConfigurationBinder` (`Get<T>` / `Bind` /
-`GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so
-there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1,
-above) plus `config.transformer`'s `withType<T>` codegen (Tier 2) — is the positive feature
-documented in #2 and #6 above. Owner-signed-off divergence (`docs/divergences.md`).
-
 ---
 
 One more cross-cutting note: every capability above is fully usable by hand, with zero build step

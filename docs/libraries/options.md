@@ -166,7 +166,6 @@ The reference's config→options bind calls the reflective `ConfigurationBinder.
 impossible under TS type erasure, so `ConfigurationConfigureOptions` reimplements the bind
 _structurally_ — and the deep merge carries a stronger guarantee than the reference: two configure
 steps binding overlapping sections **compose** rather than clobber each other's nested keys.
-Owner-signed-off divergence (`decisions.md` §76).
 
 ```ts
 // libraries/options.augmentations/src/ConfigurationConfigureOptions.ts
@@ -196,19 +195,3 @@ services.configure(TOKEN, config.getSection('Widget')); // { Url: 'http://a' }
 services.configure(TOKEN, config.getSection('Extra')); //  { Retries: '5' }
 expect(options.value).toEqual({ Url: 'http://a', Retries: '5' }); // composed
 ```
-
-### 9. Sync-only options validation
-
-Options validation is synchronous and resolution lazy by design, so the reference's async
-validation family — `IAsyncValidateOptions<T>` and `IAsyncStartupValidator` — is not ported. The
-**sync** path IS ported and stays in: `IStartupValidator`/`StartupValidator` and the
-`validateOnStart` manifest verb (§55). The reference's carve-out wording that lumps
-`IStartupValidator`/`ValidateOnStart` in with the async-out family is imprecise — only the async
-pieces are out. Owner-signed-off divergence (`decisions.md` §76).
-
-### 10. `OptionsFactory` is not a DI seam
-
-The reference exposes `IOptionsFactory<T>` as a DI-swappable interface so a consumer can substitute
-pipeline assembly. Here `OptionsFactory<T>` is a concrete class with no interface or token —
-YAGNI, no consumer needs factory substitution. Reopen if one does. Owner-signed-off divergence
-(`decisions.md` §76).
