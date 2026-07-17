@@ -10,7 +10,7 @@
 bun add @rhombus-std/di.core
 ```
 
-Building the actual `ServiceProvider` still requires `@rhombus-std/di` — `di.core` ships the collection, not the engine. A plugin-less application installs both:
+Building the actual `IServiceProvider` still requires `@rhombus-std/di` — `di.core` ships the collection, not the engine. A plugin-less application installs both:
 
 ```sh
 bun add @rhombus-std/di.core @rhombus-std/di
@@ -46,10 +46,10 @@ There is no global metadata store and no decorator: the dependency signature tra
 | `ServiceManifest<S>`                                                                                 | Interface            | The registration collection: `add` / `addFactory` / `addValue`, each returning an `.as(scope?)` continuation.                                                   |
 | `ServiceManifestClass`                                                                               | Class                | The concrete implementation of `ServiceManifest`. Augmentations from sibling packages patch new methods onto it.                                                |
 | `AddBuilder<S>`                                                                                      | Interface            | The `.as(scope?)` continuation a registration call returns.                                                                                                     |
-| `Resolver`                                                                                           | Interface            | The minimal resolution surface — `resolve`, `tryResolve`, `resolveAsync`, `resolveFactory`, `isService`. What a factory parameter typed `Resolver` receives.    |
-| `ServiceProvider<S>`                                                                                 | Interface            | The public container surface a consumer holds — composes `Resolver`, scope creation, and disposal. `build()` (from `@rhombus-std/di`) returns this.             |
-| `RequiredResolver` / `ServiceQuery`                                                                  | Interfaces           | The throwing-resolve and registration-query capabilities `Resolver` composes.                                                                                   |
-| `RESOLVER_TOKEN` / `isProviderToken`                                                                 | Const / function     | The intrinsic token a `Resolver`-typed parameter derives — "give me the live provider" is plain DI, no special slot kind.                                       |
+| `IResolver`                                                                                          | Interface            | The minimal resolution surface — `resolve`, `tryResolve`, `resolveAsync`, `resolveFactory`, `isService`. What a factory parameter typed `IResolver` receives.   |
+| `IServiceProvider<S>`                                                                                | Interface            | The public container surface a consumer holds — composes `IResolver`, scope creation, and disposal. `build()` (from `@rhombus-std/di`) returns this.            |
+| `IRequiredResolver` / `IServiceQuery`                                                                | Interfaces           | The throwing-resolve and registration-query capabilities `IResolver` composes.                                                                                  |
+| `RESOLVER_TOKEN` / `isProviderToken`                                                                 | Const / function     | The intrinsic token a `IResolver`-typed parameter derives — "give me the live provider" is plain DI, no special slot kind.                                      |
 | `FactoryRef`                                                                                         | Interface            | `{ type, params? }` — marks a constructor parameter to be injected as a factory rather than a resolved instance.                                                |
 | `Union` / `union(...)`                                                                               | Interface / function | A slot that tries several alternatives in order and resolves to the first one registered.                                                                       |
 | `DepSlot` / `DepRecord`                                                                              | Type aliases         | The positional-slot union (`Token \| FactoryRef \| Union \| LiteralRef \| TypeArgRef`) and the per-registration signature-array shape.                          |
@@ -58,7 +58,7 @@ There is no global metadata store and no decorator: the dependency signature tra
 | `$1` … `$9`                                                                                          | Type aliases         | Pre-instantiated, non-generic aliases for the 9 most common holes — `$1` = `Hole<1>`, … `$9` = `Hole<9>`. `$<N>` remains the only spelling for `N ≥ 10`.        |
 | `Typeof<T>`                                                                                          | Type alias           | Phantom brand — a constructor parameter that receives the _token string_ of type argument `T`.                                                                  |
 | `closeToken` / `parseToken` / `isOpenToken` / `substituteToken` / `substituteSignatures` / `typeArg` | Functions            | The open-generic token grammar: render, parse, detect, and substitute closed/open generic tokens.                                                               |
-| `EmptyServiceProvider`                                                                               | Const                | A null-object `ServiceProvider` with no application services registered.                                                                                        |
+| `EmptyServiceProvider`                                                                               | Const                | A null-object `IServiceProvider` with no application services registered.                                                                                       |
 | `ActivatorUtilities`                                                                                 | Const                | Activates an unregistered class against a provider, injecting its dependency slots — for controllers, middleware, or anything the container doesn't itself own. |
 | `DiError` / `OpenTokenRegistrationError` / `ActivationError`                                         | Classes              | The registration-time and activation-time error taxonomy. Resolution-time errors live in `@rhombus-std/di`.                                                     |
 | `ServiceCollectionDescriptorExtensions`                                                              | Const                | Side-effect import — see below. Installs `removeAll` / `tryAdd*` / `replace*` onto every `ServiceManifest`.                                                     |
@@ -82,7 +82,7 @@ export interface FactoryRef {
 
 ### The provider as a resolvable type
 
-The provider is an intrinsically resolvable type — no dedicated slot kind. A parameter typed `Resolver` derives the ordinary token `RESOLVER_TOKEN`, and the engine resolves it to the nearest open scope's provider view rather than a registration, so "I want the provider" is plain DI. A plugin-less author hand-feeds the exported constant in a signature:
+The provider is an intrinsically resolvable type — no dedicated slot kind. A parameter typed `IResolver` derives the ordinary token `RESOLVER_TOKEN`, and the engine resolves it to the nearest open scope's provider view rather than a registration, so "I want the provider" is plain DI. A plugin-less author hand-feeds the exported constant in a signature:
 
 ```ts
 import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
@@ -282,7 +282,7 @@ There's no built-in root scope — scope names are entirely user-declared tags. 
 
 An **open** template token (`pkg:IRepo<$1>` — every type argument a hole) routes into a separate open-registration table instead of the exact map; resolution closes it per requested token. Mixing concrete args and holes in the same service token throws.
 
-`services.seal()` freezes the collection into an immutable snapshot; `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `ServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
+`services.seal()` freezes the collection into an immutable snapshot; `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `IServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
 
 ## `ActivatorUtilities`
 

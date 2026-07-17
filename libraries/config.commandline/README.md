@@ -19,10 +19,10 @@ package.
 ## Usage
 
 ```ts
-import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigurationBuilder
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigBuilder
+import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addCommandLine(process.argv.slice(2), { '-p': 'Server:Port' })
   .build();
 
@@ -31,8 +31,8 @@ const config = new ConfigurationBuilder()
 config.get('Server:Port'); // "8080"
 ```
 
-Importing the package installs `addCommandLine` onto `ConfigurationBuilder`
-(and `ConfigurationManager`); calling it registers a command-line source that
+Importing the package installs `addCommandLine` onto `ConfigBuilder`
+(and `ConfigManager`); calling it registers a command-line source that
 `build()` parses like any other layer.
 
 ## Parsing rules
@@ -59,7 +59,7 @@ Importing the package installs `addCommandLine` onto `ConfigurationBuilder`
 duplicate registration.
 
 ```ts
-new ConfigurationBuilder().addCommandLine(process.argv.slice(2), {
+new ConfigBuilder().addCommandLine(process.argv.slice(2), {
   '-p': 'Server:Port',
   '-h': 'Server:Host',
 });
@@ -67,12 +67,12 @@ new ConfigurationBuilder().addCommandLine(process.argv.slice(2), {
 
 ## Key exports
 
-| Export                                                               | What it is                                                                                                                                      |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `addCommandLine` (via `ConfigurationBuilder`/`ConfigurationManager`) | Registers a command-line source; installed by the side-effect import.                                                                           |
-| `CommandLineConfigurationSource`                                     | The `IConfigurationSource` — holds the raw argv tokens and validated switch mappings.                                                           |
-| `CommandLineConfigurationSourceOptions`                              | The options type accepted by `CommandLineConfigurationSource`'s constructor (`switchMappings`).                                                 |
-| `CommandLineConfigurationProvider`                                   | The provider that actually parses `argv` into config keys; constructible directly if you want a source without going through the builder sugar. |
+| Export                                                 | What it is                                                                                                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `addCommandLine` (via `ConfigBuilder`/`ConfigManager`) | Registers a command-line source; installed by the side-effect import.                                                                           |
+| `CommandLineConfigSource`                              | The `IConfigSource` — holds the raw argv tokens and validated switch mappings.                                                                  |
+| `CommandLineConfigSourceOptions`                       | The options type accepted by `CommandLineConfigSource`'s constructor (`switchMappings`).                                                        |
+| `CommandLineConfigProvider`                            | The provider that actually parses `argv` into config keys; constructible directly if you want a source without going through the builder sugar. |
 
 ## How it fits
 
@@ -85,7 +85,7 @@ layer stack, since they're meant to override everything else at run time.
 
 ## Notes
 
-`addCommandLine` isn't a method `ConfigurationBuilder` ships with on its
+`addCommandLine` isn't a method `ConfigBuilder` ships with on its
 own — this package adds it via declaration merging plus a registration
 against the shared builder. If your code calls `.addCommandLine()` but never
 names any other symbol from this package, nothing forces a bundler to load
@@ -93,5 +93,5 @@ its module, so the side-effect import is required even when you don't use
 anything else from it:
 
 ```ts
-import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigurationBuilder
+import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigBuilder
 ```

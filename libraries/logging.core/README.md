@@ -78,7 +78,7 @@ Everything downstream builds on it:
   composite `Logger`, `NullLogger`, filter options, external scopes, and the
   `addLogging` registration. Install this when you need a working logger, not
   just the contracts.
-- [`@rhombus-std/logging.configuration`](../logging.configuration/README.md) —
+- [`@rhombus-std/logging.config`](../logging.config/README.md) —
   binds filter rules from configuration.
 - [`@rhombus-std/logging.console`](../logging.console/README.md) and
   [`@rhombus-std/logging.browserconsole`](../logging.browserconsole/README.md) —

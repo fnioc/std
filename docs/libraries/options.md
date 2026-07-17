@@ -1,9 +1,9 @@
 # `@rhombus-std/options`
 
-The collapsed `Options<T>` accessor + the configure / post-configure / validate `OptionsFactory`
+The collapsed `IOptions<T>` accessor + the configure / post-configure / validate `OptionsFactory`
 pipeline, plus startup validation (`IStartupValidator`/`StartupValidator`, forced by `Host.start`)
 and `ValidateOptionsResultBuilder` for multi-failure aggregation. `options.augmentations` is the
-one place di and config meet — the config→`Options<T>` bridge — and exports the pipeline
+one place di and config meet — the config→`IOptions<T>` bridge — and exports the pipeline
 slot-token grammar (`configureStepToken` et al.) so a downstream package can register a step for a
 type it doesn't own.
 
@@ -17,7 +17,7 @@ the real tests and examples (`tests/options.augmentations.test/**`, `examples/ex
 an ambient `services` is a `ServiceManifest` being built (the `IServiceCollection` analog),
 `provider` is `services.build()` scoped, and tokens are plain strings (no transformer).
 
-### 1. One `Options<T>.value` accessor over three reference interfaces
+### 1. One `IOptions<T>.value` accessor over three reference interfaces
 
 The reference splits the accessor three ways — `IOptions<T>` (singleton snapshot),
 `IOptionsSnapshot<T>` (scoped), `IOptionsMonitor<T>.CurrentValue` (reactive). The
@@ -25,7 +25,7 @@ singleton-vs-scoped split is a fixed-lifetime DI artifact; here scopes are open-
 is a registration concern, so all three collapse into one `value` getter.
 
 ```ts
-export interface Options<T> {
+export interface IOptions<T> {
   readonly value: T;
   subscribe?(listener: Func<[T], void>): Disposable; // present only when reload-capable
 }
@@ -44,7 +44,7 @@ re-arms the next change token automatically after each fire.
 ```ts
 // libraries/options/src/options.ts
 function watch<T>(getValue: Func<[], T>,
-  produceToken: ChangeTokenProducer): Options<T>
+  produceToken: ChangeTokenProducer): IOptions<T>
 {
   return {
     get value(): T {
@@ -61,7 +61,7 @@ Backed by a config reload token, a subscriber sees every reload without re-subsc
 (`config-options.test.ts`):
 
 ```ts
-const options = provider.resolve<Options<WidgetOptions>>(TOKEN);
+const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
 const seen: WidgetOptions[] = [];
 options.subscribe!((value) => seen.push(value));
 
@@ -75,7 +75,7 @@ expect(seen).toEqual([{ Url: 'http://second' }]);
 
 Alongside the assembly-pipeline overload (`addOptions(token, () => base)` — runs the whole
 configure/post-configure/validate pipeline), a second verb wraps an _already-bound_ `T` into an
-`Options<T>`. Same member name, disambiguated by whether the second argument is a base factory or
+`IOptions<T>`. Same member name, disambiguated by whether the second argument is a base factory or
 a token.
 
 ```ts
@@ -95,7 +95,7 @@ verb above — you name the options type, the transformer derives both tokens.
 ```ts
 // examples/examples.app.with-transformer/src/main.ts
 services.addOptions<GreetingPolicy>().as('singleton');
-// lowers to: services.addOptions(token(Options<GreetingPolicy>), token(GreetingPolicy))
+// lowers to: services.addOptions(token(IOptions<GreetingPolicy>), token(GreetingPolicy))
 ```
 
 Per the no-transformer-first rule this is pure ergonomics — it rewrites to exactly what #3 does by
@@ -152,7 +152,7 @@ services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
 });
 services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, {
   postConfigure(options) {
-    options.suffix += '!'; // pre-built PostConfigureOptions<T>
+    options.suffix += '!'; // pre-built IPostConfigureOptions<T>
   },
 });
 ```
@@ -163,15 +163,13 @@ step.
 ### 8. Structural deep-merge config bind that composes overlapping sections
 
 The reference's config→options bind calls the reflective `ConfigurationBinder.Bind`. Reflection is
-impossible under TS type erasure, so `ConfigurationConfigureOptions` reimplements the bind
+impossible under TS type erasure, so `ConfigConfigureOptions` reimplements the bind
 _structurally_ — and the deep merge carries a stronger guarantee than the reference: two configure
 steps binding overlapping sections **compose** rather than clobber each other's nested keys.
 
 ```ts
-// libraries/options.augmentations/src/ConfigurationConfigureOptions.ts
-function bindSection(config: IConfiguration,
-  target: Record<string, unknown>): void
-{
+// libraries/options.augmentations/src/ConfigConfigureOptions.ts
+function bindSection(config: IConfig, target: Record<string, unknown>): void {
   for (const child of config.getChildren()) {
     const grandchildren = [...child.getChildren()];
     if (grandchildren.length) {

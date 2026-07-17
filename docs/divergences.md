@@ -12,7 +12,7 @@ Recorded here only so the departure from ME's extension-method mechanism is on t
 
 ### MECB (configuration Binder) — not ported
 
-We do not port ME's reflective `ConfigurationBinder` (`Get<T>` / `Bind` / `GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1) plus `config.transformer`'s `withType<T>` codegen (Tier 2), and the factory-driven `IConfiguration.get<T>(path, factory)` — is documented as a positive feature in `docs/libraries/config.md` §2 and §6.
+We do not port ME's reflective `ConfigurationBinder` (`Get<T>` / `Bind` / `GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1) plus `config.transformer`'s `withType<T>` codegen (Tier 2), and the factory-driven `IConfig.get<T>(path, factory)` — is documented as a positive feature in `docs/libraries/config.md` §2 and §6.
 
 ### Environment-agnosticism, declared via `types[]`
 
@@ -28,4 +28,4 @@ ME exposes `IOptionsFactory<T>` as a DI-swappable interface so a consumer can su
 
 ### Deep-merge config bind
 
-ME's config→options bind (`NamedConfigureFromConfigurationOptions`) calls the reflective `ConfigurationBinder.Bind`. Reflection is impossible under TS type erasure, so `ConfigurationConfigureOptions`/`bindSection` reimplements the bind **structurally** as a deep merge of the section's key/value subtree onto the value. Beyond just being reflection-free, the deep merge carries a stronger guarantee than ME's `Bind`: two configure steps binding overlapping sections **compose** rather than clobber each other's nested keys. Recorded in decisions.md §76.
+ME's config→options bind (`NamedConfigureFromConfigurationOptions`) calls the reflective `ConfigurationBinder.Bind`. Reflection is impossible under TS type erasure, so `ConfigConfigureOptions`/`bindSection` reimplements the bind **structurally** as a deep merge of the section's key/value subtree onto the value. Beyond just being reflection-free, the deep merge carries a stronger guarantee than ME's `Bind`: two configure steps binding overlapping sections **compose** rather than clobber each other's nested keys. Recorded in decisions.md §76.

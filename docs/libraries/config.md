@@ -1,8 +1,8 @@
 # `@rhombus-std/config`
 
-`config.core` (the `IConfiguration*` types, pure types/zero runtime emit) ← `config`
-(builder/root/section engine + reload tokens; `ConfigurationManager` seeds a default memory
-source; `ChainedConfigurationSource` wraps an existing `IConfiguration` as a source) ← providers
+`config.core` (the `IConfig*` types, pure types/zero runtime emit) ← `config`
+(builder/root/section engine + reload tokens; `ConfigManager` seeds a default memory
+source; `ChainedConfigSource` wraps an existing `IConfig` as a source) ← providers
 `config.json` / `config.env` / `config.commandline`, and the file-configuration sub-family
 `config.file` ← `config.json`/`config.ini`/`config.xml`. `config.transformer` rewrites
 `.withType<T>()` and is standalone — di-independent.
@@ -12,8 +12,8 @@ source; `ChainedConfigurationSource` wraps an existing `IConfiguration` as a sou
 `@rhombus-std/config` mirrors the reference configuration engine's source/provider/root model
 faithfully, then goes further in several directions the reference engine has no equivalent for.
 Each entry below assumes you already know sources, providers, and section navigation; it only
-covers what's new. Snippets build their own `config`/`root`/`manager` via `ConfigurationBuilder`
-or `ConfigurationManager`, the same way a real consumer would.
+covers what's new. Snippets build their own `config`/`root`/`manager` via `ConfigBuilder`
+or `ConfigManager`, the same way a real consumer would.
 
 ### 1. Live-reload reactivity, by design, everywhere
 
@@ -23,10 +23,10 @@ manager expose a single-fire `IChangeToken`, and `ChangeToken.onChange` composes
 subscriber never has to manually re-subscribe after a reload swaps the token out from under it.
 
 ```ts
-const provider = new JsonConfigurationProvider(
-  new JsonConfigurationSource('app.json'),
+const provider = new JsonConfigProvider(
+  new JsonConfigSource('app.json'),
 );
-const root = new ConfigurationRoot([provider]);
+const root = new ConfigRoot([provider]);
 
 using _sub = ChangeToken.onChange(() => root.getReloadToken(), () => {
   console.log('config changed:', root.get('Server:Port'));
@@ -36,7 +36,7 @@ root.reload(); // re-runs provider.load(), then fires the root's token once
 root.reload(); // onChange re-subscribed to the FRESH token automatically -- fires again
 ```
 
-`ConfigurationManager` takes this one step further: it holds its OWN stable token, so a
+`ConfigManager` takes this one step further: it holds its OWN stable token, so a
 subscriber registered before a later `add()` still observes every change that add introduces.
 
 ### 2. A compile-time schema instead of a reflective binder
@@ -50,7 +50,7 @@ type `build()` returns. No DTO class, no reflection. Tier 2 layers `.withType<T>
 interface, so hand-authoring stays the base case and codegen is optional sugar.
 
 ```ts
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addJsonFile('appsettings.json')
   .withSchema(
     {
@@ -69,7 +69,7 @@ interface AppConfig {
   Server: { Host: string; Port: number; };
   Ssl?: boolean;
 }
-new ConfigurationBuilder().addJsonFile('appsettings.json').withType<AppConfig>()
+new ConfigBuilder().addJsonFile('appsettings.json').withType<AppConfig>()
   .build();
 ```
 
@@ -80,7 +80,7 @@ it ships INSIDE `config` itself, because an in-memory source is a basic building
 defaults, test fixtures, programmatic overrides -- not an optional add-on a consumer opts into.
 
 ```ts
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addInMemoryCollection({ 'Server:Port': '8080' }) // no extra package needed
   .addJsonFile('appsettings.json', { optional: true })
   .build();
@@ -90,23 +90,23 @@ const config = new ConfigurationBuilder()
 
 Because a reference extension method binds to an INTERFACE, not one class, every `add*`
 augmentation here (see `docs/features/augmentations.md`) installs onto every class that plays
-that role — both `ConfigurationBuilder<T>` and `ConfigurationManager` — so the same sugar reaches
-a live `ConfigurationManager` exactly the way it reaches a one-shot `ConfigurationBuilder`.
+that role — both `ConfigBuilder<T>` and `ConfigManager` — so the same sugar reaches
+a live `ConfigManager` exactly the way it reaches a one-shot `ConfigBuilder`.
 
 ```ts
-new ConfigurationBuilder().addJsonFile('a.json').addEnvironmentVariables();
-new ConfigurationManager().addJsonFile('a.json').addEnvironmentVariables();
+new ConfigBuilder().addJsonFile('a.json').addEnvironmentVariables();
+new ConfigManager().addJsonFile('a.json').addEnvironmentVariables();
 ```
 
 ### 5. `toObject(): ConfigObject`
 
 Nothing in the reference abstractions materializes a subtree as a plain nested object -- the
 closest thing is the reflective binder, a different package with a different job (typed DTOs, not
-a generic dump). `toObject()` sits directly on `IConfiguration` and returns the whole (or a
+a generic dump). `toObject()` sits directly on `IConfig` and returns the whole (or a
 section's) subtree as an ordinary nested string record.
 
 ```ts
-const root = new ConfigurationBuilder()
+const root = new ConfigBuilder()
   .addInMemoryCollection({
     'Server:Host': 'h',
     'Server:Port': '8080',
@@ -120,11 +120,11 @@ root.getSection('Server').toObject();
 // { Host: "h", Port: "8080" } -- just the subtree
 ```
 
-### 6. Typed leaf accessors directly on `IConfiguration`
+### 6. Typed leaf accessors directly on `IConfig`
 
-The reference engine keeps `IConfiguration` to a bare string indexer; typed reads live in the
+The reference engine keeps `IConfig` to a bare string indexer; typed reads live in the
 separate binder package, and a write through the indexer returns nothing. Here, `get<T>(path,
-factory)` / `getNum` / `getBool` (each with an optional default) sit directly on `IConfiguration`
+factory)` / `getNum` / `getBool` (each with an optional default) sit directly on `IConfig`
 itself, and `set` returns `this` for fluent chaining.
 
 ```ts
@@ -145,7 +145,7 @@ members (`get`, `value`, `getSection`, …) always win over the indexer, and the
 (not thenable, not iterable, `instanceof` intact) keep it from lying about what it is.
 
 ```ts
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addInMemoryCollection({ 'Server:Host': 'localhost', 'Server:Port': '8080' })
   .build(); // IndexedSection
 
@@ -156,17 +156,17 @@ config.Server.getNum('Port'); // real methods stay reachable mid-navigation
 
 ### 8. `adoptProvider()` + a stable manager-level reload token
 
-The reference `ConfigurationManager` keeps its provider list correct under concurrent add+read via
+The reference `ConfigManager` keeps its provider list correct under concurrent add+read via
 a reference-counted copy-on-write scheme -- real complexity earning its keep in a genuinely
 multithreaded runtime. There is no concurrent-reader story to preserve in a single-threaded one, so
-`ConfigurationManager` uses a simpler, equally-correct seam instead: `ConfigurationRoot.adoptProvider`
+`ConfigManager` uses a simpler, equally-correct seam instead: `ConfigRoot.adoptProvider`
 builds+loads ONLY the new provider and appends it, never rebuilding (or discarding `set()` state on)
 the existing ones. The manager holds its own stable token, subscribed once to the root's
 self-swapping one, so a subscriber registered before a later `add()` still fires without the
 manager ever needing to swap identity to get that for free.
 
 ```ts
-const manager = new ConfigurationManager();
+const manager = new ConfigManager();
 manager.set('A', 'mutated'); // works immediately -- a manager always starts with one source
 using _sub = ChangeToken.onChange(() => manager.getReloadToken(), notify);
 
@@ -178,16 +178,16 @@ manager.addJsonFile('overrides.json'); // appends + loads ONLY this provider
 ### 9. An injectable environment map
 
 The reference env provider always reads the ambient process environment; there is no seam to
-substitute a fake one. `EnvironmentVariablesConfigurationSourceOptions.env` (defaulting to
+substitute a fake one. `EnvironmentVariablesConfigSourceOptions.env` (defaulting to
 `process.env`) lets `load()` run hermetically against a caller-supplied map, so tests -- or any
 sandboxed caller -- never have to mutate, and then restore, the real environment.
 
 ```ts
-const source = new EnvironmentVariablesConfigurationSource({
+const source = new EnvironmentVariablesConfigSource({
   prefix: 'APP_',
   env: { APP_Port: '8080' }, // not process.env
 });
-const provider = source.build(new ConfigurationBuilder());
+const provider = source.build(new ConfigBuilder());
 provider.load(); // pure w.r.t. the injected map -- process.env untouched
 ```
 
@@ -195,12 +195,12 @@ provider.load(); // pure w.r.t. the injected map -- process.env untouched
 
 The reference engine validates a command-line source's switch-mappings table lazily, inside the
 PROVIDER's constructor -- which only ever runs once `build()` is called. Here,
-`CommandLineConfigurationSource`'s OWN constructor validates eagerly (every key must start with
+`CommandLineConfigSource`'s OWN constructor validates eagerly (every key must start with
 `-`; no case-insensitive collisions), so a malformed table fails the moment it is constructed --
 strictly earlier than `build()`/`load()` would ever reach it.
 
 ```ts
-new CommandLineConfigurationSource(process.argv.slice(2), {
+new CommandLineConfigSource(process.argv.slice(2), {
   switchMappings: { p: 'Server:Port' }, // missing the leading "-"
 });
 // throws immediately, at construction -- before .build() is ever called
@@ -219,7 +219,7 @@ completely un-rewritten rather than partially lowered -- there is no silent-part
 interface BadConfig {
   Tags: string[]; // arrays have no Schema representation
 }
-new ConfigurationBuilder().withType<BadConfig>().build();
+new ConfigBuilder().withType<BadConfig>().build();
 // compile error, DiagnosticCode.UnsupportedType (992001) -- the whole
 // .withType call is left un-rewritten, never partially codegen'd
 ```

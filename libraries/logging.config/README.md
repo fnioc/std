@@ -1,8 +1,8 @@
-# @rhombus-std/logging.configuration
+# @rhombus-std/logging.config
 
 **Drive your log-level filters from configuration instead of hard-coded calls.**
 
-Point `addConfiguration` at an `IConfiguration` tree and your logging setup's
+Point `addConfiguration` at an `IConfig` tree and your logging setup's
 minimum levels — global and per-provider — come from a config file or
 environment variable, and update live on reload. It also gives individual
 logging providers (a console sink, a custom transport) a clean way to read
@@ -12,25 +12,25 @@ library directly.
 ## Install
 
 ```sh
-bun add @rhombus-std/logging.configuration @rhombus-std/logging @rhombus-std/config
+bun add @rhombus-std/logging.config @rhombus-std/logging @rhombus-std/config
 ```
 
 Importing the package registers `addConfiguration` onto `ILoggingBuilder` as
 a side effect — keep the import even if you never reference a named export:
 
 ```ts
-import '@rhombus-std/logging.configuration';
+import '@rhombus-std/logging.config';
 ```
 
 ## Usage
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import { ServiceManifestClass } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
-import '@rhombus-std/logging.configuration';
+import '@rhombus-std/logging.config';
 
-const configuration = new ConfigurationBuilder()
+const configuration = new ConfigBuilder()
   .addJsonFile('logging.json')
   .build();
 
@@ -63,16 +63,16 @@ binding `LoggerFilterOptions` from anything.
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `LoggingBuilderExtensions`               | The standalone form of `addConfiguration` — call it directly as `LoggingBuilderExtensions.addConfiguration(builder, configuration)`.        |
 | `addConfiguration` (method)              | Same operation, as an instance method on `ILoggingBuilder` once this package is imported.                                                   |
-| `ILoggerProviderConfiguration<T>`        | Interface exposing the configuration section bound to a specific logger provider.                                                           |
-| `loggerProviderConfigurationToken`       | Derives the registration token for `ILoggerProviderConfiguration<T>` closed over a given provider type.                                     |
-| `ILoggerProviderConfigurationFactory`    | Interface a provider resolves to fetch its own configuration section by provider token.                                                     |
-| `LoggerProviderConfiguration`            | The concrete `ILoggerProviderConfiguration<T>` implementation, backed by the factory.                                                       |
-| `LoggerProviderConfigurationFactory`     | The concrete `ILoggerProviderConfigurationFactory` implementation.                                                                          |
+| `ILoggerProviderConfig<T>`               | Interface exposing the configuration section bound to a specific logger provider.                                                           |
+| `loggerProviderConfigToken`              | Derives the registration token for `ILoggerProviderConfig<T>` closed over a given provider type.                                            |
+| `ILoggerProviderConfigFactory`           | Interface a provider resolves to fetch its own configuration section by provider token.                                                     |
+| `LoggerProviderConfig`                   | The concrete `ILoggerProviderConfig<T>` implementation, backed by the factory.                                                              |
+| `LoggerProviderConfigFactory`            | The concrete `ILoggerProviderConfigFactory` implementation.                                                                                 |
 | `LoggerProviderOptions`                  | `registerProviderOptions(services, optionsToken, providerType)` — wires a provider's options type to reload from its configuration section. |
 | `LoggerProviderConfigureOptions`         | The configure step `registerProviderOptions` registers for a provider's options.                                                            |
 | `LoggerProviderOptionsChangeTokenSource` | The reload change-token source `registerProviderOptions` registers for a provider's options.                                                |
 | `LoggerFilterConfigureOptions`           | The configure step that binds `LoggerFilterOptions` (levels, rules, scope capture) from configuration.                                      |
-| `LoggingConfiguration`                   | A small holder exposing the raw `IConfiguration` the logging setup was bound from.                                                          |
+| `LoggingConfig`                          | A small holder exposing the raw `IConfig` the logging setup was bound from.                                                                 |
 
 ## Writing a configurable provider
 
@@ -82,7 +82,7 @@ built-in filter binding uses — call `LoggerProviderOptions.registerProviderOpt
 after `addConfiguration` has run:
 
 ```ts
-import { LoggerProviderOptions } from '@rhombus-std/logging.configuration';
+import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 
 LoggerProviderOptions.registerProviderOptions<MyProviderOptions, MyProvider>(
   services,
@@ -93,15 +93,15 @@ LoggerProviderOptions.registerProviderOptions<MyProviderOptions, MyProvider>(
 
 That appends a configure step and a reload-reactive change-token source to
 `myProviderOptionsToken`'s options pipeline, sourced from whatever
-`ILoggerProviderConfigurationFactory` resolves as `MyProvider`'s section —
-so `Options<MyProviderOptions>` stays current across configuration reloads
+`ILoggerProviderConfigFactory` resolves as `MyProvider`'s section —
+so `IOptions<MyProviderOptions>` stays current across configuration reloads
 with no extra wiring in the provider itself.
 
 ## How it fits
 
-`@rhombus-std/logging.configuration` sits between
+`@rhombus-std/logging.config` sits between
 [`@rhombus-std/logging`](../logging/README.md) and
-[`@rhombus-std/config`](../config/README.md): it reads an `IConfiguration`
+[`@rhombus-std/config`](../config/README.md): it reads an `IConfig`
 built by `config` and uses it to drive the filter rules and generic-category
 loggers that `logging` resolves. It also leans on
 [`@rhombus-std/options`](../options/README.md) and
@@ -119,7 +119,7 @@ provider options sourced from configuration rather than set in code.
 ## Notes
 
 - `addConfiguration` is lazy: nothing is read from the configuration until
-  the underlying `Options<LoggerFilterOptions>` (or provider options) value is
+  the underlying `IOptions<LoggerFilterOptions>` (or provider options) value is
   actually resolved, and a configuration reload re-runs the binding.
 - The side-effect import is required exactly once, anywhere in your app's
   startup path — `addConfiguration` doesn't exist on `ILoggingBuilder` until

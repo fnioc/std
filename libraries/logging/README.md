@@ -133,7 +133,7 @@ the app runs:
 terminal, and
 [`@rhombus-std/logging.browserconsole`](../logging.browserconsole/README.md)
 writes to a browser's console. Binding filter rules from configuration is
-[`@rhombus-std/logging.configuration`](../logging.configuration/README.md).
+[`@rhombus-std/logging.config`](../logging.config/README.md).
 
 ## Notes
 

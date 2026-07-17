@@ -22,10 +22,10 @@ bun add @rhombus-std/config.xml @rhombus-std/config
 ## Usage
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.xml';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addXmlFile('appsettings.xml', { optional: true, reloadOnChange: true })
   .build();
 
@@ -35,7 +35,7 @@ config.get('Server:Host');
 Read an XML payload you already hold in memory with `addXmlStream`:
 
 ```ts
-new ConfigurationBuilder()
+new ConfigBuilder()
   .addXmlStream('<settings><App><Name>demo</Name></App></settings>')
   .build();
 ```
@@ -75,13 +75,13 @@ error.
 
 ## Key exports
 
-| Export                           | What it is                                                                     |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| `XmlConfigurationSource`         | A file source reading an XML file; `addXmlFile` registers one for you.         |
-| `XmlConfigurationProvider`       | The provider `XmlConfigurationSource` builds — reads the file and flattens it. |
-| `XmlStreamConfigurationSource`   | A source over an in-memory XML payload; `addXmlStream` registers one.          |
-| `XmlStreamConfigurationProvider` | The provider `XmlStreamConfigurationSource` builds.                            |
-| `XmlConfigurationExtensions`     | The `addXmlFile` / `addXmlStream` builder methods, as standalone functions.    |
+| Export                    | What it is                                                                  |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `XmlConfigSource`         | A file source reading an XML file; `addXmlFile` registers one for you.      |
+| `XmlConfigProvider`       | The provider `XmlConfigSource` builds — reads the file and flattens it.     |
+| `XmlStreamConfigSource`   | A source over an in-memory XML payload; `addXmlStream` registers one.       |
+| `XmlStreamConfigProvider` | The provider `XmlStreamConfigSource` builds.                                |
+| `XmlConfigExtensions`     | The `addXmlFile` / `addXmlStream` builder methods, as standalone functions. |
 
 ## How it fits
 
@@ -97,7 +97,7 @@ and the stream source base. It is a sibling of
 
 - **`addXmlFile` and `addXmlStream` install on both the builder and the
   manager.** Importing the package once makes them available on
-  `ConfigurationBuilder` and `ConfigurationManager` alike.
+  `ConfigBuilder` and `ConfigManager` alike.
 - **The parser is intentionally minimal.** It handles the element/attribute/
   text grammar configuration needs, not the full XML specification —
   namespaces, DTDs, and custom entities are out of scope by design.

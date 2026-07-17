@@ -21,10 +21,10 @@ bun add @rhombus-std/config.ini @rhombus-std/config
 ## Usage
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.ini';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addIniFile('appsettings.ini', { optional: true, reloadOnChange: true })
   .build();
 
@@ -45,10 +45,10 @@ produces `Server:Primary:Host` = `localhost` and `Server:Primary:Port` =
 Read an INI payload you already hold in memory with `addIniStream`:
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.ini';
 
-new ConfigurationBuilder()
+new ConfigBuilder()
   .addIniStream('[App]\nName=demo')
   .build();
 ```
@@ -67,13 +67,13 @@ new ConfigurationBuilder()
 
 ## Key exports
 
-| Export                           | What it is                                                                     |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| `IniConfigurationSource`         | A file source reading an INI file; `addIniFile` registers one for you.         |
-| `IniConfigurationProvider`       | The provider `IniConfigurationSource` builds — reads the file and flattens it. |
-| `IniStreamConfigurationSource`   | A source over an in-memory INI payload; `addIniStream` registers one.          |
-| `IniStreamConfigurationProvider` | The provider `IniStreamConfigurationSource` builds.                            |
-| `IniConfigurationExtensions`     | The `addIniFile` / `addIniStream` builder methods, as standalone functions.    |
+| Export                    | What it is                                                                  |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `IniConfigSource`         | A file source reading an INI file; `addIniFile` registers one for you.      |
+| `IniConfigProvider`       | The provider `IniConfigSource` builds — reads the file and flattens it.     |
+| `IniStreamConfigSource`   | A source over an in-memory INI payload; `addIniStream` registers one.       |
+| `IniStreamConfigProvider` | The provider `IniStreamConfigSource` builds.                                |
+| `IniConfigExtensions`     | The `addIniFile` / `addIniStream` builder methods, as standalone functions. |
 
 ## How it fits
 
@@ -89,7 +89,7 @@ and the stream source base. It is a sibling of
 
 - **`addIniFile` and `addIniStream` install on both the builder and the
   manager.** Importing the package once makes them available on
-  `ConfigurationBuilder` and `ConfigurationManager` alike.
+  `ConfigBuilder` and `ConfigManager` alike.
 - **Reload needs a watching file provider.** `reloadOnChange: true` reacts to
   file changes when the backing file provider supports watching (the default
   on-disk provider does); see

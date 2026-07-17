@@ -3,13 +3,13 @@
 `logging.core` (`ILogger`/`ILoggerFactory`/`ILoggerProvider`/`ILoggingBuilder`, `LogLevel`,
 `EventId`, structured `FormattedLogValues`) ← `logging` (`Logger`/`LoggerFactory` composite
 fan-out, `NullLogger*`, `LoggerFilterOptions`, `ILogger<T>`/`Logger<T>` generic-category logger,
-`LoggerRuleSelector`) ← `logging.configuration` (config-tree → `LoggerFilterOptions` binding,
+`LoggerRuleSelector`) ← `logging.config` (config-tree → `LoggerFilterOptions` binding,
 provider-configuration plumbing). `logging.console` and `logging.browserconsole` are the console
 sinks.
 
 ## Justified divergences
 
-`logging.core` / `logging` / `logging.configuration` mirror the reference logging stack
+`logging.core` / `logging` / `logging.config` mirror the reference logging stack
 (`ILogger`/`ILoggerFactory`/`ILoggingBuilder`, its `LoggerFilterOptions` rule model, and the
 `AddLogging`/`AddConfiguration`/`AddFilter` extension surface) faithfully, then diverge in a
 handful of directions the reference has no equivalent for. Each entry assumes you already know
@@ -104,7 +104,7 @@ The builder half routes each call through the options-configure pipeline (the re
 `beginScope` returns a `Disposable` and every reload subscription returns a disposable
 registration — the ESNext explicit-resource-management convention, used repo-wide in place of the
 reference's `IDisposable`. `using` disposes deterministically; the registration is disposed by
-`registration[Symbol.dispose]()` (`tests/logging.configuration.test/test/filter-options-pipeline.test.ts`).
+`registration[Symbol.dispose]()` (`tests/logging.config.test/test/filter-options-pipeline.test.ts`).
 
 ```ts
 const registration = options.subscribe!((value) => seen.push(value));
@@ -147,27 +147,27 @@ export function logInformation(logger: ILogger, error: Error, message: string,
 
 ### 7. A reload-reactive `LoggerFilterOptions` pipeline over one converged token
 
-`logging.configuration`'s `addConfiguration` wires the config→filter binding as a LAZY,
-reload-reactive `Options<LoggerFilterOptions>` pipeline through `options.augmentations`: a
-`LoggerFilterConfigureOptions` step plus a `ConfigurationChangeTokenSource`, both keyed at the
+`logging.config`'s `addConfiguration` wires the config→filter binding as a LAZY,
+reload-reactive `IOptions<LoggerFilterOptions>` pipeline through `options.augmentations`: a
+`LoggerFilterConfigureOptions` step plus a `ConfigChangeTokenSource`, both keyed at the
 options-assembly token. Nothing binds until the assembly materializes; a configuration reload
 re-runs the parse and notifies subscribers — and the same reload path makes `LoggerFilterRule`
 selection reachable at log time (`LoggerFactory` subscribes and re-selects via
 `LoggerRuleSelector`).
 
 ```ts
-// libraries/logging.configuration/src/add-configuration.ts
-const optionsToken = nameof<Options<LoggerFilterOptions>>();
+// libraries/logging.config/src/add-configuration.ts
+const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
 builder.services.addOptions<LoggerFilterOptions>(optionsToken,
   () => new LoggerFilterOptions()).as('singleton');
 builder.services.addValue(configureStepToken(optionsToken),
   new LoggerFilterConfigureOptions(configuration));
 builder.services.addValue(changeTokenSourceToken(optionsToken),
-  new ConfigurationChangeTokenSource(configuration));
+  new ConfigChangeTokenSource(configuration));
 ```
 
 A reload delivers a fresh rule set and fires every subscriber
-(`tests/logging.configuration.test/test/filter-options-pipeline.test.ts`):
+(`tests/logging.config.test/test/filter-options-pipeline.test.ts`):
 
 ```ts
 config.set('LogLevel:Default', 'Critical');
@@ -176,7 +176,7 @@ expect(seen[0]!.rules[0]!.logLevel).toBe(LogLevel.Critical);
 expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Critical);
 ```
 
-That single `Options<LoggerFilterOptions>` token is the convergence point (#146): `addLogging`
+That single `IOptions<LoggerFilterOptions>` token is the convergence point (#146): `addLogging`
 registers the assembly and its default (Information) min level, builder-level
 `addFilter`/`setMinimumLevel` append configure steps, and `addConfiguration` derives the SAME token
 inline from the type — so all three compose into one filter-options value the `LoggerFactory`

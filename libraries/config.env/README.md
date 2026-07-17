@@ -19,10 +19,10 @@ package.
 ## Usage
 
 ```ts
-import '@rhombus-std/config.env'; // unlocks .addEnvironmentVariables() on ConfigurationBuilder
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import '@rhombus-std/config.env'; // unlocks .addEnvironmentVariables() on ConfigBuilder
+import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addEnvironmentVariables({ prefix: 'APP_' })
   .build();
 
@@ -38,13 +38,13 @@ stripped from the resulting key.
 
 ## Key exports
 
-| Export                                           | What it is                                                                                                                                                |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EnvironmentVariablesConfigurationSource`        | The source: builds an `EnvironmentVariablesConfigurationProvider` from `process.env` (or a supplied map), a `prefix`, and a `variableNameTransformation`. |
-| `EnvironmentVariablesConfigurationProvider`      | The provider that actually reads the environment map and loads it into the configuration store.                                                           |
-| `EnvironmentVariablesConfigurationSourceOptions` | Options accepted by the source — `prefix`, `variableNameTransformation`, and `env` (for reading a map other than `process.env`, e.g. in tests).           |
-| `defaultVariableNameTransformation`              | The default transform: every `__` becomes `:`.                                                                                                            |
-| `colonAndDotVariableNameTransformation`          | An alternate transform for names that also want a `.` delimiter: every `___` becomes `.`, then every remaining `__` becomes `:`.                          |
+| Export                                    | What it is                                                                                                                                         |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EnvironmentVariablesConfigSource`        | The source: builds an `EnvironmentVariablesConfigProvider` from `process.env` (or a supplied map), a `prefix`, and a `variableNameTransformation`. |
+| `EnvironmentVariablesConfigProvider`      | The provider that actually reads the environment map and loads it into the configuration store.                                                    |
+| `EnvironmentVariablesConfigSourceOptions` | Options accepted by the source — `prefix`, `variableNameTransformation`, and `env` (for reading a map other than `process.env`, e.g. in tests).    |
+| `defaultVariableNameTransformation`       | The default transform: every `__` becomes `:`.                                                                                                     |
+| `colonAndDotVariableNameTransformation`   | An alternate transform for names that also want a `.` delimiter: every `___` becomes `.`, then every remaining `__` becomes `:`.                   |
 
 ## How it fits
 
@@ -53,8 +53,8 @@ stripped from the resulting key.
 [`@rhombus-std/config.json`](../config.json/README.md) and
 [`@rhombus-std/config.commandline`](../config.commandline/README.md) as
 needed. This package works by side-effect import: it patches
-`.addEnvironmentVariables()` onto both `ConfigurationBuilder` and
-`ConfigurationManager` via declaration merging, so a caller who calls
+`.addEnvironmentVariables()` onto both `ConfigBuilder` and
+`ConfigManager` via declaration merging, so a caller who calls
 `.addEnvironmentVariables()` but never names another symbol from this
 package still needs:
 

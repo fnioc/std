@@ -5,7 +5,7 @@
 `@rhombus-std/config` lets you validate and coerce configuration by hand-writing
 a `Schema` object. This package removes that step: it's a
 [ts-patch](https://github.com/nonara/ts-patch) compiler plugin that rewrites
-`.withType<T>()` on a `ConfigurationBuilder` into a generated
+`.withType<T>()` on a `ConfigBuilder` into a generated
 `.withSchema({...})` call, so a plain interface gives you fully-typed,
 fully-coerced configuration with zero hand-written schema.
 
@@ -31,7 +31,7 @@ patched `tsc`):
 ## Usage
 
 ```ts
-import { ConfigurationBuilder } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config/with-type-augment';
 
 interface ServerConfig {
@@ -40,7 +40,7 @@ interface ServerConfig {
   ssl?: boolean;
 }
 
-const config = new ConfigurationBuilder()
+const config = new ConfigBuilder()
   .addInMemoryCollection({ host: 'example.com', port: '8443', ssl: 'true' })
   .withType<ServerConfig>() // ← rewritten to .withSchema({ host: "string", … })
   .build();
@@ -78,7 +78,7 @@ added once per file, only when an optional field lowers.
 | `transform` (also exported as `transformer`) | The ts-patch plugin entry point — what you reference from `tsconfig.json`.                                                             |
 | `createTransformerFactory`                   | The underlying `ts.TransformerFactory` factory, for driving the rewrite directly against an in-memory `Program` without ts-patch.      |
 | `DiagnosticCode`                             | Stable numeric codes for the transformer's compile errors (`UnsupportedType`, `NonObjectRoot`) — assert on these, not on message text. |
-| `Diagnostic`, `DiagnosticSink`               | Types for the diagnostic plumbing the transformer reports errors through.                                                              |
+| `Diagnostic`, `IDiagnosticSink`              | Types for the diagnostic plumbing the transformer reports errors through.                                                              |
 
 ## How it fits
 
