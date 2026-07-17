@@ -130,8 +130,9 @@ transformer (#213). _Owner-approved._
 
 ## §88 — Transformer receiver matching anchors at the declaration site
 
-**The logical goal is the reference stack's interface-targeted extension-method pattern:** a
-member defined against an interface applies to EVERY value statically carrying that interface —
+**The logical goal is C#'s interface-targeted extension-method pattern:** an extension method
+declared against an interface (`static R M(this I self, …)`) applies to EVERY value statically
+carrying `I` —
 a consumer concrete implementing it (+ `@augment`, the §87 first-party split), a subinterface, an
 interface-typed reference, a generic constrained to it. The transformers must reproduce exactly
 that dispatch surface when deciding what to lower: target the interface the member is defined on,
