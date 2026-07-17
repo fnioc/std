@@ -23,6 +23,66 @@ import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
+ * Read the resolved transformer specifiers from a tsconfig's
+ * `compilerOptions.plugins[].transform`, following `extends` (the tspc twin
+ * hoists its plugins array into the shared `tsconfig.tspc.json` fragment, so a
+ * shallow read of the leaf file would miss them). `tsc --showConfig` resolves
+ * the whole chain and echoes `plugins` verbatim.
+ */
+export function readTsconfigTransforms(dir: string, tsconfigRel: string): string[] {
+  const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  if (res.status !== 0) {
+    throw new Error(`${tsconfigRel}: tsc --showConfig failed:\n${res.stderr}`);
+  }
+  const config = JSON.parse(res.stdout) as {
+    compilerOptions?: { plugins?: readonly { transform?: unknown; }[]; };
+  };
+  const plugins = config.compilerOptions?.plugins ?? [];
+  return plugins
+    .map((plugin) => plugin.transform)
+    .filter((transform): transform is string => typeof transform === 'string');
+}
+
+const TTSC_SUBPATH = '/ttsc';
+
+/**
+ * Collapse a ttsc transform specifier (`@rhombus-std/x.transformer/ttsc`) to its
+ * base package (`@rhombus-std/x.transformer`) so a ttsc plugin list can be
+ * compared against its tspc twin, whose specifiers carry no `/ttsc` subpath.
+ */
+function ttscBaseSpecifier(transform: string): string {
+  return transform.endsWith(TTSC_SUBPATH) ? transform.slice(0, -TTSC_SUBPATH.length) : transform;
+}
+
+/**
+ * Hard-fail when a package's ttsc plugin list drifts from its tspc twin. The two
+ * engines must lower the SAME transformer set (docs/decisions.md §41 parity), so
+ * the ttsc `tsconfig.ttsc.json` plugins — reduced to their base package — must
+ * be exactly the tspc `tsconfig.build.json` plugins' base packages.
+ */
+export function assertTspcTtscParity(
+  name: string,
+  dir: string,
+  ttscProject: string,
+  tspcProject: string,
+): void {
+  const ttscBase = new Set(readTsconfigTransforms(dir, ttscProject).map(ttscBaseSpecifier));
+  const tspcBase = new Set(readTsconfigTransforms(dir, tspcProject).map(ttscBaseSpecifier));
+  const missing = [...tspcBase].filter((base) => !ttscBase.has(base));
+  const extra = [...ttscBase].filter((base) => !tspcBase.has(base));
+  if (missing.length !== 0 || extra.length !== 0) {
+    throw new Error(
+      `${name}: ttsc/tspc transformer drift — `
+        + `ttsc(${ttscProject})=[${[...ttscBase].sort().join(', ')}] `
+        + `tspc(${tspcProject})=[${[...tspcBase].sort().join(', ')}]`,
+    );
+  }
+}
+
+/**
  * Resolve a single, self-consistent Go toolchain for the ttsc sidecar build and
  * hand back an env that pins to it.
  *
@@ -165,6 +225,16 @@ export interface BuildPackageOptions {
    * path.
    */
   readonly ttscProject?: string;
+  /**
+   * The EXPLICIT ttsc plugin specifiers to run, threaded into
+   * {@link ttscBunPlugin}'s `plugins` list. Passing them suppresses the
+   * adapter's auto-discovery (which would register every installed transformer
+   * package carrying a `ttsc.plugin` marker); the derived build reads them from
+   * the consumer's `tsconfig.ttsc.json` so the plugin set is pinned by config,
+   * not by which packages happen to be installed. Ignored unless `ttscProject`
+   * is set.
+   */
+  readonly ttscTransforms?: readonly string[];
 }
 
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
@@ -180,6 +250,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     splitting = entrypoints.length > 1,
     tspcProject,
     ttscProject,
+    ttscTransforms,
   } = options;
 
   if (tspcProject && ttscProject) {
@@ -218,7 +289,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     // Map each src entrypoint onto its emitted stage file (src/x.ts -> .tspc-out/x.js).
     jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, '').replace(/\.ts$/, '.js')));
   } else if (emitJs && ttscProject) {
-    bunPlugins = [await ttscBunPlugin(dir, ttscProject)];
+    bunPlugins = [await ttscBunPlugin(dir, ttscProject, ttscTransforms)];
   }
 
   if (emitJs) {

@@ -1,16 +1,17 @@
 // @ts-check
-// ttsc descriptor for the options-sugar transform-stage plugin. ttsc loads this
+// ttsc descriptor for the addOptions<T>() sugar transform stage. ttsc loads this
 // thin JS module, calls it with a factory context, and gets back the ABSOLUTE
-// PATH to the Go plugin package shipped in the monorepo's transforms/ tree; ttsc
-// then compiles and runs that source as a sidecar with the local Go toolchain.
-// This mirrors the canonical descriptor recipe: a JS shim whose only job is to
-// point at Go source.
+// PATH to the single owner Go host (transforms/cmd/ttsc-std) plus a stage name;
+// ttsc then compiles and runs that source as a sidecar with the local Go toolchain.
+//
+// Every @rhombus-std/*.transformer descriptor resolves to the SAME owner host, so
+// ttsc dedupes them to one cache key and one spawn — a consumer that needs both
+// the registration and options stages simply lists both `./ttsc` descriptors;
+// the host runs each declared stage in canonical order (no aggregate descriptor
+// needed, and none exists).
 //
 // The existing ts-patch entry (the `.` export's `transform`) is untouched — this
 // is the parallel ttsc/Go emit path, wired through the separate `./ttsc` subpath.
-// This descriptor lowers addOptions<T>() ONLY. ttsc runs a single native backend
-// per pass, so it CANNOT be listed alongside the registration `./ttsc` plugin — a
-// consumer that needs both wires the aggregate `./ttsc-app` descriptor instead.
 
 import path from 'node:path';
 
@@ -20,16 +21,16 @@ import path from 'node:path';
  */
 export function createTtscPlugin(context) {
   // context.dirname is the load-mode-independent __dirname of THIS descriptor
-  // (libraries/di.transformer.options); the Go plugin lives at the repo root.
+  // (libraries/di.transformer.options); the owner host lives at the repo root.
   const source = path.resolve(
     context.dirname,
     '..',
     '..',
     'transforms',
     'cmd',
-    'ttsc-di-options',
+    'ttsc-std',
   );
-  return { name: 'di-options', source };
+  return { name: 'rhombusstd_di_options', source };
 }
 
 export default createTtscPlugin;

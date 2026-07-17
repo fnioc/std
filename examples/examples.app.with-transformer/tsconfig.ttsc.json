@@ -1,10 +1,11 @@
 {
-  "//": "The ttsc/Go plugin config read by @ttsc/unplugin/bun during the Bun.build emit (build.ts): src/main.ts needs BOTH registration and addOptions<T>() lowering, and ttsc runs a single native backend per pass, so it wires the ONE aggregate `/ttsc-app` plugin (transforms/cmd/ttsc-di-app) that composes both stages — not two separate plugins. Extends the tspc tsconfig but swaps the plugins for the aggregate descriptor. The ts-patch `types` augmentations are RETAINED (they were previously dropped, but declaration-site matching anchors each authored form on its `declare module '@rhombus-std/di.core'` sugar overload, so the augment must be in the Go program too — the tokenless `add`/`as`/`resolve` sugar declarations live ONLY in di.transformer's augment). @types/bun keeps the Generic Host's process/node:* surface resolved. Lint stays on typescript 5 (tspc --noEmit) via the base tsconfig.json.",
+  "//": "The ttsc/Go plugin config read by @ttsc/unplugin/bun during the Bun.build emit (build.ts): src/main.ts needs BOTH registration and addOptions<T>() lowering. Both descriptors resolve to the SAME single owner host (transforms/cmd/ttsc-std), so ttsc dedupes them to one spawn; the host runs each declared stage in canonical order — no aggregate descriptor needed. Extends the tspc tsconfig but swaps the plugins for the two `/ttsc` descriptors. The ts-patch `types` augmentations are RETAINED (they were previously dropped, but declaration-site matching anchors each authored form on its `declare module '@rhombus-std/di.core'` sugar overload, so the augment must be in the Go program too — the tokenless `add`/`as`/`resolve` sugar declarations live ONLY in di.transformer's augment). @types/bun keeps the Generic Host's process/node:* surface resolved. Lint stays on typescript 5 (tspc --noEmit) via the base tsconfig.json.",
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["@rhombus-std/di.transformer", "@rhombus-std/di.transformer.options", "@types/bun"],
     "plugins": [
-      { "transform": "@rhombus-std/di.transformer.options/ttsc-app" }
+      { "transform": "@rhombus-std/di.transformer/ttsc" },
+      { "transform": "@rhombus-std/di.transformer.options/ttsc" }
     ]
   }
 }

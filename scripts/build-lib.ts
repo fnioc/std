@@ -40,7 +40,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildPackage } from './build-package';
+import { assertTspcTtscParity, buildPackage, readTsconfigTransforms } from './build-package';
 
 interface RhombusBuild {
   /** Disambiguates the lowering engine when both twin configs exist (§41 pilot). */
@@ -138,6 +138,19 @@ if (hasTspc && hasTtsc) {
   tspcProject = 'tsconfig.build.json';
 }
 
+// ttsc lowering: thread the tsconfig.ttsc.json plugin list EXPLICITLY so the
+// adapter runs exactly those transforms (suppressing its install-set
+// auto-discovery). When a tspc twin exists (the §41 pilot keeps both configs),
+// cross-check the two plugin lists and hard-fail on drift — the two engines
+// must lower the same transformer set for the parity invariant to hold.
+let ttscTransforms: string[] | undefined;
+if (ttscProject) {
+  ttscTransforms = readTsconfigTransforms(dir, ttscProject);
+  if (hasTspc) {
+    assertTspcTtscParity(manifest.name, dir, ttscProject, 'tsconfig.build.json');
+  }
+}
+
 await buildPackage({
   dir,
   name: manifest.name,
@@ -148,6 +161,7 @@ await buildPackage({
   assertNoJs: overrides.typesOnly ?? false,
   tspcProject,
   ttscProject,
+  ttscTransforms,
 });
 
 // Guard: the emitted bundle must carry no real ESM import from the forbidden
