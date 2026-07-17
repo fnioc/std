@@ -66,6 +66,10 @@ declare module '@rhombus-std/hosting.core' {
     useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
     useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
     runConsoleAsync(abortSignal?: AbortSignal): Promise<void>;
+    runConsoleAsync(
+      configureOptions: Func<[ConsoleLifetimeOptions], void>,
+      abortSignal?: AbortSignal,
+    ): Promise<void>;
   }
 }
 
@@ -223,14 +227,27 @@ export const HostingHostBuilderExtensions = {
 
   /**
    * Enables console support, builds and starts the host, and waits for Ctrl+C /
-   * SIGTERM to shut down.
+   * SIGTERM to shut down. The optional leading delegate configures the
+   * {@link ConsoleLifetimeOptions} before the console lifetime is registered
+   * (the reference's `configureOptions` overload); the two forms are told apart
+   * by whether the first argument is a function.
    */
   runConsoleAsync(
     hostBuilder: IHostBuilder,
-    abortSignal?: AbortSignal,
+    ...args:
+      | [abortSignal?: AbortSignal]
+      | [configureOptions: Func<[ConsoleLifetimeOptions], void>, abortSignal?: AbortSignal]
   ): Promise<void> {
+    let configureOptions: Func<[ConsoleLifetimeOptions], void> | undefined;
+    let abortSignal: AbortSignal | undefined;
+    if (typeof args[0] === 'function') {
+      configureOptions = args[0];
+      abortSignal = args[1];
+    } else {
+      abortSignal = args[0];
+    }
     return HostingAbstractionsHostExtensions.runAsync(
-      HostingHostBuilderExtensions.useConsoleLifetime(hostBuilder).build(),
+      HostingHostBuilderExtensions.useConsoleLifetime(hostBuilder, configureOptions).build(),
       abortSignal,
     );
   },
