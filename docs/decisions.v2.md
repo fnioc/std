@@ -130,7 +130,18 @@ transformer (#213). _Owner-approved._
 
 ## §88 — Transformer receiver matching anchors at the declaration site
 
-Every receiver-borne authored form a transformer lowers is matched by resolving the called
+**The logical goal is C#'s interface-targeted extension-method pattern:** an extension method
+declared against an interface (`static R M(this I self, …)`) applies to EVERY value statically
+carrying `I` —
+a consumer concrete implementing it (+ `@augment`, the §87 first-party split), a subinterface, an
+interface-typed reference, a generic constrained to it. The transformers must reproduce exactly
+that dispatch surface when deciding what to lower: target the interface the member is defined on,
+never a concrete or a spelling of its name. Declaration-site anchoring is the MECHANISM that
+reproduces this nominal dispatch inside TS's structural type system — which is also what makes it
+false-positive-free, since a structurally identical but unrelated type doesn't carry the
+interface and so never had the extension member in the first place.
+
+Solved via: every receiver-borne authored form a transformer lowers is matched by resolving the called
 member's symbol at the call site and accepting only when ≥1 of its declarations sits on the
 declaring interface inside the declaring `declare module` block — the NEAREST enclosing module
 declaration decides, and its name must be the string-literal specifier:
