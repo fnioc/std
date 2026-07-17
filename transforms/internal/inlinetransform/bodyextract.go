@@ -15,8 +15,10 @@ import (
 const primitivesModule = "@rhombus-std/primitives"
 
 // knownPrimitives is the set of primitive export names an inlineable body may
-// call, keyed by their exported name in primitivesModule.
-var knownPrimitives = map[string]bool{"nameof": true}
+// call, keyed by their exported name in primitivesModule. `nameof<T>()` binds a
+// TYPE argument; `signatureof(ctor)` binds a VALUE argument (a class / factory)
+// whose dependency signature the signatureof stage extracts.
+var knownPrimitives = map[string]bool{"nameof": true, "signatureof": true}
 
 // Discriminator is the structural overload key: (type-parameter count, value
 // parameter count + encodings). A `this` parameter is excluded from both count

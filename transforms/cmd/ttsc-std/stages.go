@@ -9,6 +9,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -43,12 +44,17 @@ type stageDef struct {
 // canonicalStages is the fixed execution order every activated stage runs in:
 // inline first (so single-expression sugar bodies are substituted before any
 // primitive stage runs), then nameof (its token lowering and import elision,
-// including the inline stage's synthetic nameof calls), then the registration
-// verbs, the addOptions sugar, and the config schema lowering. Manifest entry
+// including the inline stage's synthetic nameof calls), then signatureof (the
+// dependency-signature array lowering, including the inline stage's synthetic
+// signatureof calls), then the registration verbs, the addOptions sugar, and the
+// config schema lowering. signatureof runs after nameof (disjoint call shapes —
+// a type-argument vs a value-argument primitive) and before di, so the di stage
+// sees a fully-lowered 3-argument `add(...)` it leaves untouched. Manifest entry
 // order does not affect this — selection filters this slice, preserving order.
 var canonicalStages = []stageDef{
 	{name: stagePrefix + "inline", build: buildInline},
 	{name: stagePrefix + "nameof", build: buildNameof},
+	{name: stagePrefix + "signatureof", build: buildSignatureof},
 	{name: stagePrefix + "di", build: buildDi},
 	{name: stagePrefix + "di_options", build: buildDiOptions},
 	{name: stagePrefix + "config", build: buildConfig},
@@ -78,6 +84,16 @@ func buildInline(prog *driver.Program, _ *tokens.Context, env *stageEnv, emit di
 func buildNameof(prog *driver.Program, ctx *tokens.Context, env *stageEnv, emit diagnosticSink) plugin.FileTransform {
 	return nameoftransform.New(prog, ctx, env.artifacts, func(d plugin.Diagnostic) {
 		emit(envelopeFromPlugin(d, categoryError))
+	})
+}
+
+// buildSignatureof activates the signatureof primitive stage. It shares
+// ditransform's extraction path, so it is category-aware the same way buildDi is:
+// a §4.5 advisory Warning is reported without failing emit, matching what the di
+// stage would emit for the same value.
+func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *stageEnv, emit diagnosticSink) plugin.FileTransform {
+	return signaturetransform.New(prog, ctx, env.artifacts, func(d ditransform.Diagnostic) {
+		emit(envelopeFromDi(d))
 	})
 }
 

@@ -16,9 +16,12 @@
   },
   "type": "module",
   "sideEffects": true,
+  "//rhombus.preset": "Intended primitive-stage bundle for the type-driven registration sugar: inline -> nameof -> signatureof, in the binary's canonical order. A consumer wanting single-name auto-discovery of the whole set needs the ttsc marker to carry an array of transforms; stock ttsc (0.18) accepts only a single 'ttsc.plugin.transform' string, so the bundle is declared explicitly in a consumer's tsconfig plugins today (see tests/di.signatureof.ttsc.e2e). The ttsc marker-array extension is the follow-up that makes this preset auto-discoverable.",
   "rhombus.inline": {
     "entries": [
-      { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" }
+      { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" },
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "add" },
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addFactory" }
     ]
   },
   "main": "./dist/index.js",

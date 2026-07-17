@@ -27,6 +27,7 @@
     },
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
+    "./signatureof-ttsc": "./ttsc-signatureof.mjs",
     "./_/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
@@ -41,7 +42,8 @@
   "files": [
     "dist",
     "ttsc.mjs",
-    "ttsc-inline.mjs"
+    "ttsc-inline.mjs",
+    "ttsc-signatureof.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -70,7 +72,8 @@
         "default": "./dist/index.js"
       },
       "./ttsc": "./ttsc.mjs",
-      "./inline-ttsc": "./ttsc-inline.mjs"
+      "./inline-ttsc": "./ttsc-inline.mjs",
+      "./signatureof-ttsc": "./ttsc-signatureof.mjs"
     }
   }
 }

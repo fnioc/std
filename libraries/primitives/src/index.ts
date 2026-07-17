@@ -19,6 +19,9 @@ export { nameof, NAMEOF_NAME } from './nameof.js';
 export { process } from './process.js';
 export type { ProcessLike } from './process.js';
 export type { ReadableStream } from './ReadableStream.js';
+export { signatureof, SIGNATUREOF_NAME } from './signatureof.js';
+export type { CallSignatureLike, ConstructSignatureLike, DepSignatures, DepSlotLike, FactoryRefLike, LiteralRefLike,
+  TypeArgRefLike, UnionLike } from './signatureof.js';
 export { clearTimeout, setTimeout } from './TimeoutHandle.js';
 export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';

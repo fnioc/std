@@ -7,12 +7,20 @@ import (
 
 // PrimitiveUse records a primitive call the inline stage minted by substitution:
 // a side-parsed callee (e.g. `nameof<T>()`) whose type arguments were bound to
-// checker-valid types captured at the ORIGINAL call site. The nameof stage reads
-// these to lower a synthetic call it could never anchor on its own (the callee
-// clone has no symbol).
+// checker-valid types captured at the ORIGINAL call site. A downstream primitive
+// stage reads these to lower a synthetic call it could never anchor on its own
+// (the callee clone has no symbol).
+//
+// TypeArgs carries a TYPE-argument primitive's bound arguments (nameof<T>()).
+// ValueArg carries a VALUE-argument primitive's spliced argument node
+// (signatureof(ctor)) — the ORIGINAL, program-bound call-site argument, so the
+// signatureof stage can checker-query it even though the primitive's own callee
+// is synthetic. It is captured at registration time, so it survives any later
+// tree reconstruction between the inline stage and the consuming stage.
 type PrimitiveUse struct {
 	Name     string
 	TypeArgs []*shimchecker.Type
+	ValueArg *shimast.Node
 }
 
 // MemberShape is a certified member-sugar call shape (type-arg count, value-arg

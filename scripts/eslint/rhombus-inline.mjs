@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
 const PRIMITIVES_MODULE = '@rhombus-std/primitives';
-const KNOWN_PRIMITIVES = new Set(['nameof']);
+const KNOWN_PRIMITIVES = new Set(['nameof', 'signatureof']);
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
