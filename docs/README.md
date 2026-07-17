@@ -4,9 +4,11 @@
   decisions & requirements. **Start here.**
 - [decisions.md](decisions.md) — retiring: the pre-v2 decisions log, being struck down entry by
   entry as each is re-ratified into `decisions.v2.md`. Historical record only — never append to it.
-- [divergences.md](divergences.md) — cross-cutting, owner-signed-off departures from the ME
-  reference. Family-specific divergences live in each family's own doc under `libraries/`.
-- [divergence-alarm.md](divergence-alarm.md) — a point-in-time audit hunting for *unrecorded* gaps
+- [divergences.md](divergences.md) — the single ledger of every owner-signed-off departure from
+  the ME reference, across all families. Distinct from each family doc's own "Justified
+  divergences" chapter under `libraries/`, which covers that family's broader set of intentional
+  reference-beyond capabilities, not just the formally-ruled-on subset recorded here.
+- [divergence-alarm.md](divergence-alarm.md) — a point-in-time audit hunting for _unrecorded_ gaps
   (not in `divergences.md`/`decisions.md`/`CLAUDE.md`) — the complement to `divergences.md`, not a
   duplicate of it.
 
@@ -23,10 +25,12 @@ Cross-cutting mechanisms used across multiple package families.
 ## libraries
 
 One doc per package family, named the same as the family. Each covers the family's role, its
-"Justified divergences" from the reference (deliberate, owner-signed-off departures — not a list
-of every observed gap; unrecorded gaps live in `divergence-alarm.md` instead), and — where real
-rationale is worth preserving — a "Design notes" section. A family with no divergences beyond the
-repo-wide augmentation pattern says so in one line rather than going unwritten.
+"Justified divergences" from the reference (deliberate departures and positive capabilities the
+reference has no equivalent for — not a list of every observed gap; unrecorded gaps live in
+`divergence-alarm.md` instead, and the formally owner-ruled subset is also recorded at
+`../divergences.md`), and — where real rationale is worth preserving — a "Design notes" section. A
+family with no divergences beyond the repo-wide augmentation pattern says so in one line rather
+than going unwritten.
 
 - [primitives.md](libraries/primitives.md)
 - [di.md](libraries/di.md)
