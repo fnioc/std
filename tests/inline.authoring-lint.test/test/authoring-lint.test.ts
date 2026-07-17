@@ -89,4 +89,61 @@ describe('inline-authoring rule', () => {
     const src = `export const Foo = {\n  bar<T>(this: any): boolean { return this.pick<T>(); },\n};\n`;
     expect(lintInline(src)).toContain('typeParamPosition');
   });
+
+  test('nested listed member call this.bar<T>() → noNesting', () => {
+    // bar is a listed member (DEFAULT_ENTRIES: impl Foo, member bar); a body that
+    // calls this.bar<T>() references another (here, its own) inlineable member —
+    // nesting, not yet supported.
+    const src = PRIMITIVE_IMPORT
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.bar<T>(); },\n};\n`;
+    expect(lintInline(src)).toContain('noNesting');
+  });
+
+  test('reference to a listed free function → noNesting', () => {
+    // tokenOf is a listed free function; referencing it by identifier inside a
+    // sugar body is nesting.
+    const src = PRIMITIVE_IMPORT
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(tokenOf); },\n};\n`;
+    expect(lintInline(src)).toContain('noNesting');
+  });
+
+  test('malformed publish list → entryShape at Program', () => {
+    // A type-only entry is malformed; loadInlineEntries throws and the rule
+    // reports entryShape once at the Program node, regardless of the body.
+    const src = `export const Foo = {\n  bar<T>(this: any): boolean { return true; },\n};\n`;
+    expect(lintInline(src, { entries: [{ type: 'p:X' }] })).toContain('entryShape');
+  });
+
+  test('concrete-type primitive body passes the lint (gap 19 mirror)', () => {
+    // typeParamPosition only polices TYPE PARAMETERS; a concrete type in a
+    // primitive call's type-arg position (nameof<Marker>()) is not a violation.
+    // This mirrors the Go characterization test TestBodyWithConcreteNameofTypeArg:
+    // the lint accepts it, and the failure (if any) only surfaces later at the
+    // emit sweep — flagged for an owner decision.
+    const src = PRIMITIVE_IMPORT
+      + `interface Marker { readonly m: 'marker'; }\n`
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(nameof<Marker>()); },\n};\n`;
+    expect(lintInline(src)).toEqual([]);
+  });
+
+  // One fixture per remaining banned construct (conditional is covered above).
+  // Each is a single return expression whose only issue is the banned form, so
+  // the rule reports bannedSyntax.
+  const bannedFixtures: Array<{ name: string; member: string; }> = [
+    { name: 'logical', member: `bar<T>(this: any): boolean { return this.a && this.b; }` },
+    { name: 'assignment', member: `bar<T>(this: any): boolean { return this.x = true; }` },
+    { name: 'comma sequence', member: `bar<T>(this: any): boolean { return (this.a, this.b); }` },
+    { name: 'await', member: `async bar<T>(this: any): Promise<boolean> { return await this.p(); }` },
+    { name: 'yield', member: `*bar<T>(this: any): any { return yield this.g(); }` },
+    { name: 'new', member: `bar<T>(this: any): unknown { return new this.C(); }` },
+    { name: 'nested arrow', member: `bar<T>(this: any): unknown { return () => this.x; }` },
+    { name: 'nested function', member: `bar<T>(this: any): unknown { return function () { return 1; }; }` },
+    { name: 'spread', member: `bar<T>(this: any): unknown { return [...this.items]; }` },
+  ];
+  for (const { name, member } of bannedFixtures) {
+    test(`banned ${name} → bannedSyntax`, () => {
+      const src = `export const Foo = {\n  ${member},\n};\n`;
+      expect(lintInline(src)).toContain('bannedSyntax');
+    });
+  }
 });

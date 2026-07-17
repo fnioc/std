@@ -198,9 +198,17 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
     expect(withInline).not.toContain('nameof');
   });
 
-  test('byte parity: inline path vs di semantic path emit the identical isService line', () => {
+  test('byte parity: inline path vs di semantic path emit the identical output', () => {
+    // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
+    // PATH (inline stage → synthetic nameof → di) but never the emitted bytes, so
+    // the two whole transpiled outputs must be identical. Whole-output equality is
+    // strictly stronger than comparing only the isService line — it also pins
+    // import elision, declare-module handling, and surrounding whitespace.
     const line = (src: string) => src.split('\n').find((l) => l.includes('isService('))?.trim();
+    // Readable failure hint first: the load-bearing line.
     expect(line(withInline)).toBeDefined();
     expect(line(withInline)).toEqual(line(withoutInline));
+    // The full byte-parity guarantee the pilot advertises.
+    expect(withInline).toEqual(withoutInline);
   });
 });

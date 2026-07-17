@@ -84,4 +84,33 @@ describe('loadInlineEntries', () => {
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'p' }));
     expect(loadInlineEntries(dir)).toEqual([]);
   });
+
+  test('import as an array composes each file', () => {
+    const dir = pkg({ entries: [], import: ['./a.json', './b.json'] });
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ entries: [{ impl: 'fromA' }] }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ entries: [{ impl: 'fromB' }] }));
+    const entries = loadInlineEntries(dir);
+    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['fromA', 'fromB']);
+  });
+
+  test('malformed imported JSON throws INLINE_ENTRY_IMPORT (aligned with the Go twin)', () => {
+    const dir = pkg({ entries: [], import: './bad.json' });
+    writeFileSync(join(dir, 'bad.json'), '{ "entries": [ this is not json ');
+    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
+  });
+
+  test('non-string/array import throws INLINE_ENTRY_IMPORT', () => {
+    const dir = pkg({ entries: [], import: 42 });
+    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
+  });
+
+  test('duplicate entry across two imports is concatenated undeduped', () => {
+    // The chosen behavior mirrors the Go twin: both copies are returned;
+    // deduplication (where it matters) happens later at the decl-map level.
+    const dir = pkg({ entries: [], import: ['./a.json', './b.json'] });
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ entries: [{ impl: 'dup' }] }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ entries: [{ impl: 'dup' }] }));
+    const entries = loadInlineEntries(dir);
+    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['dup', 'dup']);
+  });
 });

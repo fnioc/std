@@ -161,6 +161,99 @@ const after = 2;
 	}
 }
 
+// TestSubstituteZeroThisEffectfulReceiverKeepsSideEffect drives the `this` used
+// 0× with an EFFECTFUL receiver branch: the receiver's value is never read but
+// its side effect must still run exactly once, so it is kept as the left of a
+// comma sequence — `(makeReg(), 42)`.
+func TestSubstituteZeroThisEffectfulReceiverKeepsSideEffect(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function konst() {
+	return 42;
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", `
+const answer = makeReg().konst();
+`)
+	call, receiver, args := findCall(t, consumer, "konst")
+	if isSimpleReceiver(receiver) {
+		t.Fatalf("makeReg() must be classified effectful")
+	}
+
+	res := Substitute(ec, Inlining{Body: body, Receiver: receiver, Args: args})
+	if res.NeedsTempHoist {
+		t.Fatalf("zero-`this` receiver keeps a comma sequence, not a temp hoist")
+	}
+	out := reprint(ec, splice(ec, consumer, call, res.Expr))
+
+	if !strings.Contains(out, "(makeReg(), 42)") {
+		t.Errorf("effectful receiver whose value is unused must be kept in a comma sequence `(makeReg(), 42)`, got:\n%s", out)
+	}
+}
+
+// TestSubstituteTwoThisSimpleReceiverDuplicates drives the `this` used ≥2× with a
+// SIMPLE receiver branch: a bare identifier is side-effect-free to read, so it is
+// duplicated at each `this` site rather than bound to a temp.
+func TestSubstituteTwoThisSimpleReceiverDuplicates(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function chained() {
+	return this.a(this.b());
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", `
+const answer = reg.chained();
+`)
+	call, receiver, args := findCall(t, consumer, "chained")
+	if !isSimpleReceiver(receiver) {
+		t.Fatalf("bare identifier `reg` must be classified simple")
+	}
+
+	res := Substitute(ec, Inlining{Body: body, Receiver: receiver, Args: args})
+	if res.NeedsTempHoist {
+		t.Fatalf("a simple receiver used twice must be duplicated, not hoisted to a temp")
+	}
+	out := reprint(ec, splice(ec, consumer, call, res.Expr))
+
+	if n := strings.Count(out, "reg"); n != 2 {
+		t.Errorf("simple receiver used twice must be duplicated to two occurrences, found %d:\n%s", n, out)
+	}
+}
+
+// TestWrapForPrecedence covers the stage helper that parenthesizes a substituted
+// root which is not self-delimiting: a binary-expression body (`n + n`) spliced
+// into a larger context must be wrapped `(value + value)` so evaluation order is
+// preserved.
+func TestWrapForPrecedence(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function twice(n: number) {
+	return n + n;
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", `
+const answer = wrap.twice(value);
+`)
+	call, _, args := findCall(t, consumer, "twice")
+
+	res := Substitute(ec, Inlining{Body: body, Params: []string{"n"}, Args: args})
+	wrapped := wrapForPrecedence(ec, res.Expr)
+	out := reprint(ec, splice(ec, consumer, call, wrapped))
+
+	if !strings.Contains(out, "(value + value)") {
+		t.Errorf("a binary-expression body must be parenthesized when spliced, expected `(value + value)`, got:\n%s", out)
+	}
+}
+
 // TestSubstituteFreeFunction inlines a free-function body (no receiver): only the
 // value parameter is substituted.
 func TestSubstituteFreeFunction(t *testing.T) {

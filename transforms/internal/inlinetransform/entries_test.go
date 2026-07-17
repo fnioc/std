@@ -172,3 +172,64 @@ func TestLoadInlineEntriesImportEscape(t *testing.T) {
 		t.Fatal("expected INLINE_ENTRY_IMPORT_ESCAPE error")
 	}
 }
+
+// TestLoadInlineEntriesMalformedImportJSON: a syntactically-broken imported file
+// is a loud INLINE_ENTRY_IMPORT error (not a bare JSON parse error). The JS twin
+// (inline-entries.mjs) is aligned to wrap parse failures the same way.
+func TestLoadInlineEntriesMalformedImportJSON(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus.inline": { "entries": [], "import": "./bad.json" }
+}`)
+	write(t, filepath.Join(root, "bad.json"), `{ "entries": [ this is not json `)
+	_, err := LoadInlineEntries(root)
+	if err == nil {
+		t.Fatal("expected INLINE_ENTRY_IMPORT error for malformed imported JSON")
+	}
+	if !strings.Contains(err.Error(), "INLINE_ENTRY_IMPORT") {
+		t.Fatalf("want INLINE_ENTRY_IMPORT, got %v", err)
+	}
+}
+
+// TestLoadInlineEntriesNonStringImport: an import value that is neither a string
+// nor an array of strings is INLINE_ENTRY_IMPORT.
+func TestLoadInlineEntriesNonStringImport(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus.inline": { "entries": [], "import": 42 }
+}`)
+	_, err := LoadInlineEntries(root)
+	if err == nil {
+		t.Fatal("expected INLINE_ENTRY_IMPORT error for a non-string/array import")
+	}
+	if !strings.Contains(err.Error(), "INLINE_ENTRY_IMPORT") {
+		t.Fatalf("want INLINE_ENTRY_IMPORT, got %v", err)
+	}
+}
+
+// TestLoadInlineEntriesDuplicateAcrossImports pins the chosen behavior for the
+// same entry arriving via two imports: the loader CONCATENATES undeduped (both
+// copies are returned). Deduplication, where it matters, happens later at the
+// decl-map level (one node → one target, benign last-wins). The JS twin returns
+// the same undeduped concatenation.
+func TestLoadInlineEntriesDuplicateAcrossImports(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus.inline": { "entries": [], "import": ["./a.json", "./b.json"] }
+}`)
+	write(t, filepath.Join(root, "a.json"), `{ "entries": [ { "impl": "dup" } ] }`)
+	write(t, filepath.Join(root, "b.json"), `{ "entries": [ { "impl": "dup" } ] }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("duplicate entries across two imports should be concatenated undeduped (2), got %d: %+v", len(entries), entries)
+	}
+	if entries[0].Impl != "dup" || entries[1].Impl != "dup" {
+		t.Fatalf("both entries should be impl=dup, got %+v", entries)
+	}
+}
