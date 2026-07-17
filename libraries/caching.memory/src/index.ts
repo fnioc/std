@@ -58,13 +58,15 @@ import { MemoryDistributedCache } from './MemoryDistributedCache';
 import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // The registration token @rhombus-std/logging's `addLogging` binds the
-// `ILoggerFactory` singleton at -- written LITERALLY (§40's no-transformer
-// form) rather than imported: importing the const would add a runtime
-// dependency on the concrete logging package, an edge the reference graph
-// doesn't have (ME.Caching.Memory references Logging.Abstractions only) and
-// one whose barrel import would drag logging's side-effect registrations into
-// every caching consumer.
-const LOGGER_FACTORY_TOKEN = '@rhombus-std/logging:ILoggerFactory';
+// `ILoggerFactory` singleton at -- derived here via `nameof<ILoggerFactory>()`
+// rather than importing logging's const: importing the runtime const would add
+// a dependency on the concrete logging package, an edge the reference graph
+// doesn't have (ME.Caching.Memory references Logging.Abstractions only) and one
+// whose barrel import would drag logging's side-effect registrations into every
+// caching consumer. Deriving off the type-only `ILoggerFactory` import keeps
+// the edge type-only AND stays byte-identical to logging's own
+// `nameof<ILoggerFactory>()` token, so the two never desync.
+const LOGGER_FACTORY_TOKEN = nameof<ILoggerFactory>();
 
 // Merge `addMemoryCache` onto core's `IServiceManifestBase` interface (the
 // surface a consumer holding `ServiceManifest<S>` resolves to) AND onto the
