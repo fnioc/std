@@ -121,7 +121,14 @@ and callers must know which they are relying on:
 A persisted (bfcache) pagehide never stops the host (suspend≠stop, §69). `sendBeacon` is a plain
 global a caller uses inside its own `onFlush`. _Owner-approved._
 
-## §87 — Transformer receiver matching anchors at the declaration site
+## §87 — Augmentation authoring stays first-party
+
+Consumers being able to author augmentations is **not** a goal. Consumers authoring
+**concretes** that implement an augmented interface **is** a goal — a distinct thing from
+authoring the augmentation itself. This ruling drives the scoping of the default-merge-strategy
+transformer (#213). _Owner-approved._
+
+## §88 — Transformer receiver matching anchors at the declaration site
 
 Every receiver-borne authored form a transformer lowers is matched by resolving the called
 member's symbol at the call site and accepting only when ≥1 of its declarations sits on the
