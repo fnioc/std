@@ -30,13 +30,13 @@ import { ServiceManifestClass } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import '@rhombus-std/logging.config';
 
-const configuration = new ConfigBuilder()
+const config = new ConfigBuilder()
   .addJsonFile('logging.json')
   .build();
 
 const services = new ServiceManifestClass();
 const builder = new LoggingBuilder(services);
-builder.addConfig(configuration);
+builder.addConfig(config);
 ```
 
 `logging.json`:
@@ -61,7 +61,7 @@ binding `LoggerFilterOptions` from anything.
 
 | Export                                   | What it is                                                                                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LoggingBuilderExtensions`               | The standalone form of `addConfig` — call it directly as `LoggingBuilderExtensions.addConfig(builder, configuration)`.                      |
+| `LoggingBuilderExtensions`               | The standalone form of `addConfig` — call it directly as `LoggingBuilderExtensions.addConfig(builder, config)`.                             |
 | `addConfig` (method)                     | Same operation, as an instance method on `ILoggingBuilder` once this package is imported.                                                   |
 | `ILoggerProviderConfig<T>`               | Interface exposing the configuration section bound to a specific logger provider.                                                           |
 | `loggerProviderConfigToken`              | Derives the registration token for `ILoggerProviderConfig<T>` closed over a given provider type.                                            |
