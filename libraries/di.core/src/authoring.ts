@@ -38,7 +38,7 @@
 // either way.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-import type { ServiceProviderOptions } from './service-provider-options.js';
+import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 import type { DepSlot, Token } from './types.js';
 
 /**

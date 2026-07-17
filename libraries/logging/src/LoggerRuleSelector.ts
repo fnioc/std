@@ -17,8 +17,8 @@
 // not match. Wiring the alias in is a documented residual.
 
 import type { LogLevel } from '@rhombus-std/logging.core';
-import type { LoggerFilterOptions, LoggerFilterRule } from './logger-filter-options';
-import type { LoggerFilterDelegate } from './logger-information';
+import type { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
+import type { LoggerFilterDelegate } from './LoggerInformation';
 
 /** The selected filter for one provider/category: the effective min level and optional delegate. */
 export interface SelectedRule {

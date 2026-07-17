@@ -3,10 +3,10 @@
 // pre-configured defaults already applied.
 
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
-import { HostingHostBuilderExtensions } from './builder-augmentations';
 import { HostApplicationBuilder } from './HostApplicationBuilder';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
 import { HostBuilder } from './HostBuilder';
+import { HostingHostBuilderExtensions } from './HostingHostBuilderExtensions';
 
 /** Convenience factories for creating pre-configured builders. */
 export const Host = {

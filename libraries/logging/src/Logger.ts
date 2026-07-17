@@ -14,7 +14,7 @@ import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import type { LoggerInformation, MessageLogger, ScopeLogger } from './logger-information';
+import type { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformation';
 
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
 const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };

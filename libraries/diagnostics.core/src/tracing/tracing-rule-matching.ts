@@ -38,7 +38,7 @@
 // so the flag is not ported -- the always-taken branch is inlined. Flagged as a
 // deliberate surface simplification.
 
-import { ActivitySourceScopes } from './activity-source-scopes';
+import { ActivitySourceScopes } from './ActivitySourceScopes';
 import type { TracingRule } from './TracingRule';
 
 /**

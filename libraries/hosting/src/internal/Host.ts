@@ -1,7 +1,7 @@
 // Host -- the internal `IHost` implementation, ported from the reference hosting
 // runtime's `Internal/Host.cs`.
 //
-// Lives in `internal/Host.ts` (not `src/Host.ts`) because `src/host.ts` already
+// Lives in `internal/Host.ts` (not `src/Host.ts`) because `src/Host.ts` already
 // holds the static `Host` builder facade from the prior stage; the reference
 // names both `Host`, in distinct namespaces, and mirroring its `Internal/`
 // directory keeps the two apart here too.

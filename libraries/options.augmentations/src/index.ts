@@ -341,7 +341,7 @@ registerAugmentations(nameof<IServiceManifest>(), OptionsConfigServiceCollection
 // the di.core `service-collection-descriptor-augmentations.ts` precedent. The
 // re-export executes that module, so its `registerAugmentations` side effect
 // installs the verb onto the manifest.
-export { OptionsBuilderExtensions } from './options-builder-augmentations.js';
+export { OptionsBuilderExtensions } from './OptionsBuilderExtensions.js';
 
 export { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
 export { ConfigConfigureOptions } from './ConfigConfigureOptions.js';

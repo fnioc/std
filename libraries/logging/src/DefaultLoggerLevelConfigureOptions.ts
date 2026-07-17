@@ -10,7 +10,7 @@
 
 import type { LogLevel } from '@rhombus-std/logging.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
-import type { LoggerFilterOptions } from './logger-filter-options';
+import type { LoggerFilterOptions } from './LoggerFilterOptions';
 
 /** A configure step setting {@link LoggerFilterOptions.minLevel} to a fixed level. */
 export class DefaultLoggerLevelConfigureOptions implements IConfigureOptions<LoggerFilterOptions> {

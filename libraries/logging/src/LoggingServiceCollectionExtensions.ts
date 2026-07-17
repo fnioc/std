@@ -39,9 +39,9 @@ import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { DefaultLoggerLevelConfigureOptions } from './default-logger-level-configure-options';
-import { LoggerFilterOptions } from './logger-filter-options';
+import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
+import { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LoggingBuilder } from './LoggingBuilder';
 import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 

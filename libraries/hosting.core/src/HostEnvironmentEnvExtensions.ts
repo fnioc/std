@@ -13,7 +13,7 @@
 
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { Environments } from './environments';
+import { Environments } from './Environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 
 // The interface-side merge for the `IHostEnvironment` augmentation members lives

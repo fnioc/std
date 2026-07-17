@@ -25,19 +25,19 @@ export { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistra
 export type { PostEvictionDelegate } from './PostEvictionDelegate';
 
 export type { ICacheEntry } from './ICacheEntry';
-export type { CacheTryGetResult, IMemoryCache } from './memory-cache';
+export type { CacheTryGetResult, IMemoryCache } from './IMemoryCache';
 export { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 export { MemoryCacheStatistics } from './MemoryCacheStatistics';
 
-export { CacheExtensions } from './cache-augmentations';
-export { CacheEntryExtensions } from './cache-entry-augmentations';
-export { MemoryCacheEntryExtensions } from './cache-entry-options-augmentations';
+export { CacheEntryExtensions } from './CacheEntryExtensions';
+export { CacheExtensions } from './CacheExtensions';
+export { MemoryCacheEntryExtensions } from './MemoryCacheEntryExtensions';
 
 // The distributed-cache surface. `freezeDistributedCacheEntryOptions` is
 // deliberately NOT re-exported (it mirrors the reference's internal Freeze).
-export { DistributedCacheExtensions } from './distributed-cache-augmentations';
-export { DistributedCacheEntryExtensions } from './distributed-cache-entry-augmentations';
+export { DistributedCacheEntryExtensions } from './DistributedCacheEntryExtensions';
 export { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
+export { DistributedCacheExtensions } from './DistributedCacheExtensions';
 export type { IDistributedCache } from './IDistributedCache';
 
 // The hybrid-cache surface. `toDistributedCacheEntryOptions` is deliberately

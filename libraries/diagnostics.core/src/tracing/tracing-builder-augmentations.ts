@@ -30,8 +30,8 @@ import type { Func } from '@rhombus-toolkit/func';
 
 import { nameof } from '@rhombus-std/primitives';
 import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
-import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './activity-source-scopes';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
+import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import type { ITracingBuilder } from './ITracingBuilder';
 import { TracingOptions } from './TracingOptions';
 import { TracingRule } from './TracingRule';

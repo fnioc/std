@@ -31,7 +31,7 @@
 // pipeline. It carries the same two overload shapes as the options half.
 //
 // NOTE: rules are not yet CONSUMED by the loggers — the filter-selection layer
-// is deferred with the options-monitor DI integration (see ./logger.ts). This
+// is deferred with the options-monitor DI integration (see ./Logger.ts). This
 // builds the rule set; the builder half's configure steps materialize once a
 // consumer registers the assembly for LOGGER_FILTER_OPTIONS_TOKEN (see
 // ./tokens.ts).
@@ -45,7 +45,7 @@ import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { applyAugmentations, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { LoggerFilterOptions, LoggerFilterRule } from './logger-filter-options';
+import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';
 
 /**
@@ -74,7 +74,7 @@ export const LoggerFilterOptionsExtensions = {
   },
 } satisfies AugmentationSet<LoggerFilterOptions>;
 
-declare module './logger-filter-options' {
+declare module './LoggerFilterOptions' {
   interface LoggerFilterOptions {
     addFilter(category: string | undefined, level: LogLevel): this;
     addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;

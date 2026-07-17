@@ -32,7 +32,7 @@
 // list wins, so later-appended rules override earlier ones.
 
 import type { InstrumentRule } from './InstrumentRule';
-import { MeterScope } from './meter-scope';
+import { MeterScope } from './MeterScope';
 
 /**
  * A plain-data description of the instrument (and resolving listener) an

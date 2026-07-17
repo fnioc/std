@@ -16,7 +16,7 @@ import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/opt
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { CompositeChangeToken } from './composite-change-token';
+import { CompositeChangeToken } from './CompositeChangeToken';
 
 /**
  * Assembles the `IOptions<T>` for a diagnostics options type from the configure

@@ -6,7 +6,7 @@
 // InvalidDataError.
 
 import { FileConfigProvider } from '@rhombus-std/config.file';
-import { IniStreamParser } from './ini-stream-parser';
+import { IniStreamParser } from './IniStreamParser';
 
 export class IniConfigProvider extends FileConfigProvider {
   protected override loadContent(content: string): void {

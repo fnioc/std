@@ -3,7 +3,7 @@
 // library's `internal/*` subpath (docs §7/§40).
 
 import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
-  getForegroundColorEscapeCode } from '@rhombus-std/logging.console/_/AnsiParser';
+  getForegroundColorEscapeCode } from '@rhombus-std/logging.console/_/ConsoleColor';
 import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/_/ConsoleControlCharacterSanitizer';
 import { formatTimestamp } from '@rhombus-std/logging.console/_/date-format';
 import { StringWriter } from '@rhombus-std/logging.console/_/text-writer';

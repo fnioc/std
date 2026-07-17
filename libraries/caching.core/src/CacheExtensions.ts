@@ -29,9 +29,9 @@ import { type AugmentationSet, type IChangeToken, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { CacheEntryExtensions } from './cache-entry-augmentations';
+import { CacheEntryExtensions } from './CacheEntryExtensions';
 import type { ICacheEntry } from './ICacheEntry';
-import type { IMemoryCache } from './memory-cache';
+import type { IMemoryCache } from './IMemoryCache';
 import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 
 /** Narrows the `expiration` union: an `IChangeToken` (not a `Date`/`number`). */
@@ -225,7 +225,7 @@ export const CacheExtensions = {
 // a dispatcher that routes to the primitive (runtime-identical — the wrapper only
 // re-casts the tuple's value type), so the primitive's `tryGetValue(key)` already
 // covers the method form; a value-typed read uses the standalone `tryGetValue<T>`.
-declare module './memory-cache' {
+declare module './IMemoryCache' {
   interface IMemoryCache {
     get<T = unknown>(key: unknown): T | undefined;
     set<T>(key: unknown, value: T): T;

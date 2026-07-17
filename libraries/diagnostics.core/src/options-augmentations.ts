@@ -15,10 +15,10 @@
 
 import { applyAugmentations } from '@rhombus-std/primitives';
 
-import type { MeterScope } from './metrics/meter-scope';
+import type { MeterScope } from './metrics/MeterScope';
 import { MetricsOptionsExtensions } from './metrics/metrics-builder-augmentations';
 import { MetricsOptions } from './metrics/MetricsOptions';
-import type { ActivitySourceScopes } from './tracing/activity-source-scopes';
+import type { ActivitySourceScopes } from './tracing/ActivitySourceScopes';
 import { TracingOptionsExtensions } from './tracing/tracing-builder-augmentations';
 import { TracingOptions } from './tracing/TracingOptions';
 

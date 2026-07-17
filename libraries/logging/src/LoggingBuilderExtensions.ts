@@ -26,7 +26,7 @@ import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/lo
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { DefaultLoggerLevelConfigureOptions } from './default-logger-level-configure-options';
+import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 
 /**

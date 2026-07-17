@@ -18,7 +18,7 @@ import type { AddBuilder, IServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
-import type { ServiceProviderOptions } from './service-provider-options.js';
+import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
 import type { DepSlot, Token } from './types.js';
 

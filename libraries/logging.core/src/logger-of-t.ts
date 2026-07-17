@@ -15,8 +15,8 @@ import type { Typeof } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import type { EventId } from './event-id';
-import type { ILogger } from './logger';
+import type { EventId } from './EventId';
+import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
 import type { LogLevel } from './LogLevel';
 

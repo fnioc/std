@@ -15,7 +15,7 @@
 // wait-for-shutdown -> stop) via hosting's `runAsync` — no stop wiring by hand.
 
 // The lifetime + its options.
-export { BROWSER_LIFETIME_CATEGORY, BrowserLifetime } from './browser-lifetime';
+export { BROWSER_LIFETIME_CATEGORY, BrowserLifetime } from './BrowserLifetime';
 export { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 export { registerBrowserLifetime } from './register-browser-lifetime';
 
@@ -37,4 +37,4 @@ export { defaultPageContext } from './page-context';
 export { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './tokens';
 
 // The IHostBuilder augmentation set (+ its side-effect registration).
-export { BrowserLifetimeHostBuilderExtensions } from './builder-augmentations';
+export { BrowserLifetimeHostBuilderExtensions } from './BrowserLifetimeHostBuilderExtensions';

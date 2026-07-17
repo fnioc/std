@@ -31,7 +31,7 @@ import { nameof } from '@rhombus-std/primitives';
 import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from '../tokens';
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { InstrumentRule } from './InstrumentRule';
-import { METER_SCOPE_ALL, MeterScope } from './meter-scope';
+import { METER_SCOPE_ALL, MeterScope } from './MeterScope';
 import type { IMetricsListener } from './metrics-listener';
 import { MetricsOptions } from './MetricsOptions';
 

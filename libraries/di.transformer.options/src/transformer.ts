@@ -23,7 +23,7 @@ import { createTokenContext, type TokenContext, type TokenContextOptions } from 
 import ts from 'typescript';
 import { DiagnosticCode, error, type IDiagnosticSink } from './diagnostics.js';
 import { isAddOptionsSugarCall } from './match.js';
-import { optionTokensFor, resolveOptionsBase } from './option-tokens.js';
+import { optionTokensFor, resolveOptionsBase } from './OptionTokens.js';
 
 /**
  * Create the `ts.TransformerFactory` that rewrites a SourceFile. Exposed so the

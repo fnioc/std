@@ -22,11 +22,11 @@ export { createNameofTransformerFactory, default as transformer, transform } fro
 
 // The shared `TokenContext` builder — the di transformers import it so their
 // lowered tokens match the ones this package derives for the same program.
-export { createTokenContext, type TokenContextOptions } from './context.js';
+export { createTokenContext, type TokenContextOptions } from './TokenContextOptions.js';
 
 // The closed-generic token grammar helpers (compile-time `parseToken` /
 // `isOpenToken`).
-export { isOpenToken, type ParsedToken, parseToken } from './grammar.js';
+export { isOpenToken, type ParsedToken, parseToken } from './ParsedToken.js';
 
 // The token-generation building blocks.
 export { baseTokenForSymbol, type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, intrinsicToken,

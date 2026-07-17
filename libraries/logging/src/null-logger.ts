@@ -20,7 +20,7 @@ export interface NullLogger<T = unknown> extends ILogger<T> {}
  * A minimalistic {@link ILogger} that does nothing.
  *
  * The optional `T` is the port of the reference's separate generic `NullLogger<T>`.
- * `ILogger<TCategoryName>`'s parameter is a phantom marker (see ./logger.ts), so
+ * `ILogger<TCategoryName>`'s parameter is a phantom marker (see ./Logger.ts), so
  * the bare `NullLogger` (= `NullLogger<unknown>`) and any `NullLogger<T>` are the
  * structurally-identical no-op — `T` buys the reference-parity spelling, not new
  * behavior. The shared {@link NullLogger.instance} singleton stays typed

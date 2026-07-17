@@ -12,7 +12,7 @@ import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
-import { BrowserLifetime } from './browser-lifetime';
+import { BrowserLifetime } from './BrowserLifetime';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
 import { PageLifecycleEvents } from './PageLifecycleEvents';

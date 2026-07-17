@@ -2,7 +2,7 @@
 // ME.Logging.Abstractions' `ILogger` / `IExternalScopeProvider`.
 
 import type { Func } from '@rhombus-toolkit/func';
-import type { EventId } from './event-id';
+import type { EventId } from './EventId';
 import type { LogLevel } from './LogLevel';
 
 /**

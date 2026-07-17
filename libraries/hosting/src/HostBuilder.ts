@@ -19,7 +19,7 @@ import { nameof } from '@rhombus-std/primitives';
 import type { Action } from '@rhombus-toolkit/func';
 import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices,
   resolveHost } from './host-composition';
-import { resolveServiceProviderOptions } from './service-provider-options-store';
+import { resolveServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 // Interface-extends merge (augmentation doctrine): binding the IHostBuilder SYMBOL
 // flows every in-program augmentation of the interface (hosting.core's `startHost`,

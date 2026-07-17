@@ -6,7 +6,7 @@
 // (the standalone surface), grouped into the `LoggerExtensions` set and
 // registered against the `ILogger` token so every concrete logger decorated
 // with `@augment(nameof<ILogger>())` gains the method form. The method surface
-// is merged onto `ILogger` itself via the `declare module './logger'` block
+// is merged onto `ILogger` itself via the `declare module './ILogger'` block
 // below — the §36/§48 many-implementers carve-out is retired (§80): every
 // receiver, `ILogger` included, uses the standard declare-module interface
 // merge, and each concrete class `extends ILogger` beside its `@augment`.
@@ -23,9 +23,9 @@
 
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import { EventId } from './event-id';
+import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
-import type { ILogger } from './logger';
+import type { ILogger } from './ILogger';
 import { LogLevel } from './LogLevel';
 
 /** Routes a wrapper call to the primitive `ILogger.log`, splitting the optional leading error. */
@@ -134,7 +134,7 @@ export const LoggerExtensions = {
 // call to the wrapper (see `loggerMerge`), so the convenience form stays
 // dot-callable. Their typed path stays the standalone `log(logger, …)` /
 // `beginScope(logger, …)` functions.
-declare module './logger' {
+declare module './ILogger' {
   interface ILogger<TCategoryName = unknown> {
     logTrace(message: string, ...args: unknown[]): void;
     logTrace(error: Error, message: string, ...args: unknown[]): void;

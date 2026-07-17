@@ -44,7 +44,7 @@ export type { IServiceProviderFactory } from './IServiceProviderFactory.js';
 
 // The provider-construction options `build(options?)` accepts (the reference
 // `ServiceProviderOptions` analog) — pure data; the engine reads the flags.
-export type { ServiceProviderOptions } from './service-provider-options.js';
+export type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
 // The slot/token ABI runtime helpers. A di consumer reaches these through the
 // re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
@@ -59,12 +59,12 @@ export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';
 
 // The shared null-object provider singleton (the reference `EmptyServiceProvider`
 // analog) — a `IServiceProvider` with no application services.
-export { EmptyServiceProvider } from './empty-service-provider.js';
+export { EmptyServiceProvider } from './EmptyServiceProvider.js';
 
 // `ActivatorUtilities` — activate an UNREGISTERED class against a provider,
 // injecting its dependency-signature slots. The reference activator-helper analog.
-export { ActivatorUtilities } from './activator-utilities.js';
-export type { ObjectFactory } from './activator-utilities.js';
+export { ActivatorUtilities } from './ActivatorUtilities.js';
+export type { ObjectFactory } from './ActivatorUtilities.js';
 
 // The registration-time error taxonomy root, the open-token registration error,
 // and the activation error `ActivatorUtilities` raises. Resolution-time errors
@@ -75,4 +75,4 @@ export { ActivationError, DiError, OpenTokenRegistrationError } from './errors.j
 // pulling the barrel registers it against the `ServiceManifest` token so the verb
 // is installed onto the collection prototype (§28/§38). The const is the
 // standalone call surface.
-export { ServiceCollectionDescriptorExtensions } from './extensions/service-collection-descriptor-augmentations.js';
+export { ServiceCollectionDescriptorExtensions } from './extensions/ServiceCollectionDescriptorExtensions.js';

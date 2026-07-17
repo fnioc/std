@@ -43,7 +43,7 @@ export const BrowserLifetimeHostBuilderExtensions = {
   /**
    * Listens for the page-lifecycle events and requests a graceful shutdown on
    * a terminal `pagehide` by registering the
-   * {@link import("./browser-lifetime").BrowserLifetime} as the host lifetime
+   * {@link import("./BrowserLifetime").BrowserLifetime} as the host lifetime
    * (overriding the default NullLifetime). A bfcache (`persisted`) pagehide
    * never stops the host. See the browser-lifetime module documentation for
    * the main.ts stop wiring.

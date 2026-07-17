@@ -3,8 +3,8 @@
 // grammar as IniConfigProvider -- both delegate to IniStreamParser.
 
 import { StreamConfigProvider, type StreamPayload } from '@rhombus-std/config';
-import { IniStreamParser } from './ini-stream-parser';
 import type { IniStreamConfigSource } from './IniStreamConfigSource';
+import { IniStreamParser } from './IniStreamParser';
 
 // The platform UTF-8 decoder, looked up module-locally (the zero-ambient-types
 // library program has no TextDecoder in scope, docs §44); mirrors config.json's

@@ -16,11 +16,11 @@ import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { ConsoleColor } from './AnsiParser';
+import { ConsoleColor } from './ConsoleColor';
 import { ConsoleControlCharacterSanitizer } from './ConsoleControlCharacterSanitizer';
 import { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
-import { emitAnsiColorCodes } from './ConsoleUtils';
+import { emitAnsiColorCodes } from './ConsoleStream';
 import { formatTimestamp } from './date-format';
 import { LoggerColorBehavior } from './LoggerColorBehavior';
 import type { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';

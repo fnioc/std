@@ -3,8 +3,8 @@
 // grammar as XmlConfigProvider -- both delegate to XmlStreamParser.
 
 import { StreamConfigProvider, type StreamPayload } from '@rhombus-std/config';
-import { XmlStreamParser } from './xml-stream-parser';
 import type { XmlStreamConfigSource } from './XmlStreamConfigSource';
+import { XmlStreamParser } from './XmlStreamParser';
 
 // The platform UTF-8 decoder, looked up module-locally (docs §44); mirrors
 // config.json/config.ini's stream providers.

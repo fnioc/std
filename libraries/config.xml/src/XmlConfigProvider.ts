@@ -6,7 +6,7 @@
 // in InvalidDataError.
 
 import { FileConfigProvider } from '@rhombus-std/config.file';
-import { XmlStreamParser } from './xml-stream-parser';
+import { XmlStreamParser } from './XmlStreamParser';
 
 export class XmlConfigProvider extends FileConfigProvider {
   protected override loadContent(content: string): void {

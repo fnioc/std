@@ -30,9 +30,9 @@ import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
 import { CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
   HOST_OPTIONS_CONFIGURE_TOKEN } from './framework-tokens';
 import type { HostOptions } from './HostOptions';
-import { ConsoleLifetime } from './internal/console-lifetime';
+import { ConsoleLifetime } from './internal/ConsoleLifetime';
 import { MetricsBuilder } from './MetricsBuilder';
-import { setServiceProviderOptionsFactory } from './service-provider-options-store';
+import { setServiceProviderOptionsFactory } from './ServiceProviderOptionsFactory';
 
 // The interface-side merge for this const's members lives HERE beside the const
 // (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core

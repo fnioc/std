@@ -7,7 +7,7 @@
 // provider for this interface and, if present, delivers records through
 // `logRecords` instead of one-at-a-time `ILogger.log` calls.
 
-import type { EventId } from './event-id';
+import type { EventId } from './EventId';
 import type { LogLevel } from './LogLevel';
 
 /**

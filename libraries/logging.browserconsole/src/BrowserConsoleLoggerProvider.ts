@@ -6,7 +6,7 @@
 
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import { BrowserConsoleLogger } from './BrowserConsoleLogger';
-import { console as globalConsole, type ConsoleLike } from './console-global';
+import { console as globalConsole, type ConsoleLike } from './ConsoleLike';
 
 /** An {@link ILoggerProvider} that creates {@link BrowserConsoleLogger}s. */
 export class BrowserConsoleLoggerProvider implements ILoggerProvider {

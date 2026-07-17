@@ -11,14 +11,14 @@
 // `ILoggingBuilder.services` is bound to, and @rhombus-std/primitives supplies
 // the augmentation registry the `LoggerExtensions` set self-registers with (§38).
 
-export { EventId } from './event-id';
-export type { EventIdLike } from './event-id';
+export { EventId } from './EventId';
+export type { EventIdLike } from './EventId';
 export { LogLevel } from './LogLevel';
 
+export type { IExternalScopeProvider, ILogger } from './ILogger';
 export type { ILoggingBuilder } from './ILoggingBuilder';
-export type { IExternalScopeProvider, ILogger } from './logger';
+export type { ISupportExternalScope } from './ISupportExternalScope';
 export type { ILoggerFactory, ILoggerProvider } from './logger-factory';
-export type { ISupportExternalScope } from './support-external-scope';
 // The generic-category logger (reference `Logger<T>`); its category comes from
 // the closing type's di token at registration. `ILogger<T>` is the same
 // `ILogger` interface above (a defaulted phantom type parameter — see ./logger).
@@ -36,8 +36,8 @@ export type { ProviderAliased } from './provider-alias';
 
 // Buffered logging: the batch-delivery capability a provider may implement
 // beside `ILogger` (the reference `IBufferedLogger` + `BufferedLogRecord`).
-export { BufferedLogRecord } from './buffered-logger';
-export type { IBufferedLogger } from './buffered-logger';
+export { BufferedLogRecord } from './IBufferedLogger';
+export type { IBufferedLogger } from './IBufferedLogger';
 
 // The cached-delegate factories (the reference `LoggerMessage` runtime half).
 export { LoggerMessage } from './logger-message';
@@ -54,7 +54,7 @@ export { formatLogValues, formatMessage, FormattedLogValues } from './formatted-
 // many-implementers carve-out retired, §80). Importing the barrel registers
 // the set against the `ILogger` token as a side effect.
 export { beginScope, log, logCritical, logDebug, logError, LoggerExtensions, logInformation, logTrace,
-  logWarning } from './logger-augmentations';
+  logWarning } from './LoggerExtensions';
 
 // The ILoggerFactory type-receiving createLogger wrapper (the reference
 // `LoggerFactoryExtensions` analog). Its member shares ILoggerFactory's own
@@ -63,4 +63,4 @@ export { beginScope, log, logCritical, logDebug, logError, LoggerExtensions, log
 // primitive — dot-callable at runtime on any `@augment`-decorated factory.
 // Importing the barrel registers the set against the `ILoggerFactory` token as a
 // side effect.
-export { LoggerFactoryExtensions } from './logger-factory-augmentations';
+export { LoggerFactoryExtensions } from './LoggerFactoryExtensions';

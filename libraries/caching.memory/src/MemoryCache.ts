@@ -33,9 +33,9 @@ import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { CacheEntry, type IMemoryCacheHost } from './cache-entry';
+import { CacheEntry, type IMemoryCacheHost } from './CacheEntry';
 import type { MemoryCacheOptions } from './MemoryCacheOptions';
-import { NullLogger } from './null-logger';
+import { NullLogger } from './NullLogger';
 
 // Interface-extends merge (augmentation doctrine): binding the IMemoryCache SYMBOL
 // flows every in-program augmentation of the interface (caching.core's get/set/

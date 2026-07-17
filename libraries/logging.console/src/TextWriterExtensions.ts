@@ -5,7 +5,7 @@
 // Not exported from the package barrel.
 
 import { type ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
-  getForegroundColorEscapeCode } from './AnsiParser';
+  getForegroundColorEscapeCode } from './ConsoleColor';
 import type { TextWriter } from './text-writer';
 
 export const TextWriterExtensions = {

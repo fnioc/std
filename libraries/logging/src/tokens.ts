@@ -3,7 +3,7 @@
 
 import type { IOptions } from '@rhombus-std/options';
 import { nameof } from '@rhombus-std/primitives';
-import type { LoggerFilterOptions } from './logger-filter-options';
+import type { LoggerFilterOptions } from './LoggerFilterOptions';
 
 /** Token for the singleton {@link ILoggerFactory} registered by `addLogging`. */
 export const LOGGER_FACTORY_TOKEN = '@rhombus-std/logging:ILoggerFactory';
