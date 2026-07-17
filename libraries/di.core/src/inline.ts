@@ -4,11 +4,19 @@
 // Authored, never executed: the generic inline transform stage substitutes these
 // single-return-expression bodies at consumer call sites (this → the receiver,
 // the type parameter bound from the checker), then the primitive stages lower
-// the result. This file is DELIBERATELY not re-exported from the barrel: its
-// body contains `nameof<T>()` over an unbound generic, and a barrel re-export
-// would let di.core's own nameof lowering rewrite it inside di.core's dist and
-// pollute the public d.ts. Keeping it out of the barrel sidesteps both without
-// touching the frozen nameof stage.
+// the result. Its body contains `nameof<T>()` over an UNBOUND generic, so
+// di.core's own nameof lowering — which has no type to bind here — would rewrite
+// it to the empty token `this.isService("")`. Two paths must be kept clear of
+// that lowering:
+//   - the BUNDLED dist (`bun build` from the barrel): this file is DELIBERATELY
+//     not re-exported from the barrel, so the bundle never pulls it in and the
+//     public d.ts stays clean; and
+//   - the PER-FILE internal emit (`tspc -p tsconfig.build.json` → dist/internal/):
+//     the barrel omission does NOT cover this, since that program is driven by
+//     `include`, not the barrel — so tsconfig.build.json EXCLUDES this file
+//     explicitly. A white-box import through internal/* then fails module-not-found
+//     rather than resolving the empty-token lowering.
+// Both sidestep the frozen nameof stage without touching it.
 
 import { nameof } from '@rhombus-std/primitives';
 import type { ServiceQuery } from './provider.js';
