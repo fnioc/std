@@ -1,4 +1,9 @@
-package main
+// Package configtransform is the Go port of the config transformer: it lowers
+// each `<builder>.withType<T>()` call into a generated `<builder>.withSchema({...})`
+// runtime schema literal over the ttsc-shipped typescript-go checker. It is the
+// emit-path twin of the hand-written TypeScript transformer. The single owner
+// host (cmd/ttsc-std) composes it as the `rhombusstd_config` stage.
+package configtransform
 
 // The config transform factory.
 //
@@ -20,9 +25,9 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-// configTransform builds the per-file transform. The shared token core is unused —
+// New builds the per-file transform. The shared token core is unused —
 // config schema derivation is self-contained.
-func configTransform(prog *driver.Program, _ *tokens.Context, addDiagnostic func(plugin.Diagnostic)) plugin.FileTransform {
+func New(prog *driver.Program, _ *tokens.Context, addDiagnostic func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()

@@ -14,11 +14,16 @@
 
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { ttscBunPlugin } from '../../scripts/build-package';
+import { readTsconfigTransforms, ttscBunPlugin } from '../../scripts/build-package';
 
 const dir = import.meta.dir;
 const dist = join(dir, 'dist');
 rmSync(dist, { recursive: true, force: true });
+
+// Thread the tsconfig.ttsc.json plugin list EXPLICITLY (both di.transformer/ttsc
+// and di.transformer.options/ttsc), suppressing the adapter's auto-discovery.
+// Both resolve to the one owner host, which runs each declared stage in order.
+const ttscTransforms = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
 
 const js = await Bun.build({
   entrypoints: [join(dir, 'src/main.ts')],
@@ -37,12 +42,12 @@ const js = await Bun.build({
     '@rhombus-std/options',
     '@rhombus-std/options.augmentations',
   ],
-  // Pass the aggregate plugin EXPLICITLY: the app installs both di.transformer
-  // and di.transformer.options (each carries a ttsc.plugin marker), which the
-  // adapter would otherwise auto-register as two separate native backends — a
-  // conflict. The one aggregate host runs both stages in a single pass.
+  // Pass the plugins EXPLICITLY: the app installs both di.transformer and
+  // di.transformer.options (each carries a ttsc.plugin marker); passing the
+  // declared list suppresses the adapter's auto-discovery. Both descriptors
+  // resolve to the one owner host, which ttsc dedupes to a single spawn.
   plugins: [
-    await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ['@rhombus-std/di.transformer.options/ttsc-app']),
+    await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms),
   ],
 });
 if (!js.success) {

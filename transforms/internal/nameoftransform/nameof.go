@@ -1,4 +1,10 @@
-package main
+// Package nameoftransform is the Go port of the nameof transformer: it lowers
+// each `nameof<T>()` call to its derived string token over the ttsc-shipped
+// typescript-go checker and elides the now-unreferenced `nameof` import. It is
+// the emit-path twin of the hand-written TypeScript transformer; both derive
+// identical tokens from the shared token core. The single owner host
+// (cmd/ttsc-std) composes it as the `rhombusstd_nameof` stage.
+package nameoftransform
 
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -15,10 +21,10 @@ import (
 // still lowers.
 const nameofName = "nameof"
 
-// nameofTransform builds the per-file transform: it visits every call
-// expression, and replaces each single-type-argument call to `nameof` with a
-// string literal holding the token derived from the type argument.
-func nameofTransform(prog *driver.Program, ctx *tokens.Context, _ func(plugin.Diagnostic)) plugin.FileTransform {
+// New builds the per-file transform: it visits every call expression, and
+// replaces each single-type-argument call to `nameof` with a string literal
+// holding the token derived from the type argument.
+func New(prog *driver.Program, ctx *tokens.Context, _ func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		var visitor *shimast.NodeVisitor

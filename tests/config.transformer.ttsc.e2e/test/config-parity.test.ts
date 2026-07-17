@@ -83,7 +83,7 @@ const TRANSFORMS = join(REPO_ROOT, 'transforms');
 const WORK_ROOT = join(homedir(), '.cache', 'fnioc-ttsc-config-e2e');
 const projHappy = join(WORK_ROOT, 'happy');
 const projDiag = join(WORK_ROOT, 'diag');
-const sidecarBin = join(WORK_ROOT, 'sidecar', 'ttsc-config');
+const sidecarBin = join(WORK_ROOT, 'sidecar', 'ttsc-std');
 const goTmp = join(WORK_ROOT, 'gotmp');
 const COLD_BUILD_MS = 420_000;
 
@@ -171,11 +171,17 @@ type Envelope = {
   typescript: Record<string, string>;
 };
 
+// The owner host selects stages from the manifest; drive it with just the
+// config stage so it runs the withType->withSchema lowering (and nothing else).
+const CONFIG_STAGE_MANIFEST = JSON.stringify([
+  { config: {}, name: 'rhombusstd_config', stage: 'transform' },
+]);
+
 /** Run the compiled sidecar over a project in transform mode; parse its envelope. */
 function runSidecar(dir: string): Envelope {
   const result = spawnSync(
     sidecarBin,
-    ['transform', '--cwd', dir, '--tsconfig', join(dir, 'tsconfig.json')],
+    ['transform', '--cwd', dir, '--tsconfig', join(dir, 'tsconfig.json'), '--plugins-json', CONFIG_STAGE_MANIFEST],
     { cwd: dir, encoding: 'utf8', env: goEnv() },
   );
   // Project mode returns exit 3 when any diagnostic is raised; the envelope is
@@ -197,10 +203,10 @@ beforeAll(() => {
   mkdirSync(join(WORK_ROOT, 'sidecar'), { recursive: true });
   mkdirSync(goTmp, { recursive: true });
 
-  // 1. Build the Go sidecar once (drives the deterministic diagnostics path).
+  // 1. Build the Go owner host once (drives the deterministic diagnostics path).
   const build = spawnSync(
     goBin,
-    ['build', '-o', sidecarBin, './cmd/ttsc-config'],
+    ['build', '-o', sidecarBin, './cmd/ttsc-std'],
     { cwd: TRANSFORMS, encoding: 'utf8', env: goEnv() },
   );
   if (build.status !== 0) {

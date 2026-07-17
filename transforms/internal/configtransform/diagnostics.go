@@ -1,4 +1,4 @@
-package main
+package configtransform
 
 // Stable diagnostic codes for the config transformer. The high offset keeps them
 // clear of TypeScript's own code space; they are part of the transformer's

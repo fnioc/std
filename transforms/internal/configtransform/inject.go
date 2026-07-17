@@ -1,4 +1,4 @@
-package main
+package configtransform
 
 // OPTIONAL import injection.
 //

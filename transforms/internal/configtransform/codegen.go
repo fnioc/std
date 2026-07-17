@@ -1,4 +1,4 @@
-package main
+package configtransform
 
 // The one new algorithm: a checker type -> runtime `Schema` object literal.
 //

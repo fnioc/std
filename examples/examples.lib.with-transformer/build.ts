@@ -18,7 +18,7 @@
 import { spawnSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { ttscBunPlugin } from '../../scripts/build-package';
+import { readTsconfigTransforms, ttscBunPlugin } from '../../scripts/build-package';
 
 const dir = import.meta.dir;
 const dist = join(dir, 'dist');
@@ -39,7 +39,9 @@ const js = await Bun.build({
   target: 'node',
   format: 'esm',
   external: ['@rhombus-std/di', '@rhombus-std/options', '@rhombus-std/examples.contracts'],
-  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json')],
+  // Thread the declared tsconfig.ttsc.json plugin (di.transformer/ttsc)
+  // EXPLICITLY, suppressing the adapter's install-set auto-discovery.
+  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', readTsconfigTransforms(dir, 'tsconfig.ttsc.json'))],
 });
 if (!js.success) {
   for (const log of js.logs) {
