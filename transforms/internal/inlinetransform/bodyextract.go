@@ -195,54 +195,61 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 	for local := range rb.PrimitiveImports {
 		allowed[local] = true
 	}
+	// A dedicated value-position walk. It flags any identifier that is not an
+	// allowed value reference, descending into every VALUE child so a free
+	// identifier ANYWHERE is reached — including a call argument that follows a
+	// property-access callee (`this.isService(n<T>())`), the position a prior
+	// short-circuit skipped. Two identifier positions are deliberately NOT value
+	// references and are never checked:
+	//   - a property access's member NAME (`a.b`: the `b`); and
+	//   - a TYPE ARGUMENT (`nameof<Marker>()`: `Marker` — a type the consumer's
+	//     checker resolves, not a value). Skipping the whole TypeArguments list of
+	//     a call/new covers any type shape inside it (unions, nested refs, …).
 	var bad string
-	walkExpr(rb.Body, func(n *shimast.Node) bool {
-		if bad != "" {
-			return true
+	var check func(n *shimast.Node)
+	check = func(n *shimast.Node) {
+		if n == nil || bad != "" {
+			return
 		}
-		if n.Kind == shimast.KindPropertyAccessExpression {
-			// Only the object side is a value reference; skip the member name.
-			access := n.AsPropertyAccessExpression()
-			walkExpr(access.Expression, func(inner *shimast.Node) bool {
-				if bad == "" && inner.Kind == shimast.KindIdentifier && !allowed[inner.Text()] {
-					bad = inner.Text()
-				}
-				return bad != ""
-			})
-			return true
-		}
-		if n.Kind == shimast.KindIdentifier {
+		switch n.Kind {
+		case shimast.KindIdentifier:
 			if !allowed[n.Text()] {
 				bad = n.Text()
 			}
+			return
+		case shimast.KindPropertyAccessExpression:
+			check(n.AsPropertyAccessExpression().Expression)
+			return
+		case shimast.KindCallExpression:
+			call := n.AsCallExpression()
+			check(call.Expression)
+			if call.Arguments != nil {
+				for _, arg := range call.Arguments.Nodes {
+					check(arg)
+				}
+			}
+			return
+		case shimast.KindNewExpression:
+			nw := n.AsNewExpression()
+			check(nw.Expression)
+			if nw.Arguments != nil {
+				for _, arg := range nw.Arguments.Nodes {
+					check(arg)
+				}
+			}
+			return
 		}
-		return false
-	})
+		n.ForEachChild(func(child *shimast.Node) bool {
+			check(child)
+			return bad != ""
+		})
+	}
+	check(rb.Body)
+
 	if bad != "" {
 		return fmt.Errorf("INLINE_BODY_FREE_IDENTIFIER: %s impl %q member %q references %q, which is neither a parameter, type parameter, nor a known primitive import", rb.File, e.Impl, e.Member, bad)
 	}
 	return nil
-}
-
-// walkExpr walks node's subtree, but does NOT descend into a property-access's
-// member-name identifier (the caller handles property access specially).
-func walkExpr(node *shimast.Node, visit func(*shimast.Node) bool) {
-	if node == nil {
-		return
-	}
-	var recur func(n *shimast.Node) bool
-	recur = func(n *shimast.Node) bool {
-		if n == nil {
-			return false
-		}
-		if visit(n) {
-			return true
-		}
-		return n.ForEachChild(func(child *shimast.Node) bool {
-			return recur(child)
-		})
-	}
-	recur(node)
 }
 
 // findMemberDeclaration returns the member declaration node named memberName on

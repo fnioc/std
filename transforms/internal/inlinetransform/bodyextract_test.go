@@ -77,13 +77,26 @@ func TestExtractRejects(t *testing.T) {
 			// An aliased primitive is NOT recorded as a primitive import
 			// (primitiveImports keeps only unaliased bindings), so referencing the
 			// alias in the body is a free identifier. The alias is the outer callee
-			// here so the free-identifier walk reaches it directly. (A body shaped
-			// `this.isService(n<T>())` would slip past — see the property-access
-			// short-circuit note in the test report.)
+			// here so the free-identifier walk reaches it directly.
 			name: "aliased primitive reference fails the free-identifier walk",
 			inline: `import { nameof as n } from '@rhombus-std/primitives';
 export const QueryInline = {
   bar<T>(this: any): string { return n<T>(); },
+};
+`,
+			entry:   member,
+			wantErr: "INLINE_BODY_FREE_IDENTIFIER",
+		},
+		{
+			// The same aliased free identifier, but now as a call ARGUMENT after a
+			// property-access callee (`this.isService(n<T>())`). This is the shape
+			// the property-access short-circuit used to skip: aborting at the
+			// callee halted the sibling walk before the argument was ever checked.
+			// The skip-set fix keeps siblings walking, so `n` is caught here too.
+			name: "free identifier as an argument after a property-access callee",
+			inline: `import { nameof as n } from '@rhombus-std/primitives';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return this.isService(n<T>()); },
 };
 `,
 			entry:   member,
