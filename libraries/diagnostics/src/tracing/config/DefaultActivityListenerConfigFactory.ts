@@ -1,7 +1,7 @@
 // DefaultActivityListenerConfigFactory -- ported from MED.Tracing's
 // internal `DefaultActivityListenerConfigFactory`. The concrete
 // ActivityListenerConfigFactory `addTracing` registers: it takes every
-// TracingConfig marker registered through `addTracingConfiguration` (the
+// TracingConfig marker registered through `addTracingConfig` (the
 // TRACING_CONFIGURATION_TOKEN collection, ctor-injected) and, per listener name,
 // chains each configuration's `{listenerName}` section into one merged view --
 // later registrations win on key conflicts, matching provider order. Internal in
@@ -15,19 +15,19 @@ import type { TracingConfig } from './TracingConfig';
 
 /** The concrete {@link ActivityListenerConfigFactory}. */
 export class DefaultActivityListenerConfigFactory extends ActivityListenerConfigFactory {
-  readonly #configurations: Iterable<TracingConfig>;
+  readonly #configs: Iterable<TracingConfig>;
 
-  /** @param configurations Every registered {@link TracingConfig} marker. */
-  public constructor(configurations: Iterable<TracingConfig>) {
+  /** @param configs Every registered {@link TracingConfig} marker. */
+  public constructor(configs: Iterable<TracingConfig>) {
     super();
-    this.#configurations = configurations;
+    this.#configs = configs;
   }
 
   /** Merges every registered configuration's `listenerName` section into one view. */
-  public override getConfiguration(listenerName: string): IConfig {
+  public override getConfig(listenerName: string): IConfig {
     const builder = new ConfigBuilder();
-    for (const { configuration } of this.#configurations) {
-      builder.addConfiguration(configuration.getSection(listenerName));
+    for (const { config } of this.#configs) {
+      builder.addConfig(config.getSection(listenerName));
     }
     return builder.build();
   }

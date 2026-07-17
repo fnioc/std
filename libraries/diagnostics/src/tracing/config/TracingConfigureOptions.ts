@@ -66,16 +66,16 @@ function loadActivitySourceRules(
  * `TracingConfigureOptions`.
  */
 export class TracingConfigureOptions implements IConfigureOptions<TracingOptions> {
-  readonly #configuration: IConfig;
+  readonly #config: IConfig;
 
-  /** @param configuration The configuration section to read tracing rules from. */
-  public constructor(configuration: IConfig) {
-    this.#configuration = configuration;
+  /** @param config The configuration section to read tracing rules from. */
+  public constructor(config: IConfig) {
+    this.#config = config;
   }
 
   /** Reads the schema and appends the matching {@link TracingRule}s to `options`. */
   public configure(options: TracingOptions): void {
-    for (const section of this.#configuration.getChildren()) {
+    for (const section of this.#config.getChildren()) {
       if (equalsIgnoreCase(section.key, ENABLED_TRACING_KEY)) {
         loadActivitySourceRules(options, section, ACTIVITY_SOURCE_SCOPES_ALL, undefined);
       } else if (equalsIgnoreCase(section.key, ENABLED_GLOBAL_TRACING_KEY)) {

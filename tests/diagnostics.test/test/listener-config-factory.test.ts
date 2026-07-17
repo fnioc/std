@@ -1,7 +1,7 @@
 // Per-listener configuration factories (the reference's
 // IMetricListenerConfigFactory / ActivityListenerConfigFactory
 // port): each factory merges the `{listenerName}` section of every
-// configuration bound through addMetricsConfiguration/addTracingConfiguration
+// configuration bound through addMetricsConfig/addTracingConfig
 // into one view -- later registrations win on key conflicts -- and
 // addMetrics/addTracing register the concrete factory as a singleton at the
 // family's factory token.
@@ -39,7 +39,7 @@ describe('MetricListenerConfigFactory', () => {
       new MetricsConfig(second()),
     ]);
 
-    const merged = factory.getConfiguration('MyListener');
+    const merged = factory.getConfig('MyListener');
     expect(merged.get('Key')).toBe('second'); // conflict: later wins
     expect(merged.get('OnlyFirst')).toBe('yes'); // earlier-only keys survive
     expect(merged.get('OnlySecond')).toBe('also');
@@ -48,7 +48,7 @@ describe('MetricListenerConfigFactory', () => {
   test('keys are relative to the listener section, siblings excluded', () => {
     const factory = new MetricListenerConfigFactory([new MetricsConfig(first())]);
 
-    const merged = factory.getConfiguration('MyListener');
+    const merged = factory.getConfig('MyListener');
     expect(merged.get('MyListener:Key')).toBeUndefined();
     expect(merged.get('Key')).toBe('first');
     // The sibling listener's block does not leak in.
@@ -58,14 +58,14 @@ describe('MetricListenerConfigFactory', () => {
   test('an unknown listener yields an empty configuration', () => {
     const factory = new MetricListenerConfigFactory([new MetricsConfig(first())]);
 
-    const merged = factory.getConfiguration('NoSuchListener');
+    const merged = factory.getConfig('NoSuchListener');
     expect([...merged.getChildren()]).toHaveLength(0);
   });
 
   test('no registered configurations yields an empty configuration', () => {
     const factory = new MetricListenerConfigFactory([]);
 
-    expect([...factory.getConfiguration('MyListener').getChildren()]).toHaveLength(0);
+    expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
   });
 });
 
@@ -77,17 +77,17 @@ describe('DefaultActivityListenerConfigFactory', () => {
     ]);
 
     expect(factory).toBeInstanceOf(ActivityListenerConfigFactory);
-    const merged = factory.getConfiguration('MyListener');
+    const merged = factory.getConfig('MyListener');
     expect(merged.get('Key')).toBe('second');
     expect(merged.get('OnlyFirst')).toBe('yes');
   });
 });
 
 describe('addMetrics registers the metrics factory', () => {
-  test('resolves as a singleton fed by every addMetricsConfiguration call', () => {
+  test('resolves as a singleton fed by every addMetricsConfig call', () => {
     const manifest = new ServiceManifest();
     manifest.addMetrics((metrics) => {
-      metrics.addMetricsConfiguration(first()).addMetricsConfiguration(second());
+      metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
 
     // Singletons cache only inside an open scope frame; the frameless provider
@@ -97,7 +97,7 @@ describe('addMetrics registers the metrics factory', () => {
       METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
     );
     expect(factory).toBeInstanceOf(MetricListenerConfigFactory);
-    expect(factory.getConfiguration('MyListener').get('Key')).toBe('second');
+    expect(factory.getConfig('MyListener').get('Key')).toBe('second');
 
     // Singleton: repeated resolution yields the same instance.
     expect(
@@ -112,15 +112,15 @@ describe('addMetrics registers the metrics factory', () => {
     const factory = manifest.build().createScope('singleton').resolve<IMetricListenerConfigFactory>(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
     );
-    expect([...factory.getConfiguration('MyListener').getChildren()]).toHaveLength(0);
+    expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
   });
 });
 
 describe('addTracing registers the tracing factory', () => {
-  test('resolves as a singleton fed by every addTracingConfiguration call', () => {
+  test('resolves as a singleton fed by every addTracingConfig call', () => {
     const manifest = new ServiceManifest();
     manifest.addTracing((tracing) => {
-      tracing.addTracingConfiguration(first()).addTracingConfiguration(second());
+      tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 
     const provider = manifest.build().createScope('singleton');
@@ -128,7 +128,7 @@ describe('addTracing registers the tracing factory', () => {
       TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
     );
     expect(factory).toBeInstanceOf(DefaultActivityListenerConfigFactory);
-    expect(factory.getConfiguration('MyListener').get('Key')).toBe('second');
+    expect(factory.getConfig('MyListener').get('Key')).toBe('second');
     expect(
       provider.resolve<ActivityListenerConfigFactory>(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN),
     ).toBe(factory);

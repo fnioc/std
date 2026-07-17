@@ -3,7 +3,7 @@
 // `MetricsServiceExtensions.MetricsBuilder`: it holds the service-registration
 // surface and nothing else; every capability is an extension function over it
 // (@rhombus-std/diagnostics.core's addMetricsListener/enableMetrics/... and this
-// package's addMetricsConfiguration).
+// package's addMetricsConfig).
 
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';

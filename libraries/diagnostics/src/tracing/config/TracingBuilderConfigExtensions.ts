@@ -16,14 +16,14 @@ import { TracingConfigureOptions } from './TracingConfigureOptions';
 /** The `TracingBuilderConfigExtensions` augmentation set for {@link ITracingBuilder} (docs §28). */
 export const TracingBuilderConfigExtensions = {
   /**
-   * Reads tracing enablement rules from `configuration` and configures which
+   * Reads tracing enablement rules from `config` and configures which
    * activity sources and activities are enabled. Mirrors
    * `TracingBuilderConfigExtensions.AddConfiguration`.
    */
-  addTracingConfiguration(builder: ITracingBuilder, configuration: IConfig): ITracingBuilder {
-    builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(configuration));
-    builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(configuration));
-    builder.services.addValue(TRACING_CONFIGURATION_TOKEN, new TracingConfig(configuration));
+  addTracingConfig(builder: ITracingBuilder, config: IConfig): ITracingBuilder {
+    builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(config));
+    builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(config));
+    builder.services.addValue(TRACING_CONFIGURATION_TOKEN, new TracingConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<ITracingBuilder>;
@@ -39,13 +39,13 @@ export const TracingBuilderConfigExtensions = {
 // kept verbatim in the rolled `.d.ts` (rollup-dts `respectExternal`), so it only
 // reaches a published consumer if the specifier survives publish -- the
 // `internal/*` subpath this used to target is scrubbed at publish (docs §7), so
-// consumers of `@rhombus-std/diagnostics` silently lost `addTracingConfiguration`.
+// consumers of `@rhombus-std/diagnostics` silently lost `addTracingConfig`.
 // The barrel is publish-resolvable and, shared with diagnostics.core's merge,
 // keeps every site for this interface on one module file (the §38 merge-identity
 // rule), so the concrete builders still satisfy `implements ITracingBuilder`.
 declare module '@rhombus-std/diagnostics.core' {
   interface ITracingBuilder {
-    addTracingConfiguration(configuration: IConfig): this;
+    addTracingConfig(config: IConfig): this;
   }
 }
 

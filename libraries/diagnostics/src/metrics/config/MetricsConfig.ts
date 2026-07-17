@@ -1,5 +1,5 @@
 // MetricsConfig -- ported from MED.Metrics's internal
-// `MetricsConfig`. The marker `addMetricsConfiguration` registers (one
+// `MetricsConfig`. The marker `addMetricsConfig` registers (one
 // per call, as a METRICS_CONFIGURATION_TOKEN collection value) so
 // MetricListenerConfigFactory can enumerate every configuration bound to
 // metrics and merge their per-listener sections. Internal in the reference;
@@ -8,13 +8,13 @@
 
 import type { IConfig } from '@rhombus-std/config';
 
-/** Marks an {@link IConfig} as bound to metrics via `addMetricsConfiguration`. */
+/** Marks an {@link IConfig} as bound to metrics via `addMetricsConfig`. */
 export class MetricsConfig {
-  /** The configuration section `addMetricsConfiguration` was given. */
-  public readonly configuration: IConfig;
+  /** The configuration section `addMetricsConfig` was given. */
+  public readonly config: IConfig;
 
-  /** @param configuration The configuration section bound to metrics. */
-  public constructor(configuration: IConfig) {
-    this.configuration = configuration;
+  /** @param config The configuration section bound to metrics. */
+  public constructor(config: IConfig) {
+    this.config = config;
   }
 }
