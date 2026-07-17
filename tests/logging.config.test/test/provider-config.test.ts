@@ -57,17 +57,17 @@ describe('addConfig() — provider-configuration services', () => {
 
     const provider = services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
-    const config = factory.getConfig(FAKE_PROVIDER_TOKEN);
-    expect(config.get('Format')).toBe('json');
+    const providerConfig = factory.getConfig(FAKE_PROVIDER_TOKEN);
+    expect(providerConfig.get('Format')).toBe('json');
 
     let fired = false;
-    config.getReloadToken().registerChangeCallback(() => {
+    providerConfig.getReloadToken().registerChangeCallback(() => {
       fired = true;
     });
     config.set('FakeProvider:Format', 'text');
     config.reload();
 
-    expect(config.get('Format')).toBe('text');
+    expect(providerConfig.get('Format')).toBe('text');
     expect(fired).toBe(true);
   });
 
