@@ -271,6 +271,19 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 // dist-skew tripwire. Reading names here is diagnostic-only; matching never
 // depends on it.
 func (st *fileState) isRogueDuplicate(decl *shimast.Node, calleeName string) bool {
+	// A declaration that belongs to a resolved entry's merged member symbol is a
+	// legitimate sibling, never a duplicate copy: this repo's standard
+	// OPEN-receiver pattern declares a member's non-sugar overload in a
+	// `declare module` augmentation, which TS merges into the same member symbol.
+	// Such an overload lives in a declare-module block for the entry's package and
+	// shares its TypeName, so it would otherwise trip the provenance heuristic
+	// below. Only a declaration OUTSIDE every merged set can be a dist-skew rogue,
+	// so clear the merged declarations first.
+	for _, r := range st.resolvedList {
+		if r.MemberSet[decl] {
+			return false
+		}
+	}
 	for _, r := range st.resolvedList {
 		if r.Member != calleeName {
 			continue

@@ -147,3 +147,120 @@ func TestStageInlinesMemberSugar(t *testing.T) {
 		t.Fatalf("sugar member shape not recorded: %+v", artifacts.SugarMembers)
 	}
 }
+
+// setupDeclareModuleOverloadWorkspace lays out the repo's standard OPEN-receiver
+// shape: the interface is EMPTY in the core barrel and both its sugar overload
+// (`isService<T>()`) AND its non-sugar primitive overload (`isService(token)`)
+// are contributed by a consumer `declare module` augmentation. A primitive-form
+// call then binds to a declaration that sits inside a declare-module block for
+// the entry's package and shares its TypeName — the exact provenance the
+// rogue-duplicate heuristic keys on, but a legitimate merged sibling, not a
+// dist-skew copy.
+func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string) {
+	t.Helper()
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+
+	core := filepath.Join(root, "packages", "core")
+	write(t, filepath.Join(core, "package.json"), `{
+  "name": "@scope/core",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "rhombus.inline": {
+    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
+  }
+}`)
+	// The interface is empty here — every isService overload arrives through the
+	// consumer's declare-module augmentation below.
+	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {}
+export declare const provider: IQuery;
+`)
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+import type { IQuery } from './index';
+export const QueryInline = {
+  isService<T>(this: IQuery): boolean {
+    return this.isService(nameof<T>());
+  },
+};
+`)
+
+	app := filepath.Join(root, "packages", "app")
+	write(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@scope/core": "workspace:*" }
+}`)
+	linkPackage(t, app, "@scope/core", core)
+
+	// Both overloads live in the declare-module augmentation — the non-sugar
+	// `isService(token: string)` is the OPEN-receiver primitive whose call must
+	// NOT be flagged as a rogue duplicate.
+	write(t, filepath.Join(app, "sugar.d.ts"), `declare module '@scope/core' {
+  interface IQuery {
+    isService(token: string): boolean;
+    isService<T>(): boolean;
+  }
+}
+export {};
+`)
+	write(t, filepath.Join(app, "main.ts"), `/// <reference path="./sugar.d.ts" />
+import { provider } from '@scope/core';
+interface Foo { readonly brand: 'foo'; }
+export const known = provider.isService<Foo>();
+export const literal = provider.isService('x');
+`)
+	write(t, filepath.Join(app, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true
+  },
+  "files": ["main.ts", "sugar.d.ts", "node_modules/@scope/core/src/index.ts"]
+}`)
+
+	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatalf("LoadProgram: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	return prog, app
+}
+
+// TestStageDeclareModuleOverloadIsNotRogue guards the false-positive: a non-sugar
+// overload declared in a `declare module` augmentation (the standard
+// OPEN-receiver pattern) is a legitimate merged sibling, so a primitive-form call
+// binding to it must pass through WITHOUT an INLINE_ROGUE_DUPLICATE diagnostic —
+// even though it sits in a declare-module block for the entry's package and
+// carries the entry's TypeName, the surface the rogue heuristic keys on.
+func TestStageDeclareModuleOverloadIsNotRogue(t *testing.T) {
+	prog, app := setupDeclareModuleOverloadWorkspace(t)
+	defer func() { _ = prog.Close() }()
+
+	artifacts := NewArtifacts()
+	var diags []plugin.Diagnostic
+	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	if len(diags) != 0 {
+		t.Fatalf("Build raised diagnostics: %+v", diags)
+	}
+	if !artifacts.Active {
+		t.Fatal("artifacts not active — the entry did not resolve")
+	}
+
+	ec := shimprinter.NewEmitContext()
+	main := sourceFileWithSuffix(t, prog, "main.ts")
+	out := reprint(ec, transform(ec, main))
+
+	for _, d := range diags {
+		if d.Code == "INLINE_ROGUE_DUPLICATE" {
+			t.Fatalf("legitimate declare-module overload flagged as a rogue duplicate: %+v", d)
+		}
+	}
+	// The sugar call is still inlined; the primitive-form call passes through.
+	if strings.Contains(out, "isService<") {
+		t.Errorf("sugar form isService<> survived:\n%s", out)
+	}
+	if !strings.Contains(out, `provider.isService('x')`) && !strings.Contains(out, `provider.isService("x")`) {
+		t.Errorf("primitive-form call was altered:\n%s", out)
+	}
+}
