@@ -47,14 +47,30 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		extractor := ditransform.NewExtractor(ctx, checker, ec, sf, emit)
+		// tokenForCall records the service token of the enclosing registration for a
+		// signatureof call that is a lowered `add(token, value, signatureof(value))`
+		// third argument. It is populated TOP-DOWN when the enclosing call is visited
+		// (arg[0] already lowered to a string literal by the nameof stage), then read
+		// when the visitor descends to that signatureof call so it lowers through the
+		// dep-hole-checked extractor variant — 990010 parity with the di stage's
+		// direct add<I>(C) lowering. A standalone signatureof (no enclosing
+		// registration) is absent from this map and keeps its unchecked lowering.
+		tokenForCall := map[*shimast.Node]string{}
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
+				if sigCall, token, ok := registrationSignatureofCall(node); ok {
+					tokenForCall[sigCall] = token
+				}
 				if arg, ok := signatureofArg(checker, artifacts, node); ok {
-					if lit, ok := extractor.SignatureArray(arg); ok {
+					if token, checked := tokenForCall[node]; checked {
+						if lit, ok := extractor.SignatureArrayForRegistration(arg, token, true); ok {
+							return lit
+						}
+					} else if lit, ok := extractor.SignatureArray(arg); ok {
 						return lit
 					}
 				}
@@ -68,6 +84,45 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 		}
 		return elideSignatureofImports(ec.Factory.AsNodeFactory(), output.AsSourceFile())
 	}
+}
+
+// registrationSignatureofCall recognizes a fully-lowered registration call
+// `receiver.add("token", value, signatureof(value))` (or `.addFactory`) — after
+// the nameof stage lowered arg[0] to a string literal — and returns the
+// signatureof call node (the last argument) plus the service-token string. The
+// signatureof stage stashes this so, when its visitor descends to that call, the
+// argument lowers through the dep-hole-checked extractor variant (990010 parity
+// with the di stage's direct add<I>(C) lowering) rather than the tokenless
+// SignatureArray. Matching is purely structural (kind, member name, string-literal
+// arg[0]) — it never touches the checker, so a synthetic (inline-substituted)
+// call is handled without a position/symbol lookup. The last-arg check that it is
+// actually a signatureof call is left to the per-node signatureofArg gate: a
+// non-signatureof last arg simply leaves the stashed token unused.
+func registrationSignatureofCall(node *shimast.Node) (*shimast.Node, string, bool) {
+	call := node.AsCallExpression()
+	if call.Arguments == nil {
+		return nil, "", false
+	}
+	args := call.Arguments.Nodes
+	if len(args) < 3 {
+		return nil, "", false
+	}
+	callee := call.Expression
+	if callee.Kind != shimast.KindPropertyAccessExpression {
+		return nil, "", false
+	}
+	method := callee.Name().Text()
+	if method != "add" && method != "addFactory" {
+		return nil, "", false
+	}
+	if args[0].Kind != shimast.KindStringLiteral {
+		return nil, "", false
+	}
+	last := args[len(args)-1]
+	if last.Kind != shimast.KindCallExpression {
+		return nil, "", false
+	}
+	return last, args[0].Text(), true
 }
 
 // signatureofArg returns the value argument of a signatureof call at node — from

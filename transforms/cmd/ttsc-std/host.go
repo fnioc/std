@@ -268,11 +268,19 @@ func selectStages(entries []pluginEntry, linkedNames map[string]bool) ([]stageDe
 	chosen := map[string]bool{}
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name, stagePrefix) {
-			if _, ok := stageByName[e.Name]; !ok {
-				return nil, fmt.Errorf("UNKNOWN_STAGE: %q is not a stage of this host", e.Name)
+			if _, ok := stageByName[e.Name]; ok {
+				chosen[e.Name] = true
+				continue
 			}
-			chosen[e.Name] = true
-			continue
+			// A preset bundle name expands into its ordered constituent stages;
+			// canonicalStages below then sorts and dedups the union.
+			if constituents, ok := bundleByName[e.Name]; ok {
+				for _, name := range constituents {
+					chosen[name] = true
+				}
+				continue
+			}
+			return nil, fmt.Errorf("UNKNOWN_STAGE: %q is not a stage or bundle of this host", e.Name)
 		}
 		if linkedNames[e.Name] {
 			continue

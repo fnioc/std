@@ -53,6 +53,29 @@ func (e *Extractor) SignatureArray(arg *shimast.Node) (*shimast.Node, bool) {
 	return e.c.signaturesLiteral(sigs), true
 }
 
+// SignatureArrayForRegistration is the dep-hole-CHECKED variant of SignatureArray:
+// it extracts the same `[[...]]` literal AND runs the di stage's dependency-hole
+// check (990010) against the service token the value is registered under. The
+// plain SignatureArray deliberately omits that check (a standalone `signatureof(x)`
+// has no service token in scope), but when a signatureof call is the third
+// argument of a fully-lowered `add(token, value, signatureof(value))` registration
+// the sibling token IS in scope — the nameof stage runs before signatureof, so
+// arg[0] is already a string literal. Parity with the di stage's direct
+// `add<I>(C)` lowering then requires the SAME 990010 to fire for a dependency that
+// references a hole the service token does not bind; without this the inline
+// (inline + signatureof) path would silently emit `??unresolvable??` where the
+// direct path errors. The emitted literal is byte-identical to SignatureArray for
+// VALID inputs — checkDepHoles only reports, it never rewrites — so only invalid
+// inputs gain the diagnostic.
+func (e *Extractor) SignatureArrayForRegistration(arg *shimast.Node, token string, hasToken bool) (*shimast.Node, bool) {
+	sigs, ok := e.c.signaturesForValue(arg)
+	if !ok {
+		return nil, false
+	}
+	e.c.checkDepHoles(sigs, token, hasToken, classifyServiceToken(token, hasToken), arg)
+	return e.c.signaturesLiteral(sigs), true
+}
+
 // signaturesForValue extracts the dependency signatures a class / factory value
 // carries — the value-inspection half of planAddRegistration, shared with the
 // signatureof primitive. Token derivation, registration-time override merging,

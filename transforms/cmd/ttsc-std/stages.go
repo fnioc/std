@@ -69,6 +69,25 @@ var stageByName = func() map[string]stageDef {
 	return m
 }()
 
+// bundleByName maps a PRESET descriptor name to the ordered set of stage names it
+// expands into. A bundle lets a library declare its primitive-stage "package" once
+// (di.core's `add<T>()` / `addFactory<T>()` sugar needs inline -> nameof ->
+// signatureof -> di) so a consumer wires ONE transform instead of enumerating the
+// four in the right order: selectStages replaces a bundle name with its
+// constituents, which canonicalStages then sorts and dedups. The single owner
+// binary owns both the membership AND the order, so no consumer ever hand-lists
+// the primitive stages — the whole point of the preset. Discovery (stock ttsc's
+// marker -> single transform string) is untouched: the one string a bundle
+// descriptor yields resolves to a name WE choose here, and expansion is ours.
+var bundleByName = map[string][]string{
+	stagePrefix + "di_bundle": {
+		stagePrefix + "inline",
+		stagePrefix + "nameof",
+		stagePrefix + "signatureof",
+		stagePrefix + "di",
+	},
+}
+
 // buildInline activates the generic single-expression inline stage. It collects
 // the workspace publish list, substitutes matched sugar bodies, and registers
 // the synthetic primitive calls the nameof stage lowers. Every diagnostic it

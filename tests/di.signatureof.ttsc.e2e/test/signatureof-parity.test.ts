@@ -141,6 +141,7 @@ function setupWorkspace(): void {
   mkdirSync(join(projDir, 'src'), { recursive: true });
   rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
   rmSync(join(projDir, 'dist-semantic'), { recursive: true, force: true });
+  rmSync(join(projDir, 'dist-bundle'), { recursive: true, force: true });
 
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
@@ -171,6 +172,13 @@ function setupWorkspace(): void {
     { transform: '@rhombus-std/primitives.transformer/ttsc' },
     { transform: '@rhombus-std/di.transformer/ttsc' },
   ]);
+  // The PRESET path: ONE descriptor — di.core's `./ttsc` bundle — instead of the
+  // four primitive-stage transforms the inline tsconfig enumerates. The owner
+  // binary expands `rhombusstd_di_bundle` into inline -> nameof -> signatureof ->
+  // di in canonical order, so a consumer never lists the stages by hand.
+  writeTsconfig('tsconfig.bundle.json', 'dist-bundle', [
+    { transform: '@rhombus-std/di.core/ttsc' },
+  ]);
 }
 
 function lower(tsconfig: string, outDir: string): string {
@@ -190,6 +198,7 @@ function lower(tsconfig: string, outDir: string): string {
 
 let withInline = '';
 let withoutInline = '';
+let withBundle = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -198,6 +207,7 @@ beforeAll(() => {
   setupWorkspace();
   withInline = lower('tsconfig.inline.json', 'dist-inline');
   withoutInline = lower('tsconfig.semantic.json', 'dist-semantic');
+  withBundle = lower('tsconfig.bundle.json', 'dist-bundle');
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFactory<I>(fn)', () => {
@@ -223,5 +233,15 @@ describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFacto
     expect(addLine(withInline)).toBeDefined();
     expect(addLine(withInline)).toEqual(addLine(withoutInline));
     expect(withInline).toEqual(withoutInline);
+  });
+
+  test('preset bundle: the single di.core/ttsc descriptor emits the identical output', () => {
+    // A consumer that wires ONLY `@rhombus-std/di.core/ttsc` (the preset) — never
+    // the four primitive-stage transforms — gets the same ordered lowering: the
+    // owner binary expands the bundle name into inline -> nameof -> signatureof ->
+    // di. Byte-identity with the hand-enumerated inline path proves the preset is a
+    // pure convenience over the manual stage list, not a behavior change.
+    expect(withBundle).not.toBe('');
+    expect(withBundle).toEqual(withInline);
   });
 });

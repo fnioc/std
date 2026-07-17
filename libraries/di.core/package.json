@@ -16,7 +16,7 @@
   },
   "type": "module",
   "sideEffects": true,
-  "//rhombus.preset": "Intended primitive-stage bundle for the type-driven registration sugar: inline -> nameof -> signatureof, in the binary's canonical order. A consumer wanting single-name auto-discovery of the whole set needs the ttsc marker to carry an array of transforms; stock ttsc (0.18) accepts only a single 'ttsc.plugin.transform' string, so the bundle is declared explicitly in a consumer's tsconfig plugins today (see tests/di.signatureof.ttsc.e2e). The ttsc marker-array extension is the follow-up that makes this preset auto-discoverable.",
+  "//rhombus.preset": "The transformer PRESET for the type-driven registration sugar: the `./ttsc` descriptor returns the bundle name `rhombusstd_di_bundle`, which the single owner ttsc host (transforms/cmd/ttsc-std) expands into its ordered primitive-stage set inline -> nameof -> signatureof -> di. A consumer wires just `{ transform: '@rhombus-std/di.core/ttsc' }` in tsconfig plugins instead of enumerating the four stages in the right order. Stock ttsc's one-transform-string-per-marker limit is irrelevant: the single string resolves to a name the binary owns, and expansion happens there. NO auto-discovery `ttsc.plugin` marker is set here deliberately — di.core is a ubiquitous dependency, so a marker would force the bundle onto EVERY di.core dependent (it broke the semantic-path lowering in tests/di.signatureof.ttsc.e2e). Declare-by-depending (§90) stays a deliberate opt-in follow-up. See that e2e's bundle path and transforms/cmd/ttsc-std/stages.go bundleByName.",
   "rhombus.inline": {
     "entries": [
       { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" },
@@ -33,11 +33,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./ttsc": "./ttsc.mjs"
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/internal",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -53,7 +55,8 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "default": "./dist/index.js"
-      }
+      },
+      "./ttsc": "./ttsc.mjs"
     }
   },
   "dependencies": {
