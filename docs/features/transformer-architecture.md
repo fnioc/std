@@ -115,6 +115,75 @@ This is why a consumer never needs one package per _combination_ of stages — n
 bundle, no `di+config` bundle. You compose stages by listing them, not by finding the pre-built
 combination that happens to match your needs.
 
+## The generic inline stage (`rhombusstd_inline`)
+
+The four stages above each carry hand-written, per-library knowledge of one sugar shape. The
+**inline stage** is different: it is a generic single-expression function-inliner that learns what
+to substitute from a hand-authored publish list, not from compiled-in rules. Over time it replaces
+per-library semantic knowledge — a library authors its sugar as ordinary typed TypeScript whose
+single-return-expression body is written over the compile-time primitives, and the inline stage
+substitutes that body at consumer call sites (the primitive stages then lower the result).
+
+It is **workspace-only**: every entry it inlines resolves to a sibling package's real `src` file at
+build time, in this repo, in this build. There is no published/carrier form of an inlined function,
+no shipped src, no dist-JS resolution path — the external-consumption story is a deliberately
+parked follow-up.
+
+### The publish list — `"rhombus.inline"`
+
+A library declares its inlineable members in a `"rhombus.inline"` key in `package.json`:
+
+```jsonc
+{
+  "rhombus.inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/di.core:ServiceQuery",
+        "impl": "ServiceQueryInline",
+        "member": "isService",
+      },
+    ],
+    "import": "./inline-entries/more.json", // optional; string | string[], file-relative, composable
+  },
+}
+```
+
+- `type` — a nameof token (`<package>:<TypeName>`, barrel-relative). The match anchor.
+- `impl` — the export in the declaring package that holds the body (self-relative, resolved to the
+  package's real src).
+- `member` — the member name, shared by the interface side and the impl side.
+
+Kinds are inferred by field presence: `type` + `impl` + `member` → interface-member sugar;
+`member` absent → free function (the token's TypeName names the function export). Only these two
+kinds are certified today; anything else is rejected loudly.
+
+### How matching works
+
+Each entry resolves **once per program through the checker**: the type reference resolves to a
+module symbol, then the merged member symbol — TypeScript's declaration merging has already unified
+every `declare module` augmentation of the interface into that one symbol. A structural overload
+discriminator (type-parameter count, value-parameter count and names, `this` excluded) separates
+the sugar overload from the runtime ones. A call site inlines iff its resolved signature's
+declaration is one the merged symbol carries and the sugar entry claims — by declaration identity,
+never by string comparison. A same-named member on a duplicate copy of the interface resolves
+outside the set and is caught by the rogue-duplicate tripwire.
+
+### Authoring rules (lint-enforced)
+
+An inlineable body (`libraries/*/src/inline.ts`) must be exactly one `return <expr>;` where the
+expression is a single compile-time expression: no conditionals, logical operators, assignments,
+comma sequences, `await`/`yield`/`new`/spread, or nested functions. Each value parameter may appear
+at most once in a runtime position (unlimited inside a primitive call's arguments); type parameters
+may appear only as the whole type argument of a primitive call; every other free identifier must be
+a parameter, `this`, a type parameter, or an unaliased primitive import. The `inline-authoring`
+ESLint rule enforces all of this.
+
+### Tripwires
+
+Two hard build failures keep a drifted install honest: a **rogue-duplicate** check when a call
+resolves to a same-named member outside the merged symbol (dist skew / two physical copies), and an
+**emit sweep** that fails the build if any primitive or listed-sugar call survives to the output.
+
 ## Why one pass, not a pipeline
 
 `ttsc` runs a transform as a single source-to-source rewrite: it reads your original file once and
@@ -165,89 +234,14 @@ packages it only borrows types from.
 ## Internals (for maintainers of this repo's transformer sources)
 
 The shared binary lives at `transforms/cmd/ttsc-std` and statically links every stage this repo
-ships: single-expression inlining, token/`nameof` derivation, DI registration lowering,
-`addOptions<T>()`, and `withType<T>()`. Each `@rhombus-std/*.transformer` package's `ttsc.mjs`
-descriptor still names its own stage (`inline`, `nameof`, `di`, `di-options`, `config`) so `ttsc`'s
-`--plugins-json` payload lists them individually — but every descriptor's `source` field resolves
-to the same `ttsc-std` directory, so `ttsc` compiles it exactly once regardless of how many
-descriptors reference it.
+ships: the generic single-expression inliner, token/`nameof` derivation, DI registration lowering,
+`addOptions<T>()`, and `withType<T>()`. Each `@rhombus-std/*.transformer` package's descriptor
+names its own stage (`inline`, `nameof`, `di`, `di-options`, `config`) so `ttsc`'s `--plugins-json`
+payload lists them individually — but every descriptor's `source` field resolves to the same
+`ttsc-std` directory, so `ttsc` compiles it exactly once regardless of how many descriptors
+reference it. The inline stage's descriptor is `@rhombus-std/primitives.transformer/inline-ttsc`.
 
 `ttsc-std` parses `--plugins-json` at startup, builds the set of declared stage names, and runs
 only those stages' AST transforms over the loaded program — in the hardcoded canonical order, not
 declaration order. An unrecognized stage name in that payload is a build-time error naming the
 unknown stage, not a silent no-op.
-
-## The inline stage
-
-`inline` runs first in the canonical order, ahead of `nameof`. It's a generic
-single-expression-body inliner, not per-library semantic knowledge: it substitutes a sugar call
-site with the body of a hand-authored TypeScript function, written over compile-time primitives,
-then lets the later stages (`nameof`, `di`, …) lower the substituted result as if you'd written it
-yourself. Over time this stage is meant to absorb most of what today's per-library semantic
-transforms (`di`, `di-options`, `config`) do by hand.
-
-It is **workspace-only** — every entry it inlines resolves to a sibling package's real `src` file
-at build time, in this repo, in this build. There is no published/carrier form of an inlined
-function, no shipped src, no dist-JS resolution path; that's a deliberately parked, out-of-scope
-follow-up.
-
-**The publish list — `rhombus.inline`.** A package opts a function into inlining by hand-authoring
-an entry in its `package.json`:
-
-```json
-{
-  "rhombus": {
-    "inline": {
-      "entries": [
-        {
-          "type": "@rhombus-std/di.core:IServiceManifest",
-          "impl": "ServiceManifestExtensions",
-          "member": "add"
-        }
-      ],
-      "import": "./more.json"
-    }
-  }
-}
-```
-
-- **`type`** — a `nameof`-grammar token (`<package>:<TypeName>`, barrel-relative). This is the
-  match anchor: the interface the sugar member belongs to.
-- **`impl`** — the export name inside the declaring package, resolved through the workspace to its
-  real source.
-- **`member`** — shared by both the interface side and the impl side; the registry-install
-  mechanism keeps the two structurally identical.
-- Presence of these fields infers the entry's kind: `type` + `impl` → an interface-member (call it
-  through `this`); `impl` alone (no `member`) → a free function. Only these two shapes are
-  certified — an authoring lint rejects anything else as specced-but-not-certified.
-- **`import`** — an optional file-relative path (string or array) to another file following the
-  same `{ "entries": [...] }` schema. Imported entries concatenate into the list; import cycles are
-  a hard build error. This is how a package composes its inline list out of more than one file
-  instead of authoring every entry inline.
-
-**Matching.** Each entry resolves once per program, through the checker, to a symbol —
-`type` → module symbol → member symbol, with TypeScript's own declaration merging already having
-unified every duplicate declaration behind that one symbol. A call site matches by resolving its
-own signature back to that same symbol identity, not by re-deriving or comparing any string key.
-
-**Body extraction.** The inliner reads the declaring package's source directly (a syntax-only
-parse, cached per package per build) to pull out the single return-expression body it substitutes
-at each matched call site — no type-checking is needed on the body itself; the consuming program's
-own checker validates the substituted result.
-
-**Authoring discipline (lint-enforced).** An inlineable function must have a single return
-expression; each value parameter may appear at most once in a runtime position (unlimited inside
-primitive-call positions); type parameters may only appear in primitive-call positions; it may not
-reference other inlineable declarations (nesting is deferred); and its receiver is evaluated
-exactly once — the inliner introduces a temporary itself when the receiver expression is effectful.
-
-**Pilot status.** `isService<T>()` is the only member currently inlined (`di.core`, body:
-`return this.isService(nameof<T>())`), chosen as the simplest byte-parity case — after inlining,
-the call reaches its existing semantic stage in already-primitive form, so nothing double-lowers
-it. The `di` stage still recognizes `isService` on its own; removing that recognition is a tracked
-follow-up, not part of the pilot. `addOptions`, `resolve`, `withType`, and `add` are untouched by
-the inline stage for now.
-
-This doc is the canonical reference for this architecture. Augmentation authoring, the `@augment`
-registry, and how the transformers match a member to its declaring interface are a separate
-system — see `docs/features/augmentations.md` for all of that.
