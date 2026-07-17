@@ -86,8 +86,8 @@ export const HostingHostBuilderExtensions = {
    * `appsettings(.{env}).json` + env vars + args, and the console logging provider.
    */
   configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
-    hostBuilder.configureHostConfiguration((configBuilder) => applyDefaultHostConfig(configBuilder, args));
-    hostBuilder.configureAppConfiguration((context, configBuilder) =>
+    hostBuilder.configureHostConfig((configBuilder) => applyDefaultHostConfig(configBuilder, args));
+    hostBuilder.configureAppConfig((context, configBuilder) =>
       applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args)
     );
     hostBuilder.configureServices((_context, services) => addDefaultServices(services));
@@ -104,7 +104,7 @@ export const HostingHostBuilderExtensions = {
 
   /** Specifies the environment. Call after {@link configureDefaults} to avoid being overwritten. */
   useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
-    return hostBuilder.configureHostConfiguration((configBuilder) => {
+    return hostBuilder.configureHostConfig((configBuilder) => {
       configBuilder.add(
         new MemoryConfigSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
       );
@@ -113,7 +113,7 @@ export const HostingHostBuilderExtensions = {
 
   /** Specifies the content root directory. Call after {@link configureDefaults} to avoid being overwritten. */
   useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
-    return hostBuilder.configureHostConfiguration((configBuilder) => {
+    return hostBuilder.configureHostConfig((configBuilder) => {
       configBuilder.add(
         new MemoryConfigSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
       );

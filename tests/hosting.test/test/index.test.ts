@@ -186,7 +186,7 @@ test('addHostedService registers many under one shared token; the host resolves 
 
 test("IHostEnvironment predicates reflect the built host's environment", async () => {
   const builder = new HostBuilder();
-  builder.configureHostConfiguration((config) => {
+  builder.configureHostConfig((config) => {
     config.add(new MemoryConfigSource({ initialData: { environment: 'Development' } }));
   });
 
@@ -205,15 +205,15 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
 
 test('host configuration values flow into the application configuration (chained, not snapshotted)', () => {
   const builder = new HostBuilder();
-  builder.configureHostConfiguration((config) => {
+  builder.configureHostConfig((config) => {
     config.add(new MemoryConfigSource({ initialData: { 'Custom:Key': 'fromHost' } }));
   });
 
-  // Observed from inside the configureAppConfiguration callback -- by this
+  // Observed from inside the configureAppConfig callback -- by this
   // point the host configuration has already been chained into the app
   // configuration builder, ahead of any user delegate.
   let seenDuringCompose: string | undefined;
-  builder.configureAppConfiguration((_context, appConfig) => {
+  builder.configureAppConfig((_context, appConfig) => {
     seenDuringCompose = appConfig.build().get('Custom:Key');
   });
 
@@ -235,7 +235,7 @@ test('Host.createApplicationBuilder().build() produces a runnable IHost', async 
 
   const builder = Host.createApplicationBuilder([]);
   expect(builder.environment).toBeDefined();
-  expect(builder.configuration).toBeDefined();
+  expect(builder.config).toBeDefined();
   expect(builder.logging).toBeDefined();
 
   builder.services.addHostedService(Worker, [[]]);

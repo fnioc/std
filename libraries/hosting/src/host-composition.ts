@@ -117,25 +117,25 @@ export function resolveContentRootPath(
 }
 
 /**
- * Constructs the mutable {@link HostingEnvironment} from `configuration`,
+ * Constructs the mutable {@link HostingEnvironment} from `config`,
  * reading the {@link HostDefaults} keys -- port of the reference
  * `CreateHostingEnvironment`. `contentRootFileProvider` keeps its
  * `NullFileProvider` default (the physical file provider is deferred, decisions.md
  * §20). `basePath` defaults to the current working directory, the analog of the
  * reference `AppContext.BaseDirectory`.
  */
-export function createHostingEnvironment(configuration: IConfig): HostingEnvironment {
+export function createHostingEnvironment(config: IConfig): HostingEnvironment {
   const environment = new HostingEnvironment();
-  environment.environmentName = configuration.get(HostDefaults.environmentKey) ?? Environments.Production;
+  environment.environmentName = config.get(HostDefaults.environmentKey) ?? Environments.Production;
   // `process.cwd()` is reached only when the configured content root doesn't
   // already resolve on its own: an already-absolute root short-circuits BEFORE
   // the cwd lookup, so a browser composition (no `process` global; content
   // root seeded to "/" by @rhombus-std/hosting.browser) never touches it.
-  const contentRootPath = configuration.get(HostDefaults.contentRootKey);
+  const contentRootPath = config.get(HostDefaults.contentRootKey);
   environment.contentRootPath = contentRootPath !== undefined && isAbsolute(contentRootPath)
     ? contentRootPath
     : resolveContentRootPath(contentRootPath, process.cwd());
-  const applicationName = configuration.get(HostDefaults.applicationKey);
+  const applicationName = config.get(HostDefaults.applicationKey);
   if (applicationName) {
     environment.applicationName = applicationName;
   }
@@ -169,12 +169,12 @@ export function populateFrameworkServices(
   services: IServiceManifest,
   context: HostBuilderContext,
   environment: HostingEnvironment,
-  configuration: IConfig,
+  config: IConfig,
   framework: FrameworkServices,
 ): void {
   services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
   services.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
-  services.addValue(CONFIG_TOKEN, configuration);
+  services.addValue(CONFIG_TOKEN, config);
   services.addValue(HOST_APPLICATION_LIFETIME_TOKEN, framework.applicationLifetime);
   services.addValue(HOST_OPTIONS_TOKEN, framework.hostOptions);
   services.addValue(LOGGER_FACTORY_TOKEN, framework.loggerFactory);
@@ -194,7 +194,7 @@ export function populateFrameworkServices(
  * `@rhombus-std/di` MUST be imported by the caller before this runs so
  * `IServiceManifest.build()` is patched on (di.core alone throws in `build()`).
  *
- * `configuration` is the final application configuration folded into
+ * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
  * `serviceProviderOptions` (the reference `ServiceProviderOptions`) carries the
@@ -204,7 +204,7 @@ export function populateFrameworkServices(
 export function resolveHost(
   services: IServiceManifest,
   framework: FrameworkServices,
-  configuration: IConfig,
+  config: IConfig,
   serviceProviderOptions?: ServiceProviderOptions,
 ): IHost {
   const provider: IServiceProvider = services.build(serviceProviderOptions);
@@ -218,7 +218,7 @@ export function resolveHost(
   // `configureHostOptions` mutation (registered as a value in
   // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TOKEN sees
   // the same mutated instance).
-  framework.hostOptions.initialize(configuration);
+  framework.hostOptions.initialize(config);
   const configureSteps = provider.resolve<Func<[HostOptions], void>[]>(
     `Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`,
   );

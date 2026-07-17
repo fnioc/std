@@ -1,10 +1,10 @@
 // HostApplicationBuilder -- the modern, property-based builder, ported from the
 // reference hosting runtime's `HostApplicationBuilder`. Unlike the classic
-// delegate-accumulating `HostBuilder`, it exposes its `configuration`,
+// delegate-accumulating `HostBuilder`, it exposes its `config`,
 // `environment`, `logging`, `metrics`, and `services` as live properties the
 // caller mutates directly, then `build()` runs the same composition tail.
 //
-// `configuration` is a live `ConfigManager` (both an
+// `config` is a live `ConfigManager` (both an
 // `IConfigBuilder` and an `IConfig`): adding a source updates its
 // current view immediately, which is why the framework services are populated
 // eagerly in the constructor but `HostOptions` is folded from the configuration
@@ -30,7 +30,7 @@ import { MetricsBuilder } from './MetricsBuilder';
 
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */
 export class HostApplicationBuilder implements IHostApplicationBuilder {
-  readonly #configuration: ConfigManager;
+  readonly #config: ConfigManager;
   readonly #services = new ServiceManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
@@ -44,12 +44,12 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
 
   public constructor(settings?: HostApplicationBuilderSettings) {
     const resolved = settings ?? new HostApplicationBuilderSettings();
-    this.#configuration = resolved.configuration instanceof ConfigManager
-      ? resolved.configuration
+    this.#config = resolved.config instanceof ConfigManager
+      ? resolved.config
       : new ConfigManager();
     this.#framework = createFrameworkServices();
 
-    // Calls made directly on `this.#configuration` (a concrete
+    // Calls made directly on `this.#config` (a concrete
     // `ConfigManager`) below use the fluent `add*` sugar; calls routed
     // through a `default-config.ts` helper (`setDefaultContentRoot`,
     // `addCommandLineConfig`, `applyDefaultAppConfig`) stay in the raw
@@ -59,16 +59,16 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     // never see a concrete class to hang the sugar off of.
     if (!resolved.disableDefaults) {
       if (
-        resolved.contentRootPath === undefined && this.#configuration.get(HostDefaults.contentRootKey) === undefined
+        resolved.contentRootPath === undefined && this.#config.get(HostDefaults.contentRootKey) === undefined
       ) {
-        setDefaultContentRoot(this.#configuration);
+        setDefaultContentRoot(this.#config);
       }
-      this.#configuration.addEnvironmentVariables({ prefix: HOST_ENVIRONMENT_VARIABLE_PREFIX });
+      this.#config.addEnvironmentVariables({ prefix: HOST_ENVIRONMENT_VARIABLE_PREFIX });
     }
 
     // Command-line args are added even when defaults are disabled: had the caller
     // not wanted them, they would not have set `args` on the settings.
-    addCommandLineConfig(this.#configuration, resolved.args);
+    addCommandLineConfig(this.#config, resolved.args);
 
     // The settings values override all other configuration sources.
     const overrides: Record<string, string> = {};
@@ -82,20 +82,20 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
       overrides[HostDefaults.contentRootKey] = resolved.contentRootPath;
     }
     if (Object.keys(overrides).length) {
-      this.#configuration.addInMemoryCollection(overrides);
+      this.#config.addInMemoryCollection(overrides);
     }
 
-    this.#environment = createHostingEnvironment(this.#configuration);
+    this.#environment = createHostingEnvironment(this.#config);
     this.#context = {
       hostingEnvironment: this.#environment,
-      configuration: this.#configuration,
+      config: this.#config,
       properties: new Map<string | symbol, unknown>(),
     };
 
-    populateFrameworkServices(this.#services, this.#context, this.#environment, this.#configuration, this.#framework);
+    populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config, this.#framework);
 
     if (!resolved.disableDefaults) {
-      applyDefaultAppConfig(this.#configuration, this.#environment, resolved.args);
+      applyDefaultAppConfig(this.#config, this.#environment, resolved.args);
       addDefaultServices(this.#services);
     }
 
@@ -116,8 +116,8 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The mutable set of key/value configuration properties. */
-  public get configuration(): IConfigManager {
-    return this.#configuration;
+  public get config(): IConfigManager {
+    return this.#config;
   }
 
   /** Information about the hosting environment the application runs in. */
@@ -158,7 +158,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    */
   public asHostBuilder(): IHostBuilder {
     return this.#hostBuilderAdapter ??= new HostBuilderAdapter(
-      this.#configuration,
+      this.#config,
       this.#services,
       this.#context,
     );
@@ -173,6 +173,6 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     // Replay any classic-builder delegates accumulated through `asHostBuilder()`
     // before the provider is built (reference parity).
     this.#hostBuilderAdapter?.applyChanges();
-    return resolveHost(this.#services, this.#framework, this.#configuration, this.#serviceProviderOptions);
+    return resolveHost(this.#services, this.#framework, this.#config, this.#serviceProviderOptions);
   }
 }

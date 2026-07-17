@@ -68,23 +68,23 @@ export class HostOptions {
   public backgroundServiceErrorBehavior = BackgroundServiceErrorBehavior.StopHost;
 
   /** Folds the host-option configuration keys onto these options. */
-  public initialize(configuration: IConfig): void {
-    const shutdownSeconds = parseNonNegativeInt(configuration.get('shutdownTimeoutSeconds'));
+  public initialize(config: IConfig): void {
+    const shutdownSeconds = parseNonNegativeInt(config.get('shutdownTimeoutSeconds'));
     if (shutdownSeconds !== undefined) {
       this.shutdownTimeout = shutdownSeconds * 1000;
     }
 
-    const startupSeconds = parseNonNegativeInt(configuration.get('startupTimeoutSeconds'));
+    const startupSeconds = parseNonNegativeInt(config.get('startupTimeoutSeconds'));
     if (startupSeconds !== undefined) {
       this.startupTimeout = startupSeconds * 1000;
     }
 
-    const startConcurrently = parseBool(configuration.get('servicesStartConcurrently'));
+    const startConcurrently = parseBool(config.get('servicesStartConcurrently'));
     if (startConcurrently !== undefined) {
       this.servicesStartConcurrently = startConcurrently;
     }
 
-    const stopConcurrently = parseBool(configuration.get('servicesStopConcurrently'));
+    const stopConcurrently = parseBool(config.get('servicesStopConcurrently'));
     if (stopConcurrently !== undefined) {
       this.servicesStopConcurrently = stopConcurrently;
     }

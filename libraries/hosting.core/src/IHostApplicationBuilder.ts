@@ -20,7 +20,7 @@ export interface IHostApplicationBuilder {
    * The set of key/value configuration properties. Mutable: adding more
    * configuration sources updates its current view.
    */
-  readonly configuration: IConfigManager;
+  readonly config: IConfigManager;
 
   /** Information about the hosting environment an application is running in. */
   readonly environment: IHostEnvironment;

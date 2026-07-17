@@ -8,8 +8,8 @@
 // `HostApplicationBuilder` (over a `ConfigManager`) reuse them. The
 // fluent `addJsonFile` / `addEnvironmentVariables` / `addCommandLine` sugar is
 // now installed on BOTH concrete classes, but that doesn't help here: these
-// functions are shared with `IHostBuilder.configureHostConfiguration` /
-// `configureAppConfiguration`, whose delegate parameter is typed as the plain
+// functions are shared with `IHostBuilder.configureHostConfig` /
+// `configureAppConfig`, whose delegate parameter is typed as the plain
 // `IConfigBuilder` interface (mirrors the reference `Action<IConfigBuilder>`)
 // -- a declaration-merged prototype method isn't visible through an interface
 // type, only through the concrete class it was merged onto. So the defaults go
@@ -17,7 +17,7 @@
 // installs that sugar for user code as a side effect; `HostBuilder.build()`'s
 // own host/app-configuration composition -- a concretely-typed local
 // `ConfigManager`, not something flowing through this interface
-// boundary -- DOES use it, for `addConfiguration`; see host-builder.ts.)
+// boundary -- DOES use it, for `addConfig`; see host-builder.ts.)
 
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { CommandLineConfigSource } from '@rhombus-std/config.commandline';

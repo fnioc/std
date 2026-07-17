@@ -41,13 +41,13 @@ export class HostBuilder implements IHostBuilder {
   #hostBuilt = false;
 
   /** Sets up the configuration for the builder itself. Additive across calls. */
-  public configureHostConfiguration(configureDelegate: Action<[IConfigBuilder]>): this {
+  public configureHostConfig(configureDelegate: Action<[IConfigBuilder]>): this {
     this.#configureHostConfigActions.push(configureDelegate);
     return this;
   }
 
   /** Sets up the configuration for the remainder of the build and application. Additive. */
-  public configureAppConfiguration(
+  public configureAppConfig(
     configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
   ): this {
     this.#configureAppConfigActions.push(configureDelegate);
@@ -96,15 +96,15 @@ export class HostBuilder implements IHostBuilder {
     for (const action of this.#configureHostConfigActions) {
       action(hostConfigBuilder);
     }
-    const hostConfiguration = hostConfigBuilder.build();
+    const hostConfig = hostConfigBuilder.build();
 
     // 2. Hosting environment.
-    const hostingEnvironment = createHostingEnvironment(hostConfiguration);
+    const hostingEnvironment = createHostingEnvironment(hostConfig);
 
     // 3. Host-builder context.
     const hostBuilderContext: HostBuilderContext = {
       hostingEnvironment,
-      configuration: hostConfiguration,
+      config: hostConfig,
       properties: this.properties,
     };
 
@@ -112,17 +112,17 @@ export class HostBuilder implements IHostBuilder {
     // a live read-through, not a snapshot, so a later host-configuration
     // reload propagates into the application configuration too).
     const appConfigBuilder = new ConfigManager();
-    appConfigBuilder.addConfiguration(hostConfiguration);
+    appConfigBuilder.addConfig(hostConfig);
     for (const action of this.#configureAppConfigActions) {
       action(hostBuilderContext, appConfigBuilder);
     }
-    const appConfiguration = appConfigBuilder.build();
-    hostBuilderContext.configuration = appConfiguration;
+    const appConfig = appConfigBuilder.build();
+    hostBuilderContext.config = appConfig;
 
     // 5. Framework services + the user's configure-services delegates.
     const services = new ServiceManifest();
     const framework = createFrameworkServices();
-    populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfiguration, framework);
+    populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfig, framework);
 
     for (const action of this.#configureServicesActions) {
       action(hostBuilderContext, services);
@@ -135,6 +135,6 @@ export class HostBuilder implements IHostBuilder {
     // options (from `useDefaultServiceProvider` / `configureDefaults`) are
     // resolved now that the context exists, then threaded into `build()`.
     const serviceProviderOptions = resolveServiceProviderOptions(this, hostBuilderContext);
-    return resolveHost(services, framework, appConfiguration, serviceProviderOptions);
+    return resolveHost(services, framework, appConfig, serviceProviderOptions);
   }
 }

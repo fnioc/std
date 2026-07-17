@@ -61,7 +61,7 @@ export const BrowserHost = {
     const builder = Host.createEmptyApplicationBuilder(hostSettings);
 
     if (settings?.initialData !== undefined) {
-      builder.configuration.add(new MemoryConfigSource({ initialData: settings.initialData }));
+      builder.config.add(new MemoryConfigSource({ initialData: settings.initialData }));
     }
 
     // The builder's environment is already browser-shaped: content root "/"
