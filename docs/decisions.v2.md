@@ -178,3 +178,28 @@ of this decision.
 Mechanics — descriptor/source dedup, `--plugins-json` shape, the stage-selection error contract,
 the publish story — live in `docs/features/transformer-architecture.md`, the canonical reference; this
 entry records only the ruling. _Owner-approved 2026-07-16._
+
+## §91 — Inline-stage matching is by symbol identity, not a string key
+
+A `rhombus.inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
+program: the type reference resolves to a module symbol, then to the merged member symbol that
+TypeScript's declaration merging has already unified from every `declare module` augmentation of
+the interface. Each call site independently resolves its own signature → declaration → symbol, and
+the two sides match by that resolved symbol identity — never by a string key, canonical name, or
+reconstructed token.
+
+Four canonical-string-key designs were tried and rejected before landing here. A string key has to
+be derived from some one declaration site, but the whole point of `declare module` augmentation is
+that N separately-authored declarations of "the same" member collapse onto a single symbol — a
+string reconstructed from any one of those sites can't know about the others, and drifts the moment
+an augmentation changes shape. Symbol identity is what actually exploits the collapse; a string key
+can only approximate it.
+
+Scope stays workspace-only — never a published manifest, never a dist/JS resolution path
+(consistent with §87) — and the certified grammar is narrow: interface member (`type`+`impl`+
+`member`) and free function (`impl` only) are certified; class member and object-literal member are
+specced but flagged uncertified. Matching goes one level deep, no recursion.
+
+Full schema, the authoring lint, and the tripwires (rogue-duplicate, emit sweep) live in
+`docs/features/transformer-architecture.md`; this entry records only the identity-vs-string ruling.
+_Owner-approved 2026-07-17._
