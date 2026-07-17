@@ -91,7 +91,7 @@ Three things worth knowing about it:
 ## One binary underneath
 
 Every `@rhombus-std/*.transformer` package's `/ttsc` subpath — `di`, `di-options`, `config`,
-`nameof`, all of them — resolves to the **same Go source**. That's deliberate: `ttsc` builds one
+`nameof`, `inline`, all of them — resolves to the **same Go source**. That's deliberate: `ttsc` builds one
 native binary per distinct source it sees, so no matter how many stages your `tsconfig.ttsc.json`
 lists, they all point at one already-compiled binary. Concretely, that means:
 
@@ -104,9 +104,9 @@ lists, they all point at one already-compiled binary. Concretely, that means:
 - **Runtime stage selection.** The binary receives the ordered list of active stages on its command
   line (`--plugins-json`) and activates only the ones you declared — listing `di` and `config` but
   not `di-options` runs exactly those two, nothing more.
-- **A hardcoded, canonical execution order** — `nameof` → `di` → `di-options` → `config` — applied
-  regardless of the order you wrote your `plugins` array in. Declaration order is for readability
-  only; it never changes what runs first.
+- **A hardcoded, canonical execution order** — `inline` → `nameof` → `di` → `di-options` → `config`
+  — applied regardless of the order you wrote your `plugins` array in. Declaration order is for
+  readability only; it never changes what runs first.
 - **Loud failure, not silent skip.** An unrecognized stage name, a missing Go toolchain, or two
   plugin entries that can't share a pass all fail the build with a specific message — never a
   quietly-incomplete transform.
@@ -165,16 +165,88 @@ packages it only borrows types from.
 ## Internals (for maintainers of this repo's transformer sources)
 
 The shared binary lives at `transforms/cmd/ttsc-std` and statically links every stage this repo
-ships: token/`nameof` derivation, DI registration lowering, `addOptions<T>()`, and
-`withType<T>()`. Each `@rhombus-std/*.transformer` package's `ttsc.mjs` descriptor still names its
-own stage (`di`, `di-options`, `config`, `nameof`) so `ttsc`'s `--plugins-json` payload lists them
-individually — but every descriptor's `source` field resolves to the same `ttsc-std` directory, so
-`ttsc` compiles it exactly once regardless of how many descriptors reference it.
+ships: single-expression inlining, token/`nameof` derivation, DI registration lowering,
+`addOptions<T>()`, and `withType<T>()`. Each `@rhombus-std/*.transformer` package's `ttsc.mjs`
+descriptor still names its own stage (`inline`, `nameof`, `di`, `di-options`, `config`) so `ttsc`'s
+`--plugins-json` payload lists them individually — but every descriptor's `source` field resolves
+to the same `ttsc-std` directory, so `ttsc` compiles it exactly once regardless of how many
+descriptors reference it.
 
 `ttsc-std` parses `--plugins-json` at startup, builds the set of declared stage names, and runs
 only those stages' AST transforms over the loaded program — in the hardcoded canonical order, not
 declaration order. An unrecognized stage name in that payload is a build-time error naming the
 unknown stage, not a silent no-op.
+
+## The inline stage
+
+`inline` runs first in the canonical order, ahead of `nameof`. It's a generic
+single-expression-body inliner, not per-library semantic knowledge: it substitutes a sugar call
+site with the body of a hand-authored TypeScript function, written over compile-time primitives,
+then lets the later stages (`nameof`, `di`, …) lower the substituted result as if you'd written it
+yourself. Over time this stage is meant to absorb most of what today's per-library semantic
+transforms (`di`, `di-options`, `config`) do by hand.
+
+It is **workspace-only** — every entry it inlines resolves to a sibling package's real `src` file
+at build time, in this repo, in this build. There is no published/carrier form of an inlined
+function, no shipped src, no dist-JS resolution path; that's a deliberately parked, out-of-scope
+follow-up.
+
+**The publish list — `rhombus.inline`.** A package opts a function into inlining by hand-authoring
+an entry in its `package.json`:
+
+```json
+{
+  "rhombus": {
+    "inline": {
+      "entries": [
+        {
+          "type": "@rhombus-std/di.core:IServiceManifest",
+          "impl": "ServiceManifestExtensions",
+          "member": "add"
+        }
+      ],
+      "import": "./more.json"
+    }
+  }
+}
+```
+
+- **`type`** — a `nameof`-grammar token (`<package>:<TypeName>`, barrel-relative). This is the
+  match anchor: the interface the sugar member belongs to.
+- **`impl`** — the export name inside the declaring package, resolved through the workspace to its
+  real source.
+- **`member`** — shared by both the interface side and the impl side; the registry-install
+  mechanism keeps the two structurally identical.
+- Presence of these fields infers the entry's kind: `type` + `impl` → an interface-member (call it
+  through `this`); `impl` alone (no `member`) → a free function. Only these two shapes are
+  certified — an authoring lint rejects anything else as specced-but-not-certified.
+- **`import`** — an optional file-relative path (string or array) to another file following the
+  same `{ "entries": [...] }` schema. Imported entries concatenate into the list; import cycles are
+  a hard build error. This is how a package composes its inline list out of more than one file
+  instead of authoring every entry inline.
+
+**Matching.** Each entry resolves once per program, through the checker, to a symbol —
+`type` → module symbol → member symbol, with TypeScript's own declaration merging already having
+unified every duplicate declaration behind that one symbol. A call site matches by resolving its
+own signature back to that same symbol identity, not by re-deriving or comparing any string key.
+
+**Body extraction.** The inliner reads the declaring package's source directly (a syntax-only
+parse, cached per package per build) to pull out the single return-expression body it substitutes
+at each matched call site — no type-checking is needed on the body itself; the consuming program's
+own checker validates the substituted result.
+
+**Authoring discipline (lint-enforced).** An inlineable function must have a single return
+expression; each value parameter may appear at most once in a runtime position (unlimited inside
+primitive-call positions); type parameters may only appear in primitive-call positions; it may not
+reference other inlineable declarations (nesting is deferred); and its receiver is evaluated
+exactly once — the inliner introduces a temporary itself when the receiver expression is effectful.
+
+**Pilot status.** `isService<T>()` is the only member currently inlined (`di.core`, body:
+`return this.isService(nameof<T>())`), chosen as the simplest byte-parity case — after inlining,
+the call reaches its existing semantic stage in already-primitive form, so nothing double-lowers
+it. The `di` stage still recognizes `isService` on its own; removing that recognition is a tracked
+follow-up, not part of the pilot. `addOptions`, `resolve`, `withType`, and `add` are untouched by
+the inline stage for now.
 
 This doc is the canonical reference for this architecture. Augmentation authoring, the `@augment`
 registry, and how the transformers match a member to its declaring interface are a separate
