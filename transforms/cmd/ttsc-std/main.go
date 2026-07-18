@@ -16,10 +16,12 @@
 //
 // The scaffolding lives in internal/stdhost, shared with the in-repo-only
 // cmd/ttsc-std-full sibling (which adds the typia-embedding merge-synthesis
-// stage). THIS binary is the published one and must stay typia-free and
-// offline-buildable (§87): it links only the base stages, and Go's lazy module
-// loading means building this package never reads the typia requirement the
-// shared go.mod records for the sibling.
+// stage). THIS binary is the published one and stays typia-free (§87): it
+// links zero typia packages (`go list -deps ./cmd/ttsc-std` names none), so
+// building it never fetches typia source — module-graph resolution reads only
+// typia's go.mod metadata (a one-time ~2KB proxy fetch, cached alongside the
+// typescript-go module every cold source-plugin build already fetches; warm
+// module caches build offline exactly as before).
 package main
 
 import (
