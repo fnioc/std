@@ -142,6 +142,11 @@ func runTransform(args []string) int {
 			hasError = true
 		}
 	}
+	// Route the token core's hard derivation diagnostics (a type reachable only
+	// through a non-barrel, non-tokens export subpath) into the envelope as errors.
+	ctx.Diag = func(file string, start int, code, message string) {
+		emit(envelopeFromPlugin(plugin.Diagnostic{File: file, Start: start, Code: code, Message: message}, categoryError))
+	}
 
 	artifacts := inlinetransform.NewArtifacts()
 	env := &stageEnv{cwd: cwd, artifacts: artifacts}

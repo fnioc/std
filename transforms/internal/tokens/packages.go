@@ -1,7 +1,7 @@
 package tokens
 
 import (
-	"sort"
+	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 
@@ -42,9 +42,14 @@ func nearestPackage(ctx *Context, fromPath string) *packageInfo {
 }
 
 // publicImportSpecifier returns the exact import specifier a consumer writes for
-// a symbol reachable through a package's public exports (`pkg` for a root export,
-// `pkg/contracts` for a subpath), or ok=false when the type is private to the
-// package. The match is against the checker export graph, not file-path stems.
+// a symbol reachable through a package's public exports. Only two subpaths yield
+// a stable public specifier: the barrel `.` (→ bare `pkg`) and `./tokens/*`
+// (→ `pkg/tokens/<path>`, the source-referenced token surface). A type reachable
+// through the exports but ONLY via some other named subpath has no derivable
+// public specifier — that is a hard diagnostic (via ctx.Diag), because a friendly
+// alias subpath must not silently become part of a token. ok=false means the type
+// is not publicly reachable at all and falls to the app-internal token. The match
+// is against the checker export graph, not file-path stems.
 func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbol, _ *shimast.SourceFile) (string, bool) {
 	if ctx.SourceFileAtStem == nil {
 		return "", false
@@ -62,11 +67,12 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		declFile = shimast.GetSourceFileOfNode(primary)
 	}
 
-	type match struct {
-		subpath         string
-		targetsDeclFile bool
-	}
-	matches := []match{}
+	// Classify every export subpath the target is re-exported from into the three
+	// buckets the strict rule cares about. No tiebreak: the barrel always wins,
+	// then a `./tokens/*` subpath, and any other reachable subpath is a violation.
+	var hasBarrel bool
+	var tokensSubpath string
+	var otherSubpath string
 	for _, entry := range tokentext.CollectExportEntries(pkg.json) {
 		sf := entrySourceFile(pkg, entry, ctx.SourceFileAtStem)
 		if sf == nil {
@@ -76,6 +82,7 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		if mod == nil {
 			continue
 		}
+		shares := false
 		for _, exp := range ctx.Checker.GetExportsOfModule(mod) {
 			resolved := exp
 			if exp.Flags&shimast.SymbolFlagsAlias != 0 {
@@ -83,7 +90,6 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 					resolved = aliased
 				}
 			}
-			shares := false
 			for _, d := range resolved.Declarations {
 				if targetDecls[d] {
 					shares = true
@@ -91,30 +97,60 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 				}
 			}
 			if shares {
-				matches = append(matches, match{subpath: entry.Subpath, targetsDeclFile: sf == declFile})
 				break
 			}
 		}
-	}
-	if len(matches) == 0 {
-		return "", false
+		if !shares {
+			continue
+		}
+		switch {
+		case entry.Subpath == "":
+			hasBarrel = true
+		case entry.Subpath == "tokens" || strings.HasPrefix(entry.Subpath, "tokens/"):
+			if tokensSubpath == "" || sf == declFile {
+				tokensSubpath = entry.Subpath
+			}
+		default:
+			if otherSubpath == "" {
+				otherSubpath = entry.Subpath
+			}
+		}
 	}
 
-	sort.SliceStable(matches, func(i, j int) bool {
-		a, b := matches[i], matches[j]
-		if a.targetsDeclFile != b.targetsDeclFile {
-			return a.targetsDeclFile
-		}
-		if len(a.subpath) != len(b.subpath) {
-			return len(a.subpath) < len(b.subpath)
-		}
-		return a.subpath < b.subpath
-	})
-	best := matches[0]
-	if best.subpath == "" {
+	if hasBarrel {
 		return pkg.name, true
 	}
-	return pkg.name + "/" + best.subpath, true
+	if tokensSubpath != "" {
+		return pkg.name + "/" + tokensSubpath, true
+	}
+	if otherSubpath != "" {
+		reportNonPublicSubpath(ctx, target, declFile, pkg, otherSubpath)
+	}
+	return "", false
+}
+
+// reportNonPublicSubpath fires ctx.Diag for a type reachable only via a named
+// export subpath that is neither the barrel nor `./tokens/*`. Anchored at the
+// type's own declaration so the message points at the file whose exports must
+// change. Naming both fixes keeps the remedy unambiguous.
+func reportNonPublicSubpath(ctx *Context, target *shimast.Symbol, declFile *shimast.SourceFile, pkg *packageInfo, subpath string) {
+	if ctx.Diag == nil || declFile == nil {
+		return
+	}
+	primary := primaryDeclaration(target)
+	if primary == nil {
+		return
+	}
+	ctx.Diag(
+		declFile.FileName(),
+		primary.Pos(),
+		"TOKEN_SUBPATH_NOT_PUBLIC",
+		"cannot derive a token for \""+target.Name+"\": it is reachable from \""+pkg.name+
+			"\" only through the \"./"+subpath+"\" export subpath, which is neither the package "+
+			"barrel nor \"./tokens/*\". Export it from the barrel (the package's main index), or "+
+			"expose its file through a \"./tokens/*\" subpath, so the derived token has a stable "+
+			"public import specifier.",
+	)
 }
 
 // entrySourceFile resolves an export entry's on-disk target to the source file

@@ -33,6 +33,14 @@ type Context struct {
 	// IsDefaultLib reports whether a source file is a TypeScript default lib, in
 	// which case its declared types tokenize by bare name.
 	IsDefaultLib func(sf *shimast.SourceFile) bool
+	// Diag emits a hard token-derivation diagnostic (File is an absolute path,
+	// Start a node offset). It fires when a type is reachable through the package
+	// exports but only via a subpath that is neither the barrel nor `./tokens/*`,
+	// so no stable public specifier can be spelled for it. Optional: nil in unit
+	// tests and whenever no host wired a sink; a nil sink degrades the strict case
+	// to the app-internal fallback token. Wired by the plugin host to its envelope
+	// diagnostic collector.
+	Diag func(file string, start int, code, message string)
 
 	packageCache map[string]*packageInfo
 }

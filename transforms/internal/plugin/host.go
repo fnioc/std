@@ -119,9 +119,15 @@ func runTransform(spec Spec, args []string) int {
 
 	ctx := NewContext(prog, cwd)
 	collected := []Diagnostic{}
-	transform := spec.Factory(prog, ctx, func(d Diagnostic) {
+	addDiagnostic := func(d Diagnostic) {
 		collected = append(collected, d)
-	})
+	}
+	// The token core's hard derivation diagnostics (a type reachable only through a
+	// non-barrel, non-tokens export subpath) flow through the same collector.
+	ctx.Diag = func(file string, start int, code, message string) {
+		addDiagnostic(Diagnostic{File: file, Start: start, Code: code, Message: message})
+	}
+	transform := spec.Factory(prog, ctx, addDiagnostic)
 
 	out := projectEnvelope{
 		Diagnostics: []envelopeDiagnostic{},
