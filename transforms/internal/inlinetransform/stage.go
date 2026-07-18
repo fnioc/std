@@ -14,6 +14,7 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
 // matchTarget is a declaration node's inline plan: the sugar body plus the
@@ -203,6 +204,20 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 				Message: "cannot bind the sugar's type argument — write the type argument explicitly",
 			})
 			return nil, false
+		}
+		// Keyed fence: a sugar type argument carrying the Keyed<T, K> brand composes
+		// its registration token as `<base>#key` — a composition ONLY the di
+		// registration stage performs (via tokens.KeyedTokenFor). The inline path
+		// lowers its service token through nameof, which deliberately does NOT run
+		// KeyedTokenFor, so inlining a keyed sugar would drop the `#key` suffix and
+		// register under a silently-wrong token. Leave such a call un-inlined so the
+		// di direct stage lowers it with the key intact. (Whether nameof itself should
+		// ever compose a key is a separate deferred decision — see nameoftransform's
+		// keyed note; the fence preserves correct behavior without needing it.)
+		for _, t := range types[:len(body.TypeParams)] {
+			if _, keyed := tokens.KeyLiteralFor(t, st.checker); keyed {
+				return nil, false
+			}
 		}
 		env = map[string]*shimchecker.Type{}
 		for i, tp := range body.TypeParams {
