@@ -182,11 +182,24 @@ func exportedName(element *shimast.Node) string {
 // never a source-written nameof; a substituted nameof is handled via the inline
 // artifacts instead. Guard on the callee's position so a synthetic node is a
 // clean skip, not a nil-deref inside GetSymbolAtLocation.
+//
+// A second, subtler hazard shares the same failure mode: a call whose callee is
+// a SOURCE-POSITIONED property access (e.g. the `.as` in `add(...).as<"x">()`)
+// but whose OBJECT expression was just replaced by the inline stage's
+// substitution (`add<T>(ctor)` → `add(nameof<T>(), ctor, signatureof(ctor))`).
+// The factory's `Update...` call rebuilds the property-access node because its
+// child changed, so the node itself keeps a real position, but the rebuild never
+// re-links its `Parent` pointer (that linking only happens for a fresh parse or
+// an explicit re-parent pass) — and the checker's `GetSymbolAtLocation` derefs
+// `node.Parent.Parent` unconditionally, nil-panicking on the unlinked pointer.
+// Guard on Parent for the same reason as Pos: an unlinked node was never
+// checked, so it can never BE the checker's nameof, and a clean skip defers to
+// whatever already lowered it (here, the di stage's own `.as` lowering).
 func isNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) bool {
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return false
 	}
-	if call.Expression.Pos() < 0 {
+	if call.Expression.Pos() < 0 || call.Expression.Parent == nil {
 		return false
 	}
 	symbol := checker.GetSymbolAtLocation(call.Expression)

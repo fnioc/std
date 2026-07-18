@@ -143,13 +143,21 @@ func signatureofArg(checker *shimchecker.Checker, artifacts *inlinetransform.Art
 // panics on a SYNTHETIC callee (no program position — e.g. the inline stage's
 // substituted clone); such nodes are handled via artifacts above, so a negative
 // position is a clean skip, not a nil-deref inside GetSymbolAtLocation.
+//
+// A node can also carry a real position but an unset `Parent` — a property
+// access the inline substitution rebuilt because its OBJECT child changed
+// (mirroring nameoftransform.isNameofCall's `.as`-chain hazard: this stage's
+// visitor, like nameof's, walks every call expression in the file
+// unconditionally, so it reaches the SAME kind of node). The checker's
+// GetSymbolAtLocation derefs `Parent.Parent` unconditionally, so this needs the
+// same clean-skip guard.
 func sourceWrittenArg(checker *shimchecker.Checker, node *shimast.Node) (*shimast.Node, bool) {
 	call := node.AsCallExpression()
 	if call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
 		return nil, false
 	}
 	callee := call.Expression
-	if callee.Pos() < 0 {
+	if callee.Pos() < 0 || callee.Parent == nil {
 		return nil, false
 	}
 	symbol := checker.GetSymbolAtLocation(callee)
