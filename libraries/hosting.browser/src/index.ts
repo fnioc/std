@@ -37,4 +37,4 @@ export { defaultPageContext } from './page-context';
 export { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './tokens';
 
 // The IHostBuilder augmentation set (+ its side-effect registration).
-export { BrowserLifetimeHostBuilderExtensions } from './BrowserLifetimeHostBuilderExtensions';
+export { BrowserLifetimeHostBuilderAugmentations } from './BrowserLifetimeHostBuilderAugmentations';
