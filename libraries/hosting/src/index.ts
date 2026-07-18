@@ -4,7 +4,7 @@
 // settings, the static `Host` factory facade, the host runtime objects
 // (`HostOptions`, the console lifetime + its options, the background-service
 // error behavior), and the `IHostBuilder` augmentation set
-// (`HostingHostBuilderExtensions`). Re-exports the @rhombus-std/hosting.core
+// (`HostingHostBuilderAugmentations`). Re-exports the @rhombus-std/hosting.core
 // public surface so a consumer reaches the whole hosting API through the single
 // @rhombus-std/hosting import.
 //
@@ -22,10 +22,10 @@
 export * from '@rhombus-std/hosting.core';
 
 // Bring the runtime registration of the IHostBuilder set into the program so
-// `HostingHostBuilderExtensions` is registered. The concrete classes satisfy their
+// `HostingHostBuilderAugmentations` is registered. The concrete classes satisfy their
 // augmented interfaces via their own `interface ... extends I` merges (beside each
 // class), so no class-side augmentation module is needed.
-import './HostingHostBuilderExtensions';
+import './HostingHostBuilderAugmentations';
 
 // The builders + factory facade.
 export { Host } from './Host';
@@ -42,7 +42,7 @@ export { NullLifetime } from './internal/NullLifetime';
 export { MetricsBuilder } from './MetricsBuilder';
 
 // The IHostBuilder augmentation set (reference HostingHostBuilderExtensions).
-export { HostingHostBuilderExtensions } from './HostingHostBuilderExtensions';
+export { HostingHostBuilderAugmentations } from './HostingHostBuilderAugmentations';
 
 // The provider-construction options `useDefaultServiceProvider` configures
 // (reference ServiceProviderOptions) — re-exported from di.core, which owns it.

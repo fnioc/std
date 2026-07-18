@@ -35,11 +35,11 @@ declare module '@rhombus-std/hosting.core' {
 }
 
 /**
- * The `BrowserLifetimeHostBuilderExtensions` augmentation set for
+ * The `BrowserLifetimeHostBuilderAugmentations` augmentation set for
  * {@link IHostBuilder} (docs §28/§38). Registered under the `IHostBuilder`
  * token below; the member is also the standalone call surface.
  */
-export const BrowserLifetimeHostBuilderExtensions = {
+export const BrowserLifetimeHostBuilderAugmentations = {
   /**
    * Listens for the page-lifecycle events and requests a graceful shutdown on
    * a terminal `pagehide` by registering the
@@ -60,4 +60,4 @@ export const BrowserLifetimeHostBuilderExtensions = {
   },
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(nameof<IHostBuilder>(), BrowserLifetimeHostBuilderExtensions);
+registerAugmentations(nameof<IHostBuilder>(), BrowserLifetimeHostBuilderAugmentations);

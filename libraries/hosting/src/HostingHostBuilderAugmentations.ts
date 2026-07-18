@@ -74,12 +74,12 @@ declare module '@rhombus-std/hosting.core' {
 }
 
 /**
- * The `HostingHostBuilderExtensions` augmentation set for {@link IHostBuilder}
+ * The `HostingHostBuilderAugmentations` augmentation set for {@link IHostBuilder}
  * (docs §28). Registered under the `IHostBuilder` token; the
  * concrete `HostBuilder` pulls it (and hosting.core's `startHost`) via `@augment`.
  * The members here are also the standalone call surface.
  */
-export const HostingHostBuilderExtensions = {
+export const HostingHostBuilderAugmentations = {
   /**
    * Configures an existing {@link IHostBuilder} with the pre-configured defaults:
    * content root = cwd, host config from prefixed env vars + args, app config from
@@ -247,10 +247,10 @@ export const HostingHostBuilderExtensions = {
       abortSignal = args[0];
     }
     return HostingAbstractionsHostExtensions.runAsync(
-      HostingHostBuilderExtensions.useConsoleLifetime(hostBuilder, configureOptions).build(),
+      HostingHostBuilderAugmentations.useConsoleLifetime(hostBuilder, configureOptions).build(),
       abortSignal,
     );
   },
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(nameof<IHostBuilder>(), HostingHostBuilderExtensions);
+registerAugmentations(nameof<IHostBuilder>(), HostingHostBuilderAugmentations);
