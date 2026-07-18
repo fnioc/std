@@ -54,6 +54,33 @@ func TestSourceWrittenArgSyntheticCalleeGuard(t *testing.T) {
 	}
 }
 
+// TestSourceWrittenArgUnlinkedParentGuard is the signaturetransform analog of the
+// #240 `.as`-chain nil-deref (see nameoftransform.isNameofCall's writeup): a
+// callee can carry a REAL parsed position — so the Pos<0 guard above does not
+// fire — while its `Parent` link is unset, because the inline stage's
+// substitution rebuilt the wrapping node over a changed child without
+// re-linking it. This stage's visitor walks every call expression exactly like
+// nameof's, so it reaches the same shape. Detach a parsed (real-position)
+// callee's Parent to reproduce the unlinked-but-positioned node directly, and
+// assert the guard returns cleanly with a nil checker — a real checker call
+// here would panic.
+func TestSourceWrittenArgUnlinkedParentGuard(t *testing.T) {
+	sf := parseTS(t, "signatureof(Foo);\n")
+	call := findCallByCallee(sf, "signatureof")
+	if call == nil {
+		t.Fatal("signatureof(Foo) call not found")
+	}
+	callee := call.AsCallExpression().Expression
+	if callee.Pos() < 0 {
+		t.Fatalf("test setup: expected a real parsed position, got %d", callee.Pos())
+	}
+	callee.Parent = nil
+
+	if arg, ok := sourceWrittenArg(nil, call); ok || arg != nil {
+		t.Fatalf("unlinked-parent callee: got (%v, %t), want (nil, false)", arg, ok)
+	}
+}
+
 // TestSignatureofArgArtifacts covers the artifacts (inline-substituted) branch,
 // which anchors purely on the recorded use and NEVER touches the checker:
 //   - a node recorded as a `signatureof` use with a ValueArg -> that ValueArg.
