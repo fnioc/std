@@ -1,6 +1,5 @@
-// The hybrid-cache abstractions, black-box through the public barrel
-// (caching.core is the ttsc build pilot -- no dist/internal white-box
-// surface): HybridCacheEntryFlags bit identities, HybridCacheEntryOptions
+// The hybrid-cache abstractions, black-box through the public barrel (not the
+// `private/*` white-box seam): HybridCacheEntryFlags bit identities, HybridCacheEntryOptions
 // init-bag semantics, the HybridCache batch-remove virtual defaults over a
 // recording subclass, and a hand-written IHybridCacheSerializer /
 // IHybridCacheSerializerFactory pair (the compile-time contract guard).

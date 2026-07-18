@@ -3,8 +3,8 @@
 // prototype-installed method form, docs §28/§38). The freeze guard (the
 // reference's internal `Freeze()`) is covered black-box in
 // distributed-cache-augmentations.test.ts through the frozen default-options
-// singleton -- caching.core is the ttsc build pilot, which does not (yet) emit
-// the `dist/internal` white-box surface (see scripts/build-package.ts).
+// singleton -- these tests exercise the public barrel, not the `private/*`
+// white-box seam.
 
 import { DistributedCacheEntryExtensions, DistributedCacheEntryOptions } from '@rhombus-std/caching.core';
 import { describe, expect, test } from 'bun:test';

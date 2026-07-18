@@ -1,8 +1,8 @@
 // Browser-bundle smoke test: @rhombus-std/hosting must bundle for a browser
 // target. Both cases bundle the built `dist` -- what a real published browser
 // consumer resolves, and consistent with the rest of this suite, which already
-// requires a built workspace (it reaches hosting through the `internal/*` ->
-// `dist/internal` subpath). Run `bun run build` first.
+// requires a built workspace (it reaches hosting through the `private/*` ->
+// `dist/stage` subpath). Run `bun run build` first.
 //
 // The bundle runs in a SUBPROCESS (`bun build ... --target browser`) rather
 // than in-process `Bun.build`: the bundler cannot re-read a module that the
@@ -20,7 +20,7 @@
 // and stubs `node:fs` / `node:async_hooks` to empty modules, so the public
 // entry bundles successfully regardless -- retiring those imports belongs to
 // the config.json / logging stages, not this one. The second case bundles
-// hosting's composition tail in isolation (`dist/internal/host-composition.js`,
+// hosting's composition tail in isolation (`dist/stage/host-composition.js`,
 // which imports neither config.json nor anything node-backed once the
 // `node:path` import is gone) so it fails if a `node:*` import is
 // re-introduced into hosting itself.
@@ -28,7 +28,7 @@
 import { expect, test } from 'bun:test';
 
 const fixture = import.meta.dir + '/fixtures/browser-bundle-entry.ts';
-const compositionTail = import.meta.dir + '/../../../libraries/hosting/dist/internal/host-composition.js';
+const compositionTail = import.meta.dir + '/../../../libraries/hosting/dist/stage/host-composition.js';
 
 function bundleForBrowser(entrypoint: string): { exitCode: number; bundle: string; stderr: string; } {
   const result = Bun.spawnSync(['bun', 'build', entrypoint, '--target', 'browser']);

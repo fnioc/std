@@ -68,7 +68,9 @@
   },
   "devDependencies": {
     "@rhombus-std/primitives.transformer": "workspace:*",
+    "@ttsc/unplugin": "^0.18.1",
     "ts-patch": "^3.3.0",
+    "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
   }
 }

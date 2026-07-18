@@ -43,10 +43,6 @@
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
-  "//rhombusBuild": "PILOT (§41): nameof lowering runs on the ttsc/Go engine; tsconfig.build.json is the retained tspc twin (parity invariant), so the marker picks the engine.",
-  "rhombusBuild": {
-    "lowering": "ttsc"
-  },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.5.3"
