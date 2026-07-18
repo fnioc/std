@@ -223,3 +223,83 @@ specced but flagged uncertified. Matching goes one level deep, no recursion.
 Full schema, the authoring lint, and the tripwires (rogue-duplicate, emit sweep) live in
 `docs/features/transformer-architecture.md`; this entry records only the identity-vs-string ruling.
 _Owner-approved 2026-07-17._
+
+## §94 — Resolve-family sugar inlines via type-predicate primitives
+
+The tokenless resolve family (`resolve<T>()`, `resolveAsync<T>()`, `tryResolve<T>()`) lowers
+through the generic inline stage with plain certified bodies. Type-directed dispatch is expressed
+**inside** those bodies via compile-time predicate primitives, never via context-sensitive matching
+in the engine.
+
+Two authoring-only primitives live in `primitives.transformer` (per §92's homing rule), shipped as
+throwing stubs like `nameof`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
+the token grammar's term for a type with exactly one value: a literal, `null`, `undefined`, or
+`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(nameof<T>())`.
+Resolving a singular type IS its value: a hand-written `tryResolve(nameof<'dev'>())` folds
+identically, so the sugar and the explicit form share one semantics.
+
+The inline engine constant-folds after primitive lowering — boolean-ternary dead-branch pruning,
+run **before** the emit sweep so a pruned-branch primitive never trips it. A surviving unguarded
+`singularValue<T>()` over a non-singular type raises a targeted diagnostic. The factory form
+(`resolve<F>()` where `F` is a function type, lowering to `resolveFactory`) uses the same pattern
+plus signatureof-shaped extraction in the true arm.
+
+Implementation notes: the exact primitive names/signatures and the diagnostic wording are Claude's
+call, applying §92's homing rule to this family. _Owner-directed 2026-07-18._
+
+## §95 — `addOptions` sugar homes in its transformer satellite
+
+The phantom `addOptions<T>()` typing, its certified inline body, and the `rhombus.inline` marker all
+live in `di.transformer.options` (per §92); `options.augmentations` keeps only the runtime explicit
+verbs. The compile-time guard stands: without the satellite in the program, the 0-arg form does not
+typecheck — no compiles-then-throws.
+
+The bespoke di-options lowering stage retires into the generic inline path: the body lowers to a
+dot-call of the explicit verb (`this.addOptions(nameof<IOptions<T>>(), nameof<T>())`), so the
+augmentation prototype wrapper and any merge dispatcher execute exactly as they would for
+hand-written code. This requires the inline engine to support nested closed-generic type-argument
+instantiation (`nameof<IOptions<T>>()`).
+
+Token derivation is one function, not two: the non-hole-aware derivation collapses into the
+hole-aware `DeriveTokenF`, mirroring the reference's single `deriveToken`.
+
+_Owner-directed 2026-07-18._
+
+## §96 — One transform engine
+
+The Go/`ttsc` engine (§41, §90) is the **only** transform engine. The ts-patch track — twin
+transformer sources, `tspc` emit and check invocations, `tsconfig.build.json` twins, and the
+ts-patch dependencies — is removed, tagged at the restore point `pre-tspatch-removal`. Typecheck and
+lint for sugar-consuming packages run plain `tsc --noEmit` over the phantom typings; transformer-
+authored diagnostics fire on the build path, which the same gate runs.
+
+Tests must never run different code than what is delivered — no load-time re-transformation of
+library code. A test category of sugar-**authored** tests, compiled by the same Go pipeline,
+exercises transform and runtime together.
+
+Build shape per lowering package: one per-file lowering pass (a "stage") whose output is retained as
+`dist/private`, then a plugin-free bundle is built **from** that stage emit. Each file lowers exactly
+once, and the bundle tests execute is built from those same lowered files — never a second,
+divergent lowering.
+
+_Owner-directed 2026-07-18._
+
+## §97 — White-box surfaces: `tokens` and `private`; strict token derivation
+
+Every library exposes `./tokens/*` — every export condition pointing at `./src/*.ts` — as the
+token/type surface. Lowering packages additionally expose `./private/*` (`types` → `./src/*.ts`,
+`bun` → `./dist/private/*.js`) as the typed runnable-internals surface. Both are in-repo only:
+`publishConfig` rewrites `exports` down to `.` alone, and `files` excludes `dist/private`.
+
+Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
+carrying a `default` condition — public, where a bare-string target counts as carrying one — with
+ties broken lexicographically; the root `.` export is the shortest possible case, deriving the bare
+`pkg:Type` form. If no public entry reaches the file, `./tokens/*` — deliberately default-less, the
+one sanctioned in-repo internal surface — derives `pkg/tokens/<path>:Type`. If neither reaches it, a
+hard diagnostic names both fixes (export the type publicly, or expose its file via `./tokens/*`).
+Shortest-within-public supports deliberate public aliasing; only publish-surviving entries ever
+compete, so an internal or test mapping can never affect token identity. The derivation path for a
+package with no exports map is unchanged. `internal` is banned as an export alias, since it collides
+with same-named source folders.
+
+_Owner-directed 2026-07-18._
