@@ -286,10 +286,14 @@ _Owner-directed 2026-07-18._
 
 ## §97 — White-box surfaces: `tokens` and `private`; strict token derivation
 
-Every library exposes `./tokens/*` — every export condition pointing at `./src/*.ts` — as the
-token/type surface. Lowering packages additionally expose `./private/*` (`types` → `./src/*.ts`,
-`bun` → `./dist/private/*.js`) as the typed runnable-internals surface. Both are in-repo only:
-`publishConfig` rewrites `exports` down to `.` alone, and `files` excludes `dist/private`.
+Every library exposes `./tokens/*` as the token/type surface, and each surface's condition set is
+**minimal and role-encoding**: `./tokens/*` carries only `types` → `./src/*.ts` — no `source`, no
+`bun` — so the surface is mechanically unimportable at runtime, enforcing compile-time-only use by
+construction. Lowering packages additionally expose `./private/*` as the typed runnable-internals
+surface: `types` → `./src/*.ts`, `bun` → `./dist/private/*.js`. The root `.` export carries `types` +
+`default` (plus a self-augmenting core's `<pkg>-source` condition first, §72) — no redundant
+`bun`/`import` keys. `./tokens/*` and `./private/*` are both in-repo only: `publishConfig` rewrites
+`exports` down to `.` alone, and `files` excludes `dist/private`.
 
 Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
 carrying a `default` condition — public, where a bare-string target counts as carrying one — with
