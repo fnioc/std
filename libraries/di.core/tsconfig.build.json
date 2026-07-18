@@ -3,13 +3,5 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": ".tspc-out"
-  },
-  // src/inline.ts holds an UNBOUND `nameof<T>()` sugar body the generic inline
-  // stage substitutes at consumer call sites (T bound there). It must never go
-  // through this per-file tspc emit: di.core's own nameof lowering has no type to
-  // bind, so it would silently emit `this.isService("")` into dist/internal/. The
-  // barrel already omits it, but the emit program is driven by `include`, not the
-  // barrel, so it needs its own exclusion. A white-box import through internal/*
-  // then hits an honest module-not-found instead of the empty-token lowering.
-  "exclude": ["src/inline.ts"]
+  }
 }

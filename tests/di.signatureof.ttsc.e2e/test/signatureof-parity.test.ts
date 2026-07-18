@@ -10,8 +10,9 @@ import { join, resolve } from 'node:path';
 // they emit byte-identical output:
 //
 //   inline path   — inline + nameof + signatureof + di. The type-driven
-//     `add<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.core's rhombus.inline
-//     entries) substitute to `this.add(nameof<I>(), C, signatureof(C))`; nameof
+//     `add<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.transformer's
+//     rhombus.inline entries) substitute to `this.add(nameof<I>(), C,
+//     signatureof(C))`; nameof
 //     lowers the token, signatureof lowers the dependency-signature array, and
 //     the di stage leaves the resulting 3-argument `add(...)` untouched.
 //     `addValue<I>(value)` substitutes to `this.addValue(nameof<I>(), value)`
@@ -169,14 +170,19 @@ function setupWorkspace(): void {
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
 
-  // The consumer must depend on di.core so the inline collector reaches its
-  // rhombus.inline entries.
+  // The consumer must depend on di.core (the type ANCHOR the inline entries name)
+  // AND di.transformer (which now owns the rhombus.inline publish list + the
+  // signatureof primitive), so the inline collector walks to both.
   writeFileSync(
     join(projDir, 'package.json'),
     // A package name WITHOUT "nameof"/"signatureof" substrings so the derived
     // tokens (which embed the package name) don't collide with the primitive-call
     // survival assertions below.
-    JSON.stringify({ name: 'di-sig-app', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*' } }),
+    JSON.stringify({
+      name: 'di-sig-app',
+      version: '0.0.0',
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.transformer': 'workspace:*' },
+    }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 

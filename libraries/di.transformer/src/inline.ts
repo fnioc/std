@@ -1,28 +1,27 @@
-// Inline-sugar impl bodies for di.core — see the "rhombus.inline" key in this
-// package's package.json.
+// Inline-sugar impl bodies for the di registration surface — see the
+// "rhombus.inline" key in this package's package.json.
 //
 // Authored, never executed: the generic inline transform stage substitutes these
 // single-return-expression bodies at consumer call sites (this → the receiver,
 // the type parameter bound from the checker), then the primitive stages lower
-// the result. Its bodies contain `nameof<T>()` (and `signatureof(...)`) over an
-// UNBOUND generic, so di.core's own primitive lowering — which has no type to
-// bind here — would rewrite them to the empty token `this.isService("")` and an
-// empty signature array. Two paths must be kept clear of that lowering:
-//   - the BUNDLED dist (`bun build` from the barrel): this file is DELIBERATELY
-//     not re-exported from the barrel, so the bundle never pulls it in and the
-//     public d.ts stays clean; and
-//   - the PER-FILE internal emit (`tspc -p tsconfig.build.json` → dist/internal/):
-//     the barrel omission does NOT cover this, since that program is driven by
-//     `include`, not the barrel — so tsconfig.build.json EXCLUDES this file
-//     explicitly. A white-box import through internal/* then fails module-not-found
-//     rather than resolving the empty-token lowering.
-// Both sidestep the frozen nameof stage without touching it.
+// the result. The bodies contain `nameof<T>()` (and `signatureof(...)`) over an
+// UNBOUND generic, so they must never go through a per-file primitive lowering
+// here — with no type to bind, that lowering would rewrite them to the empty
+// token `this.isService("")` and an empty signature array.
+//
+// This package protects them for free: `@rhombus-std/di.transformer` bundles from
+// its barrel (`src/index.ts`), which deliberately does NOT re-export this file, so
+// `bun build` never pulls it into `dist`, and the package has no per-file tspc
+// emit at all. This file therefore exists purely as SUBSTITUTION SOURCE the inline
+// stage side-parses out of `src/`; the typecheck gate still sees it (it stays in
+// the program), but nothing lowers or ships it. `signatureof` — the authoring-time
+// dependency-signature primitive these bodies call — lives alongside them here in
+// di.transformer (`./signatureof.js`), not in the runtime `@rhombus-std/primitives`
+// leaf; `nameof` stays in that leaf, since runtime source imports it directly.
 
-import { nameof, signatureof } from '@rhombus-std/primitives';
-import type { Ctor } from '@rhombus-toolkit/func';
-import type { AddBuilder, IServiceManifestBase } from './authoring.js';
-import type { IServiceQuery } from './provider.js';
-import type { Factory } from './registrations.js';
+import type { AddBuilder, Ctor, Factory, IServiceManifestBase, IServiceQuery } from '@rhombus-std/di.core';
+import { nameof } from '@rhombus-std/primitives';
+import { signatureof } from './signatureof.js';
 
 /**
  * `isService<T>()` sugar body — the tokenless registration predicate. It is the

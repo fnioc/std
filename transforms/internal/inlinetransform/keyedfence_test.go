@@ -38,8 +38,11 @@ export declare const services: IServiceManifestBase;
 declare const KEY: unique symbol;
 export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
-	// The impl body — the real add-sugar shape, authored over the two primitives.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof, signatureof } from '@rhombus-std/primitives';
+	// The impl body — the real add-sugar shape, authored over the two primitives,
+	// each imported from its home module (nameof from primitives, signatureof from
+	// di.transformer).
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+import { signatureof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: unknown): unknown {

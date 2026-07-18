@@ -45,8 +45,11 @@ export type $<N extends number> = Hole<N>;
 declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 `)
-	// The real add-sugar body, authored over the two compile-time primitives.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof, signatureof } from '@rhombus-std/primitives';
+	// The real add-sugar body, authored over the two compile-time primitives, each
+	// imported from its home module (nameof from primitives, signatureof from
+	// di.transformer).
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+import { signatureof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
