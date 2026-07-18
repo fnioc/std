@@ -290,10 +290,12 @@ Every library exposes `./tokens/*` as the token/type surface, and each surface's
 **minimal and role-encoding**: `./tokens/*` carries only `types` → `./src/*.ts` — no `source`, no
 `bun` — so the surface is mechanically unimportable at runtime, enforcing compile-time-only use by
 construction. Lowering packages additionally expose `./private/*` as the typed runnable-internals
-surface: `types` → `./src/*.ts`, `bun` → `./dist/private/*.js`. The root `.` export carries `types` +
-`default` (plus a self-augmenting core's `<pkg>-source` condition first, §72) — no redundant
-`bun`/`import` keys. `./tokens/*` and `./private/*` are both in-repo only: `publishConfig` rewrites
-`exports` down to `.` alone, and `files` excludes `dist/private`.
+surface: `types` → `./src/*.ts`, `bun` → the package's per-file lowered stage emit — a build
+implementation detail, not part of the rule; the alias and the disk path are independent. The root
+`.` export carries `types` + `default` (plus a self-augmenting core's `<pkg>-source` condition
+first, §72) — no redundant `bun`/`import` keys. `./tokens/*` and `./private/*` are both in-repo
+only: `publishConfig` rewrites `exports` down to `.` alone, and `files` excludes the stage emit
+directory.
 
 Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
 carrying a `default` condition — public, where a bare-string target counts as carrying one — with
