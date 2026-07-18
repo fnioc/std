@@ -11,10 +11,10 @@ import { join, resolve } from 'node:path';
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..', '..');
 const CONFIG = join(REPO_ROOT, 'eslint.config.mjs');
-const INLINE_FILE = join(REPO_ROOT, 'libraries', 'di.core', 'src', 'inline.ts');
+const INLINE_FILE = join(REPO_ROOT, 'libraries', 'di.transformer', 'src', 'inline.ts');
 
 describe('repo eslint config wires the inline-authoring rule', () => {
-  test('calculateConfigForFile applies the rule at error for di.core/src/inline.ts', async () => {
+  test('calculateConfigForFile applies the rule at error for di.transformer/src/inline.ts', async () => {
     const eslint = new ESLint({ cwd: REPO_ROOT, overrideConfigFile: CONFIG });
     const config = await eslint.calculateConfigForFile(INLINE_FILE);
     const rule = config.rules?.['rhombus-inline/inline-authoring'];
@@ -28,8 +28,8 @@ describe('repo eslint config wires the inline-authoring rule', () => {
     // A two-statement body violates singleReturn; lintText runs the real config's
     // resolved rule set against the real inline.ts path, proving the rule is live
     // (not merely present in the computed config). The impl name must match
-    // di.core's real publish list (ServiceQueryInline / isService) — the rule only
-    // checks bodies of listed impls.
+    // di.transformer's real publish list (ServiceQueryInline / isService) — the
+    // rule only checks bodies of listed impls.
     const eslint = new ESLint({ cwd: REPO_ROOT, overrideConfigFile: CONFIG });
     const violating = `export const ServiceQueryInline = {\n`
       + `  isService<T>(this: any): boolean { const x = 1; return x > 0; },\n};\n`;

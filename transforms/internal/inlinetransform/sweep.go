@@ -37,11 +37,13 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 				"a registered primitive call survived lowering"))
 			return false
 		}
-		if call.Expression.Kind == shimast.KindIdentifier && knownPrimitives[call.Expression.Text()] &&
-			call.TypeArguments != nil && len(call.TypeArguments.Nodes) >= 1 {
-			diags = append(diags, sweepDiag("INLINE_UNLOWERED_PRIMITIVE", n,
-				fmt.Sprintf("primitive %q with a type argument survived lowering", call.Expression.Text())))
-			return false
+		if call.Expression.Kind == shimast.KindIdentifier && call.TypeArguments != nil &&
+			len(call.TypeArguments.Nodes) >= 1 {
+			if _, isPrimitive := knownPrimitives[call.Expression.Text()]; isPrimitive {
+				diags = append(diags, sweepDiag("INLINE_UNLOWERED_PRIMITIVE", n,
+					fmt.Sprintf("primitive %q with a type argument survived lowering", call.Expression.Text())))
+				return false
+			}
 		}
 
 		typeArgs, valueArgs := callArity(call)

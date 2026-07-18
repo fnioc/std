@@ -16,8 +16,15 @@ import { dirname, join } from 'node:path';
 
 import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
-const PRIMITIVES_MODULE = '@rhombus-std/primitives';
-const KNOWN_PRIMITIVES = new Set(['nameof', 'signatureof']);
+// Each compile-time primitive maps to its HOME module — the module an inline body
+// may import it from. `nameof` lives in the universal @rhombus-std/primitives leaf
+// (runtime source imports it directly). `signatureof` is authoring-time-only and
+// lives in @rhombus-std/di.transformer, imported by that package's own bodies via a
+// package-relative specifier. Mirrors the Go scanner's knownPrimitives map.
+const PRIMITIVE_HOMES = {
+  nameof: '@rhombus-std/primitives',
+  signatureof: '@rhombus-std/di.transformer',
+};
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -31,6 +38,15 @@ function findPackageDir(/** @type {string} */ file) {
       return null;
     }
     dir = parent;
+  }
+}
+
+/** Reads the "name" field of packageDir/package.json, or null. */
+function readPackageName(/** @type {string} */ packageDir) {
+  try {
+    return JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')).name ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -60,6 +76,7 @@ const rule = {
     if (!pkgDir) {
       return {};
     }
+    const pkgName = readPackageName(pkgDir);
 
     /** @type {import('./inline-entries.mjs').InlineEntry[]} */
     let entries;
@@ -107,15 +124,21 @@ const rule = {
 
     return {
       ImportDeclaration(node) {
-        if (node.source.value !== PRIMITIVES_MODULE) {
-          return;
-        }
+        const module = node.source.value;
+        const relative = typeof module === 'string' && module.startsWith('.');
         for (const spec of node.specifiers) {
           if (spec.type !== 'ImportSpecifier') {
             continue;
           }
           const imported = spec.imported.type === 'Identifier' ? spec.imported.name : String(spec.imported.value);
-          if (!KNOWN_PRIMITIVES.has(imported)) {
+          const home = PRIMITIVE_HOMES[imported];
+          // Accept a primitive only from its home module directly, or — when its
+          // home IS the declaring package — via a package-relative specifier. Any
+          // other source is not a recognized primitive import (a reference then
+          // falls through to the freeIdentifier check).
+          const fromHome = module === home;
+          const fromOwnPackage = relative && home !== undefined && home === pkgName;
+          if (!fromHome && !fromOwnPackage) {
             continue;
           }
           if (spec.local.name !== imported) {

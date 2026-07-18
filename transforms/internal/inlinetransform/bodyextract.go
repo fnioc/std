@@ -10,15 +10,20 @@ import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 )
 
-// primitivesModule is the package that exports the compile-time primitives an
-// inlineable body may reference. Today the only one is nameof.
-const primitivesModule = "@rhombus-std/primitives"
-
-// knownPrimitives is the set of primitive export names an inlineable body may
-// call, keyed by their exported name in primitivesModule. `nameof<T>()` binds a
-// TYPE argument; `signatureof(ctor)` binds a VALUE argument (a class / factory)
-// whose dependency signature the signatureof stage extracts.
-var knownPrimitives = map[string]bool{"nameof": true, "signatureof": true}
+// knownPrimitives maps each compile-time primitive an inlineable body may call to
+// its HOME module — the module an inline body is allowed to import it from.
+// `nameof<T>()` binds a TYPE argument and lives in the universal
+// `@rhombus-std/primitives` leaf (runtime source imports it directly, so it must
+// stay universally importable). `signatureof(ctor)` binds a VALUE argument (a
+// class / factory) whose dependency signature the signatureof stage extracts; it
+// is an authoring-time-only construct, so it lives in `@rhombus-std/di.transformer`
+// and a body imports it via a package-relative specifier from within that package
+// (see primitiveImports). A hardcoded map suffices — the declare-by-marker
+// generalization is a future enhancement.
+var knownPrimitives = map[string]string{
+	"nameof":      "@rhombus-std/primitives",
+	"signatureof": "@rhombus-std/di.transformer",
+}
 
 // Discriminator is the structural overload key: (type-parameter count, value
 // parameter count + encodings). A `this` parameter is excluded from both count
@@ -116,7 +121,7 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
-	primImports := primitiveImports(implSF)
+	primImports := primitiveImports(implSF, packageName(packageDir))
 
 	rb := &ResolvedBody{
 		Body:             expr,
@@ -357,10 +362,17 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 	return list.Nodes
 }
 
-// primitiveImports reads sf's top-level named imports from primitivesModule and
-// returns a local-name -> primitive-name map, keeping only known primitives and
-// only unaliased bindings (the authoring lint forbids aliasing).
-func primitiveImports(sf *shimast.SourceFile) map[string]string {
+// primitiveImports reads sf's top-level named imports and returns a local-name ->
+// primitive-name map, keeping only known primitives imported from their HOME
+// module and only unaliased bindings (the authoring lint forbids aliasing).
+//
+// A primitive is accepted from its home module directly (`nameof` from
+// `@rhombus-std/primitives`), OR — when the primitive's home IS the declaring
+// package — via a package-relative specifier (`signatureof` from `./signatureof`,
+// authored inside `@rhombus-std/di.transformer`), so a same-package authoring
+// primitive need not be self-imported by package name. A primitive imported from
+// any OTHER module (e.g. a stale `signatureof` from primitives) is rejected.
+func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]string {
 	out := map[string]string{}
 	if sf == nil {
 		return out
@@ -371,9 +383,10 @@ func primitiveImports(sf *shimast.SourceFile) map[string]string {
 		}
 		decl := stmt.AsImportDeclaration()
 		spec := decl.ModuleSpecifier
-		if spec == nil || spec.Kind != shimast.KindStringLiteral || spec.Text() != primitivesModule {
+		if spec == nil || spec.Kind != shimast.KindStringLiteral {
 			continue
 		}
+		module := spec.Text()
 		clause := decl.ImportClause
 		if clause == nil {
 			continue
@@ -385,12 +398,24 @@ func primitiveImports(sf *shimast.SourceFile) map[string]string {
 		for _, el := range bindings.AsNamedImports().Elements.Nodes {
 			exported := importSpecifierExportedName(el)
 			local := el.Name().Text()
-			if knownPrimitives[exported] && exported == local {
+			home, known := knownPrimitives[exported]
+			if !known || exported != local {
+				continue
+			}
+			fromHome := module == home
+			fromOwnPackage := isRelativeSpecifier(module) && home == declaringPkg
+			if fromHome || fromOwnPackage {
 				out[local] = exported
 			}
 		}
 	}
 	return out
+}
+
+// isRelativeSpecifier reports whether an import specifier is package-relative
+// (`./x` / `../x`) rather than a bare package name.
+func isRelativeSpecifier(module string) bool {
+	return strings.HasPrefix(module, ".")
 }
 
 // importSpecifierExportedName returns a named import specifier's exported name —

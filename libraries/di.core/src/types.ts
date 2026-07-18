@@ -87,6 +87,15 @@ export interface TypeArgRef {
 export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
 
 /**
+ * The positional dependency signatures of a constructor / factory: one inner
+ * array of `DepSlot`s per overload. This is the shape `signatureof(ctor)` derives
+ * and the `add(token, ctor, signatures?)` third argument carries — the same type
+ * `DepRecord.signatures` holds, named so authoring-time machinery (the
+ * `di.transformer` `signatureof` primitive) can refer to it directly.
+ */
+export type DepSignatures = readonly (readonly DepSlot[])[];
+
+/**
  * Per-constructor dependency metadata carried on a registration.
  *
  * `signatures` is an array of arrays: each element is one constructor signature

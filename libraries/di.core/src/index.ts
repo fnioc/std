@@ -17,7 +17,8 @@
  * `@rhombus-std/di`.
  */
 
-export type { DepRecord, DepSlot, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef, Union } from './types.js';
+export type { DepRecord, DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
+  Union } from './types.js';
 
 // The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`), plus
 // the pre-instantiated `$1`…`$9` bare-hole aliases.

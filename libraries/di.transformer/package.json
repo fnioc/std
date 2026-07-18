@@ -18,6 +18,15 @@
     "directory": "libraries/di.transformer"
   },
   "type": "module",
+  "//rhombus.inline": "The type-driven registration sugar's inline publish list. The bodies live in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses them and substitutes at consumer call sites. The `type` ANCHORS stay @rhombus-std/di.core interfaces (the augmentation targets), while `impl` (ServiceQueryInline / ServiceManifestInline) resolves in THIS package — the authoring-time home of the signatureof primitive those bodies call.",
+  "rhombus.inline": {
+    "entries": [
+      { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" },
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "add" },
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addFactory" },
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addValue" }
+    ]
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

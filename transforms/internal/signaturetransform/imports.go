@@ -8,11 +8,13 @@ import (
 // the file's top-level imports. After the rewrite there is no runtime reference
 // left, but the toolchain's import elision consults the ORIGINAL reference marks
 // (where `signatureof` WAS value-referenced), so without this pass the emit keeps
-// a dangling `import { signatureof } from "@rhombus-std/primitives"` — a value
+// a dangling `import { signatureof } from "@rhombus-std/di.transformer"` — a value
 // import with no remaining runtime reference (the array has been inlined). The
-// inline path emits no such import (the sugar body's callee is synthetic and the
-// consumer never imports the primitive), so this only fires for a source-written
-// signatureof; it mirrors the nameof stage's elision.
+// specifier is matched by exported name, not module, so it elides regardless of
+// where signatureof was imported from. The inline path emits no such import (the
+// sugar body's callee is synthetic and the consumer never imports the primitive),
+// so this only fires for a source-written signatureof; it mirrors the nameof
+// stage's elision.
 func elideSignatureofImports(factory *shimast.NodeFactory, sf *shimast.SourceFile) *shimast.SourceFile {
 	statements := sf.Statements.Nodes
 	kept := make([]*shimast.Node, 0, len(statements))

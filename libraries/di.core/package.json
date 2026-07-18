@@ -16,15 +16,7 @@
   },
   "type": "module",
   "sideEffects": true,
-  "//rhombus.preset": "The transformer PRESET for the type-driven registration sugar: the `./ttsc` descriptor returns the bundle name `rhombusstd_di_bundle`, which the single owner ttsc host (transforms/cmd/ttsc-std) expands into its ordered primitive-stage set inline -> nameof -> signatureof -> di. A consumer wires just `{ transform: '@rhombus-std/di.core/ttsc' }` in tsconfig plugins instead of enumerating the four stages in the right order. Stock ttsc's one-transform-string-per-marker limit is irrelevant: the single string resolves to a name the binary owns, and expansion happens there. NO auto-discovery `ttsc.plugin` marker is set here deliberately — di.core is a ubiquitous dependency, so a marker would force the bundle onto EVERY di.core dependent (it broke the semantic-path lowering in tests/di.signatureof.ttsc.e2e). Declare-by-depending (§90) stays a deliberate opt-in follow-up. See that e2e's bundle path and transforms/cmd/ttsc-std/stages.go bundleByName.",
-  "rhombus.inline": {
-    "entries": [
-      { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "add" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addFactory" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addValue" }
-    ]
-  },
+  "//rhombus.preset": "The transformer PRESET for the type-driven registration sugar: the `./ttsc` descriptor returns the bundle name `rhombusstd_di_bundle`, which the single owner ttsc host (transforms/cmd/ttsc-std) expands into its ordered primitive-stage set inline -> nameof -> signatureof -> di. A consumer wires just `{ transform: '@rhombus-std/di.core/ttsc' }` in tsconfig plugins instead of enumerating the four stages in the right order. Stock ttsc's one-transform-string-per-marker limit is irrelevant: the single string resolves to a name the binary owns, and expansion happens there. NO auto-discovery `ttsc.plugin` marker is set here deliberately — di.core is a ubiquitous dependency, so a marker would force the bundle onto EVERY di.core dependent (it broke the semantic-path lowering in tests/di.signatureof.ttsc.e2e). Declare-by-depending (§90) stays a deliberate opt-in follow-up. See that e2e's bundle path and transforms/cmd/ttsc-std/stages.go bundleByName. The `rhombus.inline` publish list (the `add`/`addFactory`/`addValue`/`isService` sugar bodies) lives in @rhombus-std/di.transformer, the authoring-time package that owns the `signatureof` primitive those bodies call; the type ANCHORS stay these di.core interfaces.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

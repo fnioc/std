@@ -48,10 +48,12 @@ export type $<N extends number> = Hole<N>;
 declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 `)
-	// The real add-sugar body — see di.core's own src/inline.ts — now typed to
-	// return AddBuilder (rather than buildInlinePresetWorkspace's bare unknown) so
-	// the returned builder's `.as` chain type-checks against a real continuation.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof, signatureof } from '@rhombus-std/primitives';
+	// The real add-sugar body — see di.transformer's own src/inline.ts — now typed
+	// to return AddBuilder (rather than buildInlinePresetWorkspace's bare unknown)
+	// so the returned builder's `.as` chain type-checks against a real continuation.
+	// signatureof is imported from its home (di.transformer), nameof from primitives.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+import { signatureof } from '@rhombus-std/di.transformer';
 import type { AddBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: unknown): AddBuilder<'singleton'> {
