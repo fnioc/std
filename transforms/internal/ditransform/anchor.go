@@ -40,7 +40,15 @@ func memberAnchoredOnDiCore(checker *shimchecker.Checker, name *shimast.Node, de
 	// checker panics on GetSymbolAtLocation for such a node; guard on the position
 	// so a synthetic callee is a clean non-match (the call is already fully lowered),
 	// mirroring the nameof / resolve stages' own `Pos() < 0` guards.
-	if name.Pos() < 0 {
+	//
+	// A node can also carry a real position but an unset `Parent` — a property
+	// access the inline substitution rebuilt because its OBJECT child changed
+	// (`X.as` rebuilt over a synthetic `X`), which keeps the wrapper's own source
+	// span but never gets re-linked to its parent. The checker's
+	// GetSymbolAtLocation derefs `Parent.Parent` unconditionally, so this needs
+	// the same clean-skip guard (see nameoftransform.isNameofCall for the full
+	// writeup and the reproducing fixture).
+	if name.Pos() < 0 || name.Parent == nil {
 		return false
 	}
 	symbol := checker.GetSymbolAtLocation(name)
