@@ -4,6 +4,20 @@
 // the emit-path twin of the hand-written TypeScript transformer; both derive
 // identical tokens from the shared token core. The single owner host
 // (cmd/ttsc-std) composes it as the `rhombusstd_nameof` stage.
+//
+// Derivation runs through DeriveTokenF (the open-generic-aware variant), NOT the
+// bare DeriveToken: the reference transformer's ONE deriveToken renders a
+// `Hole<N>` type argument as the literal `$N`, so `nameof<IRepository<$<1>>>()`
+// must lower to `…:IRepository<$1>` — byte-identical to the token the di
+// registration stage derives for the matching direct `add<IRepository<$<1>>>(…)`.
+// Without the hole branch the inline registration path (`add<T>()` sugar →
+// `nameof<T>()`) could never produce the open-template service token. DeriveTokenF
+// also rejects the typescript-go internal-symbol name family (the `0xFE`-prefixed
+// anonymous `__type` equivalents), so an anonymous type argument derives no token
+// exactly as the di stage already treats it. Keyed composition (`Keyed<T,K>` →
+// `base#key`) is deliberately NOT applied here — the reference nameof does not run
+// keyedTokenFor either (only the di stage does), so a keyed registration stays on
+// the direct path; see holeparity's keyed note.
 package nameoftransform
 
 import (
@@ -45,11 +59,11 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				if isNameofCall(checker, call) {
 					typeNode := call.TypeArguments.Nodes[0]
 					t := checker.GetTypeFromTypeNode(typeNode)
-					token, _ := tokens.DeriveToken(ctx, t)
+					token, _ := tokens.DeriveTokenF(ctx, t, nil)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
 				if use, ok := registeredNameof(artifacts, node); ok {
-					token, _ := tokens.DeriveToken(ctx, use.TypeArgs[0])
+					token, _ := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
 			}
