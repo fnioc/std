@@ -291,15 +291,15 @@ token/type surface. Lowering packages additionally expose `./private/*` (`types`
 `bun` → `./dist/private/*.js`) as the typed runnable-internals surface. Both are in-repo only:
 `publishConfig` rewrites `exports` down to `.` alone, and `files` excludes `dist/private`.
 
-Token derivation for an exports-mapped file matches, in precedence order: (1) the root `.` export →
-bare `pkg:Type`; (2) any export entry carrying a `default` condition — i.e. resolvable by a
-published consumer → `pkg/<subpath>:Type`, with multiple public entries reaching the same file being
-a hard diagnostic (ambiguous token identity); (3) `./tokens/*` — which deliberately carries no
-`default` condition, making it the one sanctioned in-repo internal surface → `pkg/tokens/<path>:Type`;
-(4) otherwise a hard diagnostic naming both fixes (export the type publicly, or expose its file via
-`./tokens/*`). The discriminator for "public" is the presence of a `default` condition, not the
-subpath name — there is no shortest-subpath heuristic. The derivation path for a package with no
-exports map is unchanged. `internal` is banned as an export alias, since it collides with
-same-named source folders.
+Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
+carrying a `default` condition — public, where a bare-string target counts as carrying one — with
+ties broken lexicographically; the root `.` export is the shortest possible case, deriving the bare
+`pkg:Type` form. If no public entry reaches the file, `./tokens/*` — deliberately default-less, the
+one sanctioned in-repo internal surface — derives `pkg/tokens/<path>:Type`. If neither reaches it, a
+hard diagnostic names both fixes (export the type publicly, or expose its file via `./tokens/*`).
+Shortest-within-public supports deliberate public aliasing; only publish-surviving entries ever
+compete, so an internal or test mapping can never affect token identity. The derivation path for a
+package with no exports map is unchanged. `internal` is banned as an export alias, since it collides
+with same-named source folders.
 
 _Owner-directed 2026-07-18._
