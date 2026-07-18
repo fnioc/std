@@ -52,8 +52,17 @@ const COLD_BUILD_MS = 600_000;
 function link(target: string, linkPath: string): void {
   try {
     symlinkSync(target, linkPath);
-  } catch {
-    // Ignore EEXIST from a re-run; link targets are stable.
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw err;
+    }
+    // A re-run reusing this project dir: the existing entry's target may be a
+    // now-deleted worktree path (a dangling symlink), not the stable in-repo
+    // path the old EEXIST-skip assumed. Relink unconditionally rather than
+    // trusting it — the alternative is a stale dangling symlink surviving
+    // until the NEXT run fails with a spurious "typescript is required".
+    rmSync(linkPath, { force: true });
+    symlinkSync(target, linkPath);
   }
 }
 
