@@ -4,23 +4,28 @@ import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-// Production-path e2e for the signatureof primitive. It drives the REAL ttsc
-// over a temp project TWO ways over the IDENTICAL source, then asserts they emit
-// byte-identical output:
+// Production-path e2e for the signatureof primitive, plus the deps-free
+// `addValue<I>(value)` sugar riding the same inline path. It drives the REAL
+// ttsc over a temp project TWO ways over the IDENTICAL source, then asserts
+// they emit byte-identical output:
 //
 //   inline path   — inline + nameof + signatureof + di. The type-driven
 //     `add<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.core's rhombus.inline
 //     entries) substitute to `this.add(nameof<I>(), C, signatureof(C))`; nameof
 //     lowers the token, signatureof lowers the dependency-signature array, and
 //     the di stage leaves the resulting 3-argument `add(...)` untouched.
+//     `addValue<I>(value)` substitutes to `this.addValue(nameof<I>(), value)`
+//     — no `signatureof`, since a value carries no deps — and nameof alone
+//     lowers it to the 2-argument `addValue("token", value)`.
 //   semantic path — nameof + di. The di registration stage lowers the SAME
-//     `add<I>(C)` directly to `add("token", C, [[...]])`.
+//     `add<I>(C)` / `addValue<I>(value)` directly to their explicit-token forms.
 //
-// The load-bearing guarantee is that the signatureof array is byte-identical to
-// the third argument the di stage synthesizes for the same value: the new
-// inline+signatureof lowering changes the PATH, never the emitted bytes. This
-// mirrors the inline.ttsc.e2e isService pilot, extended to the value-argument
-// signatureof primitive and a non-trivial (dependency-carrying) signature.
+// The load-bearing guarantee is that the signatureof array (and, for
+// `addValue`, the bare token) is byte-identical to what the di stage
+// synthesizes for the same value: the new inline(+signatureof) lowering
+// changes the PATH, never the emitted bytes. This mirrors the inline.ttsc.e2e
+// isService pilot, extended to the value-argument signatureof primitive and a
+// non-trivial (dependency-carrying) signature, plus the deps-free addValue form.
 //
 // Toolchain pinning, the single shared plugin cache, and the one-project-dir /
 // two-tsconfig layout all mirror that sibling harness; see its header for why.
@@ -90,12 +95,14 @@ declare module "@rhombus-std/di.core" {
   interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
     add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
     addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    addValue<I>(value: I): void;
   }
 }
 
 interface IDep {}
 interface IFoo {}
 interface IBar {}
+interface IBaz {}
 
 class Foo implements IFoo {
   constructor(dep: IDep) { void dep; }
@@ -105,12 +112,14 @@ class BarImpl implements IBar {
 }
 
 declare const services: IServiceManifest<"singleton">;
+declare const bazValue: IBaz;
 
 // Top-level registration statements: the di registration stage lowers
 // registrations that appear as top-level expression statements, so the semantic
 // (di-only) comparison path exercises the same shape the inline path does.
 services.add<IFoo>(Foo);
 services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
+services.addValue<IBaz>(bazValue);
 `;
 
 function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
@@ -210,13 +219,16 @@ beforeAll(() => {
   withBundle = lower('tsconfig.bundle.json', 'dist-bundle');
 }, COLD_BUILD_MS);
 
-describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFactory<I>(fn)', () => {
-  test('the sugar is lowered: string token + signature array, no generics or primitives survive', () => {
-    // add lowered to a 3-arg call carrying a token and a signature array.
+describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFactory<I>(fn) / addValue<I>(value)', () => {
+  test('the sugar is lowered: string token (+ signature array where deps exist), no generics or primitives survive', () => {
+    // add / addFactory lowered to a 3-arg call carrying a token and a signature
+    // array; addValue lowered to a bare 2-arg token + value call (no deps).
     expect(withInline).toContain('.add("');
     expect(withInline).toContain('.addFactory("');
+    expect(withInline).toContain('.addValue("');
     expect(withInline).not.toContain('add<');
     expect(withInline).not.toContain('addFactory<');
+    expect(withInline).not.toContain('addValue<');
     // No un-lowered primitive CALL survives (assert the call form, not a bare
     // substring, which could appear inside a derived token string).
     expect(withInline).not.toContain('nameof<');
@@ -230,8 +242,11 @@ describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFacto
     // Whole-output equality also pins import elision, the derived signature array,
     // and surrounding whitespace.
     const addLine = (src: string) => src.split('\n').find((l) => l.includes('.add('))?.trim();
+    const addValueLine = (src: string) => src.split('\n').find((l) => l.includes('.addValue('))?.trim();
     expect(addLine(withInline)).toBeDefined();
     expect(addLine(withInline)).toEqual(addLine(withoutInline));
+    expect(addValueLine(withInline)).toBeDefined();
+    expect(addValueLine(withInline)).toEqual(addValueLine(withoutInline));
     expect(withInline).toEqual(withoutInline);
   });
 

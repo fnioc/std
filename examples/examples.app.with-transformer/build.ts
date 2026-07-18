@@ -2,8 +2,9 @@
 //
 // The with-transformer composition root: src/main.ts is authored in the
 // tokenless dialect and needs BOTH the di.core preset bundle (registration sugar
-// via inline -> nameof -> signatureof -> di, plus the di stage's addValue +
-// tokenless resolve/resolveAsync + `.as<>` lowering) and its di.transformer.options
+// via inline -> nameof -> signatureof -> di — add/addFactory/addValue inline
+// substituted, plus the di stage's tokenless resolve/resolveAsync + `.as<>`
+// lowering) and its di.transformer.options
 // (addOptions<T>) plugin to lower. This is the ttsc/Go analog of the former
 // `tspc -p tsconfig.json` build: @ttsc/unplugin/bun runs the Go plugins as onLoad
 // transforms while Bun.build emits dist/main.js.
