@@ -259,3 +259,34 @@ reference it. The inline stage's descriptor is `@rhombus-std/primitives.transfor
 only those stages' AST transforms over the loaded program — in the hardcoded canonical order, not
 declaration order. An unrecognized stage name in that payload is a build-time error naming the
 unknown stage, not a silent no-op.
+
+### The full host — `ttsc-std-full` and the merge-synthesis stage (in-repo-only)
+
+A second owner binary, `transforms/cmd/ttsc-std-full`, composes the same scaffolding
+(`internal/stdhost`) and base stage table plus one extra stage: `rhombusstd_mergesynth`, the
+default-merge-strategy synthesizer for augmentations. For every member of a set reaching
+`registerAugmentations`/`applyAugmentations` without a hand-authored strategy for its name, the
+stage derives a runtime argument-shape guard from the member's own parameter types and threads a
+per-member strategies map as the call's third argument — so a member-name collision dispatches by
+argument shape instead of throwing. Hand-authored strategies always win (covered names are
+skipped, and the original merge expression is spread last); an un-derivable parameter type
+(`any`/`unknown`, a bare generic, no annotation) degrades to an always-pass strategy where that
+extension wins and chain order breaks ties.
+
+The guards are typia `createIs<T>()` validators generated **in-process**: the stage hands each
+parameter's original type node to typia's native Go programmers over the same loaded program,
+checker, and emit context, and inserts the already-lowered guard. Nothing typia-shaped survives
+into the emit — a guard that would need a typia runtime helper import is dropped (with a warning)
+rather than emitted.
+
+Audience split (decisions.v2 §87): augmentation authoring is first-party-only, so only this
+repo's own library build ever runs the merge synthesizer. Published
+`@rhombus-std/*.transformer` descriptors keep resolving to the typia-free `ttsc-std`; the
+full-host descriptors live at `primitives.transformer`'s publish-scrubbed `./private/full-ttsc` and
+`./private/mergesynth-ttsc` subpaths and never ship. Both commands live in the one `transforms` Go
+module (ttsc's plugin builder scratch-copies exactly one module directory, so a nested module
+would sever the full host from the shared stages); the split still keeps `ttsc-std` typia-clean —
+its build links zero typia packages and touches only typia's go.mod metadata. Because ttsc keys
+its plugin cache on the resolved source directory, one consumer's stages must resolve wholly to
+one host: wiring a `./private/full-ttsc`-family descriptor next to a plain `./ttsc`-family one is two
+owner binaries in one pass, which ttsc rejects loudly.
