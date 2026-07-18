@@ -126,7 +126,7 @@ services.add<ICategoryLogger<$<1>>>(CategoryLogger<$<1>>).as<"singleton">();
 // explicit-token calls untouched): tokens hand-written to the derived grammar,
 // so authored resolve<IAudit<Order>>() closes THIS registration, and its
 // IRepository<$1> dep closes the transformer-authored open registration above.
-services.add("fnioc-integration-sample/_/contracts:IAudit<$1>", AuditTrail, [["fnioc-integration-sample/_/contracts:IRepository<$1>", typeArg(1)]]).as("singleton");
+services.add("fnioc-integration-sample/tokens/contracts:IAudit<$1>", AuditTrail, [["fnioc-integration-sample/tokens/contracts:IRepository<$1>", typeArg(1)]]).as("singleton");
 `,
   'app.ts': `
 import type { IServiceProvider } from "@rhombus-std/di";
@@ -172,13 +172,13 @@ export function observe(): Observations {
 // emit-shape assertions below; the behavioral tests reuse them for the
 // manual-token cross-checks).
 const T = {
-  logger: 'fnioc-integration-sample/_/contracts:ILogger',
-  repoBase: 'fnioc-integration-sample/_/contracts:IRepository',
-  repoTemplate: 'fnioc-integration-sample/_/contracts:IRepository<$1>',
-  catTemplate: 'fnioc-integration-sample/_/contracts:ICategoryLogger<$1>',
-  user: 'fnioc-integration-sample/_/contracts:User',
-  order: 'fnioc-integration-sample/_/contracts:Order',
-  invoice: 'fnioc-integration-sample/_/contracts:Invoice',
+  logger: 'fnioc-integration-sample/tokens/contracts:ILogger',
+  repoBase: 'fnioc-integration-sample/tokens/contracts:IRepository',
+  repoTemplate: 'fnioc-integration-sample/tokens/contracts:IRepository<$1>',
+  catTemplate: 'fnioc-integration-sample/tokens/contracts:ICategoryLogger<$1>',
+  user: 'fnioc-integration-sample/tokens/contracts:User',
+  order: 'fnioc-integration-sample/tokens/contracts:Order',
+  invoice: 'fnioc-integration-sample/tokens/contracts:Invoice',
 } as const;
 
 interface LoadedRepo {
@@ -239,7 +239,7 @@ describe('emit contract — open-generics lowered ABI', () => {
 
   test('manual (explicit-token) registration passes through the transformer untouched', () => {
     const wiring = project.emitted('wiring.js');
-    expect(wiring).toContain('services.add("fnioc-integration-sample/_/contracts:IAudit<$1>", AuditTrail, ');
+    expect(wiring).toContain('services.add("fnioc-integration-sample/tokens/contracts:IAudit<$1>", AuditTrail, ');
     expect(wiring).toContain(`"${T.repoTemplate}", typeArg(1)`);
   });
 

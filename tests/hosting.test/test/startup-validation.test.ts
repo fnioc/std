@@ -9,7 +9,7 @@
 // it. `@rhombus-std/options.augmentations` is a side-effect import so the
 // `addOptions`/`validate`/`validateOnStart` manifest verbs are installed.
 
-import { HostBuilder } from '@rhombus-std/hosting/_/index';
+import { HostBuilder } from '@rhombus-std/hosting/private/index';
 import { OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { expect, test } from 'bun:test';

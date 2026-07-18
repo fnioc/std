@@ -31,7 +31,7 @@
   },
   "files": [
     "dist",
-    "!dist/internal",
+    "!dist/stage",
     "ttsc.mjs"
   ],
   "scripts": {

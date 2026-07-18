@@ -15,9 +15,9 @@
 
 import { NullChangeToken } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
-import { ExclusionFilters } from '@rhombus-std/fileproviders.physical/_/ExclusionFilters';
-import { PhysicalFilesWatcher } from '@rhombus-std/fileproviders.physical/_/PhysicalFilesWatcher';
-import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/_/PollingFileChangeToken';
+import { ExclusionFilters } from '@rhombus-std/fileproviders.physical/tokens/ExclusionFilters';
+import { PhysicalFilesWatcher } from '@rhombus-std/fileproviders.physical/tokens/PhysicalFilesWatcher';
+import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/tokens/PollingFileChangeToken';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

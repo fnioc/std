@@ -12,14 +12,14 @@ import type { ConfigConsumer, ConsoleLogger, ReportService, RequestContext, SqlD
 import { CONFIG_TOKEN, resetConfigFactoryRuns, type SampleScopes, services, THUNK_TOKEN } from './wiring.js';
 
 const T = {
-  logger: 'fnioc-integration-sample/_/sample/contracts:ILogger',
-  db: 'fnioc-integration-sample/_/sample/contracts:IDbConnection',
-  repo: 'fnioc-integration-sample/_/sample/contracts:IUserRepo',
-  ctx: 'fnioc-integration-sample/_/sample/contracts:IRequestContext',
-  report: 'fnioc-integration-sample/_/sample/contracts:IReport',
-  reportService: 'fnioc-integration-sample/_/sample/contracts:IReportService',
-  thunkConsumer: 'fnioc-integration-sample/_/sample/contracts:IThunkConsumer',
-  configConsumer: 'fnioc-integration-sample/_/sample/contracts:IConfigConsumer',
+  logger: 'fnioc-integration-sample/tokens/sample/contracts:ILogger',
+  db: 'fnioc-integration-sample/tokens/sample/contracts:IDbConnection',
+  repo: 'fnioc-integration-sample/tokens/sample/contracts:IUserRepo',
+  ctx: 'fnioc-integration-sample/tokens/sample/contracts:IRequestContext',
+  report: 'fnioc-integration-sample/tokens/sample/contracts:IReport',
+  reportService: 'fnioc-integration-sample/tokens/sample/contracts:IReportService',
+  thunkConsumer: 'fnioc-integration-sample/tokens/sample/contracts:IThunkConsumer',
+  configConsumer: 'fnioc-integration-sample/tokens/sample/contracts:IConfigConsumer',
   config: CONFIG_TOKEN,
   thunk: THUNK_TOKEN,
 } as const;

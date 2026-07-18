@@ -3,9 +3,9 @@
 // a hand-built fake IResolver so the unit stays independent of the DI runtime --
 // the augmentation wiring is covered black-box in options.augmentations.test.
 
-import type { IOptions } from '@rhombus-std/options/_/IOptions';
-import { OptionsValidationError } from '@rhombus-std/options/_/OptionsValidationError';
-import { StartupValidator } from '@rhombus-std/options/_/StartupValidator';
+import type { IOptions } from '@rhombus-std/options/tokens/IOptions';
+import { OptionsValidationError } from '@rhombus-std/options/tokens/OptionsValidationError';
+import { StartupValidator } from '@rhombus-std/options/tokens/StartupValidator';
 import { describe, expect, test } from 'bun:test';
 
 // The constructor's first parameter is di.core's `IResolver`; reference it

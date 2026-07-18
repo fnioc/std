@@ -11,7 +11,7 @@
 // call -- made during the fire itself -- observes a live, not-yet-aborted
 // signal.
 
-import { Options } from '@rhombus-std/options/_/IOptions';
+import { Options } from '@rhombus-std/options/tokens/IOptions';
 import { CancellationChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

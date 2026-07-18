@@ -7,14 +7,14 @@
 // -> ConfigRoot path.
 
 import { ConfigBuilder, ConfigManager, type IndexedSection } from '@rhombus-std/config';
-import { JsonConfigProvider } from '@rhombus-std/config.json/_/JsonConfigProvider';
-import { JsonConfigSource, type JsonConfigSourceOptions } from '@rhombus-std/config.json/_/JsonConfigSource';
+import { JsonConfigProvider } from '@rhombus-std/config.json/private/JsonConfigProvider';
+import { JsonConfigSource, type JsonConfigSourceOptions } from '@rhombus-std/config.json/private/JsonConfigSource';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // Side-effect import: installs `addJsonFile` onto ConfigBuilder.
-import '@rhombus-std/config.json/_/index';
+import '@rhombus-std/config.json/private/index';
 
 const FIXTURES = 'test/fixtures/json-file';
 

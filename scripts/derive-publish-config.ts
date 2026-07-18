@@ -5,11 +5,11 @@
 // The §7 derivation rule (confirmed against the hand-authored pairs):
 //
 //   publishConfig.exports = exports, with two transforms:
-//     1. SCRUB   -- every `./_/*` subpath is dropped, so a published
-//                   consumer can't reach the white-box seam even though src/
-//                   still ships in the tarball (§7). This is the whole point:
-//                   pnpm honours publishConfig.exports, and omitting the key
-//                   makes it non-importable.
+//     1. SCRUB   -- every white-box subpath (`./tokens/*` and `./private/*`) is
+//                   dropped, so a published consumer can't reach the seam even
+//                   though src/ still ships in the tarball (§7). This is the whole
+//                   point: pnpm honours publishConfig.exports, and omitting the
+//                   key makes it non-importable.
 //     2. DIST-SWAP -- each surviving subpath collapses its dev-resolution
 //                   conditions to the published trio, in canonical order:
 //                     types   <- swap the src `.ts` type entry to the rolled
@@ -68,9 +68,11 @@ interface Manifest {
   readonly rhombusBuild?: { readonly typesOnly?: boolean; };
 }
 
-/** True for the white-box seam subpath dropped from the published surface (§7). */
+/** True for a white-box seam subpath dropped from the published surface (§7).
+ * Both halves of the seam are dev-only: `./tokens/*` (the source token surface)
+ * and `./private/*` (the built lowered runtime). */
 function isInternal(subpath: string): boolean {
-  return subpath === './_/*' || subpath.startsWith('./_/');
+  return subpath.startsWith('./tokens/') || subpath.startsWith('./private/');
 }
 
 /**

@@ -24,20 +24,20 @@ import { ConfigConsumer, ConsoleLogger, Report, ReportFactory, ReportService, Re
   ThunkConsumer } from './sample/services.js';
 
 const T = {
-  logger: 'fnioc-integration-sample/_/sample/contracts:ILogger',
-  db: 'fnioc-integration-sample/_/sample/contracts:IDbConnection',
-  repo: 'fnioc-integration-sample/_/sample/contracts:IUserRepo',
-  ctx: 'fnioc-integration-sample/_/sample/contracts:IRequestContext',
-  report: 'fnioc-integration-sample/_/sample/contracts:IReport',
-  reportService: 'fnioc-integration-sample/_/sample/contracts:IReportService',
-  reportFactory: 'fnioc-integration-sample/_/sample/contracts:IReportFactory',
-  thunkConsumer: 'fnioc-integration-sample/_/sample/contracts:IThunkConsumer',
-  configConsumer: 'fnioc-integration-sample/_/sample/contracts:IConfigConsumer',
+  logger: 'fnioc-integration-sample/tokens/sample/contracts:ILogger',
+  db: 'fnioc-integration-sample/tokens/sample/contracts:IDbConnection',
+  repo: 'fnioc-integration-sample/tokens/sample/contracts:IUserRepo',
+  ctx: 'fnioc-integration-sample/tokens/sample/contracts:IRequestContext',
+  report: 'fnioc-integration-sample/tokens/sample/contracts:IReport',
+  reportService: 'fnioc-integration-sample/tokens/sample/contracts:IReportService',
+  reportFactory: 'fnioc-integration-sample/tokens/sample/contracts:IReportFactory',
+  thunkConsumer: 'fnioc-integration-sample/tokens/sample/contracts:IThunkConsumer',
+  configConsumer: 'fnioc-integration-sample/tokens/sample/contracts:IConfigConsumer',
   // Honest Promise<IConfig> token-split: ConfigConsumer's ctor param is typed
   // `Promise<IConfig>`, so it depends on this closed-generic token, and the async
   // factory is registered here.
-  config: 'Promise<fnioc-integration-sample/_/sample/contracts:IConfig>',
-  thunk: 'fnioc-integration-sample/_/sample/contracts:IThunk',
+  config: 'Promise<fnioc-integration-sample/tokens/sample/contracts:IConfig>',
+  thunk: 'fnioc-integration-sample/tokens/sample/contracts:IThunk',
 } as const;
 
 let handFedConfigRuns = 0;

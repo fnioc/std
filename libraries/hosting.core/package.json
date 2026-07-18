@@ -13,10 +13,14 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
-      "bun": "./dist/internal/*.js",
+      "bun": "./src/*.ts",
       "types": "./src/*.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./dist/stage/*.js"
     }
   },
   "publishConfig": {
@@ -32,7 +36,7 @@
   },
   "files": [
     "dist",
-    "!dist/internal",
+    "!dist/stage",
     "src"
   ],
   "scripts": {

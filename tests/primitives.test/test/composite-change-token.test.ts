@@ -3,8 +3,8 @@
 // and callbacks fire exactly once per composite (the one-shot latch), no
 // matter how many inner tokens fire afterwards.
 
-import { CompositeChangeToken } from '@rhombus-std/primitives/_/CompositeChangeToken';
-import type { IChangeToken } from '@rhombus-std/primitives/_/IChangeToken';
+import { CompositeChangeToken } from '@rhombus-std/primitives/tokens/CompositeChangeToken';
+import type { IChangeToken } from '@rhombus-std/primitives/tokens/IChangeToken';
 import { describe, expect, test } from 'bun:test';
 
 // A minimal, mutable IChangeToken stub -- fires every registered callback

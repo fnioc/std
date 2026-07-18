@@ -1,13 +1,14 @@
 // White-box queue-processor and logger tests — reach the internals through the
 // library's `internal/*` subpath (lowered per-file JS; docs §7/§40).
 
-import { ConsoleLogger } from '@rhombus-std/logging.console/_/ConsoleLogger';
-import { ConsoleLoggerOptions } from '@rhombus-std/logging.console/_/ConsoleLoggerOptions';
-import { ConsoleLoggerProcessor, droppedMessagesWarning } from '@rhombus-std/logging.console/_/ConsoleLoggerProcessor';
-import { ConsoleLoggerQueueFullMode } from '@rhombus-std/logging.console/_/ConsoleLoggerQueueFullMode';
-import type { IConsole } from '@rhombus-std/logging.console/_/IConsole';
-import { SimpleConsoleFormatter } from '@rhombus-std/logging.console/_/SimpleConsoleFormatter';
-import { SimpleConsoleFormatterOptions } from '@rhombus-std/logging.console/_/SimpleConsoleFormatterOptions';
+import { ConsoleLogger } from '@rhombus-std/logging.console/private/ConsoleLogger';
+import { ConsoleLoggerOptions } from '@rhombus-std/logging.console/private/ConsoleLoggerOptions';
+import { ConsoleLoggerProcessor,
+  droppedMessagesWarning } from '@rhombus-std/logging.console/private/ConsoleLoggerProcessor';
+import { ConsoleLoggerQueueFullMode } from '@rhombus-std/logging.console/private/ConsoleLoggerQueueFullMode';
+import type { IConsole } from '@rhombus-std/logging.console/private/IConsole';
+import { SimpleConsoleFormatter } from '@rhombus-std/logging.console/private/SimpleConsoleFormatter';
+import { SimpleConsoleFormatterOptions } from '@rhombus-std/logging.console/private/SimpleConsoleFormatterOptions';
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';

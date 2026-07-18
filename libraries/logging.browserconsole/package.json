@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.browserconsole",
   "version": "0.0.0",
-  "description": "Browser console logging provider: BrowserConsoleLogger + BrowserConsoleLoggerProvider writing through the console global (console.error/warn/info/debug mapped from LogLevel, plain formatting, no ANSI) \u2014 against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
+  "description": "Browser console logging provider: BrowserConsoleLogger + BrowserConsoleLoggerProvider writing through the console global (console.error/warn/info/debug mapped from LogLevel, plain formatting, no ANSI) — against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
   "keywords": [
     "logging",
     "browser",
@@ -27,15 +27,19 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
-      "bun": "./dist/internal/*.js",
+      "bun": "./src/*.ts",
       "types": "./src/*.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./dist/stage/*.js"
     }
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",

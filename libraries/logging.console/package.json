@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.console",
   "version": "0.0.0",
-  "description": "Console logging provider ported from the reference console-logging package: ConsoleLogger + ConsoleLoggerProvider, the ConsoleFormatter abstraction with the simple/json/systemd built-ins (ANSI colors), formatter/logger options, and an async background queue writer \u2014 against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
+  "description": "Console logging provider ported from the reference console-logging package: ConsoleLogger + ConsoleLoggerProvider, the ConsoleFormatter abstraction with the simple/json/systemd built-ins (ANSI colors), formatter/logger options, and an async background queue writer — against @rhombus-std/logging.core's ILogger/ILoggerProvider contracts.",
   "keywords": [
     "logging",
     "console",
@@ -26,15 +26,19 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
-      "bun": "./dist/internal/*.js",
+      "bun": "./src/*.ts",
       "types": "./src/*.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./dist/stage/*.js"
     }
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",

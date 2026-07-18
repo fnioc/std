@@ -23,10 +23,10 @@ export type SampleScopes = 'singleton' | 'request';
  * typed `Promise<IConfig>`, so it depends on this exact token (the token-split —
  * Promise-ness is part of the identity), and the async factory is keyed here.
  */
-export const CONFIG_TOKEN = 'Promise<fnioc-integration-sample/_/sample/contracts:IConfig>';
+export const CONFIG_TOKEN = 'Promise<fnioc-integration-sample/tokens/sample/contracts:IConfig>';
 
 /** The token the di engine uses for the named-callable IThunk service. */
-export const THUNK_TOKEN = 'fnioc-integration-sample/_/sample/contracts:IThunk';
+export const THUNK_TOKEN = 'fnioc-integration-sample/tokens/sample/contracts:IThunk';
 
 /** The single shared IThunk value the opt-out test resolves (a callable). */
 export const theThunk: IThunk = () => 'thunk-result';

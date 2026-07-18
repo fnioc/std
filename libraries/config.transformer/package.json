@@ -27,7 +27,7 @@
       "default": "./dist/index.js"
     },
     "./ttsc": "./ttsc.mjs",
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"

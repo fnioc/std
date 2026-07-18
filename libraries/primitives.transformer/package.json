@@ -28,7 +28,7 @@
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
     "./signatureof-ttsc": "./ttsc-signatureof.mjs",
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"

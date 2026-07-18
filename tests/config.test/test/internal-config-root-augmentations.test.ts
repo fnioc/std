@@ -5,7 +5,7 @@
 // prototype, so the standalone member form is its only call shape.
 
 import * as configBarrel from '@rhombus-std/config';
-import { InternalConfigRootExtensions } from '@rhombus-std/config/_/InternalConfigRootExtensions';
+import { InternalConfigRootExtensions } from '@rhombus-std/config/private/InternalConfigRootExtensions';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 

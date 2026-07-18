@@ -25,21 +25,25 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
-      "bun": "./dist/internal/*.js",
+      "bun": "./src/*.ts",
       "types": "./src/*.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./dist/stage/*.js"
     }
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
-  "//rhombusBuild": "PILOT (\u00a741): nameof lowering runs on the ttsc/Go engine; tsconfig.build.json is the retained tspc twin (parity invariant), so the marker picks the engine.",
+  "//rhombusBuild": "PILOT (§41): nameof lowering runs on the ttsc/Go engine; tsconfig.build.json is the retained tspc twin (parity invariant), so the marker picks the engine.",
   "rhombusBuild": {
     "lowering": "ttsc"
   },
