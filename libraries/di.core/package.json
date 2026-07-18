@@ -21,7 +21,8 @@
     "entries": [
       { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" },
       { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "add" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addFactory" }
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addFactory" },
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addValue" }
     ]
   },
   "main": "./dist/index.js",
