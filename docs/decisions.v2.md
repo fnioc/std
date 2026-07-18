@@ -291,9 +291,14 @@ token/type surface. Lowering packages additionally expose `./private/*` (`types`
 `bun` → `./dist/private/*.js`) as the typed runnable-internals surface. Both are in-repo only:
 `publishConfig` rewrites `exports` down to `.` alone, and `files` excludes `dist/private`.
 
-Token derivation for an exports-mapped file matches **only** the root barrel (bare `pkg:Type`) or
-`./tokens/*` (`pkg/tokens/<path>:Type`); a file reachable by neither raises a hard diagnostic naming
-both fixes — there is no shortest-subpath heuristic. The derivation path for a package with no
+Token derivation for an exports-mapped file matches, in precedence order: (1) the root `.` export →
+bare `pkg:Type`; (2) any export entry carrying a `default` condition — i.e. resolvable by a
+published consumer → `pkg/<subpath>:Type`, with multiple public entries reaching the same file being
+a hard diagnostic (ambiguous token identity); (3) `./tokens/*` — which deliberately carries no
+`default` condition, making it the one sanctioned in-repo internal surface → `pkg/tokens/<path>:Type`;
+(4) otherwise a hard diagnostic naming both fixes (export the type publicly, or expose its file via
+`./tokens/*`). The discriminator for "public" is the presence of a `default` condition, not the
+subpath name — there is no shortest-subpath heuristic. The derivation path for a package with no
 exports map is unchanged. `internal` is banned as an export alias, since it collides with
 same-named source folders.
 
