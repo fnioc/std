@@ -167,15 +167,16 @@ export interface BuildPackageOptions {
    *   2. BUNDLE — the existing `bun build` pass then bundles the STAGE emit (NOT
    *      raw src) with no plugin, resolving the extensionless relative imports the
    *      stage preserved. Lowering commutes with bundling, so the shipped
-   *      `dist/*.js` is byte-identical to lowering in-bundle.
+   *      `dist/*.js` is what a no-transformer author would have hand-written.
    *
    * The d.ts pipeline is unaffected (`nameof` and friends have no type-level
-   * footprint). After bundling, the per-file lowered emit is KEPT at
-   * `dist/private/` and the package's `./private/*` export subpath points its
-   * `bun` condition there: white-box consumers (sibling test packages) execute
-   * the same lowered JS a published consumer would, instead of raw src whose
-   * un-lowered `nameof<T>()` throws at import time. `dist/private` is
-   * publish-excluded via a `"!dist/private"` entry in the package's `files`.
+   * footprint). After bundling, the per-file lowered emit is KEPT at `dist/stage/`
+   * — named for its build role — and the package's `./private/*` export alias
+   * points its `bun` condition there (alias and disk path are independent): so
+   * white-box consumers (sibling test packages) execute the same lowered JS a
+   * published consumer would, instead of raw src whose un-lowered `nameof<T>()`
+   * throws at import time. `dist/stage` is publish-excluded via a `"!dist/stage"`
+   * entry in the package's `files`.
    *
    * The Go plugin is compiled and cached on first use (once per cache key —
    * several minutes cold, since the typescript-go graph must compile, though its
@@ -216,9 +217,10 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   // The lowering stage (Go/ttsc engine). Stage-then-bundle: a per-file Bun.build
   // lowers every src file in isolation, and the main bundle then consumes that
   // stage emit with no plugin. Lowering commutes with bundling, so the shipped
-  // bundle is byte-identical to lowering in-bundle — while the separate per-file
-  // stage emit is retained as `dist/private/` (the white-box `private/*` runtime
-  // surface). A package opts in by setting `ttscProject`.
+  // bundle matches the hand-written no-transformer form — while the separate
+  // per-file stage emit is retained as `dist/stage/` (reached through the
+  // `./private/*` export alias, the white-box runtime surface). A package opts in
+  // by setting `ttscProject`.
   let stageDir: string | undefined;
   let jsEntrypoints = entrypoints.map((entry) => join(dir, entry));
   if (emitJs && ttscProject) {
@@ -266,9 +268,10 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
       throw new Error(`${name}: bun build failed`);
     }
     if (stageDir) {
-      // Keep the per-file lowered emit as the white-box (`private/*`) runtime
-      // surface -- see the `ttscProject` doc above.
-      renameSync(stageDir, join(dist, 'private'));
+      // Keep the per-file lowered emit at dist/stage -- the white-box runtime
+      // surface reached through the `./private/*` alias (see the `ttscProject`
+      // doc above).
+      renameSync(stageDir, join(dist, 'stage'));
     }
   }
 
