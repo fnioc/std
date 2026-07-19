@@ -284,7 +284,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
   });
 
   test('nameof lowering is byte-identical on the collapsed host', () => {
-    expect(app).toContain('"./app:IAlpha"');
+    expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
     expect(app).not.toContain('nameof');
   });
 });

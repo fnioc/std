@@ -41,7 +41,8 @@ const CORE_ONLY = join(ROOT, 'core-only'); // fixture 2: deps only di.core
 const COLD_BUILD_MS = 600_000;
 
 // A lone nameof<T>() over a local interface — the observable both fixtures share:
-// lowered to "./app:IWidget" when the primitive stages activate, left as a bare
+// lowered to "@fixture/consumer/tokens/app:IWidget" (the named-package consumer's
+// package-qualified self-token) when the primitive stages activate, left as a bare
 // nameof() call when they do not.
 const APP_SOURCE = `
 import { nameof } from "./nameof";
@@ -138,6 +139,8 @@ beforeAll(async () => {
     return;
   }
   rmSync(ROOT, { recursive: true, force: true });
+  mkdirSync(CONSUMER, { recursive: true });
+  mkdirSync(CORE_ONLY, { recursive: true });
 
   // Fixture 1: devDeps di.transformer (the transitivity proof). di.transformer's
   // own primitives.transformer dependency is what carries the nameof stage; the
@@ -192,7 +195,7 @@ describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () =>
   test('a di.transformer dep transitively activates the nameof stage', () => {
     // The host reached primitives.transformer through di.transformer's honest
     // dependency edge and lowered nameof<IWidget>() to its token.
-    expect(consumerApp).toContain('"./app:IWidget"');
+    expect(consumerApp).toContain('"@fixture/consumer/tokens/app:IWidget"');
     expect(consumerApp).not.toContain('nameof');
   });
 
@@ -200,6 +203,6 @@ describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () =>
     // No *.transformer dep → auto-discovery spawns no host → nameof<IWidget>()
     // survives unlowered. di.core's own primitives.transformer devDep did not leak.
     expect(coreOnlyApp).toContain('nameof');
-    expect(coreOnlyApp).not.toContain('"./app:IWidget"');
+    expect(coreOnlyApp).not.toContain('"@fixture/consumer/tokens/app:IWidget"');
   });
 });
