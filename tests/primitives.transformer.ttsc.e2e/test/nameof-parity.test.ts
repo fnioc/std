@@ -106,7 +106,12 @@ beforeAll(() => {
       exports: { '.': './index.js', './contracts': './contracts/index.js' },
     }),
   );
-  writeFileSync(join(lib, 'index.d.ts'), `export { Deep } from "./internal/deep";\n`);
+  // Everything a token derives for is barrel-reachable: the strict derivation
+  // rejects a token reachable only through a non-barrel, non-`./tokens/*` subpath.
+  writeFileSync(
+    join(lib, 'index.d.ts'),
+    `export { Deep } from "./internal/deep";\nexport { IFoo, Scoped } from "./contracts/index.js";\n`,
+  );
   writeFileSync(join(lib, 'internal', 'deep.d.ts'), `export interface Deep {}\n`);
   writeFileSync(
     join(lib, 'contracts', 'index.d.ts'),
@@ -182,8 +187,8 @@ describe.skipIf(!toolchainReady)('ttsc/Go nameof lowering byte-parity', () => {
     expect(app).toContain(`"Promise<./app:ILocal>"`);
   });
 
-  test('package-public subpath → importSpecifier:Symbol', () => {
-    expect(app).toContain(`"your-lib/contracts:IFoo"`);
+  test('package-public barrel → importSpecifier:Symbol', () => {
+    expect(app).toContain(`"your-lib:IFoo"`);
   });
 
   test('root re-export of a deep declaration → bare-package Tier-1 token', () => {
@@ -203,13 +208,13 @@ describe.skipIf(!toolchainReady)('ttsc/Go nameof lowering byte-parity', () => {
     // NOT see is `Local<\"singleton\">`.
     expect(app).toContain(`localDefaultAlias = "./app:Local"`);
     expect(app).not.toContain(`"./app:Local<\\"singleton\\">"`);
-    expect(app).toContain(`publicDefaultAlias = "your-lib/contracts:Scoped"`);
-    expect(app).not.toContain(`"your-lib/contracts:Scoped<\\"singleton\\">"`);
+    expect(app).toContain(`publicDefaultAlias = "your-lib:Scoped"`);
+    expect(app).not.toContain(`"your-lib:Scoped<\\"singleton\\">"`);
   });
 
   test('defaulted-generic alias with an explicit non-default arg → closed token', () => {
     expect(app).toContain(`localExplicitAlias = "./app:Local<\\"request\\">"`);
-    expect(app).toContain(`publicExplicitAlias = "your-lib/contracts:Scoped<\\"request\\">"`);
+    expect(app).toContain(`publicExplicitAlias = "your-lib:Scoped<\\"request\\">"`);
   });
 
   test('the elided nameof import leaves no dangling build-time import', () => {

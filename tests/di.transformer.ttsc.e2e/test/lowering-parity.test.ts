@@ -102,7 +102,10 @@ beforeAll(() => {
       exports: { '.': './index.js', './contracts': './contracts/index.js' },
     }),
   );
-  writeFileSync(join(lib, 'index.d.ts'), `export {};\n`);
+  // The barrel re-exports IUserRepo so its token derives from the canonical
+  // public specifier (`your-lib:IUserRepo`); the strict derivation rejects a
+  // token reachable only through a non-barrel, non-`./tokens/*` subpath.
+  writeFileSync(join(lib, 'index.d.ts'), `export { IUserRepo } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IUserRepo {}\n`);
 
   writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
@@ -338,14 +341,14 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
   test('multi-param ctor → package-public service token + inline dep signature (Rule 1)', () => {
     // The service token is the Tier-1 import specifier; the ctor deps are the
     // app-internal interface tokens and the bare intrinsic "string" (Rule 1).
-    expect(app).toContain(`"your-lib/contracts:IUserRepo"`);
+    expect(app).toContain(`"your-lib:IUserRepo"`);
     expect(app).toContain(`"./app:IDbConnection"`);
     expect(app).toContain(`"string"`);
     expect(app).toContain(`.as("request")`);
   });
 
   test('nameof<T>() → the same byte-identical package-public token', () => {
-    expect(app).toContain(`marker = "your-lib/contracts:IUserRepo"`);
+    expect(app).toContain(`marker = "your-lib:IUserRepo"`);
   });
 
   test('tokenless resolve<I>() → resolve("<token>")', () => {

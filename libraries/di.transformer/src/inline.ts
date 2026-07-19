@@ -11,7 +11,7 @@
 //
 // This package protects them for free: `@rhombus-std/di.transformer` bundles from
 // its barrel (`src/index.ts`), which deliberately does NOT re-export this file, so
-// `bun build` never pulls it into `dist`, and the package has no per-file tspc
+// `bun build` never pulls it into `dist`, and the package has no per-file
 // emit at all. This file therefore exists purely as SUBSTITUTION SOURCE the inline
 // stage side-parses out of `src/`; the typecheck gate still sees it (it stays in
 // the program), but nothing lowers or ships it. `signatureof` — the authoring-time

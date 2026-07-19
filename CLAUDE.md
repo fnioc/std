@@ -40,22 +40,29 @@ Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` 
 | Format                  | `bun run format` (write) · `bun run format:check`                              |
 
 - **`bun run build` (topological), never `bun --filter '*' build`.** It runs
-  `scripts/build-all.ts`. Transformer-active packages resolve their upstream through the `built`
-  d.ts condition, not source (see [Build layout](#build-layout--dist-referencing-in-progress-72)),
-  so the upstream `dist` must be complete and stable before they compile — a flat parallel build
-  races and silently mis-resolves. `build-all` tiers the workspace by its dependency graph and
-  finishes each tier before the next (§1/§9).
-- **`bun run test` is the full gate.** It includes the `examples.app.*` output-diff e2e: build with
-  `tspc`, run, `diff` stdout against the checked-in `expected.txt` (§16). CI's `verify` job
-  (`.github/workflows/ci.yml`) runs `build`/`test`/`lint` on every push/PR/merge_group and is a
+  `scripts/build-all.ts`. Transformer-active packages resolve their upstream through its rolled
+  d.ts (see [Build layout](#build-layout--dist-referencing-in-progress-72)), not source, so the
+  upstream `dist` must be complete and stable before they compile — a flat parallel build races and
+  silently mis-resolves. `build-all` tiers the workspace by its dependency graph and finishes each
+  tier before the next (§1/§9).
+- **`bun run test` is the full gate.** It runs every package's `test`, then every package's
+  `test:e2e` — the ttsc parity e2es join the gate (they self-skip only on a Go-less machine). It
+  includes the `examples.app.*` output-diff e2e: build with the Go/ttsc engine, run, `diff` stdout
+  against the checked-in `expected.txt` (§16). CI's `verify` job (`.github/workflows/ci.yml`) runs
+  `build`/`test`/`lint`/`format:check` plus the Go gates on every push/PR/merge_group and is a
   required status check on the `main` merge-queue ruleset — but it's the same local gate running
   remotely, not a separate suite; `bun run test` locally is still authoritative.
-- **Typecheck is per-package**, inside each package's `build`/`lint` (`tsc --noEmit -p tsconfig.json`,
-  or `tspc --noEmit` for transformer-consumers). The root `typecheck` script (`tsc -b`) points at
-  an empty solution stub and checks nothing — don't rely on it.
+- **Typecheck is per-package**, inside each package's `build`/`lint` (`tsc --noEmit -p tsconfig.json`).
+  The root `typecheck` script (`tsc -b`) points at an empty solution stub and checks nothing — don't
+  rely on it.
 - **Lint** is eslint (typescript-eslint, type-aware) over `libraries|examples/*/src`; but
-  transformer-consuming packages lint by _typechecking_ (`tsc`/`tspc --noEmit`), since their
-  authored forms only exist after the transform. Formatting is **dprint** (`useBraces: always`).
+  transformer-consuming packages lint by _typechecking_ (`tsc --noEmit`) — the authored tokenless
+  forms type-check against the transformer's `declare module` augmentation (pulled in via `types`),
+  with no plugin, since `nameof` and the sugar forms have no type-level footprint. Formatting is
+  **dprint** (`useBraces: always`).
+- **Go gates** (the ttsc engine's own): `node scripts/gen-go-work.mjs` then, from `transforms/`,
+  `go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on PATH; the
+  generator rebuilds the gitignored `go.work` against the installed ttsc shim modules).
 
 ## Architecture
 
@@ -109,9 +116,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `EmptyServiceProvider` null-object singleton, §56) ← `di` (the resolution engine: scopes,
   resolution, captive-dependency protection, `ServiceProviderOptions`-gated `validateScopes` /
   `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57).
-  `di.transformer` (ts-patch: token derivation, dependency extraction, registration lowering,
-  factory-signature diagnostic) depends on **`di.core` types only, never the `di` runtime**
-  (§2 — hard invariant). `di.transformer.options` is a satellite lowering the `addOptions<T>()`
+  `di.transformer` (the Go/ttsc authoring surface: the `declare module` for the tokenless
+  registration forms, the inline sugar bodies, and the `signatureof` primitive) depends on
+  **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.transformer.options` is a satellite lowering the `addOptions<T>()`
   sugar (§15). di.core's public type surface also ships `IServiceProviderFactory` — the reference
   `IServiceProviderFactory` analog, shared by the hosting builders (§24) — and the capability
   interfaces `IRequiredResolver` / `IServiceQuery` that `IResolver` composes (the reference
@@ -321,8 +328,10 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 published consumer gets — never raw `.ts` source. The old src-referencing rule (a `.` export's
 `source`/`bun`/`types` conditions pointing at `./src/*.ts`, permitted only for d.ts-only libs) is
 being retired package by package; see §72 in `docs/decisions.md` for why and for the current
-front line. **`internal/*` deliberately stays src-referenced** — white-box tests need it, and there
-is no rolled per-file `.d.ts` for it to resolve to instead.
+front line. **The white-box seam is two subpaths** — `./tokens/*` (all conditions → src, the token
+surface the derivation reads) and, for a lowering package, `./private/*` (`types` → src, `bun` →
+the lowered `./dist/stage/*.js` a white-box test executes). Neither is published (both scrubbed from
+`publishConfig.exports`).
 
 **Landed:** `primitives`, `options`, `fileproviders.core`, `fileproviders.composite`, `config.core`
 (tiers 1–2, §72), and — following §74's token-derivation fix — `di.core`, `di`, `config.json`,
@@ -337,7 +346,7 @@ receiver — carry a package-unique `<pkg>-source` condition (`di-core-source`/
 so the core's OWN program resolves back to its not-yet-built src (the §72 TS2664 self-typecheck
 fix) while every external consumer resolves the built dist; `hosting.core.test`'s white-box
 program needs the same condition in its own tsconfig, since it pulls hosting.core's src through
-`./internal/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's `.`
+`./private/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's `.`
 export and from `customConditions` in all nine downstream consumer tsconfigs that used to force
 dist-resolution with it (the `di.transformer` pair, the example/app programs, and the di + config
 transformer test programs) — the per-core `-source` conditions above are its narrower replacement.
@@ -359,18 +368,21 @@ Mechanically, for packages not yet converted: they consume each other's raw TS `
 `moduleResolution: bundler`. The `import`/`default` conditions point at built `dist` — what
 published consumers resolve.
 
-One further deviation, because a **transformer** is in play:
+One further deviation, because a **transformer** is in play — now a single **Go/`ttsc`** engine
+(the ts-patch/TS5 track was removed; restore tag `pre-tspatch-removal`):
 
-- **`tspc`, not `tsc`.** Transformer-active packages build/typecheck with `tspc` (ts-patch), wired
-  per-package: a `plugins: [{ transform, import }]` entry in `tsconfig.json` plus the `types` array
-  bringing the augmentation into the program. `ts-patch`, `rollup`, and `rollup-plugin-dts` live at
-  the repo root so every workspace can reach them.
-- **The `nameof` lowering stage (§40).** Any library whose src calls `nameof<T>()` must ship it
-  LOWERED: its build runs `tspc -p tsconfig.build.json` into `.tspc-out/` and `bun build` bundles
-  that emit (`buildPackage`'s `tspcProject`). The per-file emit is kept as `dist/internal/` (the
-  `internal/*` export's `bun` condition — white-box tests execute lowered JS, since un-lowered
-  `nameof` throws at import time; publish-excluded via `"!dist/internal"` in `files`), and the
-  `.` export's `bun` condition points at `dist/index.js`.
+- **Lint/typecheck is plain `tsc`.** Transformer-active packages type-check with `tsc --noEmit`; a
+  `types` array in `tsconfig.json` pulls the transformer's `declare module` augmentation into the
+  program, so the authored tokenless forms type-check with no plugin (`nameof` and the sugar forms
+  have no type-level footprint). `rollup` + `rollup-plugin-dts` live at the repo root.
+- **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `nameof<T>()` (etc.)
+  ships it LOWERED: `buildPackage` runs a per-file `Bun.build` with the `@ttsc/unplugin/bun` adapter
+  active — every `src/**/*.ts` its own entrypoint, all imports external — so each file is lowered
+  into a stage dir; the main bundle then consumes that emit with no plugin (lowering commutes with
+  bundling). The per-file emit is KEPT as `dist/stage/` (reached through the `./private/*` export's
+  `bun` condition — white-box tests execute the lowered JS, since un-lowered `nameof` throws at
+  import time; publish-excluded via `"!dist/stage"` in `files`), and the `.` export's `bun`
+  condition points at `dist/index.js`.
 
 Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one rolled `.d.ts`),
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM
@@ -379,65 +391,68 @@ never raw `tsc` output — extensionless bundler-style imports don't resolve und
 **Build args are derived, not authored (§43).** There are no per-package `build.ts` files: every
 library's `build` script runs `scripts/build-lib.ts`, which derives the `buildPackage` args from
 the manifest — `external` = deps ∪ peers (the §9/§38 identity invariant as a rule; devDeps
-inline), entrypoints/dts configs from the `exports` map, lowering engine from twin-config
-existence (`tsconfig.build.json` → tspc, `tsconfig.ttsc.json` → ttsc). The optional
-`rhombusBuild` manifest field carries the four deviations (`lowering`/`typesOnly`/`inline`/
-`forbidImports`), each documented by a `//rhombusBuild` neighbor. Library tsconfigs extend the
-shared root fragments `tsconfig.lib.json` (typecheck profile) / `tsconfig.tspc.json` (lowering
-stage); `include`, `rootDir`/`outDir`, and a self-augmenting core's `customConditions: ["<pkg>-source"]`
-(§78) stay leaf-side.
+inline), entrypoints/dts configs from the `exports` map, and the lowering stage runs iff a
+`tsconfig.ttsc.json` exists. The optional `rhombusBuild` manifest field carries the deviations
+(`typesOnly`/`inline`/`forbidImports`), each documented by a `//rhombusBuild` neighbor. Library
+tsconfigs extend the shared root fragment `tsconfig.lib.json` (typecheck profile); the lowering-stage
+config is the leaf `tsconfig.ttsc.json`, and a self-augmenting core's
+`customConditions: ["<pkg>-source"]` (§78) stays leaf-side too.
 
-### Two transformer engines — dual-track (§41/§90)
+### The transformer engine (Go/`ttsc`, §41/§90)
 
-The four authoring-time transformers exist twice. The **ts-patch/TS5** sources
-(`libraries/*.transformer`) stay the **lint/typecheck gate** (`tspc --noEmit`, eslint) — unchanged.
-A **Go/`ttsc`** port under the root `transforms/` module
-(`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std` linking all stages,
-shared `internal/`) is the **build/emit engine**: it lowers `nameof`/`add`/`addOptions`/`withType`
-into the shipped JS. The two must lower **identically — token strings byte-for-byte** (the parity
-invariant); code shape may differ. Go comes from **mise only** (`mise.toml` pin), never
-system-wide.
+The four authoring-time transformers lower on ONE engine: a Go/`ttsc` port under the root
+`transforms/` module (`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std`
+linking all stages, shared `internal/`). It lowers `nameof`/`add`/`addOptions`/`withType` into the
+shipped JS, and the lowered output equals what a no-transformer author would hand-write (the parity
+invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (restore tag
+`pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only** (`mise.toml`
+pin), never system-wide.
 
 - **Descriptor wiring** — every transformer's `./ttsc` subpath descriptor resolves to the SAME
-  `cmd/ttsc-std` source dir (so `ttsc` dedupes every consumer to one cache key), plus a
-  per-consumer `--plugins-json` list in `tsconfig.ttsc.json` declaring which stages that consumer
-  wants; `ttsc-std` activates only the declared stages at runtime, always executing in the
-  hardcoded canonical order (nameof → di → di-options → config) regardless of declaration order
-  (§90).
-- **One native backend per pass** — `ttsc` still errors on two plugins, but that's moot now: every
-  consumer's descriptor resolves to the one shared `ttsc-std` source, so there is only ever one
-  plugin in play; no per-combination aggregate host (§90 rejects that shape — see the decision for
-  why).
+  `cmd/ttsc-std` source dir (so `ttsc` dedupes every consumer to one cache key); each consumer's
+  `tsconfig.ttsc.json` declares which stages it wants, and `ttsc-std` activates only those, always
+  executing in the hardcoded canonical order (inline → nameof → signatureof → di → di-options →
+  config) regardless of declaration order (§90). di.core's `./ttsc` is a PRESET that expands to the
+  ordered di sugar bundle (inline → nameof → signatureof → di).
+- **Descriptor-only transformer packages** — `config.transformer` and `primitives.transformer`
+  collapsed to their `./ttsc` (+ `inline-ttsc`/`signatureof-ttsc`) descriptors, no barrel to build.
+  `di.transformer` / `di.transformer.options` keep a barrel that ships only the `declare module`
+  authoring augmentation; di.transformer also holds the single-expression `inline.ts` sugar bodies
+  (side-parsed from src, never bundled) + the `rhombus.inline` markers + the `signatureof` throwing
+  stub.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
-  plugin as a `@ttsc/unplugin/bun` onLoad transform inside `Bun.build`: `buildPackage`'s
-  `ttscProject` (parallel to `tspcProject`, one XOR the other) via `ttscBunPlugin`. Toolchain pinned
-  by `ttscEnv` (`GOTOOLCHAIN=local`, `TTSC_GO_BINARY` from `mise which go`, disk-backed `GOTMPDIR`).
+  plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
+  (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`
+  (`GOTOOLCHAIN=local`, `TTSC_GO_BINARY` from `mise which go`, disk-backed `GOTMPDIR`).
 - **Cache economics** — compiled sidecars cache at **repo-root** `node_modules/.cache/ttsc`
-  (~25 MB/binary, shared not per-package): ~5 min cold once per distinct plugin, ~3-4 s warm. CI
-  provisions Go via `jdx/mise-action` and restores this cache.
-- **Pilot** — only `caching.core` flips its emit to `ttscProject` (byte-identical dist; tspc twin
-  retained as `tsconfig.build.json`); full library-tier conversion is a measured follow-up.
-- **`transforms/go.work` is gitignored** (machine-specific abs paths); `ttsc` makes its own, so
-  `go.mod` has no `replace`. Parity: `tests/*.ttsc.e2e` (script `test:e2e`, self-skip without Go —
-  OUT of the default `bun --filter '*' test` gate) + the app example `expected.txt` byte-diff.
-- **Go gates** — `cd transforms && go build ./... && go vet ./... && go test ./... && gofmt -l .`
-  (needs mise Go on PATH and the machine-local `go.work`).
+  (~25 MB/binary, shared not per-package): ~5 min cold once, ~3-4 s warm. CI provisions Go via
+  `jdx/mise-action` and restores the `node_modules/.cache` tree + the Go build cache.
+- **`transforms/go.work` is gitignored** (machine-specific abs paths); `scripts/gen-go-work.mjs`
+  rebuilds it against the installed ttsc shim modules (`ttsc` also makes its own during a build, so
+  `go.mod` has no `replace`). Parity: `tests/*.ttsc.e2e` (script `test:e2e`, now IN the default
+  `bun run test` gate — self-skip only without Go) + the app example `expected.txt` byte-diff.
+- **Go gates** — `node scripts/gen-go-work.mjs` then
+  `cd transforms && go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on
+  PATH).
 
 ## Publishing
 
-**Publish with pnpm — never npm (or `bun publish`).** The dev→dist swap and the
-`internal/*` white-box scrub (`docs/decisions.md` §7) both ride on `publishConfig.exports`;
-pnpm is the only package manager that rewrites `exports` from that override at publish
-time. Publishing with anything else ships the wrong entry points and leaks `internal/*`.
+**Publish with pnpm — never npm (or `bun publish`).** The dev→dist swap and the white-box scrub
+(`docs/decisions.md` §7) both ride on `publishConfig.exports`; pnpm is the only package manager that
+rewrites `exports` from that override at publish time. Publishing with anything else ships the wrong
+entry points and leaks the white-box `./tokens/*` + `./private/*` seams.
 
 ## Tests
 
 Tests live in sibling `tests/<lib>.test` packages (files under `tests/<lib>.test/test/`), not
-co-located with `src/`. End-to-end suites that cross the transformer→engine boundary are
-`tests/<family>.tests.integration`.
+co-located with `src/`. Transformer↔engine byte-parity suites are `tests/<family>.ttsc.e2e` (script
+`test:e2e`).
 
-- **White-box** (needs to reach into a library's internals): via that library's
-  `internal/*` export subpath.
+- **White-box** (needs to reach into a library's internals): via that library's white-box seam —
+  `./private/*` to EXECUTE delivered code (its `bun` condition resolves the lowered `dist/stage/`),
+  or `./tokens/*` for the src-referenced token surface. A suite must not load one package through
+  BOTH the barrel and `./private/*` — two module instances double-install the package's
+  augmentations and collide.
 - **Black-box** (exercises only the public surface): via a plain `workspace:*`
   devDependency on the library.
 

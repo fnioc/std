@@ -1,7 +1,7 @@
 // @rhombus-std/di.transformer — the type-only authoring surface + inline sugar
 // bodies for the di registration forms.
 //
-// Build-time only, and no longer a ts-patch transformer: the lowering runs on the
+// Build-time only, and no longer a TS-plugin transformer: the lowering runs on the
 // Go/ttsc engine, wired through the `./ttsc` descriptor. What survives here is the
 // authoring contract, not an emit implementation:
 //

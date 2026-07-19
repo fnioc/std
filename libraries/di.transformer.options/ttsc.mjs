@@ -10,8 +10,8 @@
 // the host runs each declared stage in canonical order (no aggregate descriptor
 // needed, and none exists).
 //
-// The existing ts-patch entry (the `.` export's `transform`) is untouched — this
-// is the parallel ttsc/Go emit path, wired through the separate `./ttsc` subpath.
+// This is the Go/ttsc emit path — the sole lowering engine now, wired through the
+// `./ttsc` subpath.
 
 import path from 'node:path';
 

@@ -3,8 +3,7 @@
 // This example library is authored in the tokenless di dialect and consumed
 // only as its BUILD (every exports condition resolves to dist), so the
 // transformer MUST run to lower the resolve<T>()/tryResolve<T>()/isService<T>()
-// calls in server-report.ts. It is the ttsc/Go analog of the former
-// `tspc -p tsconfig.json` build:
+// calls in server-report.ts. The Go engine runs during the Bun.build emit:
 //
 //   - dist/*.js  — Bun.build bundles the barrel, with @ttsc/unplugin/bun running
 //     the di.transformer Go plugin as an onLoad transform so each tokenless call
