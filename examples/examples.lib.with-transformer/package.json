@@ -2,7 +2,7 @@
   "name": "@rhombus-std/examples.lib.with-transformer",
   "private": true,
   "version": "0.0.0",
-  "description": "Example dependency library authored in the tokenless di dialect and built with tspc. Its build is its only consumable form \u2014 every exports condition resolves to dist, so raw source never bypasses the transformer lowering.",
+  "description": "Example dependency library authored in the tokenless di dialect and built via the Go/ttsc engine. Its build is its only consumable form \u2014 every exports condition resolves to dist, so raw source never bypasses the transformer lowering.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "bun build.ts",
-    "lint": "bun x tspc --noEmit -p tsconfig.json"
+    "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@rhombus-std/examples.contracts": "workspace:*"
@@ -30,7 +30,6 @@
     "@rhombus-std/di.transformer": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
-    "ts-patch": "^3.3.0",
     "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
   }

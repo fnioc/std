@@ -22,10 +22,11 @@ jobs:
     name: verify
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    # A cold ttsc plugin cache compiles the typescript-go sidecars from scratch
-    # (~5 min per distinct plugin, 3 plugins). Give the whole job room to survive
-    # that on top of the normal gate; warm-cache runs finish in a couple minutes.
-    timeout-minutes: 30
+    # A cold ttsc plugin cache compiles the typescript-go sidecar from scratch
+    # (~5 min). The gate now also runs the ttsc e2e suites (each compiles the
+    # sidecar into its own cache dir), so give the whole job room to survive a
+    # cold run on top of the normal gate; warm-cache runs finish in a few minutes.
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -43,13 +44,17 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # The compiled ttsc sidecars live under node_modules/.cache/ttsc (~25 MB
-      # each). Cache them keyed on the Go sources + toolchain manifest + ttsc
-      # version (bun.lock) so only a genuine transform change forces a cold build.
+      # The compiled ttsc sidecars live under node_modules/.cache (the build's
+      # ttsc/ dir plus each e2e suite's own cache dir), ~25 MB each. Cache the
+      # tree — plus the Go build cache — keyed on the Go sources + toolchain
+      # manifest + ttsc version (bun.lock) so only a genuine transform change
+      # forces a cold rebuild.
       - name: Cache ttsc plugin sidecars
         uses: actions/cache@v4
         with:
-          path: node_modules/.cache/ttsc
+          path: |
+            node_modules/.cache
+            ~/.cache/go-build
           key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
           restore-keys: |
             ttsc-plugins-${{ runner.os }}-
@@ -65,6 +70,18 @@ jobs:
 
       - name: Format
         run: bun run format:check
+
+      # The Go/ttsc engine's own gates. transforms/go.work is machine-specific and
+      # gitignored, so generate it against the installed ttsc shim modules first.
+      - name: Go gates (transforms)
+        run: |
+          node scripts/gen-go-work.mjs
+          cd transforms
+          export GOTOOLCHAIN=local
+          go build ./...
+          go vet ./...
+          go test ./...
+          test -z "$(gofmt -l .)"
 
   publish-alpha-verify:
     if: github.event_name == 'workflow_dispatch'

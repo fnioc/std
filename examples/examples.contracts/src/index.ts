@@ -1,6 +1,6 @@
 // The shared contract surface both example libraries produce against and both
 // example apps consume. PURE TYPES — no runtime code, so every `import type` of
-// these interfaces erases and neither the built libs nor the tsc/tspc apps carry
+// these interfaces erases and neither the built libs nor the tsc-typechecked apps carry
 // a runtime dependency on this package.
 //
 // This is the "cross-lib contract flow" the interop matrix turns on: the
