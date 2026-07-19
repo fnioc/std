@@ -60,7 +60,8 @@ function shimModuleDirs(ttscDir) {
 const ttscDir = findTtscModuleDir();
 const uses = ['.', ttscDir, ...shimModuleDirs(ttscDir)];
 const useBlock = uses.map((u) => `\t${u}`).join('\n');
-const goWork = `go 1.26\n\nuse (\n${useBlock}\n)\n\nreplace github.com/samchon/ttsc/packages/ttsc v0.0.0 => ${ttscDir}\n`;
+const goWork =
+  `go 1.26\n\nuse (\n${useBlock}\n)\n\nreplace github.com/samchon/ttsc/packages/ttsc v0.0.0 => ${ttscDir}\n`;
 
 writeFileSync(join(TRANSFORMS, 'go.work'), goWork);
 console.log(`gen-go-work: wrote transforms/go.work (${uses.length} modules, ttsc at ${dirname(ttscDir)})`);

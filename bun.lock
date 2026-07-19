@@ -766,10 +766,7 @@
       "name": "@rhombus-std/di.tests.integration",
       "version": "0.0.0",
       "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-toolkit/func": "^3.5.3",
       },
     },
     "tests/di.transformer.options.ttsc.e2e": {
@@ -955,20 +952,6 @@
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/options": "workspace:*",
-        "@rhombus-std/options.augmentations": "workspace:*",
-        "@rhombus-std/primitives": "workspace:*",
-      },
-    },
-    "tests/options.augmentations.tests.integration": {
-      "name": "@rhombus-std/options.augmentations.tests.integration",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/config.core": "workspace:*",
-        "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/di.transformer.options": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
@@ -1452,8 +1435,6 @@
     "@rhombus-std/options.augmentations": ["@rhombus-std/options.augmentations@workspace:libraries/options.augmentations"],
 
     "@rhombus-std/options.augmentations.test": ["@rhombus-std/options.augmentations.test@workspace:tests/options.augmentations.test"],
-
-    "@rhombus-std/options.augmentations.tests.integration": ["@rhombus-std/options.augmentations.tests.integration@workspace:tests/options.augmentations.tests.integration"],
 
     "@rhombus-std/options.test": ["@rhombus-std/options.test@workspace:tests/options.test"],
 

@@ -358,7 +358,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
 
   test('add<Keyed<T, "k">>(Impl) → registration under the <base>#k token', () => {
     // The keyed registration composes the plain ICache token with a `#redis`
-    // suffix — byte-identical to the ts-patch engine's keyed lowering.
+    // suffix — byte-identical to the hand-written keyed lowering.
     expect(app).toContain(`services.add("./app:ICache#redis", RedisCache,`);
   });
 
@@ -371,7 +371,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
   test('keyed base carrying an open-generic hole composes IThing<$1>#redis', () => {
     // ThingRepo's keyed ctor dep keys an OPEN-generic base; the substituted hole
     // must render `$1` inside the base BEFORE the `#redis` suffix. The Go engine
-    // must use hole-aware base derivation here to stay byte-identical to ts-patch
+    // must use hole-aware base derivation here to stay byte-identical to the hand-written form
     // (a non-hole-aware derivation drops the key and hard-errors instead).
     expect(app).toContain(`services.add("./app:IRepo<$1>", ThingRepo,`);
     expect(app).toContain(`[["./app:IThing<$1>#redis"]]`);
