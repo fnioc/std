@@ -422,12 +422,6 @@ func TestSingletonValue(t *testing.T) {
 		}
 	})
 	t.Run("boolean literals", func(t *testing.T) {
-		// BUG: SingletonValue (holes.go:513) reads a boolean literal via
-		// t.AsIntrinsicType(), but in this typescript-go a boolean literal's data is
-		// *LiteralType (value is a bool), so the cast PANICS. Correct read is
-		// t.AsLiteralType().Value().(bool). Same defect in derive.go:158. Skipped, not
-		// fixed, per the no-source-edit rule; flagged in the final report.
-		t.Skip("boolean-literal singleton panics: AsIntrinsicType on a *LiteralType (holes.go:513)")
 		v, ok := SingletonValue(get("sTrue"))
 		if !ok || v.Kind != LiteralBoolean || !v.Bool {
 			t.Fatalf("true singleton = %+v ok=%v", v, ok)

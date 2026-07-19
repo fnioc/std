@@ -155,7 +155,10 @@ func literalText(t *shimchecker.Type) (string, bool) {
 		return fmt.Sprintf("%vn", t.AsLiteralType().Value()), true
 	}
 	if flags&shimchecker.TypeFlagsBooleanLiteral != 0 {
-		return t.AsIntrinsicType().IntrinsicName(), true
+		// Boolean literal data is a *LiteralType (Go bool value), not an
+		// *IntrinsicType; FormatBool reproduces the "true"/"false" text.
+		b, _ := t.AsLiteralType().Value().(bool)
+		return strconv.FormatBool(b), true
 	}
 	return "", false
 }
