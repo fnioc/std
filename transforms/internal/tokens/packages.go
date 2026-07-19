@@ -1,7 +1,7 @@
 package tokens
 
 import (
-	"sort"
+	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 
@@ -42,9 +42,24 @@ func nearestPackage(ctx *Context, fromPath string) *packageInfo {
 }
 
 // publicImportSpecifier returns the exact import specifier a consumer writes for
-// a symbol reachable through a package's public exports (`pkg` for a root export,
-// `pkg/contracts` for a subpath), or ok=false when the type is private to the
-// package. The match is against the checker export graph, not file-path stems.
+// a symbol reachable through a package's public exports. Derivation is tiered:
+//
+//  1. PUBLIC tier — the candidate entries are those whose target is a bare string
+//     or is reached through a `default` condition (either way, any consumer can
+//     resolve them). Among the public candidates that REACH the declaration file,
+//     the SHORTEST subpath wins (lexicographic tiebreak on equal length), so the
+//     root barrel `.` (→ bare `pkg`) is preferred and a public `./sub` mints
+//     `pkg/sub`. Multiple public matches are not an error — shortest wins.
+//  2. No public match, but a `./tokens/*` subpath reaches it → ok=false with no
+//     diagnostic, so baseTokenFor's fallback mints the `pkg/tokens/<path>` token
+//     over the source-referenced white-box surface.
+//  3. Reached ONLY through some other named subpath (a friendly deep-import alias
+//     that is neither public nor `./tokens/*`) → a hard diagnostic (via ctx.Diag),
+//     because that alias must not silently become part of a token.
+//
+// ok=false with no diagnostic also covers a type not publicly reachable at all —
+// it falls to the app-internal token. The match is against the checker export
+// graph, not file-path stems.
 func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbol, _ *shimast.SourceFile) (string, bool) {
 	if ctx.SourceFileAtStem == nil {
 		return "", false
@@ -62,11 +77,10 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		declFile = shimast.GetSourceFileOfNode(primary)
 	}
 
-	type match struct {
-		subpath         string
-		targetsDeclFile bool
-	}
-	matches := []match{}
+	// Gather every export subpath whose module re-exports the target, tagged with
+	// whether the export made it publicly reachable. The tier selection over this
+	// set is pure (selectSpecifier), so it is unit-tested without a checker.
+	var reaching []reachingEntry
 	for _, entry := range tokentext.CollectExportEntries(pkg.json) {
 		sf := entrySourceFile(pkg, entry, ctx.SourceFileAtStem)
 		if sf == nil {
@@ -76,45 +90,133 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		if mod == nil {
 			continue
 		}
-		for _, exp := range ctx.Checker.GetExportsOfModule(mod) {
-			resolved := exp
-			if exp.Flags&shimast.SymbolFlagsAlias != 0 {
-				if aliased := ctx.Checker.GetAliasedSymbol(exp); aliased != nil {
-					resolved = aliased
-				}
-			}
-			shares := false
-			for _, d := range resolved.Declarations {
-				if targetDecls[d] {
-					shares = true
-					break
-				}
-			}
-			if shares {
-				matches = append(matches, match{subpath: entry.Subpath, targetsDeclFile: sf == declFile})
-				break
-			}
+		if moduleReExports(ctx, mod, targetDecls) {
+			reaching = append(reaching, reachingEntry{subpath: entry.Subpath, public: entry.Public})
 		}
-	}
-	if len(matches) == 0 {
-		return "", false
 	}
 
-	sort.SliceStable(matches, func(i, j int) bool {
-		a, b := matches[i], matches[j]
-		if a.targetsDeclFile != b.targetsDeclFile {
-			return a.targetsDeclFile
+	decision := selectSpecifier(reaching)
+	if decision.found {
+		if decision.subpath == "" {
+			return pkg.name, true
 		}
-		if len(a.subpath) != len(b.subpath) {
-			return len(a.subpath) < len(b.subpath)
-		}
-		return a.subpath < b.subpath
-	})
-	best := matches[0]
-	if best.subpath == "" {
-		return pkg.name, true
+		return pkg.name + "/" + decision.subpath, true
 	}
-	return pkg.name + "/" + best.subpath, true
+	if decision.diagSubpath != "" {
+		reportNonPublicSubpath(ctx, target, declFile, pkg, decision.diagSubpath)
+	}
+	return "", false
+}
+
+// moduleReExports reports whether a resolved module symbol exports a member that
+// shares a declaration with the target (aliases resolved) — the "this entry
+// reaches the declaration file" check, run against the checker export graph.
+func moduleReExports(ctx *Context, mod *shimast.Symbol, targetDecls map[*shimast.Node]bool) bool {
+	for _, exp := range ctx.Checker.GetExportsOfModule(mod) {
+		resolved := exp
+		if exp.Flags&shimast.SymbolFlagsAlias != 0 {
+			if aliased := ctx.Checker.GetAliasedSymbol(exp); aliased != nil {
+				resolved = aliased
+			}
+		}
+		for _, d := range resolved.Declarations {
+			if targetDecls[d] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// reachingEntry is one export entry that reaches a target's declaration file,
+// carrying just what the tier selection needs: the public subpath and whether the
+// export made it publicly reachable (a `default` condition or bare-string target).
+type reachingEntry struct {
+	subpath string
+	public  bool
+}
+
+// specifierDecision is the outcome of the three-tier rule over the entries that
+// reach a target's declaration file.
+type specifierDecision struct {
+	// subpath is the winning public subpath ("" for the bare barrel); meaningful
+	// only when found is true.
+	subpath string
+	found   bool
+	// diagSubpath, when non-empty, is the non-public, non-tokens named subpath that
+	// forces the hard diagnostic (no public or `./tokens/*` entry reached the file).
+	diagSubpath string
+}
+
+// selectSpecifier applies the three-tier public-specifier rule to the export
+// entries that reach a target's declaration file (see publicImportSpecifier). It
+// is pure — no checker, no package identity — so the tier ordering and the
+// shortest-subpath tiebreak are pinned by plain unit tests.
+func selectSpecifier(reaching []reachingEntry) specifierDecision {
+	bestPublic := ""
+	havePublic := false
+	haveTokens := false
+	bestOther := ""
+	haveOther := false
+	for _, e := range reaching {
+		switch {
+		case e.public:
+			if !havePublic || shorterSubpath(e.subpath, bestPublic) {
+				bestPublic = e.subpath
+				havePublic = true
+			}
+		case e.subpath == "tokens" || strings.HasPrefix(e.subpath, "tokens/"):
+			haveTokens = true
+		default:
+			if !haveOther || shorterSubpath(e.subpath, bestOther) {
+				bestOther = e.subpath
+				haveOther = true
+			}
+		}
+	}
+	if havePublic {
+		return specifierDecision{subpath: bestPublic, found: true}
+	}
+	if haveTokens {
+		return specifierDecision{}
+	}
+	if haveOther {
+		return specifierDecision{diagSubpath: bestOther}
+	}
+	return specifierDecision{}
+}
+
+// shorterSubpath reports whether a is the canonical choice over b: shorter first,
+// then lexicographically smaller on equal length. The root "" is shortest of all.
+func shorterSubpath(a, b string) bool {
+	if len(a) != len(b) {
+		return len(a) < len(b)
+	}
+	return a < b
+}
+
+// reportNonPublicSubpath fires ctx.Diag for a type reachable only via a named
+// export subpath that is neither the barrel nor `./tokens/*`. Anchored at the
+// type's own declaration so the message points at the file whose exports must
+// change. Naming both fixes keeps the remedy unambiguous.
+func reportNonPublicSubpath(ctx *Context, target *shimast.Symbol, declFile *shimast.SourceFile, pkg *packageInfo, subpath string) {
+	if ctx.Diag == nil || declFile == nil {
+		return
+	}
+	primary := primaryDeclaration(target)
+	if primary == nil {
+		return
+	}
+	ctx.Diag(
+		declFile.FileName(),
+		primary.Pos(),
+		"TOKEN_SUBPATH_NOT_PUBLIC",
+		"cannot derive a token for \""+target.Name+"\": it is reachable from \""+pkg.name+
+			"\" only through the \"./"+subpath+"\" export subpath, which is neither the package "+
+			"barrel nor \"./tokens/*\". Export it from the barrel (the package's main index), or "+
+			"expose its file through a \"./tokens/*\" subpath, so the derived token has a stable "+
+			"public import specifier.",
+	)
 }
 
 // entrySourceFile resolves an export entry's on-disk target to the source file

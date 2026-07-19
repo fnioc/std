@@ -6,7 +6,7 @@
 // "eventually observed" case polls hasChanged against a bounded deadline.
 
 import { ExclusionFilters } from '@rhombus-std/fileproviders.physical';
-import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/_/PollingFileChangeToken';
+import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/tokens/PollingFileChangeToken';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

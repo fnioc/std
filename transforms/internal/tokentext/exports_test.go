@@ -70,8 +70,15 @@ func TestEntrySourceStems(t *testing.T) {
 		want  []string
 	}{
 		{
-			// A dist target yields the literal stem first, then its src twin —
-			// the twin is what a dist-referenced package compiling ITSELF loads.
+			// The rolled bundle target: the literal `dist/bundle/index` stem first,
+			// then its `src/index` twin (the `bundle/` build-role segment stripped).
+			name:  "dist/bundle root: literal then src twin",
+			entry: ExportEntry{Subpath: "", TargetRel: "dist/bundle/index.js"},
+			want:  []string{dir + "/dist/bundle/index", dir + "/src/index"},
+		},
+		{
+			// A plain `dist/`-rooted target still twins to `src/<X>` — the fallback
+			// prefix for any non-bundle dist artifact.
 			name:  "dist root: literal then src twin",
 			entry: ExportEntry{Subpath: "", TargetRel: "dist/index.js"},
 			want:  []string{dir + "/dist/index", dir + "/src/index"},
@@ -114,6 +121,45 @@ func TestEntrySourceStems(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The Public flag drives publicImportSpecifier's tier-1 candidacy: a bare-string
+// target or a leaf reached through a `default` condition is public; every other
+// condition channel (types/import/bun/…) is not.
+func TestCollectExportEntriesPublicClassification(t *testing.T) {
+	pkg, ok := ParsePackageJSON(`{
+		"name": "your-lib",
+		"exports": {
+			".": { "bun": "./dist/index.js", "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+			"./bare": "./bare/index.js",
+			"./tokens/*": { "source": "./src/*.ts", "types": "./src/*.ts" }
+		}
+	}`)
+	if !ok {
+		t.Fatal("ParsePackageJSON failed")
+	}
+	publicByTarget := map[string]bool{}
+	for _, e := range CollectExportEntries(pkg) {
+		// The default channel and the bare string are public; a same-target
+		// non-default channel (bun/types/import) may also appear — OR the flags so
+		// the target counts public if ANY channel to it is public.
+		publicByTarget[e.Subpath+"=>"+e.TargetRel] = publicByTarget[e.Subpath+"=>"+e.TargetRel] || e.Public
+	}
+	want := map[string]bool{
+		"=>dist/index.js":     true,  // reached via `default` (and non-public bun/import)
+		"=>dist/index.d.ts":   false, // `types` only — not public
+		"bare=>bare/index.js": true,  // bare string — public
+		"tokens/*=>src/*.ts":  false, // `source`/`types` only — not public
+	}
+	for key, wantPublic := range want {
+		got, seen := publicByTarget[key]
+		if !seen {
+			t.Fatalf("entry %q missing from %v", key, publicByTarget)
+		}
+		if got != wantPublic {
+			t.Errorf("public[%q] = %v, want %v", key, got, wantPublic)
+		}
 	}
 }
 

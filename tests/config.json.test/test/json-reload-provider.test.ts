@@ -8,8 +8,8 @@
 // deterministic and fast (no real filesystem watcher, no 4-second poll).
 
 import { ConfigBuilder } from '@rhombus-std/config';
-import { JsonConfigSource } from '@rhombus-std/config.json/_/JsonConfigSource';
-import '@rhombus-std/config.json/_/index';
+import { JsonConfigSource } from '@rhombus-std/config.json';
+import '@rhombus-std/config.json';
 import type { IDirectoryContents, IFileInfo, IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import type { IChangeToken } from '@rhombus-std/primitives';

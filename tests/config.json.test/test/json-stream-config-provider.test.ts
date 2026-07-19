@@ -4,11 +4,11 @@
 // JsonConfigFileParser), through the once-only stream base contract.
 
 import { ConfigBuilder, ConfigManager } from '@rhombus-std/config';
-import { JsonStreamConfigProvider } from '@rhombus-std/config.json/_/JsonStreamConfigProvider';
-import { JsonStreamConfigSource } from '@rhombus-std/config.json/_/JsonStreamConfigSource';
+import { JsonStreamConfigProvider } from '@rhombus-std/config.json';
+import { JsonStreamConfigSource } from '@rhombus-std/config.json';
 import { describe, expect, test } from 'bun:test';
 // Side-effect import: installs `addJsonFile` + `addJsonStream` onto both builders.
-import '@rhombus-std/config.json/_/index';
+import '@rhombus-std/config.json';
 
 const PAYLOAD = JSON.stringify({
   TopLevel: 'value',

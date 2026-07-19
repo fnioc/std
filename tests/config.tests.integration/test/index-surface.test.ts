@@ -1,6 +1,6 @@
 // Public-surface smoke test for the pieces that only exist ACROSS the package
 // split -- run against the BUILT DIST (node resolves each @rhombus-std/config.* import to
-// dist/index.js; see this package's test script). libraries/config's own
+// dist/bundle/index.js; see this package's test script). libraries/config's own
 // index.test.ts already covers the core barrel in source mode; this file
 // covers what that one structurally cannot:
 //

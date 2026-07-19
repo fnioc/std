@@ -86,7 +86,7 @@ function goEnv(): NodeJS.ProcessEnv {
 
 // The type-driven sugar overloads are hand-declared here (as the inline.ttsc.e2e
 // pilot hand-declares isService<T>) so the program carries them without wiring
-// the ts-patch transformer's own types — the merge target is the real di.core
+// the transformer's own types — the merge target is the real di.core
 // IServiceManifestBase, and the parameter NAMES (ctor / factory) match the inline
 // bodies' so the structural overload discriminator resolves each call to the
 // sugar overload. A class with a real constructor dependency (IDep) and a factory

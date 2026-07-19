@@ -18,19 +18,19 @@
   },
   "type": "module",
   "sideEffects": true,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
     }
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -39,13 +39,13 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
       }
     }
   },
@@ -56,7 +56,8 @@
   "devDependencies": {
     "@rhombus-std/primitives.transformer": "workspace:*",
     "@rhombus-toolkit/func": "3.5.3",
-    "ts-patch": "^3.3.0",
+    "@ttsc/unplugin": "^0.18.1",
+    "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
   }
 }

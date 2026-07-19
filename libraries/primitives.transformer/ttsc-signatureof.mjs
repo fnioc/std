@@ -10,9 +10,7 @@
 // `signatureof(ctor)` lowers to its dependency-signature array before the di
 // stage sees the fully-lowered registration call.
 //
-// The ts-patch entry (the `.` export's `transform`) is untouched: signatureof is
-// a Go-only primitive (owner directive 2026-07-17, ts-patch dropped for new
-// work), so there is no ts-patch twin descriptor to wire.
+// signatureof is a Go-only primitive; there is no other engine to wire it against.
 
 import path from 'node:path';
 

@@ -16,25 +16,29 @@
     "directory": "libraries/config.ini"
   },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
   "sideEffects": true,
   "exports": {
     ".": {
-      "bun": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
     },
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
-      "bun": "./dist/internal/*.js",
+      "bun": "./src/*.ts",
       "types": "./src/*.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./dist/stage/*.js"
     }
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -52,19 +56,20 @@
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0",
+    "@ttsc/unplugin": "^0.18.1",
+    "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
       }
     }
   }

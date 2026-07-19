@@ -3,14 +3,12 @@
 // `bun --filter '*' build` runs every package's build in PARALLEL with no
 // ordering. That is fine for packages that consume their siblings from SOURCE
 // (the `source`/`bun`/`types` export conditions point at `.ts`, always present),
-// but WRONG for the transformer-active packages: `di.transformer` and
-// `di.transformer.options` (plus the `tspc` example builds) resolve their
-// upstream through the `built` export condition -- di's rolled `.d.ts`, not
-// source (docs/decisions.md §1/§9). If that upstream dist is missing or being
-// rewritten while they compile, the `built` condition silently falls back to
-// `types` -> source, and the augmented core class fails its own augmented
-// interface (TS2416/TS2420) -- the order-dependent, stale-dist failure this
-// runner exists to remove.
+// but WRONG for the transformer-active packages and the with-transformer example
+// builds: they resolve their upstream through its rolled `.d.ts`, not source
+// (docs/decisions.md §1/§9). If that upstream dist is missing or being rewritten
+// while they compile, the type-facing condition silently falls back to source,
+// and the augmented core class fails its own augmented interface (TS2416/TS2420)
+// -- the order-dependent, stale-dist failure this runner exists to remove.
 //
 // It topologically orders the per-package `build` scripts by their workspace
 // dependency graph and runs each tier to completion before the next begins, so

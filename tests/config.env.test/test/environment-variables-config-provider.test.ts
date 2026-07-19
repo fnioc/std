@@ -9,10 +9,10 @@
 import { ConfigBuilder, ConfigManager } from '@rhombus-std/config';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
-import '@rhombus-std/config.env/_/index';
-import { EnvironmentVariablesConfigProvider } from '@rhombus-std/config.env/_/EnvironmentVariablesConfigProvider';
+import '@rhombus-std/config.env/private/index';
+import { EnvironmentVariablesConfigProvider } from '@rhombus-std/config.env/private/EnvironmentVariablesConfigProvider';
 import { colonAndDotVariableNameTransformation,
-  EnvironmentVariablesConfigSource } from '@rhombus-std/config.env/_/EnvironmentVariablesConfigSource';
+  EnvironmentVariablesConfigSource } from '@rhombus-std/config.env/private/EnvironmentVariablesConfigSource';
 
 type EnvMap = Record<string, string | undefined>;
 

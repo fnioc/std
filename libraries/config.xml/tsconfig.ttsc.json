@@ -1,0 +1,12 @@
+{
+  "//": "The Go/ttsc lowering-emit stage of the publish build (scripts/build-package.ts stage-then-bundle): the @rhombus-std/primitives.transformer ttsc plugin (a Go sidecar) rewrites each nameof<T>() call to its derived token string (and elides the consumed import) as @ttsc/unplugin/bun transforms each src file in the per-file stage, which bun build then bundles into dist/. Extends tsconfig.json so the stage inherits the package typecheck profile (and any self-reference condition). Typecheck/lint stay on plain tsc: nameof typechecks as an ordinary string-returning function.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "./src",
+    "outDir": ".ttsc-out",
+    "plugins": [
+      { "transform": "@rhombus-std/primitives.transformer/ttsc" }
+    ]
+  }
+}

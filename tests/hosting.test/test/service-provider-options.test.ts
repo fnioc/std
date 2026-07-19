@@ -1,5 +1,5 @@
-import { createDefaultServiceProviderOptions } from '@rhombus-std/hosting/_/default-config';
-import { HostBuilder, type IHostEnvironment } from '@rhombus-std/hosting/_/index';
+import { createDefaultServiceProviderOptions } from '@rhombus-std/hosting/private/default-config';
+import { HostBuilder, type IHostEnvironment } from '@rhombus-std/hosting/private/index';
 import { expect, test } from 'bun:test';
 
 function fakeEnvironment(environmentName: string): IHostEnvironment {

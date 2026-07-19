@@ -1,50 +1,25 @@
-// @rhombus-std/di.transformer — the ioc ts-patch compiler transformer.
+// @rhombus-std/di.transformer — the type-only authoring surface + inline sugar
+// bodies for the di registration forms.
 //
-// Build-time only. It provides token generation, dependency
-// extraction via the TypeChecker, inline signature emission (the derived
-// signature rides as the `add`/`addFactory` call's third argument), registration
-// lowering (`add<I>(C).as<"x">()` → string-token form), `nameof<T>()` rewriting,
-// and the edge-case behaviour (dynamic-class no-emission).
+// Build-time only, and no longer a TS-plugin transformer: the lowering runs on the
+// Go/ttsc engine, wired through the `./ttsc` descriptor. What survives here is the
+// authoring contract, not an emit implementation:
 //
-// It also performs factory detection (`() => IFoo` ctor params become
-// `{ type: "<token>" }` slots) and emits the factory-signature and
-// token-derivation diagnostics (see `deps.ts` + `checks.ts`).
-
-// The type-only authoring surface this transformer contributes to `@rhombus-std/di.core`
-// (`add<I>(C)`, `.as<"x">()`, `resolve<T>()`, …). Side-effect import: it carries
-// a `declare module "@rhombus-std/di.core"` augmentation that must enter the program of
-// any consumer that references `@rhombus-std/di.transformer`'s types.
+//   - `./augment.ts` — the `declare module '@rhombus-std/di.core'` that lights up
+//     the token-free authoring forms (`add<I>(C)`, `.as<"x">()`, `resolve<T>()`, …)
+//     only when this package is in a consumer's tsconfig `types`.
+//   - `./inline.ts` — the single-expression sugar bodies the inline stage
+//     side-parses from src and substitutes at call sites (never bundled: this
+//     barrel deliberately does not re-export it).
+//   - `./signatureof.ts` — the authoring-time dependency-signature primitive the
+//     inline bodies call; its runtime body throws so un-transformed code fails loud.
+//
+// A single import of `@rhombus-std/di.transformer` (or listing it in `types`)
+// brings the authoring augmentation into scope.
 import './augment.js';
 
-// The overload-faithful parameter-tuple utilities, re-exported so a consumer can
-// type a factory's rest parameter (`(...args: OverloadedConstructorParameters<
-// typeof C>) => I`) without importing `@rhombus-std/di.core` directly — an example app
-// depends on `@rhombus-std/di.transformer` for the plugin already, so this is the same
-// "one import reaches the whole authoring surface" gateway `augment.ts` itself
-// documents. Re-exported from `./augment.js` (not `@rhombus-std/di.core` directly) so
-// there is exactly one place that names the upstream package.
-export type { OverloadedConstructorParameters, OverloadedParameters } from './augment.js';
-
-// ts-patch entry point (default + named `transform`) and the test-drivable
-// factory.
-export { createTransformerFactory, default as transformer, transform } from './transformer.js';
-
-// The shared `TokenContext` builder — a satellite transformer (e.g.
-// `@rhombus-std/di.transformer.options`) imports it so its lowered tokens match
-// the ones this transformer derives for the same program. Re-exported from
-// `@rhombus-std/primitives.transformer`, which now owns the token-derivation
-// machinery this transformer builds on.
-export { createTokenContext, type TokenContextOptions } from '@rhombus-std/primitives.transformer';
-
-// `nameof<T>()` — the compile-time token mechanism (rewritten by the transformer).
-export { nameof } from '@rhombus-std/primitives';
-
-// Token generation, dependency extraction, and diagnostics — exported so
-// downstream tooling (and tests) can reuse the building blocks.
-export { baseTokenForSymbol, type DeriveFailure, deriveToken, holeNumberFor, injectTokenFor, type TokenContext,
-  tokenForType, type TokenResult } from '@rhombus-std/primitives.transformer';
-export { type CheckContext } from './checks.js';
-export { type ConstructorExtraction, type DepContext, extractFromExpression, extractInstantiatedSignature,
-  extractSignatureFromClass, type FactorySlot, isFactorySlot, isTypeArgSlot, isUnionSlot, type Signature, type Slot,
-  slotsEqual, type TypeArgSlot, type UnionSlot } from './deps.js';
-export { type Diagnostic, DiagnosticCode, error, type IDiagnosticSink, warning } from './diagnostics.js';
+// Re-export the authoring brand types so a consumer can use `Inject<T, "tok">`,
+// the open-generics placeholders (`Hole<N, C>`, `$<N>`), `Typeof<T>`, and the
+// overload-faithful `OverloadedParameters` / `OverloadedConstructorParameters`
+// without importing from `@rhombus-std/di.core` directly.
+export type { $, Hole, Inject, OverloadedConstructorParameters, OverloadedParameters, Typeof } from './augment.js';

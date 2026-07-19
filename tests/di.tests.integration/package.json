@@ -2,7 +2,7 @@
   "name": "@rhombus-std/di.tests.integration",
   "private": true,
   "version": "0.0.0",
-  "description": "End-to-end integration tests: transformer-compiled output running against the di engine, plus progressive-enhancement parity. Not published.",
+  "description": "Compile-time type-utility checks for di.core's OverloadedParameters / OverloadedConstructorParameters. Not published.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,10 +10,6 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@rhombus-std/di": "workspace:*",
-    "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di.transformer": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3",
-    "ts-patch": "^3.3.0"
+    "@rhombus-std/di.core": "workspace:*"
   }
 }

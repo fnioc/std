@@ -1,5 +1,5 @@
 import { CONSOLE_LIFETIME_OPTIONS_TOKEN, ConsoleLifetime, type ConsoleLifetimeOptions, HOST_LIFETIME_TOKEN, HostBuilder,
-  type IHostLifetime } from '@rhombus-std/hosting/_/index';
+  type IHostLifetime } from '@rhombus-std/hosting/private/index';
 import { expect, test } from 'bun:test';
 
 // runConsoleAsync builds and starts the host internally, then blocks until

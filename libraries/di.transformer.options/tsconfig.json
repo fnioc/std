@@ -1,10 +1,8 @@
 {
-  // This program pulls in di.transformer's `declare module "@rhombus-std/di.core"`
-  // augmentation (via the token-machinery import), under which di.core's SOURCE
-  // cannot co-compile — the impl class can't satisfy the interface once the
-  // authored 0-arg forms merge in. Now that di.core and di.transformer are
-  // dist-referenced (§72), their `types` conditions resolve the built,
-  // skip-lib-checked `.d.ts`, so no `built` custom condition is needed.
+  // The satellite's own program: `augment.ts` declaration-merges `addOptions<T>()`
+  // onto di.core's `IServiceManifestBase`. di.core is dist-referenced (§72), so its
+  // `types` condition resolves the built, skip-lib-checked `.d.ts` and the merge
+  // binds without a `built` custom condition.
   "extends": "../../tsconfig.lib.json",
   "include": ["src/**/*"]
 }

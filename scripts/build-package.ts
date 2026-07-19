@@ -6,17 +6,19 @@
 // resolve -- so every published package bundles instead of emitting raw tsc
 // output:
 //
-//   1. dist/*.js    -- `bun build` bundles each ESM entry into a single file
-//      with resolved specifiers. `external` keeps peer deps out of the bundle
-//      (a provider must patch the CONSUMER's ConfigurationBuilder, not a
+//   1. dist/bundle/*.js    -- `bun build` bundles each ESM entry into a single
+//      file with resolved specifiers. `external` keeps peer deps out of the
+//      bundle (a provider must patch the CONSUMER's ConfigurationBuilder, not a
 //      private inlined copy); anything NOT external is inlined, which is how
 //      @rhombus-std/config folds in @rhombus-toolkit/proxy-base (whose published
 //      ESM uses extensionless relative imports Node's resolver rejects).
-//   2. dist/*.d.ts  -- rollup-plugin-dts rolls the public type surface into one
-//      declaration file per configured rollup config.
+//   2. dist/bundle/*.d.ts  -- rollup-plugin-dts rolls the public type surface
+//      into one declaration file per configured rollup config.
 //
-// core is the one exception: it is types-only (emitJs: false) and asserts no
-// runtime .js slips into dist.
+// The bundled artifacts live under dist/bundle/ — a role-named sibling of the
+// dist/stage/ lowering emit (see `ttscProject`), so `dist` holds one directory
+// per build role. core is the one exception: it is types-only (emitJs: false)
+// and asserts no runtime .js slips into dist/bundle.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
@@ -24,10 +26,9 @@ import { join } from 'node:path';
 
 /**
  * Read the resolved transformer specifiers from a tsconfig's
- * `compilerOptions.plugins[].transform`, following `extends` (the tspc twin
- * hoists its plugins array into the shared `tsconfig.tspc.json` fragment, so a
- * shallow read of the leaf file would miss them). `tsc --showConfig` resolves
- * the whole chain and echoes `plugins` verbatim.
+ * `compilerOptions.plugins[].transform`, following `extends`. `tsc --showConfig`
+ * resolves the whole chain and echoes `plugins` verbatim, so a plugin declared in
+ * an extended base is still seen.
  */
 export function readTsconfigTransforms(dir: string, tsconfigRel: string): string[] {
   const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], {
@@ -44,42 +45,6 @@ export function readTsconfigTransforms(dir: string, tsconfigRel: string): string
   return plugins
     .map((plugin) => plugin.transform)
     .filter((transform): transform is string => typeof transform === 'string');
-}
-
-const TTSC_SUBPATH = '/ttsc';
-
-/**
- * Collapse a ttsc transform specifier (`@rhombus-std/x.transformer/ttsc`) to its
- * base package (`@rhombus-std/x.transformer`) so a ttsc plugin list can be
- * compared against its tspc twin, whose specifiers carry no `/ttsc` subpath.
- */
-function ttscBaseSpecifier(transform: string): string {
-  return transform.endsWith(TTSC_SUBPATH) ? transform.slice(0, -TTSC_SUBPATH.length) : transform;
-}
-
-/**
- * Hard-fail when a package's ttsc plugin list drifts from its tspc twin. The two
- * engines must lower the SAME transformer set (docs/decisions.md §41 parity), so
- * the ttsc `tsconfig.ttsc.json` plugins — reduced to their base package — must
- * be exactly the tspc `tsconfig.build.json` plugins' base packages.
- */
-export function assertTspcTtscParity(
-  name: string,
-  dir: string,
-  ttscProject: string,
-  tspcProject: string,
-): void {
-  const ttscBase = new Set(readTsconfigTransforms(dir, ttscProject).map(ttscBaseSpecifier));
-  const tspcBase = new Set(readTsconfigTransforms(dir, tspcProject).map(ttscBaseSpecifier));
-  const missing = [...tspcBase].filter((base) => !ttscBase.has(base));
-  const extra = [...ttscBase].filter((base) => !tspcBase.has(base));
-  if (missing.length !== 0 || extra.length !== 0) {
-    throw new Error(
-      `${name}: ttsc/tspc transformer drift — `
-        + `ttsc(${ttscProject})=[${[...ttscBase].sort().join(', ')}] `
-        + `tspc(${tspcProject})=[${[...tspcBase].sort().join(', ')}]`,
-    );
-  }
 }
 
 /**
@@ -180,7 +145,7 @@ export interface BuildPackageOptions {
   readonly emitJs?: boolean;
   /** rollup-plugin-dts config files relative to `dir`. Defaults to `["rollup.dts.mjs"]`. */
   readonly dtsConfigs?: readonly string[];
-  /** Throw if `dist/index.js` exists after building -- the types-only invariant. */
+  /** Throw if `dist/bundle/index.js` exists after building -- the types-only invariant. */
   readonly assertNoJs?: boolean;
   /**
    * Code-split shared modules into chunks instead of inlining a private copy
@@ -192,37 +157,32 @@ export interface BuildPackageOptions {
    */
   readonly splitting?: boolean;
   /**
-   * A tsconfig (relative to `dir`) wired with the ts-patch `plugins` that lower
-   * authoring sugar -- in practice `nameof<T>()` via
-   * @rhombus-std/primitives.transformer. When set, the JS pipeline gains a
-   * lowering stage: `tspc -p <this>` emits transformed per-file JS into the
-   * config's `outDir` (conventionally `.tspc-out/`), and `bun build` bundles
-   * THAT emit instead of raw `src` -- `Bun.build` alone never runs ts-patch
-   * transformers, so this stage is what gets `nameof` lowered into the shipped
-   * `dist/*.js`. The d.ts pipeline is unaffected (`nameof` has no type-level
-   * footprint).
+   * A tsconfig (relative to `dir`) wired with the ttsc/Go `plugins` that lower
+   * authoring sugar (`nameof<T>()`, the registration/options/config stages). When
+   * set, the JS pipeline gains a lowering STAGE that runs before the bundle:
    *
-   * After bundling, the per-file lowered emit is KEPT at `dist/internal/` and
-   * the package's `_/*` export subpath points its `bun` condition there:
+   *   1. STAGE — a per-file `Bun.build` compiles every `src/**\/*.ts` as its own
+   *      entrypoint with ALL imports external and the `@ttsc/unplugin/bun` adapter
+   *      active, so each file is lowered (its `nameof`/`add`/… rewritten) but not
+   *      bundled. The lowered per-file JS lands in a stage dir (`.ttsc-out/`).
+   *   2. BUNDLE — the existing `bun build` pass then bundles the STAGE emit (NOT
+   *      raw src) with no plugin, resolving the extensionless relative imports the
+   *      stage preserved. Lowering commutes with bundling, so the shipped
+   *      `dist/*.js` is what a no-transformer author would have hand-written.
+   *
+   * The d.ts pipeline is unaffected (`nameof` and friends have no type-level
+   * footprint). After bundling, the per-file lowered emit is KEPT at `dist/stage/`
+   * — named for its build role — and the package's `./private/*` export alias
+   * points its `bun` condition there (alias and disk path are independent): so
    * white-box consumers (sibling test packages) execute the same lowered JS a
    * published consumer would, instead of raw src whose un-lowered `nameof<T>()`
-   * throws at import time. `dist/internal` is publish-excluded via a
-   * `"!dist/internal"` entry in the package's `files`.
-   */
-  readonly tspcProject?: string;
-  /**
-   * The ttsc/Go analog of {@link tspcProject}: same lowering-stage shape, but
-   * the emit is driven by `ttsc` (the typescript-go toolchain) running the Go
-   * sidecar plugin named in this tsconfig's `plugins` array, instead of `tspc`
-   * running the ts-patch plugin. A package picks its lowering ENGINE by setting
-   * exactly one of the two keys.
+   * throws at import time. `dist/stage` is publish-excluded via a `"!dist/stage"`
+   * entry in the package's `files`.
    *
    * The Go plugin is compiled and cached on first use (once per cache key —
-   * several minutes cold, since the typescript-go graph must compile, though
-   * its object cache is the global GOCACHE so a warm second package pays only a
-   * re-link). The toolchain is pinned via {@link ttscEnv}. Everything
-   * downstream (bundle, `dist/internal` retention) is identical to the tspc
-   * path.
+   * several minutes cold, since the typescript-go graph must compile, though its
+   * object cache is the global GOCACHE so a warm second package pays only a
+   * re-link). The toolchain is pinned via {@link ttscEnv}.
    */
   readonly ttscProject?: string;
   /**
@@ -248,59 +208,60 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     dtsConfigs = ['rollup.dts.mjs'],
     assertNoJs = false,
     splitting = entrypoints.length > 1,
-    tspcProject,
     ttscProject,
     ttscTransforms,
   } = options;
 
-  if (tspcProject && ttscProject) {
-    throw new Error(`${name}: set only one lowering engine — tspcProject XOR ttscProject`);
-  }
-
   const dist = join(dir, 'dist');
+  const bundleDir = join(dist, 'bundle');
   rmSync(dist, { recursive: true, force: true });
 
-  // The lowering stage. Both engines lower the same authoring sugar to the same
-  // forms; a package selects one by setting tspcProject XOR ttscProject.
-  //
-  //   tspc (ts-patch): a SEPARATE emit — `tspc -p` writes transformer-lowered
-  //   per-file JS into a stage dir, and `bun build` bundles THAT. The per-file
-  //   emit is retained as `dist/internal/` (the white-box `internal/*` surface).
-  //
-  //   ttsc (typescript-go): an IN-BUNDLE transform — the @ttsc/unplugin/bun
-  //   adapter runs the Go plugin as a `Bun.build` onLoad transform, so `bun
-  //   build` lowers each source file as it bundles it. There is no separate
-  //   per-file emit (hence no `dist/internal/` here — a ttsc package that needs
-  //   the white-box surface is a follow-up).
+  // The lowering stage (Go/ttsc engine). Stage-then-bundle: a per-file Bun.build
+  // lowers every src file in isolation, and the main bundle then consumes that
+  // stage emit with no plugin. Lowering commutes with bundling, so the shipped
+  // bundle matches the hand-written no-transformer form — while the separate
+  // per-file stage emit is retained as `dist/stage/` (reached through the
+  // `./private/*` export alias, the white-box runtime surface). A package opts in
+  // by setting `ttscProject`.
   let stageDir: string | undefined;
   let jsEntrypoints = entrypoints.map((entry) => join(dir, entry));
-  let bunPlugins: Bun.BunPlugin[] = [];
-  if (emitJs && tspcProject) {
-    stageDir = join(dir, '.tspc-out');
+  if (emitJs && ttscProject) {
+    stageDir = join(dir, '.ttsc-out');
     rmSync(stageDir, { recursive: true, force: true });
-    const emit = spawnSync(
-      'bun',
-      ['x', 'tspc', '-p', join(dir, tspcProject)],
-      { cwd: dir, stdio: 'inherit' },
-    );
-    if (emit.status !== 0) {
-      throw new Error(`${name}: tspc lowering emit failed (${tspcProject})`);
+    const srcDir = join(dir, 'src');
+    // Every src module as its own entrypoint (declaration files carry no runtime
+    // and are skipped, matching a `tsc` emit). ALL imports external so the stage
+    // is a pure per-file transform — nothing is bundled here, the specifiers are
+    // preserved for the bundle pass to resolve.
+    const stageEntrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })]
+      .filter((path) => !path.endsWith('.d.ts'));
+    const staged = await Bun.build({
+      entrypoints: stageEntrypoints,
+      outdir: stageDir,
+      root: srcDir,
+      target: 'node',
+      format: 'esm',
+      external: ['*'],
+      plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)],
+    });
+    if (!staged.success) {
+      for (const log of staged.logs) {
+        console.error(log);
+      }
+      throw new Error(`${name}: ttsc lowering stage failed (${ttscProject})`);
     }
-    // Map each src entrypoint onto its emitted stage file (src/x.ts -> .tspc-out/x.js).
+    // Map each src entrypoint onto its emitted stage file (src/x.ts -> .ttsc-out/x.js).
     jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, '').replace(/\.ts$/, '.js')));
-  } else if (emitJs && ttscProject) {
-    bunPlugins = [await ttscBunPlugin(dir, ttscProject, ttscTransforms)];
   }
 
   if (emitJs) {
     const js = await Bun.build({
       entrypoints: jsEntrypoints,
-      outdir: dist,
+      outdir: bundleDir,
       target: 'node',
       format: 'esm',
       external: [...external],
       splitting,
-      plugins: bunPlugins,
     });
     if (!js.success) {
       for (const log of js.logs) {
@@ -309,9 +270,10 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
       throw new Error(`${name}: bun build failed`);
     }
     if (stageDir) {
-      // Keep the per-file lowered emit as the white-box (`internal/*`) runtime
-      // surface -- see the `tspcProject` doc above.
-      renameSync(stageDir, join(dist, 'internal'));
+      // Keep the per-file lowered emit at dist/stage -- the white-box runtime
+      // surface reached through the `./private/*` alias (see the `ttscProject`
+      // doc above).
+      renameSync(stageDir, join(dist, 'stage'));
     }
   }
 
@@ -326,7 +288,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     }
   }
 
-  if (assertNoJs && existsSync(join(dist, 'index.js'))) {
-    throw new Error(`${name}: unexpected runtime artifact dist/index.js -- this package is types-only`);
+  if (assertNoJs && existsSync(join(bundleDir, 'index.js'))) {
+    throw new Error(`${name}: unexpected runtime artifact dist/bundle/index.js -- this package is types-only`);
   }
 }

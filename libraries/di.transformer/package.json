@@ -1,13 +1,12 @@
 {
   "name": "@rhombus-std/di.transformer",
   "version": "10.1.0",
-  "description": "The ioc ts-patch transformer: token generation, dependency extraction, registration lowering, and the factory-signature diagnostic.",
+  "description": "The ioc authoring surface: the type-only declare-module for the token-free registration forms, the inline sugar bodies, and the signatureof primitive. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
   "keywords": [
     "dependency-injection",
     "di",
     "ioc",
     "typescript",
-    "ts-patch",
     "transformer",
     "compiler"
   ],
@@ -21,22 +20,38 @@
   "//rhombus.inline": "The type-driven registration sugar's inline publish list. The bodies live in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses them and substitutes at consumer call sites. The `type` ANCHORS stay @rhombus-std/di.core interfaces (the augmentation targets), while `impl` (ServiceQueryInline / ServiceManifestInline) resolves in THIS package — the authoring-time home of the signatureof primitive those bodies call.",
   "rhombus.inline": {
     "entries": [
-      { "type": "@rhombus-std/di.core:IServiceQuery", "impl": "ServiceQueryInline", "member": "isService" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "add" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addFactory" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ServiceManifestInline", "member": "addValue" }
+      {
+        "type": "@rhombus-std/di.core:IServiceQuery",
+        "impl": "ServiceQueryInline",
+        "member": "isService"
+      },
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestInline",
+        "member": "add"
+      },
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestInline",
+        "member": "addFactory"
+      },
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestInline",
+        "member": "addValue"
+      }
     ]
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
     },
     "./ttsc": "./ttsc.mjs",
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
       "bun": "./src/*.ts",
       "types": "./src/*.ts"
@@ -55,16 +70,8 @@
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "eslint ."
   },
-  "//rhombusBuild": "Dist-parity carve-out: the retired bespoke build inlined these two declared dependencies (typescript was its only external); aligning to the deps-stay-external rule changes published bytes and is a follow-up PR.",
-  "rhombusBuild": {
-    "inline": [
-      "@rhombus-std/primitives.transformer",
-      "@rhombus-toolkit/func"
-    ]
-  },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:^",
     "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {
@@ -72,21 +79,18 @@
     "typescript": ">=5.2"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0",
-    "ttsc": "^0.18.1"
+    "@rhombus-std/di.core": "workspace:*"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
       },
       "./ttsc": "./ttsc.mjs"
     }

@@ -8,9 +8,7 @@
 // to its tsconfig `plugins`, ahead of the other stage descriptors. The host runs
 // the inline stage first in its canonical order regardless of manifest order.
 //
-// The ts-patch entry (the `.` export's `transform`) is untouched — the inline
-// stage's ts-patch twin is a deferred follow-up; tspc-track consumers must NOT
-// wire this descriptor until it exists.
+// The inline stage is Go-only; there is no other engine to wire it against.
 
 import path from 'node:path';
 

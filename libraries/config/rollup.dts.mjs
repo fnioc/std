@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/config into a single dist/index.d.ts.
+// Rolls the public type surface of @rhombus-std/config into a single dist/bundle/index.d.ts.
 // @rhombus-std/config.core stays EXTERNAL (respectExternal) so the published declaration
 // imports the IConfig* types from @rhombus-std/config.core rather than inlining a
 // private copy; rollup-plugin-dts drives the TypeScript compiler with this
@@ -13,7 +13,7 @@ const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
-  output: { file: join(PKG_ROOT, 'dist', 'index.d.ts'), format: 'es' },
+  output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   external: [
     /^@rhombus-std\/config.core$/,
     /^@rhombus-std\/primitives$/,

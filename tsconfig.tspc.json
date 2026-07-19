@@ -1,9 +1,0 @@
-{
-  "//": "The tspc lowering-emit stage of the publish build (scripts/build-lib.ts -> buildPackage `tspcProject`): the @rhombus-std/primitives.transformer plugin rewrites each `nameof<T>()` call to its derived token string (and elides the consumed import) while emitting per-file JS into the leaf config's outDir (conventionally .tspc-out/), which `bun build` then bundles into dist/. `Bun.build` alone never runs ts-patch transformers -- this stage is what gets `nameof` lowered into the shipped JS (docs/decisions.md §40/§41). Typecheck/lint stay on plain tsc: `nameof` typechecks as an ordinary string-returning function. Each libraries/*/tsconfig.build.json extends [its own tsconfig.json, this fragment]; `plugins` is a non-path option merged verbatim, and ts-patch resolves the transform specifier from the -p PROJECT dir (the leaf package, where it is a declared devDep), so hoisting the plugins array here is safe. `outDir` stays leaf-side: relative path options resolve against the file that declares them.",
-  "compilerOptions": {
-    "noEmit": false,
-    "plugins": [
-      { "transform": "@rhombus-std/primitives.transformer", "import": "transform" }
-    ]
-  }
-}

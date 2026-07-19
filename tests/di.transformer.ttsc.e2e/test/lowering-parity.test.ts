@@ -102,7 +102,10 @@ beforeAll(() => {
       exports: { '.': './index.js', './contracts': './contracts/index.js' },
     }),
   );
-  writeFileSync(join(lib, 'index.d.ts'), `export {};\n`);
+  // The barrel re-exports IUserRepo so its token derives from the canonical
+  // public specifier (`your-lib:IUserRepo`); the strict derivation rejects a
+  // token reachable only through a non-barrel, non-`./tokens/*` subpath.
+  writeFileSync(join(lib, 'index.d.ts'), `export { IUserRepo } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IUserRepo {}\n`);
 
   writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
@@ -156,7 +159,7 @@ beforeAll(() => {
     join(projDir, 'src', 'app.ts'),
     `
 import { nameof } from "./nameof";
-import { IUserRepo } from "your-lib/contracts";
+import { IUserRepo } from "your-lib";
 import type { Nested, IResolver as DiResolver, IServiceManifest, IServiceManifestBase, IServiceProvider } from "@rhombus-std/di.core";
 
 // The Keyed<T, K> phantom brand (declared locally — the transformer detects it
@@ -338,14 +341,14 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
   test('multi-param ctor → package-public service token + inline dep signature (Rule 1)', () => {
     // The service token is the Tier-1 import specifier; the ctor deps are the
     // app-internal interface tokens and the bare intrinsic "string" (Rule 1).
-    expect(app).toContain(`"your-lib/contracts:IUserRepo"`);
+    expect(app).toContain(`"your-lib:IUserRepo"`);
     expect(app).toContain(`"./app:IDbConnection"`);
     expect(app).toContain(`"string"`);
     expect(app).toContain(`.as("request")`);
   });
 
   test('nameof<T>() → the same byte-identical package-public token', () => {
-    expect(app).toContain(`marker = "your-lib/contracts:IUserRepo"`);
+    expect(app).toContain(`marker = "your-lib:IUserRepo"`);
   });
 
   test('tokenless resolve<I>() → resolve("<token>")', () => {
@@ -358,7 +361,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
 
   test('add<Keyed<T, "k">>(Impl) → registration under the <base>#k token', () => {
     // The keyed registration composes the plain ICache token with a `#redis`
-    // suffix — byte-identical to the ts-patch engine's keyed lowering.
+    // suffix — byte-identical to the hand-written keyed lowering.
     expect(app).toContain(`services.add("./app:ICache#redis", RedisCache,`);
   });
 
@@ -371,7 +374,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
   test('keyed base carrying an open-generic hole composes IThing<$1>#redis', () => {
     // ThingRepo's keyed ctor dep keys an OPEN-generic base; the substituted hole
     // must render `$1` inside the base BEFORE the `#redis` suffix. The Go engine
-    // must use hole-aware base derivation here to stay byte-identical to ts-patch
+    // must use hole-aware base derivation here to stay byte-identical to the hand-written form
     // (a non-hole-aware derivation drops the key and hard-errors instead).
     expect(app).toContain(`services.add("./app:IRepo<$1>", ThingRepo,`);
     expect(app).toContain(`[["./app:IThing<$1>#redis"]]`);

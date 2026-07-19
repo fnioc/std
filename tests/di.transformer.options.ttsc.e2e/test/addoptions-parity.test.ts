@@ -108,10 +108,18 @@ beforeAll(() => {
   // element token (not just an app-internal one).
   const lib = join(nm, 'your-lib');
   mkdirSync(join(lib, 'contracts'), { recursive: true });
+  // IFoo is re-exported from the BARREL so its token derives from the canonical
+  // public specifier (`your-lib:IFoo`); the strict derivation rejects a token
+  // reachable only through a non-barrel, non-`./tokens/*` subpath.
   writeFileSync(
     join(lib, 'package.json'),
-    JSON.stringify({ name: 'your-lib', version: '3.4.5', exports: { './contracts': './contracts/index.js' } }),
+    JSON.stringify({
+      name: 'your-lib',
+      version: '3.4.5',
+      exports: { '.': './index.js', './contracts': './contracts/index.js' },
+    }),
   );
+  writeFileSync(join(lib, 'index.d.ts'), `export { IFoo } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IFoo { flag: boolean; }\n`);
 
   // The ambient `declare module "@rhombus-std/di.core"` fixture: a script `.d.ts`
@@ -142,7 +150,7 @@ beforeAll(() => {
     join(projDir, 'src', 'app.ts'),
     `
 import type { IOptions } from "@rhombus-std/options";
-import { IFoo } from "your-lib/contracts";
+import { IFoo } from "your-lib";
 import type { Nested, IServiceManifestBase } from "@rhombus-std/di.core";
 export type __KeepOptions<T> = IOptions<T>;
 declare const services: IServiceManifestBase<"singleton">;
@@ -233,7 +241,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go addOptions<T>() lowering byte-parity',
 
   test('package-public element → wrapper over Tier-1 import-specifier token', () => {
     expect(app).toContain(
-      `addOptions("@rhombus-std/options:IOptions<your-lib/contracts:IFoo>", "your-lib/contracts:IFoo")`,
+      `addOptions("@rhombus-std/options:IOptions<your-lib:IFoo>", "your-lib:IFoo")`,
     );
   });
 

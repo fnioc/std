@@ -16,32 +16,32 @@
     "directory": "libraries/caching.core"
   },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
     },
-    "./_/*": {
+    "./tokens/*": {
       "source": "./src/*.ts",
-      "bun": "./dist/internal/*.js",
+      "bun": "./src/*.ts",
       "types": "./src/*.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./dist/stage/*.js"
     }
   },
   "files": [
     "dist",
-    "!dist/internal"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
-  },
-  "//rhombusBuild": "PILOT (\u00a741): nameof lowering runs on the ttsc/Go engine; tsconfig.build.json is the retained tspc twin (parity invariant), so the marker picks the engine.",
-  "rhombusBuild": {
-    "lowering": "ttsc"
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
@@ -50,20 +50,19 @@
   "devDependencies": {
     "@rhombus-std/primitives.transformer": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
-    "ts-patch": "^3.3.0",
     "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
       }
     }
   }

@@ -16,7 +16,7 @@ import { nameof } from '@rhombus-std/primitives';
 import { XmlConfigSource, type XmlConfigSourceOptions } from './XmlConfigSource';
 import { XmlStreamConfigSource } from './XmlStreamConfigSource';
 
-// Declare-merge onto the config barrel (dist-referenced flat dist/index.d.ts
+// Declare-merge onto the config barrel (dist-referenced flat dist/bundle/index.d.ts
 // declares the classes directly, so the merge lands cleanly even with other
 // provider augmentations present -- see config.json's addJsonFile install).
 declare module '@rhombus-std/config' {

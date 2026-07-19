@@ -6,7 +6,7 @@
 // substituted, plus the di stage's tokenless resolve/resolveAsync + `.as<>`
 // lowering) and its di.transformer.options
 // (addOptions<T>) plugin to lower. This is the ttsc/Go analog of the former
-// `tspc -p tsconfig.json` build: @ttsc/unplugin/bun runs the Go plugins as onLoad
+// per-file transformer build: @ttsc/unplugin/bun runs the Go plugins as onLoad
 // transforms while Bun.build emits dist/main.js.
 //
 // Every workspace dependency stays EXTERNAL so main.js imports the SAME

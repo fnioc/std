@@ -1,6 +1,6 @@
 // Cross-format layering, run against the BUILT DIST of every package (under
 // `node`, whose import/default condition resolves each `@rhombus-std/config.*`
-// bare import to its `dist/index.js`). Exercises the JSON + INI + XML providers
+// bare import to its `dist/bundle/index.js`). Exercises the JSON + INI + XML providers
 // TOGETHER on one builder: their add* augmentations must all be installed on
 // the shared dist ConfigBuilder (each survived bundling with
 // @rhombus-std/config kept external, and its `declare module` survived
