@@ -1,0 +1,20 @@
+{
+  "name": "@rhombus-std/declare-by-depending.ttsc.e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "End-to-end proof of host-side declare-by-depending stage selection (§100): drives the real ttsc over two fixtures with no explicit plugins — a di.transformer consumer whose nameof<T>() lowers via the host's transitive scan (di.transformer → primitives.transformer), and a di.core-only consumer left untouched (cores don't force-activate). Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "bun test"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@ttsc/unplugin": "^0.18.1",
+    "ttsc": "^0.18.1",
+    "typescript": "^7.0.2"
+  }
+}

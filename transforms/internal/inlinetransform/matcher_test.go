@@ -253,6 +253,19 @@ other.isService<number>();
 
 // ── fixture / AST helpers ────────────────────────────────────────────────────
 
+// bodiesFor collects the inline bodies for a fixture consumer dir, failing the
+// test on error. Build now takes pre-collected bodies (the host runs the one
+// §100 scan for stages and bodies); tests that set up a fixture workspace collect
+// through this helper.
+func bodiesFor(t *testing.T, cwd string) []OwnedEntry {
+	t.Helper()
+	owned, err := Collect(cwd)
+	if err != nil {
+		t.Fatalf("Collect(%s): %v", cwd, err)
+	}
+	return owned
+}
+
 func write(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

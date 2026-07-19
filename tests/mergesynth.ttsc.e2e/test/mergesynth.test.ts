@@ -5,25 +5,26 @@ import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // Production-path e2e for the #213 merge-strategy synthesis stage: drives the
-// REAL ttsc over a temp project wiring the IN-REPO-ONLY full host
-// (transforms/cmd/ttsc-std-full — base stages + rhombusstd_mergesynth + the
-// in-process typia embed) through the publish-scrubbed
-// `@rhombus-std/primitives.transformer/private/full-ttsc` + `/private/mergesynth-ttsc`
-// descriptors, then proves the feature three ways:
+// REAL ttsc over a temp project that DEPENDS ON @rhombus-std/primitives.transformer
+// (no explicit tsconfig plugins). ttsc's auto-discovery spawns the single owner
+// host (transforms/cmd/ttsc-std) from that dep, and the host self-selects its
+// stages from its own dependency scan — primitives.transformer's ttsc.stages
+// carries mergesynth alongside inline/nameof/signatureof — exactly as a real
+// augmentation package activates it. It then proves the feature three ways:
 //
 //   1. the emitted JS carries the INLINED typia guards (plain JS, no typia
-//      import or reference of any kind, §87) and threads a merge-strategies
-//      map as the third `registerAugmentations` argument;
+//      import or reference of any kind — typia is build-time-only) and threads a
+//      merge-strategies map as the third `registerAugmentations` argument;
 //   2. at RUNTIME (against the real @rhombus-std/primitives registry), two
 //      colliding augmentations dispatch by argument shape, a hand-authored
 //      strategy wins over synthesis, an un-derivable member falls back to
 //      extension-wins, and — the headline — a strategy-less collision that
 //      throws under the no-transformer runtime no longer throws;
-//   3. the nameof stage still lowers byte-identical tokens on the full host
-//      (same stage code, different owner binary).
+//   3. the nameof stage still lowers byte-identical tokens (same stage code, now
+//      the one owner binary rather than a full-host sibling).
 //
 // The fixture path is STABLE (not mkdtemp) so the project-local ttsc plugin
-// cache survives across runs: the first run pays the cold Go build of the full
+// cache survives across runs: the first run pays the cold Go build of the owner
 // host (typescript-go + typia — several minutes), later runs are instant.
 //
 // This suite needs the Go toolchain, so it is kept OUT of the default
@@ -184,6 +185,23 @@ beforeAll(async () => {
 
   writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
+  // A fixture package.json declaring the primitives.transformer devDep: ttsc's
+  // auto-discovery reads it, finds the ttsc.plugin marker, and spawns the one
+  // owner host. The host then self-selects its stages from its own dependency
+  // scan — primitives.transformer's ttsc.stages carries mergesynth — exactly as a
+  // real augmentation package does. No tsconfig `plugins` array (an explicit list
+  // would suppress discovery and never spawn the host).
+  writeFileSync(
+    join(projDir, 'package.json'),
+    JSON.stringify({
+      name: '@fixture/mergesynth-consumer',
+      private: true,
+      devDependencies: {
+        '@rhombus-std/primitives.transformer': '*',
+        '@rhombus-std/primitives': '*',
+      },
+    }),
+  );
   writeFileSync(
     join(projDir, 'tsconfig.json'),
     JSON.stringify({
@@ -197,10 +215,6 @@ beforeAll(async () => {
         rootDir: 'src',
         skipLibCheck: true,
         noEmitOnError: false,
-        plugins: [
-          { transform: '@rhombus-std/primitives.transformer/private/full-ttsc' },
-          { transform: '@rhombus-std/primitives.transformer/private/mergesynth-ttsc' },
-        ],
       },
       include: ['src/**/*'],
     }),
@@ -242,7 +256,7 @@ beforeAll(async () => {
   instance = new mod.Alpha() as Record<string, (...args: unknown[]) => unknown>;
 }, COLD_BUILD_MS);
 
-describe.skipIf(!toolchainReady)('mergesynth on the full host — emitted JS', () => {
+describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted JS', () => {
   test('threads a synthesized merge map as the third argument', () => {
     // The strategy-less registrations gained an object-literal third argument
     // holding one strategy function per member.
@@ -251,7 +265,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the full host — emitted JS', (
     expect(app).toContain('fmt: function (original, extension)');
   });
 
-  test('guards are inlined plain JS with zero typia trace (§87)', () => {
+  test('guards are inlined plain JS with zero typia trace (typia is build-time-only)', () => {
     // Deep structural guard bodies survive (typeof checks on the union arms)…
     expect(app).toContain('typeof');
     // …but nothing typia-shaped does: no import, no identifier, no call.
@@ -269,13 +283,13 @@ describe.skipIf(!toolchainReady)('mergesynth on the full host — emitted JS', (
     expect(spread).toBeGreaterThan(synthesized);
   });
 
-  test('nameof lowering is byte-identical on the full host', () => {
-    expect(app).toContain('"./app:IAlpha"');
+  test('nameof lowering is byte-identical on the collapsed host', () => {
+    expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
     expect(app).not.toContain('nameof');
   });
 });
 
-describe.skipIf(!toolchainReady)('mergesynth on the full host — runtime dispatch', () => {
+describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime dispatch', () => {
   test('a strategy-less collision no longer throws at install time', () => {
     // The fixture module import in beforeAll already proved this — Beta's
     // describe collision (no hand strategy) refuses to install under the

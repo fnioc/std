@@ -22,11 +22,16 @@ const dir = import.meta.dir;
 const dist = join(dir, 'dist');
 rmSync(dist, { recursive: true, force: true });
 
-// Thread the tsconfig.ttsc.json plugin list EXPLICITLY (di.core/ttsc — the
-// preset bundle — and di.transformer.options/ttsc), suppressing the adapter's
-// auto-discovery. Both resolve to the one owner host, which expands the bundle
-// and runs each declared stage in canonical order.
-const ttscTransforms = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
+// Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
+// tsconfig.ttsc.json plugins array, @ttsc/unplugin/bun's auto-discovery spawns the
+// one owner host from this app's direct *.transformer devDeps (di.transformer +
+// di.transformer.options), and the host self-selects the full transitive stage set
+// — the di + di_options stages plus the primitive stages reached through their
+// primitives.transformer dep — from its own dependency scan. Compute the override:
+// a non-empty manual plugins array wins; otherwise `undefined` (NEVER [], which
+// would suppress discovery and never spawn the host).
+const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
+const ttscTransforms = manual.length > 0 ? manual : undefined;
 
 const js = await Bun.build({
   entrypoints: [join(dir, 'src/main.ts')],
@@ -45,10 +50,10 @@ const js = await Bun.build({
     '@rhombus-std/options',
     '@rhombus-std/options.augmentations',
   ],
-  // Pass the plugins EXPLICITLY: the app installs the di.core preset bundle and
-  // di.transformer.options; passing the declared list suppresses the adapter's
-  // auto-discovery. Both descriptors resolve to the one owner host, which ttsc
-  // dedupes to a single spawn.
+  // ttscTransforms is undefined by default, so @ttsc/unplugin/bun runs its
+  // auto-discovery — spawning the one owner host from the app's direct
+  // *.transformer deps, which ttsc dedupes to a single spawn. The host then
+  // self-selects the transitive stage union from its own dependency scan.
   plugins: [
     await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms),
   ],

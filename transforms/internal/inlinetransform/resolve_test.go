@@ -77,7 +77,7 @@ export const y = provider.isService('x');
 	// Build must reflect the same: no entry resolves active → inactive artifacts.
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}

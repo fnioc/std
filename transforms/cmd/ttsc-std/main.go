@@ -7,21 +7,20 @@
 // back-to-back over one loaded program in one shared EmitContext, in the
 // hardcoded canonical order
 //
-//	inline -> nameof -> signatureof -> di -> di-options -> config
+//	inline -> mergesynth -> nameof -> signatureof -> di -> di-options -> config
 //
 // Entry order in the manifest is irrelevant; the canonical order is fixed. This
 // replaces the former per-combination sidecars (ttsc-nameof / ttsc-di /
 // ttsc-di-options / ttsc-di-app / ttsc-config): one binary, many declared
 // stages, selected at runtime.
 //
-// The scaffolding lives in internal/stdhost, shared with the in-repo-only
-// cmd/ttsc-std-full sibling (which adds the typia-embedding merge-synthesis
-// stage). THIS binary is the published one and stays typia-free (§87): it
-// links zero typia packages (`go list -deps ./cmd/ttsc-std` names none), so
-// building it never fetches typia source — module-graph resolution reads only
-// typia's go.mod metadata (a one-time ~2KB proxy fetch, cached alongside the
-// typescript-go module every cold source-plugin build already fetches; warm
-// module caches build offline exactly as before).
+// The scaffolding lives in internal/stdhost. This is the ONE host: it links
+// typia through the merge-synthesis stage (#213), which the base stage table
+// carries — the former in-repo-only cmd/ttsc-std-full sibling is retired. typia
+// is fully lowered at build time (the stage embeds its guards as inlined plain
+// JS) and rides in no shipped artifact or npm manifest, so this stays a
+// build-time-only plugin binary; the measured cost of linking it is +4.4 MB /
+// +17.6% on the compiled sidecar, accepted for the one-host simplification.
 package main
 
 import (

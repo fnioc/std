@@ -416,11 +416,16 @@ invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (res
 pin), never system-wide.
 
 - **Descriptor wiring** — every transformer's `./ttsc` subpath descriptor resolves to the SAME
-  `cmd/ttsc-std` source dir (so `ttsc` dedupes every consumer to one cache key); each consumer's
-  `tsconfig.ttsc.json` declares which stages it wants, and `ttsc-std` activates only those, always
-  executing in the hardcoded canonical order (inline → nameof → signatureof → di → di-options →
-  config) regardless of declaration order (§90). di.core's `./ttsc` is a PRESET that expands to the
-  ordered di sugar bundle (inline → nameof → signatureof → di).
+  `cmd/ttsc-std` source dir (so `ttsc` dedupes every consumer to one cache key). Stage selection is
+  **declare-by-depending** (§100/§103): the host's own workspace dependency scan (`CollectProject`,
+  the single walk that also gathers inline bodies) activates the stages of every reachable
+  `*.transformer` dependency — each names them in its `ttsc.stages` marker — and `ttsc-std` runs them
+  in the hardcoded canonical order (inline → mergesynth → nameof → signatureof → di → di-options →
+  config) regardless of declaration order. `build-lib.ts` passes no explicit plugin list, so `ttsc`'s
+  own (direct-only) auto-discovery merely spawns the one host; an explicit `tsconfig.ttsc.json`
+  `plugins` array is the override. The one binary links typia to run the `mergesynth` base stage
+  (§103); di.core's `./ttsc` PRESET expands to the ordered di sugar bundle (inline → nameof →
+  signatureof → di, no mergesynth).
 - **Descriptor-only transformer packages** — `config.transformer` and `primitives.transformer`
   collapsed to their `./ttsc` (+ `inline-ttsc`/`signatureof-ttsc`) descriptors, no barrel to build.
   `di.transformer` / `di.transformer.options` keep a barrel that ships only the `declare module`

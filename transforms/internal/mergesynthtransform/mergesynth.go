@@ -22,9 +22,9 @@
 // §87 containment: the emitted guards are self-contained plain JS. A guard
 // that would need one of typia's runtime helper imports is DROPPED (that
 // parameter simply goes unguarded) with a warning diagnostic — the published
-// artifacts must never grow a typia runtime import. typia stays a build-time
-// dependency of the in-repo-only ttsc-std-full host; the published ttsc-std
-// never links this package.
+// artifacts must never grow a typia runtime import. typia is a build-time-only
+// dependency of the single ttsc-std host; the emitted JS carries no typia
+// runtime.
 //
 // Degradation contract (per the issue, owner-acked): a parameter whose type is
 // un-derivable — no annotation, `any`/`unknown`, or a reference to the

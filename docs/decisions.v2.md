@@ -187,9 +187,9 @@ Rejected alternatives:
 - **Build-time generated hosts** — whole-module cache-key poisoning plus `v0.0.0` resolve
   mechanics.
 
-Typia/mergesynth (issue #213) stays scoped **in-repo-only** per §87: it runs as an in-process embed
-inside a separate in-repo-only host variant, never in the published `ttsc-std` binary — the
-published/external host stays typia-free and offline-capable.
+**Superseded by §103:** `mergesynth` (#213) originally ran in a separate in-repo-only host to keep
+the published `ttsc-std` typia-free. §103 folds it into the one binary — `ttsc-std` links typia (a
+build-time plugin binary, never shipped runtime); the emitted JS stays typia-free plain JS.
 
 Declare-by-depending (a marker that lets `ttsc` auto-discover a consumer's declared stages from its
 dependency graph rather than a hand-authored list) is a supported nice-to-have, not a requirement
@@ -417,3 +417,65 @@ Three standing rules fall out:
   the symbol is identical everywhere (§38 identity invariant), never a forked copy.
 
 _Owner-directed 2026-07-18._
+
+---
+
+## §103 — One `ttsc` binary links typia; the two-host split retires
+
+The two-binary split (§90's "typia/mergesynth stays in-repo-only, in a separate host, never in the
+published `ttsc-std`") is retired. There is ONE owner binary: the merge-synthesis stage folds into
+`stdhost.BaseStages()` (before nameof), so `cmd/ttsc-std` links typia and `cmd/ttsc-std-full` is
+deleted.
+
+This does not reopen §87. `ttsc-std` is a BUILD-TIME plugin binary, never shipped as runtime: typia
+is fully lowered at build time — the stage inlines its guards as plain JS and drops any guard that
+would need a typia runtime import — so no typia reference survives into a published artifact or npm
+manifest (§87's "emitted guards are typia-free" invariant stands). The typia-free-_published-binary_
+consequence §90 drew from §87 is therefore unnecessary; the measured cost of linking typia into the
+one binary, +4.4 MB / +17.6% on the compiled sidecar, is accepted for the single-host
+simplification. §87's core ruling — augmentation authoring is first-party-only — is untouched.
+
+mergesynth gates on `primitives.transformer` like every other stage — no always-on carve-out. An
+augmentation-installing package gains synthesized default-merge strategies purely by depending on
+`primitives.transformer` (which every lowering library does); a package that installs no
+augmentation gets a no-op and byte-identical output.
+
+Selection is §100's declare-by-depending, implemented HOST-SIDE as literally one scan: the host's
+`CollectProject(cwd)` walk yields BOTH the active stages (from each reachable `*.transformer`'s
+`ttsc.stages` marker) and the certified bodies (§91) in a single traversal. `build-lib.ts` passes no
+explicit plugin list, so `ttsc`'s own (direct-only) auto-discovery merely spawns the one host — the
+transitive reach that declare-by-depending needs comes from this scan, not from `ttsc`. Outside any
+workspace (a bare non-workspace project that declares its plugins explicitly) the scan degrades to
+empty and selection falls back to the manifest; the zero-stage guard and the inline emit-sweep still
+fail loudly on a genuine misconfig. One refinement keeps §100's "cores don't force-activate" exact:
+devDependencies are followed for the consumer package only, never transitively — a transitive
+dependency's devDeps are its own build tooling (di.core devDeps `primitives.transformer` to lower
+ITSELF), which a plain di.core consumer must not inherit. For every real workspace package this is a
+no-op; it changes only the degenerate core-only-consumer case the invariant is about.
+
+_Collapse and mergesynth-gating owner-directed 2026-07-19; the host-side one-scan implementation of
+§100 and the root-only-devDep refinement are Claude's implementation calls._
+
+---
+
+## §104 — Family-neutral primitive stages vs per-family sugar bodies
+
+The primitive STAGES a family's sugar leans on — inline and signatureof, alongside nameof and
+mergesynth — are family-neutral machinery under `transforms/internal/*`, surfaced through
+`primitives.transformer` (its `ttsc.stages` set, plus the `./inline-ttsc` / `./signatureof-ttsc`
+single-stage override descriptors). A family's own `*.transformer` (di.transformer,
+di.transformer.options, config.transformer) owns only its per-family sugar: the phantom typings, the
+`rhombus.inline` BODIES (§91), and its own stage (`di` / `di_options` / `config`). This complements
+§92's primitive-STUB homing — the stubs and their typings stay in their domain transformer; §104
+records where the STAGE machinery lives.
+
+The honest dep edge falls out: because a family transformer's inline bodies call the neutral
+primitives (`nameof`/`signatureof`), that transformer genuinely requires the primitive stages, so
+di.transformer, di.transformer.options, and config.transformer each declare
+`@rhombus-std/primitives.transformer` as a `dependency`. That edge is what lets §103's host scan
+reach the primitive stages for a family-sugar consumer: a library depending on di.transformer's
+sugar gets inline+nameof+signatureof activated with no action of its own. The edge is build-graph
+only — `primitives.transformer` ships no runtime JS, so it never enters a bundle.
+
+_Owner-directed 2026-07-19 (the family-neutral-stage placement); the dependency-edge mechanics are
+the implementation._

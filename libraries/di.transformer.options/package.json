@@ -36,7 +36,8 @@
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/di.transformer.options/ttsc"
-    }
+    },
+    "stages": ["di_options"]
   },
   "files": [
     "dist",
@@ -45,6 +46,9 @@
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rhombus-std/primitives.transformer": "workspace:*"
   },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^",
