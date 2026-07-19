@@ -18,9 +18,8 @@
 //     `ConfigRoot.get`, whose private `#rawGet` IS that reverse scan, so
 //     a second copy here would have no call site.
 
-import type { IConfigRoot, IConfigSection } from '@rhombus-std/config.core';
+import { configPath, type IConfigRoot, type IConfigSection } from '@rhombus-std/config.core';
 import type { AugmentationSet } from '@rhombus-std/primitives';
-import { combine } from './abstractions/config-path';
 import { foldKey } from './fold-key';
 
 /**
@@ -52,6 +51,6 @@ export const InternalConfigRootExtensions = {
       }
     }
 
-    return distinct.map((key) => root.getSection(path === undefined ? key : combine(path, key)));
+    return distinct.map((key) => root.getSection(path === undefined ? key : configPath.combine(path, key)));
   },
 } satisfies AugmentationSet<IConfigRoot>;

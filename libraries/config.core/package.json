@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.core",
   "version": "0.0.0",
-  "description": "Types-only configuration abstractions: the IConfig* interfaces and ITryGetResult. Zero runtime; depends on @rhombus-std/primitives for the IChangeToken type only.",
+  "description": "Configuration abstractions (the assembly mirroring the reference .Configuration.Abstractions): the IConfig* interfaces and ITryGetResult, plus the abstraction-level runtime that belongs here by parity -- the configPath helpers, the ConfigAugmentations/ConfigRootAugmentations convenience sets + exists, and the isConfigSection runtime discriminant. Depends on @rhombus-std/primitives for the IChangeToken/AugmentationSet types.",
   "keywords": [
     "configuration",
     "config",
@@ -16,11 +16,14 @@
     "directory": "libraries/config.core"
   },
   "type": "module",
+  "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./dist/bundle/index.js",
       "types": "./dist/bundle/index.d.ts",
-      "default": "./dist/bundle/index.d.ts"
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
     }
   },
   "files": [
@@ -30,10 +33,6 @@
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
-  "//rhombusBuild": "Pure-types package -- ships ZERO runtime (every consumer uses `import type`); the build emits no JS bundle and asserts none appears (§40).",
-  "rhombusBuild": {
-    "typesOnly": true
-  },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.5.3"
@@ -41,11 +40,13 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
+    "main": "./dist/bundle/index.js",
     "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
         "types": "./dist/bundle/index.d.ts",
-        "default": "./dist/bundle/index.d.ts"
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
       }
     }
   }
