@@ -29,7 +29,7 @@ declare module './ConfigRoot' {
   interface ConfigRoot {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigSection;
-    asEnumerable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined]>;
+    asIterable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined], void, unknown>;
   }
 }
 
@@ -37,7 +37,7 @@ declare module './ConfigSection' {
   interface ConfigSection {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigSection;
-    asEnumerable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined]>;
+    asIterable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined], void, unknown>;
   }
 }
 
@@ -45,7 +45,7 @@ declare module './ConfigManager' {
   interface ConfigManager {
     getConnectionString(name: string): string | undefined;
     getRequiredSection(key: string): IConfigSection;
-    asEnumerable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined]>;
+    asIterable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined], void, unknown>;
   }
 }
 

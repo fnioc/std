@@ -94,12 +94,12 @@ export const ConfigAugmentations = {
    * Every node reached through `getChildren()` is a section by the interface
    * contract.
    */
-  *asEnumerable(
+  *asIterable(
     config: IConfig,
     // Annotated: AugmentationSet<R>'s index signature (`...args: any[]`)
     // contextually types the parameter `any`, beating default-value inference.
     makePathsRelative: boolean = false,
-  ): Generator<[key: string, value: string | undefined]> {
+  ): Generator<[key: string, value: string | undefined], void, unknown> {
     const rootIsSection = isConfigSection(config);
     // Trim the root section's path plus its trailing delimiter; a non-section
     // root contributes no prefix.
