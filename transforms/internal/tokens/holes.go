@@ -510,7 +510,10 @@ func SingletonValue(t *shimchecker.Type) (LiteralValue, bool) {
 		return LiteralValue{Kind: LiteralBigInt, Text: strings.TrimPrefix(text, "-"), Negated: negated}, true
 	}
 	if flags&shimchecker.TypeFlagsBooleanLiteral != 0 {
-		return LiteralValue{Kind: LiteralBoolean, Bool: t.AsIntrinsicType().IntrinsicName() == "true"}, true
+		// A boolean literal's data is a *LiteralType whose Value() is a Go bool,
+		// NOT an *IntrinsicType — AsIntrinsicType() here would panic.
+		value, _ := t.AsLiteralType().Value().(bool)
+		return LiteralValue{Kind: LiteralBoolean, Bool: value}, true
 	}
 	if flags&(shimchecker.TypeFlagsVoid|shimchecker.TypeFlagsUndefined) != 0 {
 		return LiteralValue{Kind: LiteralUndefined}, true
