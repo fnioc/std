@@ -309,3 +309,77 @@ package with no exports map is unchanged. `internal` is banned as an export alia
 with same-named source folders.
 
 _Owner-directed 2026-07-18._
+
+## §98 — Keyed sugar composes through `keyof` and a tail key parameter
+
+A single authoring-only primitive, `keyof<T>()`, lives in `di.transformer` (lowercase — reserved
+only in type positions, family-consistent with `nameof`/`signatureof`/`schemaof`, per §92's homing
+rule). It lowers to the key of a `Keyed<T, K>` type argument (`'audit'`) and to `undefined` for a
+non-keyed type. `nameof` over `Keyed<T, K>` derives the BASE token unchanged — base extraction, not
+key loss — so `keyof` and `nameof` are two independent readings of the same phantom brand.
+
+The explicit registration verbs each carry ONE signature with an optional TAIL parameter —
+`add(token, impl, signatures, key?)`, `addFactory(token, fn, signatures, key?)`,
+`addValue(token, value, key?)` — never an overload pair. The runtime composes the full token as
+`[token, key].filter(Boolean).join('#')`, so any falsy key means "unkeyed" — unifying with
+`resolve`'s existing `key = ''` default (§85), which stays unchanged.
+
+A certified inline body passes `keyof<T>()` unconditionally in tail position; the emit drops a
+trailing argument that lowered to the literal `undefined` (defaulted parameters fire on
+`undefined`, and nothing reads `arguments.length`), so unkeyed lowered output stays byte-identical
+to the pre-key form. Keyed registrations therefore lower through the generic inline path (§91,
+§94) with no bespoke handler and no fence — `keyof` is just another primitive the same engine
+folds.
+
+_Owner-directed 2026-07-19._
+
+## §99 — Registration overrides are sparse arrays merged at runtime
+
+The `add<T>(ctor, overrides)` form's override array uses SPARSE HOLES to skip positions
+(`['x:A', , 'x:C']` — the hole keeps the derived token for that slot); an explicit `undefined`
+element instead OVERWRITES the slot with `undefined`. This works because the merge is a plain
+`Object.assign` over a copy of the derived signature: `Object.assign` copies only own enumerable
+properties, a hole is not an own property, and an array's `length` is own but non-enumerable — so
+`Object.assign` naturally skips holes and passes `length` through untouched.
+
+The merge happens at RUNTIME, inside the certified body — not at compile time. The override
+argument therefore need not be an inline array literal; any expression that produces the array is
+legal, for transformer and no-transformer callers alike (the no-transformer-first rule,
+`CLAUDE.md`).
+
+_Owner-directed 2026-07-19._
+
+## §100 — Transform activation and body collection are one dependency scan
+
+Declare-by-depending (flagged in §90 as a nice-to-have) is the mechanism: a dependency carrying
+the transform auto-discovery marker implies its transform for the consumer. The marker lives on
+`*.transformer` packages — never on a core, whose ubiquity would force activation on every
+consumer regardless of whether it actually uses sugar. A dependency on a `*.transformer` package is
+a precise "I use this family's sugar" signal, since transformer packages peer on their cores and
+are otherwise unreachable from a plain runtime dependency graph.
+
+The same recursive scan that activates stages also collects certified bodies (the `rhombus.inline`
+markers, §91), including from the consumer package itself; a third-party sugar library's own
+consumers receive the needed stages transitively, through that library's `*.transformer`
+dependencies, with no action of their own. Explicit `tsconfig.ttsc.json` declaration (§90) remains
+the override and opt-out path.
+
+A plain consumer never authors a `rhombus.inline` marker. Authoring one makes a package a toolchain
+participant, whose obligations arrive as a bundle: its inline bodies must be certified
+single-expression forms (§91), its body sources ship in the published files, it carries its own
+auto-discovery marker, and it builds through the same transform machinery as every other
+transformer package.
+
+_Owner-directed 2026-07-19._
+
+## §101 — Certified bodies are direct-over-primitives; no nesting
+
+A certified inline body (§91) may compose authoring-only primitives and explicit runtime verbs,
+but may NOT call other sugar. There is no recursive expansion — the manifest reserves no field for
+it — so adding nesting later is purely additive, not a breaking change to the existing grammar.
+
+Cross-package composition happens at runtime instead, through ordinary function calls: a family's
+registration helpers are themselves runtime members, and any sugar those helpers use lowers at
+their own declaring package's build, not at the call site that invokes them.
+
+_Owner-directed 2026-07-19._
