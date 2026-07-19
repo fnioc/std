@@ -171,6 +171,12 @@ export const TracingServiceExtensions = {
 registerAugmentations(nameof<IServiceManifest>(), MetricsServiceExtensions);
 registerAugmentations(nameof<IServiceManifest>(), TracingServiceExtensions);
 
+// Wholesale re-export of this family's own core (the IMetricsBuilder/
+// ITracingBuilder abstractions, the rule/options data model, and the tokens),
+// so a consumer depending on the runtime package resolves the abstractions from
+// it too; the package's public surface stays a superset of its core's.
+export * from '@rhombus-std/diagnostics.core';
+
 // The concrete builders (mirrors the reference private MetricsBuilder/TracingBuilder,
 // exported here so a no-augmentation consumer can construct one directly).
 export { MetricsBuilder } from './metrics/MetricsBuilder';

@@ -3,7 +3,7 @@
 // MetricsBuilderConfigExtensions; authored as a named object literal
 // (docs §28) and installed onto the concrete builder in ./builder-augmentations.
 
-import type { IConfig } from '@rhombus-std/config';
+import type { IConfig } from '@rhombus-std/config.core';
 import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
   TRACING_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';

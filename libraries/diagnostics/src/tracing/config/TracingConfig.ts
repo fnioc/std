@@ -7,7 +7,7 @@
 // reference; exported here so a plugin-less consumer wiring the config path by
 // hand can register one directly.
 
-import type { IConfig } from '@rhombus-std/config';
+import type { IConfig } from '@rhombus-std/config.core';
 
 /** Marks an {@link IConfig} as bound to tracing via `addTracingConfig`. */
 export class TracingConfig {

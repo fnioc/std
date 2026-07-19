@@ -14,7 +14,7 @@
 //     application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifest } from '@rhombus-std/di';
+import type { IServiceManifest } from '@rhombus-std/di.core';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';

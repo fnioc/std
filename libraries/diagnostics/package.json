@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/diagnostics.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",

@@ -13,7 +13,7 @@
 // MetricListenerConfigFactory `addMetrics` registers enumerates to build
 // each listener's merged configuration view.
 
-import type { IConfig } from '@rhombus-std/config';
+import type { IConfig } from '@rhombus-std/config.core';
 import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIGURATION_TOKEN,
   METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';

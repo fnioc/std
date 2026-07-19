@@ -10,7 +10,7 @@
 // leaves (`{SourceName}:{OperationName} = true`). `Default` is the match-all
 // synonym. Non-bool values are skipped.
 
-import type { IConfig, IConfigSection } from '@rhombus-std/config';
+import type { IConfig, IConfigSection } from '@rhombus-std/config.core';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes, TracingOptions,
   TracingRule } from '@rhombus-std/diagnostics.core';
 import type { IConfigureOptions } from '@rhombus-std/options';

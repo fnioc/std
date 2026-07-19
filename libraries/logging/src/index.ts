@@ -6,6 +6,14 @@
 // sugar writes a bare `import "@rhombus-std/logging";`. This package MUST keep
 // `"sideEffects": true` so a bundler cannot tree-shake the augmentation away.
 
+// Wholesale re-export of this family's own core (the ILogger* abstractions AND
+// the runtime helpers consumers extend), so a consumer depending on the runtime
+// package resolves the abstractions from it too; the package's public surface
+// stays a superset of its core's. Where a name is defined both here and in core
+// (e.g. `Logger`), the concrete local export below wins, as ES module semantics
+// give an explicit re-export precedence over a `*` re-export.
+export * from '@rhombus-std/logging.core';
+
 // Side-effect + standalone surface: registers the `addLogging` augmentation against
 // the di.core ServiceManifest token, merges the method onto the IServiceManifestBase
 // interface, and exports the `LoggingServiceCollectionExtensions` set (docs §28/§38).
