@@ -1,10 +1,7 @@
 {
-  "//": "The ttsc/Go plugin config read by @ttsc/unplugin/bun during the Bun.build JS emit (build.ts): the @rhombus-std/di.transformer ttsc plugin (a Go sidecar) lowers the tokenless resolve<T>()/tryResolve<T>()/isService<T>() calls in server-report.ts. Extends the base tsconfig and declares the /ttsc descriptor. The `types` augmentation is RETAINED (previously dropped): the tokenless `resolve<T>()` sugar is NOT a real di.core IResolver method — it lives in di.transformer's `declare module '@rhombus-std/di.core'` augment, and declaration-site matching anchors on that sugar overload, so the augment must be in the Go program. Lint and d.ts emit stay on typescript 5 via the base tsconfig.json.",
+  "//": "The ttsc/Go lowering config read by @ttsc/unplugin/bun during the Bun.build JS emit (build.ts): server-report.ts uses the tokenless resolve<T>()/tryResolve<T>()/isService<T>() sugar. Stage selection is declare-by-depending, resolved HOST-SIDE (§100): there is no `plugins` array, so ttsc auto-discovery spawns the one owner host (transforms/cmd/ttsc-std) from this lib's direct di.transformer devDep, and the host self-selects the full stage set from its own dependency scan — the di stage plus the primitive stages inline/nameof/signatureof/mergesynth reached through di.transformer's honest primitives.transformer dep. isService<T>() is substituted from di.transformer's rhombus.inline body (the same host scan collects it) then the primitive stages lower the token, while the di stage lowers resolve<T>()/tryResolve<T>(); mergesynth is inert here (this lib installs no augmentation). Extends the base tsconfig. The `types` augmentation is RETAINED: the tokenless `resolve<T>()` sugar is NOT a real di.core IResolver method — it lives in di.transformer's `declare module '@rhombus-std/di.core'` augment, and declaration-site matching anchors on that sugar overload, so the augment must be in the Go program. Lint and d.ts emit stay on plain tsc via the base tsconfig.json.",
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["@rhombus-std/di.transformer"],
-    "plugins": [
-      { "transform": "@rhombus-std/di.transformer/ttsc" }
-    ]
+    "types": ["@rhombus-std/di.transformer"]
   }
 }

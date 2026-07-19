@@ -32,15 +32,25 @@ if (dts.status !== 0) {
   throw new Error('examples.lib.with-transformer: d.ts emit failed');
 }
 
+// Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
+// tsconfig.ttsc.json plugins array, auto-discovery spawns the one owner host from
+// this lib's direct di.transformer devDep, and the host self-selects the full
+// stage set (the di stage plus the primitive stages via di.transformer's
+// primitives.transformer dep) from its own dependency scan. Pass `undefined`
+// (NEVER []) so discovery is not suppressed; a non-empty manual plugins array
+// would override.
+const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
+const ttscTransforms = manual.length > 0 ? manual : undefined;
+
 const js = await Bun.build({
   entrypoints: [join(dir, 'src/index.ts')],
   outdir: dist,
   target: 'node',
   format: 'esm',
   external: ['@rhombus-std/di', '@rhombus-std/options', '@rhombus-std/examples.contracts'],
-  // Thread the declared tsconfig.ttsc.json plugin (di.transformer/ttsc)
-  // EXPLICITLY, suppressing the adapter's install-set auto-discovery.
-  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', readTsconfigTransforms(dir, 'tsconfig.ttsc.json'))],
+  // ttscTransforms is undefined, so @ttsc/unplugin/bun runs auto-discovery (the
+  // one owner host, deduped to a single spawn); the host self-selects the stages.
+  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],
 });
 if (!js.success) {
   for (const log of js.logs) {
