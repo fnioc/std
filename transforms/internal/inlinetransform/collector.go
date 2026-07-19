@@ -49,7 +49,14 @@ type ProjectScan struct {
 func CollectProject(consumerCwd string) (ProjectScan, error) {
 	consumerRoot, err := findPackageRoot(consumerCwd)
 	if err != nil {
-		return ProjectScan{}, err
+		// Best-effort: outside any workspace — no package.json in cwd or above it —
+		// there is nothing to scan. A bare non-workspace ttsc project that declares
+		// its plugins EXPLICITLY (the manifest-only parity fixtures) must not be
+		// forced to have a scannable package.json, so return an empty scan and let
+		// the host fall back to the manifest. Nothing silently skips lowering: the
+		// zero-stage guard (empty scan AND empty manifest) and the inline emit-sweep
+		// still fire loudly on a genuine misconfig.
+		return ProjectScan{}, nil
 	}
 	wsMap := workspaceMap(consumerRoot)
 

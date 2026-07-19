@@ -158,6 +158,44 @@ func TestCollectProjectStagesRootOnlyDevDeps(t *testing.T) {
 	}
 }
 
+// TestCollectProjectNoPackageJsonDegradesToEmpty: a bare directory with no
+// package.json in it or any ancestor (a non-workspace ttsc project that declares
+// its plugins explicitly — the manifest-only parity fixtures) yields an EMPTY scan
+// and NO error, so the host falls back to the manifest. Declare-by-depending is
+// best-effort; a genuine zero-stage run fails loud elsewhere (the host's NO_STAGES
+// guard). A normal workspace consumer still carries stages AND bodies.
+func TestCollectProjectNoPackageJsonDegradesToEmpty(t *testing.T) {
+	// (a) rootless dir -> empty scan, no error.
+	bare := t.TempDir()
+	scan, err := CollectProject(bare)
+	if err != nil {
+		t.Fatalf("CollectProject on a rootless dir must not error, got: %v", err)
+	}
+	if len(scan.Stages) != 0 || len(scan.Bodies) != 0 {
+		t.Fatalf("rootless scan must be empty, got stages=%v bodies=%v", scan.Stages, scan.Bodies)
+	}
+
+	// (b) a normal workspace consumer still yields its stages AND bodies.
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+	write(t, filepath.Join(root, "packages", "app", "package.json"), `{
+  "name": "@scope/app",
+  "devDependencies": { "@scope/tf": "workspace:*" }
+}`)
+	write(t, filepath.Join(root, "packages", "tf", "package.json"), `{
+  "name": "@scope/tf",
+  "ttsc": { "stages": ["nameof"] },
+  "rhombus.inline": { "entries": [ { "impl": "tf" } ] }
+}`)
+	ws, err := CollectProject(filepath.Join(root, "packages", "app"))
+	if err != nil {
+		t.Fatalf("CollectProject on a workspace dir: %v", err)
+	}
+	if len(ws.Stages) == 0 || len(ws.Bodies) == 0 {
+		t.Fatalf("workspace scan must carry stages AND bodies, got stages=%v bodies=%v", ws.Stages, ws.Bodies)
+	}
+}
+
 // TestWorkspaceObjectForm: the object form of the "workspaces" field
 // (`{ "packages": [...] }`) must be parsed for the workspace map.
 func TestWorkspaceObjectForm(t *testing.T) {
