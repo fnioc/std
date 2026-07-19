@@ -333,7 +333,7 @@ describe('FileConfigProvider reload', () => {
   });
 });
 
-describe('FileConfigExtensions builder augmentation', () => {
+describe('FileConfigAugmentations builder augmentation', () => {
   test('getFileProvider defaults to a cwd-rooted PhysicalFileProvider', () => {
     const builder = new ConfigBuilder();
     expect(builder.getFileProvider()).toBeInstanceOf(PhysicalFileProvider);

@@ -89,7 +89,7 @@ declare module '@rhombus-std/config' {
  * static class (docs §28/§38): receiver-first members over IConfigBuilder,
  * registered against the shared token AND exported as the standalone form.
  */
-export const FileConfigExtensions = {
+export const FileConfigAugmentations = {
   setFileProvider(builder: IConfigBuilder, fileProvider: IFileProvider): IConfigBuilder {
     builder.properties.set(FILE_PROVIDER_KEY, fileProvider);
     return builder;
@@ -103,7 +103,7 @@ export const FileConfigExtensions = {
     return new PhysicalFileProvider(process.cwd());
   },
   setBasePath(builder: IConfigBuilder, basePath: string): IConfigBuilder {
-    return FileConfigExtensions.setFileProvider(builder, new PhysicalFileProvider(basePath));
+    return FileConfigAugmentations.setFileProvider(builder, new PhysicalFileProvider(basePath));
   },
   setFileLoadErrorHandler(builder: IConfigBuilder, handler: FileLoadErrorHandler): IConfigBuilder {
     builder.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
@@ -114,7 +114,7 @@ export const FileConfigExtensions = {
   },
 } satisfies AugmentationSet<IConfigBuilder>;
 
-registerAugmentations(nameof<IConfigBuilder>(), FileConfigExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), FileConfigAugmentations);
 
 export { FormatError, InvalidDataError } from './errors';
 export { FileConfigProvider } from './FileConfigProvider';
