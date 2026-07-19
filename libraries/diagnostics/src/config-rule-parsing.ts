@@ -5,7 +5,7 @@
 // per-operation bool leaves, with "Default" as the match-all synonym -- so the
 // tree-walking primitives live here once.
 
-import type { IConfig, IConfigSection } from '@rhombus-std/config';
+import type { IConfig, IConfigSection } from '@rhombus-std/config.core';
 
 /** The match-all key used at meter/instrument and source/operation levels. */
 export const DEFAULT_KEY = 'Default';

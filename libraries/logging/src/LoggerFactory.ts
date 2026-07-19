@@ -20,7 +20,8 @@
 //   - `LoggerFactoryOptions` / `ActivityTrackingOptions` are omitted (same
 //     reason); the scope-provider constructor parameter is kept.
 
-import { type IServiceProvider, ServiceManifest } from '@rhombus-std/di';
+import { ServiceManifest } from '@rhombus-std/di';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';

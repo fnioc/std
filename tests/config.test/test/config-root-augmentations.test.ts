@@ -1,14 +1,14 @@
-// getDebugView over IConfigRoot (a member of ConfigRootExtensions):
+// getDebugView over IConfigRoot (a member of ConfigRootAugmentations):
 // the indented tree rendering, the intermediate (no-value) node line, and the
 // processValue override. Black-box through the public @rhombus-std/config
 // surface via the standalone member form.
 
-import { ConfigBuilder, type ConfigDebugViewContext, ConfigRootExtensions,
+import { ConfigBuilder, type ConfigDebugViewContext, ConfigRootAugmentations,
   type IConfigRoot } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 
-const { getDebugView } = ConfigRootExtensions;
+const { getDebugView } = ConfigRootAugmentations;
 
 describe('getDebugView', () => {
   function tree(): IConfigRoot {

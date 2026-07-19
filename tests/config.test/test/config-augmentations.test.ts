@@ -1,14 +1,14 @@
-// The MECA convenience augmentations over IConfig: getConnectionString,
-// getRequiredSection, and asEnumerable (members of ConfigExtensions),
+// The convenience augmentations over IConfig: getConnectionString,
+// getRequiredSection, and asIterable (members of ConfigAugmentations),
 // plus the free `exists` function. Exercised black-box through the public
 // @rhombus-std/config surface via the standalone member form -- the in-memory
 // provider builds the tree.
 
-import { ConfigBuilder, ConfigExtensions, exists, type IConfigRoot } from '@rhombus-std/config';
+import { ConfigAugmentations, ConfigBuilder, exists, type IConfigRoot } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 
-const { asEnumerable, getConnectionString, getRequiredSection } = ConfigExtensions;
+const { asIterable, getConnectionString, getRequiredSection } = ConfigAugmentations;
 
 describe('getConnectionString', () => {
   test('returns the connection string under ConnectionStrings', () => {
@@ -66,7 +66,7 @@ describe('getRequiredSection', () => {
   });
 });
 
-describe('asEnumerable', () => {
+describe('asIterable', () => {
   // A small nested tree: two leaves under Server, one two levels deep.
   function tree(): IConfigRoot {
     return rootOf({
@@ -77,7 +77,7 @@ describe('asEnumerable', () => {
   }
 
   test("from a root, yields every section's full path (root itself excluded)", () => {
-    const pairs = new Map(asEnumerable(tree()));
+    const pairs = new Map(asIterable(tree()));
 
     // The non-section root is never yielded; intermediate section nodes are
     // (with an undefined value), leaves carry their value.
@@ -93,7 +93,7 @@ describe('asEnumerable', () => {
 
   test('makePathsRelative=false from a section keeps full paths and yields the section itself', () => {
     const server = tree().getSection('Server');
-    const pairs = new Map(asEnumerable(server, false));
+    const pairs = new Map(asIterable(server, false));
 
     expect(pairs.has('Server')).toBe(true); // the section root IS yielded here
     expect(pairs.get('Server:Host')).toBe('localhost');
@@ -102,7 +102,7 @@ describe('asEnumerable', () => {
 
   test('makePathsRelative=true from a section trims the section path and drops its empty key', () => {
     const server = tree().getSection('Server');
-    const keys = [...asEnumerable(server, true)].map(([key]) => key).sort();
+    const keys = [...asIterable(server, true)].map(([key]) => key).sort();
 
     // "Server" prefix (plus its delimiter) is trimmed; the now-empty root key
     // is omitted.
@@ -120,7 +120,7 @@ describe('asEnumerable', () => {
     const server = root.getSection('Server');
     expect(server.value).toBe('self-value');
 
-    const pairs = new Map(asEnumerable(server, true));
+    const pairs = new Map(asIterable(server, true));
     expect(pairs.has('')).toBe(false); // the section's own (empty-key) value is dropped
     expect(pairs.get('Host')).toBe('localhost');
   });
@@ -128,7 +128,7 @@ describe('asEnumerable', () => {
   test('makePathsRelative=true from a root is a no-op on paths (root is not a section)', () => {
     // The root is not an IConfigSection, so no prefix is trimmed and the
     // root contributes no empty key either.
-    const keys = new Set([...asEnumerable(tree(), true)].map(([key]) => key));
+    const keys = new Set([...asIterable(tree(), true)].map(([key]) => key));
     expect(keys.has('Server:Host')).toBe(true);
     expect(keys.has('Server:Port')).toBe(true);
     expect(keys.has('Logging:Level:Default')).toBe(true);
@@ -136,6 +136,6 @@ describe('asEnumerable', () => {
 
   test('empty configuration yields nothing', () => {
     const root = new ConfigBuilder().build() as unknown as IConfigRoot;
-    expect([...asEnumerable(root)]).toEqual([]);
+    expect([...asIterable(root)]).toEqual([]);
   });
 });

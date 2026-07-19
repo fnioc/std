@@ -7,9 +7,8 @@
 // never drift apart. The discriminated `ParseResult` lets each consumer pick
 // its own failure mode.
 
-import type { IConfig } from '@rhombus-std/config.core';
+import { exists, type IConfig } from '@rhombus-std/config.core';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { exists } from './ConfigExtensions';
 import { OPTIONAL, type Schema } from './schema';
 
 export type ParseResult<T> =

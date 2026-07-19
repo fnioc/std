@@ -40,7 +40,7 @@ declare module '@rhombus-std/config' {
 }
 
 /** One named object literal mirroring the reference `IniConfigExtensions`. */
-export const IniConfigExtensions = {
+export const IniConfigAugmentations = {
   addIniFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     path: string,
@@ -56,7 +56,7 @@ export const IniConfigExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), IniConfigExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), IniConfigAugmentations);
 
 export { IniConfigProvider } from './IniConfigProvider';
 export { IniConfigSource } from './IniConfigSource';

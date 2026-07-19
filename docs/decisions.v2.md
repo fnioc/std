@@ -383,3 +383,37 @@ registration helpers are themselves runtime members, and any sugar those helpers
 their own declaring package's build, not at the call site that invokes them.
 
 _Owner-directed 2026-07-19._
+
+---
+
+## §102 — API placement follows reference assembly parity; a runtime package wholesale re-exports its own core
+
+Where an API lives is decided by the reference assembly that owns it, NOT by whether the target
+package happens to emit runtime. The abstractions assembly's public surface — including its
+convenience helpers, static-class member sets, and small runtime discriminants — belongs in the
+family's `*.core` package even when that means the core ships a JS bundle. A `*.core` is
+"abstractions", not "types-only"; a core emits runtime whenever the reference's abstractions
+assembly does. (This retires §21's "park it in the runtime package because the core is types-only"
+placement for the config family: `configPath`, `ConfigAugmentations`/`ConfigRootAugmentations` +
+`exists`, and the `ConfigDebugViewContext` type moved to `config.core`.)
+
+Three standing rules fall out:
+
+- **A runtime package wholesale re-exports its own family core** (`export * from
+  '@rhombus-std/<family>.core'`), so its public surface stays a strict superset of the core's and
+  every consumer keeps resolving the abstractions through the runtime package unchanged. Where a
+  name is defined in both, the runtime package's explicit local export wins (ES module semantics
+  give an explicit re-export precedence over a `*` re-export) — e.g. `logging`'s concrete `Logger`
+  shadows `logging.core`'s `Logger<T>`.
+- **In-repo library source imports family ABSTRACTIONS from the `*.core` specifier directly**, never
+  through the runtime package's re-export. The wholesale re-export is a consumer-facing convenience;
+  first-party code targets the core it depends on. (Tests may use either.)
+- **Runtime section-vs-root discrimination goes through `config.core`'s branded guard.** TS erases
+  interfaces, so the reference's `config is IConfigurationSection` interface test has no runtime
+  form; and structural duck-typing fails because the port's root exposes `key`/`path`/`value` yet is
+  not an `IConfigSection`. `config.core` exports a unique-symbol brand the concrete `ConfigSection`
+  stamps on itself (a public own property) plus `isConfigSection(x): x is IConfigSection` that reads
+  it; a root never carries the brand. The brand lives in the (external, shared-singleton) core so
+  the symbol is identical everywhere (§38 identity invariant), never a forked copy.
+
+_Owner-directed 2026-07-18._

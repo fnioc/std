@@ -10,22 +10,22 @@
 // ConfigProvider, implement IConfigSource, and augment
 // ConfigBuilder with their own add* sugar.
 
-// The abstraction types (IConfig/-Builder/-Root/-Section/-Source/
-// -Provider/-Manager + ITryGetResult) now live in @rhombus-std/config.core. Re-export
-// them so consumers importing them from @rhombus-std/config keep working --
+// The configuration abstractions (IConfig/-Builder/-Root/-Section/-Source/
+// -Provider/-Manager + ITryGetResult, the `configPath` helpers, the
+// `ConfigAugmentations`/`ConfigRootAugmentations` convenience sets + `exists`,
+// and the `isConfigSection` runtime discriminant) live in
+// @rhombus-std/config.core -- the assembly mirroring the reference
+// `.Configuration.Abstractions`. Re-export the WHOLE surface (types AND values)
+// so consumers importing any of it from @rhombus-std/config keep working;
 // config's public surface stays a superset of core's.
-export type * from '@rhombus-std/config.core';
+export * from '@rhombus-std/config.core';
 
-// The runtime `configPath` helper namespace stays in this package.
-export * as configPath from './abstractions/config-path';
-
-// Abstraction helpers. The public MECA convenience augmentations over the core
-// IConfig* interfaces -- runtime, so they live here rather than in
-// config.core (which ships zero runtime values). Importing this module installs
-// their fluent forms (CLOSED sets, docs §38); the exported consts are the
-// standalone member surface, and `exists` stays a plain free function.
-export { ConfigExtensions, exists } from './ConfigExtensions';
-export { type ConfigDebugViewContext, ConfigRootExtensions } from './ConfigRootExtensions';
+// Install the convenience augmentations' fluent forms onto the concrete engine
+// classes (CLOSED sets, docs §38). The member sets themselves are re-exported
+// from core by the `export *` above; these side-effect imports run the
+// `applyAugmentations` calls and carry the `declare module` merges.
+import './config-augmentations-install';
+import './config-root-augmentations-install';
 
 // Engine.
 export { compareConfigKeys } from './config-key-comparer';
@@ -56,4 +56,4 @@ export { SchemaCoercionError } from './coerce';
 export { OPTIONAL } from './schema';
 export type { Infer, ObjectSchema, OptionalSchema, Schema } from './schema';
 
-// ConfigObject + IndexedSection flow through `export type * from "@rhombus-std/config.core"` above.
+// ConfigObject + IndexedSection flow through `export * from "@rhombus-std/config.core"` above.

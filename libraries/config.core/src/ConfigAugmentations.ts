@@ -1,19 +1,22 @@
-// The public MECA convenience augmentations over IConfig -- port of
-// `ConfigExtensions.cs` (the IConfig-receiver half). These are
-// runtime functions, so they live in @rhombus-std/config (not config.core,
-// which ships zero runtime values -- see docs/decisions.md).
+// The public convenience augmentations over IConfig -- port of the reference
+// `ConfigurationExtensions.cs` (the IConfig-receiver half). These are runtime
+// functions defined against the abstraction interfaces only, so they belong in
+// config.core (the assembly mirroring the reference's
+// `.Configuration.Abstractions`), NOT in the engine package.
 //
 // This is a CLOSED augmentation set (docs/decisions.md §28/§38): the receiver
-// interface (IConfig) AND every one of these augmentations are owned
-// inside the config family, and no downstream package extends this surface, so
-// the install is a direct `applyAugmentations` at the concrete classes -- NO
-// token, NO registry. The set is authored as ONE named exported const mirroring
-// the reference static class, so it is available BOTH as a fluent method
+// interface (IConfig) AND every one of these augmentations are owned inside the
+// config family, and no downstream package extends this surface. The member set
+// is authored here as ONE named exported const mirroring the reference static
+// class, so it is available BOTH as a fluent method
 // (`config.getConnectionString(name)`) and as the standalone member form
-// (`ConfigExtensions.getConnectionString(config, name)`).
+// (`ConfigAugmentations.getConnectionString(config, name)`). The install itself
+// -- the `applyAugmentations` calls and the `declare module` merges onto the
+// concrete classes -- lives in @rhombus-std/config, since those reference
+// concrete classes config.core cannot import.
 //
 // `exists` is deliberately NOT a member of the set: the reference receiver is a
-// nullable `IConfigSection?`, and a prototype method cannot dispatch on
+// nullable `IConfigurationSection?`, and a prototype method cannot dispatch on
 // an `undefined` receiver, so it stays a plain exported free function.
 //
 // The generic `Add<TSource>(configureSource)` factory-add from the same
@@ -22,18 +25,17 @@
 // if ever ported it targets IConfigBuilder, so per the single-receiver
 // split rule it becomes a SEPARATE builder-targeted const, never folded here.
 
-import type { IConfig, IConfigSection } from '@rhombus-std/config.core';
-import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
-import { ConfigManager } from './ConfigManager';
-import { ConfigRoot } from './ConfigRoot';
-import { ConfigSection } from './ConfigSection';
+import type { AugmentationSet } from '@rhombus-std/primitives';
+import { isConfigSection } from './config-section-guard';
+import type { IConfig } from './IConfig';
+import type { IConfigSection } from './IConfigSection';
 
 /**
  * Whether `section` has a {@link IConfigSection.value} or at least one
  * child. Returns `false` for a nullish section. The child probe stops at the
  * first result rather than materializing the whole child list.
  *
- * Stays a free function (not a member of {@link ConfigExtensions}): the
+ * Stays a free function (not a member of {@link ConfigAugmentations}): the
  * reference receiver is nullable, and a prototype method cannot dispatch on an
  * `undefined` receiver.
  */
@@ -51,12 +53,12 @@ export function exists(section: IConfigSection | undefined): boolean {
 }
 
 /**
- * One named object literal mirroring the reference `ConfigExtensions`
+ * One named object literal mirroring the reference `ConfigurationExtensions`
  * static class (docs §28/§38) -- receiver-first members over IConfig.
  * Installed directly (CLOSED set, no token) onto every concrete IConfig
  * class AND exported so the members are the standalone form.
  */
-export const ConfigExtensions = {
+export const ConfigAugmentations = {
   /**
    * The specified connection string from `config`. Shorthand for
    * `config.getSection("ConnectionStrings").get(name)`.
@@ -84,20 +86,21 @@ export const ConfigExtensions = {
    * root's path is trimmed from the front of each returned key (and the root's
    * own -- now empty -- key is skipped).
    *
-   * Mirrors MECA's stack-based DFS. The section-vs-root distinction is load
-   * bearing: the port's {@link ConfigRoot} exposes an empty `path` yet
+   * Mirrors the reference's stack-based DFS. The section-vs-root distinction is
+   * load bearing: the port's {@link IConfig} root exposes an empty `path` yet
    * is NOT an {@link IConfigSection}, so the enumeration root is only
    * yielded (and only contributes a relative prefix) when it is a genuine
-   * section -- tested via `instanceof`, never duck-typed on `path`. Every node
-   * reached through `getChildren()` is a section by the interface contract.
+   * section -- tested via {@link isConfigSection}, never duck-typed on `path`.
+   * Every node reached through `getChildren()` is a section by the interface
+   * contract.
    */
-  *asEnumerable(
+  *asIterable(
     config: IConfig,
     // Annotated: AugmentationSet<R>'s index signature (`...args: any[]`)
     // contextually types the parameter `any`, beating default-value inference.
     makePathsRelative: boolean = false,
-  ): Generator<[key: string, value: string | undefined]> {
-    const rootIsSection = config instanceof ConfigSection;
+  ): Generator<[key: string, value: string | undefined], void, unknown> {
+    const rootIsSection = isConfigSection(config);
     // Trim the root section's path plus its trailing delimiter; a non-section
     // root contributes no prefix.
     const prefixLength = makePathsRelative && rootIsSection ? config.path.length + 1 : 0;
@@ -118,40 +121,3 @@ export const ConfigExtensions = {
     }
   },
 } satisfies AugmentationSet<IConfig>;
-
-// DELIBERATELY no interface-side merge onto IConfig. This is a CLOSED
-// set, and IConfig has MANY implementers -- the three concrete classes
-// below, plus every wrapper/fake a consumer hands to e.g.
-// ChainedConfigProvider. An interface merge would force those
-// implementers to carry members that are only ever installed on OUR concrete
-// prototypes (phantom methods -- typed but absent at runtime), the same
-// several-impls reasoning that kept ILogger's log* wrappers standalone-only
-// (docs §36/§38). The fluent form is typed per concrete class below; an
-// interface-typed value uses the standalone `ConfigExtensions.*` form.
-declare module './ConfigRoot' {
-  interface ConfigRoot {
-    getConnectionString(name: string): string | undefined;
-    getRequiredSection(key: string): IConfigSection;
-    asEnumerable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined]>;
-  }
-}
-
-declare module './ConfigSection' {
-  interface ConfigSection {
-    getConnectionString(name: string): string | undefined;
-    getRequiredSection(key: string): IConfigSection;
-    asEnumerable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined]>;
-  }
-}
-
-declare module './ConfigManager' {
-  interface ConfigManager {
-    getConnectionString(name: string): string | undefined;
-    getRequiredSection(key: string): IConfigSection;
-    asEnumerable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined]>;
-  }
-}
-
-applyAugmentations(ConfigRoot, ConfigExtensions);
-applyAugmentations(ConfigSection, ConfigExtensions);
-applyAugmentations(ConfigManager, ConfigExtensions);

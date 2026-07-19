@@ -4,7 +4,7 @@
 // public ABSTRACT CLASS (not an interface) -- mirrored faithfully, so a
 // consumer resolves and extends the same shape the reference exposes.
 
-import type { IConfig } from '@rhombus-std/config';
+import type { IConfig } from '@rhombus-std/config.core';
 
 /**
  * Resolves an {@link IConfig} view for a named activity listener.

@@ -13,11 +13,11 @@
 // or any Object.prototype name) is UNREACHABLE via `config.X` -- reach it with
 // `config.getSection("X")` instead.
 
-import type { ConfigObject, IConfig, IConfigSection, IndexedSection } from '@rhombus-std/config.core';
+import { type ConfigObject, configPath, configSectionBrand, type IConfig, type IConfigSection,
+  type IndexedSection } from '@rhombus-std/config.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
-import { combine, getSectionKey } from './abstractions/config-path';
 import { parseBoolean, parseNumber } from './coerce';
 import type { ConfigRoot } from './ConfigRoot';
 import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
@@ -29,6 +29,16 @@ import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
  * never instantiated directly by consumers.
  */
 export class ConfigSection extends IndexAccessed<IndexedSection> implements IConfigSection {
+  // Public runtime brand (docs/decisions.md §38 identity invariant) so
+  // config.core's `isConfigSection` can distinguish a genuine section from a
+  // root -- the runtime stand-in for the reference's `config is
+  // IConfigurationSection` interface test, which TS erasure removes. A class
+  // FIELD (not a `this.x =` assignment) so it lands as a plain own property via
+  // [[DefineOwnProperty]], bypassing IndexAccessed's set trap; being an own
+  // property, later reads resolve it directly without hitting `_getIndex`.
+  // Deliberately not `#`/`__`-private: the guard reads it from outside.
+  readonly [configSectionBrand] = true;
+
   readonly #root: ConfigRoot;
   readonly #path: string;
   #key?: string;
@@ -41,7 +51,7 @@ export class ConfigSection extends IndexAccessed<IndexedSection> implements ICon
 
   /** The last segment of this section's path -- its key within its parent. */
   public get key(): string {
-    return (this.#key ??= getSectionKey(this.#path));
+    return (this.#key ??= configPath.getSectionKey(this.#path));
   }
 
   /** The full colon-delimited path to this section within the root. */
@@ -61,7 +71,7 @@ export class ConfigSection extends IndexAccessed<IndexedSection> implements ICon
   public get(path: string): string | undefined;
   public get<T>(path: string, factory: Func<[string], T>): T | undefined;
   public get<T>(path: string, factory?: Func<[string], T>): (string | T) | undefined {
-    const raw = this.#root.get(combine(this.#path, path));
+    const raw = this.#root.get(configPath.combine(this.#path, path));
     if (raw === undefined) {
       return undefined;
     }
@@ -77,7 +87,7 @@ export class ConfigSection extends IndexAccessed<IndexedSection> implements ICon
     }
     const r = parseNumber(raw);
     if (!r.ok) {
-      throw new TypeError(`configuration key "${combine(this.#path, path)}" is ${r.reason}`);
+      throw new TypeError(`configuration key "${configPath.combine(this.#path, path)}" is ${r.reason}`);
     }
     return r.value;
   }
@@ -91,20 +101,20 @@ export class ConfigSection extends IndexAccessed<IndexedSection> implements ICon
     }
     const r = parseBoolean(raw);
     if (!r.ok) {
-      throw new TypeError(`configuration key "${combine(this.#path, path)}" is ${r.reason}`);
+      throw new TypeError(`configuration key "${configPath.combine(this.#path, path)}" is ${r.reason}`);
     }
     return r.value;
   }
 
   /** Writes a descendant key relative to this section. */
   public set(key: string, value: string): this {
-    this.#root.set(combine(this.#path, key), value);
+    this.#root.set(configPath.combine(this.#path, key), value);
     return this;
   }
 
   /** A sub-section relative to this section (never null). */
   public getSection(key: string): IConfigSection {
-    return this.#root.getSection(combine(this.#path, key));
+    return this.#root.getSection(configPath.combine(this.#path, key));
   }
 
   /** The immediate descendant sections of this section. */

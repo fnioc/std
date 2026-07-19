@@ -6,9 +6,9 @@
 
 import { MemoryCacheServiceCollectionExtensions } from '@rhombus-std/caching.memory';
 import { MemoryConfigBuilderExtensions } from '@rhombus-std/config';
-import { CommandLineConfigExtensions } from '@rhombus-std/config.commandline';
+import { CommandLineConfigAugmentations } from '@rhombus-std/config.commandline';
 import { EnvironmentVariablesExtensions } from '@rhombus-std/config.env';
-import { JsonConfigExtensions } from '@rhombus-std/config.json';
+import { JsonConfigAugmentations } from '@rhombus-std/config.json';
 import { MetricsServiceExtensions, TracingServiceExtensions } from '@rhombus-std/diagnostics';
 import { MetricsOptionsExtensions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptionsExtensions, LoggingServiceCollectionExtensions } from '@rhombus-std/logging';
@@ -20,9 +20,9 @@ const keys = (set: object): string[] => Object.keys(set).sort();
 
 describe('standalone augmentation surface (member-name snapshots)', () => {
   test('config providers', () => {
-    expect(keys(JsonConfigExtensions)).toEqual(['addJsonFile', 'addJsonStream']);
+    expect(keys(JsonConfigAugmentations)).toEqual(['addJsonFile', 'addJsonStream']);
     expect(keys(EnvironmentVariablesExtensions)).toEqual(['addEnvironmentVariables']);
-    expect(keys(CommandLineConfigExtensions)).toEqual(['addCommandLine']);
+    expect(keys(CommandLineConfigAugmentations)).toEqual(['addCommandLine']);
     expect(keys(MemoryConfigBuilderExtensions)).toEqual(['addInMemoryCollection']);
   });
 
@@ -44,9 +44,9 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
   test('every member is a receiver-first function', () => {
     for (
       const set of [
-        JsonConfigExtensions,
+        JsonConfigAugmentations,
         EnvironmentVariablesExtensions,
-        CommandLineConfigExtensions,
+        CommandLineConfigAugmentations,
         MemoryConfigBuilderExtensions,
         MetricsServiceExtensions,
         TracingServiceExtensions,

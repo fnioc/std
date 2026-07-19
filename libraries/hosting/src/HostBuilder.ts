@@ -11,7 +11,8 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
+import { ServiceManifest } from '@rhombus-std/di';
+import type { IServiceManifest } from '@rhombus-std/di.core';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';

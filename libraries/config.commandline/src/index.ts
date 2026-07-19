@@ -68,7 +68,7 @@ declare module '@rhombus-std/config' {
 // so the member is the standalone form. `TBuilder` is bounded by "has an add()
 // that returns itself" rather than pinned to ConfigBuilder<T> -- see
 // @rhombus-std/config's memory/index.ts for the full rationale.
-export const CommandLineConfigExtensions = {
+export const CommandLineConfigAugmentations = {
   addCommandLine<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     args: readonly string[],
@@ -78,7 +78,7 @@ export const CommandLineConfigExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), CommandLineConfigExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), CommandLineConfigAugmentations);
 
 export { CommandLineConfigProvider } from './CommandLineConfigProvider';
 export { CommandLineConfigSource } from './CommandLineConfigSource';

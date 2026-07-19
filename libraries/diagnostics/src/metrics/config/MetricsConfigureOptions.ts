@@ -11,7 +11,7 @@
 // `Default` at either level is the match-all synonym (a `null` meter/instrument
 // name). Non-bool values are skipped.
 
-import type { IConfig, IConfigSection } from '@rhombus-std/config';
+import type { IConfig, IConfigSection } from '@rhombus-std/config.core';
 import { InstrumentRule, METER_SCOPE_ALL, MeterScope, MetricsOptions } from '@rhombus-std/diagnostics.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 

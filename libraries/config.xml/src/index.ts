@@ -38,7 +38,7 @@ declare module '@rhombus-std/config' {
 }
 
 /** One named object literal mirroring the reference `XmlConfigExtensions`. */
-export const XmlConfigExtensions = {
+export const XmlConfigAugmentations = {
   addXmlFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     path: string,
@@ -54,7 +54,7 @@ export const XmlConfigExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), XmlConfigExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), XmlConfigAugmentations);
 
 export { XmlConfigProvider } from './XmlConfigProvider';
 export { XmlConfigSource } from './XmlConfigSource';

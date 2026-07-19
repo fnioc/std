@@ -8,8 +8,8 @@
 // load() is a no-op by default -- concrete providers override it.
 
 import type { IConfigProvider, ITryGetResult } from '@rhombus-std/config.core';
+import { configPath } from '@rhombus-std/config.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
-import { KeyDelimiter } from './abstractions/config-path';
 import { compareConfigKeys } from './config-key-comparer';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { foldKey } from './fold-key';
@@ -20,7 +20,7 @@ import { foldKey } from './fold-key';
  * is no further delimiter.
  */
 function segment(key: string, prefixLength: number): string {
-  const delimiterIndex = key.indexOf(KeyDelimiter, prefixLength);
+  const delimiterIndex = key.indexOf(configPath.KeyDelimiter, prefixLength);
   return delimiterIndex < 0
     ? key.slice(prefixLength)
     : key.slice(prefixLength, delimiterIndex);
@@ -118,7 +118,7 @@ export abstract class ConfigProvider implements IConfigProvider {
         if (
           originalKey.length > parentPath.length
           && foldKey(originalKey).startsWith(foldedParent)
-          && originalKey[parentPath.length] === KeyDelimiter
+          && originalKey[parentPath.length] === configPath.KeyDelimiter
         ) {
           results.push(segment(originalKey, parentPath.length + 1));
         }

@@ -61,7 +61,7 @@ declare module '@rhombus-std/config' {
 // @rhombus-std/config's memory/index.ts for the full rationale -- so this one
 // object literal satisfies `AugmentationSet` for both classes while
 // preserving each receiver's own concrete return type.
-export const JsonConfigExtensions = {
+export const JsonConfigAugmentations = {
   addJsonFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
     builder: TBuilder,
     path: string,
@@ -77,7 +77,7 @@ export const JsonConfigExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), JsonConfigExtensions);
+registerAugmentations(nameof<IConfigBuilder>(), JsonConfigAugmentations);
 
 export { JsonConfigProvider } from './JsonConfigProvider';
 export { JsonConfigSource } from './JsonConfigSource';

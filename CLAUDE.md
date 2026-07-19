@@ -135,9 +135,14 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   stages are reachable through the manifest surface (§76); validation is **sync-only** by design
   (the async family stays out) and the config→`IOptions<T>` bind is a compose-not-clobber structural
   deep-merge, not a reflective bind (§76).
-- **`config`** — `config.core` (the `IConfig*` types — pure types, zero runtime emit, so it
-  is dist-referenced as `dist/bundle/index.d.ts` only, §72 — plus the shared `properties` key/value bag
-  between a builder and its sources, §59) ← `config` (builder/root/section
+- **`config`** — `config.core` (the abstractions assembly mirroring the reference
+  `.Configuration.Abstractions`: the `IConfig*` types, the shared `properties` key/value bag between
+  a builder and its sources (§59), **and** the abstraction-level runtime that belongs here by
+  reference parity (§102, reversing §21) — the `configPath` helpers, the `ConfigAugmentations`/
+  `ConfigRootAugmentations` convenience sets + `exists`, the `ConfigDebugViewContext` type, and the
+  `isConfigSection` branded runtime discriminant (a unique-symbol brand the concrete `ConfigSection`
+  stamps on itself, the runtime stand-in for the reference's `config is IConfigurationSection`
+  interface test); no longer types-only, it now emits a JS bundle) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigProvider#toString` gives `getDebugView` a friendly
   provider label, §33; `ChainedConfigSource`/`ChainedConfigProvider` wrap an

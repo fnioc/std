@@ -13,7 +13,7 @@
 // ConfigurationKeyComparer.Compare / SkipAheadOnDelimiter span-walk rather than
 // a naive split(':'), which would order delimiter-run keys differently.
 
-import { KeyDelimiter } from './abstractions/config-path';
+import { configPath } from '@rhombus-std/config.core';
 import { foldKey } from './fold-key';
 
 /**
@@ -46,7 +46,7 @@ function compareOrdinalIgnoreCase(x: string, y: string): number {
 
 /** Advances past any run of consecutive delimiters starting at `i`. */
 function skipDelimiters(key: string, i: number): number {
-  while (i < key.length && key[i] === KeyDelimiter) {
+  while (i < key.length && key[i] === configPath.KeyDelimiter) {
     i++;
   }
   return i;
@@ -54,7 +54,7 @@ function skipDelimiters(key: string, i: number): number {
 
 /** The index of the next delimiter at or after `i`, or `key.length` if none. */
 function nextDelimiter(key: string, i: number): number {
-  const found = key.indexOf(KeyDelimiter, i);
+  const found = key.indexOf(configPath.KeyDelimiter, i);
   return found === -1 ? key.length : found;
 }
 

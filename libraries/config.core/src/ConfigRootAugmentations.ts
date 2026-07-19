@@ -1,26 +1,28 @@
-// The public MECA debug-view augmentation over IConfigRoot -- port of
-// `ConfigRootExtensions.cs` (and the `ConfigDebugViewContext`
-// struct it depends on, collapsed to a plain type). A runtime function, so it
-// lives in @rhombus-std/config rather than config.core.
+// The public debug-view augmentation over IConfigRoot -- port of the reference
+// `ConfigurationRootExtensions.cs` (and the `ConfigurationDebugViewContext`
+// struct it depends on, collapsed to a plain type). A runtime function defined
+// against the abstraction interfaces only, so it belongs in config.core (the
+// assembly mirroring the reference's `.Configuration.Abstractions`).
 //
 // This is a CLOSED augmentation set (docs/decisions.md §28/§38): the receiver
-// interface (IConfigRoot) AND this augmentation are owned inside the
-// config family with no downstream extender, so the install is a direct
-// `applyAugmentations` at the concrete root classes -- NO token, NO registry.
-// Authored as ONE named exported const, so `getDebugView` is available BOTH as
-// a fluent method (`root.getDebugView()`) and as the standalone member form
-// (`ConfigRootExtensions.getDebugView(root)`).
+// interface (IConfigRoot) AND this augmentation are owned inside the config
+// family with no downstream extender. The member set is authored here as ONE
+// named exported const, so `getDebugView` is available BOTH as a fluent method
+// (`root.getDebugView()`) and as the standalone member form
+// (`ConfigRootAugmentations.getDebugView(root)`). The install -- the
+// `applyAugmentations` calls and `declare module` merges onto the concrete root
+// classes -- lives in @rhombus-std/config.
 
-import type { IConfigProvider, IConfigRoot, IConfigSection } from '@rhombus-std/config.core';
-import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
+import type { AugmentationSet } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { ConfigManager } from './ConfigManager';
-import { ConfigRoot } from './ConfigRoot';
+import type { IConfigProvider } from './IConfigProvider';
+import type { IConfigRoot } from './IConfigRoot';
+import type { IConfigSection } from './IConfigSection';
 
 /**
  * Data about the current item of the configuration, handed to the
- * `processValue` callback of {@link ConfigRootExtensions.getDebugView}.
- * Mirrors the fields of the reference runtime's `ConfigDebugViewContext`
+ * `processValue` callback of {@link ConfigRootAugmentations.getDebugView}.
+ * Mirrors the fields of the reference runtime's `ConfigurationDebugViewContext`
  * struct as a runtime-free type.
  */
 export type ConfigDebugViewContext = {
@@ -50,12 +52,12 @@ function getValueAndProvider(
 }
 
 /**
- * One named object literal mirroring the reference `ConfigRootExtensions`
+ * One named object literal mirroring the reference `ConfigurationRootExtensions`
  * static class (docs §28/§38) -- a receiver-first member over
  * IConfigRoot. Installed directly (CLOSED set, no token) onto the
  * concrete root classes AND exported so the member is the standalone form.
  */
-export const ConfigRootExtensions = {
+export const ConfigRootAugmentations = {
   /**
    * A human-readable view of the configuration showing where each value came
    * from. Each leaf is rendered `key=value (provider)`; an intermediate node
@@ -93,24 +95,3 @@ export const ConfigRootExtensions = {
     return parts.join('');
   },
 } satisfies AugmentationSet<IConfigRoot>;
-
-// DELIBERATELY no interface-side merge onto IConfigRoot -- same
-// several-impls reasoning as ConfigExtensions (see
-// ./ConfigExtensions): a merge would force phantom members onto
-// every wrapper/fake implementer. The fluent form is typed per concrete class
-// below; an interface-typed root uses the standalone
-// `ConfigRootExtensions.getDebugView` form.
-declare module './ConfigRoot' {
-  interface ConfigRoot {
-    getDebugView(processValue?: Func<[ConfigDebugViewContext], string>): string;
-  }
-}
-
-declare module './ConfigManager' {
-  interface ConfigManager {
-    getDebugView(processValue?: Func<[ConfigDebugViewContext], string>): string;
-  }
-}
-
-applyAugmentations(ConfigRoot, ConfigRootExtensions);
-applyAugmentations(ConfigManager, ConfigRootExtensions);
