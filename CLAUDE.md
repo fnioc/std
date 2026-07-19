@@ -136,7 +136,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (the async family stays out) and the config→`IOptions<T>` bind is a compose-not-clobber structural
   deep-merge, not a reflective bind (§76).
 - **`config`** — `config.core` (the `IConfig*` types — pure types, zero runtime emit, so it
-  is dist-referenced as `dist/index.d.ts` only, §72 — plus the shared `properties` key/value bag
+  is dist-referenced as `dist/bundle/index.d.ts` only, §72 — plus the shared `properties` key/value bag
   between a builder and its sources, §59) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigProvider#toString` gives `getDebugView` a friendly
@@ -323,9 +323,11 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 ## Build layout — dist-referencing, in progress (§72)
 
 **The target invariant (not yet universal): every package is dist-referenced.** Type-facing
-`exports` conditions resolve the rolled `./dist/*.d.ts`, and runtime resolves the bundled
-`./dist/*.js`, so an in-repo consumer typechecks and runs against the same sealed surface a
-published consumer gets — never raw `.ts` source. The old src-referencing rule (a `.` export's
+`exports` conditions resolve the rolled `./dist/bundle/*.d.ts`, and runtime resolves the bundled
+`./dist/bundle/*.js`, so an in-repo consumer typechecks and runs against the same sealed surface a
+published consumer gets — never raw `.ts` source. The bundled artifacts live under `dist/bundle/` —
+a role-named sibling of the `dist/stage/` lowering emit — so `dist` holds one directory per build
+role. The old src-referencing rule (a `.` export's
 `source`/`bun`/`types` conditions pointing at `./src/*.ts`, permitted only for d.ts-only libs) is
 being retired package by package; see §72 in `docs/decisions.md` for why and for the current
 front line. **The white-box seam is two subpaths** — `./tokens/*` (all conditions → src, the token
@@ -339,7 +341,7 @@ the lowered `./dist/stage/*.js` a white-box test executes). Neither is published
 `logging.config`, `logging.console`, `logging.browserconsole`, `caching.core`,
 `caching.memory`, `hosting.core`, `hosting`, `hosting.browser`, `options.augmentations` (tier 3+,
 §78). All: `.`-export type-facing conditions (and, for runtime-emitting libs, `bun`) point at
-`dist`; root `main`/`types` point at `dist`. The three self-augmenting cores among them —
+`dist/bundle`; root `main`/`types` point at `dist/bundle`. The three self-augmenting cores among them —
 `di.core`, `diagnostics.core`, `hosting.core`, each of which `declare module`s its own public
 receiver — carry a package-unique `<pkg>-source` condition (`di-core-source`/
 `diagnostics-core-source`/`hosting-core-source`), listed first in the `.` export ahead of `types`,
@@ -365,7 +367,7 @@ was left rather than forced (§78).
 
 Mechanically, for packages not yet converted: they consume each other's raw TS `src` via
 `workspace:*` + `exports` whose `source`/`bun`/`types` conditions point at `.ts`, under
-`moduleResolution: bundler`. The `import`/`default` conditions point at built `dist` — what
+`moduleResolution: bundler`. The `import`/`default` conditions point at built `dist/bundle` — what
 published consumers resolve.
 
 One further deviation, because a **transformer** is in play — now a single **Go/`ttsc`** engine
@@ -382,7 +384,7 @@ One further deviation, because a **transformer** is in play — now a single **G
   bundling). The per-file emit is KEPT as `dist/stage/` (reached through the `./private/*` export's
   `bun` condition — white-box tests execute the lowered JS, since un-lowered `nameof` throws at
   import time; publish-excluded via `"!dist/stage"` in `files`), and the `.` export's `bun`
-  condition points at `dist/index.js`.
+  condition points at `dist/bundle/index.js`.
 
 Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one rolled `.d.ts`),
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM

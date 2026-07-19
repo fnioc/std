@@ -45,7 +45,7 @@ interface RhombusBuild {
   readonly typesOnly?: boolean;
   /** Names subtracted from the derived external set (bundled despite being deps). */
   readonly inline?: readonly string[];
-  /** Specifiers that must not appear as real ESM imports in dist/index.js. */
+  /** Specifiers that must not appear as real ESM imports in dist/bundle/index.js. */
   readonly forbidImports?: readonly string[];
 }
 
@@ -72,7 +72,7 @@ if (typecheck.status !== 0) {
 }
 
 // Entrypoints: src/index.ts + every exports subpath whose `import` condition
-// is a non-index dist/*.js. (`./tokens/*`, `./private/*`, `./ttsc`, and
+// is a non-index dist/bundle/*.js. (`./tokens/*`, `./private/*`, `./ttsc`, and
 // bun-only subpaths all fail the test and are correctly ignored.)
 const entrypoints = ['src/index.ts'];
 const dtsConfigs = ['rollup.dts.mjs'];
@@ -80,7 +80,7 @@ for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
   if (subpath === '.' || typeof target === 'string') {
     continue;
   }
-  const match = /^\.\/dist\/(?!index\.js$)(.+)\.js$/.exec(target.import ?? '');
+  const match = /^\.\/dist\/bundle\/(?!index\.js$)(.+)\.js$/.exec(target.import ?? '');
   if (!match) {
     continue;
   }
@@ -138,12 +138,12 @@ await buildPackage({
 // and since forbidden specifiers are peers (hence external), a real import
 // SURVIVES bundling and is caught here instead of being silently inlined.
 for (const specifier of overrides.forbidImports ?? []) {
-  const bundle = readFileSync(join(dir, 'dist', 'index.js'), 'utf8');
+  const bundle = readFileSync(join(dir, 'dist', 'bundle', 'index.js'), 'utf8');
   const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const realImport = new RegExp(`(^|\\n)\\s*import[^\\n]*from\\s*["']${escaped}`);
   if (realImport.test(bundle)) {
     throw new Error(
-      `${manifest.name}: dist/index.js contains a real ESM import from ${specifier} -- `
+      `${manifest.name}: dist/bundle/index.js contains a real ESM import from ${specifier} -- `
         + 'the runtime bundle must not import it (only reference it as a string).',
     );
   }

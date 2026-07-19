@@ -36,22 +36,24 @@ type ExportEntry struct {
 // derivation) and dioptionstransform's isRootExportTarget (the Options<T> base
 // scan) — so the two cannot drift (parity, decisions §41). The candidates are:
 //
-//  1. The LITERAL target stem (`<pkgDir>/dist/index` from `./dist/index.js`, or
-//     `<pkgDir>/index` from a raw `./index.js`) — what a CONSUMER of the built
-//     dist, or a src-referenced package compiling itself, loads.
-//  2. The `src/` TWIN of a `dist/`-rooted target (`<pkgDir>/dist/<X>` ->
-//     `<pkgDir>/src/<X>`, per scripts/build-lib.ts's convention) — what a
-//     DIST-referenced package compiling ITSELF loads, its own dist not yet built.
-//
-// Mirrors the TS engine's entrySourceFile
-// (libraries/primitives.transformer/src/tokens.ts).
+//  1. The LITERAL target stem (`<pkgDir>/dist/bundle/index` from
+//     `./dist/bundle/index.js`, or `<pkgDir>/index` from a raw `./index.js`) —
+//     what a CONSUMER of the built dist, or a src-referenced package compiling
+//     itself, loads.
+//  2. The `src/` TWIN of a `dist/`-rooted target — what a DIST-referenced package
+//     compiling ITSELF loads, its own dist not yet built. The rolled bundle lives
+//     at `dist/bundle/<X>` whose source is `src/<X>` (the `bundle/` build-role
+//     segment has no src counterpart), so that longer prefix is stripped first;
+//     a plain `dist/<X>` target still twins to `src/<X>`.
 func EntrySourceStems(pkgDir string, entry ExportEntry) []string {
 	literalStem := StripExt(entry.TargetRel)
 	stems := []string{pkgDir + "/" + literalStem}
-	const distPrefix = "dist/"
-	if strings.HasPrefix(literalStem, distPrefix) {
-		if rest := literalStem[len(distPrefix):]; rest != "" {
-			stems = append(stems, pkgDir+"/src/"+rest)
+	for _, prefix := range []string{"dist/bundle/", "dist/"} {
+		if strings.HasPrefix(literalStem, prefix) {
+			if rest := literalStem[len(prefix):]; rest != "" {
+				stems = append(stems, pkgDir+"/src/"+rest)
+			}
+			break
 		}
 	}
 	return stems

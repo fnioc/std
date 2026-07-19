@@ -20,8 +20,8 @@ describe('di.core inline sugar stays out of the shipped dist', () => {
     expect(existsSync(join(DI_CORE, 'dist', 'internal', 'inline.js'))).toBe(false);
   });
 
-  test('the bundled dist/index.js carries neither the impl nor the empty-token lowering', () => {
-    const bundle = readFileSync(join(DI_CORE, 'dist', 'index.js'), 'utf8');
+  test('the bundled dist/bundle/index.js carries neither the impl nor the empty-token lowering', () => {
+    const bundle = readFileSync(join(DI_CORE, 'dist', 'bundle', 'index.js'), 'utf8');
     expect(bundle).not.toContain('ServiceQueryInline');
     expect(bundle).not.toContain('isService("")');
   });

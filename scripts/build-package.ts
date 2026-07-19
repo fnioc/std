@@ -6,17 +6,19 @@
 // resolve -- so every published package bundles instead of emitting raw tsc
 // output:
 //
-//   1. dist/*.js    -- `bun build` bundles each ESM entry into a single file
-//      with resolved specifiers. `external` keeps peer deps out of the bundle
-//      (a provider must patch the CONSUMER's ConfigurationBuilder, not a
+//   1. dist/bundle/*.js    -- `bun build` bundles each ESM entry into a single
+//      file with resolved specifiers. `external` keeps peer deps out of the
+//      bundle (a provider must patch the CONSUMER's ConfigurationBuilder, not a
 //      private inlined copy); anything NOT external is inlined, which is how
 //      @rhombus-std/config folds in @rhombus-toolkit/proxy-base (whose published
 //      ESM uses extensionless relative imports Node's resolver rejects).
-//   2. dist/*.d.ts  -- rollup-plugin-dts rolls the public type surface into one
-//      declaration file per configured rollup config.
+//   2. dist/bundle/*.d.ts  -- rollup-plugin-dts rolls the public type surface
+//      into one declaration file per configured rollup config.
 //
-// core is the one exception: it is types-only (emitJs: false) and asserts no
-// runtime .js slips into dist.
+// The bundled artifacts live under dist/bundle/ — a role-named sibling of the
+// dist/stage/ lowering emit (see `ttscProject`), so `dist` holds one directory
+// per build role. core is the one exception: it is types-only (emitJs: false)
+// and asserts no runtime .js slips into dist/bundle.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
@@ -143,7 +145,7 @@ export interface BuildPackageOptions {
   readonly emitJs?: boolean;
   /** rollup-plugin-dts config files relative to `dir`. Defaults to `["rollup.dts.mjs"]`. */
   readonly dtsConfigs?: readonly string[];
-  /** Throw if `dist/index.js` exists after building -- the types-only invariant. */
+  /** Throw if `dist/bundle/index.js` exists after building -- the types-only invariant. */
   readonly assertNoJs?: boolean;
   /**
    * Code-split shared modules into chunks instead of inlining a private copy
@@ -211,6 +213,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   } = options;
 
   const dist = join(dir, 'dist');
+  const bundleDir = join(dist, 'bundle');
   rmSync(dist, { recursive: true, force: true });
 
   // The lowering stage (Go/ttsc engine). Stage-then-bundle: a per-file Bun.build
@@ -254,7 +257,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   if (emitJs) {
     const js = await Bun.build({
       entrypoints: jsEntrypoints,
-      outdir: dist,
+      outdir: bundleDir,
       target: 'node',
       format: 'esm',
       external: [...external],
@@ -285,7 +288,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     }
   }
 
-  if (assertNoJs && existsSync(join(dist, 'index.js'))) {
-    throw new Error(`${name}: unexpected runtime artifact dist/index.js -- this package is types-only`);
+  if (assertNoJs && existsSync(join(bundleDir, 'index.js'))) {
+    throw new Error(`${name}: unexpected runtime artifact dist/bundle/index.js -- this package is types-only`);
   }
 }

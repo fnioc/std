@@ -1,5 +1,5 @@
 // Rolls the public type surface of @rhombus-std/config.env into a single
-// dist/index.d.ts. @rhombus-std/config stays external (a peer dep -- consumers have
+// dist/bundle/index.d.ts. @rhombus-std/config stays external (a peer dep -- consumers have
 // it, and the augmentation depends on it being the SAME ConfigBuilder
 // class, not an inlined copy). rollup-plugin-dts drives the TypeScript
 // compiler with this package's tsconfig, so extensionless relative specifiers
@@ -13,7 +13,7 @@ const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
-  output: { file: join(PKG_ROOT, 'dist', 'index.d.ts'), format: 'es' },
+  output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   external: [
     /^@rhombus-std\/config$/,
     /^@rhombus-std\/config.core$/,

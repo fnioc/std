@@ -18,8 +18,8 @@
 // `declare module '@rhombus-std/config'` verbatim (its rollup config keeps the
 // barrel external), merging onto their real ConfigBuilder. The runtime
 // prototype patch imports the class through the relative module so bun shares
-// one ConfigBuilder chunk across dist/index.js and
-// dist/with-type-augment.js (a barrel value import can't self-resolve in the JS
+// one ConfigBuilder chunk across dist/bundle/index.js and
+// dist/bundle/with-type-augment.js (a barrel value import can't self-resolve in the JS
 // bundle); config-source makes that relative class the same symbol the barrel
 // `declare module` augments, so the patch typechecks.
 

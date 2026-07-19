@@ -70,8 +70,15 @@ func TestEntrySourceStems(t *testing.T) {
 		want  []string
 	}{
 		{
-			// A dist target yields the literal stem first, then its src twin —
-			// the twin is what a dist-referenced package compiling ITSELF loads.
+			// The rolled bundle target: the literal `dist/bundle/index` stem first,
+			// then its `src/index` twin (the `bundle/` build-role segment stripped).
+			name:  "dist/bundle root: literal then src twin",
+			entry: ExportEntry{Subpath: "", TargetRel: "dist/bundle/index.js"},
+			want:  []string{dir + "/dist/bundle/index", dir + "/src/index"},
+		},
+		{
+			// A plain `dist/`-rooted target still twins to `src/<X>` — the fallback
+			// prefix for any non-bundle dist artifact.
 			name:  "dist root: literal then src twin",
 			entry: ExportEntry{Subpath: "", TargetRel: "dist/index.js"},
 			want:  []string{dir + "/dist/index", dir + "/src/index"},

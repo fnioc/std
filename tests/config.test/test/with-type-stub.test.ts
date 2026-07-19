@@ -6,7 +6,7 @@
 // rather than silently returning an un-coerced builder.
 //
 // This exercises the source module. The published-dist behavior (that the stub
-// actually lands in dist/with-type-augment.js and throws under node) is covered
+// actually lands in dist/bundle/with-type-augment.js and throws under node) is covered
 // by the integration package, which runs against built dist.
 
 import { ConfigBuilder } from '@rhombus-std/config';

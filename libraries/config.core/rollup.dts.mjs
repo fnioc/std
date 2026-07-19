@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/config.core into a single dist/index.d.ts.
+// Rolls the public type surface of @rhombus-std/config.core into a single dist/bundle/index.d.ts.
 // The per-type source files cross-reference each other (relative imports), which
 // rollup-plugin-dts inlines into the one flattened declaration; the only import that
 // survives into the published output is the external `@rhombus-std/primitives` type.
@@ -13,7 +13,7 @@ const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
-  output: { file: join(PKG_ROOT, 'dist', 'index.d.ts'), format: 'es' },
+  output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   plugins: [
     dts({
       tsconfig: join(PKG_ROOT, 'tsconfig.json'),

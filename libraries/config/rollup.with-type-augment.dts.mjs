@@ -1,5 +1,5 @@
 // Rolls the Tier 2 opt-in seam (src/with-type-augment.ts) into a standalone
-// dist/with-type-augment.d.ts. This module is NOT reachable from the barrel, so
+// dist/bundle/with-type-augment.d.ts. This module is NOT reachable from the barrel, so
 // it needs its own roll -- otherwise the `withType` declaration would never
 // reach a published consumer who imports "@rhombus-std/config/with-type-augment".
 //
@@ -16,7 +16,7 @@ const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export default {
   input: join(PKG_ROOT, 'src', 'with-type-augment.ts'),
-  output: { file: join(PKG_ROOT, 'dist', 'with-type-augment.d.ts'), format: 'es' },
+  output: { file: join(PKG_ROOT, 'dist', 'bundle', 'with-type-augment.d.ts'), format: 'es' },
   external: [/^@rhombus-std\/config$/, /^@rhombus-std\/config\.core$/],
   plugins: [
     dts({

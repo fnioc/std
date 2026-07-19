@@ -18,14 +18,14 @@
   },
   "type": "module",
   "sideEffects": true,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
     }
   },
   "files": [
@@ -39,13 +39,13 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
       }
     }
   },

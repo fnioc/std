@@ -18,7 +18,7 @@ import { IniConfigSource, type IniConfigSourceOptions } from './IniConfigSource'
 import { IniStreamConfigSource } from './IniStreamConfigSource';
 
 // Declare-merge onto the config barrel, same reasoning as config.json's
-// addJsonFile install: config is dist-referenced, so its flat dist/index.d.ts
+// addJsonFile install: config is dist-referenced, so its flat dist/bundle/index.d.ts
 // declares ConfigBuilder/Manager directly and a barrel merge lands
 // cleanly even with other provider augmentations present.
 declare module '@rhombus-std/config' {

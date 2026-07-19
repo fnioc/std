@@ -13,12 +13,13 @@
 //     2. DIST-SWAP -- each surviving subpath collapses its dev-resolution
 //                   conditions to the published trio, in canonical order:
 //                     types   <- swap the src `.ts` type entry to the rolled
-//                                `./dist/*.d.ts`
+//                                `./dist/bundle/*.d.ts`
 //                     import  <- present iff the dev entry has an `import`
-//                                condition (a runtime lib); the `./dist/*.js`
+//                                condition (a runtime lib); the `./dist/bundle/*.js`
 //                                bundle
-//                     default <- the `./dist/*.js` bundle (or, for a types-only
-//                                package, the `./dist/*.d.ts` -- there is no JS)
+//                     default <- the `./dist/bundle/*.js` bundle (or, for a
+//                                types-only package, the `./dist/bundle/*.d.ts` --
+//                                there is no JS)
 //                   The dev-only conditions (`source`, `bun`, and di's `built`)
 //                   are dropped -- published consumers resolve through
 //                   import/default/types only.
@@ -47,7 +48,7 @@ const LIBS = join(ROOT, 'libraries');
 // Packages whose publishConfig is a deliberate semantic reshape of `exports`,
 // not a mechanical dist-swap -- kept hand-authored, never rewritten here:
 //   @rhombus-std/config -- its `./configuration-builder` / `./configuration-manager`
-//     alias subpaths COLLAPSE onto the rolled `./dist/index.*` bundle at publish
+//     alias subpaths COLLAPSE onto the rolled `./dist/bundle/index.*` bundle at publish
 //     (they exist so a consumer can deep-import a barrel re-export), which no
 //     path-swap of their dev `src`/`internal` targets can reproduce.
 const NON_DERIVABLE = new Set(['@rhombus-std/config']);
@@ -76,13 +77,15 @@ function isInternal(subpath: string): boolean {
 }
 
 /**
- * Swap a dev path to its published dist target.
- *   kind 'js'  -> `./dist/<name>.js`   (runtime bundle)
- *   kind 'dts' -> `./dist/<name>.d.ts` (rolled declarations)
- * Idempotent: a value already under `./dist/` only has its extension retargeted.
+ * Swap a dev path to its published dist target -- the rolled artifacts live under
+ * `./dist/bundle/` (the role-named sibling of the `./dist/stage/` lowering emit):
+ *   kind 'js'  -> `./dist/bundle/<name>.js`   (runtime bundle)
+ *   kind 'dts' -> `./dist/bundle/<name>.d.ts` (rolled declarations)
+ * Idempotent: a value already under `./dist/bundle/` only has its extension
+ * retargeted.
  */
 function toDist(path: string, kind: 'js' | 'dts'): string {
-  const inDist = path.replace(/^\.\/src\//, './dist/');
+  const inDist = path.replace(/^\.\/src\//, './dist/bundle/');
   const ext = kind === 'dts' ? '.d.ts' : '.js';
   return inDist.replace(/\.(d\.ts|ts|js)$/, ext);
 }

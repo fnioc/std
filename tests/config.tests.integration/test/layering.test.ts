@@ -1,6 +1,6 @@
 // Layered-source integration, run against the BUILT DIST of every package
 // (these run under `node`, whose import/default export condition resolves
-// each `@rhombus-std/config.*` bare import to its `dist/index.js` -- the artefact
+// each `@rhombus-std/config.*` bare import to its `dist/bundle/index.js` -- the artefact
 // a real consumer gets). This exercises the full provider-augmentation surface
 // together: addJsonFile / addEnvironmentVariables / addCommandLine, each bolted
 // onto the shared ConfigBuilder via its own `declare module` + prototype

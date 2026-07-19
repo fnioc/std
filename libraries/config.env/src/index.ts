@@ -17,7 +17,7 @@ import { EnvironmentVariablesConfigSource,
   type EnvironmentVariablesConfigSourceOptions } from './EnvironmentVariablesConfigSource';
 
 // Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
-// providers typecheck against its rolled, flat dist/index.d.ts, where
+// providers typecheck against its rolled, flat dist/bundle/index.d.ts, where
 // ConfigBuilder is declared directly (no re-export chain) -- a
 // declare-module merge onto the barrel lands on the class the barrel exposes,
 // even with 2+ provider augmentations in one program (pre-#199 this needed a

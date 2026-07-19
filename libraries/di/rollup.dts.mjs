@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/di into a single dist/index.d.ts.
+// Rolls the public type surface of @rhombus-std/di into a single dist/bundle/index.d.ts.
 // @rhombus-std/di.core is kept EXTERNAL — the output re-exports the abstraction
 // interfaces (`IResolver`, `IServiceProvider`, `AddBuilder`, `IServiceManifestBase`,
 // …) FROM `@rhombus-std/di.core` rather than inlining them. This is load-bearing:
@@ -18,7 +18,7 @@ const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
-  output: { file: join(PKG_ROOT, 'dist', 'index.d.ts'), format: 'es' },
+  output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   // Preserve `@rhombus-std/di.core` as an external import so its module identity
   // (the augmentation target) survives into the published declaration.
   external: [/^@rhombus-std\/di\.core$/],
