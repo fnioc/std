@@ -106,7 +106,7 @@ func TestStageFencesKeyedRegistration(t *testing.T) {
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}

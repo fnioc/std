@@ -24,20 +24,16 @@ type matchTarget struct {
 	body     *ResolvedBody
 }
 
-// Build constructs the inline FileTransform. It runs the collector against cwd,
-// resolves every entry, populates artifacts, and returns a transform that
-// inlines matched calls. A zero-entry / all-inert program yields a no-op
-// transform and leaves artifacts inactive. Any resolution error is reported
-// through emit and aborts (returns a no-op transform) — the host treats an
-// error-category diagnostic as a hard failure.
-func Build(prog *driver.Program, cwd string, artifacts *Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
+// Build constructs the inline FileTransform from the project scan's pre-collected
+// body entries. The host runs ONE dependency scan for stages AND bodies (§100)
+// and threads `owned` here, so the walk never runs twice. It resolves every entry,
+// populates artifacts, and returns a transform that inlines matched calls. A
+// zero-entry / all-inert program yields a no-op transform and leaves artifacts
+// inactive. Any resolution error is reported through emit and aborts (returns a
+// no-op transform) — the host treats an error-category diagnostic as a hard
+// failure.
+func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
 	noop := func(_ *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile { return sf }
-
-	owned, err := Collect(cwd)
-	if err != nil {
-		emit(plugin.Diagnostic{Code: "INLINE_COLLECT", Message: err.Error()})
-		return noop
-	}
 
 	checker := prog.Checker
 	ex := newBodyExtractor()

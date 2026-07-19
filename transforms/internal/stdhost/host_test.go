@@ -34,7 +34,7 @@ func TestSelectStagesCanonicalOrderRegardlessOfManifestOrder(t *testing.T) {
 		{Name: stagePrefix + "di"},
 		{Name: stagePrefix + "inline"},
 	}
-	got, err := selectStages(testHost(), entries, nil)
+	got, err := selectStages(testHost(), entries, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestSelectStagesInlinePrecedesDi(t *testing.T) {
 	// A consumer selecting only inline + di (manifest order di-then-inline): the
 	// inline stage must still be emitted before the di stage, since its output is
 	// what di lowers.
-	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di"}, {Name: stagePrefix + "inline"}}, nil)
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di"}, {Name: stagePrefix + "inline"}}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -130,7 +130,7 @@ func swapStreams(out, err *bytes.Buffer) func() {
 // signatureof -> di — without ever listing them by hand. The binary owns both the
 // membership and the order.
 func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
-	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil)
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 		{Name: stagePrefix + "di_options"},
 		{Name: stagePrefix + "di_bundle"},
 		{Name: stagePrefix + "di"},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 // TestSelectStagesUnknownBundleIsHardError: a prefixed name that is neither a
 // stage nor a bundle stays a hard error naming it.
 func TestSelectStagesUnknownBundleIsHardError(t *testing.T) {
-	_, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "mystery_bundle"}}, nil)
+	_, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "mystery_bundle"}}, nil, nil)
 	if err == nil {
 		t.Fatal("expected UNKNOWN_STAGE error for an unknown bundle, got nil")
 	}
@@ -196,7 +196,7 @@ func TestSelectStagesUnknownBundleIsHardError(t *testing.T) {
 
 func TestSelectStagesScopesToDeclaredStages(t *testing.T) {
 	// A nameof-only consumer activates ONLY the nameof stage — di must not run.
-	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "nameof"}}, nil)
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "nameof"}}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -205,8 +205,52 @@ func TestSelectStagesScopesToDeclaredStages(t *testing.T) {
 	}
 }
 
+// TestSelectStagesUnionsDependencyScan: the host's own dependency scan (§100) is
+// the default selection channel. Its bare stage ids activate the matching stages
+// in canonical order, unioned with (and deduped against) the manifest — here the
+// manifest carries only nameof (what ttsc's direct discovery spawned the host
+// with) while the scan supplies the transitive superset.
+func TestSelectStagesUnionsDependencyScan(t *testing.T) {
+	got, err := selectStages(
+		testHost(),
+		[]pluginEntry{{Name: stagePrefix + "nameof"}},
+		nil,
+		[]string{"di", "nameof", "signatureof", "inline"},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{
+		stagePrefix + "inline",
+		stagePrefix + "nameof",
+		stagePrefix + "signatureof",
+		stagePrefix + "di",
+	}
+	names := stageNames(got)
+	if len(names) != len(want) {
+		t.Fatalf("scan-union selection = %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("scan-union selection = %v, want %v", names, want)
+		}
+	}
+}
+
+// TestSelectStagesUnknownScanStageIsHardError: a scan id with no matching stage is
+// a loud UNKNOWN_STAGE, the same contract as a bogus manifest name.
+func TestSelectStagesUnknownScanStageIsHardError(t *testing.T) {
+	_, err := selectStages(testHost(), nil, nil, []string{"bogus"})
+	if err == nil {
+		t.Fatal("expected UNKNOWN_STAGE for an unknown scan id, got nil")
+	}
+	if got := err.Error(); !contains(got, "UNKNOWN_STAGE") {
+		t.Fatalf("error %q does not mention UNKNOWN_STAGE", got)
+	}
+}
+
 func TestSelectStagesUnknownStageIsHardError(t *testing.T) {
-	_, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "bogus"}}, nil)
+	_, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "bogus"}}, nil, nil)
 	if err == nil {
 		t.Fatal("expected UNKNOWN_STAGE error, got nil")
 	}
@@ -222,6 +266,7 @@ func TestSelectStagesForeignLinkedEntryIsDeferred(t *testing.T) {
 		testHost(),
 		[]pluginEntry{{Name: stagePrefix + "nameof"}, {Name: "@ttsc/banner"}},
 		map[string]bool{"@ttsc/banner": true},
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -232,7 +277,7 @@ func TestSelectStagesForeignLinkedEntryIsDeferred(t *testing.T) {
 }
 
 func TestSelectStagesForeignUnlinkedEntryIsHardError(t *testing.T) {
-	_, err := selectStages(testHost(), []pluginEntry{{Name: "@ttsc/banner"}}, nil)
+	_, err := selectStages(testHost(), []pluginEntry{{Name: "@ttsc/banner"}}, nil, nil)
 	if err == nil {
 		t.Fatal("expected a hard error for an unlinked foreign plugin, got nil")
 	}

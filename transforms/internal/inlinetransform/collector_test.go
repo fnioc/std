@@ -103,6 +103,61 @@ func TestCollectPeerAndDevDeps(t *testing.T) {
 	}
 }
 
+// TestCollectProjectStagesRootOnlyDevDeps exercises the STAGE face and the
+// root-only-devDeps refinement in ONE walk (§100): the root's own devDep stages
+// and the transitive dep/peer stages are collected, but a transitive dependency's
+// devDep stages are NOT — a core that devDeps its own transformer must never
+// force-activate that stage on a consumer of the core.
+func TestCollectProjectStagesRootOnlyDevDeps(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+	// app: a runtime dep on a core, a dev dep on a transformer.
+	write(t, filepath.Join(root, "packages", "app", "package.json"), `{
+  "name": "@scope/app",
+  "dependencies": { "@scope/core": "workspace:*" },
+  "devDependencies": { "@scope/roottf": "workspace:*" }
+}`)
+	// roottf: the root's own devDep transformer (stages collected) whose runtime dep
+	// on another transformer (transitive dep) is also collected.
+	write(t, filepath.Join(root, "packages", "roottf", "package.json"), `{
+  "name": "@scope/roottf",
+  "dependencies": { "@scope/deptf": "workspace:*" },
+  "ttsc": { "stages": ["nameof"] }
+}`)
+	write(t, filepath.Join(root, "packages", "deptf", "package.json"), `{
+  "name": "@scope/deptf",
+  "ttsc": { "stages": ["signatureof"] }
+}`)
+	// core: no stages, but devDeps a transformer whose stages must NOT leak — the
+	// core is not the root, so its devDeps are its own build tooling.
+	write(t, filepath.Join(root, "packages", "core", "package.json"), `{
+  "name": "@scope/core",
+  "devDependencies": { "@scope/leaktf": "workspace:*" }
+}`)
+	write(t, filepath.Join(root, "packages", "leaktf", "package.json"), `{
+  "name": "@scope/leaktf",
+  "ttsc": { "stages": ["di"] }
+}`)
+
+	scan, err := CollectProject(filepath.Join(root, "packages", "app"))
+	if err != nil {
+		t.Fatalf("CollectProject: %v", err)
+	}
+	got := map[string]bool{}
+	for _, s := range scan.Stages {
+		got[s] = true
+	}
+	if !got["nameof"] {
+		t.Errorf("root devDep transformer stage 'nameof' not collected: %v", scan.Stages)
+	}
+	if !got["signatureof"] {
+		t.Errorf("transitive dep transformer stage 'signatureof' not collected: %v", scan.Stages)
+	}
+	if got["di"] {
+		t.Errorf("transitive DEVDEP stage 'di' leaked (root-only devDeps violated): %v", scan.Stages)
+	}
+}
+
 // TestWorkspaceObjectForm: the object form of the "workspaces" field
 // (`{ "packages": [...] }`) must be parsed for the workspace map.
 func TestWorkspaceObjectForm(t *testing.T) {

@@ -23,11 +23,15 @@
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/config.transformer/ttsc"
-    }
+    },
+    "stages": ["config"]
   },
   "files": [
     "ttsc.mjs"
   ],
+  "dependencies": {
+    "@rhombus-std/primitives.transformer": "workspace:*"
+  },
   "peerDependencies": {
     "@rhombus-std/config": "workspace:^"
   },

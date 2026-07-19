@@ -1,15 +1,17 @@
 // Package stdhost is the shared single-owner ttsc transform-host scaffolding
-// behind every @rhombus-std owner binary. A command (cmd/ttsc-std, and the
-// in-repo-only cmd/ttsc-std-full) is a thin main that composes a Host value —
-// a name, an ordered stage table, and the preset bundles — and hands it to Run;
-// everything else (manifest parsing, runtime stage selection, the linked-plugin
-// handoff, the per-file transform loop, and the JSON envelope) lives here once.
+// behind the @rhombus-std owner binary. The command (cmd/ttsc-std) is a thin
+// main that composes a Host value — a name, an ordered stage table, and the
+// preset bundles — and hands it to Run; everything else (manifest parsing,
+// runtime stage selection, the linked-plugin handoff, the per-file transform
+// loop, and the JSON envelope) lives here once.
 //
-// The split exists for the §87 audience separation: the published ttsc-std
-// binary must stay typia-free and offline-buildable, while the in-repo
-// ttsc-std-full sibling links the typia-embedding merge-synthesis stage on top
-// of the same base stages. Both compose the SAME scaffolding; only the stage
-// table differs — so this package must never import a typia package.
+// There is ONE host. It links typia through the merge-synthesis stage
+// (internal/mergesynthtransform, #213), which the base stage table now carries;
+// the former two-binary split — a published typia-free host plus an
+// in-repo-only sibling that added mergesynth — is retired. typia is fully
+// lowered at build time and appears in no shipped artifact or npm manifest (the
+// stage embeds its guards as inlined plain JS), so the single binary stays a
+// build-time-only tool with no typia runtime footprint.
 package stdhost
 
 import (
@@ -57,11 +59,13 @@ type Stage struct {
 }
 
 // Env carries the cross-stage state a builder may need: the project working
-// directory (the inline stage's collector root) and the per-run inline
-// artifacts (populated by the inline stage, read by nameof and the emit sweep).
+// directory, the per-run inline artifacts (populated by the inline stage, read by
+// nameof and the emit sweep), and the inline BODIES the host pre-collected in its
+// single §100 dependency scan (threaded to the inline stage so the walk runs once).
 type Env struct {
 	Cwd       string
 	Artifacts *inlinetransform.Artifacts
+	Bodies    []inlinetransform.OwnedEntry
 }
 
 // Sink receives one diagnostic from a stage's transform.
@@ -156,20 +160,6 @@ func runTransform(host Host, args []string) int {
 		fmt.Fprintf(stderr, "%s: linked manifest: %v\n", host.Name, err)
 		return 2
 	}
-	selected, err := selectStages(host, entries, namesOf(linked))
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
-		return 2
-	}
-
-	// Task #2 — zero-stage guard: with no rhombusstd_* stage selected and no
-	// linked plugin, this run would load the program and emit it unchanged, which
-	// is never what a plugins array intends. Fail loud rather than silently no-op.
-	if len(selected) == 0 && len(linked) == 0 {
-		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected and no linked plugins present — this run would load the program and emit it unchanged; check the tsconfig plugins array\n", host.Name)
-		return 2
-	}
-
 	cwd := *cwdOverride
 	if cwd == "" {
 		var derr error
@@ -178,6 +168,34 @@ func runTransform(host Host, args []string) int {
 			fmt.Fprintf(stderr, "%s: cwd: %v\n", host.Name, derr)
 			return 2
 		}
+	}
+
+	// §100 declare-by-depending: ONE workspace dependency scan yields BOTH the
+	// stage set to activate AND the inline bodies to substitute. ttsc's own
+	// auto-discovery is direct-only (it spawns this host from the consumer's
+	// direct *.transformer dep); this scan supplies the transitive stage union — a
+	// di.transformer consumer reaches primitives' stages through di.transformer ->
+	// primitives.transformer — and the bodies, threaded into the inline stage so
+	// the walk runs exactly once.
+	scan, scanErr := inlinetransform.CollectProject(cwd)
+	if scanErr != nil {
+		fmt.Fprintf(stderr, "%s: dependency scan: %v\n", host.Name, scanErr)
+		return 2
+	}
+
+	selected, err := selectStages(host, entries, namesOf(linked), scan.Stages)
+	if err != nil {
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
+		return 2
+	}
+
+	// Zero-stage guard: with no stage selected (empty manifest AND empty scan) and
+	// no linked plugin, this run would load the program and emit it unchanged,
+	// which a lowering build never intends. Fail loud rather than silently no-op.
+	// A real lowering package always reaches a *.transformer, so this rarely fires.
+	if len(selected) == 0 && len(linked) == 0 {
+		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected (empty manifest + empty dependency scan) and no linked plugins present — this run would load the program and emit it unchanged; check that the package reaches a @rhombus-std/*.transformer dependency\n", host.Name)
+		return 2
 	}
 
 	prog, diags, err := driver.LoadProgram(cwd, *tsconfigPath, driver.LoadProgramOptions{ForceEmit: true})
@@ -220,7 +238,7 @@ func runTransform(host Host, args []string) int {
 	}
 
 	artifacts := inlinetransform.NewArtifacts()
-	env := &Env{Cwd: cwd, Artifacts: artifacts}
+	env := &Env{Cwd: cwd, Artifacts: artifacts, Bodies: scan.Bodies}
 	transforms := make([]plugin.FileTransform, 0, len(selected))
 	for _, stage := range selected {
 		transforms = append(transforms, stage.Build(prog, ctx, env, emit))
@@ -330,23 +348,36 @@ func namesOf(entries []pluginEntry) map[string]bool {
 	return names
 }
 
-// selectStages resolves the manifest into the ordered set of stages to run.
+// selectStages resolves the stages to run: the UNION of the host's own dependency
+// scan (§100 declare-by-depending — the transitive stage superset) and the
+// manifest (ttsc's direct-discovery spawn set plus any explicit tsconfig
+// override/opt-in). Each scan id maps to its rhombusstd_<id> stage name.
 //
 // Error contract (every failure loud):
-//   - a rhombusstd_* name with no matching stage -> UNKNOWN_STAGE, naming it.
+//   - a scan id or rhombusstd_* manifest name with no matching stage ->
+//     UNKNOWN_STAGE, naming it.
 //   - a non-prefixed entry present in the linked manifest -> left to ttsc's
 //     linked machinery (ApplyLinkedPlugins), skipped here.
 //   - a non-prefixed entry NOT linked -> hard error naming it (this host composes
 //     no foreign transforms yet).
 //
-// The returned slice follows the host's stage-table order regardless of
+// The returned slice follows the host's stage-table order regardless of scan or
 // manifest order.
-func selectStages(host Host, entries []pluginEntry, linkedNames map[string]bool) ([]Stage, error) {
+func selectStages(host Host, entries []pluginEntry, linkedNames map[string]bool, scanStages []string) ([]Stage, error) {
 	index := make(map[string]bool, len(host.Stages))
 	for _, s := range host.Stages {
 		index[s.Name] = true
 	}
 	chosen := map[string]bool{}
+	// Seed from the dependency scan: the transitive stage union (§100), the
+	// superset of what ttsc's direct-only discovery placed in the manifest.
+	for _, id := range scanStages {
+		name := stagePrefix + id
+		if !index[name] {
+			return nil, fmt.Errorf("UNKNOWN_STAGE: dependency scan requested %q which is not a stage of this host", name)
+		}
+		chosen[name] = true
+	}
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name, stagePrefix) {
 			if index[e.Name] {

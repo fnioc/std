@@ -18,32 +18,46 @@ type OwnedEntry struct {
 	PackageDir string
 }
 
-// Collect walks the consumer package's workspace dependency graph and returns
-// every rhombus.inline entry any reachable workspace package declares, each
-// tagged with its owning package directory. The walk is:
+// ProjectScan is the result of ONE workspace dependency walk (§100): the transform
+// STAGES every reachable *.transformer declares (its package.json "ttsc.stages")
+// and the inline BODIES every reachable package declares (its "rhombus.inline").
+// The host runs this single scan and uses both faces — stage selection and body
+// substitution.
+type ProjectScan struct {
+	Stages []string // bare stage ids ("nameof", "di", …), sorted + deduped
+	Bodies []OwnedEntry
+}
+
+// CollectProject walks the consumer package's workspace dependency graph and
+// returns both faces of the scan. The walk is:
 //
 //   - consumer root = the nearest package.json above consumerCwd;
 //   - workspace map = name -> dir, from the repo-root package.json "workspaces"
 //     globs (nearest ancestor carrying the key), falling back to node_modules
 //     resolution — the bun isolated-linker symlinks make both the real build and
 //     the e2e fixture resolvable through node_modules;
-//   - a recursive walk over dependencies ∪ devDependencies ∪ peerDependencies,
-//     workspace-resident packages only, deduped and cycle-guarded by directory.
+//   - a recursive walk, deduped and cycle-guarded by directory, over
+//     dependencies ∪ peerDependencies at every node, PLUS devDependencies at the
+//     ROOT consumer only. A transitive dependency's devDeps are its own build
+//     tooling, never inherited (standard dependency semantics) — this keeps a
+//     core that devDeps its own transformer (di.core -> primitives.transformer)
+//     from force-activating that stage on every di.core consumer.
 //
-// The consumer package itself is visited too, so a consumer that declares its
-// own inline entries is honored. Output order is deterministic (walk order with
-// dependency names sorted), for stable diagnostics and parity.
-func Collect(consumerCwd string) ([]OwnedEntry, error) {
+// The consumer package itself is visited too, so a consumer that declares its own
+// inline entries or stages is honored. Output order is deterministic (walk order
+// with dependency names sorted; stages sorted), for stable diagnostics and parity.
+func CollectProject(consumerCwd string) (ProjectScan, error) {
 	consumerRoot, err := findPackageRoot(consumerCwd)
 	if err != nil {
-		return nil, err
+		return ProjectScan{}, err
 	}
 	wsMap := workspaceMap(consumerRoot)
 
-	var out []OwnedEntry
+	var bodies []OwnedEntry
+	stageSet := map[string]bool{}
 	visited := map[string]bool{}
-	var walk func(dir string) error
-	walk = func(dir string) error {
+	var walk func(dir string, isRoot bool) error
+	walk = func(dir string, isRoot bool) error {
 		dir = filepath.Clean(dir)
 		if visited[dir] {
 			return nil
@@ -55,28 +69,47 @@ func Collect(consumerCwd string) ([]OwnedEntry, error) {
 			return lerr
 		}
 		for _, e := range entries {
-			out = append(out, OwnedEntry{Entry: e, PackageDir: dir})
+			bodies = append(bodies, OwnedEntry{Entry: e, PackageDir: dir})
+		}
+		for _, id := range stageIDs(dir) {
+			stageSet[id] = true
 		}
 
-		deps, derr := dependencyNames(dir)
+		deps, derr := dependencyNames(dir, isRoot)
 		if derr != nil {
 			return derr
 		}
 		for _, name := range deps {
 			depDir := resolveDependencyDir(name, wsMap, dir, consumerRoot)
 			if depDir == "" {
-				continue // non-workspace / unresolvable → no honored inline config
+				continue // non-workspace / unresolvable → no honored config
 			}
-			if werr := walk(depDir); werr != nil {
+			if werr := walk(depDir, false); werr != nil {
 				return werr
 			}
 		}
 		return nil
 	}
-	if err := walk(consumerRoot); err != nil {
+	if err := walk(consumerRoot, true); err != nil {
+		return ProjectScan{}, err
+	}
+
+	stages := make([]string, 0, len(stageSet))
+	for id := range stageSet {
+		stages = append(stages, id)
+	}
+	sort.Strings(stages)
+	return ProjectScan{Stages: stages, Bodies: bodies}, nil
+}
+
+// Collect is the body-only face of CollectProject, retained for callers (and
+// tests) that need just the inline entries.
+func Collect(consumerCwd string) ([]OwnedEntry, error) {
+	scan, err := CollectProject(consumerCwd)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return scan.Bodies, nil
 }
 
 // findPackageRoot walks up from start to the nearest directory containing a
@@ -214,9 +247,11 @@ func resolveDependencyDir(name string, wsMap map[string]string, fromDir, consume
 	return ""
 }
 
-// dependencyNames reads dir/package.json and returns the sorted union of its
-// dependencies, devDependencies, and peerDependencies keys.
-func dependencyNames(dir string) ([]string, error) {
+// dependencyNames reads dir/package.json and returns the sorted set of dependency
+// names to traverse: dependencies ∪ peerDependencies always, plus devDependencies
+// ONLY at the root consumer (isRoot). A transitive dependency's devDeps are its
+// own build tooling and are never inherited (§100 root-only-devDeps).
+func dependencyNames(dir string, isRoot bool) ([]string, error) {
 	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
 	if err != nil {
 		return nil, fmt.Errorf("inline: cannot read package.json in %s: %w", dir, err)
@@ -229,8 +264,12 @@ func dependencyNames(dir string) ([]string, error) {
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return nil, fmt.Errorf("inline: malformed package.json in %s: %w", dir, err)
 	}
+	sources := []map[string]string{pkg.Dependencies, pkg.PeerDependencies}
+	if isRoot {
+		sources = append(sources, pkg.DevDependencies)
+	}
 	set := map[string]bool{}
-	for _, m := range []map[string]string{pkg.Dependencies, pkg.DevDependencies, pkg.PeerDependencies} {
+	for _, m := range sources {
 		for k := range m {
 			set[k] = true
 		}
@@ -241,6 +280,26 @@ func dependencyNames(dir string) ([]string, error) {
 	}
 	sort.Strings(names)
 	return names, nil
+}
+
+// stageIDs reads dir/package.json's "ttsc.stages" — the bare stage ids a
+// *.transformer package declares it provides (a core declares none). A missing or
+// malformed field yields no ids, so a package carrying a ttsc.plugin marker but no
+// stages contributes nothing (defensive).
+func stageIDs(dir string) []string {
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return nil
+	}
+	var pkg struct {
+		Ttsc struct {
+			Stages []string `json:"stages"`
+		} `json:"ttsc"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil
+	}
+	return pkg.Ttsc.Stages
 }
 
 // packageName reads the "name" field of dir/package.json.

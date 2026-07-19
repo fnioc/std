@@ -19,21 +19,18 @@
   "exports": {
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
-    "./signatureof-ttsc": "./ttsc-signatureof.mjs",
-    "./private/full-ttsc": "./ttsc-full.mjs",
-    "./private/mergesynth-ttsc": "./ttsc-mergesynth.mjs"
+    "./signatureof-ttsc": "./ttsc-signatureof.mjs"
   },
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/primitives.transformer/ttsc"
-    }
+    },
+    "stages": ["inline", "nameof", "signatureof", "mergesynth"]
   },
   "files": [
     "ttsc.mjs",
     "ttsc-inline.mjs",
-    "ttsc-signatureof.mjs",
-    "ttsc-full.mjs",
-    "ttsc-mergesynth.mjs"
+    "ttsc-signatureof.mjs"
   ],
   "publishConfig": {
     "access": "public",

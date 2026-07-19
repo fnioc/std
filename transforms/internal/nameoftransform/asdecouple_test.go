@@ -110,7 +110,11 @@ func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app strin
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
 	artifacts := inlinetransform.NewArtifacts()
-	inlineT := inlinetransform.Build(prog, app, artifacts, func(plugin.Diagnostic) {})
+	inlineBodies, cerr := inlinetransform.Collect(app)
+	if cerr != nil {
+		t.Fatalf("collect: %v", cerr)
+	}
+	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
 	diT := ditransform.New(prog, ctx, func(ditransform.Diagnostic) {})

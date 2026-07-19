@@ -23,7 +23,12 @@
 //     entry invariant, asserted by existence.
 //   - lowering engine: tsconfig.ttsc.json present -> the Go/ttsc engine lowers
 //     `nameof<T>()` (and the registration/options/config sugar) in a per-file
-//     stage before the bundle. Absent -> no lowering stage.
+//     stage before the bundle. Absent -> no lowering stage. WHICH stages run is
+//     declare-by-depending, resolved HOST-SIDE (§100): ttsc auto-discovery spawns
+//     the one owner host from the package's direct `*.transformer` dep, and the
+//     host self-selects the full transitive stage set from its own dependency
+//     scan. So this script passes NO explicit plugin list (a non-empty manual
+//     `tsconfig.ttsc.json` `plugins` array is the only override). See below.
 //
 // The optional `rhombusBuild` manifest field carries the few per-package
 // overrides (each override package documents its why in a `//rhombusBuild`
@@ -115,10 +120,20 @@ const external = [
 // Lowering engine: the Go/ttsc stage runs iff a tsconfig.ttsc.json exists.
 const ttscProject = existsSync(join(dir, 'tsconfig.ttsc.json')) ? 'tsconfig.ttsc.json' : undefined;
 
-// ttsc lowering: thread the tsconfig.ttsc.json plugin list EXPLICITLY so the
-// adapter runs exactly those transforms (suppressing its install-set
-// auto-discovery).
-const ttscTransforms = ttscProject ? readTsconfigTransforms(dir, ttscProject) : undefined;
+// ttsc lowering: stage selection is declare-by-depending, resolved HOST-SIDE
+// (§100). ttsc's own auto-discovery spawns the one owner host from this package's
+// direct `*.transformer` dep; the host then self-selects the full transitive
+// stage union via its own dependency scan (inlinetransform.CollectProject). So
+// pass NO explicit plugin list -- `undefined` lets auto-discovery run. CRITICAL:
+// it must be `undefined`, never `[]` -- an empty array is an explicit plugin list
+// that SILENTLY suppresses discovery, so the host would never spawn. A non-empty
+// manual `tsconfig.ttsc.json` `plugins` array is the only override (section E
+// drops those arrays, so readTsconfigTransforms returns [] here -> undefined).
+let ttscTransforms: readonly string[] | undefined;
+if (ttscProject) {
+  const manual = readTsconfigTransforms(dir, ttscProject);
+  ttscTransforms = manual.length > 0 ? manual : undefined;
+}
 
 await buildPackage({
   dir,

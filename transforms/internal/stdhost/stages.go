@@ -7,6 +7,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/dioptionstransform"
 	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
@@ -29,21 +30,26 @@ func StageName(id string) string {
 
 // BaseStages is the fixed execution order every activated base stage runs in:
 // inline first (so single-expression sugar bodies are substituted before any
-// primitive stage runs), then nameof (its token lowering and import elision,
-// including the inline stage's synthetic nameof calls), then signatureof (the
-// dependency-signature array lowering, including the inline stage's synthetic
-// signatureof calls), then the registration verbs, the addOptions sugar, and the
-// config schema lowering. signatureof runs after nameof (disjoint call shapes —
-// a type-argument vs a value-argument primitive) and before di, so the di stage
-// sees a fully-lowered 3-argument `add(...)` it leaves untouched. Manifest entry
-// order does not affect this — selection filters the host's stage slice,
-// preserving order.
+// primitive stage runs), then mergesynth (it reads the ORIGINAL augmentation
+// member declarations through the checker and threads a plain-JS merge-strategies
+// object as the third argument of each registerAugmentations/applyAugmentations
+// call — it runs before nameof so nameof still lowers the call's token argument,
+// and later stages leave the synthesized object untouched), then nameof (its
+// token lowering and import elision, including the inline stage's synthetic
+// nameof calls), then signatureof (the dependency-signature array lowering,
+// including the inline stage's synthetic signatureof calls), then the
+// registration verbs, the addOptions sugar, and the config schema lowering.
+// signatureof runs after nameof (disjoint call shapes — a type-argument vs a
+// value-argument primitive) and before di, so the di stage sees a fully-lowered
+// 3-argument `add(...)` it leaves untouched. Manifest entry order does not affect
+// this — selection filters the host's stage slice, preserving order.
 //
-// Returned as a fresh slice so a sibling host (cmd/ttsc-std-full) can splice
-// its extra stages in without mutating shared state.
+// Returned as a fresh slice each call so selection can filter it without
+// mutating shared state.
 func BaseStages() []Stage {
 	return []Stage{
 		{Name: stagePrefix + "inline", Build: buildInline},
+		{Name: stagePrefix + "mergesynth", Build: buildMergesynth},
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "di", Build: buildDi},
@@ -63,6 +69,10 @@ func BaseStages() []Stage {
 // (stock ttsc's marker -> single transform string) is untouched: the one string
 // a bundle descriptor yields resolves to a name WE choose here, and expansion
 // is ours.
+//
+// Bundles are the EXPLICIT opt-in channel (di.core's `./ttsc`); the default path
+// needs none — the host self-selects the full stage union from its own dependency
+// scan (§100 declare-by-depending, see runTransform), not from a bundle name.
 func BaseBundles() map[string][]string {
 	return map[string][]string{
 		stagePrefix + "di_bundle": {
@@ -79,8 +89,28 @@ func BaseBundles() map[string][]string {
 // the synthetic primitive calls the nameof stage lowers. Every diagnostic it
 // raises is a hard error.
 func buildInline(prog *driver.Program, _ *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return inlinetransform.Build(prog, env.Cwd, env.Artifacts, func(d plugin.Diagnostic) {
+	return inlinetransform.Build(prog, env.Bodies, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildMergesynth activates the merge-strategy synthesizer (#213). It runs after
+// inline and before nameof: it reads the ORIGINAL augmentation member
+// declarations through the checker and threads a plain-JS strategies object as
+// the third argument of each registerAugmentations/applyAugmentations call, so a
+// member-name collision dispatches by argument shape instead of throwing. The
+// synthesized guards are inlined plain JS (the typia embed is fully lowered at
+// build time — no typia runtime import survives). It is category-aware like the
+// di stage: an advisory warning (a dropped guard that would have needed a typia
+// runtime helper) never fails the emit.
+func buildMergesynth(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
+	return mergesynthtransform.New(prog, func(d mergesynthtransform.Diagnostic) {
+		emit(Diag{
+			File:    d.File,
+			Warning: d.Category == mergesynthtransform.Warning,
+			Code:    d.Code,
+			Message: d.Message,
+		})
 	})
 }
 

@@ -166,7 +166,7 @@ export const known = makeProvider().isService<Foo>();
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
@@ -217,7 +217,7 @@ export const bad = provider.isService();
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	// Build resolves without error (the error is per-call-site, raised in the
 	// transform), so drive the transform to surface it.
 	ec := shimprinter.NewEmitContext()
@@ -278,7 +278,7 @@ export const known = provider.isService<Foo>();
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics (the concrete-nameof body currently passes extract): %+v", diags)
 	}
@@ -374,7 +374,7 @@ func TestStageInlinesFreeFunction(t *testing.T) {
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
@@ -502,7 +502,7 @@ func TestStageInlinesMemberSugar(t *testing.T) {
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
@@ -631,7 +631,7 @@ func TestStageDeclareModuleOverloadIsNotRogue(t *testing.T) {
 
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	transform := Build(prog, app, artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
