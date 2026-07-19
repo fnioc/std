@@ -34,8 +34,8 @@ No `z.object({...})` to keep in sync. No class wall of decorators. No codegen
 step to remember to run. `AppConfig` is both the type you already wanted and
 the schema `@rhombus-std/config` validates against — `.withType<AppConfig>()`
 is compiled away into a `.withSchema({...})` literal by
-`@rhombus-std/config.transformer`, a ts-patch plugin, so there's nothing left
-to run at build time beyond `tspc` itself.
+`@rhombus-std/config.transformer`, an optional build-time transformer, so
+there's nothing left to run beyond your normal build.
 
 ## Features
 
@@ -111,21 +111,10 @@ const config = new ConfigBuilder()
 
 `.withType<T>()` only exists once you `import
 "@rhombus-std/config/with-type-augment"` — calling it without that import is
-a compile error, never a silent no-op. And it only does anything once you
-compile with `tspc` (ts-patch's patched compiler) and wire
-`@rhombus-std/config.transformer` into `tsconfig.json`'s `plugins`; under
-plain `tsc` the call reaches a throwing runtime stub instead of silently
-skipping validation:
-
-```jsonc
-{
-  "compilerOptions": {
-    "plugins": [
-      { "transform": "@rhombus-std/config.transformer", "import": "transform" },
-    ],
-  },
-}
-```
+a compile error, never a silent no-op. And it only does anything once
+`@rhombus-std/config.transformer`'s build-time engine actually runs; without
+it, the call reaches a throwing runtime stub instead of silently skipping
+validation.
 
 The transformer supports `string` / `number` / `boolean` leaves, nested
 object types, and `foo?: T` optional fields — anything else (a non-boolean
