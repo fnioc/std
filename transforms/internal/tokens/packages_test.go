@@ -122,3 +122,115 @@ func TestEntrySourceFile(t *testing.T) {
 		}
 	})
 }
+
+// finalSpecifier renders selectSpecifier's decision the way publicImportSpecifier
+// does: the bare package for the root subpath, else `pkg/<subpath>`. ok=false when
+// no public specifier was found (the `./tokens/*` / app-internal / diagnostic
+// tiers, which fall through to baseTokenFor's own fallback).
+func finalSpecifier(pkgName string, d specifierDecision) (string, bool) {
+	if !d.found {
+		return "", false
+	}
+	if d.subpath == "" {
+		return pkgName, true
+	}
+	return pkgName + "/" + d.subpath, true
+}
+
+// reachingFromEntries treats every export entry as reaching the declaration file —
+// the checker membership check is stubbed out so the pure tier selection is what's
+// under test. It preserves each entry's public classification.
+func reachingFromEntries(entries []tokentext.ExportEntry) []reachingEntry {
+	out := make([]reachingEntry, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, reachingEntry{subpath: e.Subpath, public: e.Public})
+	}
+	return out
+}
+
+// The three-tier public-specifier rule (selectSpecifier) is checker-independent,
+// so the tier ordering and the shortest-subpath tiebreak are pinned here without
+// loading a program. The checker-level membership half rides the *.ttsc.e2e parity
+// suites against the real packages.
+func TestSelectSpecifier(t *testing.T) {
+	t.Run("public non-root subpath via a default condition mints pkg/sub", func(t *testing.T) {
+		// A `./sub` whose target carries `default` is a public candidate; reaching
+		// the decl file through it alone mints `your-lib/sub` (→ `your-lib/sub:Type`).
+		pkg, ok := tokentext.ParsePackageJSON(`{
+			"name": "your-lib",
+			"exports": { "./sub": { "types": "./sub/index.d.ts", "default": "./sub/index.js" } }
+		}`)
+		if !ok {
+			t.Fatal("ParsePackageJSON failed")
+		}
+		decision := selectSpecifier(reachingFromEntries(tokentext.CollectExportEntries(pkg)))
+		spec, ok := finalSpecifier("your-lib", decision)
+		if !ok || spec != "your-lib/sub" || decision.diagSubpath != "" {
+			t.Fatalf("spec = %q ok = %v diag = %q, want your-lib/sub true \"\"", spec, ok, decision.diagSubpath)
+		}
+	})
+
+	t.Run("two public entries reaching one file: shortest wins, no error", func(t *testing.T) {
+		// Root `.` and a public `./contracts` both reach the file — the shorter
+		// subpath (the root, → bare package) wins and NO diagnostic is raised.
+		reaching := []reachingEntry{{subpath: "contracts", public: true}, {subpath: "", public: true}}
+		decision := selectSpecifier(reaching)
+		spec, ok := finalSpecifier("your-lib", decision)
+		if !ok || spec != "your-lib" || decision.diagSubpath != "" {
+			t.Fatalf("spec = %q ok = %v diag = %q, want your-lib true \"\"", spec, ok, decision.diagSubpath)
+		}
+		// Two non-root public subpaths of equal length break the tie
+		// lexicographically; unequal length prefers the shorter.
+		reaching = []reachingEntry{{subpath: "zeta", public: true}, {subpath: "beta", public: true}, {subpath: "a/b", public: true}}
+		if got, _ := finalSpecifier("your-lib", selectSpecifier(reaching)); got != "your-lib/a/b" {
+			t.Fatalf("shortest-then-lexicographic = %q, want your-lib/a/b", got)
+		}
+	})
+
+	t.Run("a bare-string entry is counted as public", func(t *testing.T) {
+		// `".": "./index.js"` is a bare string — any consumer resolves it — so the
+		// root entry is public and the type derives the bare `your-lib` specifier.
+		pkg, ok := tokentext.ParsePackageJSON(`{
+			"name": "your-lib",
+			"exports": { ".": "./index.js" }
+		}`)
+		if !ok {
+			t.Fatal("ParsePackageJSON failed")
+		}
+		entries := tokentext.CollectExportEntries(pkg)
+		if len(entries) != 1 || !entries[0].Public {
+			t.Fatalf("bare-string root entry = %+v, want one Public entry", entries)
+		}
+		spec, ok := finalSpecifier("your-lib", selectSpecifier(reachingFromEntries(entries)))
+		if !ok || spec != "your-lib" {
+			t.Fatalf("spec = %q ok = %v, want your-lib true", spec, ok)
+		}
+	})
+
+	t.Run("no public match but a tokens subpath reaches: fall through, no diagnostic", func(t *testing.T) {
+		// A `./tokens/*` reach (the source-referenced white-box surface) is not a
+		// public specifier and is NOT a violation: selectSpecifier yields no
+		// specifier and no diagnostic, so baseTokenFor mints the `pkg/tokens/<path>`
+		// app-internal token.
+		decision := selectSpecifier([]reachingEntry{{subpath: "tokens/foo", public: false}})
+		if _, ok := finalSpecifier("your-lib", decision); ok {
+			t.Fatalf("tokens-only reach should not resolve a public specifier: %+v", decision)
+		}
+		if decision.diagSubpath != "" {
+			t.Fatalf("tokens-only reach must not raise a diagnostic, got %q", decision.diagSubpath)
+		}
+	})
+
+	t.Run("reached only through a non-public named subpath raises the diagnostic", func(t *testing.T) {
+		// A friendly deep-import alias that is neither public nor `./tokens/*` is the
+		// strict-rule violation: no specifier, and diagSubpath names the offending
+		// subpath so publicImportSpecifier fires TOKEN_SUBPATH_NOT_PUBLIC.
+		decision := selectSpecifier([]reachingEntry{{subpath: "contracts", public: false}})
+		if _, ok := finalSpecifier("your-lib", decision); ok {
+			t.Fatalf("non-public subpath must not resolve a specifier: %+v", decision)
+		}
+		if decision.diagSubpath != "contracts" {
+			t.Fatalf("diagSubpath = %q, want contracts", decision.diagSubpath)
+		}
+	})
+}

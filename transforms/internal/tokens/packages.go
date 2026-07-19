@@ -42,14 +42,24 @@ func nearestPackage(ctx *Context, fromPath string) *packageInfo {
 }
 
 // publicImportSpecifier returns the exact import specifier a consumer writes for
-// a symbol reachable through a package's public exports. Only two subpaths yield
-// a stable public specifier: the barrel `.` (→ bare `pkg`) and `./tokens/*`
-// (→ `pkg/tokens/<path>`, the source-referenced token surface). A type reachable
-// through the exports but ONLY via some other named subpath has no derivable
-// public specifier — that is a hard diagnostic (via ctx.Diag), because a friendly
-// alias subpath must not silently become part of a token. ok=false means the type
-// is not publicly reachable at all and falls to the app-internal token. The match
-// is against the checker export graph, not file-path stems.
+// a symbol reachable through a package's public exports. Derivation is tiered:
+//
+//  1. PUBLIC tier — the candidate entries are those whose target is a bare string
+//     or is reached through a `default` condition (either way, any consumer can
+//     resolve them). Among the public candidates that REACH the declaration file,
+//     the SHORTEST subpath wins (lexicographic tiebreak on equal length), so the
+//     root barrel `.` (→ bare `pkg`) is preferred and a public `./sub` mints
+//     `pkg/sub`. Multiple public matches are not an error — shortest wins.
+//  2. No public match, but a `./tokens/*` subpath reaches it → ok=false with no
+//     diagnostic, so baseTokenFor's fallback mints the `pkg/tokens/<path>` token
+//     over the source-referenced white-box surface.
+//  3. Reached ONLY through some other named subpath (a friendly deep-import alias
+//     that is neither public nor `./tokens/*`) → a hard diagnostic (via ctx.Diag),
+//     because that alias must not silently become part of a token.
+//
+// ok=false with no diagnostic also covers a type not publicly reachable at all —
+// it falls to the app-internal token. The match is against the checker export
+// graph, not file-path stems.
 func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbol, _ *shimast.SourceFile) (string, bool) {
 	if ctx.SourceFileAtStem == nil {
 		return "", false
@@ -67,12 +77,10 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		declFile = shimast.GetSourceFileOfNode(primary)
 	}
 
-	// Classify every export subpath the target is re-exported from into the three
-	// buckets the strict rule cares about. No tiebreak: the barrel always wins,
-	// then a `./tokens/*` subpath, and any other reachable subpath is a violation.
-	var hasBarrel bool
-	var tokensSubpath string
-	var otherSubpath string
+	// Gather every export subpath whose module re-exports the target, tagged with
+	// whether the export made it publicly reachable. The tier selection over this
+	// set is pure (selectSpecifier), so it is unit-tested without a checker.
+	var reaching []reachingEntry
 	for _, entry := range tokentext.CollectExportEntries(pkg.json) {
 		sf := entrySourceFile(pkg, entry, ctx.SourceFileAtStem)
 		if sf == nil {
@@ -82,51 +90,109 @@ func publicImportSpecifier(ctx *Context, pkg *packageInfo, symbol *shimast.Symbo
 		if mod == nil {
 			continue
 		}
-		shares := false
-		for _, exp := range ctx.Checker.GetExportsOfModule(mod) {
-			resolved := exp
-			if exp.Flags&shimast.SymbolFlagsAlias != 0 {
-				if aliased := ctx.Checker.GetAliasedSymbol(exp); aliased != nil {
-					resolved = aliased
-				}
-			}
-			for _, d := range resolved.Declarations {
-				if targetDecls[d] {
-					shares = true
-					break
-				}
-			}
-			if shares {
-				break
-			}
-		}
-		if !shares {
-			continue
-		}
-		switch {
-		case entry.Subpath == "":
-			hasBarrel = true
-		case entry.Subpath == "tokens" || strings.HasPrefix(entry.Subpath, "tokens/"):
-			if tokensSubpath == "" || sf == declFile {
-				tokensSubpath = entry.Subpath
-			}
-		default:
-			if otherSubpath == "" {
-				otherSubpath = entry.Subpath
-			}
+		if moduleReExports(ctx, mod, targetDecls) {
+			reaching = append(reaching, reachingEntry{subpath: entry.Subpath, public: entry.Public})
 		}
 	}
 
-	if hasBarrel {
-		return pkg.name, true
+	decision := selectSpecifier(reaching)
+	if decision.found {
+		if decision.subpath == "" {
+			return pkg.name, true
+		}
+		return pkg.name + "/" + decision.subpath, true
 	}
-	if tokensSubpath != "" {
-		return pkg.name + "/" + tokensSubpath, true
-	}
-	if otherSubpath != "" {
-		reportNonPublicSubpath(ctx, target, declFile, pkg, otherSubpath)
+	if decision.diagSubpath != "" {
+		reportNonPublicSubpath(ctx, target, declFile, pkg, decision.diagSubpath)
 	}
 	return "", false
+}
+
+// moduleReExports reports whether a resolved module symbol exports a member that
+// shares a declaration with the target (aliases resolved) — the "this entry
+// reaches the declaration file" check, run against the checker export graph.
+func moduleReExports(ctx *Context, mod *shimast.Symbol, targetDecls map[*shimast.Node]bool) bool {
+	for _, exp := range ctx.Checker.GetExportsOfModule(mod) {
+		resolved := exp
+		if exp.Flags&shimast.SymbolFlagsAlias != 0 {
+			if aliased := ctx.Checker.GetAliasedSymbol(exp); aliased != nil {
+				resolved = aliased
+			}
+		}
+		for _, d := range resolved.Declarations {
+			if targetDecls[d] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// reachingEntry is one export entry that reaches a target's declaration file,
+// carrying just what the tier selection needs: the public subpath and whether the
+// export made it publicly reachable (a `default` condition or bare-string target).
+type reachingEntry struct {
+	subpath string
+	public  bool
+}
+
+// specifierDecision is the outcome of the three-tier rule over the entries that
+// reach a target's declaration file.
+type specifierDecision struct {
+	// subpath is the winning public subpath ("" for the bare barrel); meaningful
+	// only when found is true.
+	subpath string
+	found   bool
+	// diagSubpath, when non-empty, is the non-public, non-tokens named subpath that
+	// forces the hard diagnostic (no public or `./tokens/*` entry reached the file).
+	diagSubpath string
+}
+
+// selectSpecifier applies the three-tier public-specifier rule to the export
+// entries that reach a target's declaration file (see publicImportSpecifier). It
+// is pure — no checker, no package identity — so the tier ordering and the
+// shortest-subpath tiebreak are pinned by plain unit tests.
+func selectSpecifier(reaching []reachingEntry) specifierDecision {
+	bestPublic := ""
+	havePublic := false
+	haveTokens := false
+	bestOther := ""
+	haveOther := false
+	for _, e := range reaching {
+		switch {
+		case e.public:
+			if !havePublic || shorterSubpath(e.subpath, bestPublic) {
+				bestPublic = e.subpath
+				havePublic = true
+			}
+		case e.subpath == "tokens" || strings.HasPrefix(e.subpath, "tokens/"):
+			haveTokens = true
+		default:
+			if !haveOther || shorterSubpath(e.subpath, bestOther) {
+				bestOther = e.subpath
+				haveOther = true
+			}
+		}
+	}
+	if havePublic {
+		return specifierDecision{subpath: bestPublic, found: true}
+	}
+	if haveTokens {
+		return specifierDecision{}
+	}
+	if haveOther {
+		return specifierDecision{diagSubpath: bestOther}
+	}
+	return specifierDecision{}
+}
+
+// shorterSubpath reports whether a is the canonical choice over b: shorter first,
+// then lexicographically smaller on equal length. The root "" is shortest of all.
+func shorterSubpath(a, b string) bool {
+	if len(a) != len(b) {
+		return len(a) < len(b)
+	}
+	return a < b
 }
 
 // reportNonPublicSubpath fires ctx.Diag for a type reachable only via a named
