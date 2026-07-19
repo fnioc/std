@@ -1,4 +1,4 @@
-package main
+package stdhost
 
 import (
 	"bytes"
@@ -7,12 +7,18 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
-func stageNames(stages []stageDef) []string {
+func stageNames(stages []Stage) []string {
 	names := make([]string, len(stages))
 	for i, s := range stages {
-		names[i] = s.name
+		names[i] = s.Name
 	}
 	return names
+}
+
+// testHost is the base host every selection/CLI test drives — the same stage
+// table cmd/ttsc-std composes.
+func testHost() Host {
+	return Host{Name: "ttsc-std", Stages: BaseStages(), Bundles: BaseBundles()}
 }
 
 func TestSelectStagesCanonicalOrderRegardlessOfManifestOrder(t *testing.T) {
@@ -28,7 +34,7 @@ func TestSelectStagesCanonicalOrderRegardlessOfManifestOrder(t *testing.T) {
 		{Name: stagePrefix + "di"},
 		{Name: stagePrefix + "inline"},
 	}
-	got, err := selectStages(entries, nil)
+	got, err := selectStages(testHost(), entries, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,7 +60,7 @@ func TestSelectStagesInlinePrecedesDi(t *testing.T) {
 	// A consumer selecting only inline + di (manifest order di-then-inline): the
 	// inline stage must still be emitted before the di stage, since its output is
 	// what di lowers.
-	got, err := selectStages([]pluginEntry{{Name: stagePrefix + "di"}, {Name: stagePrefix + "inline"}}, nil)
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di"}, {Name: stagePrefix + "inline"}}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -77,7 +83,7 @@ func TestRunTransformZeroStagesIsHardError(t *testing.T) {
 	restore := swapStreams(&outBuf, &errBuf)
 	defer restore()
 
-	code := runTransform([]string{"--tsconfig=/nonexistent/tsconfig.json", "--plugins-json", "[]"})
+	code := runTransform(testHost(), []string{"--tsconfig=/nonexistent/tsconfig.json", "--plugins-json", "[]"})
 	if code != 2 {
 		t.Fatalf("zero-stage run exit = %d, want 2\nstderr: %s", code, errBuf.String())
 	}
@@ -96,7 +102,7 @@ func TestRunTransformLinkedOnlyIsNotZeroStages(t *testing.T) {
 	restore := swapStreams(&outBuf, &errBuf)
 	defer restore()
 
-	code := runTransform([]string{
+	code := runTransform(testHost(), []string{
 		"--tsconfig=/nonexistent/tsconfig.json",
 		"--plugins-json", `[{"name":"@ttsc/banner"}]`,
 	})
@@ -124,7 +130,7 @@ func swapStreams(out, err *bytes.Buffer) func() {
 // signatureof -> di — without ever listing them by hand. The binary owns both the
 // membership and the order.
 func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
-	got, err := selectStages([]pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil)
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -150,7 +156,7 @@ func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 // result stays in canonical order. Here the manifest carries the bundle plus an
 // explicit `di` (already in the bundle) and `di_options` (outside it).
 func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
-	got, err := selectStages([]pluginEntry{
+	got, err := selectStages(testHost(), []pluginEntry{
 		{Name: stagePrefix + "di_options"},
 		{Name: stagePrefix + "di_bundle"},
 		{Name: stagePrefix + "di"},
@@ -179,7 +185,7 @@ func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 // TestSelectStagesUnknownBundleIsHardError: a prefixed name that is neither a
 // stage nor a bundle stays a hard error naming it.
 func TestSelectStagesUnknownBundleIsHardError(t *testing.T) {
-	_, err := selectStages([]pluginEntry{{Name: stagePrefix + "mystery_bundle"}}, nil)
+	_, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "mystery_bundle"}}, nil)
 	if err == nil {
 		t.Fatal("expected UNKNOWN_STAGE error for an unknown bundle, got nil")
 	}
@@ -190,7 +196,7 @@ func TestSelectStagesUnknownBundleIsHardError(t *testing.T) {
 
 func TestSelectStagesScopesToDeclaredStages(t *testing.T) {
 	// A nameof-only consumer activates ONLY the nameof stage — di must not run.
-	got, err := selectStages([]pluginEntry{{Name: stagePrefix + "nameof"}}, nil)
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "nameof"}}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -200,7 +206,7 @@ func TestSelectStagesScopesToDeclaredStages(t *testing.T) {
 }
 
 func TestSelectStagesUnknownStageIsHardError(t *testing.T) {
-	_, err := selectStages([]pluginEntry{{Name: stagePrefix + "bogus"}}, nil)
+	_, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "bogus"}}, nil)
 	if err == nil {
 		t.Fatal("expected UNKNOWN_STAGE error, got nil")
 	}
@@ -213,6 +219,7 @@ func TestSelectStagesForeignLinkedEntryIsDeferred(t *testing.T) {
 	// A non-prefixed entry present in the linked manifest is left to ttsc's
 	// linked machinery, not rejected and not run as one of our stages.
 	got, err := selectStages(
+		testHost(),
 		[]pluginEntry{{Name: stagePrefix + "nameof"}, {Name: "@ttsc/banner"}},
 		map[string]bool{"@ttsc/banner": true},
 	)
@@ -225,7 +232,7 @@ func TestSelectStagesForeignLinkedEntryIsDeferred(t *testing.T) {
 }
 
 func TestSelectStagesForeignUnlinkedEntryIsHardError(t *testing.T) {
-	_, err := selectStages([]pluginEntry{{Name: "@ttsc/banner"}}, nil)
+	_, err := selectStages(testHost(), []pluginEntry{{Name: "@ttsc/banner"}}, nil)
 	if err == nil {
 		t.Fatal("expected a hard error for an unlinked foreign plugin, got nil")
 	}

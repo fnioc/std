@@ -19,7 +19,9 @@
   "exports": {
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
-    "./signatureof-ttsc": "./ttsc-signatureof.mjs"
+    "./signatureof-ttsc": "./ttsc-signatureof.mjs",
+    "./private/full-ttsc": "./ttsc-full.mjs",
+    "./private/mergesynth-ttsc": "./ttsc-mergesynth.mjs"
   },
   "ttsc": {
     "plugin": {
@@ -29,7 +31,9 @@
   "files": [
     "ttsc.mjs",
     "ttsc-inline.mjs",
-    "ttsc-signatureof.mjs"
+    "ttsc-signatureof.mjs",
+    "ttsc-full.mjs",
+    "ttsc-mergesynth.mjs"
   ],
   "publishConfig": {
     "access": "public",

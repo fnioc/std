@@ -1,4 +1,16 @@
-package main
+// Package stdhost is the shared single-owner ttsc transform-host scaffolding
+// behind every @rhombus-std owner binary. A command (cmd/ttsc-std, and the
+// in-repo-only cmd/ttsc-std-full) is a thin main that composes a Host value —
+// a name, an ordered stage table, and the preset bundles — and hands it to Run;
+// everything else (manifest parsing, runtime stage selection, the linked-plugin
+// handoff, the per-file transform loop, and the JSON envelope) lives here once.
+//
+// The split exists for the §87 audience separation: the published ttsc-std
+// binary must stay typia-free and offline-buildable, while the in-repo
+// ttsc-std-full sibling links the typia-embedding merge-synthesis stage on top
+// of the same base stages. Both compose the SAME scaffolding; only the stage
+// table differs — so this package must never import a typia package.
+package stdhost
 
 import (
 	"encoding/json"
@@ -16,9 +28,8 @@ import (
 	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/tokens"
 )
-
-const hostName = "ttsc-std"
 
 const (
 	categoryError   = "error"
@@ -30,19 +41,79 @@ var (
 	stderr io.Writer = os.Stderr
 )
 
-// run dispatches the host command line: the transform-stage contract the ttsc
+// Host is one owner binary's identity: its diagnostic name, its ordered stage
+// table (the slice order IS the canonical execution order), and the preset
+// bundle expansions it accepts.
+type Host struct {
+	Name    string
+	Stages  []Stage
+	Bundles map[string][]string
+}
+
+// Stage pairs a descriptor name with its transform builder.
+type Stage struct {
+	Name  string
+	Build Builder
+}
+
+// Env carries the cross-stage state a builder may need: the project working
+// directory (the inline stage's collector root) and the per-run inline
+// artifacts (populated by the inline stage, read by nameof and the emit sweep).
+type Env struct {
+	Cwd       string
+	Artifacts *inlinetransform.Artifacts
+}
+
+// Sink receives one diagnostic from a stage's transform.
+type Sink func(Diag)
+
+// Diag is a stage diagnostic destined for the envelope. Warning diagnostics
+// are reported without failing the emit; everything else is a hard error.
+type Diag struct {
+	File    string
+	Warning bool
+	Code    string
+	Message string
+}
+
+// Builder adapts a stage's native transform factory (each with its own
+// diagnostic type) onto the shared FileTransform + Diag contract.
+type Builder func(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform
+
+// DiagFromPlugin converts a plugin.Diagnostic (no category of its own) into a
+// hard-error Diag.
+func DiagFromPlugin(d plugin.Diagnostic) Diag {
+	return Diag{
+		File:    d.File,
+		Code:    d.Code,
+		Message: d.Message,
+	}
+}
+
+// DiagFromDi converts a ditransform.Diagnostic, honoring its advisory Warning
+// vs hard Error category so a warning does not fail emit.
+func DiagFromDi(d ditransform.Diagnostic) Diag {
+	return Diag{
+		File:    d.File,
+		Warning: d.Category == ditransform.Warning,
+		Code:    d.Code,
+		Message: d.Message,
+	}
+}
+
+// Run dispatches the host command line: the transform-stage contract the ttsc
 // host relies on plus `check`, `version`, and `help` for standalone use,
 // mirroring the shared sidecar scaffolding's router.
-func run(args []string) int {
+func Run(host Host, args []string) int {
 	if len(args) == 0 {
-		return runTransform(nil)
+		return runTransform(host, nil)
 	}
 	switch args[0] {
 	case "-h", "--help", "help":
-		fmt.Fprintf(stdout, "%s - single owner ttsc transform host\n", hostName)
+		fmt.Fprintf(stdout, "%s - single owner ttsc transform host\n", host.Name)
 		return 0
 	case "-v", "--version", "version":
-		fmt.Fprintf(stdout, "%s dev\n", hostName)
+		fmt.Fprintf(stdout, "%s dev\n", host.Name)
 		return 0
 	case "transform", "check", "build":
 		// Strip the subcommand token so the flag parser sees the flags that
@@ -51,13 +122,13 @@ func run(args []string) int {
 		// leaving "build" in front of the flags makes flag.Parse stop at that
 		// positional and silently drop every flag after it — including
 		// --plugins-json, which selection depends on.
-		return runTransform(args[1:])
+		return runTransform(host, args[1:])
 	default:
-		return runTransform(args)
+		return runTransform(host, args)
 	}
 }
 
-func runTransform(args []string) int {
+func runTransform(host Host, args []string) int {
 	fs := flag.NewFlagSet("transform", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	_ = fs.String("file", "", "single file (unused: whole-project envelope only)")
@@ -77,17 +148,17 @@ func runTransform(args []string) int {
 	// is linked into this host, else rejected.
 	entries, err := parsePluginEntries(*pluginsJSON)
 	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", hostName, err)
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
 		return 2
 	}
 	linked, err := parsePluginEntries(os.Getenv(driver.LinkedPluginsEnv))
 	if err != nil {
-		fmt.Fprintf(stderr, "%s: linked manifest: %v\n", hostName, err)
+		fmt.Fprintf(stderr, "%s: linked manifest: %v\n", host.Name, err)
 		return 2
 	}
-	selected, err := selectStages(entries, namesOf(linked))
+	selected, err := selectStages(host, entries, namesOf(linked))
 	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", hostName, err)
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
 		return 2
 	}
 
@@ -95,7 +166,7 @@ func runTransform(args []string) int {
 	// linked plugin, this run would load the program and emit it unchanged, which
 	// is never what a plugins array intends. Fail loud rather than silently no-op.
 	if len(selected) == 0 && len(linked) == 0 {
-		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected and no linked plugins present — this run would load the program and emit it unchanged; check the tsconfig plugins array\n", hostName)
+		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected and no linked plugins present — this run would load the program and emit it unchanged; check the tsconfig plugins array\n", host.Name)
 		return 2
 	}
 
@@ -104,14 +175,14 @@ func runTransform(args []string) int {
 		var derr error
 		cwd, derr = os.Getwd()
 		if derr != nil {
-			fmt.Fprintf(stderr, "%s: cwd: %v\n", hostName, derr)
+			fmt.Fprintf(stderr, "%s: cwd: %v\n", host.Name, derr)
 			return 2
 		}
 	}
 
 	prog, diags, err := driver.LoadProgram(cwd, *tsconfigPath, driver.LoadProgramOptions{ForceEmit: true})
 	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", hostName, err)
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
 		return 2
 	}
 	if len(diags) > 0 {
@@ -126,7 +197,7 @@ func runTransform(args []string) int {
 	// TTSC_LINKED_PLUGINS_JSON env; this applies it deterministically and
 	// surfaces any error rather than swallowing it.
 	if err := prog.ApplyLinkedPlugins(); err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", hostName, err)
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
 		return 2
 	}
 
@@ -136,23 +207,23 @@ func runTransform(args []string) int {
 		TypeScript:  map[string]string{},
 	}
 	hasError := false
-	emit := func(d envelopeDiagnostic) {
-		out.Diagnostics = append(out.Diagnostics, d)
-		if d.Category == categoryError {
+	emit := func(d Diag) {
+		out.Diagnostics = append(out.Diagnostics, envelopeFromDiag(d))
+		if !d.Warning {
 			hasError = true
 		}
 	}
 	// Route the token core's hard derivation diagnostics (a type reachable only
 	// through a non-barrel, non-tokens export subpath) into the envelope as errors.
 	ctx.Diag = func(file string, start int, code, message string) {
-		emit(envelopeFromPlugin(plugin.Diagnostic{File: file, Start: start, Code: code, Message: message}, categoryError))
+		emit(DiagFromPlugin(plugin.Diagnostic{File: file, Start: start, Code: code, Message: message}))
 	}
 
 	artifacts := inlinetransform.NewArtifacts()
-	env := &stageEnv{cwd: cwd, artifacts: artifacts}
+	env := &Env{Cwd: cwd, Artifacts: artifacts}
 	transforms := make([]plugin.FileTransform, 0, len(selected))
 	for _, stage := range selected {
-		transforms = append(transforms, stage.build(prog, ctx, env, emit))
+		transforms = append(transforms, stage.Build(prog, ctx, env, emit))
 	}
 
 	for _, sf := range prog.SourceFiles() {
@@ -167,7 +238,7 @@ func runTransform(args []string) int {
 	}
 
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
-		fmt.Fprintf(stderr, "%s: encode output: %v\n", hostName, err)
+		fmt.Fprintf(stderr, "%s: encode output: %v\n", host.Name, err)
 		return 3
 	}
 	if hasError {
@@ -268,18 +339,23 @@ func namesOf(entries []pluginEntry) map[string]bool {
 //   - a non-prefixed entry NOT linked -> hard error naming it (this host composes
 //     no foreign transforms yet).
 //
-// The returned slice follows canonicalStages order regardless of manifest order.
-func selectStages(entries []pluginEntry, linkedNames map[string]bool) ([]stageDef, error) {
+// The returned slice follows the host's stage-table order regardless of
+// manifest order.
+func selectStages(host Host, entries []pluginEntry, linkedNames map[string]bool) ([]Stage, error) {
+	index := make(map[string]bool, len(host.Stages))
+	for _, s := range host.Stages {
+		index[s.Name] = true
+	}
 	chosen := map[string]bool{}
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name, stagePrefix) {
-			if _, ok := stageByName[e.Name]; ok {
+			if index[e.Name] {
 				chosen[e.Name] = true
 				continue
 			}
 			// A preset bundle name expands into its ordered constituent stages;
-			// canonicalStages below then sorts and dedups the union.
-			if constituents, ok := bundleByName[e.Name]; ok {
+			// the host's stage-table order below then sorts and dedups the union.
+			if constituents, ok := host.Bundles[e.Name]; ok {
 				for _, name := range constituents {
 					chosen[name] = true
 				}
@@ -292,9 +368,9 @@ func selectStages(entries []pluginEntry, linkedNames map[string]bool) ([]stageDe
 		}
 		return nil, fmt.Errorf("plugin %q is neither a rhombusstd_* stage nor a linked plugin — this host composes no foreign transforms", e.Name)
 	}
-	out := make([]stageDef, 0, len(chosen))
-	for _, stage := range canonicalStages {
-		if chosen[stage.name] {
+	out := make([]Stage, 0, len(chosen))
+	for _, stage := range host.Stages {
+		if chosen[stage.Name] {
 			out = append(out, stage)
 		}
 	}
@@ -307,7 +383,7 @@ func selectStages(entries []pluginEntry, linkedNames map[string]bool) ([]stageDe
 // active it runs the emit sweep (tripwire 2) over the fully-lowered output after
 // parent pointers are fixed up, so a synthetic node can walk to a positioned
 // ancestor, before printing.
-func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit func(envelopeDiagnostic)) string {
+func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit Sink) string {
 	options := prog.TSProgram.Options()
 	ec := shimprinter.NewEmitContext()
 	result := sf
@@ -319,7 +395,7 @@ func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTra
 	shimast.SetParentInChildrenUnset(result.AsNode())
 	if artifacts != nil && artifacts.Active {
 		for _, d := range inlinetransform.Sweep(result, artifacts) {
-			emit(envelopeFromPlugin(d, categoryError))
+			emit(DiagFromPlugin(d))
 		}
 	}
 	writer := shimprinter.NewTextWriter(options.NewLine.GetNewLineCharacter(), 0)
@@ -340,22 +416,10 @@ type envelopeDiagnostic struct {
 	MessageText string  `json:"messageText"`
 }
 
-// envelopeFromPlugin converts a plugin.Diagnostic (no category of its own) into
-// an envelope diagnostic under the given category.
-func envelopeFromPlugin(d plugin.Diagnostic, category string) envelopeDiagnostic {
-	return envelopeDiagnostic{
-		File:        filePointer(d.File),
-		Category:    category,
-		Code:        d.Code,
-		MessageText: d.Message,
-	}
-}
-
-// envelopeFromDi converts a ditransform.Diagnostic, honoring its advisory
-// Warning vs hard Error category so a warning does not fail emit.
-func envelopeFromDi(d ditransform.Diagnostic) envelopeDiagnostic {
+// envelopeFromDiag converts a stage Diag into its envelope form.
+func envelopeFromDiag(d Diag) envelopeDiagnostic {
 	category := categoryError
-	if d.Category == ditransform.Warning {
+	if d.Warning {
 		category = categoryWarning
 	}
 	return envelopeDiagnostic{
