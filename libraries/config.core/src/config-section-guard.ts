@@ -16,14 +16,7 @@
 // a forked private copy. `ConfigRoot`/`ConfigManager` do not apply the brand,
 // so the guard returns `false` for them.
 
-import type { IConfigSection } from './IConfigSection';
-
-/**
- * The brand a concrete {@link IConfigSection} sets on itself (as a public
- * symbol-keyed own property valued `true`) so {@link isConfigSection} can
- * recognize it at runtime. A root never carries this brand.
- */
-export const configSectionBrand: unique symbol = Symbol('@rhombus-std/config.core#IConfigSection');
+import { configSectionBrand, type IConfigSection } from './IConfigSection';
 
 /**
  * Whether `config` is a genuine {@link IConfigSection} rather than a root.

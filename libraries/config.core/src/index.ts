@@ -22,6 +22,7 @@ export type * from './types';
 
 // Runtime helpers that belong to the abstractions assembly by reference parity.
 export * as configPath from './config-path';
-export { configSectionBrand, isConfigSection } from './config-section-guard';
+export { isConfigSection } from './config-section-guard';
 export { ConfigAugmentations, exists } from './ConfigAugmentations';
 export { type ConfigDebugViewContext, ConfigRootAugmentations } from './ConfigRootAugmentations';
+export { configSectionBrand } from './IConfigSection';

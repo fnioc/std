@@ -14,6 +14,7 @@ export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
   output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   external: [
+    /^@rhombus-std\/config\.core$/,
     /^@rhombus-std\/di\.core$/,
     /^@rhombus-std\/config$/,
     /^@rhombus-std\/options$/,
