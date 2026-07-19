@@ -233,4 +233,79 @@ func TestSelectSpecifier(t *testing.T) {
 			t.Fatalf("diagSubpath = %q, want contracts", decision.diagSubpath)
 		}
 	})
+
+	t.Run("public alongside tokens and a non-public other: public wins, no diagnostic", func(t *testing.T) {
+		// Mixed-tier precedence: a type reachable through the public barrel AND a
+		// `./tokens/*` white-box subpath AND a non-public `./contracts` alias resolves
+		// to the public barrel with no diagnostic — the public tier dominates.
+		decision := selectSpecifier([]reachingEntry{
+			{subpath: "contracts", public: false},
+			{subpath: "tokens/foo", public: false},
+			{subpath: "", public: true},
+		})
+		spec, ok := finalSpecifier("your-lib", decision)
+		if !ok || spec != "your-lib" || decision.diagSubpath != "" {
+			t.Fatalf("spec = %q ok = %v diag = %q, want your-lib true \"\"", spec, ok, decision.diagSubpath)
+		}
+	})
+
+	t.Run("tokens alongside a non-public other: tokens rescues, no diagnostic", func(t *testing.T) {
+		// haveTokens short-circuits BEFORE haveOther, so a type exported via both a
+		// `./tokens/*` subpath and a non-public `./contracts` alias must NOT diagnose —
+		// the tokens reach rescues it to the app-internal fallback token.
+		decision := selectSpecifier([]reachingEntry{
+			{subpath: "contracts", public: false},
+			{subpath: "tokens/foo", public: false},
+		})
+		if _, ok := finalSpecifier("your-lib", decision); ok {
+			t.Fatalf("tokens+other must not resolve a public specifier: %+v", decision)
+		}
+		if decision.diagSubpath != "" {
+			t.Fatalf("tokens short-circuit must suppress the diagnostic, got %q", decision.diagSubpath)
+		}
+	})
+
+	t.Run("multiple non-public others: shortest-then-lexicographic wins into diagSubpath", func(t *testing.T) {
+		// Only a single-entry `other` set was tested before; with two equal-length
+		// non-public aliases the lexicographic tiebreak selects the offending subpath.
+		decision := selectSpecifier([]reachingEntry{
+			{subpath: "other", public: false},
+			{subpath: "alias", public: false},
+		})
+		if decision.diagSubpath != "alias" {
+			t.Fatalf("diagSubpath = %q, want alias (equal length, lexicographically first)", decision.diagSubpath)
+		}
+		// Unequal length prefers the shorter regardless of lexicographic order.
+		decision = selectSpecifier([]reachingEntry{
+			{subpath: "aaaa", public: false},
+			{subpath: "zz", public: false},
+		})
+		if decision.diagSubpath != "zz" {
+			t.Fatalf("diagSubpath = %q, want zz (shorter length)", decision.diagSubpath)
+		}
+	})
+}
+
+// shorterSubpath is the pure canonical-choice comparator selectSpecifier drives:
+// shorter length first, lexicographic on equal length, with the root "" shortest of
+// all. Only asserted transitively through selectSpecifier before; pinned directly
+// here.
+func TestShorterSubpath(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"a", "bb", true},        // shorter length wins
+		{"bb", "a", false},       // longer loses
+		{"alias", "other", true}, // equal length, lexicographically smaller wins
+		{"other", "alias", false},
+		{"", "a", true},     // root is shortest of all
+		{"a", "", false},    // ...and never beats the root
+		{"ab", "ab", false}, // equal strings: not strictly shorter
+	}
+	for _, tc := range cases {
+		if got := shorterSubpath(tc.a, tc.b); got != tc.want {
+			t.Errorf("shorterSubpath(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
+	}
 }
