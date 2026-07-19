@@ -150,7 +150,7 @@ beforeAll(() => {
     join(projDir, 'src', 'app.ts'),
     `
 import type { IOptions } from "@rhombus-std/options";
-import { IFoo } from "your-lib/contracts";
+import { IFoo } from "your-lib";
 import type { Nested, IServiceManifestBase } from "@rhombus-std/di.core";
 export type __KeepOptions<T> = IOptions<T>;
 declare const services: IServiceManifestBase<"singleton">;

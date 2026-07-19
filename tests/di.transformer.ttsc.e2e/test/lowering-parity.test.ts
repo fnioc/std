@@ -159,7 +159,7 @@ beforeAll(() => {
     join(projDir, 'src', 'app.ts'),
     `
 import { nameof } from "./nameof";
-import { IUserRepo } from "your-lib/contracts";
+import { IUserRepo } from "your-lib";
 import type { Nested, IResolver as DiResolver, IServiceManifest, IServiceManifestBase, IServiceProvider } from "@rhombus-std/di.core";
 
 // The Keyed<T, K> phantom brand (declared locally — the transformer detects it
