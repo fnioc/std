@@ -16,8 +16,8 @@
 
 /**
  * Compile-time token for a type. Rewritten by the
- * @rhombus-std/primitives.transformer plugin to a string literal; the runtime
- * body only runs when the transformer is absent.
+ * @rhombus-std/primitives.transformer build-time transformer to a string
+ * literal; the runtime body only runs when the transformer is absent.
  *
  * @example
  * ```ts
@@ -27,8 +27,8 @@
 export function nameof<T>(): string {
   void (0 as unknown as T);
   throw new Error(
-    'nameof<T>() requires the @rhombus-std/primitives.transformer plugin. Add { "transform": '
-      + '"@rhombus-std/primitives.transformer" } to your tsconfig "plugins", or pass a token string.',
+    'nameof<T>() requires the @rhombus-std/primitives.transformer build-time transformer, '
+      + 'or pass an explicit token string.',
   );
 }
 
