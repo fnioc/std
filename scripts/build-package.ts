@@ -24,10 +24,9 @@ import { join } from 'node:path';
 
 /**
  * Read the resolved transformer specifiers from a tsconfig's
- * `compilerOptions.plugins[].transform`, following `extends` (the tspc twin
- * hoists its plugins array into the shared `tsconfig.tspc.json` fragment, so a
- * shallow read of the leaf file would miss them). `tsc --showConfig` resolves
- * the whole chain and echoes `plugins` verbatim.
+ * `compilerOptions.plugins[].transform`, following `extends`. `tsc --showConfig`
+ * resolves the whole chain and echoes `plugins` verbatim, so a plugin declared in
+ * an extended base is still seen.
  */
 export function readTsconfigTransforms(dir: string, tsconfigRel: string): string[] {
   const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], {

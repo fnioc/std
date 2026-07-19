@@ -1,14 +1,13 @@
 {
   "name": "@rhombus-std/di.transformer.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.transformer satellite: lowers the type-driven addOptions<T>() sugar to the explicit addOptions(token(IOptions<T>), token(T)) verb at compile time.",
+  "description": "A @rhombus-std/di.transformer satellite: the type-only declare-module for the addOptions<T>() sugar. A Go/ttsc descriptor package — the lowering to addOptions(token(IOptions<T>), token(T)) runs in the shared owner binary.",
   "keywords": [
     "options",
     "dependency-injection",
     "di",
     "ioc",
     "typescript",
-    "ts-patch",
     "transformer",
     "compiler"
   ],
@@ -47,9 +46,6 @@
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
-  "dependencies": {
-    "@rhombus-std/primitives.transformer": "workspace:^"
-  },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^",
     "@rhombus-std/di.transformer": "workspace:^",
@@ -57,10 +53,7 @@
   },
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di.transformer": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0",
-    "ttsc": "^0.18.1"
+    "@rhombus-std/di.transformer": "workspace:*"
   },
   "publishConfig": {
     "access": "public",

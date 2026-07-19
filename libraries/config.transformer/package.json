@@ -1,13 +1,12 @@
 {
   "name": "@rhombus-std/config.transformer",
   "version": "0.0.0",
-  "description": "The @rhombus-std/config ts-patch transformer: rewrites .withType<T>() on a ConfigBuilder into a generated .withSchema({...}) runtime schema literal at compile time.",
+  "description": "The @rhombus-std/config authoring transformer: rewrites .withType<T>() on a ConfigBuilder into a generated .withSchema({...}) runtime schema literal at compile time. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
   "keywords": [
     "configuration",
     "config",
     "ioc",
     "typescript",
-    "ts-patch",
     "transformer",
     "compiler"
   ],
@@ -18,20 +17,8 @@
     "directory": "libraries/config.transformer"
   },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./ttsc": "./ttsc.mjs",
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    }
+    "./ttsc": "./ttsc.mjs"
   },
   "ttsc": {
     "plugin": {
@@ -39,41 +26,15 @@
     }
   },
   "files": [
-    "dist",
     "ttsc.mjs"
   ],
-  "scripts": {
-    "build": "bun ../../scripts/build-lib.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.json"
-  },
-  "//rhombusBuild": "The runtime bundle must be @rhombus-std-free: the only \"@rhombus-std/config\" occurrence is the codegen'd import-specifier STRING the transformer emits, never a real ESM import.",
-  "rhombusBuild": {
-    "forbidImports": [
-      "@rhombus-std/config"
-    ]
-  },
   "peerDependencies": {
-    "@rhombus-std/config": "workspace:^",
-    "typescript": ">=5.2"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "@rhombus-std/config": "workspace:*",
-    "@rhombus-std/config.core": "workspace:*",
-    "ts-patch": "^3.3.0",
-    "ttsc": "^0.18.1"
+    "@rhombus-std/config": "workspace:^"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
-      },
       "./ttsc": "./ttsc.mjs"
     }
   }

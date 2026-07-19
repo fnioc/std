@@ -103,7 +103,6 @@
       "devDependencies": {
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -124,7 +123,6 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -145,7 +143,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/proxy-base": "^1.0.0",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -161,7 +158,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -189,7 +185,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -211,7 +206,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -232,7 +226,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -253,7 +246,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -264,15 +256,8 @@
     "libraries/config.transformer": {
       "name": "@rhombus-std/config.transformer",
       "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/config.core": "workspace:*",
-        "ts-patch": "^3.3.0",
-        "ttsc": "^0.18.1",
-      },
       "peerDependencies": {
         "@rhombus-std/config": "workspace:^",
-        "typescript": ">=5.2",
       },
     },
     "libraries/config.xml": {
@@ -288,7 +273,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -307,7 +291,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -322,7 +305,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -332,14 +314,10 @@
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:^",
         "@rhombus-toolkit/func": "3.5.3",
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
-        "ts-patch": "^3.3.0",
-        "ttsc": "^0.18.1",
       },
       "peerDependencies": {
         "@rhombus-std/di.core": "workspace:^",
@@ -349,15 +327,9 @@
     "libraries/di.transformer.options": {
       "name": "@rhombus-std/di.transformer.options",
       "version": "0.0.0",
-      "dependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:^",
-      },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
-        "ts-patch": "^3.3.0",
-        "ttsc": "^0.18.1",
       },
       "peerDependencies": {
         "@rhombus-std/di.core": "workspace:^",
@@ -380,7 +352,6 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -400,7 +371,6 @@
       "devDependencies": {
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -457,7 +427,6 @@
         "@types/bun": "^1.3.0",
         "rollup": "^4.61.0",
         "rollup-plugin-dts": "^6.4.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -480,7 +449,6 @@
       "devDependencies": {
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -503,7 +471,6 @@
         "@types/bun": "^1.3.0",
         "rollup": "^4.61.0",
         "rollup-plugin-dts": "^6.4.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -523,7 +490,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -543,7 +509,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -564,7 +529,6 @@
       "devDependencies": {
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -583,7 +547,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -599,7 +562,6 @@
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -626,7 +588,6 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
-        "ts-patch": "^3.3.0",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
@@ -644,17 +605,6 @@
     "libraries/primitives.transformer": {
       "name": "@rhombus-std/primitives.transformer",
       "version": "10.1.0",
-      "dependencies": {
-        "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-toolkit/func": "3.5.3",
-      },
-      "devDependencies": {
-        "ts-patch": "^3.3.0",
-        "ttsc": "^0.18.1",
-      },
-      "peerDependencies": {
-        "typescript": ">=5.2",
-      },
     },
     "tests/augmentations.test": {
       "name": "@rhombus-std/augmentations.test",
@@ -773,16 +723,6 @@
         "@types/node": "^24.13.2",
       },
     },
-    "tests/config.transformer.test": {
-      "name": "@rhombus-std/config.transformer.test",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/config.core": "workspace:*",
-        "@rhombus-std/config.transformer": "workspace:*",
-        "ts-patch": "^3.3.0",
-      },
-    },
     "tests/config.transformer.ttsc.e2e": {
       "name": "@rhombus-std/config.transformer.ttsc.e2e",
       "version": "0.0.0",
@@ -832,17 +772,6 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.transformer": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
-        "ts-patch": "^3.3.0",
-      },
-    },
-    "tests/di.transformer.options.test": {
-      "name": "@rhombus-std/di.transformer.options.test",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/di.transformer.options": "workspace:*",
-        "ts-patch": "^3.3.0",
       },
     },
     "tests/di.transformer.options.ttsc.e2e": {
@@ -853,17 +782,6 @@
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^7.0.2",
-      },
-    },
-    "tests/di.transformer.test": {
-      "name": "@rhombus-std/di.transformer.test",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
-        "ts-patch": "^3.3.0",
       },
     },
     "tests/di.transformer.ttsc.e2e": {
@@ -1056,7 +974,6 @@
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
-        "ts-patch": "^3.3.0",
       },
     },
     "tests/options.test": {
@@ -1442,8 +1359,6 @@
 
     "@rhombus-std/config.transformer": ["@rhombus-std/config.transformer@workspace:libraries/config.transformer"],
 
-    "@rhombus-std/config.transformer.test": ["@rhombus-std/config.transformer.test@workspace:tests/config.transformer.test"],
-
     "@rhombus-std/config.transformer.ttsc.e2e": ["@rhombus-std/config.transformer.ttsc.e2e@workspace:tests/config.transformer.ttsc.e2e"],
 
     "@rhombus-std/config.xml": ["@rhombus-std/config.xml@workspace:libraries/config.xml"],
@@ -1464,11 +1379,7 @@
 
     "@rhombus-std/di.transformer.options": ["@rhombus-std/di.transformer.options@workspace:libraries/di.transformer.options"],
 
-    "@rhombus-std/di.transformer.options.test": ["@rhombus-std/di.transformer.options.test@workspace:tests/di.transformer.options.test"],
-
     "@rhombus-std/di.transformer.options.ttsc.e2e": ["@rhombus-std/di.transformer.options.ttsc.e2e@workspace:tests/di.transformer.options.ttsc.e2e"],
-
-    "@rhombus-std/di.transformer.test": ["@rhombus-std/di.transformer.test@workspace:tests/di.transformer.test"],
 
     "@rhombus-std/di.transformer.ttsc.e2e": ["@rhombus-std/di.transformer.ttsc.e2e@workspace:tests/di.transformer.ttsc.e2e"],
 

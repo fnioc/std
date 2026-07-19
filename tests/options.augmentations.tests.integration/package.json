@@ -17,7 +17,6 @@
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*",
-    "ts-patch": "^3.3.0"
+    "@rhombus-std/primitives": "workspace:*"
   }
 }

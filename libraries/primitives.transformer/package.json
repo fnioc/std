@@ -1,11 +1,10 @@
 {
   "name": "@rhombus-std/primitives.transformer",
   "version": "10.1.0",
-  "description": "The standalone token-derivation ts-patch transformer: the nameof<T>() compile-time token mechanism and the token-generation machinery, di-independent so any family can mint augmentation tokens from types.",
+  "description": "The standalone token-derivation authoring transformer: the nameof<T>() compile-time token mechanism plus the inline and signatureof primitive stages. A Go/ttsc descriptor package — the derivation runs in the shared owner binary, di-independent so any family can mint augmentation tokens from types.",
   "keywords": [
     "primitives",
     "typescript",
-    "ts-patch",
     "transformer",
     "compiler",
     "nameof"
@@ -17,22 +16,10 @@
     "directory": "libraries/primitives.transformer"
   },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
-    "./signatureof-ttsc": "./ttsc-signatureof.mjs",
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    }
+    "./signatureof-ttsc": "./ttsc-signatureof.mjs"
   },
   "ttsc": {
     "plugin": {
@@ -40,37 +27,14 @@
     }
   },
   "files": [
-    "dist",
     "ttsc.mjs",
     "ttsc-inline.mjs",
     "ttsc-signatureof.mjs"
   ],
-  "scripts": {
-    "build": "bun ../../scripts/build-lib.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.json"
-  },
-  "dependencies": {
-    "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3"
-  },
-  "peerDependencies": {
-    "typescript": ">=5.2"
-  },
-  "devDependencies": {
-    "ts-patch": "^3.3.0",
-    "ttsc": "^0.18.1"
-  },
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
-      },
       "./ttsc": "./ttsc.mjs",
       "./inline-ttsc": "./ttsc-inline.mjs",
       "./signatureof-ttsc": "./ttsc-signatureof.mjs"

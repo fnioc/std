@@ -1,13 +1,12 @@
 {
   "name": "@rhombus-std/di.transformer",
   "version": "10.1.0",
-  "description": "The ioc ts-patch transformer: token generation, dependency extraction, registration lowering, and the factory-signature diagnostic.",
+  "description": "The ioc authoring surface: the type-only declare-module for the token-free registration forms, the inline sugar bodies, and the signatureof primitive. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
   "keywords": [
     "dependency-injection",
     "di",
     "ioc",
     "typescript",
-    "ts-patch",
     "transformer",
     "compiler"
   ],
@@ -71,16 +70,8 @@
     "build": "bun ../../scripts/build-lib.ts",
     "lint": "eslint ."
   },
-  "//rhombusBuild": "Dist-parity carve-out: the retired bespoke build inlined these two declared dependencies (typescript was its only external); aligning to the deps-stay-external rule changes published bytes and is a follow-up PR.",
-  "rhombusBuild": {
-    "inline": [
-      "@rhombus-std/primitives.transformer",
-      "@rhombus-toolkit/func"
-    ]
-  },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:^",
     "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {
@@ -88,10 +79,7 @@
     "typescript": ">=5.2"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
-    "ts-patch": "^3.3.0",
-    "ttsc": "^0.18.1"
+    "@rhombus-std/di.core": "workspace:*"
   },
   "publishConfig": {
     "access": "public",
