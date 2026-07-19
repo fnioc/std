@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -211,6 +211,21 @@ beforeAll(() => {
   }
   mkdirSync(join(WORK_ROOT, 'sidecar'), { recursive: true });
   mkdirSync(goTmp, { recursive: true });
+
+  // 0. The direct sidecar build below resolves the ttsc shim modules through the
+  //    gitignored transforms/go.work; the sibling suites get theirs from the ttsc
+  //    driver's own scratch workspace. CI runs tests before the Go-gates step that
+  //    generates go.work, so provision it here when absent.
+  if (!existsSync(join(TRANSFORMS, 'go.work'))) {
+    const gen = spawnSync(
+      'node',
+      [join(REPO_ROOT, 'scripts', 'gen-go-work.mjs')],
+      { cwd: REPO_ROOT, encoding: 'utf8' },
+    );
+    if (gen.status !== 0) {
+      throw new Error(`gen-go-work failed:\n${gen.stdout}\n${gen.stderr}`);
+    }
+  }
 
   // 1. Build the Go owner host once (drives the deterministic diagnostics path).
   const build = spawnSync(
