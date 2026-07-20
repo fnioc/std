@@ -328,17 +328,17 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
 (`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
 
-## Build layout — dist-referencing, in progress (§72)
+## Build layout — dist-referencing (§72)
 
-**The target invariant (not yet universal): every package is dist-referenced.** Type-facing
+**Every runtime library is dist-referenced (#68 complete).** Type-facing
 `exports` conditions resolve the rolled `./dist/bundle/*.d.ts`, and runtime resolves the bundled
 `./dist/bundle/*.js`, so an in-repo consumer typechecks and runs against the same sealed surface a
 published consumer gets — never raw `.ts` source. The bundled artifacts live under `dist/bundle/` —
 a role-named sibling of the `dist/stage/` lowering emit — so `dist` holds one directory per build
-role. The old src-referencing rule (a `.` export's
-`source`/`bun`/`types` conditions pointing at `./src/*.ts`, permitted only for d.ts-only libs) is
-being retired package by package; see §72 in `docs/decisions.md` for why and for the current
-front line. **The white-box seam is two subpaths** — `./tokens/*` (all conditions → src, the token
+role. The old src-referencing rule (a `.` export's `source`/`bun`/`types` conditions pointing at
+`./src/*.ts`) is retired (§72/§78). **src-refs are internal-only** now — never a runtime or publish
+resolution: the per-core `<pkg>-source` self-compile condition, the `./tokens/*` / `./private/*`
+white-box seams, and the editor whole-repo program's `source` condition (§105). **The white-box seam is two subpaths** — `./tokens/*` (all conditions → src, the token
 surface the derivation reads) and, for a lowering package, `./private/*` (`types` → src, `bun` →
 the lowered `./dist/stage/*.js` a white-box test executes). Neither is published (both scrubbed from
 `publishConfig.exports`).
@@ -361,22 +361,11 @@ export and from `customConditions` in all nine downstream consumer tsconfigs tha
 dist-resolution with it (the `di.transformer` pair, the example/app programs, and the di + config
 transformer test programs) — the per-core `-source` conditions above are its narrower replacement.
 
-**Deferred — `config` is the sole remaining src-referenced runtime lib (#68 stays open, scoped to
-it).** `config` declares its augmentation receivers at SUBPATH exports
-(`./configuration-builder`, `./configuration-manager`) that its providers merge onto;
-`config.json`/`config.env`/`config.commandline` converted fine against config's still-src
-subpaths, since their augmentations are compile-time-only with no runtime token to desync. Flipping
-config's own `.` export to dist would seal it external, and `rollup-plugin-dts` can no longer pull
-those src subpath modules into a provider's program (TS2664, with no `-source`-style fix available
-since the receivers themselves live at the subpaths). Per §74, this closes only via a COMPLETE
-per-package flip — collapsing those subpaths onto the rolled root barrel AND updating
-`config.transformer`'s token derivation to match — a design decision, not a mechanical shim, so it
-was left rather than forced (§78).
-
-Mechanically, for packages not yet converted: they consume each other's raw TS `src` via
-`workspace:*` + `exports` whose `source`/`bun`/`types` conditions point at `.ts`, under
-`moduleResolution: bundler`. The `import`/`default` conditions point at built `dist/bundle` — what
-published consumers resolve.
+**`config` is converted — #68 complete.** Its `.` export resolves `bun`/`import`/`default` → dist
+like every runtime lib; a package-unique `config-source` condition routes config's OWN program back
+to `./src/*` for its `with-type-augment.ts` self-`declare module` (the same self-compile pattern as
+the cores). Only its `./tokens/*` white-box subpath is src. No src-referenced runtime consumers
+remain.
 
 One further deviation, because a **transformer** is in play — now a single **Go/`ttsc`** engine
 (the ts-patch/TS5 track was removed; restore tag `pre-tspatch-removal`):
