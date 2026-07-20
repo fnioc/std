@@ -7,6 +7,7 @@
   "sideEffects": true,
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "hosting-core-source": "./src/index.ts",
       "bun": "./dist/bundle/index.js",
       "types": "./dist/bundle/index.d.ts",

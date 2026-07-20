@@ -22,6 +22,7 @@
   "//config-source": "config self-augments: memory/chained/with-type-augment.ts all `declare module \"@rhombus-std/config\"` (the barrel) and import ConfigBuilder from it, so every one of config's own ConfigBuilder augmenters merges onto ONE type -- mixing the barrel with a relative `../ConfigBuilder` phantom-splits the class and `return this` fails. But config's own compile has no built dist to resolve its own name against (TS2664/TS2307 the moment dist is absent). The package-unique `config-source` condition, listed FIRST on the `.` export (ahead of `types`), routes config's OWN program back to ./src/index.ts so the self-`declare module` and self-imports resolve during the not-yet-built compile; every external consumer (which never sets this condition) resolves `types` -> the rolled ./dist/bundle/index.d.ts. This is di.core's `di-core-source` self-source pattern (§72/§74); config was the last self-augmenting core carrying its source condition on a subpath instead of `.`. Dev-only: absent from publishConfig, where `.` collapses onto ./dist/bundle/index.* like the reference. No merge-anchor subpaths remain.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "config-source": "./src/index.ts",
       "bun": "./dist/bundle/index.js",
       "types": "./dist/bundle/index.d.ts",
@@ -50,7 +51,7 @@
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
-    "lint": "bun x tsc --noEmit -p tsconfig.json"
+    "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
     "@rhombus-std/config.core": "workspace:*",

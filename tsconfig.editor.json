@@ -1,0 +1,7 @@
+{
+  "//": "Editor-only whole-repo program: the `source` export condition resolves @rhombus-std/* to src for IDE rename/find-refs across packages. bun ignores customConditions (it uses `bun` -> dist), so build/tests are unaffected; the CI gate uses tsconfig.ci.json.",
+  "extends": "./tsconfig.lib.json",
+  "compilerOptions": {
+    "customConditions": ["source"]
+  }
+}

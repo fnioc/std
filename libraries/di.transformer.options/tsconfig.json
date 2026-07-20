@@ -1,8 +1,4 @@
 {
-  // The satellite's own program: `augment.ts` declaration-merges `addOptions<T>()`
-  // onto di.core's `IServiceManifestBase`. di.core is dist-referenced (§72), so its
-  // `types` condition resolves the built, skip-lib-checked `.d.ts` and the merge
-  // binds without a `built` custom condition.
-  "extends": "../../tsconfig.lib.json",
-  "include": ["src/**/*"]
+  "extends": "../../tsconfig.editor.json",
+  "include": ["../*/src/**/*"]
 }

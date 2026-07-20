@@ -1,15 +1,4 @@
 {
-  "extends": "../../tsconfig.lib.json",
-  "compilerOptions": {
-    // §72 self-reference shim: hosting.core self-augments
-    // `@rhombus-std/hosting.core` (IHostBuilder). With the `.` export's `types`
-    // flipped to the not-yet-built dist `.d.ts`, that self-directed `declare
-    // module` resolves to a missing file (TS2664). The package-unique
-    // `hosting-core-source` condition -- listed FIRST in the `.` export so it
-    // wins over `types` -- routes this package's OWN program back to src, while
-    // external consumers (which do not set the condition) resolve the built
-    // dist. Dev-only: absent from publishConfig.
-    "customConditions": ["hosting-core-source"]
-  },
-  "include": ["src/**/*"]
+  "extends": "../../tsconfig.editor.json",
+  "include": ["../*/src/**/*"]
 }
