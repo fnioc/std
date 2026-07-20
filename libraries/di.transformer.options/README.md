@@ -30,26 +30,10 @@ services.addOptions(
 ).as('singleton');
 ```
 
-Writing that wrapper token out by hand is what this plugin exists to remove.
-Wire it into your `tsconfig.json` **alongside** `@rhombus-std/di.transformer`
-(the two plugins compose; order between them doesn't matter), and compile
-with `ts-patch`'s patched compiler (`tspc`):
-
-```jsonc
-{
-  "compilerOptions": {
-    "plugins": [
-      { "transform": "@rhombus-std/di.transformer", "import": "transform" },
-      {
-        "transform": "@rhombus-std/di.transformer.options",
-        "import": "transform",
-      },
-    ],
-  },
-}
-```
-
-With the plugin in the program, you write:
+Writing that wrapper token out by hand is what this plugin exists to remove. Importing
+`@rhombus-std/di.transformer.options` (or listing it in your `tsconfig.json`'s `types` array)
+brings the 0-argument sugar into scope for typechecking, alongside `@rhombus-std/di.transformer`
+(the two compose; order doesn't matter). With both in scope, you write:
 
 ```ts
 services.addOptions<AppOptions>().as('singleton');
@@ -68,22 +52,18 @@ plugin's.
 
 ## Key exports
 
-| Export                                            | What it is                                                                                                |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `transform` / `transformer` (default)             | The ts-patch transformer factory — point your tsconfig `plugins` entry's `"import"` at `transform`.       |
-| `createTransformerFactory`                        | The underlying factory, exposed directly for tests or custom driving code.                                |
-| `Diagnostic`, `DiagnosticCode`, `IDiagnosticSink` | The plugin's diagnostic surface — stable codes you can assert on in tooling, independent of message text. |
-
-Importing the package also carries a type-only side effect: it declares the
-`addOptions<T>()` overload on the registration builder. Without this package
-in your program, `addOptions<T>()` simply doesn't exist as a method — there's
-no silent no-op form waiting to compile-but-misbehave under plain `tsc`.
+This package has no JavaScript API of its own — like `@rhombus-std/config.transformer` and
+`@rhombus-std/primitives.transformer`, it's a build-time-only Go/`ttsc` engine descriptor.
+Importing it (or listing it in your `tsconfig.json`'s `types` array) carries a type-only side
+effect instead: it declares the `addOptions<T>()` overload on the registration builder. Without
+this package in your program, `addOptions<T>()` simply doesn't exist as a method — there's no
+silent no-op form waiting to compile-but-misbehave under plain `tsc`.
 
 ## How it fits
 
-- Builds on [`@rhombus-std/di.transformer`](../di.transformer) for its token
-  derivation — this plugin never touches the DI runtime directly, only types
-  and tokens.
+- Depends on [`@rhombus-std/primitives.transformer`](../primitives.transformer) for its token
+  derivation, the same engine [`@rhombus-std/di.transformer`](../di.transformer) depends on — this
+  plugin never touches the DI runtime directly, only types and tokens.
 - Targets the explicit registration verb that
   [`@rhombus-std/options.augmentations`](../options.augmentations) installs
   on the registration builder; install that package for the runtime side of
@@ -97,10 +77,10 @@ no silent no-op form waiting to compile-but-misbehave under plain `tsc`.
 
 ## Notes
 
-- This plugin has no effect under plain `tsc` — `addOptions<T>()` only exists
-  once the plugin is in your `tsconfig.json` `plugins` array and you compile
-  with `tspc`. There is deliberately no runtime fallback for the 0-argument
-  form.
+- This plugin's type augmentation has no effect unless it's in scope (via import or the `types`
+  array, described above) — `addOptions<T>()` doesn't exist as a method otherwise. There is
+  deliberately no runtime fallback for the 0-argument form; the actual token rewrite still needs
+  the build-time engine to run.
 - It emits diagnostics (not silent skips) when a type argument's token can't
   be derived, or when `@rhombus-std/options`'s `IOptions<T>` isn't reachable
   in your program.

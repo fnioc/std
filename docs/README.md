@@ -19,8 +19,7 @@ Cross-cutting mechanisms used across multiple package families.
 - [augmentations.md](features/augmentations.md) — the augmentations mechanism (this repo's
   stand-in for extension methods): how to author one, how to consume one, how it works.
 - [transformer-architecture.md](features/transformer-architecture.md) — how the four
-  authoring-time transformers ship two engines (ts-patch + a Go/`ttsc` backend) behind one
-  contract.
+  authoring-time transformers share one Go/`ttsc` engine and one owner binary underneath.
 
 ## libraries
 

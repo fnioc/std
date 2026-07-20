@@ -7,35 +7,11 @@ Hand-writing a dependency-injection registration means typing out a token string
 ## Install
 
 ```sh
-bun add -d @rhombus-std/di.transformer ts-patch
+bun add @rhombus-std/di.transformer
 bun add @rhombus-std/di.core
 ```
 
-The transformer runs inside `ts-patch`'s patched `tsc`. It does not work with `ttypescript` (unmaintained). Patch your local compiler once:
-
-```sh
-npx ts-patch install
-```
-
-Then wire the plugin into `tsconfig.json`:
-
-```jsonc
-{
-  "compilerOptions": {
-    "plugins": [{ "transform": "@rhombus-std/di.transformer" }],
-  },
-}
-```
-
-And build with `tspc` — `ts-patch`'s drop-in replacement for `tsc` — instead of plain `tsc`, which ignores the `plugins` array entirely:
-
-```json
-{
-  "scripts": {
-    "build": "tspc"
-  }
-}
-```
+Importing `@rhombus-std/di.transformer` (or listing it in your `tsconfig.json`'s `types` array) brings the type-driven authoring forms below — `add<I>(C)`, `.as<"x">()`, and friends — into scope for typechecking, no build plugin required. The package itself ships only that type-only `declare module` augmentation plus the brand types it re-exports; the actual lowering of those calls into plain, tokenized JavaScript is done by an optional build-time Go/`ttsc` engine, the same one this repo builds its own packages with.
 
 ## Usage
 
@@ -64,14 +40,12 @@ Both forms run identically at resolve time — the transformer only saves you fr
 
 ## Key exports
 
-| Export                                                                                                       | What it's for                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `transformer` (default), `createTransformerFactory`, `transform`                                             | The `ts-patch` plugin entry points — wired via `tsconfig.json`'s `plugins` array.                                                                                 |
-| `nameof<T>()`                                                                                                | Compile-time token helper: `nameof<IUserRepo>()` becomes the derived string token at build time. Throws a clear error if called without the transformer wired up. |
-| `OverloadedConstructorParameters<T>`, `OverloadedParameters<T>`                                              | Overload-faithful parameter-tuple helpers, re-exported so a factory's rest parameter can be typed without a direct dependency on `@rhombus-std/di.core`.          |
-| `createTokenContext`, `deriveToken`, `tokenForType`, `baseTokenForSymbol`, `holeNumberFor`, `injectTokenFor` | The token-derivation building blocks, exported for tooling and tests that need to reproduce the transformer's token logic.                                        |
-| `extractFromExpression`, `extractSignatureFromClass`, `extractInstantiatedSignature`                         | Dependency-signature extraction, exported for tooling/tests.                                                                                                      |
-| `Diagnostic`, `DiagnosticCode`, `error`, `warning`                                                           | The diagnostic types the transformer emits during compilation (see below).                                                                                        |
+| Export                                                          | What it's for                                                                                                                                            |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Inject<T, "tok">`                                              | Pins an explicit token onto a constructor parameter the transformer can't otherwise derive one for — an anonymous structural type with no name.          |
+| `Hole<N, C>` / `$<N>`                                           | Open-generic placeholders for registering one implementation that serves many closings; `$<N>` is sugar for `Hole<N>`.                                   |
+| `Typeof<T>`                                                     | Lets an implementation see which token its own generic parameter was closed to at resolve time.                                                          |
+| `OverloadedConstructorParameters<T>`, `OverloadedParameters<T>` | Overload-faithful parameter-tuple helpers, re-exported so a factory's rest parameter can be typed without a direct dependency on `@rhombus-std/di.core`. |
 
 ## What it does
 
@@ -125,9 +99,9 @@ If the transformer can't statically inspect a constructor at all (a class refere
 
 ## How it fits
 
-`@rhombus-std/di.transformer` builds on [`@rhombus-std/primitives.transformer`](../primitives.transformer/README.md), which owns the underlying token-derivation machinery (`nameof`, `deriveToken`, and friends) — this package re-exports that surface alongside its own registration-lowering logic. Its `declare module` augmentation extends the authoring surface of [`@rhombus-std/di.core`](../di.core/README.md), which is why installing `@rhombus-std/di.transformer` is what makes `add<IFoo>(Foo)` and `.as<"scope">()` available on a `ServiceManifest` in the first place — a side-effect import (`import '@rhombus-std/di.transformer'`, done automatically when you import anything else from the package) is what wires it in.
+`@rhombus-std/di.transformer` depends on [`@rhombus-std/primitives.transformer`](../primitives.transformer/README.md) so `ttsc` activates its `nameof`/`inline`/`signatureof` stages alongside this package's own registration-lowering stage — the two run together, in one build-time pass. Its `declare module` augmentation extends the authoring surface of [`@rhombus-std/di.core`](../di.core/README.md), which is why installing `@rhombus-std/di.transformer` is what makes `add<IFoo>(Foo)` and `.as<"scope">()` available on a `ServiceManifest` in the first place — a side-effect import (`import '@rhombus-std/di.transformer'`, done automatically when you import anything else from the package) is what wires it in.
 
-At runtime, everything this transformer lowers is consumed by [`@rhombus-std/di`](../di/README.md) — the actual resolution engine, scopes, and open-generic closing. `@rhombus-std/di.transformer.options` is a satellite that lowers the `addOptions<T>()` sugar the same way, sharing this package's token-derivation logic so both transformers agree on the same tokens for the same program.
+At runtime, everything this transformer lowers is consumed by [`@rhombus-std/di`](../di/README.md) — the actual resolution engine, scopes, and open-generic closing. `@rhombus-std/di.transformer.options` is a satellite that lowers the `addOptions<T>()` sugar the same way, activated by the same build-time engine so both agree on the same tokens for the same program.
 
 You never need this package to _consume_ a library that was compiled with it — a library built with the transformer publishes plain, already-lowered JavaScript, so its registrations work in any consumer, transformer or not. Install `@rhombus-std/di.transformer` only in the project whose own classes you want auto-tokenized.
 
