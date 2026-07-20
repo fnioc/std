@@ -115,6 +115,12 @@ export class TokenProvider<P> {
     }
 
     const tree = parse(raw);
+    // An open (hole-bearing) query is not a resolvable closed token — it can
+    // never hit the exact map nor be legitimately synthesised (a template hole
+    // would bind to the query's hole, leaking an unbound label). Miss outright.
+    if (isOpen(tree)) {
+      return this.#remember(raw, undefined);
+    }
     const canon = stringify(tree);
     if (canon !== raw) {
       const canonHit = this.#exact.get(canon);
@@ -131,7 +137,7 @@ export class TokenProvider<P> {
       return this.#remember(raw, undefined);
     }
 
-    const ranked = [...candidates].sort((a, b) => specificity(b.tree) - specificity(a.tree));
+    const ranked = rankTemplates(candidates);
     for (const template of ranked) {
       const bind = match(template.tree, tree);
       if (bind) {
@@ -161,4 +167,21 @@ export class TokenProvider<P> {
 
 function last<P>(list: readonly Descriptor<P>[]): Descriptor<P> {
   return list[list.length - 1]!;
+}
+
+/** Rank overlapping templates most-specific-first, breaking ties by LATEST
+ * registration. Bucket order is registration order (see {@link TokenManifest.seal}),
+ * so a later duplicate of the same template overrides an earlier one — the same
+ * last-wins convention the exact map applies to closed duplicates. */
+function rankTemplates<P>(candidates: readonly Descriptor<P>[]): Descriptor<P>[] {
+  return candidates
+    .map((descriptor, index) => ({ descriptor, index }))
+    .sort((a, b) => {
+      const bySpecificity = specificity(b.descriptor.tree) - specificity(a.descriptor.tree);
+      if (bySpecificity !== 0) {
+        return bySpecificity;
+      }
+      return b.index - a.index;
+    })
+    .map((entry) => entry.descriptor);
 }

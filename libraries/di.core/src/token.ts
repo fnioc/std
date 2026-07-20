@@ -22,11 +22,25 @@
 // Canonicalisation (what the parser normalises away, so two semantically-equal
 // tokens serialise to the byte-identical string):
 //   - whitespace OUTSIDE quoted literals is stripped (around , < > # | and the
-//     base/key skeleton); interior quoted text is preserved EXACTLY;
+//     base/key skeleton); the whitespace class is comprehensive (`/\s/`: space,
+//     tab, LF, CR, form feed, vertical tab, NBSP, and the Unicode spaces),
+//     while interior quoted text is preserved EXACTLY;
 //   - quote style is normalised to double quotes (single quotes accepted on
-//     input as an ergonomic, re-emitted as double);
-//   - numeric literal args are normalised (`72.00` → `72`, `.5` → `0.5`);
-//   - hole labels are normalised to their integer form (`$01` → `$1`).
+//     input as an ergonomic, re-emitted as double); the only recognised escapes
+//     inside a literal are `\\` (→ `\`) and `\<quote>` (→ the quote char) — any
+//     other `\c` keeps the backslash verbatim, matching the BNF's escape-free
+//     `char*` and inverting the canonical encoder exactly;
+//   - hole labels are normalised to their integer form (`$01` → `$1`) and MUST
+//     be safe integers — an out-of-range label is rejected at parse, so the
+//     `n: number` model never loses precision and stringify never emits
+//     e-notation the grammar can't re-parse.
+//
+// Numeric literals are deliberately NOT a normalised category: the BNF has no
+// numeric production (`arg ::= token | hole | literal`, `literal` = quoted
+// strings only), so a bare `72` / `72.00` / `7.2e1` is just an identifier-shaped
+// `path`, byte-preserved and mutually distinct. Numeric-equivalence is left as
+// an explicit owner policy decision (see the spike report) rather than baked in
+// via a lossy `Number()` round-trip.
 
 /** The canonical string of the resolver intrinsic — di.core's provider token. */
 export const RESOLVER_TOKEN_STRING = '@rhombus-std/di.core:IResolver';
@@ -63,10 +77,12 @@ function assertNever(value: never): never {
   throw new Error(`unreachable token kind: ${JSON.stringify(value)}`);
 }
 
-const HOLE_TEXT = /^\$[0-9]+$/;
-const NUMERIC = /^-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/;
-const BASE_STOP = new Set(['<', '>', ',', '#', '|', ' ', '\t', '\n', '\r']);
-const KEY_STOP = new Set(['<', '>', ',', '#', '"', "'", ' ', '\t', '\n', '\r']);
+const WHITESPACE = /\s/;
+// Structural stop characters only — whitespace is handled separately via
+// `#isWs`, so the comprehensive `/\s/` class (form feed, vertical tab, NBSP, …)
+// terminates a base/key rather than being absorbed into it.
+const BASE_STOP = new Set(['<', '>', ',', '#', '|']);
+const KEY_STOP = new Set(['<', '>', ',', '#', '"', "'"]);
 
 /** Recursive-descent, index-based, quote-aware token parser. It parses to the
  * typed tree AND canonicalises in one pass, so `stringify(parse(raw))` is the
@@ -113,7 +129,11 @@ class TokenParser {
     if (this.#i === start) {
       throw this.#fail('hole `$` must be followed by digits');
     }
-    return { kind: 'hole', n: Number(this.#src.slice(start, this.#i)) };
+    const n = Number(this.#src.slice(start, this.#i));
+    if (!Number.isSafeInteger(n)) {
+      throw this.#fail('hole label out of safe-integer range');
+    }
+    return { kind: 'hole', n };
   }
 
   #parseLiteral(): ConcreteToken {
@@ -132,7 +152,16 @@ class TokenParser {
           throw this.#fail('unterminated quoted literal');
         }
         if (c === '\\') {
-          content += this.#src[this.#i + 1] ?? '';
+          const next = this.#src[this.#i + 1];
+          // The only recognised escapes are `\\` and `\<quote>` (the inverse of
+          // `canonicaliseQuoted`). Any other `\c` keeps the backslash verbatim —
+          // `"a\nb"` is the three-code-unit content `a`, `\`, `n`, `b`, NOT a
+          // decoded newline and NOT the escape-stripped `anb`.
+          if (next === '\\' || next === quote) {
+            content += next;
+          } else {
+            content += `\\${next ?? ''}`;
+          }
           this.#i += 2;
           continue;
         }
@@ -171,13 +200,8 @@ class TokenParser {
       this.#i++;
       key = this.#readKey();
     }
-    if (!args.length && key === undefined) {
-      if (base === RESOLVER_TOKEN_STRING) {
-        return { kind: 'provider' };
-      }
-      if (NUMERIC.test(base)) {
-        return { kind: 'concrete', path: String(Number(base)), args: [] };
-      }
+    if (!args.length && key === undefined && base === RESOLVER_TOKEN_STRING) {
+      return { kind: 'provider' };
     }
     const colon = base.indexOf(':');
     if (colon === 0) {
@@ -222,8 +246,11 @@ class TokenParser {
 
   #readBase(): string {
     const start = this.#i;
-    while (this.#i < this.#src.length && !BASE_STOP.has(this.#src[this.#i]!)) {
+    while (this.#i < this.#src.length) {
       const ch = this.#src[this.#i]!;
+      if (BASE_STOP.has(ch) || this.#isWs(ch)) {
+        break;
+      }
       if (ch === '"') {
         throw this.#fail('`"` is not allowed in a base');
       }
@@ -235,7 +262,11 @@ class TokenParser {
   #readKey(): string {
     this.#skipWs();
     const start = this.#i;
-    while (this.#i < this.#src.length && !KEY_STOP.has(this.#src[this.#i]!)) {
+    while (this.#i < this.#src.length) {
+      const ch = this.#src[this.#i]!;
+      if (KEY_STOP.has(ch) || this.#isWs(ch)) {
+        break;
+      }
       this.#i++;
     }
     const key = this.#src.slice(start, this.#i);
@@ -252,7 +283,7 @@ class TokenParser {
   }
 
   #isWs(ch: string | undefined): boolean {
-    return ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r';
+    return ch !== undefined && WHITESPACE.test(ch);
   }
 
   #isDigit(ch: string | undefined): boolean {
@@ -338,6 +369,12 @@ export function match(
 ): Map<number, Token> | null {
   switch (template.kind) {
     case 'hole': {
+      // Directional contract: `ground` is closed. A hole never binds to an open
+      // node (a bare hole, or a subtree still containing one) — that would leak
+      // an unbound label into a supposedly-resolved synthesis. Reject instead.
+      if (isOpen(ground)) {
+        return null;
+      }
       const prior = bind.get(template.n);
       if (prior !== undefined) {
         return stringify(prior) === stringify(ground) ? bind : null;
@@ -377,18 +414,36 @@ export function match(
   }
 }
 
-/** The count of concrete (non-hole) nodes in a tree — the most-specific-wins
- * metric for ranking overlapping templates (a hole contributes 0). */
+/** The most-specific-wins metric for ranking overlapping templates: the count
+ * of concrete (non-hole) nodes PLUS one per extra occurrence of a repeated hole
+ * label. The second term makes an equality-constrained template outrank an
+ * otherwise-identical one with distinct holes — `IPair<$1,$1>` (concrete=1,
+ * +1 repeat) scores 2 over `IPair<$1,$2>` (concrete=1) — because the former's
+ * match set is a strict subset of the latter's (only the diagonal `IPair<T,T>`).
+ * Without the repeat term the two tie and selection degrades to add-order. */
 export function specificity(token: Token): number {
+  const holeCounts = new Map<number, number>();
+  const concrete = countConcrete(token, holeCounts);
+  let repeats = 0;
+  for (const count of holeCounts.values()) {
+    repeats += count - 1;
+  }
+  return concrete + repeats;
+}
+
+/** Count concrete/provider nodes, tallying each hole label's occurrences into
+ * `holeCounts` for the repeated-hole term of {@link specificity}. */
+function countConcrete(token: Token, holeCounts: Map<number, number>): number {
   switch (token.kind) {
     case 'hole': {
+      holeCounts.set(token.n, (holeCounts.get(token.n) ?? 0) + 1);
       return 0;
     }
     case 'provider': {
       return 1;
     }
     case 'concrete': {
-      return token.args.reduce((sum, arg) => sum + specificity(arg), 1);
+      return token.args.reduce((sum, arg) => sum + countConcrete(arg, holeCounts), 1);
     }
     default: {
       return assertNever(token);

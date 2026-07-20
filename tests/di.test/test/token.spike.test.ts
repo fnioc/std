@@ -144,7 +144,14 @@ function oracleLiteral(s: string): string {
       for (let i = 1; i < part.length; i++) {
         const c = part[i]!;
         if (c === '\\') {
-          content += part[i + 1] ?? '';
+          const next = part[i + 1];
+          // Only `\\` and `\<quote>` are escapes; any other `\c` keeps the
+          // backslash verbatim (mirrors the module's `#parseLiteral`).
+          if (next === '\\' || next === q) {
+            content += next ?? '';
+          } else {
+            content += `\\${next ?? ''}`;
+          }
           i++;
           continue;
         }
@@ -158,10 +165,9 @@ function oracleLiteral(s: string): string {
     .join('|');
 }
 
+// A bare number is not a grammar production of its own — it is an
+// identifier-shaped `path`, byte-preserved and never numerically normalised.
 function canonBase(b: string): string {
-  if (/^-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/.test(b)) {
-    return String(Number(b));
-  }
   return b;
 }
 
@@ -318,11 +324,61 @@ describe('canonicalisation — parse → stringify is canonical, idempotent, ora
     expect(canonicalise('IPair<A,"x,y">')).toBe('IPair<A,"x,y">');
   });
 
-  test('numeric literal 72 and 72.00 are the same canonical token', () => {
+  test('numeric args are byte-preserved identifier paths — NOT numerically normalised', () => {
+    // The BNF has no numeric production, so `72` / `72.00` / `7.2e1` are just
+    // distinct identifier-shaped paths. Numeric-equivalence is an owner policy
+    // decision, deliberately not baked in via a lossy Number() round-trip.
     expect(canonicalise('IFoo<72>')).toBe('IFoo<72>');
-    expect(canonicalise('IFoo<72.00>')).toBe('IFoo<72>');
-    expect(canonicalise('IFoo<72>')).toBe(canonicalise('IFoo<72.00>'));
-    expect(canonicalise('IFoo<.5>')).toBe('IFoo<0.5>');
+    expect(canonicalise('IFoo<72.00>')).toBe('IFoo<72.00>');
+    expect(canonicalise('IFoo<72>')).not.toBe(canonicalise('IFoo<72.00>'));
+    expect(canonicalise('IFoo<7.2e1>')).toBe('IFoo<7.2e1>');
+    expect(canonicalise('IFoo<.5>')).toBe('IFoo<.5>');
+  });
+
+  test('large integer literals above 2^53 stay distinct (no Number() precision collapse)', () => {
+    const lo = 'IFoo<9007199254740992>';
+    const hi = 'IFoo<9007199254740993>';
+    expect(canonicalise(lo)).toBe(lo);
+    expect(canonicalise(hi)).toBe(hi);
+    expect(canonicalise(lo)).not.toBe(canonicalise(hi));
+    // A huge integer never cross-collapses onto an identifier via e-notation.
+    expect(canonicalise('IFoo<100000000000000000000000>')).toBe('IFoo<100000000000000000000000>');
+    expect(canonicalise('IFoo<100000000000000000000000>')).not.toBe(canonicalise('IFoo<1e+23>'));
+  });
+
+  test('number-format variance is preserved even with an attached key', () => {
+    // The old normalisation gate skipped keyed/generic nodes; there is no gate
+    // now — the path is preserved verbatim in every position.
+    expect(canonicalise('IFoo<72.00#k>')).toBe('IFoo<72.00#k>');
+    expect(canonicalise('IFoo<72#k>')).toBe('IFoo<72#k>');
+  });
+
+  test('hole labels canonicalise (leading zeros) but reject out-of-range', () => {
+    expect(canonicalise('$01')).toBe('$1');
+    expect(canonicalise('IFoo<$007>')).toBe('IFoo<$7>');
+    // Beyond the safe-integer range a label would lose precision / emit
+    // e-notation the grammar can't re-parse — reject at parse instead.
+    expect(() => parse('$9007199254740993')).toThrow();
+    expect(() => parse('$999999999999999999999999')).toThrow();
+  });
+
+  test('escapes: only \\\\ and \\<quote> decode; other \\c keeps the backslash', () => {
+    // `"a\nb"` is backslash-n (two chars), distinct from the bare `"anb"`.
+    expect(canonicalise('IFoo<"a\\nb">')).toBe('IFoo<"a\\\\nb">');
+    expect(canonicalise('IFoo<"a\\nb">')).not.toBe(canonicalise('IFoo<"anb">'));
+    // `\\` and `\"` are the recognised escapes and round-trip.
+    expect(canonicalise('IFoo<"a\\\\b">')).toBe('IFoo<"a\\\\b">');
+    expect(canonicalise('IFoo<"a\\"b">')).toBe('IFoo<"a\\"b">');
+    // Canonicalisation is idempotent through the escape encoder.
+    const once = canonicalise('IFoo<"a\\nb">');
+    expect(canonicalise(once)).toBe(once);
+  });
+
+  test('exotic whitespace outside literals is stripped (form feed, vertical tab, NBSP)', () => {
+    expect(canonicalise('IPair<A,\fB>')).toBe('IPair<A,B>');
+    expect(canonicalise('IPair<A,\vB>')).toBe('IPair<A,B>');
+    expect(canonicalise('IPair<A, B>')).toBe('IPair<A,B>');
+    expect(canonicalise('IPair<A,\fB>')).toBe(canonicalise('IPair<A,B>'));
   });
 
   test('a quoted literal keeps its interior commas / angle brackets inert', () => {
@@ -390,6 +446,14 @@ describe('match — directional unification, oracle-checked', () => {
   test('nested internal package-qualified token as an arg', () => {
     expectMatchesOracle('pkg:IRepo<$1>', `pkg:IRepo<${RESOLVER_TOKEN_STRING}>`);
   });
+
+  test('a hole never binds to an open ground node (ground must be closed)', () => {
+    // Directional: template holes only; an open ground would leak an unbound
+    // label into the binding. A bare-hole ground and a hole-bearing arg both fail.
+    expect(match(parse('$1'), parse('$5'))).toBeNull();
+    expect(match(parse('pkg:IPair<pkg:IA,$2>'), parse('pkg:IPair<pkg:IA,$5>'))).toBeNull();
+    expect(match(parse('pkg:IRepo<$1>'), parse('pkg:IRepo<$99>'))).toBeNull();
+  });
 });
 
 // ── Specificity + substitute ──────────────────────────────────────────────────
@@ -399,6 +463,18 @@ describe('specificity + substitute', () => {
     expect(specificity(parse('pkg:IFoo<$1,$2>'))).toBe(1);
     expect(specificity(parse('pkg:IFoo<$1,pkg:IST>'))).toBe(2);
     expect(specificity(parse('pkg:IOuter<pkg:IMid<pkg:IA>>'))).toBe(3);
+  });
+
+  test('a repeated-hole (equality) template outranks its distinct-hole peer', () => {
+    // IPair<$1,$1> matches only the diagonal — a strict subset of IPair<$1,$2>,
+    // so it must score strictly higher for most-specific-wins to prefer it.
+    expect(specificity(parse('pkg:IPair<$1,$1>'))).toBe(2);
+    expect(specificity(parse('pkg:IPair<$1,$2>'))).toBe(1);
+    expect(specificity(parse('pkg:IPair<$1,$1>'))).toBeGreaterThan(
+      specificity(parse('pkg:IPair<$1,$2>')),
+    );
+    // Three-way repeat adds two constraints on top of the concrete root.
+    expect(specificity(parse('pkg:ITriple<$1,$1,$1>'))).toBe(3);
   });
 
   test('substitute replaces holes by label and recurses', () => {
@@ -535,5 +611,49 @@ describe('TokenProvider.lookup', () => {
     });
     const hit: Descriptor<string> = p.lookup('pkg:IRepo<pkg:IA>')!;
     expect(hit.scope).toBe('scoped');
+  });
+
+  test('a repeated-hole template wins over a distinct-hole peer, add-order-independent', () => {
+    const general = provider((m) => {
+      m.add('pkg:IPair<$1,$2>', 'general');
+      m.add('pkg:IPair<$1,$1>', 'equality');
+    });
+    const flipped = provider((m) => {
+      m.add('pkg:IPair<$1,$1>', 'equality');
+      m.add('pkg:IPair<$1,$2>', 'general');
+    });
+    // On the diagonal the equality template must win, whichever order they were added.
+    expect(general.lookup('pkg:IPair<pkg:IA,pkg:IA>')!.producer).toBe('equality');
+    expect(flipped.lookup('pkg:IPair<pkg:IA,pkg:IA>')!.producer).toBe('equality');
+    // Off the diagonal only the general template matches.
+    expect(general.lookup('pkg:IPair<pkg:IA,pkg:IB>')!.producer).toBe('general');
+  });
+
+  test('duplicate open templates resolve last-wins, matching the exact map', () => {
+    const p = provider((m) => {
+      m.add('pkg:IRepo<$1>', 'first');
+      m.add('pkg:IRepo<$1>', 'second');
+    });
+    expect(p.lookup('pkg:IRepo<pkg:IA>')!.producer).toBe('second');
+  });
+
+  test('distinct large-integer literal registrations do not conflate', () => {
+    const p = provider((m) => {
+      m.add('pkg:IFoo<9007199254740992>', 'A');
+      m.add('pkg:IFoo<9007199254740993>', 'B');
+    });
+    expect(p.lookup('pkg:IFoo<9007199254740992>')!.producer).toBe('A');
+    expect(p.lookup('pkg:IFoo<9007199254740993>')!.producer).toBe('B');
+  });
+
+  test('an open or partially-open query misses (never synthesises an unbound hole)', () => {
+    const p = provider((m) => {
+      m.add('pkg:IPair<$1,$2>', 'pair', [[parse('$1'), parse('$2')]]);
+      m.add('pkg:IRepo<$1>', 'repo');
+    });
+    // Partially open — one arg is still a hole.
+    expect(p.lookup('pkg:IPair<pkg:IA,$5>')).toBeUndefined();
+    // Wholly open.
+    expect(p.lookup('pkg:IRepo<$99>')).toBeUndefined();
   });
 });
