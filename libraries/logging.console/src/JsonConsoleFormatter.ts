@@ -81,11 +81,11 @@ function toJsonValue(value: unknown): JsonValue {
  * object?>>` probe: an iterable of `[key, value]` pairs (an array of tuples, a
  * `Map`, …) yields its entries; anything else yields `undefined`.
  */
-function asKeyValuePairs(value: unknown): [string, unknown][] | undefined {
+function asKeyValuePairs(value: unknown): Array<[string, unknown]> | undefined {
   if (value === null || typeof value !== 'object' || !(Symbol.iterator in value)) {
     return undefined;
   }
-  const pairs: [string, unknown][] = [];
+  const pairs: Array<[string, unknown]> = [];
   for (const item of value as Iterable<unknown>) {
     if (!Array.isArray(item) || item.length !== 2 || typeof item[0] !== 'string') {
       return undefined;

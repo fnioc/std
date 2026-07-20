@@ -71,7 +71,7 @@ export abstract class BufferedLogRecord {
    * empty; the reference `IReadOnlyList<KeyValuePair<string, object?>>` shape is
    * a readonly array of `[name, value]` tuples.
    */
-  public get attributes(): readonly (readonly [string, unknown])[] {
+  public get attributes(): ReadonlyArray<readonly [string, unknown]> {
     return [];
   }
 }

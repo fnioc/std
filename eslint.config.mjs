@@ -19,7 +19,7 @@ export default tseslint.config(
         allowNullableNumber: true,
       }],
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
-      '@typescript-eslint/array-type': ['error', { default: 'array' }],
+      '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
     },
   },
   {
@@ -36,7 +36,7 @@ export default tseslint.config(
     extends: [tseslint.configs.base],
     rules: {
       curly: ['error', 'all'],
-      '@typescript-eslint/array-type': ['error', { default: 'array' }],
+      '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
     },
   },
 );

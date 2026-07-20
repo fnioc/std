@@ -180,7 +180,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   #appendOpenScoped(
     token: Token,
     ctor: Ctor,
-    signatures: readonly (readonly DepSlot[])[] | undefined,
+    signatures: ReadonlyArray<readonly DepSlot[]> | undefined,
   ): AddBuilder<Scopes> {
     const parsed = parseToken(token);
     if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
@@ -223,15 +223,15 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   public add(
     token: Token,
     ctor: Ctor,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
     key?: string,
   ): AddBuilder<Scopes>;
   public add(
     ...args:
       | [ctor: Ctor<any[], unknown>]
-      | [ctor: Ctor<any[], unknown>, overrides: readonly (string | undefined)[]]
+      | [ctor: Ctor<any[], unknown>, overrides: ReadonlyArray<string | undefined>]
       | [factory: Func<any[], unknown>]
-      | [token: Token, ctor: Ctor, signatures?: readonly (readonly DepSlot[])[], key?: string]
+      | [token: Token, ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>, key?: string]
   ): AddBuilder<Scopes> {
     // Only the string-token forms reach the engine at runtime. The single-arg
     // authoring overloads never run post-transform; guard defensively so a
@@ -285,13 +285,13 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   public addFactory(
     token: Token,
     factory: Factory,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
     key?: string,
   ): AddBuilder<Scopes>;
   public addFactory(
     ...args:
       | [factory: Func<any[], unknown>]
-      | [token: Token, factory: Factory, signatures?: readonly (readonly DepSlot[])[], key?: string]
+      | [token: Token, factory: Factory, signatures?: ReadonlyArray<readonly DepSlot[]>, key?: string]
   ): AddBuilder<Scopes> {
     // Only the string-token form reaches the engine at runtime. The single-arg
     // `addFactory<I>(fn)` authoring overload never runs post-transform; guard

@@ -124,8 +124,8 @@ function* unionTokenMembers(slot: Union): Generator<Token> {
  * (`#selectTargetSignature`).
  */
 function orderByArityDesc(
-  signatures: readonly (readonly DepSlot[])[],
-): readonly (readonly DepSlot[])[] {
+  signatures: ReadonlyArray<readonly DepSlot[]>,
+): ReadonlyArray<readonly DepSlot[]> {
   return signatures
     .map((sig, index) => ({ sig, index }))
     .sort((a, b) =>
@@ -584,7 +584,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // `RangeError` then. #lookup must NEVER throw (so `#isResolvable` can probe
     // safely and greedy selection can fall back), so treat a substitution
     // failure as a plain miss: no synthesis, no memo entry.
-    let signatures: readonly (readonly DepSlot[])[] | undefined;
+    let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
     if (template !== undefined) {
       try {
         signatures = substituteSignatures(template, match.args);
@@ -1244,7 +1244,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   #selectSignature(
     token: Token,
     targetName: string,
-    signatures: readonly (readonly DepSlot[])[],
+    signatures: ReadonlyArray<readonly DepSlot[]>,
     async: boolean,
   ): readonly DepSlot[] {
     const unsatisfiable = new Set<Token>();
@@ -1295,7 +1295,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * registration order.
    */
   #selectTargetSignature(
-    signatures: readonly (readonly DepSlot[])[],
+    signatures: ReadonlyArray<readonly DepSlot[]>,
   ): readonly DepSlot[] {
     return orderByArityDesc(signatures)[0]!;
   }

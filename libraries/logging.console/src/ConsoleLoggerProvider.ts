@@ -113,7 +113,7 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
     if (formatter === undefined) {
       // Deprecated-path fallback, kept for parity with the reference:
       // no/unknown formatterName resolves through the obsolete `format`.
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
+
       formatter = options.format === ConsoleLoggerFormat.Systemd
         ? this.#formatters.get(ConsoleFormatterNames.systemd)!
         : this.#formatters.get(ConsoleFormatterNames.simple)!;
@@ -153,7 +153,6 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
 
   /** Maps the deprecated flat options onto the built-in formatters — kept for the deprecated APIs. */
   static #updateFormatterOptions(formatter: ConsoleFormatter, deprecatedFromOptions: ConsoleLoggerOptions): void {
-    /* eslint-disable @typescript-eslint/no-deprecated -- mapping the deprecated members is this method's job */
     if (formatter instanceof SimpleConsoleFormatter) {
       const formatterOptions = new SimpleConsoleFormatterOptions();
       formatterOptions.colorBehavior = deprecatedFromOptions.disableColors
@@ -170,7 +169,6 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
       formatterOptions.useUtcTimestamp = deprecatedFromOptions.useUtcTimestamp;
       formatter.formatterOptions = formatterOptions;
     }
-    /* eslint-enable @typescript-eslint/no-deprecated */
   }
 
   /** Sets the scope provider all current and future loggers use — the `ISupportExternalScope` member. */

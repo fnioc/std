@@ -25,9 +25,9 @@ import { OptionsValidationError } from './OptionsValidationError.js';
  */
 export class OptionsFactory<T> {
   readonly #makeBase: Func<[], T>;
-  readonly #configures: readonly IConfigureOptions<T>[];
-  readonly #postConfigures: readonly IPostConfigureOptions<T>[];
-  readonly #validates: readonly IValidateOptions<T>[];
+  readonly #configures: ReadonlyArray<IConfigureOptions<T>>;
+  readonly #postConfigures: ReadonlyArray<IPostConfigureOptions<T>>;
+  readonly #validates: ReadonlyArray<IValidateOptions<T>>;
 
   /**
    * @param makeBase Produces the base instance every {@link create} starts

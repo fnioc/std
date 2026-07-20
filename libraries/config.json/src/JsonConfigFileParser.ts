@@ -28,7 +28,7 @@ export const JsonConfigFileParser = {
    * the calling provider's class name plus, where there is one, the payload
    * location (e.g. `` `JsonConfigProvider (${resolvedPath})` ``).
    */
-  parse(raw: string, origin: string): [key: string, value: string][] {
+  parse(raw: string, origin: string): Array<[key: string, value: string]> {
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
@@ -45,13 +45,13 @@ export const JsonConfigFileParser = {
       throw new FormatError(`${origin}: the top-level JSON element must be an object`);
     }
 
-    const pairs: [key: string, value: string][] = [];
+    const pairs: Array<[key: string, value: string]> = [];
     flatten(parsed, '', pairs);
     return pairs;
   },
 };
 
-function flatten(value: unknown, prefix: string, into: [key: string, value: string][]): void {
+function flatten(value: unknown, prefix: string, into: Array<[key: string, value: string]>): void {
   if (value === null || value === undefined) {
     // null leaves are skipped entirely -- no key is written for them.
     return;

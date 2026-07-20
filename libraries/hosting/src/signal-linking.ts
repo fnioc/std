@@ -22,7 +22,7 @@ export interface LinkedSignal extends Disposable {
  */
 export function linkSignals(sources: readonly AbortSignal[], timeoutMs?: number): LinkedSignal {
   const controller = new AbortController();
-  const cleanups: Func<[], void>[] = [];
+  const cleanups: Array<Func<[], void>> = [];
 
   const abort = (reason?: unknown): void => {
     if (!controller.signal.aborted) {

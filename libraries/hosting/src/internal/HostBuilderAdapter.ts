@@ -40,9 +40,9 @@ export class HostBuilderAdapter implements IHostBuilder {
   readonly #services: IServiceManifest;
   readonly #context: HostBuilderContext;
 
-  readonly #configureHostConfigActions: Action<[IConfigBuilder]>[] = [];
-  readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigBuilder]>[] = [];
-  readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
+  readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
+  readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
+  readonly #configureServicesActions: Array<Action<[HostBuilderContext, IServiceManifest]>> = [];
 
   public constructor(
     config: IConfigManager,

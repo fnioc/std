@@ -67,7 +67,7 @@ class XmlElement {
 
 export const XmlStreamParser = {
   /** Parses XML `content` into ordered `[key, value]` pairs. */
-  parse(content: string): [key: string, value: string][] {
+  parse(content: string): Array<[key: string, value: string]> {
     const root = buildTree(content);
     return provideConfig(root);
   },
@@ -245,8 +245,8 @@ function* parseAttributes(text: string): Generator<[name: string, value: string]
 
 // -- walk the tree into configuration pairs --------------------------------
 
-function provideConfig(root: XmlElement | undefined): [key: string, value: string][] {
-  const pairs: [key: string, value: string][] = [];
+function provideConfig(root: XmlElement | undefined): Array<[key: string, value: string]> {
+  const pairs: Array<[key: string, value: string]> = [];
   if (root === undefined) {
     return pairs;
   }
@@ -265,7 +265,7 @@ function provideConfig(root: XmlElement | undefined): [key: string, value: strin
 function processElement(
   prefix: Prefix,
   element: XmlElement,
-  pairs: [key: string, value: string][],
+  pairs: Array<[key: string, value: string]>,
   seen: Set<string>,
 ): void {
   for (const attribute of element.attributes) {
@@ -291,7 +291,7 @@ function processChild(
   prefix: Prefix,
   child: XmlElement,
   index: number | undefined,
-  pairs: [key: string, value: string][],
+  pairs: Array<[key: string, value: string]>,
   seen: Set<string>,
 ): void {
   prefix.push(child.elementName);
@@ -331,7 +331,7 @@ function groupChildren(children: XmlElement[]): XmlElement[][] {
 function addPair(
   key: string,
   value: string,
-  pairs: [key: string, value: string][],
+  pairs: Array<[key: string, value: string]>,
   seen: Set<string>,
 ): void {
   const folded = key.toLowerCase();

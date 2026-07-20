@@ -42,7 +42,7 @@ class RecordingLogger implements ILogger {
 
 test('each member writes its fixed message at the reference level and event id', () => {
   const error = new Error('boom');
-  const cases: [(logger: ILogger) => void, LogLevel, EventId, string, Error | undefined][] = [
+  const cases: Array<[(logger: ILogger) => void, LogLevel, EventId, string, Error | undefined]> = [
     [
       (l) => HostingLoggerExtensions.starting(l),
       LogLevel.Debug,

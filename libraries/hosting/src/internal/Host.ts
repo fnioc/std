@@ -112,7 +112,7 @@ export class Host implements IHost, AsyncDisposable {
   #hostedServices?: IHostedService[];
   #hostedLifecycleServices?: IHostedLifecycleService[];
   #hostStarting = false;
-  #backgroundServiceTasks?: Promise<void>[];
+  #backgroundServiceTasks?: Array<Promise<void>>;
   #backgroundServiceErrors?: unknown[];
 
   public constructor(

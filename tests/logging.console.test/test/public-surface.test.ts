@@ -12,8 +12,8 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: IServiceManifest; values: [Token, unknown][]; } {
-  const values: [Token, unknown][] = [];
+function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
+  const values: Array<[Token, unknown]> = [];
   const services = {
     addValue(token: Token, value: unknown): void {
       values.push([token, value]);
@@ -49,7 +49,7 @@ test('ConsoleLoggerOptions defaults mirror the reference', () => {
   expect(options.logToStandardErrorThreshold).toBe(LogLevel.None);
   expect(options.queueFullMode).toBe(ConsoleLoggerQueueFullMode.Wait);
   expect(options.maxQueueLength).toBe(2500);
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
+
   expect(options.format).toBe(ConsoleLoggerFormat.Default);
 });
 
@@ -62,7 +62,6 @@ test('ConsoleLoggerOptions validates queueFullMode, maxQueueLength, and format',
     options.queueFullMode = 99 as ConsoleLoggerQueueFullMode;
   }).toThrow(RangeError);
   expect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
     options.format = 99 as ConsoleLoggerFormat;
   }).toThrow(RangeError);
 });

@@ -16,7 +16,7 @@ test('typeArg() helper returns a TypeArgRef slot', () => {
 });
 
 describe('slot type guards', () => {
-  const cases: { slot: DepSlot; kind: string; }[] = [
+  const cases: Array<{ slot: DepSlot; kind: string; }> = [
     { slot: 'pkg:IFoo', kind: 'token' },
     { slot: { type: 'pkg:IFoo' }, kind: 'factory' },
     { slot: { union: ['pkg:A', 'pkg:B'] }, kind: 'union' },

@@ -13,7 +13,7 @@ class TestChangeToken implements IChangeToken {
   hasChanged = false;
   readonly activeChangeCallbacks = true;
 
-  #callbacks: (() => void)[] = [];
+  #callbacks: Array<() => void> = [];
 
   registerChangeCallback(callback: (state: unknown) => void, state?: unknown): Disposable {
     if (this.hasChanged) {
@@ -188,7 +188,7 @@ describe('ChangeToken.onChange (async consumer)', () => {
       return token;
     };
 
-    const resolvers: (() => void)[] = [];
+    const resolvers: Array<() => void> = [];
     let calls = 0;
     const disposable = ChangeToken.onChange(produceToken, () => {
       calls++;

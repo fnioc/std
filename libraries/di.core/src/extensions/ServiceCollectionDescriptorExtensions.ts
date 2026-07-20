@@ -101,7 +101,7 @@ declare module '@rhombus-std/di.core' {
     tryAdd(
       token: Token,
       ctor: Ctor,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     /**
      * Factory registration, but only when `token` has NO registration yet (the
@@ -111,7 +111,7 @@ declare module '@rhombus-std/di.core' {
     tryAddFactory(
       token: Token,
       factory: Func<any[], unknown>,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     /**
      * Value registration, but only when `token` has NO registration yet (the
@@ -127,7 +127,7 @@ declare module '@rhombus-std/di.core' {
     replace(
       token: Token,
       ctor: Ctor,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     /**
      * Removes the token's existing registrations, then registers a factory anew.
@@ -136,7 +136,7 @@ declare module '@rhombus-std/di.core' {
     replaceFactory(
       token: Token,
       factory: Func<any[], unknown>,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     /** Removes the token's existing registrations, then registers a value anew. */
     replaceValue(token: Token, value: unknown): void;
@@ -147,23 +147,23 @@ declare module '@rhombus-std/di.core' {
     tryAdd(
       token: Token,
       ctor: Ctor,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     tryAddFactory(
       token: Token,
       factory: Func<any[], unknown>,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     tryAddValue(token: Token, value: unknown): void;
     replace(
       token: Token,
       ctor: Ctor,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     replaceFactory(
       token: Token,
       factory: Func<any[], unknown>,
-      signatures?: readonly (readonly DepSlot[])[],
+      signatures?: ReadonlyArray<readonly DepSlot[]>,
     ): AddBuilder<Scopes>;
     replaceValue(token: Token, value: unknown): void;
   }
@@ -186,7 +186,7 @@ export const ServiceCollectionDescriptorExtensions = {
     manifest: ServiceManifestClass<string>,
     token: Token,
     ctor: Ctor,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
   ): AddBuilder<string> {
     if (manifest.hasRegistrations(token)) {
       return NO_OP_CONTINUATION;
@@ -198,7 +198,7 @@ export const ServiceCollectionDescriptorExtensions = {
     manifest: ServiceManifestClass<string>,
     token: Token,
     factory: Func<any[], unknown>,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
   ): AddBuilder<string> {
     if (manifest.hasRegistrations(token)) {
       return NO_OP_CONTINUATION;
@@ -221,7 +221,7 @@ export const ServiceCollectionDescriptorExtensions = {
     manifest: ServiceManifestClass<string>,
     token: Token,
     ctor: Ctor,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
   ): AddBuilder<string> {
     manifest.removeRegistrations(token);
     return manifest.add(token, ctor, signatures);
@@ -231,7 +231,7 @@ export const ServiceCollectionDescriptorExtensions = {
     manifest: ServiceManifestClass<string>,
     token: Token,
     factory: Func<any[], unknown>,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
   ): AddBuilder<string> {
     manifest.removeRegistrations(token);
     return manifest.addFactory(token, factory, signatures);
