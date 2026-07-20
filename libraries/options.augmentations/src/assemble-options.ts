@@ -33,13 +33,13 @@ export function assembleOptions<T>(
   optionsToken: Token,
   makeBase: Func<[], T>,
 ): IOptions<T> {
-  const configures = resolver.resolve<readonly IConfigureOptions<T>[]>(
+  const configures = resolver.resolve<ReadonlyArray<IConfigureOptions<T>>>(
     collectionToken(configureStepToken(optionsToken)),
   );
-  const postConfigures = resolver.resolve<readonly IPostConfigureOptions<T>[]>(
+  const postConfigures = resolver.resolve<ReadonlyArray<IPostConfigureOptions<T>>>(
     collectionToken(postConfigureStepToken(optionsToken)),
   );
-  const validates = resolver.resolve<readonly IValidateOptions<T>[]>(
+  const validates = resolver.resolve<ReadonlyArray<IValidateOptions<T>>>(
     collectionToken(validateStepToken(optionsToken)),
   );
   const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(

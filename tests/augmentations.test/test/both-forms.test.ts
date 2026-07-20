@@ -64,7 +64,7 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
 
 describe('reverse direction — MetricsBuilder (.core interface, downstream concrete)', () => {
   test('addMetricsListener method form equals the object-literal member form', () => {
-    const recorded: [unknown, unknown][] = [];
+    const recorded: Array<[unknown, unknown]> = [];
     const services = {
       add: () => ({ as: () => {} }),
       addFactory: () => ({ as: () => {} }),

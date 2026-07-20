@@ -76,7 +76,7 @@ declare module '@rhombus-std/di.core' {
      */
     add<I>(
       ctor: Ctor<any[], I>,
-      overrides: readonly (string | undefined)[],
+      overrides: ReadonlyArray<string | undefined>,
     ): AddBuilder<Scopes>;
     /**
      * Type-driven factory authoring — lowers to `addFactory("token", fn)` (the

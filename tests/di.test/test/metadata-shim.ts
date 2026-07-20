@@ -14,7 +14,7 @@
 import { ServiceManifestClass } from '@rhombus-std/di';
 import type { DepSlot } from '@rhombus-std/di.core';
 
-type Signatures = readonly (readonly DepSlot[])[];
+type Signatures = ReadonlyArray<readonly DepSlot[]>;
 
 /** The test-only signature stash — keyed by the ctor / factory function. */
 const testStore = new WeakMap<object, DepSlot[][]>();

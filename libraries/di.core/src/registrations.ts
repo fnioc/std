@@ -55,7 +55,7 @@ export interface Registration {
    * and hand-fed by a plugin-less caller. Absent or empty means `produce` takes
    * no injected args (a zero-arg ctor, a value, or a signature-less factory).
    */
-  readonly signatures?: readonly (readonly DepSlot[])[];
+  readonly signatures?: ReadonlyArray<readonly DepSlot[]>;
   /**
    * The producer's diagnostic name — the ctor / factory name, carried EXPLICITLY
    * because a wrapper closure (`(...a) => new Ctor(...a)`) reports `""` for its
@@ -101,7 +101,7 @@ export interface OpenRegistration {
    * substituted per closing. When absent, the closing has no template to
    * substitute (a zero-arg ctor closes to a bare `new Ctor()`).
    */
-  readonly signatures?: readonly (readonly DepSlot[])[];
+  readonly signatures?: ReadonlyArray<readonly DepSlot[]>;
 }
 
 /**

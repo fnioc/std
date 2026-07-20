@@ -93,7 +93,7 @@ export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
  * `DepRecord.signatures` holds, named so authoring-time machinery (the
  * `di.transformer` `signatureof` primitive) can refer to it directly.
  */
-export type DepSignatures = readonly (readonly DepSlot[])[];
+export type DepSignatures = ReadonlyArray<readonly DepSlot[]>;
 
 /**
  * Per-constructor dependency metadata carried on a registration.
@@ -104,7 +104,7 @@ export type DepSignatures = readonly (readonly DepSlot[])[];
  * overload `i`.
  */
 export interface DepRecord {
-  readonly signatures: readonly (readonly DepSlot[])[];
+  readonly signatures: ReadonlyArray<readonly DepSlot[]>;
 }
 
 /**

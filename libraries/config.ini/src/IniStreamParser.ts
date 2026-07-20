@@ -15,8 +15,8 @@ import { FormatError } from '@rhombus-std/config.file';
 
 export const IniStreamParser = {
   /** Parses INI `content` into ordered `[key, value]` pairs. */
-  parse(content: string): [key: string, value: string][] {
-    const pairs: [key: string, value: string][] = [];
+  parse(content: string): Array<[key: string, value: string]> {
+    const pairs: Array<[key: string, value: string]> = [];
     const seen = new Set<string>();
     let sectionPrefix = '';
 

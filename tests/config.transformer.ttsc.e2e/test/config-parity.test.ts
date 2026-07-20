@@ -176,7 +176,7 @@ function tsconfig(withPlugin: boolean): string {
 }
 
 type Envelope = {
-  diagnostics?: { code: string; messageText: string; file: string | null; }[];
+  diagnostics?: Array<{ code: string; messageText: string; file: string | null; }>;
   typescript: Record<string, string>;
 };
 

@@ -34,7 +34,7 @@ describe('config.getReloadToken() -> Options.watch', () => {
       .build() as unknown as IConfigRoot;
     const options = watchPort(root);
 
-    const seen: (number | undefined)[] = [];
+    const seen: Array<number | undefined> = [];
     const registration = options.subscribe!((value) => seen.push(value));
 
     // A real reload-capable provider would refresh `data` out-of-band before
@@ -55,7 +55,7 @@ describe('config.getReloadToken() -> Options.watch', () => {
       .build() as unknown as IConfigRoot;
     const options = watchPort(root);
 
-    const seen: (number | undefined)[] = [];
+    const seen: Array<number | undefined> = [];
     const registration = options.subscribe!((value) => seen.push(value));
 
     root.set('Server:Port', '9090');

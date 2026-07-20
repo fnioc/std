@@ -56,7 +56,7 @@ test('simple: default multi-line format', () => {
 
 test('simple: level strings cover every writable level', () => {
   const formatter = new SimpleConsoleFormatter(Options.of(new SimpleConsoleFormatterOptions()));
-  const cases: [LogLevel, string][] = [
+  const cases: Array<[LogLevel, string]> = [
     [LogLevel.Trace, 'trce'],
     [LogLevel.Debug, 'dbug'],
     [LogLevel.Information, 'info'],
@@ -183,7 +183,7 @@ test('systemd: single-line <pri> format', () => {
 
 test('systemd: syslog severities per level', () => {
   const formatter = new SystemdConsoleFormatter(Options.of(new ConsoleFormatterOptions()));
-  const cases: [LogLevel, string][] = [
+  const cases: Array<[LogLevel, string]> = [
     [LogLevel.Trace, '<7>'],
     [LogLevel.Debug, '<7>'],
     [LogLevel.Information, '<6>'],
@@ -242,7 +242,7 @@ test('json: compact single-line JSON with the reference property order', () => {
 test('json: state key/value pairs and differing state message are written', () => {
   const formatter = new JsonConsoleFormatter(Options.of(new JsonConsoleFormatterOptions()));
   const writer = new StringWriter();
-  const state: [string, unknown][] = [['User', 'ada'], ['Attempts', 3], ['Sticky', true], ['Extra', { a: 1 }]];
+  const state: Array<[string, unknown]> = [['User', 'ada'], ['Attempts', 3], ['Sticky', true], ['Extra', { a: 1 }]];
 
   formatter.write(
     entry({

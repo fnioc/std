@@ -33,7 +33,7 @@ export function assembleDiagnosticsOptions<T>(
   sourceToken: Token,
   makeBase: Func<[], T>,
 ): IOptions<T> {
-  const steps = resolver.resolve<readonly IConfigureOptions<T>[]>(collectionToken(configureToken));
+  const steps = resolver.resolve<ReadonlyArray<IConfigureOptions<T>>>(collectionToken(configureToken));
   const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(collectionToken(sourceToken));
 
   const build = (): T => {

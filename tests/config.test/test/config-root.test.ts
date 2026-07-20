@@ -46,7 +46,7 @@ class SwappableProvider implements IConfigProvider {
 }
 
 /** Builds a root over N in-memory providers, one per data record (registration order). */
-function rootOfLayers(...layers: Record<string, string>[]): IConfigRoot {
+function rootOfLayers(...layers: Array<Record<string, string>>): IConfigRoot {
   let builder = new ConfigBuilder();
   for (const layer of layers) {
     builder = builder.addInMemoryCollection(layer);

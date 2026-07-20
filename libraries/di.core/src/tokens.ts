@@ -152,9 +152,9 @@ export function substituteToken(template: Token, args: readonly Token[]): Token 
  *   - a `LiteralRef`     → unchanged.
  */
 export function substituteSignatures(
-  signatures: readonly (readonly DepSlot[])[],
+  signatures: ReadonlyArray<readonly DepSlot[]>,
   args: readonly Token[],
-): readonly (readonly DepSlot[])[] {
+): ReadonlyArray<readonly DepSlot[]> {
   return signatures.map((sig) => sig.map((slot) => substituteSlot(slot, args)));
 }
 

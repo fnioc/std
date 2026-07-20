@@ -219,7 +219,7 @@ export function resolveHost(
   // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TOKEN sees
   // the same mutated instance).
   framework.hostOptions.initialize(config);
-  const configureSteps = provider.resolve<Func<[HostOptions], void>[]>(
+  const configureSteps = provider.resolve<Array<Func<[HostOptions], void>>>(
     `Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`,
   );
   for (const configureStep of configureSteps) {

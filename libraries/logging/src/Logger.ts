@@ -104,7 +104,7 @@ export class Logger implements ILogger {
       return loggers[0]!.createScope(state);
     }
 
-    const scopes: (Disposable | undefined)[] = [];
+    const scopes: Array<Disposable | undefined> = [];
     let errors: unknown[] | undefined;
     for (const scopeLogger of loggers) {
       try {

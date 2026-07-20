@@ -38,7 +38,7 @@ function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
 /** A `@augment(ILogger)`-decorated recording logger, so the method form installs. */
 class DecoratedRecordingLogger implements ILogger {
   public readonly scopes: unknown[] = [];
-  public readonly logs: { eventId: EventId; state: unknown; }[] = [];
+  public readonly logs: Array<{ eventId: EventId; state: unknown; }> = [];
   public log<TState>(
     _logLevel: LogLevel,
     eventId: EventId,

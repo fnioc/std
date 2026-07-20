@@ -35,7 +35,7 @@ class RichRecord extends BufferedLogRecord {
   public override get messageTemplate(): string | undefined {
     return 'disk almost full';
   }
-  public override get attributes(): readonly (readonly [string, unknown])[] {
+  public override get attributes(): ReadonlyArray<readonly [string, unknown]> {
     return [['Free', 12]];
   }
 }

@@ -34,10 +34,10 @@ export interface HostBuilder extends IHostBuilder {}
 export class HostBuilder implements IHostBuilder {
   readonly properties = new Map<string | symbol, unknown>();
 
-  readonly #configureHostConfigActions: Action<[IConfigBuilder]>[] = [];
-  readonly #configureAppConfigActions: Action<[HostBuilderContext, IConfigBuilder]>[] = [];
-  readonly #configureServicesActions: Action<[HostBuilderContext, IServiceManifest]>[] = [];
-  readonly #configureContainerActions: Action<[HostBuilderContext, unknown]>[] = [];
+  readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
+  readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
+  readonly #configureServicesActions: Array<Action<[HostBuilderContext, IServiceManifest]>> = [];
+  readonly #configureContainerActions: Array<Action<[HostBuilderContext, unknown]>> = [];
 
   #hostBuilt = false;
 

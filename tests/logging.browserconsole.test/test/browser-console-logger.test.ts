@@ -6,8 +6,8 @@ import { EventId, LogLevel } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: IServiceManifest; values: [Token, unknown][]; } {
-  const values: [Token, unknown][] = [];
+function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
+  const values: Array<[Token, unknown]> = [];
   const services = {
     addValue(token: Token, value: unknown): void {
       values.push([token, value]);
@@ -17,8 +17,8 @@ function fakeServices(): { services: IServiceManifest; values: [Token, unknown][
 }
 
 /** Records every console call as `[method, args]`. */
-function makeConsoleSpy(): { console: ConsoleLike; calls: [string, unknown[]][]; } {
-  const calls: [string, unknown[]][] = [];
+function makeConsoleSpy(): { console: ConsoleLike; calls: Array<[string, unknown[]]>; } {
+  const calls: Array<[string, unknown[]]> = [];
   const record = (method: string) => {
     return (...args: unknown[]): void => {
       calls.push([method, args]);
@@ -138,7 +138,7 @@ test('the per-manifest dedup is keyed by services, not effectively global', () =
   BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(first.services));
   BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(second.services));
 
-  const providersFor = (values: [Token, unknown][]) => {
+  const providersFor = (values: Array<[Token, unknown]>) => {
     return values.filter(([token]) => {
       return token === LOGGER_PROVIDER_TOKEN;
     });

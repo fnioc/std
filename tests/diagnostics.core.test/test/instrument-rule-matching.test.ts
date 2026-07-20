@@ -32,7 +32,7 @@ const query: InstrumentRuleQuery = {
 
 describe('instrumentRuleMatches', () => {
   // (meterName, instrumentName, listenerName) triples that match `query`.
-  const matching: [string | undefined, string | undefined, string | undefined][] = [
+  const matching: Array<[string | undefined, string | undefined, string | undefined]> = [
     [undefined, undefined, undefined],
     ['', '', ''],
     ['*', '', ''],
@@ -67,7 +67,7 @@ describe('instrumentRuleMatches', () => {
   }
 
   // Triples that do NOT match `query`.
-  const nonMatching: [string, string, string][] = [
+  const nonMatching: Array<[string, string, string]> = [
     ['', '*', ''], // instrument names have no wildcard support -- exact only
     ['', '', '*'], // listener names have no wildcard support -- exact only
     ['sillY.meteR.namE', '', ''], // suffix without a wildcard is not a prefix
@@ -127,7 +127,7 @@ describe('isMoreSpecificInstrumentRule', () => {
   // [rule, best, isLocalScope] rows where `rule` beats `best` -- and, when
   // `best` is present, the reverse comparison loses. Ported verbatim from the
   // reference IsMoreSpecificTestData.
-  const moreSpecific: [InstrumentRule, InstrumentRule | undefined, boolean][] = [
+  const moreSpecific: Array<[InstrumentRule, InstrumentRule | undefined, boolean]> = [
     // Anything is better than undefined.
     [rule(undefined, undefined, undefined), undefined, false],
 

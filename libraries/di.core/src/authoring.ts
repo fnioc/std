@@ -101,7 +101,7 @@ export interface IServiceManifestBase<
   add(
     token: Token,
     ctor: Ctor,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
     key?: string,
   ): AddBuilder<Scopes>;
   /**
@@ -112,7 +112,7 @@ export interface IServiceManifestBase<
   addFactory(
     token: Token,
     factory: Func<any[], unknown>,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
     key?: string,
   ): AddBuilder<Scopes>;
   /**

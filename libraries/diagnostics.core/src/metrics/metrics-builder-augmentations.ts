@@ -109,7 +109,7 @@ export const MetricsBuilderExtensions = {
   addMetricsListenerType(
     builder: IMetricsBuilder,
     ctor: Ctor,
-    signatures?: readonly (readonly DepSlot[])[],
+    signatures?: ReadonlyArray<readonly DepSlot[]>,
   ): IMetricsBuilder {
     builder.services.add(METRICS_LISTENER_TOKEN, ctor, signatures);
     return builder;
@@ -178,7 +178,7 @@ export const MetricsBuilderExtensions = {
 declare module '@rhombus-std/diagnostics.core' {
   interface IMetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
-    addMetricsListenerType(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    addMetricsListenerType(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): this;
     clearMetricsListeners(): this;
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;

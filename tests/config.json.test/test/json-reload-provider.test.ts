@@ -42,7 +42,7 @@ function tempDirWith(fileName: string, contents: string): { dir: string; file: s
 class ManualChangeToken implements IChangeToken {
   public hasChanged = false;
   public readonly activeChangeCallbacks = true;
-  readonly #callbacks: Func<[state: unknown], void>[] = [];
+  readonly #callbacks: Array<Func<[state: unknown], void>> = [];
 
   public registerChangeCallback(callback: Func<[state: unknown], void>): Disposable {
     this.#callbacks.push(callback);

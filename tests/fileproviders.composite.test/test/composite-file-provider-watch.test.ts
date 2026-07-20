@@ -17,7 +17,7 @@ class TestChangeToken implements IChangeToken {
   hasChanged = false;
   readonly activeChangeCallbacks = true;
 
-  #callbacks: (() => void)[] = [];
+  #callbacks: Array<() => void> = [];
 
   registerChangeCallback(callback: (state: unknown) => void, state?: unknown): Disposable {
     if (this.hasChanged) {

@@ -59,12 +59,12 @@ declare module '@rhombus-std/di.core' {
      * singleton registration. `signatures` carries the ctor's dep signatures for
      * the transformer-free path.
      */
-    addHostedService(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): this;
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
     addHostedService(implementationFactory: Func<[IResolver], IHostedService>): this;
-    addHostedService(ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): this;
+    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): this;
   }
 }
 
@@ -86,7 +86,7 @@ export const ServiceCollectionHostedServiceExtensions = {
     // factory form is a lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
     ...rest:
-      | [ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]]
+      | [ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>]
       | [implementationFactory: Func<[IResolver], IHostedService>]
   ): ServiceManifestClass<string> {
     const [target, signatures] = rest;
