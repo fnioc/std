@@ -2,136 +2,318 @@
 
 `@rhombus-std/di.transformer`, `di.transformer.options`, `config.transformer`, and
 `primitives.transformer` each rewrite TypeScript at compile time — `nameof<T>()`, `add<T>()`,
-`addOptions<T>()`, `withType<T>()`, and friends. What each rewrite actually _does_ is documented on
-its own package (see each package's README). This doc covers the machinery underneath all four:
-how they run in your build, how they ship a native compiler backend, and why that backend is one
-binary instead of four. It's written for anyone installing and wiring these packages into their
-own project; the last section is for people working on this repo's own transformer sources.
+`addOptions<T>()`, `withType<T>()`, `keyof<T>()`, and friends. What each rewrite actually _does_ is
+documented on its own package (see each package's README). This doc covers the machinery
+underneath all four: how they run in your build, how they share one native compiler backend, and
+how that backend decides which stages to run for you. It's written for anyone installing and
+wiring these packages into their own project; the last section is for people working on this
+repo's own transformer sources.
 
-## Two engines, one contract
+## One engine
 
-Every transformer exists twice:
+There is a single transform engine: a Go binary running through `ttsc`, built on
+[`typescript-go`](https://github.com/microsoft/typescript-go)'s compiler internals instead of the
+JS TypeScript compiler. An older ts-patch/TS5 track existed alongside it; it's gone, tagged at the
+restore point `pre-tspatch-removal`. Lint and typecheck are plain `tsc --noEmit` — no plugin at
+all.
 
-- **ts-patch on plain TypeScript** — your everyday `tsc`/editor-integration path. Fast, uses the
-  TypeScript version you already have, and is what your IDE's language service sees. This is the
-  lint/typecheck track: `tspc --noEmit`, ESLint, your editor's red squiggles.
-- **A Go binary running through `ttsc`** — the build/emit track. It parses and rewrites the same
-  TypeScript, but through [`typescript-go`](https://github.com/microsoft/typescript-go)'s compiler
-  internals instead of the JS TypeScript compiler, and is what actually produces the JavaScript you
-  ship.
+That works because every sugar form is declared twice, in two different senses:
 
-Both tracks lower the exact same source to the exact same tokens — that equivalence (not the code
-shape) is the load-bearing guarantee. If a `nameof<IUserRepo>()` call lowers to
-`"pkg:IUserRepo"` under `tspc`, it lowers to that identical string under `ttsc`. You can typecheck
-with one track and build with the other and never see a mismatch.
+- **A throwing stub**, so a call that somehow reaches runtime without being lowered fails loudly
+  instead of silently doing the wrong thing:
 
-Neither track adds anything a hand-written call couldn't already do: a transformer only deletes
-boilerplate — `add<IUserRepo>(SqlUserRepo)` in, `add('pkg:IUserRepo', SqlUserRepo, [[...]])` out —
-never a capability the manual form lacks. Every package works, in full, with no transformer wired
-at all; each package's own README shows the manual form its sugar rewrites into.
+  ```ts
+  // @rhombus-std/primitives — the real declaration
+  export declare function nameof<T>(): string;
+  ```
+
+- **A phantom type** — usually a `declare module` augmentation onto the receiving interface (e.g.
+  `IServiceManifestBase.add<T>()`) — which is what makes the tokenless forms typecheck at all.
+  That's ordinary TypeScript; no plugin is needed to see it, only to get the declaring file into
+  your program (see [Wiring](#wiring-a-transformer-into-your-project) below).
+
+The build track lowers the exact same source through the Go engine, and the guarantee that matters
+is parity: a lowered call produces **exactly what the manual form would have produced**, token
+strings byte-for-byte. `nameof<IWidget>()` lowers to a string literal like
+`"@fixture/consumer/tokens/app:IWidget"`; a hand-written `tryResolve("@fixture/consumer/tokens/app:IWidget")`
+and the sugar form are indistinguishable after lowering. You can typecheck against the phantom type
+and build through the Go engine and never see a mismatch — the `tests/*.ttsc.e2e` suites and the
+example app's output diff exist to enforce exactly this.
 
 ## Wiring a transformer into your project
 
-Two tsconfigs, one extending the other — the **twin-config layout**:
-
-- `tsconfig.json` — your normal config. Wires the ts-patch entries and stays your lint/typecheck
-  gate.
-- `tsconfig.ttsc.json` — extends it, swaps `plugins` for the `/ttsc` subpath of each transformer,
-  and is what you actually build with.
+In the common case, wiring is one line: depend on the `*.transformer` package for the sugar you
+want.
 
 ```jsonc
-// tsconfig.json — lint/typecheck
+// package.json
+{
+  "devDependencies": {
+    "@rhombus-std/di.transformer": "^10.0.0",
+  },
+}
+```
+
+You still need two tsconfigs, because typecheck and lowering are different concerns run by
+different tools — but the lowering one is nearly empty:
+
+```jsonc
+// tsconfig.json — your normal config. Plain tsc sees the phantom `declare module`
+// augmentation through the `types` array (nameof itself needs no entry here — it's an
+// ordinary declaration in @rhombus-std/primitives — but the tokenless add/addFactory/
+// addValue forms are a merge onto di.core's interface, and TS only applies a merge for
+// a file actually pulled into the program).
 {
   "compilerOptions": {
-    "plugins": [
-      { "transform": "@rhombus-std/di.transformer" },
-      { "transform": "@rhombus-std/di.transformer.options" },
-    ],
+    "types": ["@rhombus-std/di.transformer"],
   },
 }
 ```
 
 ```jsonc
-// tsconfig.ttsc.json — build
+// tsconfig.ttsc.json — marks this package for lowering. Its EXISTENCE is what matters,
+// not its plugins list: leave `plugins` unset and the stages you need activate on their
+// own (see "Declare-by-depending" below). An explicit list is the exception, not the
+// default.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "plugins": [
-      { "transform": "@rhombus-std/di.transformer/ttsc" },
-      { "transform": "@rhombus-std/di.transformer.options/ttsc" },
-    ],
+    "noEmit": false,
   },
 }
 ```
 
-**One `plugins` entry per transform stage you use** — there's no aggregate/combo package to reach
-for. Want `nameof` + registration lowering + `addOptions`? List all three `/ttsc` subpaths. `ttsc`
-does the work of running them together (see below); you just declare which stages you want.
+That's it — no `plugins` entry naming `@rhombus-std/di.transformer/ttsc`, and no separate entry
+for the `nameof`/`signatureof` stages your sugar happens to need underneath. Depending on
+`di.transformer` is the whole signal.
 
-### Auto-discovery — a convenience, not a requirement
+### When you need an explicit `plugins` entry
 
-`ttsc` also looks at your project's own `package.json` `dependencies`/`devDependencies`: if one of
-them ships a `"ttsc": { "plugin": { "transform": "..." } }` marker, that transform activates
-without you listing it in `tsconfig.ttsc.json` at all. Every `@rhombus-std/*.transformer` package
-carries this marker, so in the common case installing the package is enough.
+Two cases still want one:
 
-Three things worth knowing about it:
+- **A bare, non-workspace project.** The automatic half of stage selection (below) walks your
+  workspace's dependency graph starting from a `package.json`; outside any workspace there's
+  nothing to walk, and selection falls back to whatever `tsconfig.ttsc.json` names explicitly.
+- **A preset** — one descriptor standing in for an ordered set of stages, without taking on the
+  package that would otherwise pull them in as a side effect. See
+  [Presets](#presets-one-descriptor-for-a-whole-stage-set).
 
-- **Direct dependencies only.** It reads your project's own manifest, not the transitive graph —
-  a transformer your dependency depends on doesn't auto-activate for you.
-- **An explicit `plugins` entry always wins.** Listing a transform yourself (by its raw specifier
-  or its resolved path) suppresses auto-discovery for that same transform — no double-registration.
-- **A foreign package's own marker can't share a pass with ours.** Auto-discovery doesn't know or
-  care which native binary a marker points at. If another dependency (say, a validator library
-  with its own compiled transform) auto-activates alongside an `@rhombus-std` transformer, and the
-  two resolve to two _different_ owner binaries, `ttsc` throws rather than silently picking one —
-  loudly, at build time, naming both plugins. Compose them into one host, or wire only one
-  explicitly.
+```jsonc
+// tsconfig.ttsc.json — explicit form
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "plugins": [{ "transform": "@rhombus-std/di.transformer/ttsc" }],
+  },
+}
+```
 
-## One binary underneath
+Listing a transform yourself always wins — it's additive with, not a replacement for, whatever the
+dependency scan would have selected on its own.
 
-Every `@rhombus-std/*.transformer` package's `/ttsc` subpath — `di`, `di-options`, `config`,
-`nameof`, `inline`, all of them — resolves to the **same Go source**. That's deliberate: `ttsc` builds one
-native binary per distinct source it sees, so no matter how many stages your `tsconfig.ttsc.json`
-lists, they all point at one already-compiled binary. Concretely, that means:
+## Declare-by-depending: how stage selection actually works
 
-- **One build.** The first project to touch it pays a cold `go build`; every plugin entry after
-  that (yours, this repo's, any other consumer's, on the same cache) reuses the cached binary.
+Selection happens in two layers. They run at different times and answer different questions, so
+it's worth keeping them apart.
+
+**Layer 1 — does a host get spawned at all?** This is stock `ttsc`'s own auto-discovery, and it's
+direct-dependency-only: it looks at your project's own `package.json` for a
+`"ttsc": { "plugin": { "transform": "..." } }` marker. Every `@rhombus-std/*.transformer` package
+carries one, so depending on any one of them is enough to get a host running. This layer doesn't
+decide _which_ stages run — only whether the process starts, and which single native backend it
+resolves to.
+
+**Layer 2 — which stages actually run?** Once the host is running, it does its own dependency walk
+from scratch (`inlinetransform.CollectProject`, §100) and self-selects the full transitive stage
+set from what it finds — independent of which single descriptor happened to spawn it. Concretely:
+`primitives.transformer`'s own `./ttsc` descriptor hardcodes the name `rhombusstd_nameof` (just
+enough to satisfy layer 1), while that package's `package.json` separately declares
+`"ttsc": { "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth"] }` — the field
+layer 2 actually reads. The descriptor's name and the package's real contribution to the stage set
+are two different things.
+
+### The marker
+
+A `*.transformer` package declares the stage ids it contributes in its own `package.json`:
+
+```jsonc
+// libraries/di.transformer/package.json
+{
+  "ttsc": {
+    "plugin": { "transform": "@rhombus-std/di.transformer/ttsc" },
+    "stages": ["di"],
+  },
+}
+```
+
+```jsonc
+// libraries/primitives.transformer/package.json
+{
+  "ttsc": {
+    "plugin": { "transform": "@rhombus-std/primitives.transformer/ttsc" },
+    "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth"],
+  },
+}
+```
+
+The marker lives on the `*.transformer` package, **never** on a `*.core` package. A core (`di.core`,
+say) is a dependency of nearly everything, including consumers who never touch the sugar forms at
+all — a marker there would force a Go build onto every one of them. `di.core` itself carries no
+`ttsc.stages` field; it only exposes a preset (see
+[Presets](#presets-one-descriptor-for-a-whole-stage-set)).
+
+### The scan
+
+`CollectProject` walks the workspace dependency graph starting at the nearest `package.json` above
+your build's working directory:
+
+- **dependencies ∪ peerDependencies, at every package the walk reaches** — followed transitively,
+  arbitrarily deep, deduped by directory.
+- **devDependencies, at the root consumer only** — never inherited from a transitive dependency. A
+  library's own devDependency on its own transformer (`di.core` devDeps `primitives.transformer` to
+  lower _itself_) is that library's own build tooling, not a signal that every consumer of that
+  library wants a Go build too.
+
+One walk does double duty (§100): the same traversal that collects stage ids also collects every
+reachable package's `rhombus.inline` publish-list entries — the
+[inline stage](#the-generic-inline-stage-rhombusstd_inline)'s sugar bodies — so a consumer reaching
+a transformer transitively gets both its stage and its inline bodies with no separate wiring.
+
+Outside any workspace — no `package.json` findable above the build directory — the scan returns
+empty and selection falls back purely to whatever `tsconfig.ttsc.json` names explicitly. Nothing
+about that fallback is silent: if the scan is empty **and** the manifest is empty **and** no
+foreign plugin is linked in, the build fails loudly —
+
+```
+NO_STAGES: no rhombusstd_* stage selected (empty manifest + empty dependency scan) and no
+linked plugins present — this run would load the program and emit it unchanged; check that
+the package reaches a @rhombus-std/*.transformer dependency
+```
+
+— rather than silently emitting your program unchanged. An unrecognized stage name, from either
+the scan or the manifest, fails the same way (`UNKNOWN_STAGE`, naming the offending id).
+
+### Seeing it work
+
+Two fixtures make the transitivity concrete, driven through the real `ttsc` with **no** `plugins`
+array in either one's `tsconfig.json`:
+
+- A consumer that devDeps `di.transformer` (whose own `stages` field is just `["di"]`) and calls
+  `nameof<IWidget>()`. Auto-discovery spawns the host off `di.transformer`; the host's own scan
+  then reaches `primitives.transformer` _through_ `di.transformer`'s dependency on it, activates
+  the `nameof` stage, and `nameof<IWidget>()` lowers to its token.
+- A consumer that depends on **only** `di.core`. `di.core` carries no marker, so no host spawns at
+  all — `nameof<IWidget>()` survives in the output untouched, even though `di.core` itself devDeps
+  `primitives.transformer` to build itself. That devDep doesn't leak onto `di.core`'s own
+  consumers.
+
+`tests/declare-by-depending.ttsc.e2e` is exactly this pair, and is the suite to read if you want to
+see the whole thing driven end to end against the real toolchain.
+
+## Presets: one descriptor for a whole stage set
+
+A core can still offer its sugar's stage set as one descriptor, for a consumer who'd rather not
+rely on the dependency scan — a bare non-workspace project, or one that wants the stages without
+also taking on the authoring package that would otherwise pull them in. `di.core`'s `./ttsc` export
+is exactly this: naming it resolves to the bundle name `rhombusstd_di_bundle`, which the host
+expands into its ordered constituents —
+
+```jsonc
+{
+  "rhombusstd_di_bundle": [
+    "rhombusstd_inline",
+    "rhombusstd_nameof",
+    "rhombusstd_signatureof",
+    "rhombusstd_keyof",
+    "rhombusstd_di",
+  ],
+}
+```
+
+— so a consumer of `di.core`'s type-driven `add<T>()`/`addFactory<T>()` sugar wires one line:
+
+```jsonc
+{ "plugins": [{ "transform": "@rhombus-std/di.core/ttsc" }] }
+```
+
+A preset is narrower than the full declare-by-depending reach, on purpose — this one excludes
+`mergesynth`, `di_options`, and `config`, since those aren't part of what `di.core`'s own sugar
+needs. It's the explicit opt-in channel; the default path (an in-workspace consumer just depending
+on `di.transformer`) needs no bundle name at all.
+
+## One binary, every stage linked in
+
+Every `@rhombus-std/*.transformer` package's `/ttsc` descriptor — and every preset — resolves to
+the same Go source (`transforms/cmd/ttsc-std`). That's deliberate:
+
+- **One build.** The first project to touch it pays a cold `go build`; every descriptor after
+  that, on the same cache, reuses the compiled binary.
 - **One spawn per compile.** `ttsc` refuses to run two _different_ native backends over one
-  source-to-source pass — that's exactly the "foreign marker" throw above. Because every
-  `@rhombus-std` stage names the same backend, that check trivially passes no matter how many
-  stages you list.
-- **Runtime stage selection.** The binary receives the ordered list of active stages on its command
-  line (`--plugins-json`) and activates only the ones you declared — listing `di` and `config` but
-  not `di-options` runs exactly those two, nothing more.
-- **A hardcoded, canonical execution order** — `inline` → `nameof` → `di` → `di-options` → `config`
-  — applied regardless of the order you wrote your `plugins` array in. Declaration order is for
-  readability only; it never changes what runs first.
-- **Loud failure, not silent skip.** An unrecognized stage name, a missing Go toolchain, or two
-  plugin entries that can't share a pass all fail the build with a specific message — never a
-  quietly-incomplete transform.
+  source-to-source pass. Because every `@rhombus-std` descriptor names the same backend, that
+  check trivially passes no matter how many descriptors are in play; a manifest entry that isn't
+  one of this host's own stages and isn't a linked foreign plugin is rejected outright, naming it.
+- **A hardcoded, canonical execution order**, regardless of manifest or dependency-scan order:
+
+  ```
+  inline → mergesynth → nameof → signatureof → keyof → di → di_options → config
+  ```
+
+- **Loud failure, not silent skip.** Selecting a stage neither the scan nor the manifest
+  recognizes, or selecting nothing at all, fails the build with a specific message
+  (`UNKNOWN_STAGE`, `NO_STAGES`) — never a quietly-incomplete transform.
 
 This is why a consumer never needs one package per _combination_ of stages — no `di+options`
-bundle, no `di+config` bundle. You compose stages by listing them, not by finding the pre-built
-combination that happens to match your needs.
+bundle, no `di+config` bundle. You compose stages by reaching them (through a dependency, or a
+preset), not by finding a pre-built combination that happens to match your needs.
+
+### The stage table
+
+| Stage id      | Declared by              | What it does                                                                                                                                                       |
+| ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `inline`      | `primitives.transformer` | Substitutes a certified single-expression sugar body (§91) at its call site, before any primitive stage runs.                                                      |
+| `mergesynth`  | `primitives.transformer` | Synthesizes a default merge strategy for every augmentation member with none, from its own parameter types (§103, [below](#the-merge-synthesis-stage-mergesynth)). |
+| `nameof`      | `primitives.transformer` | Lowers `nameof<T>()` to its export-graph token, and elides the now-unused import.                                                                                  |
+| `signatureof` | `primitives.transformer` | Lowers `signatureof<T>()` to a dependency-signature array.                                                                                                         |
+| `keyof`       | `primitives.transformer` | Lowers `keyof<T>()` to the key literal of a `Keyed<T, K>` type argument, or `void 0` when unkeyed (§98).                                                           |
+| `di`          | `di.transformer`         | Lowers the tokenless `add`/`addFactory`/`addValue` registration forms.                                                                                             |
+| `di_options`  | `di.transformer.options` | Lowers the `addOptions<T>()` sugar.                                                                                                                                |
+| `config`      | `config.transformer`     | Lowers `.withType<T>()` into a generated `.withSchema({...})` runtime schema literal.                                                                              |
+
+`inline`, `mergesynth`, `nameof`, `signatureof`, and `keyof` are family-neutral — any family's
+sugar can lean on them, so they're surfaced through `primitives.transformer` rather than
+duplicated per family (§104). `di`, `di_options`, and `config` are each one family's own stage,
+declared by that family's own `*.transformer` package. This split is also where each primitive's
+_authoring_ home lives, independent of which stage lowers it: `nameof` stays in
+`@rhombus-std/primitives` because it's the one primitive called from runtime source; `signatureof`
+and `keyof` are typed against `di.core`'s real types, so their stubs live in `di.transformer` even
+though the stage that lowers them is neutral (§92).
+
+`signatureof` and `keyof` both run after `nameof` (disjoint call shapes — a type-argument primitive
+vs. a value-argument one) and before `di`, so the `di` stage sees a fully-lowered `add(...)` call
+it leaves untouched.
 
 ## The generic inline stage (`rhombusstd_inline`)
 
-The four stages above each carry hand-written, per-library knowledge of one sugar shape. The
-**inline stage** is different: it is a generic single-expression function-inliner that learns what
-to substitute from a hand-authored publish list, not from compiled-in rules. Over time it replaces
-per-library semantic knowledge — a library authors its sugar as ordinary typed TypeScript whose
+Every other stage in the table above carries hand-written, per-family knowledge of one sugar shape
+— `nameof` always lowers to a token, `di` always lowers a registration call. The **inline stage**
+is different: it is a generic single-expression function-inliner that learns what to substitute
+from a hand-authored publish list, not from compiled-in rules. Over time it replaces per-family
+semantic knowledge — a library authors its sugar as ordinary typed TypeScript whose
 single-return-expression body is written over the compile-time primitives, and the inline stage
 substitutes that body at consumer call sites (the primitive stages then lower the result).
 
 It is **workspace-only**: every entry it inlines resolves to a sibling package's real `src` file at
-build time, in this repo, in this build. There is no published/carrier form of an inlined function,
-no shipped src, no dist-JS resolution path — the external-consumption story is a deliberately
-parked follow-up.
+build time, in this repo, in this build. There is no published/carrier form of an inlined
+function, no shipped src, no dist-JS resolution path — the external-consumption story is a
+deliberately parked follow-up.
 
 ### The publish list — `"rhombus.inline"`
 
-A library declares its inlineable members in a `"rhombus.inline"` key in `package.json`:
+A library declares its inlineable members in a `"rhombus.inline"` key in `package.json`. This is
+exactly what [the scan](#the-scan) above collects, in the same walk that collects stage ids (§100)
+— reaching a package's inline entries needs no wiring beyond whatever dependency edge already gets
+its stages activated.
 
 ```jsonc
 {
@@ -198,6 +380,35 @@ Two hard build failures keep a drifted install honest: a **rogue-duplicate** che
 resolves to a same-named member outside the merged symbol (dist skew / two physical copies), and an
 **emit sweep** that fails the build if any primitive or listed-sugar call survives to the output.
 
+## The merge-synthesis stage (`mergesynth`)
+
+`rhombusstd_mergesynth` — the default-merge-strategy synthesizer for augmentations — is a base
+stage of the one `ttsc-std` (folded into `internal/stdhost`'s base stage table, running before
+`nameof`; decisions.v2 §103). For every member of a set reaching
+`registerAugmentations`/`applyAugmentations` without a hand-authored strategy for its name, the
+stage derives a runtime argument-shape guard from the member's own parameter types and threads a
+per-member strategies map as the call's third argument — so a member-name collision dispatches by
+argument shape instead of throwing. Hand-authored strategies always win (covered names are
+skipped, and the original merge expression is spread last); an un-derivable parameter type
+(`any`/`unknown`, a bare generic, no annotation) degrades to an always-pass strategy where that
+extension wins and chain order breaks ties.
+
+The guards are typia `createIs<T>()` validators generated **in-process**: the stage hands each
+parameter's original type node to typia's native Go programmers over the same loaded program,
+checker, and emit context, and inserts the already-lowered guard. Nothing typia-shaped survives
+into the emit — a guard that would need a typia runtime helper import is dropped (with a warning)
+rather than emitted.
+
+The one `ttsc-std` links typia to run this stage (decisions.v2 §103, retiring the earlier
+in-repo-only `ttsc-std-full` split). typia is a build-time-only cost: `ttsc-std` is a compiled
+plugin binary, never shipped as runtime, and — because the emitted guards are inlined plain JS with
+no typia runtime import — no typia reference reaches any published artifact or npm manifest (§87's
+first-party-authoring ruling is untouched; only its typia-free-_binary_ consequence is retired).
+`mergesynth` activates by declare-by-depending (§100): a package that depends on
+`primitives.transformer` (whose `ttsc.stages` includes `mergesynth`) runs it, so every
+augmentation-installing library gets synthesized strategies with no wiring; a package that installs
+no augmentation runs it as a no-op and emits byte-identically.
+
 ## Why one pass, not a pipeline
 
 `ttsc` runs a transform as a single source-to-source rewrite: it reads your original file once and
@@ -223,7 +434,8 @@ The same reasoning ruled out a few other shapes:
   the whole-module build cache and drags in `v0.0.0`-style local-module resolution nobody wants to
   maintain.
 
-One binary, every stage linked in, activated by a runtime flag — is the shape that avoids all four.
+One binary, every stage linked in, activated by a runtime flag or a dependency scan — is the shape
+that avoids all four.
 
 ## Toolchain & publishing
 
@@ -245,46 +457,36 @@ those itself by adding its own known-good copies as workspace overlays during th
 transformer's Go source stays free of hand-maintained `go.sum` entries for compiler-internal
 packages it only borrows types from.
 
-## Internals (for maintainers of this repo's transformer sources)
+## Internals (for maintainers of this repo's own transformer sources)
 
-The shared binary lives at `transforms/cmd/ttsc-std` and statically links every stage this repo
-ships: the generic single-expression inliner, token/`nameof` derivation, DI registration lowering,
-`addOptions<T>()`, and `withType<T>()`. Each `@rhombus-std/*.transformer` package's descriptor
-names its own stage (`inline`, `nameof`, `di`, `di-options`, `config`) so `ttsc`'s `--plugins-json`
-payload lists them individually — but every descriptor's `source` field resolves to the same
-`ttsc-std` directory, so `ttsc` compiles it exactly once regardless of how many descriptors
-reference it. The inline stage's descriptor is `@rhombus-std/primitives.transformer/inline-ttsc`.
+The shared binary lives at `transforms/cmd/ttsc-std` and links every stage in the table above,
+built from `transforms/internal/stdhost`'s `BaseStages()` (the ordered stage table — the slice
+order **is** the canonical execution order) and `BaseBundles()` (the preset expansions, e.g.
+`rhombusstd_di_bundle`). The command itself is a thin `main` that composes those into a `Host`
+value and hands it to `stdhost.Run`; almost everything else — manifest parsing, the dependency
+scan, stage selection, the per-file transform loop, and the JSON envelope `ttsc` reads back —
+lives in `stdhost`, not the command.
 
-`ttsc-std` parses `--plugins-json` at startup, builds the set of declared stage names, and runs
-only those stages' AST transforms over the loaded program — in the hardcoded canonical order, not
-declaration order. An unrecognized stage name in that payload is a build-time error naming the
-unknown stage, not a silent no-op.
+Each `@rhombus-std/*.transformer` package's `./ttsc` descriptor is a thin JS module (`ttsc.mjs`)
+that `ttsc` loads to resolve an absolute path back to `transforms/cmd/ttsc-std` plus a single stage
+name; every descriptor resolves to that same directory, which is what lets `ttsc` dedupe them to
+one cache key. The name a descriptor returns matters for auto-discovery (layer 1 in
+[Declare-by-depending](#declare-by-depending-how-stage-selection-actually-works)) but not for which
+stages actually run (layer 2) — `primitives.transformer/ttsc` names only `rhombusstd_nameof`, and
+still contributes `inline`/`signatureof`/`keyof`/`mergesynth` once the host's own scan reaches it.
 
-### The merge-synthesis stage (`mergesynth`)
+`selectStages` (`stdhost/host.go`) computes the union of the dependency scan's stage ids and the
+manifest's `rhombusstd_*` entries (expanding any bundle name to its constituents), rejects an
+unrecognized name from either source, and returns the result in the host's own table order — never
+manifest or scan order. `CollectProject` (`internal/inlinetransform/collector.go`) is the scan
+itself: it resolves each dependency name to an on-disk package directory (the workspace-root
+`"workspaces"` glob map, falling back to `node_modules` — the bun isolated linker's symlinks make
+both the real build and an e2e fixture resolvable this way) and recurses, reading each package's
+`ttsc.stages` and `rhombus.inline` fields as it goes.
 
-`rhombusstd_mergesynth` — the default-merge-strategy synthesizer for augmentations — is a base stage
-of the one `ttsc-std` (folded into `internal/stdhost`'s base stage table, running before nameof;
-decisions.v2 §103). For every member of a set reaching
-`registerAugmentations`/`applyAugmentations` without a hand-authored strategy for its name, the
-stage derives a runtime argument-shape guard from the member's own parameter types and threads a
-per-member strategies map as the call's third argument — so a member-name collision dispatches by
-argument shape instead of throwing. Hand-authored strategies always win (covered names are
-skipped, and the original merge expression is spread last); an un-derivable parameter type
-(`any`/`unknown`, a bare generic, no annotation) degrades to an always-pass strategy where that
-extension wins and chain order breaks ties.
-
-The guards are typia `createIs<T>()` validators generated **in-process**: the stage hands each
-parameter's original type node to typia's native Go programmers over the same loaded program,
-checker, and emit context, and inserts the already-lowered guard. Nothing typia-shaped survives
-into the emit — a guard that would need a typia runtime helper import is dropped (with a warning)
-rather than emitted.
-
-The one `ttsc-std` links typia to run this stage (decisions.v2 §103, retiring the earlier
-in-repo-only `ttsc-std-full` split). typia is a build-time-only cost: `ttsc-std` is a compiled
-plugin binary, never shipped as runtime, and — because the emitted guards are inlined plain JS with
-no typia runtime import — no typia reference reaches any published artifact or npm manifest (§87's
-first-party-authoring ruling is untouched; only its typia-free-_binary_ consequence is retired).
-mergesynth activates by declare-by-depending (§100): a package that depends on
-`primitives.transformer` (whose `ttsc.stages` includes `mergesynth`) runs it, so every
-augmentation-installing library gets synthesized strategies with no wiring; a package that installs
-no augmentation runs it as a no-op and emits byte-identically.
+Adding a new stage means: write the Go transform under `transforms/internal/<name>transform`, add
+its `Stage{Name: stagePrefix + "<id>", Build: ...}` entry to `BaseStages()` at the right position
+in the canonical order, decide which package's `package.json` should declare
+`"stages": ["<id>"]` (a `*.transformer` package if the stage is family-specific,
+`primitives.transformer` if it's neutral, per §104), and give it a `./ttsc`-style descriptor if it
+needs to be independently nameable.
