@@ -245,20 +245,33 @@ func KeyLiteralFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, b
 	return brandLiteralFor(t, checker, keyBrandProperty, extractStringLiteral)
 }
 
+// keyedBaseTokenFor derives the BASE token of a `Keyed<T, K>` type — the token
+// the underlying T tokenizes to, phantom brand stripped and with NO `#key`
+// suffix. The base derives from T two ways, checked in order so Keyed stacks
+// orthogonally with Inject:
+//  1. An `Inject<T, "tok">` brand under the Keyed pins the base explicitly
+//     (`Keyed<Inject<T, "tok">, "k">` → base `tok`) — InjectTokenFor reads [TOK]
+//     off the same flattened intersection.
+//  2. Otherwise the base derives structurally from T with the phantom-brand
+//     members stripped off the intersection (stripBrandMembers), since the raw
+//     `T & { [KEY]?: K }` intersection has no symbol of its own. Hole-aware
+//     derivation (DeriveTokenF, not DeriveToken): a keyed base that itself
+//     contains an open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render
+//     `IThing<$1>` — DeriveToken has no hole branch and would bail.
+//
+// Returns ok=false when no base is derivable.
+func keyedBaseTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
+	if base, ok := InjectTokenFor(t, ctx.Checker); ok {
+		return base, true
+	}
+	return DeriveTokenF(ctx, stripBrandMembers(t, ctx.Checker), nil)
+}
+
 // KeyedTokenFor returns the composed keyed token `<base>#<key>` when t carries
 // the `Keyed<T, K>` brand, or ok=false so the caller falls through to normal
 // derivation. A key is NOT a parallel resolution subsystem — it is a `#<key>`
 // suffix on the ordinary token the underlying T derives, so
 // `Keyed<ICache, "redis">` composes `caching.core:ICache#redis`.
-//
-// The base derives from T two ways, checked in order so Keyed stacks
-// orthogonally with Inject:
-//  1. An `Inject<T, "tok">` brand under the Keyed pins the base explicitly
-//     (`Keyed<Inject<T, "tok">, "k">` → `tok#k`) — InjectTokenFor reads [TOK]
-//     off the same flattened intersection.
-//  2. Otherwise the base derives structurally from T with the phantom-brand
-//     members stripped off the intersection (stripBrandMembers), since the raw
-//     `T & { [KEY]?: K }` intersection has no symbol of its own.
 //
 // Returns ok=false when no base is derivable — the caller's normal path then
 // raises the appropriate diagnostic.
@@ -267,19 +280,26 @@ func KeyedTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	base, ok := InjectTokenFor(t, ctx.Checker)
+	base, ok := keyedBaseTokenFor(ctx, t)
 	if !ok {
-		// Hole-aware derivation (DeriveTokenF, not DeriveToken) to match the
-		// reference keyedTokenFor: a keyed dependency whose base itself contains an
-		// open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render the base as
-		// `IThing<$1>` — DeriveToken has no hole branch and would bail, dropping the
-		// key suffix and diverging from the reference's output.
-		base, ok = DeriveTokenF(ctx, stripBrandMembers(t, ctx.Checker), nil)
-		if !ok {
-			return "", false
-		}
+		return "", false
 	}
 	return base + "#" + key, true
+}
+
+// ServiceBaseTokenFor derives the token the nameof stage lowers a service TYPE
+// to. For an ordinary type it is DeriveTokenF. For a `Keyed<T, K>` type it is
+// just the BASE (keyedBaseTokenFor) — the brand stripped, NO `#key` suffix — so
+// the inline registration path (`add<T>()` → `this.add(nameof<T>(), ctor,
+// signatureof(ctor), keyof<T>())`) composes that base with keyof<T>()'s key at
+// runtime and lands on the SAME `base#key` token the di direct stage derives via
+// KeyedTokenFor. Without it a keyed nameof would tokenize the whole aliased
+// `Keyed<...>` reference — a nonsense token diverging from the direct path.
+func ServiceBaseTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
+	if _, keyed := KeyLiteralFor(t, ctx.Checker); keyed {
+		return keyedBaseTokenFor(ctx, t)
+	}
+	return DeriveTokenF(ctx, t, nil)
 }
 
 // stripBrandMembers recovers the underlying T from a `Keyed<T, K>` (and any

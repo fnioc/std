@@ -7,7 +7,7 @@
 // back-to-back over one loaded program in one shared EmitContext, in the
 // hardcoded canonical order
 //
-//	inline -> mergesynth -> nameof -> signatureof -> di -> di-options -> config
+//	inline -> mergesynth -> nameof -> signatureof -> keyof -> di -> di-options -> config
 //
 // Entry order in the manifest is irrelevant; the canonical order is fixed. This
 // replaces the former per-combination sidecars (ttsc-nameof / ttsc-di /

@@ -12,12 +12,14 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-// setupKeyedFenceWorkspace lays out an inline-active `add`-sugar workspace — the
-// real ServiceManifestInline shape — whose consumer registers one PLAIN
-// `add<IFoo>(Foo)` and one KEYED `add<Keyed<ICache, "redis">>(RedisCache)`. It is
-// the fixture for the Keyed fence: the plain call inlines, the keyed call must be
-// left un-inlined for the di direct stage (which composes the `#redis` suffix).
-func setupKeyedFenceWorkspace(t *testing.T) (*driver.Program, string) {
+// setupKeyedInlineWorkspace lays out an inline-active `add`-sugar workspace — the
+// real ServiceManifestInline shape carrying the §98 trailing `keyof<T>()` — whose
+// consumer registers one PLAIN `add<IFoo>(Foo)` and one KEYED
+// `add<Keyed<ICache, "redis">>(RedisCache)`. It is the fixture for keyed inline
+// lowering: both calls inline, the plain one ELIDES its trailing keyof argument
+// (byte-parity with the pre-keyof form) while the keyed one KEEPS it for the keyof
+// stage to lower to the key string.
+func setupKeyedInlineWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
@@ -32,21 +34,21 @@ func setupKeyedFenceWorkspace(t *testing.T) (*driver.Program, string) {
   }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown): unknown;
+  add(token: string, ctor: unknown, sig?: unknown, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 declare const KEY: unique symbol;
 export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
-	// The impl body — the real add-sugar shape, authored over the two primitives,
-	// each imported from its home module (nameof from primitives, signatureof from
-	// di.transformer).
+	// The impl body — the real add-sugar shape, authored over the three primitives,
+	// each imported from its home module (nameof from primitives, signatureof +
+	// keyof from di.transformer). The trailing keyof<T>() is the §98 key half.
 	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
-import { signatureof } from '@rhombus-std/di.transformer';
+import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.add(nameof<T>(), ctor, signatureof(ctor));
+    return this.add(nameof<T>(), ctor, signatureof(ctor), keyof<T>());
   },
 };
 `)
@@ -94,14 +96,14 @@ export const b = services.add<Keyed<ICache, "redis">>(RedisCache);
 	return prog, app
 }
 
-// TestStageFencesKeyedRegistration is the Keyed fence: `add<Keyed<T, K>>(Impl)`
-// must NOT be inlined. The inline path lowers its service token through nameof,
-// which does not compose the `#key` suffix (only the di direct stage's
-// KeyedTokenFor does) — so inlining a keyed registration would silently register
-// under a key-less token. The fence leaves the keyed call verbatim for the di
-// direct stage, while the sibling plain `add<IFoo>(Foo)` still inlines.
-func TestStageFencesKeyedRegistration(t *testing.T) {
-	prog, app := setupKeyedFenceWorkspace(t)
+// TestStageLowersKeyedRegistration is the §98 keyed inline lowering (retiring the
+// #244 fence): `add<Keyed<T, K>>(Impl)` now INLINES like any other registration.
+// The keyed call keeps its trailing `keyof<T>()` argument (registered for the keyof
+// stage, which lowers it to the key string composed at runtime as `base#key`),
+// while the sibling plain `add<IFoo>(Foo)` inlines and ELIDES its trailing keyof
+// argument entirely — byte-identical to the pre-keyof 3-argument form.
+func TestStageLowersKeyedRegistration(t *testing.T) {
+	prog, app := setupKeyedInlineWorkspace(t)
 	defer func() { _ = prog.Close() }()
 
 	artifacts := NewArtifacts()
@@ -118,32 +120,44 @@ func TestStageFencesKeyedRegistration(t *testing.T) {
 	main := sourceFileWithSuffix(t, prog, "main.ts")
 	out := reprint(ec, transform(ec, main))
 
-	// The plain registration inlined: its sugar type-argument form is gone.
+	// Both registrations inlined: neither sugar type-argument form survives, and
+	// both emit a nameof primitive (its bound type stays recorded in artifacts, so
+	// the emitted type argument is the body's `T`, not the call-site type).
 	if strings.Contains(out, "add<IFoo>") {
 		t.Errorf("plain add<IFoo> should have inlined, but the sugar form survived:\n%s", out)
 	}
-	// The keyed registration was FENCED: its sugar form survives verbatim, left for
-	// the di direct stage to lower with the key.
-	if !strings.Contains(out, "add<Keyed") {
-		t.Errorf("keyed add<Keyed<...>> should have been fenced (left un-inlined), but the sugar form is gone:\n%s", out)
+	if strings.Contains(out, "add<Keyed") {
+		t.Errorf("keyed add<Keyed<...>> should have inlined (fence retired), but the sugar form survived:\n%s", out)
+	}
+	if got := strings.Count(out, "nameof<"); got != 2 {
+		t.Errorf("expected 2 inlined nameof calls (plain + keyed), got %d:\n%s", got, out)
+	}
+	// EXACTLY one keyof argument survives: the keyed call keeps it (the keyof stage
+	// lowers it), the plain call ELIDED it — byte-parity with the pre-keyof form.
+	if got := strings.Count(out, "keyof<"); got != 1 {
+		t.Errorf("expected exactly 1 surviving keyof call (keyed kept, plain elided), got %d:\n%s", got, out)
 	}
 
-	// Only the plain registration registered primitives; the fenced keyed call
-	// registered none. So no registered nameof primitive is keyed, and exactly one
-	// nameof was registered (for IFoo).
-	nameofCount := 0
+	// Both registrations registered a nameof primitive; only the keyed one registered
+	// a keyof primitive (the plain one's was elided before registration).
+	nameofCount, keyofCount := 0, 0
 	for _, use := range artifacts.PrimitiveCalls {
-		if use.Name != "nameof" {
-			continue
-		}
-		nameofCount++
-		if len(use.TypeArgs) == 1 {
-			if _, keyed := tokens.KeyLiteralFor(use.TypeArgs[0], prog.Checker); keyed {
-				t.Errorf("a keyed type reached the nameof primitive registry — the fence leaked: %s", typeName(prog.Checker, use.TypeArgs[0]))
+		switch use.Name {
+		case "nameof":
+			nameofCount++
+		case "keyof":
+			keyofCount++
+			if len(use.TypeArgs) == 1 {
+				if _, keyed := tokens.KeyLiteralFor(use.TypeArgs[0], prog.Checker); !keyed {
+					t.Errorf("the registered keyof primitive should be keyed: %s", typeName(prog.Checker, use.TypeArgs[0]))
+				}
 			}
 		}
 	}
-	if nameofCount != 1 {
-		t.Fatalf("expected exactly 1 registered nameof primitive (the plain add<IFoo>), got %d", nameofCount)
+	if nameofCount != 2 {
+		t.Fatalf("expected 2 registered nameof primitives (plain + keyed), got %d", nameofCount)
+	}
+	if keyofCount != 1 {
+		t.Fatalf("expected exactly 1 registered keyof primitive (the keyed add), got %d", keyofCount)
 	}
 }

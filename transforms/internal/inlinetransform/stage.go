@@ -201,20 +201,13 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 			})
 			return nil, false
 		}
-		// Keyed fence: a sugar type argument carrying the Keyed<T, K> brand composes
-		// its registration token as `<base>#key` — a composition ONLY the di
-		// registration stage performs (via tokens.KeyedTokenFor). The inline path
-		// lowers its service token through nameof, which deliberately does NOT run
-		// KeyedTokenFor, so inlining a keyed sugar would drop the `#key` suffix and
-		// register under a silently-wrong token. Leave such a call un-inlined so the
-		// di direct stage lowers it with the key intact. (Whether nameof itself should
-		// ever compose a key is a separate deferred decision — see nameoftransform's
-		// keyed note; the fence preserves correct behavior without needing it.)
-		for _, t := range types[:len(body.TypeParams)] {
-			if _, keyed := tokens.KeyLiteralFor(t, st.checker); keyed {
-				return nil, false
-			}
-		}
+		// A keyed sugar (`add<Keyed<T, K>>(Impl)`) now inlines like any other (§98):
+		// the body's `nameof<T>()` derives the BASE token (ServiceBaseTokenFor strips
+		// the brand) and its trailing `keyof<T>()` derives the KEY, composed at
+		// runtime as `base#key` — the same token the di direct stage derives via
+		// KeyedTokenFor. The #244 fence that left keyed calls for the direct path is
+		// retired; an UNKEYED call instead elides its trailing keyof argument below,
+		// keeping the lowered output byte-identical to the pre-keyof form.
 		env = map[string]*shimchecker.Type{}
 		for i, tp := range body.TypeParams {
 			env[tp] = types[i]
@@ -237,8 +230,78 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 		st.temps = append(st.temps, res.Temp)
 	}
 
+	// Byte-parity elision: an UNKEYED registration drops its trailing `keyof<T>()`
+	// argument so the lowered call is identical to the pre-keyof 3-argument form.
+	// Done BEFORE registerPrimitives so a dropped keyof is never registered for the
+	// keyof stage; a KEYED call keeps it, and the stage lowers it to the key string.
+	res.Expr = st.elideUnkeyedKeyArg(res.Expr, body, env)
+
 	st.registerPrimitives(res.Expr, body, env)
 	return wrapForPrecedence(st.ec, res.Expr), true
+}
+
+// keyofPrimitiveName is the canonical primitive name a `keyof<T>()` import maps to
+// (knownPrimitives), matched on the trailing registration argument for elision.
+const keyofPrimitiveName = "keyof"
+
+// elideUnkeyedKeyArg drops a trailing `keyof<T>()` argument from a substituted
+// registration call when T carries no `Keyed<T, K>` brand, so an UNKEYED lowering
+// is byte-identical to the pre-keyof form (`this.add(nameof<T>(), ctor,
+// signatureof(ctor))`, no 4th argument). A KEYED call keeps the argument — the
+// keyof stage lowers it to the key string, composed at runtime as `base#key`.
+//
+// Detection is structural: the substituted outer call whose LAST argument is a
+// call to a `keyof` primitive (per the body's import map). The certified
+// registration sugars use `this` exactly once with a simple/property receiver, so
+// Substitute returns the bare outer call; a non-call root (defensive) is left
+// untouched, keeping the keyof arg for the stage to lower to `void 0`.
+func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) *shimast.Node {
+	if expr.Kind != shimast.KindCallExpression {
+		return expr
+	}
+	call := expr.AsCallExpression()
+	if call.Arguments == nil || len(call.Arguments.Nodes) == 0 {
+		return expr
+	}
+	args := call.Arguments.Nodes
+	last := args[len(args)-1]
+	if last.Kind != shimast.KindCallExpression {
+		return expr
+	}
+	callee := last.AsCallExpression().Expression
+	if callee.Kind != shimast.KindIdentifier || body.PrimitiveImports[callee.Text()] != keyofPrimitiveName {
+		return expr
+	}
+	if st.keyofArgIsKeyed(last, env) {
+		return expr
+	}
+	kept := args[:len(args)-1]
+	factory := st.ec.Factory.AsNodeFactory()
+	return factory.NewCallExpression(call.Expression, nil, nil, factory.NewNodeList(kept), 0)
+}
+
+// keyofArgIsKeyed reports whether a `keyof<T>()` call's bound type argument carries
+// the `Keyed<T, K>` brand, read off the inline env captured at the call site.
+func (st *fileState) keyofArgIsKeyed(keyofCall *shimast.Node, env map[string]*shimchecker.Type) bool {
+	typeArgs := keyofCall.AsCallExpression().TypeArguments
+	if typeArgs == nil {
+		return false
+	}
+	for _, ta := range typeArgs.Nodes {
+		if ta.Kind != shimast.KindTypeReference {
+			continue
+		}
+		name := ta.AsTypeReferenceNode().TypeName
+		if name == nil || name.Kind != shimast.KindIdentifier {
+			continue
+		}
+		if t, ok := env[name.Text()]; ok {
+			if _, keyed := tokens.KeyLiteralFor(t, st.checker); keyed {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // registerPrimitives walks a substituted expression and records every primitive
