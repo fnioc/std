@@ -46,6 +46,7 @@
   "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/bundle/index.js",
       "default": "./dist/bundle/index.js"
@@ -61,7 +62,9 @@
     "plugin": {
       "transform": "@rhombus-std/di.transformer/ttsc"
     },
-    "stages": ["di"]
+    "stages": [
+      "di"
+    ]
   },
   "files": [
     "dist",

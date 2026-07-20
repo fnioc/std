@@ -21,6 +21,7 @@
   "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "di-core-source": "./src/index.ts",
       "bun": "./dist/bundle/index.js",
       "types": "./dist/bundle/index.d.ts",

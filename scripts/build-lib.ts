@@ -68,7 +68,7 @@ const overrides = manifest.rhombusBuild ?? {};
 
 // Typecheck gate first -- the publish pipeline never runs tsc itself
 // (bun build + rollup-plugin-dts), so this is where type errors fail the build.
-const typecheck = spawnSync('bun', ['x', 'tsc', '--noEmit', '-p', 'tsconfig.json'], {
+const typecheck = spawnSync('bun', ['x', 'tsc', '--noEmit', '-p', 'tsconfig.ci.json'], {
   cwd: dir,
   stdio: 'inherit',
 });

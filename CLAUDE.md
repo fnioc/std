@@ -52,7 +52,10 @@ Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` 
   `build`/`test`/`lint`/`format:check` plus the Go gates on every push/PR/merge_group and is a
   required status check on the `main` merge-queue ruleset — but it's the same local gate running
   remotely, not a separate suite; `bun run test` locally is still authoritative.
-- **Typecheck is per-package**, inside each package's `build`/`lint` (`tsc --noEmit -p tsconfig.json`).
+- **Typecheck is per-package**, inside each package's `build`/`lint` (`tsc --noEmit -p tsconfig.ci.json`).
+  Each package's `tsconfig.json` is the **editor** config instead — a whole-repo src-refs program (all
+  `libraries/*/src` in one program, `@rhombus-std/*` → source) so IDE rename / find-refs span every
+  package; the build and gate never read it (extends `/tsconfig.editor.json`).
   The root `typecheck` script (`tsc -b`) points at an empty solution stub and checks nothing — don't
   rely on it.
 - **Lint** is eslint (typescript-eslint, type-aware) over `libraries|examples/*/src`; but
@@ -379,7 +382,7 @@ One further deviation, because a **transformer** is in play — now a single **G
 (the ts-patch/TS5 track was removed; restore tag `pre-tspatch-removal`):
 
 - **Lint/typecheck is plain `tsc`.** Transformer-active packages type-check with `tsc --noEmit`; a
-  `types` array in `tsconfig.json` pulls the transformer's `declare module` augmentation into the
+  `types` array in `tsconfig.ci.json` pulls the transformer's `declare module` augmentation into the
   program, so the authored tokenless forms type-check with no plugin (`nameof` and the sugar forms
   have no type-level footprint). `rollup` + `rollup-plugin-dts` live at the repo root.
 - **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `nameof<T>()` (etc.)
