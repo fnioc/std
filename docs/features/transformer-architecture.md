@@ -23,8 +23,13 @@ That works because every sugar form is declared twice, in two different senses:
   instead of silently doing the wrong thing:
 
   ```ts
-  // @rhombus-std/primitives — the real declaration
-  export declare function nameof<T>(): string;
+  // @rhombus-std/primitives — the real declaration; the body throws so a
+  // call that reaches runtime un-lowered fails loudly instead of returning undefined
+  export function nameof<T>(): string {
+    throw new Error(
+      'nameof<T>() requires the transformer, or pass an explicit token.',
+    );
+  }
   ```
 
 - **A phantom type** — usually a `declare module` augmentation onto the receiving interface (e.g.
