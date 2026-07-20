@@ -7,6 +7,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/dioptionstransform"
 	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
@@ -37,12 +38,13 @@ func StageName(id string) string {
 // and later stages leave the synthesized object untouched), then nameof (its
 // token lowering and import elision, including the inline stage's synthetic
 // nameof calls), then signatureof (the dependency-signature array lowering,
-// including the inline stage's synthetic signatureof calls), then the
-// registration verbs, the addOptions sugar, and the config schema lowering.
-// signatureof runs after nameof (disjoint call shapes — a type-argument vs a
-// value-argument primitive) and before di, so the di stage sees a fully-lowered
-// 3-argument `add(...)` it leaves untouched. Manifest entry order does not affect
-// this — selection filters the host's stage slice, preserving order.
+// including the inline stage's synthetic signatureof calls), then keyof (the
+// keyed-registration KEY lowering, including the inline stage's synthetic keyof
+// calls), then the registration verbs, the addOptions sugar, and the config schema
+// lowering. signatureof and keyof both run after nameof (disjoint call shapes — a
+// type-argument vs a value-argument primitive) and before di, so the di stage sees
+// a fully-lowered `add(...)` it leaves untouched. Manifest entry order does not
+// affect this — selection filters the host's stage slice, preserving order.
 //
 // Returned as a fresh slice each call so selection can filter it without
 // mutating shared state.
@@ -52,6 +54,7 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "mergesynth", Build: buildMergesynth},
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
+		{Name: stagePrefix + "keyof", Build: buildKeyof},
 		{Name: stagePrefix + "di", Build: buildDi},
 		{Name: stagePrefix + "di_options", Build: buildDiOptions},
 		{Name: stagePrefix + "config", Build: buildConfig},
@@ -61,8 +64,8 @@ func BaseStages() []Stage {
 // BaseBundles maps a PRESET descriptor name to the ordered set of stage names it
 // expands into. A bundle lets a library declare its primitive-stage "package" once
 // (di.core's `add<T>()` / `addFactory<T>()` sugar needs inline -> nameof ->
-// signatureof -> di) so a consumer wires ONE transform instead of enumerating the
-// four in the right order: selectStages replaces a bundle name with its
+// signatureof -> keyof -> di) so a consumer wires ONE transform instead of
+// enumerating them in the right order: selectStages replaces a bundle name with its
 // constituents, which the host's stage table then sorts and dedups. The single
 // owner binary owns both the membership AND the order, so no consumer ever
 // hand-lists the primitive stages — the whole point of the preset. Discovery
@@ -79,6 +82,7 @@ func BaseBundles() map[string][]string {
 			stagePrefix + "inline",
 			stagePrefix + "nameof",
 			stagePrefix + "signatureof",
+			stagePrefix + "keyof",
 			stagePrefix + "di",
 		},
 	}
@@ -129,6 +133,16 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return signaturetransform.New(prog, ctx, env.Artifacts, func(d ditransform.Diagnostic) {
 		emit(DiagFromDi(d))
+	})
+}
+
+// buildKeyof activates the keyof primitive stage. It lowers each `keyof<T>()` —
+// the inline stage's synthetic keyed-registration KEY calls and any source-written
+// one — to the `Keyed<T, K>` key string (or `void 0` when unkeyed). It raises no
+// diagnostics of its own; any it did raise would be hard errors.
+func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return keyoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
 	})
 }
 

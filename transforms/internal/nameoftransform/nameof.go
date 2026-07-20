@@ -14,10 +14,12 @@
 // `nameof<T>()`) could never produce the open-template service token. DeriveTokenF
 // also rejects the typescript-go internal-symbol name family (the `0xFE`-prefixed
 // anonymous `__type` equivalents), so an anonymous type argument derives no token
-// exactly as the di stage already treats it. Keyed composition (`Keyed<T,K>` →
-// `base#key`) is deliberately NOT applied here — the reference nameof does not run
-// keyedTokenFor either (only the di stage does), so a keyed registration stays on
-// the direct path; see holeparity's keyed note.
+// exactly as the di stage already treats it. For a `Keyed<T, K>` service type
+// nameof derives just the BASE token (via ServiceBaseTokenFor — the brand
+// stripped, NO `#key` suffix): the inline registration path composes that base
+// with keyof<T>()'s key at runtime to land on the same `base#key` token the di
+// direct stage derives via keyedTokenFor. nameof itself never appends the key
+// (keyof owns the key half), so the two halves compose rather than double-count.
 package nameoftransform
 
 import (
@@ -59,11 +61,11 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				if isNameofCall(checker, call) {
 					typeNode := call.TypeArguments.Nodes[0]
 					t := checker.GetTypeFromTypeNode(typeNode)
-					token, _ := tokens.DeriveTokenF(ctx, t, nil)
+					token, _ := tokens.ServiceBaseTokenFor(ctx, t)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
 				if use, ok := registeredNameof(artifacts, node); ok {
-					token, _ := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
+					token, _ := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
 			}

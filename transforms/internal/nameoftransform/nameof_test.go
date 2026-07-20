@@ -288,15 +288,15 @@ export const anon = nameof<{ readonly a: number }>();
 	}
 }
 
-// TestNameofDoesNotComposeKeyed is the keyed-fencing note (point 4): the reference
-// nameof runs the plain deriveToken, NOT keyedTokenFor — only the di stage composes
-// a `Keyed<T,K>` into `base#key`. So a keyed token the nameof stage produces
-// DIVERGES from the di direct path's, which is exactly why a keyed registration must
-// stay on the direct ditransform path and not be routed through the inline
-// (nameof) path. This test documents that divergence so a future inline-routing
-// change fences keyed out rather than mirroring keyedTokenFor here (which would
-// break Go-vs-reference nameof parity).
-func TestNameofDoesNotComposeKeyed(t *testing.T) {
+// TestNameofDerivesKeyedBase is the keyed base-derivation invariant (§98): nameof
+// lowers a `Keyed<T, K>` service type to just the BASE token — the brand stripped,
+// with NO `#key` suffix and NOT the aliased `Keyed<...>` reference. The di direct
+// path composes the full `base#key`; the inline registration path splits that in
+// two — nameof gives the base, keyof<T>() gives the key — so the runtime `#`
+// composition of the two halves lands byte-for-byte on the di direct token. This
+// test pins that split: the nameof base is exactly the di token minus its `#key`
+// tail, so the halves compose rather than diverge (the old fence is gone).
+func TestNameofDerivesKeyedBase(t *testing.T) {
 	src := `import { nameof, services, Keyed } from '@rhombus-std/di.core';
 interface ICache {}
 class RedisCache implements ICache {}
@@ -311,10 +311,15 @@ services.add<Keyed<ICache, "redis">>(RedisCache);
 	if !strings.HasSuffix(diTok, "#redis") {
 		t.Fatalf("di direct path should compose the keyed suffix, got %q", diTok)
 	}
-	if strings.Contains(nameofTok, "#redis") {
-		t.Fatalf("nameof must NOT compose keyed (reference parity); got %q", nameofTok)
+	// nameof gives the BASE only — no key suffix, and not the aliased Keyed<...>.
+	if strings.Contains(nameofTok, "#") {
+		t.Fatalf("nameof must derive the base (no key suffix); got %q", nameofTok)
 	}
-	if nameofTok == diTok {
-		t.Fatalf("keyed nameof/di tokens unexpectedly equal (%q) — keyed fencing rationale is stale", nameofTok)
+	if strings.Contains(nameofTok, "Keyed<") {
+		t.Fatalf("nameof must strip the Keyed brand, not tokenize the alias; got %q", nameofTok)
+	}
+	// The two halves compose exactly onto the di direct token.
+	if nameofTok+"#redis" != diTok {
+		t.Fatalf("base + key must compose onto the di token: nameof=%q + #redis != di=%q", nameofTok, diTok)
 	}
 }

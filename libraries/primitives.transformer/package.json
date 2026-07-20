@@ -19,18 +19,20 @@
   "exports": {
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
-    "./signatureof-ttsc": "./ttsc-signatureof.mjs"
+    "./signatureof-ttsc": "./ttsc-signatureof.mjs",
+    "./keyof-ttsc": "./ttsc-keyof.mjs"
   },
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/primitives.transformer/ttsc"
     },
-    "stages": ["inline", "nameof", "signatureof", "mergesynth"]
+    "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth"]
   },
   "files": [
     "ttsc.mjs",
     "ttsc-inline.mjs",
-    "ttsc-signatureof.mjs"
+    "ttsc-signatureof.mjs",
+    "ttsc-keyof.mjs"
   ],
   "publishConfig": {
     "access": "public",
@@ -38,7 +40,8 @@
     "exports": {
       "./ttsc": "./ttsc.mjs",
       "./inline-ttsc": "./ttsc-inline.mjs",
-      "./signatureof-ttsc": "./ttsc-signatureof.mjs"
+      "./signatureof-ttsc": "./ttsc-signatureof.mjs",
+      "./keyof-ttsc": "./ttsc-keyof.mjs"
     }
   }
 }

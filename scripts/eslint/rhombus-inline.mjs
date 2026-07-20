@@ -18,12 +18,14 @@ import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
 // may import it from. `nameof` lives in the universal @rhombus-std/primitives leaf
-// (runtime source imports it directly). `signatureof` is authoring-time-only and
-// lives in @rhombus-std/di.transformer, imported by that package's own bodies via a
-// package-relative specifier. Mirrors the Go scanner's knownPrimitives map.
+// (runtime source imports it directly). `signatureof` and `keyof` are
+// authoring-time-only and live in @rhombus-std/di.transformer, imported by that
+// package's own bodies via a package-relative specifier. Mirrors the Go scanner's
+// knownPrimitives map.
 const PRIMITIVE_HOMES = {
   nameof: '@rhombus-std/primitives',
   signatureof: '@rhombus-std/di.transformer',
+  keyof: '@rhombus-std/di.transformer',
 };
 
 /** Walks up from a file to the nearest directory containing a package.json. */

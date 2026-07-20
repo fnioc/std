@@ -15,14 +15,16 @@ import (
 // `nameof<T>()` binds a TYPE argument and lives in the universal
 // `@rhombus-std/primitives` leaf (runtime source imports it directly, so it must
 // stay universally importable). `signatureof(ctor)` binds a VALUE argument (a
-// class / factory) whose dependency signature the signatureof stage extracts; it
-// is an authoring-time-only construct, so it lives in `@rhombus-std/di.transformer`
-// and a body imports it via a package-relative specifier from within that package
-// (see primitiveImports). A hardcoded map suffices — the declare-by-marker
-// generalization is a future enhancement.
+// class / factory) whose dependency signature the signatureof stage extracts, and
+// `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
+// KEY; both are authoring-time-only constructs, so they live in
+// `@rhombus-std/di.transformer` and a body imports them via a package-relative
+// specifier from within that package (see primitiveImports). A hardcoded map
+// suffices — the declare-by-marker generalization is a future enhancement.
 var knownPrimitives = map[string]string{
 	"nameof":      "@rhombus-std/primitives",
 	"signatureof": "@rhombus-std/di.transformer",
+	"keyof":       "@rhombus-std/di.transformer",
 }
 
 // Discriminator is the structural overload key: (type-parameter count, value

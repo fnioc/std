@@ -94,24 +94,32 @@ export interface IServiceManifestBase<
   /**
    * Class registration — a string token bound to a concrete constructor. The
    * optional third `signatures` arg carries the positional dep signatures ON the
-   * registration (a lib author authors them as plain `DepSlot` data literals).
+   * registration (a lib author authors them as plain `DepSlot` data literals). The
+   * optional trailing `key` composes a keyed registration token `base#key` (§98);
+   * a falsy/omitted key registers under the bare token.
    */
   add(
     token: Token,
     ctor: Ctor,
     signatures?: readonly (readonly DepSlot[])[],
+    key?: string,
   ): AddBuilder<Scopes>;
   /**
    * Factory registration — a string token bound to a factory function, its call
-   * parameters injected by the optional third `signatures` arg.
+   * parameters injected by the optional third `signatures` arg. The optional
+   * trailing `key` composes a keyed registration token `base#key` (§98).
    */
   addFactory(
     token: Token,
     factory: Func<any[], unknown>,
     signatures?: readonly (readonly DepSlot[])[],
+    key?: string,
   ): AddBuilder<Scopes>;
-  /** Value registration — an already-built instance, no deps and no lifetime. */
-  addValue(token: Token, value: unknown): void;
+  /**
+   * Value registration — an already-built instance, no deps and no lifetime. The
+   * optional trailing `key` composes a keyed registration token `base#key` (§98).
+   */
+  addValue(token: Token, value: unknown, key?: string): void;
   /**
    * Seals the collection and returns the built provider. `options` configures
    * the provider's validation behaviors (`validateScopes` / `validateOnBuild`,

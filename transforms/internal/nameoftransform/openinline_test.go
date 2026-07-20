@@ -10,6 +10,7 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 )
@@ -36,7 +37,7 @@ func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown): unknown;
+  add(token: string, ctor: unknown, sig?: unknown, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
@@ -44,16 +45,20 @@ export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
 export type $<N extends number> = Hole<N>;
 declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
+declare const KEY: unique symbol;
+export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
+export declare function keyof<T>(): string | undefined;
 `)
-	// The real add-sugar body, authored over the two compile-time primitives, each
-	// imported from its home module (nameof from primitives, signatureof from
-	// di.transformer).
+	// The real add-sugar body, authored over the three compile-time primitives, each
+	// imported from its home module (nameof from primitives, signatureof + keyof from
+	// di.transformer). The trailing keyof<T>() is the §98 keyed-registration key half;
+	// an UNKEYED registration elides it in the inline stage (byte-parity).
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
-import { signatureof } from '@rhombus-std/di.transformer';
+import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.add(nameof<T>(), ctor, signatureof(ctor));
+    return this.add(nameof<T>(), ctor, signatureof(ctor), keyof<T>());
   },
 };
 `)
@@ -109,12 +114,13 @@ func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string 
 	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
+	keyofT := keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the add preset entry did not resolve")
 	}
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
-	return reprint(ec, sigT(ec, nameofT(ec, inlineT(ec, sf))))
+	return reprint(ec, keyofT(ec, sigT(ec, nameofT(ec, inlineT(ec, sf)))))
 }
 
 // depArrayFrom returns the `[[...]]` dependency-signature array literal of the sole
@@ -188,5 +194,75 @@ services.add<IRepo<$<1>>>(SqlRepo<$<1>>);
 	}
 	if !strings.Contains(inlineDeps, "IStore<$1>") {
 		t.Fatalf("expected the hole-carrying dependency IStore<$1>, got %s", inlineDeps)
+	}
+}
+
+// TestKeyedInlinePipelineComposesBaseKey is the §98 keyed inline lowering
+// end-to-end: `add<Keyed<ICache, "redis">>(RedisCache)` lowered through the full
+// inline pipeline (inline -> nameof -> signatureof -> keyof) splits the keyed token
+// across two arguments — nameof gives the BASE (arg0), keyof gives the KEY (a
+// trailing string literal) — which the runtime composes as `base#key`. The di
+// DIRECT stage composes the whole `base#key` into arg0. This pins that the two
+// halves reunite exactly: the inline base + `#` + the keyof key == the di token.
+func TestKeyedInlinePipelineComposesBaseKey(t *testing.T) {
+	src := `import { services } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/di.core';
+interface ICache {}
+class RedisCache implements ICache {}
+services.add<Keyed<ICache, "redis">>(RedisCache);
+`
+	prog, app := buildInlinePresetWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	inlineOut := lowerInlinePipeline(t, prog, app)
+	diOut := lowerDi(t, prog, app)
+
+	inlineBase := diServiceToken(t, inlineOut) // arg0 of the inline call = the base
+	diTok := diServiceToken(t, diOut)          // arg0 of the di call = the composed base#key
+
+	if strings.Contains(inlineBase, "#") {
+		t.Fatalf("inline nameof arg0 must be the bare base (no key): %q", inlineBase)
+	}
+	if !strings.HasSuffix(diTok, "#redis") {
+		t.Fatalf("di direct token must carry the composed key: %q", diTok)
+	}
+	// The keyof half lowered to the "redis" key literal as the trailing argument.
+	if !strings.Contains(inlineOut, `, "redis")`) {
+		t.Fatalf("expected the keyof key %q as the trailing add() argument:\n%s", "redis", inlineOut)
+	}
+	// The two halves reunite onto the di direct token.
+	if inlineBase+"#redis" != diTok {
+		t.Fatalf("base + key must compose onto the di token: inline base %q + #redis != di %q", inlineBase, diTok)
+	}
+}
+
+// TestKeyofLowersSourceWritten pins the keyof stage's standalone lowering — a
+// source-written `keyof<T>()` (not routed through the inline sugar): a keyed T
+// lowers to its key STRING LITERAL, an unkeyed T to `void 0` (undefined). This is
+// the resolve-side / manual path, disjoint from the inline registration flow.
+func TestKeyofLowersSourceWritten(t *testing.T) {
+	src := `import { keyof } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/di.core';
+interface ICache {}
+interface IPlain {}
+export const k1 = keyof<Keyed<ICache, "redis">>();
+export const k2 = keyof<IPlain>();
+`
+	prog, app := buildInlinePresetWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	ctx := plugin.NewContext(prog, app)
+	keyofT := keyoftransform.New(prog, ctx, nil, func(plugin.Diagnostic) {})
+	ec := shimprinter.NewEmitContext()
+	out := reprint(ec, keyofT(ec, mainSF(t, prog)))
+
+	if !strings.Contains(out, `const k1 = "redis"`) {
+		t.Errorf("keyed keyof should lower to its key literal:\n%s", out)
+	}
+	if !strings.Contains(out, "const k2 = void 0") {
+		t.Errorf("unkeyed keyof should lower to void 0:\n%s", out)
+	}
+	if strings.Contains(out, "keyof<") {
+		t.Errorf("no keyof call should survive lowering:\n%s", out)
 	}
 }
