@@ -39,6 +39,29 @@ function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
 }
 
 /**
+ * The separator between a base token and a keyed registration's key. A keyed
+ * registration lives under the ORDINARY token `base + "#" + key` — service
+ * identity is already a token string and a key is just a `"#<key>"` suffix on it,
+ * so keyed registration needs no separate table. It mirrors the resolve-side
+ * separator in `@rhombus-std/di` (`resolve(token, key)` composes `key === "" ?
+ * token : token + "#" + key`), so a keyed register and a keyed resolve agree.
+ */
+const KEY_SEPARATOR = '#';
+
+/**
+ * Composes the effective registration token from a base token and an OPTIONAL
+ * tail key. A falsy key — `undefined` (the omitted tail argument) or the empty
+ * string — is unkeyed and leaves the token unchanged, so a plugin-less
+ * 3-argument call and a transformer-lowered UNKEYED call both register under the
+ * bare token exactly as before. A non-empty key suffixes `#<key>`, landing on the
+ * same string the transformer's di direct stage composes into arg0 for
+ * `add<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
+ */
+function keyedToken(token: Token, key?: string): Token {
+  return [token, key].filter(Boolean).join(KEY_SEPARATOR);
+}
+
+/**
  * The registration builder.
  *
  * `Scopes` is the union of declarable scope names — the tags `.as()` and
@@ -201,13 +224,14 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     token: Token,
     ctor: Ctor,
     signatures?: readonly (readonly DepSlot[])[],
+    key?: string,
   ): AddBuilder<Scopes>;
   public add(
     ...args:
       | [ctor: Ctor<any[], unknown>]
       | [ctor: Ctor<any[], unknown>, overrides: readonly (string | undefined)[]]
       | [factory: Func<any[], unknown>]
-      | [token: Token, ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]]
+      | [token: Token, ctor: Ctor, signatures?: readonly (readonly DepSlot[])[], key?: string]
   ): AddBuilder<Scopes> {
     // Only the string-token forms reach the engine at runtime. The single-arg
     // authoring overloads never run post-transform; guard defensively so a
@@ -219,16 +243,19 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
           + 'or addFactory("my:token", (scope) => ...).',
       );
     }
-    const [token, ctor, signatures] = args;
-    if (isOpenToken(token)) {
-      return this.#appendOpenScoped(token, ctor as Ctor, signatures);
+    // The optional trailing `key` composes the keyed token `base#key` (§98); a
+    // falsy/omitted key leaves the token bare, so the 3-argument call is unchanged.
+    const [token, ctor, signatures, key] = args;
+    const composed = keyedToken(token, key);
+    if (isOpenToken(composed)) {
+      return this.#appendOpenScoped(composed, ctor as Ctor, signatures);
     }
     // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
     // carried EXPLICITLY: the `(...a) => new Ctor(...a)` wrapper reports `""` for
     // `.name` and `0` for `.length`, so the missing-metadata signal and ctor-name
     // diagnostics would silently regress if read off the wrapper.
     const construct = ctor as Ctor;
-    return this.#appendScoped(token, {
+    return this.#appendScoped(composed, {
       produce: (...a: unknown[]) => new construct(...a),
       scope: undefined,
       signatures,
@@ -259,11 +286,12 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     token: Token,
     factory: Factory,
     signatures?: readonly (readonly DepSlot[])[],
+    key?: string,
   ): AddBuilder<Scopes>;
   public addFactory(
     ...args:
       | [factory: Func<any[], unknown>]
-      | [token: Token, factory: Factory, signatures?: readonly (readonly DepSlot[])[]]
+      | [token: Token, factory: Factory, signatures?: readonly (readonly DepSlot[])[], key?: string]
   ): AddBuilder<Scopes> {
     // Only the string-token form reaches the engine at runtime. The single-arg
     // `addFactory<I>(fn)` authoring overload never runs post-transform; guard
@@ -274,16 +302,18 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
           + 'register with an explicit token: addFactory("my:token", (scope) => ...).',
       );
     }
-    const [token, factory, signatures] = args;
+    // The optional trailing `key` composes the keyed token `base#key` (§98).
+    const [token, factory, signatures, key] = args;
+    const composed = keyedToken(token, key);
     // Open registrations are class-only: a template must synthesize per-closing
     // class registrations, which a factory/value shape cannot express in v1.
-    if (isOpenToken(token)) {
-      throw new OpenTokenRegistrationError(token, 'addFactory');
+    if (isOpenToken(composed)) {
+      throw new OpenTokenRegistrationError(composed, 'addFactory');
     }
     // The factory IS the producer. `arity` is 0 so a signature-less factory runs
     // with no injected args (it never trips the missing-metadata signal — only a
     // ctor needing args does).
-    return this.#appendScoped(token, {
+    return this.#appendScoped(composed, {
       produce: factory,
       scope: undefined,
       signatures,
@@ -300,9 +330,9 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * `addValue("token", v)`) is a PURE TYPING contributed by the
    * `@rhombus-std/di.transformer` augmentation, not part of di's published surface.
    */
-  public addValue(token: Token, value: unknown): void;
+  public addValue(token: Token, value: unknown, key?: string): void;
   public addValue(
-    ...args: [value: unknown] | [token: Token, value: unknown]
+    ...args: [value: unknown] | [token: Token, value: unknown, key?: string]
   ): void {
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
@@ -310,15 +340,17 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
           + 'register with an explicit token: addValue("my:token", value).',
       );
     }
-    const [token, value] = args;
-    if (isOpenToken(token)) {
-      throw new OpenTokenRegistrationError(token, 'addValue');
+    // The optional trailing `key` composes the keyed token `base#key` (§98).
+    const [token, value, key] = args;
+    const composed = keyedToken(token, key);
+    if (isOpenToken(composed)) {
+      throw new OpenTokenRegistrationError(composed, 'addValue');
     }
     // The value collapses to a producer that returns it verbatim. `scope` stays
     // `undefined` (a value is always transient — no ownership/caching), so a
     // value that is itself a `Promise` is returned raw through the normal path,
     // never awaited (§"Async as values").
-    this.#append(token, {
+    this.#append(composed, {
       produce: () => value,
       scope: undefined,
       name: '',
