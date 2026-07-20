@@ -4,8 +4,8 @@
 // Authored, never executed: the generic inline transform stage substitutes these
 // single-return-expression bodies at consumer call sites (this → the receiver,
 // the type parameter bound from the checker), then the primitive stages lower
-// the result. The bodies contain `nameof<T>()` (and `signatureof(...)`) over an
-// UNBOUND generic, so they must never go through a per-file primitive lowering
+// the result. The bodies contain `nameof<T>()` (and `signatureof(...)` / `keyof<T>()`)
+// over an UNBOUND generic, so they must never go through a per-file primitive lowering
 // here — with no type to bind, that lowering would rewrite them to the empty
 // token `this.isService("")` and an empty signature array.
 //
@@ -14,13 +14,16 @@
 // `bun build` never pulls it into `dist`, and the package has no per-file
 // emit at all. This file therefore exists purely as SUBSTITUTION SOURCE the inline
 // stage side-parses out of `src/`; the typecheck gate still sees it (it stays in
-// the program), but nothing lowers or ships it. `signatureof` — the authoring-time
-// dependency-signature primitive these bodies call — lives alongside them here in
-// di.transformer (`./signatureof.js`), not in the runtime `@rhombus-std/primitives`
-// leaf; `nameof` stays in that leaf, since runtime source imports it directly.
+// the program), but nothing lowers or ships it. `signatureof` (the authoring-time
+// dependency-signature primitive) and `keyof` (the authoring-time
+// keyed-registration-key primitive) live alongside these bodies here in
+// di.transformer (`./signatureof.js`, `./keyof.js`), not in the runtime
+// `@rhombus-std/primitives` leaf; `nameof` stays in that leaf, since runtime source
+// imports it directly.
 
 import type { AddBuilder, Ctor, Factory, IServiceManifestBase, IServiceQuery } from '@rhombus-std/di.core';
 import { nameof } from '@rhombus-std/primitives';
+import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
 
 /**
@@ -39,16 +42,19 @@ export const ServiceQueryInline = {
  * `addFactory<T>(fn)`, and `addValue<I>(value)` forms. Each is the EXACT
  * hand-written form a no-transformer consumer would author:
  *
- *   add<T>(ctor)        → this.add(nameof<T>(), ctor, signatureof(ctor))
- *   addFactory<T>(fn)   → this.addFactory(nameof<T>(), fn, signatureof(fn))
- *   addValue<I>(value)  → this.addValue(nameof<I>(), value)
+ *   add<T>(ctor)        → this.add(nameof<T>(), ctor, signatureof(ctor), keyof<T>())
+ *   addFactory<T>(fn)   → this.addFactory(nameof<T>(), fn, signatureof(fn), keyof<T>())
+ *   addValue<I>(value)  → this.addValue(nameof<I>(), value, keyof<I>())
  *
- * `nameof<T>()` derives the service token; `signatureof(...)` derives the
- * positional dependency signatures the third argument carries — exactly the
- * `[[...]]` array the di registration stage synthesizes for the same value, so
- * the inline (nameof + signatureof) lowering and the di stage's direct lowering
- * emit byte-identical output. `addValue` carries no deps, so its body composes
- * `nameof` alone — no `signatureof`.
+ * `nameof<T>()` derives the service token (the BASE token for a `Keyed<T, K>`);
+ * `signatureof(...)` derives the positional dependency signatures the third
+ * argument carries — exactly the `[[...]]` array the di registration stage
+ * synthesizes for the same value; and `keyof<T>()` derives a keyed registration's
+ * KEY, which di.core composes onto the base as `base#key`. For an UNKEYED type the
+ * keyof lowers to `undefined` and the transformer ELIDES the trailing argument, so
+ * the emitted call is byte-identical to the pre-key 3-argument form and matches the
+ * di stage's direct lowering. `addValue` carries no deps, so its body composes
+ * `nameof` + `keyof` — no `signatureof`.
  *
  * These forms cover the Wave-1+2 scope: a class constructor (`add<T>(ctor)`), a
  * factory function (`addFactory<T>(fn)`), and an already-built value
@@ -65,12 +71,12 @@ export const ServiceQueryInline = {
  */
 export const ServiceManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: Ctor): AddBuilder<'singleton'> {
-    return this.add(nameof<T>(), ctor, signatureof(ctor));
+    return this.add(nameof<T>(), ctor, signatureof(ctor), keyof<T>());
   },
   addFactory<T>(this: IServiceManifestBase, factory: Factory): AddBuilder<'singleton'> {
-    return this.addFactory(nameof<T>(), factory, signatureof(factory));
+    return this.addFactory(nameof<T>(), factory, signatureof(factory), keyof<T>());
   },
   addValue<I>(this: IServiceManifestBase, value: unknown): void {
-    return this.addValue(nameof<I>(), value);
+    return this.addValue(nameof<I>(), value, keyof<I>());
   },
 };
