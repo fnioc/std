@@ -22,6 +22,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 /**
@@ -56,15 +57,24 @@ export function readTsconfigTransforms(dir: string, tsconfigRel: string): string
  * inherits GOROOT/GOBIN from the ambient environment, so a version split there
  * fails the build. We clear those, force `GOTOOLCHAIN=local` (no network
  * download of a pinned toolchain), and point TTSC_GO_BINARY at the mise-managed
- * `go`. GOTMPDIR is redirected onto a repo-local, disk-backed cache dir because
- * a cold typescript-go compile overruns a size-capped tmpfs `/tmp`.
+ * `go`. GOTMPDIR (Go build scratch) and TTSC_CACHE_DIR (the content-keyed plugin
+ * cache) are redirected onto a shared, disk-backed home dir because a cold
+ * typescript-go compile overruns the per-user-quota tmpfs `/tmp`.
  */
-export function ttscEnv(repoRoot: string): NodeJS.ProcessEnv {
+export function ttscEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   env.GOTOOLCHAIN = 'local';
-  const goTmp = join(repoRoot, 'node_modules', '.cache', 'ttsc-gobuild');
+  // GOTMPDIR (Go build scratch) and TTSC_CACHE_DIR (the plugin cache: compiled
+  // sidecar binaries + Go object cache) both default to a shared home dir, off the
+  // per-user-quota tmpfs /tmp. The cache is content-keyed, so one location is safe
+  // to share across every worktree, suite, and session — the cold sidecar compile
+  // is paid once per machine. An explicit env value wins (CI / a shell overrides).
+  const goTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
   mkdirSync(goTmp, { recursive: true });
   env.GOTMPDIR = goTmp;
+  const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
+  mkdirSync(ttscCache, { recursive: true });
+  env.TTSC_CACHE_DIR = ttscCache;
   let goBin = env.TTSC_GO_BINARY ?? '';
   if (!goBin) {
     const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
@@ -118,7 +128,7 @@ export async function ttscBunPlugin(
   ttscProject: string,
   transforms?: readonly string[],
 ): Promise<Bun.BunPlugin> {
-  Object.assign(process.env, ttscEnv(join(import.meta.dir, '..')));
+  Object.assign(process.env, ttscEnv());
   const adapter = Bun.resolveSync('@ttsc/unplugin/bun', dir);
   const ttscBun = (await import(adapter)).default as (
     options: { project: string; plugins?: readonly { transform: string; }[]; },

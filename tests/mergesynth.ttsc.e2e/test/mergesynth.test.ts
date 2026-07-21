@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // Production-path e2e for the #213 merge-strategy synthesis stage: drives the
@@ -23,9 +23,12 @@ import { join, resolve } from 'node:path';
 //   3. the nameof stage still lowers byte-identical tokens (same stage code, now
 //      the one owner binary rather than a full-host sibling).
 //
-// The fixture path is STABLE (not mkdtemp) so the project-local ttsc plugin
-// cache survives across runs: the first run pays the cold Go build of the owner
-// host (typescript-go + typia — several minutes), later runs are instant.
+// The throwaway project lives per-worktree under node_modules/.cache/e2e so
+// concurrent sessions in different worktrees can't collide, and off /tmp (a
+// per-user-quota tmpfs here). The ttsc plugin cache is content-keyed and shared
+// machine-wide at ~/.cache/fnioc-ttsc, so the cold Go build of the owner host
+// (typescript-go + typia — several minutes) is paid once per machine, not once
+// per suite.
 //
 // This suite needs the Go toolchain, so it is kept OUT of the default
 // `bun run test` gate (script `test:e2e`, not `test`) and self-skips when go
@@ -42,7 +45,12 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const PRIM_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 
-const projDir = join(tmpdir(), 'fnioc-ttsc-mergesynth-e2e');
+const projDir = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'mergesynth');
+// The plugin cache (keyed sidecar binaries) and the Go build scratch/object cache
+// are content-keyed, so one machine-wide location is shared across every suite,
+// worktree, and session. Default-if-unset so CI or a shell can override.
+const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
+const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const COLD_BUILD_MS = 600_000;
 
 function link(target: string, linkPath: string): void {
@@ -64,11 +72,14 @@ function goEnv(): NodeJS.ProcessEnv {
   if (goBin) {
     env.TTSC_GO_BINARY = goBin;
   }
-  // Redirect `go build`'s scratch off a size-capped tmpfs /tmp — the full host
-  // compiles the typescript-go checker AND typia's programmers.
-  const goTmp = join(homedir(), '.cache', 'fnioc-ttsc-build-tmp');
-  mkdirSync(goTmp, { recursive: true });
-  env.GOTMPDIR = goTmp;
+  // Redirect `go build`'s scratch off the per-user-quota tmpfs /tmp — the full
+  // host compiles the typescript-go checker AND typia's programmers — and pin the
+  // content-keyed plugin cache to the same shared home dir so the sidecar builds
+  // once per machine, not once per suite sandbox.
+  mkdirSync(goBuildTmp, { recursive: true });
+  env.GOTMPDIR = goBuildTmp;
+  mkdirSync(ttscCache, { recursive: true });
+  env.TTSC_CACHE_DIR = ttscCache;
   return env;
 }
 

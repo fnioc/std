@@ -21,9 +21,12 @@ import { join, resolve } from 'node:path';
 //
 // The parity corpus these mirror is tests/config.transformer.test.
 //
-// Working tree + Go build `$WORK` live on the roomy home filesystem, NOT the small
-// tmpfs `/tmp`: a cold typescript-go + ttsc plugin rebuild needs many hundreds of
-// MB. The fixture paths are STABLE so the ttsc plugin cache survives across runs.
+// The working tree lives per-worktree under node_modules/.cache/e2e so concurrent
+// sessions in different worktrees can't collide; Go build `$WORK` and the
+// content-keyed ttsc plugin cache live on the shared home filesystem
+// (~/.cache/fnioc-ttsc), NOT the per-user-quota tmpfs `/tmp` — a cold
+// typescript-go + ttsc plugin rebuild needs many hundreds of MB, and sharing the
+// cache pays that cold compile once per machine, not once per suite.
 //
 // This suite needs a Go toolchain that satisfies the transforms module floor
 // (>= 1.26). `mise which go` can point at an older parallel install, so the newest
@@ -80,11 +83,15 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.transformer');
 const TRANSFORMS = join(REPO_ROOT, 'transforms');
 
-const WORK_ROOT = join(homedir(), '.cache', 'fnioc-ttsc-config-e2e');
+// The working tree is per-worktree (a fixed global home path collided across
+// concurrent sessions); the plugin cache + Go scratch are shared machine-wide and
+// content-keyed. Both default-if-unset so CI or a shell can override.
+const WORK_ROOT = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'config');
 const projHappy = join(WORK_ROOT, 'happy');
 const projDiag = join(WORK_ROOT, 'diag');
 const sidecarBin = join(WORK_ROOT, 'sidecar', 'ttsc-std');
-const goTmp = join(WORK_ROOT, 'gotmp');
+const goTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
+const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
 const COLD_BUILD_MS = 420_000;
 
 function link(target: string, linkPath: string): void {
@@ -111,6 +118,7 @@ function goEnv(): NodeJS.ProcessEnv {
   delete env.GOBIN;
   env.GOTOOLCHAIN = 'local';
   env.GOTMPDIR = goTmp;
+  env.TTSC_CACHE_DIR = ttscCache;
   env.TTSC_GO_BINARY = goBin;
   return env;
 }
@@ -211,6 +219,7 @@ beforeAll(() => {
   }
   mkdirSync(join(WORK_ROOT, 'sidecar'), { recursive: true });
   mkdirSync(goTmp, { recursive: true });
+  mkdirSync(ttscCache, { recursive: true });
 
   // 0. The direct sidecar build below resolves the ttsc shim modules through the
   //    gitignored transforms/go.work; the sibling suites get theirs from the ttsc

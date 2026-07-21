@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // Production-path e2e parity: drives the REAL ttsc (typescript-go toolchain) over
@@ -11,11 +11,13 @@ import { join, resolve } from 'node:path';
 // hand-written TypeScript registration transformer produces (the parity corpus
 // lives in tests/di.transformer.test/test/*.test.ts).
 //
-// The fixture path is STABLE (not mkdtemp) so the project-local ttsc plugin cache
-// (node_modules/.cache/ttsc) survives across runs: the first run pays the cold
-// ~5-minute Go plugin build, later runs are instant. This suite needs the Go
-// toolchain, so it is kept OUT of the default gate (script `test:e2e`) and
-// self-skips when go is not resolvable.
+// The throwaway project lives per-worktree under node_modules/.cache/e2e so
+// concurrent sessions in different worktrees can't collide, and off /tmp (a
+// per-user-quota tmpfs here). The ttsc plugin cache is content-keyed and shared
+// machine-wide at ~/.cache/fnioc-ttsc (one ~3G go-build cache + keyed sidecar
+// binaries), so the cold ~5-minute Go plugin build is paid once per machine, not
+// once per suite. This suite needs the Go toolchain, so it is kept OUT of the
+// default gate (script `test:e2e`) and self-skips when go is not resolvable.
 //
 // Toolchain: ttsc ships its own Go SDK and prefers it, but inherits GOROOT from
 // the ambient (mise) environment — a version split there makes the plugin compile
@@ -31,7 +33,12 @@ const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const DI = join(REPO_ROOT, 'libraries', 'di.transformer');
 
-const projDir = join(tmpdir(), 'fnioc-ttsc-di-e2e');
+const projDir = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'di');
+// The plugin cache (keyed sidecar binaries) and the Go build scratch/object cache
+// are content-keyed, so one machine-wide location is shared across every suite,
+// worktree, and session. Default-if-unset so CI or a shell can override.
+const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
+const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const COLD_BUILD_MS = 420_000;
 
 function link(target: string, linkPath: string): void {
@@ -51,12 +58,6 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-// A home-backed work dir for the plugin's `go build`. The default `$WORK` lands
-// in the system TMPDIR, which is a size-capped tmpfs on this host — a cold
-// typescript-go compile exhausts it. Redirecting GOTMPDIR onto the (large) home
-// filesystem keeps the build off tmpfs.
-const goBuildTmp = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-di-gobuild');
-
 /** A build env with a single self-consistent Go toolchain (see file header). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
@@ -65,6 +66,8 @@ function goEnv(): NodeJS.ProcessEnv {
   env.GOTOOLCHAIN = 'local';
   mkdirSync(goBuildTmp, { recursive: true });
   env.GOTMPDIR = goBuildTmp;
+  mkdirSync(ttscCache, { recursive: true });
+  env.TTSC_CACHE_DIR = ttscCache;
   const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
   const goBin = miseGo.status === 0 ? miseGo.stdout.trim() : '';
   if (goBin) {

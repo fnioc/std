@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // End-to-end proof of declare-by-depending stage selection, driven through the
@@ -21,8 +21,11 @@ import { join, resolve } from 'node:path';
 //      build ITSELF). Auto-discovery finds no marker, so no host spawns and
 //      nameof<T>() is emitted UNTOUCHED. di.core's own devDep must not leak.
 //
-// The fixture root is STABLE (not mkdtemp) so the project-local ttsc plugin cache
-// survives across runs. Needs the Go toolchain; self-skips when go is absent.
+// The fixture root lives per-worktree under node_modules/.cache/e2e (off /tmp, a
+// per-user-quota tmpfs here) so concurrent sessions in different worktrees can't
+// collide; the ttsc plugin cache is content-keyed and shared machine-wide at
+// ~/.cache/fnioc-ttsc, so the cold sidecar build is paid once per machine. Needs
+// the Go toolchain; self-skips when go is absent.
 
 const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
 const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
@@ -35,9 +38,14 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const TTSC_PKG = join(PKG_ROOT, 'node_modules', 'ttsc');
 const lib = (name: string): string => join(REPO_ROOT, 'libraries', name);
 
-const ROOT = join(tmpdir(), 'fnioc-ttsc-dbd-e2e');
+const ROOT = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'dbd');
 const CONSUMER = join(ROOT, 'consumer'); // fixture 1: devDeps di.transformer
 const CORE_ONLY = join(ROOT, 'core-only'); // fixture 2: deps only di.core
+// The plugin cache (keyed sidecar binaries) and the Go build scratch/object cache
+// are content-keyed, so one machine-wide location is shared across every suite,
+// worktree, and session. Default-if-unset so CI or a shell can override.
+const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
+const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const COLD_BUILD_MS = 600_000;
 
 // A lone nameof<T>() over a local interface — the observable both fixtures share:
@@ -71,9 +79,10 @@ function goEnv(): NodeJS.ProcessEnv {
   if (goBin) {
     env.TTSC_GO_BINARY = goBin;
   }
-  const goTmp = join(homedir(), '.cache', 'fnioc-ttsc-build-tmp');
-  mkdirSync(goTmp, { recursive: true });
-  env.GOTMPDIR = goTmp;
+  mkdirSync(goBuildTmp, { recursive: true });
+  env.GOTMPDIR = goBuildTmp;
+  mkdirSync(ttscCache, { recursive: true });
+  env.TTSC_CACHE_DIR = ttscCache;
   return env;
 }
 
