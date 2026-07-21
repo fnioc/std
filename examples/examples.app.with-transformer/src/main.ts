@@ -207,34 +207,40 @@ const config = buildConfig();
 const serverOptions = makeServerOptions(config);
 
 const builder = Host.createApplicationBuilder();
-const services = builder.services;
+let services = builder.services;
 
 // The with-transformer library's greeting, plus the without-transformer
 // library's greeting + health check via its manual registration function. Both
-// greetings land in the one IGreeting collection.
-services.add<IGreeting>(FormalGreeting).as<'singleton'>();
-addCasualServices(services);
+// greetings land in the one IGreeting collection. The manifest is immutable, so
+// every registration call is threaded back into `services` — a bare
+// `services.add(...)` statement would silently register nothing.
+services = services.add<IGreeting>(FormalGreeting).as<'singleton'>();
+services = addCasualServices(services);
 
 // The async banner (Promise<IBanner>) and the report factory, both from the
 // built with-transformer library.
-services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
-services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
+services = services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
+services = services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
 
 // The reactive server options — registered as a value so every consumer shares
 // the one live instance.
-services.addValue<IOptions<ServerOptions>>(serverOptions);
+services = services.addValue<IOptions<ServerOptions>>(serverOptions);
 
 // A config-independent policy, delivered as a static IOptions<GreetingPolicy>
 // through the explicit-wrap addOptions<T>() sugar (#34). The satellite lowers
 // `addOptions<T>()` but not the trailing `.as<>()`, so the lifetime is named in
 // the value form (`"singleton"` is a scope name, not a token).
-services.addValue<GreetingPolicy>({ excitement: '!' });
-services.addOptions<GreetingPolicy>().as('singleton');
+services = services.addValue<GreetingPolicy>({ excitement: '!' });
+services = services.addOptions<GreetingPolicy>().as('singleton');
 
 // The live config root + the hosted worker — the file's one explicit-token
 // island (see the header note): no hosting transformer exists yet.
-services.addValue(CONFIG_TOKEN, config);
-services.addHostedService(InteropWorker, [
+services = services.addValue(CONFIG_TOKEN, config);
+
+// The composed chain goes BACK onto the builder. `builder.services` is a live
+// slot over an immutable chain, so everything registered into the local
+// `services` above is invisible to `build()` until it is handed back here.
+builder.services = services.addHostedService(InteropWorker, [
   [RESOLVER_TOKEN, HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, CONFIG_TOKEN],
 ]);
 
