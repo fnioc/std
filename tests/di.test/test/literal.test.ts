@@ -40,8 +40,10 @@ describe('LiteralRef — ctor argument value supply', () => {
       [{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }],
     ]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Holder).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Holder, [
+      [{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }],
+    ], 'singleton');
 
     const h = services.build().resolve<Holder>(T.Service);
     expect(h.s).toBe('dev');
@@ -61,8 +63,8 @@ describe('LiteralRef — ctor argument value supply', () => {
     const nul: LiteralRef = { value: null };
     defineDeps(Holder, [[undef, nul]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Holder).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Holder, [[undef, nul]], 'singleton');
 
     const h = services.build().resolve<Holder>(T.Service);
     expect(h.u).toBeUndefined();
@@ -78,8 +80,8 @@ describe('LiteralRef — ctor argument value supply', () => {
     }
     defineDeps(Holder, [[{ value: -5 }, { value: -9n }]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Holder).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Holder, [[{ value: -5 }, { value: -9n }]], 'singleton');
 
     const h = services.build().resolve<Holder>(T.Service);
     expect(h.n).toBe(-5);
@@ -94,8 +96,8 @@ describe('LiteralRef — ctor argument value supply', () => {
     }
     defineDeps(Holder, [[{ value: 'prod' }]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Holder).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Holder, [[{ value: 'prod' }]], 'singleton');
 
     expect(services.build().resolve<Holder>(T.Service).mode).toBe('prod');
   });
@@ -109,9 +111,9 @@ describe('LiteralRef — factory argument value supply', () => {
     });
     defineDeps(factory, [[{ value: 'dev' }, T.Logger]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Logger, LoggerImpl).as('singleton');
-    services.addFactory(T.Service, factory).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Logger, LoggerImpl, [[]], 'singleton');
+    services = services.addFactory(T.Service, factory, [[{ value: 'dev' }, T.Logger]], 'singleton');
 
     const out = services.build().resolve<{ mode: unknown; log: unknown; }>(T.Service);
     expect(out.mode).toBe('dev');
@@ -127,9 +129,9 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     }
     defineDeps(Consumer, [[union(T.A, { value: undefined })]]);
 
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     // T.A deliberately NOT registered — the union falls to the LiteralRef.
-    services.add(T.Service, Consumer).as('singleton');
+    services = services.add(T.Service, Consumer, [[union(T.A, { value: undefined })]], 'singleton');
 
     expect(services.build().resolve<Consumer>(T.Service).dep).toBeUndefined();
   });
@@ -140,9 +142,9 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     }
     defineDeps(Consumer, [[union(T.A, { value: undefined })]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, LoggerImpl).as('singleton');
-    services.add(T.Service, Consumer).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.A, LoggerImpl, [[]], 'singleton');
+    services = services.add(T.Service, Consumer, [[union(T.A, { value: undefined })]], 'singleton');
 
     expect(services.build().resolve<Consumer>(T.Service).dep).toBeInstanceOf(LoggerImpl);
   });
@@ -153,8 +155,8 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     }
     defineDeps(Consumer, [[union(T.A, { value: null })]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Consumer).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Consumer, [[union(T.A, { value: null })]], 'singleton');
 
     expect(services.build().resolve<Consumer>(T.Service).dep).toBeNull();
   });
@@ -167,8 +169,8 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     }
     defineDeps(Consumer, [[union(T.A, { value: undefined })]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Consumer).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Consumer, [[union(T.A, { value: undefined })]], 'singleton');
 
     expect(() => services.build().resolve(T.Service)).not.toThrow(
       NoSatisfiableSignatureError,
@@ -184,9 +186,9 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     // Shape the transformer emits for `flag?: boolean` after the fix.
     defineDeps(Consumer, [[union('boolean', { value: undefined })]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue('boolean', true); // register a boolean value
-    services.add(T.Service, Consumer).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue('boolean', true); // register a boolean value
+    services = services.add(T.Service, Consumer, [[union('boolean', { value: undefined })]], 'singleton');
 
     expect(services.build().resolve<Consumer>(T.Service).flag).toBe(true);
   });
@@ -197,9 +199,9 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     }
     defineDeps(Consumer, [[union('boolean', { value: undefined })]]);
 
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     // "boolean" NOT registered — union falls through to the LiteralRef.
-    services.add(T.Service, Consumer).as('singleton');
+    services = services.add(T.Service, Consumer, [[union('boolean', { value: undefined })]], 'singleton');
 
     expect(services.build().resolve<Consumer>(T.Service).flag).toBeUndefined();
   });

@@ -22,8 +22,8 @@ class Repo {
 
 describe('registration + basic resolution', () => {
   test('resolves a zero-arg class via its token', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Logger, ConsoleLogger).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Logger, ConsoleLogger, [[]], 'singleton');
 
     const root = services.build();
     const logger = root.resolve<ConsoleLogger>(T.Logger);
@@ -33,11 +33,11 @@ describe('registration + basic resolution', () => {
   });
 
   test('resolves a class with dependencies (greedy single signature)', () => {
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     defineDeps(Repo, [[T.Logger, T.Db]]);
-    services.add(T.Logger, ConsoleLogger).as('singleton');
-    services.add(T.Db, SqlDb).as('singleton');
-    services.add(T.Repo, Repo).as('singleton');
+    services = services.add(T.Logger, ConsoleLogger, [[]], 'singleton');
+    services = services.add(T.Db, SqlDb, [[]], 'singleton');
+    services = services.add(T.Repo, Repo, [[T.Logger, T.Db]], 'singleton');
 
     const root = services.build();
     const repo = root.resolve<Repo>(T.Repo);
@@ -47,14 +47,15 @@ describe('registration + basic resolution', () => {
     expect(repo.db).toBeInstanceOf(SqlDb);
   });
 
-  test('addValue registers a value that resolves verbatim; class add returns AddBuilder', () => {
+  test('addValue registers a value that resolves verbatim; class add returns an AddChain', () => {
     // Semantic change: the old add(token, { useValue }) object shape is removed.
-    // addValue(token, value) is the new surface; it returns void (no chaining).
-    // Class add still returns an AddBuilder for .as() tagging.
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(T.Config, { v: 1 });
-    const addBuilder = services.add(T.Logger, class L {});
-    expect(typeof addBuilder.as).toBe('function');
+    // addValue(token, value) is the new surface; it returns the new manifest
+    // directly (addValue carries no scope/key modifier faces). Class add still
+    // returns an AddChain node exposing `.as()` for scope tagging.
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, { v: 1 });
+    const chain = services.add(T.Logger, class L {}, [[]]);
+    expect(typeof chain.as).toBe('function');
     // The value registered above resolves correctly.
     expect(services.build().resolve<{ v: number; }>(T.Config)).toEqual({ v: 1 });
   });
@@ -62,8 +63,8 @@ describe('registration + basic resolution', () => {
 
 describe('transient vs singleton caching', () => {
   test('singleton: same instance on repeated resolve in the owning scope', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Logger, ConsoleLogger).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Logger, ConsoleLogger, [[]], 'singleton');
 
     // Open the "singleton" frame — that is what makes the tag cache.
     const root = services.build().createScope('singleton');
@@ -74,8 +75,8 @@ describe('transient vs singleton caching', () => {
   });
 
   test('transient (untagged): fresh instance every resolve, never cached', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Logger, ConsoleLogger); // no .as() ⇒ transient
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Logger, ConsoleLogger, [[]]); // no scope ⇒ transient
 
     const root = services.build();
     const a = root.resolve<ConsoleLogger>(T.Logger);
@@ -87,8 +88,8 @@ describe('transient vs singleton caching', () => {
   });
 
   test('singleton is shared across child scopes (owned by the ancestor)', () => {
-    const services = new ServiceManifest<'singleton' | 'request'>();
-    services.add(T.Logger, ConsoleLogger).as('singleton');
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.add(T.Logger, ConsoleLogger, [[]], 'singleton');
 
     // Open the "singleton" frame at the top; requests nest under it, so they
     // share the one singleton instance owned by that enclosing frame.
@@ -107,8 +108,8 @@ describe('transient vs singleton caching', () => {
 
 describe('.as tagging', () => {
   test('request-tagged: one instance per request scope, distinct across them', () => {
-    const services = new ServiceManifest<'singleton' | 'request'>();
-    services.add(T.Db, SqlDb).as('request');
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.add(T.Db, SqlDb, [[]], 'request');
 
     const root = services.build();
     const reqA = root.createScope('request');
@@ -123,8 +124,8 @@ describe('.as tagging', () => {
   });
 
   test('untagged add is transient — no .as() call needed to opt out', () => {
-    const services = new ServiceManifest<'request'>();
-    services.add(T.Service, ConsoleLogger);
+    let services = new ServiceManifest<'request'>();
+    services = services.add(T.Service, ConsoleLogger, [[]]);
 
     const root = services.build();
     expect(root.resolve(T.Service)).not.toBe(root.resolve(T.Service));

@@ -18,16 +18,16 @@ class Leaf {
 
 describe('validateScopes — resolution-time scope validation', () => {
   test('OFF by default: a tagged registration with no open frame still resolves transiently', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Leaf).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Leaf, [[]], 'singleton');
 
     const provider = services.build(); // frameless, no options
     expect(provider.resolve(T.Service)).not.toBe(provider.resolve(T.Service));
   });
 
   test('DIRECT flavor: resolving a tagged service with no matching frame open throws', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Leaf).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Leaf, [[]], 'singleton');
 
     const provider = services.build({ validateScopes: true }); // frameless
     expect(() => provider.resolve(T.Service)).toThrow(ScopeValidationError);
@@ -46,8 +46,8 @@ describe('validateScopes — resolution-time scope validation', () => {
   });
 
   test('a matching open frame satisfies the check — resolves and caches normally', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Leaf).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Leaf, [[]], 'singleton');
 
     const root = services.build({ validateScopes: true }).createScope('singleton');
     expect(root.resolve(T.Service)).toBe(root.resolve(T.Service));
@@ -57,10 +57,10 @@ describe('validateScopes — resolution-time scope validation', () => {
     class TransientConsumer {
       public constructor(public readonly dep: unknown) {}
     }
-    const services = new ServiceManifest<'singleton' | 'request'>();
+    let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(TransientConsumer, [[T.Service]]);
-    services.add(T.Service, Leaf).as('request');
-    services.add(T.Repo, TransientConsumer); // untagged (transient) consumer
+    services = services.add(T.Service, Leaf, [[]], 'request');
+    services = services.add(T.Repo, TransientConsumer, [[T.Service]]); // untagged (transient) consumer
 
     const provider = services.build({ validateScopes: true }); // frameless
     try {
@@ -86,10 +86,10 @@ describe('validateScopes — resolution-time scope validation', () => {
     class CaptiveHolder {
       public constructor(public readonly dep: unknown) {}
     }
-    const services = new ServiceManifest<'singleton' | 'request'>();
+    let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(CaptiveHolder, [[T.Service]]);
-    services.add(T.Service, Leaf).as('request');
-    services.add(T.Repo, CaptiveHolder).as('singleton');
+    services = services.add(T.Service, Leaf, [[]], 'request');
+    services = services.add(T.Repo, CaptiveHolder, [[T.Service]], 'singleton');
 
     const root = services.build({ validateScopes: true }).createScope('singleton');
     const req = root.createScope('request');
@@ -114,10 +114,10 @@ describe('validateScopes — resolution-time scope validation', () => {
     class RequestHolder {
       public constructor(public readonly dep: unknown) {}
     }
-    const services = new ServiceManifest<'singleton' | 'request'>();
+    let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(RequestHolder, [[T.Service]]);
-    services.add(T.Service, Leaf).as('singleton');
-    services.add(T.Repo, RequestHolder).as('request');
+    services = services.add(T.Service, Leaf, [[]], 'singleton');
+    services = services.add(T.Repo, RequestHolder, [[T.Service]], 'request');
 
     const root = services.build({ validateScopes: true }).createScope('singleton');
     const req = root.createScope('request');
@@ -128,17 +128,17 @@ describe('validateScopes — resolution-time scope validation', () => {
   });
 
   test('tryResolve does NOT soften a scope violation — the token IS registered', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Leaf).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Leaf, [[]], 'singleton');
 
     const provider = services.build({ validateScopes: true });
     expect(() => provider.tryResolve(T.Service)).toThrow(ScopeValidationError);
   });
 
   test('collection elements are validated per element registration', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, Leaf); // untagged — fine anywhere
-    services.add(T.Service, Leaf).as('singleton'); // tagged — violates framelessly
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, Leaf, [[]]); // untagged — fine anywhere
+    services = services.add(T.Service, Leaf, [[]], 'singleton'); // tagged — violates framelessly
 
     const provider = services.build({ validateScopes: true });
     expect(() => provider.resolve(`Array<${T.Service}>`)).toThrow(ScopeValidationError);
@@ -150,10 +150,10 @@ describe('validateOnBuild — eager all-registrations validation', () => {
     class ValidConsumer {
       public constructor(public readonly dep: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     defineDeps(ValidConsumer, [[T.Service]]);
-    services.add(T.Service, Leaf).as('singleton');
-    services.add(T.Repo, ValidConsumer);
+    services = services.add(T.Service, Leaf, [[]], 'singleton');
+    services = services.add(T.Repo, ValidConsumer, [[T.Service]]);
 
     const root = services.build({ validateOnBuild: true }).createScope('singleton');
     expect(root.resolve<ValidConsumer>(T.Repo).dep).toBeInstanceOf(Leaf);
@@ -164,8 +164,8 @@ describe('validateOnBuild — eager all-registrations validation', () => {
       public constructor(public readonly dep: unknown) {}
     }
     defineDeps(NeedsMissing, [[T.Service]]); // T.Service never registered
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Repo, NeedsMissing);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Repo, NeedsMissing, [[T.Service]]);
 
     try {
       services.build({ validateOnBuild: true });
@@ -188,8 +188,8 @@ describe('validateOnBuild — eager all-registrations validation', () => {
       public constructor(public readonly dep: unknown) {}
     }
     defineDeps(NeedsMissingLazy, [[T.Service]]);
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Repo, NeedsMissingLazy);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Repo, NeedsMissingLazy, [[T.Service]]);
 
     const provider = services.build(); // no eager validation
     expect(() => provider.resolve(T.Repo)).toThrow(NoSatisfiableSignatureError);
@@ -199,8 +199,8 @@ describe('validateOnBuild — eager all-registrations validation', () => {
     class Unannotated {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, Unannotated); // arity 1, no signatures
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.A, Unannotated, []); // arity 1, no candidate signature
 
     try {
       services.build({ validateOnBuild: true });
@@ -222,9 +222,9 @@ describe('validateOnBuild — eager all-registrations validation', () => {
     }
     defineDeps(CycleA, [[T.B]]);
     defineDeps(CycleB, [[T.A]]);
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, CycleA);
-    services.add(T.B, CycleB);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.A, CycleA, [[T.B]]);
+    services = services.add(T.B, CycleB, [[T.A]]);
 
     try {
       services.build({ validateOnBuild: true });
@@ -247,9 +247,9 @@ describe('validateOnBuild — eager all-registrations validation', () => {
     }
     defineDeps(BrokenOne, [[T.Service]]); // missing
     defineDeps(BrokenTwo, [[T.Config]]); // missing too
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, BrokenOne);
-    services.add(T.B, BrokenTwo);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.A, BrokenOne, [[T.Service]]);
+    services = services.add(T.B, BrokenTwo, [[T.Config]]);
 
     try {
       services.build({ validateOnBuild: true });
@@ -267,8 +267,8 @@ describe('validateOnBuild — eager all-registrations validation', () => {
       public constructor(public readonly make: unknown) {}
     }
     defineDeps(NeedsFactory, [[{ type: T.Service }]]); // () => IService param
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Repo, NeedsFactory);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Repo, NeedsFactory, [[{ type: T.Service }]]);
 
     try {
       services.build({ validateOnBuild: true });
@@ -287,8 +287,8 @@ describe('validateOnBuild — eager all-registrations validation', () => {
     class OpenImpl {
       public constructor(public readonly dep: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(G.RepoTemplate, OpenImpl, [[T.Config]]);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(G.RepoTemplate, OpenImpl, [[T.Config]]);
 
     expect(() => services.build({ validateOnBuild: true })).not.toThrow();
   });
@@ -301,9 +301,9 @@ describe('validateOnBuild — eager all-registrations validation', () => {
       public constructor(public readonly repo: unknown) {}
     }
     defineDeps(ClosingConsumer, [[G.RepoOfA]]);
-    const services = new ServiceManifest<'singleton'>();
-    services.add(G.RepoTemplate, OpenImplNeedsMissing, [[T.Config]]); // T.Config missing
-    services.add(T.B, ClosingConsumer);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(G.RepoTemplate, OpenImplNeedsMissing, [[T.Config]]); // T.Config missing
+    services = services.add(T.B, ClosingConsumer, [[G.RepoOfA]]);
 
     try {
       services.build({ validateOnBuild: true });
@@ -324,10 +324,10 @@ describe('validateOnBuild — eager all-registrations validation', () => {
     class DynamicHolder {
       public constructor(public readonly dep: unknown) {}
     }
-    const services = new ServiceManifest<'singleton' | 'request'>();
+    let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(DynamicHolder, [[T.Service]]);
-    services.add(T.Service, Leaf).as('request');
-    services.add(T.Repo, DynamicHolder).as('singleton');
+    services = services.add(T.Service, Leaf, [[]], 'request');
+    services = services.add(T.Repo, DynamicHolder, [[T.Service]], 'singleton');
 
     const provider = services.build({ validateOnBuild: true, validateScopes: true });
     const root = provider.createScope('singleton');

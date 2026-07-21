@@ -7,8 +7,8 @@ import { defineDeps, OneDep, T, ZeroArg } from './fixtures.js';
 // re-throws for a REGISTERED token whose construction fails for another reason.
 
 test('tryResolve returns the resolved instance for a registered token', () => {
-  const services = new ServiceManifest<'singleton'>();
-  services.add(T.Service, ZeroArg);
+  let services = new ServiceManifest<'singleton'>();
+  services = services.add(T.Service, ZeroArg, [[]]);
   const provider = services.build();
 
   const instance = provider.tryResolve<ZeroArg>(T.Service);
@@ -28,9 +28,9 @@ test('tryResolve returns undefined for an unregistered token (no throw)', () => 
 test("tryResolve re-throws when a REGISTERED token's dependency is unregistered", () => {
   // OneDep is registered but its sole dependency (T.Db) is not — a construction
   // failure, not a registration miss. tryResolve softens only the top-level miss.
-  const services = new ServiceManifest<'singleton'>();
+  let services = new ServiceManifest<'singleton'>();
   defineDeps(OneDep, [[T.Db]]);
-  services.add(T.Service, OneDep);
+  services = services.add(T.Service, OneDep, [[T.Db]]);
   const provider = services.build();
 
   // The token IS registered — tryResolve does not soften it to undefined. Its

@@ -8,11 +8,11 @@ test('@rhombus-std/di exports the engine and re-exports the core substrate', () 
   expect(typeof ServiceManifest).toBe('function');
   expect(typeof union).toBe('function'); // union helper re-exported from core
 
-  const services = new ServiceManifest<'singleton'>();
+  let services = new ServiceManifest<'singleton'>();
   class Probe {
     public readonly ok = true;
   }
-  services.add('pkg:IProbe', Probe).as('singleton');
+  services = services.add('pkg:IProbe', Probe, [[]], 'singleton');
   const probe = services.build().resolve<Probe>('pkg:IProbe');
   expect(probe.ok).toBe(true);
 });

@@ -20,6 +20,9 @@ export type {
   IServiceProviderFactory,
   IServiceQuery,
   Lifetime,
+  // The per-registration element a manifest iterates — the immutable manifest IS
+  // an `Iterable<ManifestEntry>`, so a consumer walking one needs this name.
+  ManifestEntry,
   OpenRegistration,
   Producer,
   Registration,
