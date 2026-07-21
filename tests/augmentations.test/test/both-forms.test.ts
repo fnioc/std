@@ -64,17 +64,23 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
 
 describe('reverse direction — MetricsBuilder (.core interface, downstream concrete)', () => {
   test('addMetricsListener method form equals the object-literal member form', () => {
+    // Every verb returns a NEW stand-in over the SAME `recorded` log, the way
+    // the real immutable chain does — a double that returned `undefined` (or
+    // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
-    const services = {
-      add: () => ({ as: () => {} }),
-      addFactory: () => ({ as: () => {} }),
-      addValue: (token: unknown, value: unknown) => {
-        recorded.push([token, value]);
-      },
-      build: () => undefined,
-    } as unknown as IServiceManifestBase;
+    const make = (): IServiceManifestBase => {
+      return {
+        add: () => make(),
+        addFactory: () => make(),
+        addValue: (token: unknown, value: unknown) => {
+          recorded.push([token, value]);
+          return make();
+        },
+        build: () => undefined,
+      } as unknown as IServiceManifestBase;
+    };
 
-    const builder = new MetricsBuilder(services);
+    const builder = new MetricsBuilder(make());
     const listener = { name: 'listener' } as IMetricsListener;
 
     builder.addMetricsListener(listener); // method form
