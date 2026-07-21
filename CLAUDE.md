@@ -283,11 +283,20 @@ before touching):
 - **Interface-first; no concrete leaks** — public signatures use the `di.core` interfaces
   (`IServiceProvider`, `IResolver`, `ServiceManifest`); the concrete `*Class` impls never appear in
   a public type (§1, §10).
+- **The manifest is IMMUTABLE** — `ServiceManifest` is an iterable decorator chain: every verb
+  (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
+  and leaves the receiver alone, so a discarded result registers NOTHING. `signatures` is a
+  required arg 3; `scope` is arg 4 and `key` arg 5. A builder that wraps a manifest
+  (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot
+  (di.core's `IServiceManifestHolder`) and siblings over one manifest share ONE holder;
+  `IHostBuilder.configureServices` takes a RETURNING delegate (§107).
 - **Runtime identity is load-bearing** — `di` keeps `di.core` _external_ in its bundle so the
   `ServiceManifestClass` cross-package augmentations install onto is the same object everywhere;
   a private inlined copy forks identity and breaks the install (§9). config keeps providers
   external for the same reason. **Every bundling package keeps `@rhombus-std/primitives`
-  external** — an inlined copy forks the augmentation registry's Map + event bus (§38).
+  external** — an inlined copy forks the augmentation registry's Map + event bus (§38). The same
+  holds for the rolled `.d.ts`: a package that inlines di.core's types forks
+  `IServiceManifestBase`, so every di.core dependent keeps it external in `rollup.dts.mjs` (§107).
 - **Augmentations** — one named object literal per augmentation set (`satisfies
   AugmentationSet<R>`), authored first-party-only, installed via direct `applyAugmentations` for
   CLOSED receivers or the token registry + `@augment` decorator for OPEN ones; the transformer
