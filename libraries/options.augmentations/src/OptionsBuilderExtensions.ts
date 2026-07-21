@@ -42,15 +42,16 @@ declare module '@rhombus-std/di.core' {
      * validate steps) before starting hosted services, so a validation failure
      * surfaces at boot instead of on first use. Requires a prior
      * {@link addOptions} for the same `token` and a host that resolves the
-     * built-in `IStartupValidator`. Returns the collection for chaining. The
+     * built-in `IStartupValidator`. Returns the manifest produced by its
+     * registrations (the manifest chain is immutable -- never `this`). The
      * reference `OptionsBuilder.ValidateOnStart<T>` analog -- collapsed onto the
      * manifest (OptionsBuilder is unported).
      */
-    validateOnStart(token: Token): this;
+    validateOnStart(token: Token): IServiceManifest<Scopes>;
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    validateOnStart(token: Token): this;
+    validateOnStart(token: Token): IServiceManifest<Scopes>;
   }
 }
 
@@ -63,16 +64,16 @@ export const OptionsBuilderExtensions = {
   validateOnStart(
     manifest: ServiceManifestClass<string>,
     token: Token,
-  ): ServiceManifestClass<string> {
+  ): IServiceManifest<string> {
     // Accumulate the target in the flat startup-validation slot.
-    manifest.addValue(startupValidationTargetToken(), token);
+    let m: IServiceManifest<string> = manifest.addValue(startupValidationTargetToken(), token);
     // Register the built-in validator under `IStartupValidator`. di.core has no
     // TryAdd surface (registrations are append-only, last-wins), so a repeated
     // `validateOnStart` appends an equivalent transient registration -- harmless:
     // the host resolves a single `IStartupValidator`, and every registration's
     // factory reads the SAME full target list from the resolver at start time
     // (the `addLogging` "add, not TryAdd" precedent).
-    manifest.addFactory(
+    m = m.addFactory(
       nameof<IStartupValidator>(),
       (resolver: IResolver): IStartupValidator =>
         new StartupValidator(
@@ -81,7 +82,7 @@ export const OptionsBuilderExtensions = {
         ),
       [[RESOLVER_TOKEN]],
     );
-    return manifest;
+    return m;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 

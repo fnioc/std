@@ -15,9 +15,10 @@
 // provider). That options-DI pipeline doesn't exist here, so the port follows
 // this repo's existing wiring — direct construction routed through
 // `LoggingBuilderExtensions.addProvider` — with the reference semantics kept:
-//   - ONE provider per manifest, however many add* calls run (the
-//     `TryAddEnumerable` idempotence), tracked in a WeakMap keyed by
-//     `builder.services`.
+//   - ONE provider per BUILDER, however many add* calls run (the
+//     `TryAddEnumerable` idempotence), tracked in a WeakMap keyed by the
+//     builder itself -- the manifest chain is immutable, so `builder.services`
+//     is a different object after each registration and would defeat the dedup.
 //   - configure delegates ACCUMULATE: each applies to the shared mutable
 //     options object and notifies through a ReloadableOptions, which re-runs
 //     the provider's option-reload path — the reference `OnChange` route. One
@@ -55,7 +56,7 @@ import { SimpleConsoleFormatter } from './SimpleConsoleFormatter';
 import { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
 import { SystemdConsoleFormatter } from './SystemdConsoleFormatter';
 
-/** The per-manifest console registration state (see the module doc). */
+/** The per-builder console registration state (see the module doc). */
 interface ConsoleRegistration {
   loggerOptions: ReloadableOptions<ConsoleLoggerOptions>;
   simpleOptions: ReloadableOptions<SimpleConsoleFormatterOptions>;
@@ -66,10 +67,15 @@ interface ConsoleRegistration {
   provider: ConsoleLoggerProvider | undefined;
 }
 
-const registrations = new WeakMap<ILoggingBuilder['services'], ConsoleRegistration>();
+// Keyed by the BUILDER, not by `builder.services`. The manifest chain is
+// immutable, so `builder.services` is a DIFFERENT object after every
+// registration -- keying on it would hand each `addConsole` a fresh state bag
+// and register a second provider. The builder is the stable identity that spans
+// one configuration pass, which is exactly the scope this dedup means.
+const registrations = new WeakMap<ILoggingBuilder, ConsoleRegistration>();
 
 function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
-  let registration = registrations.get(builder.services);
+  let registration = registrations.get(builder);
   if (registration === undefined) {
     registration = {
       loggerOptions: new ReloadableOptions(new ConsoleLoggerOptions()),
@@ -79,7 +85,7 @@ function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
       pendingFormatters: [],
       provider: undefined,
     };
-    registrations.set(builder.services, registration);
+    registrations.set(builder, registration);
   }
   return registration;
 }
@@ -100,7 +106,7 @@ function addFormatterWithName(builder: ILoggingBuilder, name: string): ILoggingB
 export const ConsoleLoggerExtensions = {
   /**
    * Adds a console logger to the builder — one {@link ConsoleLoggerProvider}
-   * per manifest, seeded with the three built-in formatters (plus any custom
+   * per builder, seeded with the three built-in formatters (plus any custom
    * ones registered via {@link addConsoleFormatter}). The reference's
    * configure-delegate overload collapses into the optional `configure`,
    * which applies to the shared {@link ConsoleLoggerOptions} and re-runs the

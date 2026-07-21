@@ -84,7 +84,7 @@ declare module '@rhombus-std/di.core' {
      * step, so it runs LAZILY when the options first resolve. Returns the
      * manifest for chaining.
      */
-    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
+    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): IServiceManifest<Scopes>;
 
     /**
      * Registers a singleton {@link MemoryDistributedCache} as
@@ -96,12 +96,12 @@ declare module '@rhombus-std/di.core' {
      * {@link MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN}) as a lazy configure
      * step. Returns the manifest for chaining.
      */
-    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): this;
+    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): IServiceManifest<Scopes>;
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): this;
-    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): this;
+    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): IServiceManifest<Scopes>;
+    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): IServiceManifest<Scopes>;
   }
 }
 
@@ -114,15 +114,17 @@ export const MemoryCacheServiceCollectionExtensions = {
   addMemoryCache(
     manifest: ServiceManifestClass<string>,
     setup?: Func<[MemoryCacheOptions], void>,
-  ): ServiceManifestClass<string> {
+  ): IServiceManifest<string> {
     // The reference `AddOptions()` analog: register the IOptions<T> assembly
     // for the options token (§14/§15). Singleton, like every registration the
     // reference makes here.
-    manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions()).as('singleton');
+    let m: IServiceManifest<string> = manifest
+      .addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions())
+      .as('singleton');
     if (setup !== undefined) {
       // The reference `Configure(setupAction)` analog: a LAZY code configure
       // step run by the assembly when the options resolve.
-      manifest.configure(MEMORY_CACHE_OPTIONS_TOKEN, setup);
+      m = m.configure(MEMORY_CACHE_OPTIONS_TOKEN, setup);
     }
     // The reference `TryAdd(Singleton<IMemoryCache, MemoryCache>())`: register
     // only when the token is still free, keeping any earlier registration. The
@@ -130,37 +132,50 @@ export const MemoryCacheServiceCollectionExtensions = {
     // ILoggerFactory)`; when no logger factory is registered its constructor
     // selection falls back to the logger-less constructor -- `tryResolve`
     // reproduces exactly that.
-    manifest
-      .tryAddFactory(MEMORY_CACHE_TOKEN, (resolver: IResolver) =>
+    // The cast works around a TS structural-comparison depth limit: the
+    // `IServiceManifestBase`/`IServiceManifest` overload surface (di.core's
+    // ServiceCollectionDescriptorExtensions merge) is large enough that TS's
+    // relationship check bails out on this self-assignment even though the two
+    // sides are the same type (see diagnostics.core's
+    // `clearMetricsListeners` for the full explanation).
+    m = m.tryAddFactory(
+      MEMORY_CACHE_TOKEN,
+      (resolver: IResolver) =>
         new MemoryCache(
           resolver.resolve<IOptions<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-        ), [[RESOLVER_TOKEN]])
-      .as('singleton');
-    return manifest;
+        ),
+      [[RESOLVER_TOKEN]],
+      'singleton',
+    ) as IServiceManifest<string>;
+    return m;
   },
 
   addDistributedMemoryCache(
     manifest: ServiceManifestClass<string>,
     setup?: Func<[MemoryDistributedCacheOptions], void>,
-  ): ServiceManifestClass<string> {
+  ): IServiceManifest<string> {
     // Same shape as addMemoryCache, over the distributed options token. The
     // cache is REGISTERED here but built lazily on first resolve, over its
     // own private MemoryCache.
-    manifest
+    let m: IServiceManifest<string> = manifest
       .addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, () => new MemoryDistributedCacheOptions())
       .as('singleton');
     if (setup !== undefined) {
-      manifest.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, setup);
+      m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, setup);
     }
-    manifest
-      .tryAddFactory(DISTRIBUTED_CACHE_TOKEN, (resolver: IResolver) =>
+    // See addMemoryCache's cast above for why this is needed.
+    m = m.tryAddFactory(
+      DISTRIBUTED_CACHE_TOKEN,
+      (resolver: IResolver) =>
         new MemoryDistributedCache(
           resolver.resolve<IOptions<MemoryDistributedCacheOptions>>(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN),
           resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-        ), [[RESOLVER_TOKEN]])
-      .as('singleton');
-    return manifest;
+        ),
+      [[RESOLVER_TOKEN]],
+      'singleton',
+    ) as IServiceManifest<string>;
+    return m;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 

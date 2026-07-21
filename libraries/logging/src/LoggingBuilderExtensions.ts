@@ -46,7 +46,7 @@ export const LoggingBuilderExtensions = {
    * manual `new LoggerFactory([...providers])` needed (§62).
    */
   addProvider(builder: ILoggingBuilder, provider: ILoggerProvider): ILoggingBuilder {
-    builder.services.addValue(LOGGER_PROVIDER_TOKEN, provider);
+    builder.services = builder.services.addValue(LOGGER_PROVIDER_TOKEN, provider);
     return builder;
   },
 
@@ -57,7 +57,7 @@ export const LoggingBuilderExtensions = {
    * `builder.Services.Add(IConfigureOptions<LoggerFilterOptions>)`.
    */
   setMinimumLevel(builder: ILoggingBuilder, level: LogLevel): ILoggingBuilder {
-    builder.services.addValue(
+    builder.services = builder.services.addValue(
       configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
       new DefaultLoggerLevelConfigureOptions(level),
     );
@@ -71,7 +71,7 @@ export const LoggingBuilderExtensions = {
    * method through the augmentation registry).
    */
   clearProviders(builder: ILoggingBuilder): ILoggingBuilder {
-    builder.services.removeAll(LOGGER_PROVIDER_TOKEN);
+    builder.services = builder.services.removeAll(LOGGER_PROVIDER_TOKEN);
     return builder;
   },
 } satisfies AugmentationSet<ILoggingBuilder>;

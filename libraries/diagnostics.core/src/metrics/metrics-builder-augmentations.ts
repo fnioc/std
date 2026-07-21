@@ -22,7 +22,7 @@
 // -- the former `*Rule` suffix, added only to avoid a top-level free-function clash,
 // is dropped (#105).
 
-import type { Ctor, DepSlot, Token } from '@rhombus-std/di.core';
+import type { Ctor, DepSignatures, Token } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
@@ -81,7 +81,7 @@ function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: Metric
     },
   };
   const token: Token = METRICS_CONFIGURE_TOKEN;
-  builder.services.addValue(token, step);
+  builder.services = builder.services.addValue(token, step);
   return builder;
 }
 
@@ -96,7 +96,7 @@ export const MetricsBuilderExtensions = {
    * `MetricsBuilderExtensions.AddListener(IMetricsBuilder, IMetricsListener)`.
    */
   addMetricsListener(builder: IMetricsBuilder, listener: IMetricsListener): IMetricsBuilder {
-    builder.services.addValue(METRICS_LISTENER_TOKEN, listener);
+    builder.services = builder.services.addValue(METRICS_LISTENER_TOKEN, listener);
     return builder;
   },
   /**
@@ -104,14 +104,15 @@ export const MetricsBuilderExtensions = {
    * dependencies are injected). Mirrors the generic
    * `MetricsBuilderExtensions.AddListener<T>()`. `signatures` carries the ctor's
    * positional dependency slots (as a plugin-less author supplies them, or as the
-   * di.transformer would emit).
+   * di.transformer would emit) -- required, like every di.core `add`: a
+   * dependency-free ctor states `[[]]` explicitly.
    */
   addMetricsListenerType(
     builder: IMetricsBuilder,
     ctor: Ctor,
-    signatures?: ReadonlyArray<readonly DepSlot[]>,
+    signatures: DepSignatures,
   ): IMetricsBuilder {
-    builder.services.add(METRICS_LISTENER_TOKEN, ctor, signatures);
+    builder.services = builder.services.add(METRICS_LISTENER_TOKEN, ctor, signatures);
     return builder;
   },
   /**
@@ -122,7 +123,16 @@ export const MetricsBuilderExtensions = {
    * (installed as a manifest method through the augmentation registry).
    */
   clearMetricsListeners(builder: IMetricsBuilder): IMetricsBuilder {
-    builder.services.removeAll(METRICS_LISTENER_TOKEN);
+    // The cast works around a TS structural-comparison depth limit: `services`'s
+    // declared type (`IServiceManifestBase`, Provider defaulted to `unknown`) and
+    // `removeAll`'s return (`IServiceManifest<Scopes>`, Provider bound to
+    // `IServiceProvider<Scopes>`) are the same interface at two instantiations
+    // that differ only in a covariant position -- genuinely assignable -- but the
+    // huge overload surface `IServiceManifestBase` carries (di.core's
+    // ServiceCollectionDescriptorExtensions merge) pushes TS's relationship check
+    // past its recursion budget, which it resolves as "not assignable" rather
+    // than re-deriving the true (assignable) relationship.
+    builder.services = builder.services.removeAll(METRICS_LISTENER_TOKEN) as typeof builder.services;
     return builder;
   },
   /**
@@ -178,7 +188,7 @@ export const MetricsBuilderExtensions = {
 declare module '@rhombus-std/diagnostics.core' {
   interface IMetricsBuilder {
     addMetricsListener(listener: IMetricsListener): this;
-    addMetricsListenerType(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): this;
+    addMetricsListenerType(ctor: Ctor, signatures: DepSignatures): this;
     clearMetricsListeners(): this;
     enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;
     disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string, scopes?: MeterScope): this;

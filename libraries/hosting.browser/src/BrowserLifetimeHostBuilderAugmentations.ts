@@ -54,9 +54,7 @@ export const BrowserLifetimeHostBuilderAugmentations = {
   ): IHostBuilder {
     const options = new BrowserLifetimeOptions();
     configureOptions?.(options);
-    return hostBuilder.configureServices((_context, services) => {
-      registerBrowserLifetime(services, options);
-    });
+    return hostBuilder.configureServices((_context, services) => registerBrowserLifetime(services, options));
   },
 } satisfies AugmentationSet<IHostBuilder>;
 

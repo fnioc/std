@@ -53,18 +53,20 @@ export const LoggerProviderOptions = {
    * @param optionsToken The `IOptions<TOptions>` token the steps attach to —
    * the same token the `addOptions`/`configure` pipeline uses.
    * @param providerType The provider type's token (`nameof<TProvider>()`).
+   * @returns The manifest carrying both registrations. The chain is immutable,
+   * so the caller MUST keep it (`services = LoggerProviderOptions
+   * .registerProviderOptions(services, …)`) — the `services` passed in is
+   * unchanged.
    */
   registerProviderOptions<TOptions, TProvider>(
     services: IServiceManifest,
     optionsToken: Typeof<IOptions<TOptions>>,
     providerType: Typeof<TProvider>,
-  ): void {
+  ): IServiceManifest {
     const providerConfig: Token = loggerProviderConfigToken(providerType);
-    services
-      .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]])
-      .as('singleton');
-    services
-      .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]])
-      .as('singleton');
+    return services
+      .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]], 'singleton')
+      .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]],
+        'singleton');
   },
 };
