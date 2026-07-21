@@ -20,9 +20,7 @@ test('runConsoleAsync (signal-only form) starts the host and shuts down when the
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => {
-    services.addHostedService(Worker, [[]]);
-  });
+  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);
@@ -45,7 +43,7 @@ test('runConsoleAsync (configureOptions form) applies the options, and they reac
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services.addHostedService((resolver) => {
+    services = services.addHostedService((resolver) => {
       // The same options singleton is what the ConsoleLifetime constructor read,
       // so observing it here observes exactly what the lifetime holds.
       const options = resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN);
@@ -58,6 +56,7 @@ test('runConsoleAsync (configureOptions form) applies the options, and they reac
         async stop(): Promise<void> {},
       };
     });
+    return services;
   });
 
   const controller = new AbortController();
@@ -86,7 +85,7 @@ test('runConsoleAsync without a configureOptions delegate leaves the console lif
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services.addHostedService((resolver) => {
+    services = services.addHostedService((resolver) => {
       const options = resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN);
       return {
         async start(): Promise<void> {
@@ -95,6 +94,7 @@ test('runConsoleAsync without a configureOptions delegate leaves the console lif
         async stop(): Promise<void> {},
       };
     });
+    return services;
   });
 
   const controller = new AbortController();
@@ -121,9 +121,7 @@ test('runConsoleAsync stays pending until the abort signal fires, then resolves'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => {
-    services.addHostedService(Worker, [[]]);
-  });
+  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);
@@ -150,8 +148,9 @@ test('runConsoleAsync propagates a throwing configureOptions delegate (host is n
   let servicesConfigured = false;
 
   const builder = new HostBuilder();
-  builder.configureServices(() => {
+  builder.configureServices((_context, services) => {
     servicesConfigured = true;
+    return services;
   });
 
   // The delegate runs synchronously inside useConsoleLifetime, before the host is

@@ -26,9 +26,11 @@ function rootWith(data: Record<string, string>): IConfigRoot {
 }
 
 function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
-  const services = new ServiceManifest<'singleton'>();
-  new LoggingBuilder(services).addConfig(config);
-  const provider = services.build().createScope('singleton');
+  // The chain is immutable, so the manifest handed to the builder never sees
+  // `addConfig`'s registrations — build the one the BUILDER holds afterwards.
+  const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+  builder.addConfig(config);
+  const provider = builder.services.build().createScope('singleton');
   return provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);
 }
 
@@ -63,14 +65,14 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
   test('the bind is LAZY — a write after registration but before first resolve is seen', () => {
     const config = rootWith({ 'LogLevel:Default': 'Information' });
 
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig(config);
+    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    builder.addConfig(config);
 
     // Mutate AFTER registration: an eager bind would have snapshotted
     // Information at addConfig time.
     config.set('LogLevel:Default', 'Error');
 
-    const provider = services.build().createScope('singleton');
+    const provider = builder.services.build().createScope('singleton');
     const options = provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Error);
   });
@@ -106,10 +108,10 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     const { LoggingBuilderExtensions } = await import('@rhombus-std/logging.config');
     const config = rootWith({ 'LogLevel:Default': 'Debug' });
 
-    const services = new ServiceManifest<'singleton'>();
-    LoggingBuilderExtensions.addConfig(new LoggingBuilder(services), config);
+    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    LoggingBuilderExtensions.addConfig(builder, config);
 
-    const provider = services.build().createScope('singleton');
+    const provider = builder.services.build().createScope('singleton');
     const options = provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Debug);
   });

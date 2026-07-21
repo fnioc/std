@@ -37,10 +37,12 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
       'OtherProvider:Format': 'xml',
     });
 
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig(config);
-    services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
-    LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
+    let services = new ServiceManifest<'singleton'>();
+    const logging = new LoggingBuilder(services);
+    logging.addConfig(config);
+    services = logging.services;
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
@@ -53,10 +55,12 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test('a reload re-binds and notifies subscribers (the change-token source)', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig(config);
-    services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
-    LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
+    let services = new ServiceManifest<'singleton'>();
+    const logging = new LoggingBuilder(services);
+    logging.addConfig(config);
+    services = logging.services;
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
@@ -77,13 +81,15 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test("composes with a consumer's own configure step for the same token", () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig(config);
-    services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
-    LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
+    let services = new ServiceManifest<'singleton'>();
+    const logging = new LoggingBuilder(services);
+    logging.addConfig(config);
+    services = logging.services;
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
     // The reference's services.Configure<TOptions>(delegate) analog: one more
     // configure source in the SAME pipeline, running after the provider bind.
-    services.configure<FakeProviderOptions>(OPTIONS_TOKEN, (value) => {
+    services = services.configure<FakeProviderOptions>(OPTIONS_TOKEN, (value) => {
       value.MaxDepth = '9';
     });
 

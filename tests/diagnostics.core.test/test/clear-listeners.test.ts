@@ -8,7 +8,7 @@
 // so a bare `{ services }` literal no longer satisfies the interfaces).
 
 import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest as Manifest } from '@rhombus-std/di.core';
+import type { IServiceManifest as Manifest, IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TOKEN,
   METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN,
@@ -19,9 +19,16 @@ function listener(name: string): IMetricsListener {
   return { name };
 }
 
-/** Builds the manifest and resolves the aggregated registrations of `token`. */
-function registered(manifest: Manifest, token: string): unknown[] {
-  return manifest.build().resolve<unknown[]>(`Array<${token}>`);
+/**
+ * Builds the manifest the BUILDER currently holds and resolves the aggregated
+ * registrations of `token`.
+ *
+ * It reads through the builder rather than taking a manifest: the chain is
+ * immutable, so the manifest each builder was constructed with never sees a
+ * single one of these registrations — only the one the builder now holds does.
+ */
+function registered(builder: { services: IServiceManifestBase; }, token: string): unknown[] {
+  return (builder.services as Manifest).build().resolve<unknown[]>(`Array<${token}>`);
 }
 
 describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
@@ -34,7 +41,7 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
     const returned = MetricsBuilderExtensions.clearMetricsListeners(builder);
 
     expect(returned).toBe(builder);
-    expect(registered(manifest, METRICS_LISTENER_TOKEN)).toHaveLength(0);
+    expect(registered(builder, METRICS_LISTENER_TOKEN)).toHaveLength(0);
   });
 
   test('listeners added AFTER a clear survive', () => {
@@ -46,7 +53,7 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
     const fresh = listener('fresh');
     MetricsBuilderExtensions.addMetricsListener(builder, fresh);
 
-    expect(registered(manifest, METRICS_LISTENER_TOKEN)).toEqual([fresh]);
+    expect(registered(builder, METRICS_LISTENER_TOKEN)).toEqual([fresh]);
   });
 
   test('only the listener slot is cleared -- other registrations survive', () => {
@@ -57,7 +64,7 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
     MetricsBuilderExtensions.enableMetrics(builder, 'some-meter');
     MetricsBuilderExtensions.clearMetricsListeners(builder);
 
-    expect(registered(manifest, METRICS_CONFIGURE_TOKEN)).toHaveLength(1);
+    expect(registered(builder, METRICS_CONFIGURE_TOKEN)).toHaveLength(1);
   });
 
   test('the method form reaches the concrete MetricsBuilder through the registry', () => {
@@ -67,7 +74,7 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
     expect(builder.clearMetricsListeners).toBeInstanceOf(Function);
     builder.addMetricsListener(listener('a')).clearMetricsListeners();
 
-    expect(registered(manifest, METRICS_LISTENER_TOKEN)).toHaveLength(0);
+    expect(registered(builder, METRICS_LISTENER_TOKEN)).toHaveLength(0);
   });
 });
 
@@ -81,7 +88,7 @@ describe('TracingBuilderExtensions.clearTracingListeners', () => {
     const returned = TracingBuilderExtensions.clearTracingListeners(builder);
 
     expect(returned).toBe(builder);
-    expect(registered(manifest, TRACING_LISTENER_TOKEN)).toHaveLength(0);
+    expect(registered(builder, TRACING_LISTENER_TOKEN)).toHaveLength(0);
   });
 
   test('listeners added AFTER a clear survive; rules are untouched', () => {
@@ -93,11 +100,11 @@ describe('TracingBuilderExtensions.clearTracingListeners', () => {
     TracingBuilderExtensions.clearTracingListeners(builder);
     TracingBuilderExtensions.addTracingListener(builder, 'fresh', () => {});
 
-    const remaining = registered(manifest, TRACING_LISTENER_TOKEN);
+    const remaining = registered(builder, TRACING_LISTENER_TOKEN);
     expect(remaining).toHaveLength(1);
     expect((remaining[0] as { name: string; }).name).toBe('fresh');
 
-    expect(registered(manifest, TRACING_CONFIGURE_TOKEN)).toHaveLength(1);
+    expect(registered(builder, TRACING_CONFIGURE_TOKEN)).toHaveLength(1);
   });
 
   test('the method form reaches the concrete TracingBuilder through the registry', () => {
@@ -107,6 +114,6 @@ describe('TracingBuilderExtensions.clearTracingListeners', () => {
     expect(builder.clearTracingListeners).toBeInstanceOf(Function);
     builder.addTracingListener('L1', () => {}).clearTracingListeners();
 
-    expect(registered(manifest, TRACING_LISTENER_TOKEN)).toHaveLength(0);
+    expect(registered(builder, TRACING_LISTENER_TOKEN)).toHaveLength(0);
   });
 });
