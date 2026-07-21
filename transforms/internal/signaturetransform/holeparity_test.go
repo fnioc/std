@@ -31,7 +31,7 @@ func buildDiParityWorkspace(t *testing.T, mainSrc string) (*driver.Program, stri
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown): unknown;
+  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 export declare function signatureof(value: unknown): unknown;

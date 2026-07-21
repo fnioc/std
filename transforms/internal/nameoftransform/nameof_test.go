@@ -33,7 +33,7 @@ func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown): unknown;
+  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 export declare function nameof<T>(): string;

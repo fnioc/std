@@ -13,13 +13,19 @@ const declaringModule = "@rhombus-std/di.core"
 // overloads AND the transformer's sugar overloads share one interface:
 //
 //	add / addFactory / addValue → IServiceManifestBase
-//	as                          → AddBuilder
+//	as                          → IAsBuilder
 //	resolve                     → IRequiredResolver
 //	resolveAsync / tryResolve   → IResolver
 //	isService                   → IServiceQuery
+//
+// `as` anchors on `IAsBuilder` — the scope-slot face of di.core's `AddChain<S,
+// Slots>` slot algebra, which replaced the single `AddBuilder` continuation when
+// the manifest became immutable. `AddChain` is a type ALIAS (an intersection of
+// the per-slot faces) and declares no members, so it never anchors a declaration
+// here; the member's declaration site is the face interface that owns it.
 var (
 	registrationInterfaces = map[string]bool{"IServiceManifestBase": true}
-	asInterfaces           = map[string]bool{"AddBuilder": true}
+	asInterfaces           = map[string]bool{"IAsBuilder": true}
 	resolveInterfaces      = map[string]bool{"IRequiredResolver": true, "IResolver": true}
 	isServiceInterfaces    = map[string]bool{"IServiceQuery": true}
 )

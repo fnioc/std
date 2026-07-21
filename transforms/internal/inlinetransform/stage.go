@@ -230,10 +230,11 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 		st.temps = append(st.temps, res.Temp)
 	}
 
-	// Byte-parity elision: an UNKEYED registration drops its trailing `keyof<T>()`
-	// argument so the lowered call is identical to the pre-keyof 3-argument form.
-	// Done BEFORE registerPrimitives so a dropped keyof is never registered for the
-	// keyof stage; a KEYED call keeps it, and the stage lowers it to the key string.
+	// Byte-parity elision: an UNKEYED registration drops the `keyof<T>()` argument
+	// (and the placeholder slots it leaves trailing) so the lowered call is
+	// identical to the plain 3-argument registration form. Done BEFORE
+	// registerPrimitives so a dropped keyof is never registered for the keyof
+	// stage; a KEYED call keeps it, and the stage lowers it to the key string.
 	res.Expr = st.elideUnkeyedKeyArg(res.Expr, body, env)
 
 	st.registerPrimitives(res.Expr, body, env)
@@ -241,17 +242,35 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 }
 
 // keyofPrimitiveName is the canonical primitive name a `keyof<T>()` import maps to
-// (knownPrimitives), matched on the trailing registration argument for elision.
+// (knownPrimitives), matched on a registration argument for elision.
 const keyofPrimitiveName = "keyof"
 
-// elideUnkeyedKeyArg drops a trailing `keyof<T>()` argument from a substituted
+// elideUnkeyedKeyArg drops the `keyof<T>()` argument from a substituted
 // registration call when T carries no `Keyed<T, K>` brand, so an UNKEYED lowering
-// is byte-identical to the pre-keyof form (`this.add(nameof<T>(), ctor,
-// signatureof(ctor))`, no 4th argument). A KEYED call keeps the argument — the
-// keyof stage lowers it to the key string, composed at runtime as `base#key`.
+// is byte-identical to the plain form a hand-writer would author
+// (`this.add(nameof<T>(), ctor, signatureof(ctor))` — no scope, no key). A KEYED
+// call keeps the argument exactly where the body placed it; the keyof stage
+// lowers it to the key string, which di.core composes at runtime as `base#key`.
 //
-// Detection is structural: the substituted outer call whose LAST argument is a
-// call to a `keyof` primitive (per the body's import map). The certified
+// THE KEY IS FOUND BY POSITION, NOT BY BEING LAST. di.core's registration verbs
+// order their optional slots `(token, value, signatures, scope, key)`, so the key
+// sits at argument 5 with the scope slot ahead of it — a type-driven sugar body,
+// which has no scope to pass, writes an explicit `void 0` placeholder there. So
+// this scans the argument list for the keyof call instead of indexing the tail,
+// and after removing it trims the placeholder arguments the removal strands (see
+// trimTrailingUndefined). Indexing the tail happens to still find the key in
+// TODAY's body shape, but only because the key is the last slot; the moment a
+// body passes anything after it, or the elision has to reach past a placeholder,
+// the tail assumption breaks.
+//
+// THE AUTHORED BODY OWNS THE ARGUMENT LAYOUT. This stage never repositions or
+// synthesizes an argument: whatever slot the sugar body wrote the `keyof<T>()`
+// into is the slot a KEYED registration emits, which is what keeps the lowered
+// call equal to the hand-written form. The only edit made here is the unkeyed
+// DELETION.
+//
+// Detection is structural: the substituted outer call carrying an argument that
+// is a call to a `keyof` primitive (per the body's import map). The certified
 // registration sugars use `this` exactly once with a simple/property receiver, so
 // Substitute returns the bare outer call; a non-call root (defensive) is left
 // untouched, keeping the keyof arg for the stage to lower to `void 0`.
@@ -260,24 +279,70 @@ func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, 
 		return expr
 	}
 	call := expr.AsCallExpression()
-	if call.Arguments == nil || len(call.Arguments.Nodes) == 0 {
+	if call.Arguments == nil {
 		return expr
 	}
 	args := call.Arguments.Nodes
-	last := args[len(args)-1]
-	if last.Kind != shimast.KindCallExpression {
+	index, found := keyArgIndex(args, body)
+	if !found {
 		return expr
 	}
-	callee := last.AsCallExpression().Expression
-	if callee.Kind != shimast.KindIdentifier || body.PrimitiveImports[callee.Text()] != keyofPrimitiveName {
+	if st.keyofArgIsKeyed(args[index], env) {
 		return expr
 	}
-	if st.keyofArgIsKeyed(last, env) {
-		return expr
-	}
-	kept := args[:len(args)-1]
+	kept := make([]*shimast.Node, 0, len(args))
+	kept = append(kept, args[:index]...)
+	kept = append(kept, args[index+1:]...)
+	kept = trimTrailingUndefined(kept)
 	factory := st.ec.Factory.AsNodeFactory()
 	return factory.NewCallExpression(call.Expression, nil, nil, factory.NewNodeList(kept), 0)
+}
+
+// keyArgIndex returns the position of the `keyof<T>()` argument in a substituted
+// registration call's argument list. A registration body writes at most one, so
+// the first match wins.
+func keyArgIndex(args []*shimast.Node, body *ResolvedBody) (int, bool) {
+	for i, arg := range args {
+		if arg.Kind != shimast.KindCallExpression {
+			continue
+		}
+		callee := arg.AsCallExpression().Expression
+		if callee.Kind != shimast.KindIdentifier {
+			continue
+		}
+		if body.PrimitiveImports[callee.Text()] == keyofPrimitiveName {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+// trimTrailingUndefined drops trailing explicit undefined arguments. Removing an
+// unkeyed key argument strands the placeholders that were only there to push the
+// key into its slot — a body with no scope to pass writes
+// `add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())`, and dropping
+// only the keyof would leave `add(..., void 0)`, which is not the plain
+// 3-argument form a hand-writer authors. Trimming is TRAILING-ONLY, so a
+// placeholder a body passes deliberately with a real argument after it survives.
+func trimTrailingUndefined(args []*shimast.Node) []*shimast.Node {
+	for len(args) != 0 && isUndefinedLiteral(args[len(args)-1]) {
+		args = args[:len(args)-1]
+	}
+	return args
+}
+
+// isUndefinedLiteral reports whether node is an explicit undefined placeholder.
+// `void 0` is the form a sugar body must use: the body validator
+// (INLINE_BODY_FREE_IDENTIFIER) rejects any identifier that is not a parameter,
+// type parameter, or primitive import, and a bare `undefined` is exactly such a
+// free identifier. It is also the shadow-proof spelling, and the one ditransform
+// emits for the same value. The `undefined` identifier is still recognized here
+// so a hand-lowered call reaching this path is trimmed identically.
+func isUndefinedLiteral(node *shimast.Node) bool {
+	if node.Kind == shimast.KindVoidExpression {
+		return true
+	}
+	return node.Kind == shimast.KindIdentifier && node.Text() == "undefined"
 }
 
 // keyofArgIsKeyed reports whether a `keyof<T>()` call's bound type argument carries
