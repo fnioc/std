@@ -433,8 +433,10 @@ pin), never system-wide.
   `~/.cache/fnioc-ttsc/cache` (`TTSC_CACHE_DIR`, env-overridable), shared across every worktree and
   e2e suite: keyed sidecar binaries (~30 MB each) plus the ~3 GB Go object cache. Content-keyed, so
   the ~5-min cold sidecar compile is paid once per machine, seconds warm. The throwaway e2e sandboxes
-  live per-worktree under `node_modules/.cache/e2e` (off the per-user-quota tmpfs `/tmp`). CI
-  provisions Go via `jdx/mise-action` and restores `~/.cache/fnioc-ttsc` + the Go build cache.
+  live per-worktree at `~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>` — OUTSIDE the repo tree,
+  since a sandbox under an enclosing `package.json` makes ttsc re-root its token derivation to that
+  package (off the per-user-quota tmpfs `/tmp`). CI provisions Go via `jdx/mise-action` and restores
+  `~/.cache/fnioc-ttsc/cache` + the Go build cache.
 - **`transforms/go.work` is gitignored** (machine-specific abs paths); `scripts/gen-go-work.mjs`
   rebuilds it against the installed ttsc shim modules (`ttsc` also makes its own during a build, so
   `go.mod` has no `replace`). Parity: `tests/*.ttsc.e2e` (script `test:e2e`, now IN the default

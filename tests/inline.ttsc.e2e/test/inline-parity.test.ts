@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the generic single-expression inline stage. It drives
 // the REAL ttsc over a temp project wiring the inline + nameof + di descriptors
@@ -15,8 +15,10 @@ import { join, resolve } from 'node:path';
 //      itself) emits the identical isService line. The pilot changes the path,
 //      never the output.
 //
-// The two compilations run in ONE per-worktree project dir (under
-// node_modules/.cache/e2e, off the per-user-quota tmpfs /tmp) with two tsconfigs
+// The two compilations run in ONE per-worktree project dir OUTSIDE the repo tree
+// (~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>, off the per-user-quota tmpfs
+// /tmp; it must sit outside any enclosing package.json or ttsc re-roots the
+// fixture's token derivation to that package) with two tsconfigs
 // (tsconfig.inline.json / tsconfig.semantic.json), and BOTH point ttsc at the
 // single shared plugin cache (TTSC_CACHE_DIR, see goEnv). This matters: ttsc's
 // plugin cache is resolved per project root, so an unpinned cache that lands
@@ -43,7 +45,9 @@ const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
 
-const projDir = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'inline');
+// Outside the repo tree (see the header: an enclosing package.json re-roots token
+// derivation), keyed by the worktree dir name so concurrent sessions don't collide.
+const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'inline');
 // One honest cold Go-sidecar compile fits comfortably here; the second (warm)
 // compilation is seconds. Sized against the sibling suite's single-cold budget
 // with headroom, now that the shared cache guarantees a single cold build.

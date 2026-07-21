@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 // End-to-end proof of declare-by-depending stage selection, driven through the
 // REAL ttsc (§100). Selection is HOST-SIDE: ttsc's own auto-discovery spawns the
@@ -21,11 +21,14 @@ import { join, resolve } from 'node:path';
 //      build ITSELF). Auto-discovery finds no marker, so no host spawns and
 //      nameof<T>() is emitted UNTOUCHED. di.core's own devDep must not leak.
 //
-// The fixture root lives per-worktree under node_modules/.cache/e2e (off /tmp, a
-// per-user-quota tmpfs here) so concurrent sessions in different worktrees can't
-// collide; the ttsc plugin cache is content-keyed and shared machine-wide at
-// ~/.cache/fnioc-ttsc, so the cold sidecar build is paid once per machine. Needs
-// the Go toolchain; self-skips when go is absent.
+// The fixture root lives OUTSIDE the repo tree, per-worktree, at
+// ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname> (off /tmp, a per-user-quota
+// tmpfs here): a sandbox under an enclosing package.json makes ttsc re-root its
+// token derivation to that package, and keying on the worktree dir name keeps
+// concurrent sessions in different worktrees from colliding. The ttsc plugin cache
+// is content-keyed and shared machine-wide at ~/.cache/fnioc-ttsc/cache, so the
+// cold sidecar build is paid once per machine. Needs the Go toolchain; self-skips
+// when go is absent.
 
 const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
 const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
@@ -38,7 +41,9 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const TTSC_PKG = join(PKG_ROOT, 'node_modules', 'ttsc');
 const lib = (name: string): string => join(REPO_ROOT, 'libraries', name);
 
-const ROOT = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'dbd');
+// Outside the repo tree (see the header: an enclosing package.json re-roots token
+// derivation), keyed by the worktree dir name so concurrent sessions don't collide.
+const ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'dbd');
 const CONSUMER = join(ROOT, 'consumer'); // fixture 1: devDeps di.transformer
 const CORE_ONLY = join(ROOT, 'core-only'); // fixture 2: deps only di.core
 // The plugin cache (keyed sidecar binaries) and the Go build scratch/object cache

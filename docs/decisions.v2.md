@@ -523,11 +523,14 @@ default to a shared, disk-backed home dir — `~/.cache/fnioc-ttsc/{cache,gotmp}
 or a shell can override. The cold ~5-min sidecar compile is now paid once per machine, not once per
 suite or worktree.
 
-The throwaway sandboxes move the OTHER way — off the fixed `tmpdir()` / fixed-global-home paths that
-collided across concurrent sessions, into `node_modules/.cache/e2e/<suite>` under each worktree's own
-repo. Two sessions in different worktrees now get independent sandboxes but share the one
-content-keyed cache: collision-free, and the ~3 GB per-suite duplication is gone. CI caches
-`~/.cache/fnioc-ttsc` (same key) and excludes `node_modules/.cache/e2e` (throwaway, rebuilt each
-run).
+The throwaway sandboxes move to `~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>/<suite>` — keyed by
+the worktree directory name for per-worktree isolation, but crucially OUTSIDE the repo tree. A
+sandbox must sit outside any enclosing `package.json`: ttsc derives its tokens relative to the
+nearest package root, so a sandbox under the monorepo re-roots a fixture's local tokens as members of
+`@rhombus-std/monorepo` (`@rhombus-std/monorepo/…:ILocal`) instead of the package-less `./app:ILocal`
+the parity corpus expects. The old `tmpdir()` / `~/.cache` homes had no enclosing manifest — a
+load-bearing property this preserves. Two sessions in different worktrees get independent sandboxes
+but share the one content-keyed cache: collision-free, and the ~3 GB per-suite duplication is gone.
+CI caches `~/.cache/fnioc-ttsc/cache` (scoped so the sandboxes ride outside it).
 
 _Owner-directed 2026-07-21._

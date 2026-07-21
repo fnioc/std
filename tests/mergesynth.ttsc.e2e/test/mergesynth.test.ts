@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the #213 merge-strategy synthesis stage: drives the
 // REAL ttsc over a temp project that DEPENDS ON @rhombus-std/primitives.transformer
@@ -23,12 +23,14 @@ import { join, resolve } from 'node:path';
 //   3. the nameof stage still lowers byte-identical tokens (same stage code, now
 //      the one owner binary rather than a full-host sibling).
 //
-// The throwaway project lives per-worktree under node_modules/.cache/e2e so
-// concurrent sessions in different worktrees can't collide, and off /tmp (a
-// per-user-quota tmpfs here). The ttsc plugin cache is content-keyed and shared
-// machine-wide at ~/.cache/fnioc-ttsc, so the cold Go build of the owner host
-// (typescript-go + typia — several minutes) is paid once per machine, not once
-// per suite.
+// The throwaway project lives OUTSIDE the repo tree, per-worktree, at
+// ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>: it must sit outside any
+// enclosing package.json, or ttsc re-roots token derivation to that package. Keying
+// on the worktree dir name keeps concurrent sessions in different worktrees from
+// colliding, and off /tmp (a per-user-quota tmpfs here). The ttsc plugin cache is
+// content-keyed and shared machine-wide at ~/.cache/fnioc-ttsc/cache, so the cold
+// Go build of the owner host (typescript-go + typia — several minutes) is paid once
+// per machine, not once per suite.
 //
 // This suite needs the Go toolchain, so it is kept OUT of the default
 // `bun run test` gate (script `test:e2e`, not `test`) and self-skips when go
@@ -45,7 +47,9 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const PRIM_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 
-const projDir = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'mergesynth');
+// Outside the repo tree (see the header: an enclosing package.json re-roots token
+// derivation), keyed by the worktree dir name so concurrent sessions don't collide.
+const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'mergesynth');
 // The plugin cache (keyed sidecar binaries) and the Go build scratch/object cache
 // are content-keyed, so one machine-wide location is shared across every suite,
 // worktree, and session. Default-if-unset so CI or a shell can override.

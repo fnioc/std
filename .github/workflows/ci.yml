@@ -45,20 +45,19 @@ jobs:
         run: bun install
 
       # The compiled ttsc sidecars + ttsc's own Go object cache live at the shared,
-      # content-keyed ~/.cache/fnioc-ttsc (~30 MB per sidecar binary plus a few GB
-      # of Go objects). Cache that — plus the general Go build cache and whatever
+      # content-keyed ~/.cache/fnioc-ttsc/cache (~30 MB per sidecar binary plus a few
+      # GB of Go objects). Cache that — plus the general Go build cache and whatever
       # else lands under node_modules/.cache — keyed on the Go sources + toolchain
       # manifest + ttsc version (bun.lock) so only a genuine transform change forces
-      # a cold rebuild. The per-worktree e2e sandboxes under node_modules/.cache/e2e
-      # are throwaway (rebuilt each run) and excluded.
+      # a cold rebuild. Scoped to .../cache so the throwaway per-worktree e2e
+      # sandboxes (~/.cache/fnioc-ttsc/sandboxes, rebuilt each run) ride outside it.
       - name: Cache ttsc plugin sidecars
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/fnioc-ttsc
+            ~/.cache/fnioc-ttsc/cache
             ~/.cache/go-build
             node_modules/.cache
-            !node_modules/.cache/e2e
           key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
           restore-keys: |
             ttsc-plugins-${{ runner.os }}-
@@ -111,7 +110,7 @@ jobs:
       - name: Cache ttsc plugin sidecars
         uses: actions/cache@v4
         with:
-          path: ~/.cache/fnioc-ttsc
+          path: ~/.cache/fnioc-ttsc/cache
           key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
           restore-keys: |
             ttsc-plugins-${{ runner.os }}-

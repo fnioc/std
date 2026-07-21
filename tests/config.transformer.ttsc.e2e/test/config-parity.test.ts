@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e parity for the Go config transformer. Two authorities are
 // exercised, both driven with the SAME Go toolchain ttsc itself uses:
@@ -21,10 +21,12 @@ import { join, resolve } from 'node:path';
 //
 // The parity corpus these mirror is tests/config.transformer.test.
 //
-// The working tree lives per-worktree under node_modules/.cache/e2e so concurrent
-// sessions in different worktrees can't collide; Go build `$WORK` and the
-// content-keyed ttsc plugin cache live on the shared home filesystem
-// (~/.cache/fnioc-ttsc), NOT the per-user-quota tmpfs `/tmp` — a cold
+// The working tree lives per-worktree OUTSIDE the repo tree, at
+// ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname> — it must sit outside any
+// enclosing package.json or ttsc re-roots its token derivation to that package,
+// and keying on the worktree dir name keeps concurrent sessions from colliding.
+// Go build `$WORK` and the content-keyed ttsc plugin cache live on the shared home
+// filesystem (~/.cache/fnioc-ttsc), NOT the per-user-quota tmpfs `/tmp` — a cold
 // typescript-go + ttsc plugin rebuild needs many hundreds of MB, and sharing the
 // cache pays that cold compile once per machine, not once per suite.
 //
@@ -83,10 +85,12 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.transformer');
 const TRANSFORMS = join(REPO_ROOT, 'transforms');
 
-// The working tree is per-worktree (a fixed global home path collided across
-// concurrent sessions); the plugin cache + Go scratch are shared machine-wide and
-// content-keyed. Both default-if-unset so CI or a shell can override.
-const WORK_ROOT = join(REPO_ROOT, 'node_modules', '.cache', 'e2e', 'config');
+// The working tree is per-worktree and OUTSIDE the repo tree (an enclosing
+// package.json re-roots token derivation; a fixed global home path collided across
+// concurrent sessions — the worktree dir name fixes both). The plugin cache + Go
+// scratch are shared machine-wide and content-keyed, default-if-unset so CI or a
+// shell can override.
+const WORK_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'config');
 const projHappy = join(WORK_ROOT, 'happy');
 const projDiag = join(WORK_ROOT, 'diag');
 const sidecarBin = join(WORK_ROOT, 'sidecar', 'ttsc-std');
