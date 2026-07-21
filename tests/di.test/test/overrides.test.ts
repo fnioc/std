@@ -15,8 +15,8 @@ class Bar {
 describe('useValue', () => {
   test('returns the registered value verbatim, always the same reference', () => {
     const cached = { id: 42 };
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(T.Config, cached);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, cached);
 
     const root = services.build();
     expect(root.resolve<typeof cached>(T.Config)).toBe(cached);
@@ -24,8 +24,8 @@ describe('useValue', () => {
   });
 
   test('useValue resolves without any scope (no lifetime, no caching dance)', () => {
-    const services = new ServiceManifest<'singleton' | 'request'>();
-    services.addValue(T.Config, 'literal-value');
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.addValue(T.Config, 'literal-value');
 
     const req = services.build().createScope('request');
     expect(req.resolve<string>(T.Config)).toBe('literal-value');
@@ -37,9 +37,9 @@ describe('useFactory', () => {
     class Foo {
       public constructor(public readonly bar: Bar) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.B, Bar).as('singleton');
-    services.addFactory(T.A, (c) => new Foo(c.resolve<Bar>(T.B)), [[RESOLVER_TOKEN]]);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.B, Bar, [[]], 'singleton');
+    services = services.addFactory(T.A, (c) => new Foo(c.resolve<Bar>(T.B)), [[RESOLVER_TOKEN]]);
 
     const root = services.build();
     const foo = root.resolve<Foo>(T.A);
@@ -49,11 +49,11 @@ describe('useFactory', () => {
 
   test('an untagged factory runs on every resolve (transient)', () => {
     let calls = 0;
-    const services = new ServiceManifest<'singleton'>();
-    services.addFactory(T.Service, () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.Service, () => {
       calls += 1;
       return { n: calls };
-    });
+    }, [[]]);
 
     const root = services.build();
     const a = root.resolve<{ n: number; }>(T.Service);
@@ -64,11 +64,11 @@ describe('useFactory', () => {
 
   test('a singleton-scoped factory runs once and caches its result', () => {
     let calls = 0;
-    const services = new ServiceManifest<'singleton'>();
-    services.addFactory(T.Service, () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.Service, () => {
       calls += 1;
       return { n: calls };
-    }).as('singleton');
+    }, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const a = root.resolve<{ n: number; }>(T.Service);
@@ -79,8 +79,8 @@ describe('useFactory', () => {
 
   test('a request-scoped factory caches per request scope', () => {
     let calls = 0;
-    const services = new ServiceManifest<'singleton' | 'request'>();
-    services.addFactory(T.Service, () => ({ n: ++calls })).as('request');
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.addFactory(T.Service, () => ({ n: ++calls }), [[]], 'request');
 
     const root = services.build();
     const reqA = root.createScope('request');
@@ -98,8 +98,8 @@ describe('useFactory', () => {
 
 describe('async as values', () => {
   test("resolve() returns the factory's Promise synchronously (no await)", () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addFactory(T.Db, async () => ({ connected: true })).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.Db, async () => ({ connected: true }), [[]], 'singleton');
 
     const root = services.build();
     const result = root.resolve<Promise<{ connected: boolean; }>>(T.Db);
@@ -109,11 +109,11 @@ describe('async as values', () => {
 
   test('a singleton async factory runs once; both awaits see the same value', async () => {
     let calls = 0;
-    const services = new ServiceManifest<'singleton'>();
-    services.addFactory(T.Db, async () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.Db, async () => {
       calls += 1;
       return { id: calls };
-    }).as('singleton');
+    }, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const p1 = root.resolve<Promise<{ id: number; }>>(T.Db);
@@ -128,8 +128,8 @@ describe('async as values', () => {
   });
 
   test('a consumer can await an injected Promise<T> dependency', async () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addFactory(T.Db, async () => ({ query: () => 'rows' })).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.Db, async () => ({ query: () => 'rows' }), [[]], 'singleton');
 
     const root = services.build();
     const db = await root.resolve<Promise<{ query: () => string; }>>(T.Db);

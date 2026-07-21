@@ -1,5 +1,5 @@
-// The registration builder. Holds the base token → registration list map and
-// builds the IServiceProvider. Three registration surfaces:
+// The registration builder — an IMMUTABLE, ITERABLE DECORATOR CHAIN. Three
+// registration surfaces:
 //   - `add`        — a class (its ctor deps are injected),
 //   - `addFactory` — a factory function (its call-param deps are injected),
 //   - `addValue`   — an already-built instance (no deps, no lifetime).
@@ -9,41 +9,53 @@
 // `add<I>(fn)` (a factory) lowers to `addFactory("token", fn)` — the transformer
 // statically knows the arg is a function, so the runtime never has to guess
 // class-vs-factory.
+//
+// THE SHAPE: a manifest is a linked list of frozen nodes, not a container of a
+// mutable array. The root holds an empty inner iterable; every registration
+// wraps the manifest it was called on in a NEW node carrying exactly ONE entry.
+// Iteration yields `inner` FIRST and the node's own entry LAST, so the entry
+// stream comes out in authoring order — the order `seal()` buckets by, and
+// therefore the order last-wins resolution and collection aggregation see. THAT
+// ORDER IS LOAD-BEARING.
+//
+// NOTHING MUTATES. `add`/`addFactory`/`addValue` and each fluent modifier return
+// a NEW manifest; the receiver is untouched. A call whose result is discarded
+// registers nothing:
+//
+//   let services = new ServiceManifest();
+//   services = services.add("pkg:ILogger", ConsoleLogger, [[]], "singleton");
+//   services.add("pkg:IClock", SystemClock, [[]]);  // ← LOST: result discarded
+//   const provider = services.build();
 
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import type { AddBuilder, IServiceManifestBase } from './authoring.js';
+import type { AddChain, IServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
-import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
+import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 import { baseKey, tryParse } from './token.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
-import type { DepSlot, Token } from './types.js';
+import type { DepSignatures, Token } from './types.js';
 
-// The authoring TYPE-machinery — `AddBuilder` and the collection interface
-// `IServiceManifestBase` — lives alongside this builder in the abstractions
-// package `@rhombus-std/di.core`. The runtime `ServiceManifestClass` implements
-// the interface; the engine-constructing half of `build()` is a
+// The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
+// interface `IServiceManifestBase` — lives alongside this builder in the
+// abstractions package `@rhombus-std/di.core`. The runtime `ServiceManifestClass`
+// implements the interface; the engine-constructing half of `build()` is a
 // `@rhombus-std/di` extension (see `build()` below).
 
-/**
- * One ordered registration in the builder's single source of truth. An `exact`
- * entry binds a closed token to a producer `Registration`; an `open` entry binds
- * a template's base to an `OpenRegistration`. The list is materialised into the
- * two frozen lookup indexes only at `seal()` (toArray-at-seal), so a `.as(scope)`
- * continuation can replace its own entry's record IN PLACE — keeping one
- * `.add(...).as(...)` chain exactly one registration (a spurious transient shadow
- * would pollute collection aggregation).
- */
-type ManifestEntry =
-  | { readonly kind: 'exact'; readonly token: Token; registration: Registration; }
-  | { readonly kind: 'open'; readonly base: Token; open: OpenRegistration; };
+/** Compile-time exhaustiveness guard for a discriminated union switch. */
+function assertNever(value: never): never {
+  throw new TypeError(`Unhandled variant: ${JSON.stringify(value)}`);
+}
+
+/** The root node's inner iterable — a shared frozen empty list. */
+const EMPTY_ENTRIES: readonly ManifestEntry[] = Object.freeze([]);
 
 /** Appends `value` to the list at `key`, creating it on first use — the per-key
- * bucketing `seal()` uses to derive a frozen index from the ordered entries. */
+ * bucketing `seal()` uses to derive a frozen index from the entry stream. */
 function bucket<V>(index: Map<Token, V[]>, key: Token, value: V): void {
   const existing = index.get(key);
   if (existing === undefined) {
@@ -66,10 +78,10 @@ const KEY_SEPARATOR = '#';
 /**
  * Composes the effective registration token from a base token and an OPTIONAL
  * tail key. A falsy key — `undefined` (the omitted tail argument) or the empty
- * string — is unkeyed and leaves the token unchanged, so a plugin-less
- * 3-argument call and a transformer-lowered UNKEYED call both register under the
- * bare token exactly as before. A non-empty key suffixes `#<key>`, landing on the
- * same string the transformer's di direct stage composes into arg0 for
+ * string — is unkeyed and leaves the token unchanged, so a plugin-less unkeyed
+ * call and a transformer-lowered UNKEYED call both register under the bare token
+ * exactly as before. A non-empty key suffixes `#<key>`, landing on the same
+ * string the transformer's di direct stage composes into arg0 for
  * `add<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
  */
 function keyedToken(token: Token, key?: string): Token {
@@ -77,19 +89,164 @@ function keyedToken(token: Token, key?: string): Token {
 }
 
 /**
- * The registration builder.
+ * What a registration call captured, BEFORE it was classified into a
+ * `ManifestEntry`. The chain node keeps this alongside the materialised entry so
+ * a fluent modifier can refine ONE facet — the scope, the key, the signatures —
+ * and re-materialise from the same authored inputs. The BASE token is retained
+ * separately from the composed one precisely because `withKey` has to recompose
+ * `base#key` from scratch rather than suffix an already-keyed token.
+ */
+interface PendingRegistration {
+  readonly producer: PendingProducer;
+  /** The token AS AUTHORED, before any key suffix. */
+  readonly base: Token;
+  readonly key: string | undefined;
+  readonly signatures: DepSignatures | undefined;
+  /** The owning lifetime tag. `undefined` is transient — the absence of a scope. */
+  readonly scope: string | undefined;
+}
+
+/**
+ * The authored producer, still in its original kind. The kind survives every
+ * refinement, so the error a recomposed token raises names the ORIGINATING verb
+ * (`add` / `addFactory` / `addValue`) exactly as the first call would have.
+ */
+type PendingProducer =
+  | { readonly kind: 'class'; readonly ctor: Ctor; }
+  | { readonly kind: 'factory'; readonly factory: Factory; }
+  | { readonly kind: 'value'; readonly value: unknown; };
+
+/**
+ * Classifies a captured registration into the frozen `ManifestEntry` a chain node
+ * yields. This is where the registration-time errors live, and it runs from the
+ * chain node's CONSTRUCTOR — so `add`/`addFactory`/`addValue` and the modifiers
+ * that recompose the token all throw AT THE CALL, never deferred to `seal()`.
+ */
+function materialise(pending: PendingRegistration): ManifestEntry {
+  const token = keyedToken(pending.base, pending.key);
+  const producer = pending.producer;
+  switch (producer.kind) {
+    case 'class': {
+      // An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes
+      // into the open-registration table instead of the exact map; resolution
+      // closes it per requested token.
+      if (isOpenToken(token)) {
+        return openEntry(token, producer.ctor, pending.signatures, pending.scope);
+      }
+      // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
+      // carried EXPLICITLY: the `(...a) => new Ctor(...a)` wrapper reports `""`
+      // for `.name` and `0` for `.length`, so the missing-metadata signal and
+      // ctor-name diagnostics would silently regress if read off the wrapper.
+      const construct = producer.ctor;
+      const registration: Registration = {
+        produce: (...a: unknown[]) => new construct(...a),
+        scope: pending.scope,
+        signatures: pending.signatures,
+        name: construct.name,
+        arity: construct.length,
+      };
+      return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
+    }
+    case 'factory': {
+      // Open registrations are class-only: a template must synthesize per-closing
+      // class registrations, which a factory/value shape cannot express in v1.
+      if (isOpenToken(token)) {
+        throw new OpenTokenRegistrationError(token, 'addFactory');
+      }
+      // The factory IS the producer. `arity` is 0 so a signature-less factory
+      // runs with no injected args (it never trips the missing-metadata signal —
+      // only a ctor needing args does).
+      const registration: Registration = {
+        produce: producer.factory,
+        scope: pending.scope,
+        signatures: pending.signatures,
+        name: producer.factory.name,
+        arity: 0,
+      };
+      return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
+    }
+    case 'value': {
+      if (isOpenToken(token)) {
+        throw new OpenTokenRegistrationError(token, 'addValue');
+      }
+      // The value collapses to a producer that returns it verbatim. `scope` stays
+      // `undefined` (a value is always transient — no ownership/caching), so a
+      // value that is itself a `Promise` is returned raw through the normal path,
+      // never awaited (§"Async as values").
+      const value = producer.value;
+      const registration: Registration = {
+        produce: () => value,
+        scope: undefined,
+        name: '',
+        arity: 0,
+      };
+      return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
+    }
+    default: {
+      return assertNever(producer);
+    }
+  }
+}
+
+/**
+ * Builds the OPEN entry for a class registration whose token is a template.
+ * Enforces the v1 all-holes rule: every top-level type argument of the service
+ * template must be exactly a hole (`$N`); repeats (`IFoo<$<1>,$<1>>`) are allowed
+ * and constrain a match to equal args.
+ */
+function openEntry(
+  token: Token,
+  ctor: Ctor,
+  signatures: DepSignatures | undefined,
+  scope: string | undefined,
+): ManifestEntry {
+  const parsed = parseToken(token);
+  if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
+    throw new OpenTokenRegistrationError(token, 'add');
+  }
+  // The parsed template tree the engine unifies against (`match`). The
+  // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
+  // classification guard; `tryParse` never throws — an all-holes template that
+  // passed the guard always parses.
+  const node = tryParse(token);
+  // Key the open table by the SAME canonical `baseKey` the engine looks it up
+  // by (`baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving the key
+  // from the typed node — not the raw `parseToken` base — keeps registration
+  // and lookup on one canonicalisation: for every canonical template the two
+  // agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`) now
+  // registers under the same stripped key its ground spelling resolves to,
+  // instead of a raw space-bearing key the canonical lookup could never find.
+  const base = node !== undefined ? baseKey(node) : parsed.base;
+  const open: OpenRegistration = {
+    template: token,
+    base,
+    pattern: parsed.args,
+    ctor,
+    scope,
+    signatures,
+    node,
+  };
+  return Object.freeze({ kind: 'open', base, open } satisfies ManifestEntry);
+}
+
+/**
+ * The registration builder — the ROOT node of the immutable chain.
  *
  * `Scopes` is the union of declarable scope names — the tags `.as()` and
- * `.createScope()` accept (default `"singleton"`). There is no root: scopes are
- * uniform tags, and `"singleton"` is just a tag you happen to open once at the
- * top. `"transient"` is NOT a member — transient is the absence of a scope, not
- * a scope. A registration whose tagged scope is not open at resolution time
+ * `.createScope()` accept (default `"singleton"`). There is no root scope: scopes
+ * are uniform tags, and `"singleton"` is just a tag you happen to open once at
+ * the top. `"transient"` is NOT a member — transient is the absence of a scope,
+ * not a scope. A registration whose tagged scope is not open at resolution time
  * resolves transiently (fresh instance, no cache).
+ *
+ * Every instance is FROZEN and holds only its inner iterable, so a manifest can
+ * be shared, forked, and re-registered from freely: two branches off one manifest
+ * never see each other's registrations.
  *
  * @example
  * ```ts
- * const services = new ServiceManifest<"singleton" | "request">();
- * services.add("pkg:ILogger", ConsoleLogger).as("singleton"); // lowered form
+ * let services = new ServiceManifest<"singleton" | "request">();
+ * services = services.add("pkg:ILogger", ConsoleLogger, [[]], "singleton");
  * const provider = services.build();              // no frame pre-opened
  * const app = provider.createScope("singleton");  // open the singleton frame
  * const logger = app.resolve<ILogger>("pkg:ILogger");
@@ -101,7 +258,8 @@ function keyedToken(token: Token, key?: string): Token {
  * (`new ServiceManifest<S>()`) lives in `@rhombus-std/di`, which also patches
  * `build()` onto this prototype. The class is exported so cross-package fluent
  * augmentations can prototype-patch it (their authored typings merge onto the
- * di.core interfaces, never onto this class directly).
+ * di.core interfaces, never onto this class directly) — freezing INSTANCES does
+ * not close the PROTOTYPE, so the augmentation install path is unaffected.
  *
  * `@augment` marks it as the concrete receiver for the OPEN `ServiceManifest`
  * augmentation token: every cross-package registration augmentation (`build`,
@@ -116,164 +274,109 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>>
 {
   /**
-   * The single ordered source of truth: every registration in registration
-   * order, `exact` and `open` interleaved. Resolution picks the most-recent
-   * (last) registration of a token; earlier ones are retained (collection
-   * aggregation enumerates them all, which is what lets a later `.add()` override
-   * an earlier one for bare-T resolution without deletion). `seal()` derives the
-   * two frozen lookup indexes from this list (toArray-at-seal), reproducing
-   * first-occurrence map order and per-token list order. Reassigned (filtered)
-   * by `removeRegistrations`.
+   * The entries this node decorates — its PREDECESSOR in the chain. Empty at the
+   * root. `protected __`-prefixed (never `#`) because the one subclass below has
+   * to read it to build a sibling node over the same predecessor; `protected` is
+   * erased in emit, so the `__` prefix is the runtime "internal" signal.
    */
-  #entries: ManifestEntry[] = [];
-
-  public constructor() {}
+  protected readonly __inner: Iterable<ManifestEntry>;
 
   /**
-   * Builds the `.as(scope?)` continuation over an `applyScope` callback that
-   * REPLACES the just-appended base with a scoped copy for the chosen tag.
-   * Shared by the class and open registration paths — both append a base
-   * (transient) registration first, then hand back this continuation so a
-   * trailing `.as(scope)` swaps that base for the scoped copy IN PLACE.
-   *
-   * Replacing (not appending) is what keeps ONE `.add(...).as(scope)` chain a
-   * SINGLE registration: a spurious transient shadow would be harmless for
-   * last-wins bare-T resolution but would pollute collection aggregation
-   * (`Array<T>` / `Iterable<T>`), which enumerates every registration of T.
+   * `inner` is INTERNAL — the chain link. Public consumers construct a root with
+   * `new ServiceManifest()`; the parameter exists so a chain node can hand its
+   * predecessor down, and so `removeRegistrations` can rebase onto a filtered
+   * entry list.
    */
-  #scopedContinuation(applyScope: Func<[scope: Scopes], void>): AddBuilder<Scopes> {
-    return {
-      as<S extends Scopes>(scope?: S): void {
-        // The lowered form always passes a value arg; the authored type-arg-only
-        // form never executes (the transformer rewrites it first). A no-arg call
-        // at runtime leaves the base (transient) registration in place — guard so
-        // it is a no-op rather than mutating the registration to a scopeless copy.
-        if (scope === undefined) {
-          return;
-        }
-        applyScope(scope);
-      },
-    };
-  }
-
-  /**
-   * Appends a scopeless producer base registration and returns the `.as(scope?)`
-   * continuation. `.as()` REPLACES that base with a SCOPED copy in place (so the
-   * chain remains one registration); a bare `.add(...)`/`.addFactory(...)` with
-   * no trailing `.as()` leaves the base (transient) registration in place.
-   */
-  #appendScoped(token: Token, base: Registration): AddBuilder<Scopes> {
-    const entry: ManifestEntry = { kind: 'exact', token, registration: base };
-    this.#entries.push(entry);
-    return this.#scopedContinuation((scope) => {
-      entry.registration = { ...base, scope };
-    });
-  }
-
-  /**
-   * Appends an OPEN class registration for a template token and returns the
-   * `.as(scope?)` continuation — same scoped-copy semantics as `#appendScoped`,
-   * against the open table. Enforces the v1 all-holes rule: every top-level
-   * type argument of the service template must be exactly a hole (`$N`);
-   * repeats (`IFoo<$<1>,$<1>>`) are allowed and constrain a match to equal args.
-   */
-  #appendOpenScoped(
-    token: Token,
-    ctor: Ctor,
-    signatures: ReadonlyArray<readonly DepSlot[]> | undefined,
-  ): AddBuilder<Scopes> {
-    const parsed = parseToken(token);
-    if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
-      throw new OpenTokenRegistrationError(token, 'add');
+  public constructor(inner: Iterable<ManifestEntry> = EMPTY_ENTRIES) {
+    this.__inner = inner;
+    // Freeze the ROOT here; a subclass freezes itself once its own fields are
+    // installed (freezing in the base would block the subclass's assignments).
+    if (new.target === ServiceManifestClass) {
+      Object.freeze(this);
     }
-    // The parsed template tree the engine unifies against (`match`). The
-    // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
-    // classification guard; `tryParse` never throws — an all-holes template that
-    // passed the guard always parses.
-    const node = tryParse(token);
-    // Key the open table by the SAME canonical `baseKey` the engine looks it up
-    // by (`baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving the key
-    // from the typed node — not the raw `parseToken` base — keeps registration
-    // and lookup on one canonicalisation: for every canonical template the two
-    // agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`) now
-    // registers under the same stripped key its ground spelling resolves to,
-    // instead of a raw space-bearing key the canonical lookup could never find.
-    const openBase = node !== undefined ? baseKey(node) : parsed.base;
-    const open: OpenRegistration = {
-      template: token,
-      base: openBase,
-      pattern: parsed.args,
-      ctor,
-      scope: undefined,
-      signatures,
-      node,
-    };
-    const entry: ManifestEntry = { kind: 'open', base: openBase, open };
-    this.#entries.push(entry);
-    return this.#scopedContinuation((scope) => {
-      entry.open = { ...open, scope };
-    });
+  }
+
+  /**
+   * The entry stream — registration order out. The root yields only what it
+   * decorates; `AddBuilderManifest` overrides this to append its own entry LAST,
+   * which is what makes iteration order equal authoring order.
+   */
+  public *[Symbol.iterator](): IterableIterator<ManifestEntry> {
+    yield* this.__inner;
+  }
+
+  /**
+   * Wraps this manifest in a new chain node carrying `pending`. Materialisation
+   * (and therefore every registration-time error) happens inside the node's
+   * constructor, so a rejected registration throws from the call that made it and
+   * no half-built node escapes.
+   */
+  #link(pending: PendingRegistration): AddChain<Scopes, 'scope' | 'key'> {
+    return new AddBuilderManifest<Scopes>(this, pending);
   }
 
   /**
    * Class registration — a string token bound to a concrete constructor. The
    * runtime form: what the transformer emits for a class, and what a
-   * plugin-less caller writes directly. Returns the `.as(scope?)` continuation.
+   * plugin-less caller writes directly.
    *
-   * The optional third `signatures` param carries the dep signatures ON the
-   * registration record — the sole signature channel now that the global
-   * metadata store is retired. The transformer emits it inline for every
-   * constructed class (`add(token, ctor, [[...]])`); a plugin-less caller
-   * hand-feeds it directly. Keying signatures on the registration (not on the
-   * ctor object) is what lets one JS class close differently per registration —
-   * an open template and its closings never collide.
+   * `signatures` carries the dep signatures ON the registration record — the sole
+   * signature channel now that the global metadata store is retired — and is
+   * REQUIRED. The transformer emits it inline for every constructed class
+   * (`add(token, ctor, [[...]])`); a plugin-less caller hand-feeds it, stating
+   * `[[]]` for a ctor that takes no dependencies rather than leaving it to be
+   * inferred from an absent argument. Keying signatures on the registration (not
+   * on the ctor object) is what lets one JS class close differently per
+   * registration — an open template and its closings never collide.
    *
-   * An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes
-   * into the open-registration table instead of the exact map; resolution
-   * closes it per requested token. Mixing concrete args and holes in the
-   * service token throws (v1 all-holes rule).
+   * `scope` and `key` are the positional forms of the `.as()` / `.withKey()`
+   * modifiers; whichever are omitted stay reachable on the returned chain.
+   *
+   * An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes into
+   * the open-registration table instead of the exact map; resolution closes it
+   * per requested token. Mixing concrete args and holes in the service token
+   * throws (v1 all-holes rule).
+   *
+   * Returns a NEW manifest — this one is unchanged.
    */
+  public add(token: Token, ctor: Ctor, signatures: DepSignatures): AddChain<Scopes, 'scope' | 'key'>;
   public add(
     token: Token,
     ctor: Ctor,
-    signatures?: ReadonlyArray<readonly DepSlot[]>,
-    key?: string,
-  ): AddBuilder<Scopes>;
+    signatures: DepSignatures,
+    scope: Scopes,
+  ): AddChain<Scopes, 'key'>;
+  public add(
+    token: Token,
+    ctor: Ctor,
+    signatures: DepSignatures,
+    scope: Scopes,
+    key: string,
+  ): IServiceManifest<Scopes>;
   public add(
     ...args:
       | [ctor: Ctor<any[], unknown>]
       | [ctor: Ctor<any[], unknown>, overrides: ReadonlyArray<string | undefined>]
       | [factory: Func<any[], unknown>]
-      | [token: Token, ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>, key?: string]
-  ): AddBuilder<Scopes> {
+      | [token: Token, ctor: Ctor, signatures: DepSignatures, scope?: Scopes, key?: string]
+  ): AddChain<Scopes, 'scope' | 'key'> {
     // Only the string-token forms reach the engine at runtime. The single-arg
     // authoring overloads never run post-transform; guard defensively so a
     // hand-written type-form call fails loud rather than registering junk.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
         'add<I>(ctor) / add<I>(factory) require the @rhombus-std/di.transformer plugin. '
-          + 'Without it, register with an explicit token: add("my:token", MyClass) '
-          + 'or addFactory("my:token", (scope) => ...).',
+          + 'Without it, register with an explicit token: add("my:token", MyClass, [[]]) '
+          + 'or addFactory("my:token", (scope) => ..., [["pkg:IResolver"]]).',
       );
     }
-    // The optional trailing `key` composes the keyed token `base#key` (§98); a
-    // falsy/omitted key leaves the token bare, so the 3-argument call is unchanged.
-    const [token, ctor, signatures, key] = args;
-    const composed = keyedToken(token, key);
-    if (isOpenToken(composed)) {
-      return this.#appendOpenScoped(composed, ctor as Ctor, signatures);
-    }
-    // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
-    // carried EXPLICITLY: the `(...a) => new Ctor(...a)` wrapper reports `""` for
-    // `.name` and `0` for `.length`, so the missing-metadata signal and ctor-name
-    // diagnostics would silently regress if read off the wrapper.
-    const construct = ctor as Ctor;
-    return this.#appendScoped(composed, {
-      produce: (...a: unknown[]) => new construct(...a),
-      scope: undefined,
+    const [token, ctor, signatures, scope, key] = args;
+    return this.#link({
+      producer: { kind: 'class', ctor: ctor as Ctor },
+      base: token,
+      key,
       signatures,
-      name: construct.name,
-      arity: construct.length,
+      scope,
     });
   }
 
@@ -283,55 +386,58 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * `addFactory<I>(fn)`, and what a plugin-less caller writes directly.
    *
    * Parameter injection follows the metadata rule (see `IServiceProvider`): each
-   * parameter is injected by its slot from the registration-carried signatures
-   * (the optional third arg, emitted inline by the transformer). A factory that
-   * wants the live provider declares it as an ordinary parameter (a provider-typed
-   * slot); a signature-less factory simply runs with no injected args — nothing is
-   * auto-supplied. Returns the `.as(scope?)` continuation so a factory caches at a
-   * named scope exactly like a class.
+   * parameter is injected by its slot from the registration-carried `signatures`
+   * (required, as for `add`). A factory that wants the live provider declares it
+   * as an ordinary parameter (a provider-typed slot); a factory declaring `[[]]`
+   * simply runs with no injected args — nothing is auto-supplied. `scope` / `key`
+   * behave exactly as on `add`, so a factory caches at a named scope like a class.
    *
    * The implementation signature admits the single-arg authoring form
-   * (`addFactory<I>(fn)`) so the `@rhombus-std/di.transformer` overload merges onto it —
-   * that form never runs post-transform, and the runtime guard below fails a
+   * (`addFactory<I>(fn)`) so the `@rhombus-std/di.transformer` overload merges onto
+   * it — that form never runs post-transform, and the runtime guard below fails a
    * plugin-less call loud rather than registering junk (mirrors `add`).
+   *
+   * Returns a NEW manifest — this one is unchanged.
    */
   public addFactory(
     token: Token,
     factory: Factory,
-    signatures?: ReadonlyArray<readonly DepSlot[]>,
-    key?: string,
-  ): AddBuilder<Scopes>;
+    signatures: DepSignatures,
+  ): AddChain<Scopes, 'scope' | 'key'>;
+  public addFactory(
+    token: Token,
+    factory: Factory,
+    signatures: DepSignatures,
+    scope: Scopes,
+  ): AddChain<Scopes, 'key'>;
+  public addFactory(
+    token: Token,
+    factory: Factory,
+    signatures: DepSignatures,
+    scope: Scopes,
+    key: string,
+  ): IServiceManifest<Scopes>;
   public addFactory(
     ...args:
       | [factory: Func<any[], unknown>]
-      | [token: Token, factory: Factory, signatures?: ReadonlyArray<readonly DepSlot[]>, key?: string]
-  ): AddBuilder<Scopes> {
+      | [token: Token, factory: Factory, signatures: DepSignatures, scope?: Scopes, key?: string]
+  ): AddChain<Scopes, 'scope' | 'key'> {
     // Only the string-token form reaches the engine at runtime. The single-arg
     // `addFactory<I>(fn)` authoring overload never runs post-transform; guard
     // defensively so a hand-written type-form call fails loud.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
         'addFactory<I>(fn) requires the @rhombus-std/di.transformer plugin. Without it, '
-          + 'register with an explicit token: addFactory("my:token", (scope) => ...).',
+          + 'register with an explicit token: addFactory("my:token", (scope) => ..., [["pkg:IResolver"]]).',
       );
     }
-    // The optional trailing `key` composes the keyed token `base#key` (§98).
-    const [token, factory, signatures, key] = args;
-    const composed = keyedToken(token, key);
-    // Open registrations are class-only: a template must synthesize per-closing
-    // class registrations, which a factory/value shape cannot express in v1.
-    if (isOpenToken(composed)) {
-      throw new OpenTokenRegistrationError(composed, 'addFactory');
-    }
-    // The factory IS the producer. `arity` is 0 so a signature-less factory runs
-    // with no injected args (it never trips the missing-metadata signal — only a
-    // ctor needing args does).
-    return this.#appendScoped(composed, {
-      produce: factory,
-      scope: undefined,
+    const [token, factory, signatures, scope, key] = args;
+    return this.#link({
+      producer: { kind: 'factory', factory },
+      base: token,
+      key,
       signatures,
-      name: factory.name,
-      arity: 0,
+      scope,
     });
   }
 
@@ -339,68 +445,63 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * Value registration — an already-built instance, no deps and no lifetime.
    * Separate from `add` because a value may itself be a function (a callable
    * service), which is structurally indistinguishable from a factory inside one
-   * overload. The authoring form `addValue<I>(v)` (which lowers to
-   * `addValue("token", v)`) is a PURE TYPING contributed by the
-   * `@rhombus-std/di.transformer` augmentation, not part of di's published surface.
+   * overload. It takes neither `signatures` nor `scope`; the optional trailing
+   * `key` composes the keyed token `base#key` (§98). The authoring form
+   * `addValue<I>(v)` (which lowers to `addValue("token", v)`) is a PURE TYPING
+   * contributed by the `@rhombus-std/di.transformer` augmentation, not part of
+   * di's published surface.
+   *
+   * Returns a NEW manifest — this one is unchanged. There is no chain to
+   * continue: a value has no slot left to fill.
    */
-  public addValue(token: Token, value: unknown, key?: string): void;
+  public addValue(token: Token, value: unknown): IServiceManifest<Scopes>;
+  public addValue(token: Token, value: unknown, key: string): IServiceManifest<Scopes>;
   public addValue(
     ...args: [value: unknown] | [token: Token, value: unknown, key?: string]
-  ): void {
+  ): IServiceManifest<Scopes> {
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
         'addValue<I>(value) requires the @rhombus-std/di.transformer plugin. Without it, '
           + 'register with an explicit token: addValue("my:token", value).',
       );
     }
-    // The optional trailing `key` composes the keyed token `base#key` (§98).
     const [token, value, key] = args;
-    const composed = keyedToken(token, key);
-    if (isOpenToken(composed)) {
-      throw new OpenTokenRegistrationError(composed, 'addValue');
-    }
-    // The value collapses to a producer that returns it verbatim. `scope` stays
-    // `undefined` (a value is always transient — no ownership/caching), so a
-    // value that is itself a `Promise` is returned raw through the normal path,
-    // never awaited (§"Async as values").
-    this.#entries.push({
-      kind: 'exact',
-      token: composed,
-      registration: {
-        produce: () => value,
-        scope: undefined,
-        name: '',
-        arity: 0,
-      },
+    return new AddBuilderManifest<Scopes>(this, {
+      producer: { kind: 'value', value },
+      base: token,
+      key,
+      signatures: undefined,
+      scope: undefined,
     });
   }
 
   /**
-   * Removes EVERY registration bound to `token` — both the exact-map list and
-   * the open-template list keyed by that base. The removal PRIMITIVE behind the
-   * `ServiceCollectionDescriptorExtensions.removeAll` augmentation
-   * (`service-collection-descriptor-augmentations.ts`), which cannot reach these
-   * private tables from a separate module. Not part of the public authoring
-   * interface (`IServiceManifestBase`) — a consumer reaches the mutation through
-   * the fluent `removeAll` augmentation, exactly as `build()` is reached through
-   * the di runtime, never as a raw method on the collection surface.
+   * Returns a manifest with EVERY registration bound to `token` dropped — both
+   * the exact entries under that token AND the open entries whose canonical BASE
+   * is that token. The removal PRIMITIVE behind the
+   * `ServiceCollectionDescriptorExtensions.removeAll` augmentation, which cannot
+   * reach this node's internals from a separate module. Not part of the public
+   * authoring interface (`IServiceManifestBase`) — a consumer reaches removal
+   * through the fluent `removeAll` augmentation, exactly as `build()` is reached
+   * through the di runtime, never as a raw method on the collection surface.
+   *
+   * It REBASES rather than filters in place: the survivors become the inner list
+   * of a fresh root, collapsing the chain walked so far into one frozen array.
+   * The receiver still holds every registration it had — the caller must keep the
+   * returned manifest.
    */
-  public removeRegistrations(token: Token): void {
-    // The literal double-delete: drop every exact entry under `token` AND every
-    // open entry whose BASE is `token` — the old `#registrations.delete(token)`
-    // + `#openRegistrations.delete(token)`, keyed identically.
-    this.#entries = this.#entries.filter((entry) =>
-      entry.kind === 'exact' ? entry.token !== token : entry.base !== token
-    );
+  public removeRegistrations(token: Token): IServiceManifest<Scopes> {
+    const kept = [...this].filter((entry) => entry.kind === 'exact' ? entry.token !== token : entry.base !== token);
+    return new ServiceManifestClass<Scopes>(Object.freeze(kept));
   }
 
   /**
-   * True when `token` already has at least one registration — an exact-map entry,
-   * or (for an open template token) a matching template in the open table. The
+   * True when `token` already has at least one registration — an exact entry, or
+   * (for an open template token) a matching template among the open entries. The
    * "already registered?" PRIMITIVE behind the `tryAdd*` augmentations
-   * (`ServiceCollectionDescriptorExtensions`), which cannot reach these private
-   * tables from a separate module. Like `removeRegistrations`, it is not part of
-   * the public authoring interface (`IServiceManifestBase`): a consumer reaches
+   * (`ServiceCollectionDescriptorExtensions`), which cannot reach this node's
+   * internals from a separate module. Like `removeRegistrations`, it is not part
+   * of the public authoring interface (`IServiceManifestBase`): a consumer reaches
    * the conditional-add behavior through the fluent `tryAdd`/`replace`
    * augmentations, never as a raw method on the collection surface.
    *
@@ -409,24 +510,40 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * template string, never against a closing it could synthesize.
    */
   public hasRegistrations(token: Token): boolean {
-    if (this.#entries.some((entry) => entry.kind === 'exact' && entry.token === token)) {
-      return true;
-    }
     // An open template dedups against the same template STRING only (never a
     // closing it could synthesize). Classification stays on the string predicate;
     // the `parseToken !== undefined` guard reproduces the old behavior (a bare
     // hole is open but unparseable, so it dedups against nothing).
-    if (isOpenToken(token) && parseToken(token) !== undefined) {
-      return this.#entries.some((entry) => entry.kind === 'open' && entry.open.template === token);
+    const openQuery = isOpenToken(token) && parseToken(token) !== undefined;
+    for (const entry of this) {
+      if (entry.kind === 'exact') {
+        if (entry.token === token) {
+          return true;
+        }
+        continue;
+      }
+      if (openQuery && entry.open.template === token) {
+        return true;
+      }
     }
     return false;
   }
 
   /**
    * Seals the collection into an immutable snapshot — the SEALING half of
-   * `build()`. Deep-freezing the maps and each per-token list ensures that any
-   * `.add()` call on the builder after sealing cannot mutate what the provider
-   * and its descendants see — the container's view is fixed at build time.
+   * `build()`. It materialises by ITERATING this node (walking the chain from the
+   * root forward), never by reading a stored array, and buckets the stream into
+   * the two frozen lookup indexes: exact entries keyed by token, open entries by
+   * canonical base. First-occurrence bucketing fixes map order and each per-key
+   * list keeps registration order, so `#resolveKeyed`'s iteration order and the
+   * last-wins semantics are exactly what the authoring order implies.
+   *
+   * Deep-freezing the maps and each per-token list means a provider's view is
+   * fixed at build time. Nothing can invalidate it after the fact anyway — a
+   * later `add()` returns a DIFFERENT manifest and leaves this chain untouched —
+   * but the freeze keeps the snapshot honest against the engine, which adds its
+   * own MUTABLE closed-registration memo separately (synthesized closings land
+   * there, never in these sealed maps).
    *
    * This is the collection's own concern, so it lives here in di.core. The
    * ENGINE-CONSTRUCTING half — turning this snapshot into a `IServiceProvider` —
@@ -434,17 +551,9 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * runtime resolution engine di.core deliberately does not depend on.
    */
   public seal(): SealedManifest {
-    // toArray-at-seal: materialise the ordered entry list into the two frozen
-    // lookup indexes. First-occurrence bucketing reproduces the old Map insertion
-    // order (exact keyed by token, open keyed by parsed base) and each per-key
-    // list keeps registration order — so #resolveKeyed's iteration order and the
-    // last-wins semantics stay byte-identical. Fresh arrays (not aliasing
-    // #entries) + deep-freeze mean a post-seal `.add()` can't mutate the snapshot.
-    // (The engine adds its own MUTABLE closed-registration memo separately —
-    // synthesized closings land there, never in these sealed maps.)
     const registrations = new Map<Token, Registration[]>();
     const openRegistrations = new Map<Token, OpenRegistration[]>();
-    for (const entry of this.#entries) {
+    for (const entry of this) {
       if (entry.kind === 'exact') {
         bucket(registrations, entry.token, entry.registration);
       } else {
@@ -493,13 +602,92 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
 }
 
 /**
+ * A chain node carrying ONE pending registration on top of a predecessor — the
+ * single subclass, and the only place the fluent modifiers live.
+ *
+ * There is deliberately NO class per slot combination. The runtime carries all
+ * three modifiers unconditionally; the TYPES do the slicing — `add` and friends
+ * declare an `AddChain<Scopes, Slots>` return, and each modifier `Exclude`s its
+ * own slot, so a slot can be filled at most once and the modifiers compose in any
+ * order without the runtime knowing anything about which are still "open".
+ *
+ * Each modifier REPLACES this node rather than appending to it: it builds a
+ * sibling over the SAME `__inner` predecessor with one facet of the pending
+ * registration refined. That is what keeps `.add(...).as("singleton")` exactly
+ * ONE registration — an appended transient shadow would be harmless for last-wins
+ * bare-token resolution but would pollute collection aggregation (`Array<T>` /
+ * `Iterable<T>`), which enumerates every registration of T.
+ */
+class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Scopes> {
+  /** The captured call, kept so a modifier can re-materialise from it. */
+  readonly #pending: PendingRegistration;
+  /** The classified entry this node contributes — materialised once, at construction. */
+  readonly #entry: ManifestEntry;
+
+  public constructor(inner: Iterable<ManifestEntry>, pending: PendingRegistration) {
+    super(inner);
+    this.#pending = pending;
+    // Materialise EAGERLY: classification is where the registration-time errors
+    // are raised, so this is what makes them throw from the `add` / `as` /
+    // `withKey` call rather than from a later `seal()`.
+    this.#entry = materialise(pending);
+    Object.freeze(this);
+  }
+
+  /**
+   * Predecessor entries FIRST, own entry LAST — the whole reason authoring order
+   * survives into the sealed indexes.
+   */
+  public override *[Symbol.iterator](): IterableIterator<ManifestEntry> {
+    yield* this.__inner;
+    yield this.#entry;
+  }
+
+  /** Refines one facet of the pending registration onto a sibling node. */
+  #refine(refinement: Partial<PendingRegistration>): AddBuilderManifest<Scopes> {
+    return new AddBuilderManifest<Scopes>(this.__inner, { ...this.#pending, ...refinement });
+  }
+
+  /**
+   * Overrides the dep signatures. Only reachable under the transformer, which
+   * injects a derived signature and leaves this as the OPTIONAL override — the
+   * plugin-less overloads take `signatures` positionally, so their chain starts
+   * with the slot already consumed. An authored
+   * `add<K>(Foo).withSignature(custom)` LOWERS to `add("token", Foo, custom)`, so
+   * the call never survives into emitted JS.
+   */
+  public withSignature(signatures: DepSignatures): AddBuilderManifest<Scopes> {
+    return this.#refine({ signatures });
+  }
+
+  /**
+   * Attaches the lifetime. Must name a declared scope; a registration that never
+   * names one is transient. Equivalent to passing `scope` positionally — reach
+   * for it when the facets genuinely arrive out of order.
+   */
+  public as(scope: Scopes): AddBuilderManifest<Scopes> {
+    return this.#refine({ scope });
+  }
+
+  /**
+   * Makes the registration KEYED, recomposing its effective token as `base#key`
+   * off the retained BASE token (§98). Because the recomposed token is
+   * re-classified, this can raise the same open-token registration error the
+   * originating call would have — at THIS call, not at `seal()`.
+   */
+  public withKey(key: string): AddBuilderManifest<Scopes> {
+    return this.#refine({ key });
+  }
+}
+
+/**
  * The public registration-builder INTERFACE a di consumer holds — the
  * `IServiceManifestBase` interface bound to the concrete provider `build()`
  * returns (the ME `IServiceCollection` analog). Interface-first (not the impl
  * class) so the `@rhombus-std/di.transformer` augmentation — which merges the
- * authored `add<I>()` / `.as<"scope">()` forms onto `IServiceManifestBase` —
- * surfaces on a consumer typing against `ServiceManifest<S>`. A class would not
- * inherit those augmented overloads; the interface does.
+ * authored `add<I>()` forms onto `IServiceManifestBase` — surfaces on a consumer
+ * typing against `ServiceManifest<S>`. A class would not inherit those augmented
+ * overloads; the interface does.
  *
  * The constructor side (`ServiceManifestCtor`) and the constructible
  * `ServiceManifest` VALUE live in `@rhombus-std/di`, alongside the `build()`

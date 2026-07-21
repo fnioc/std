@@ -21,19 +21,19 @@ const ITERABLE: Token = 'Iterable<pkg:IPlugin>';
 
 describe('collection aggregation — step 2 (fallback)', () => {
   test('Array<T> aggregates every registration of T in registration order', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'a');
-    services.addValue(ELEMENT, 'b');
-    services.addValue(ELEMENT, 'c');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'a');
+    services = services.addValue(ELEMENT, 'b');
+    services = services.addValue(ELEMENT, 'c');
 
     const resolved = services.build().resolve<string[]>(ARRAY);
     expect(resolved).toEqual(['a', 'b', 'c']);
   });
 
   test("the aggregate's LAST element is the bare-T (last-wins) winner", () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'first');
-    services.addValue(ELEMENT, 'last');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'first');
+    services = services.addValue(ELEMENT, 'last');
 
     const root = services.build();
     const array = root.resolve<string[]>(ARRAY);
@@ -42,8 +42,8 @@ describe('collection aggregation — step 2 (fallback)', () => {
   });
 
   test('a single registration aggregates to a one-element collection', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'only');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'only');
     expect(services.build().resolve<string[]>(ARRAY)).toEqual(['only']);
   });
 
@@ -64,19 +64,19 @@ describe('collection aggregation — step 2 (fallback)', () => {
 describe('collection aggregation — step 1 (as-requested short-circuit)', () => {
   test('a binding registered against the wrapper token wins, no aggregation', () => {
     const explicit = ['x', 'y'];
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'a');
-    services.addValue(ELEMENT, 'b');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'a');
+    services = services.addValue(ELEMENT, 'b');
     // Register the wrapper type ITSELF — step 1 short-circuits step 2.
-    services.addValue(ARRAY, explicit);
+    services = services.addValue(ARRAY, explicit);
 
     expect(services.build().resolve<string[]>(ARRAY)).toBe(explicit);
   });
 
   test('a wrapper binding factory is used verbatim over the aggregate', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'a');
-    services.addFactory(ARRAY, () => ['custom']);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'a');
+    services = services.addFactory(ARRAY, () => ['custom'], [[]]);
 
     expect(services.build().resolve<string[]>(ARRAY)).toEqual(['custom']);
   });
@@ -84,9 +84,9 @@ describe('collection aggregation — step 1 (as-requested short-circuit)', () =>
 
 describe('Iterable<T> wrapper', () => {
   test('Iterable<T> aggregates the same elements, wrapped as a re-iterable view', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'a');
-    services.addValue(ELEMENT, 'b');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'a');
+    services = services.addValue(ELEMENT, 'b');
 
     const iterable = services.build().resolve<Iterable<string>>(ITERABLE);
     // Not a plain array — a distinct iterable honoring the requested container.
@@ -110,9 +110,9 @@ describe('element lifetime / scoping', () => {
     class Beta {
       public readonly id = Math.random();
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(ELEMENT, Alpha).as('singleton');
-    services.add(ELEMENT, Beta).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(ELEMENT, Alpha, [[]], 'singleton');
+    services = services.add(ELEMENT, Beta, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const first = root.resolve<Alpha[]>(ARRAY);
@@ -130,8 +130,8 @@ describe('element lifetime / scoping', () => {
     class Transient {
       public readonly id = Math.random();
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(ELEMENT, Transient); // no .as — transient
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(ELEMENT, Transient, [[]]); // no scope — transient
 
     const root = services.build().createScope('singleton');
     const a = root.resolve<Transient[]>(ARRAY);
@@ -143,8 +143,8 @@ describe('element lifetime / scoping', () => {
     class Scoped {
       public readonly id = Math.random();
     }
-    const services = new ServiceManifest<'singleton' | 'request'>();
-    services.add(ELEMENT, Scoped).as('request');
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.add(ELEMENT, Scoped, [[]], 'request');
 
     const root = services.build().createScope('singleton');
     const reqA = root.createScope('request');
@@ -167,8 +167,8 @@ describe('collection probes — isService / tryResolve', () => {
   });
 
   test('tryResolve of a collection token returns the aggregate, not undefined', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'a');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'a');
     const root = services.build();
     expect(root.tryResolve<string[]>(ARRAY)).toEqual(['a']);
     // Empty aggregate is still a defined collection, never undefined.
@@ -187,18 +187,18 @@ describe('collection tokens as DEPENDENCY SLOTS', () => {
   }
 
   test('a ctor Array<T> slot injects the aggregated registrations', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(ELEMENT, 'a');
-    services.addValue(ELEMENT, 'b');
-    services.add('pkg:Host', Host, [[ARRAY]]);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(ELEMENT, 'a');
+    services = services.addValue(ELEMENT, 'b');
+    services = services.add('pkg:Host', Host, [[ARRAY]]);
 
     const host = services.build().resolve<Host>('pkg:Host');
     expect(host.plugins).toEqual(['a', 'b']);
   });
 
   test('an EMPTY aggregate still satisfies the signature (injects [])', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add('pkg:Host', Host, [[ARRAY]]);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add('pkg:Host', Host, [[ARRAY]]);
 
     const host = services.build().resolve<Host>('pkg:Host');
     expect(host.plugins).toEqual([]);
@@ -208,15 +208,15 @@ describe('collection tokens as DEPENDENCY SLOTS', () => {
 describe('async collection resolution', () => {
   test('resolveAsync<Array<T>> settles an in-flight element through one Pending', async () => {
     const DEP: Token = 'pkg:IDep';
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     // An honest async value keyed at the Promise<T> token — the fallback the
     // spine takes for a bare IDep dependency in async mode.
-    services.addFactory(`Promise<${DEP}>`, async () => 'dep');
+    services = services.addFactory(`Promise<${DEP}>`, async () => 'dep', [[]]);
     // A synchronous element, and one whose construction awaits the async dep
     // (resolved via the Promise<T> fallback → an in-flight element the
     // collection must settle).
-    services.addFactory(ELEMENT, () => 'plain');
-    services.addFactory(ELEMENT, (dep: string) => `needs:${dep}`, [[DEP]]);
+    services = services.addFactory(ELEMENT, () => 'plain', [[]]);
+    services = services.addFactory(ELEMENT, (dep: string) => `needs:${dep}`, [[DEP]]);
 
     const array = await services.build().resolveAsync<string[]>(ARRAY);
     expect(array).toEqual(['plain', 'needs:dep']);

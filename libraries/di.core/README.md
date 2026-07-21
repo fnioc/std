@@ -18,7 +18,7 @@ bun add @rhombus-std/di.core @rhombus-std/di
 
 ## Usage
 
-Authoring a signature by hand — the third argument to `add` is optional but required for any constructor that takes parameters:
+Authoring a signature by hand — the third argument to `add` is **required**, because without the transformer there is nothing to derive it from:
 
 ```ts
 import { ServiceManifest } from '@rhombus-std/di';
@@ -27,25 +27,29 @@ class Handler {
   constructor(private logger: ILogger, private db: IDb) {}
 }
 
-const services = new ServiceManifest();
+let services = new ServiceManifest();
 
-services.add('pkg:IHandler', Handler, [
+services = services.add('pkg:IHandler', Handler, [
   ['pkg:ILogger', 'pkg:IDb'], // one array per constructor overload
 ]);
 
 const provider = services.build();
 ```
 
-There is no global metadata store and no decorator: the dependency signature travels with the registration itself, as the optional third argument. `@rhombus-std/di.transformer` emits this array automatically for every registration it can statically read a signature from, rewriting the type-driven `add<IHandler>(Handler)` into exactly the explicit-token call above — nothing is hoisted, and nothing works differently with or without the transformer wired in.
+Note the reassignment. **A manifest is immutable**: `add` / `addFactory` / `addValue` return a _new_ manifest and leave the receiver untouched, so a call whose result is discarded registers nothing. A service with no dependencies states that explicitly as `[[]]` — an empty signature list, never an omitted argument.
+
+There is no global metadata store and no decorator: the dependency signature travels with the registration itself, as the third argument. `@rhombus-std/di.transformer` emits this array automatically for every registration it can statically read a signature from, rewriting the type-driven `add<IHandler>(Handler)` into exactly the explicit-token call above — nothing is hoisted, and nothing works differently with or without the transformer wired in.
 
 ## Key exports
 
 | Export                                                                                               | Kind                 | Description                                                                                                                                                     |
 | ---------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Token`                                                                                              | Type alias           | `string` — the DI key type. No branding, no literal types.                                                                                                      |
-| `ServiceManifest<S>`                                                                                 | Interface            | The registration collection: `add` / `addFactory` / `addValue`, each returning an `.as(scope?)` continuation.                                                   |
+| `ServiceManifest<S>`                                                                                 | Interface            | The immutable registration collection: `add` / `addFactory` / `addValue`, each returning a NEW manifest. Also an `Iterable<ManifestEntry>`.                     |
 | `ServiceManifestClass`                                                                               | Class                | The concrete implementation of `ServiceManifest`. Augmentations from sibling packages patch new methods onto it.                                                |
-| `AddBuilder<S>`                                                                                      | Interface            | The `.as(scope?)` continuation a registration call returns.                                                                                                     |
+| `AddChain<S, Slots>`                                                                                 | Type alias           | What a registration call returns: a full manifest widened with the fluent modifier faces (`as` / `withKey` / `withSignature`) for the slots still unfilled.     |
+| `Slot`                                                                                               | Type alias           | `'signature' \| 'scope' \| 'key'` — the three facets a chain node can still refine. Each may be filled at most once, in any order.                              |
+| `ManifestEntry`                                                                                      | Type alias           | One registration as it comes out of a manifest's iteration — an `exact` token→`Registration` or an `open` base→`OpenRegistration`.                              |
 | `IResolver`                                                                                          | Interface            | The minimal resolution surface — `resolve`, `tryResolve`, `resolveAsync`, `resolveFactory`, `isService`. What a factory parameter typed `IResolver` receives.   |
 | `IServiceProvider<S>`                                                                                | Interface            | The public container surface a consumer holds — composes `IResolver`, scope creation, and disposal. `build()` (from `@rhombus-std/di`) returns this.            |
 | `IRequiredResolver` / `IServiceQuery`                                                                | Interfaces           | The throwing-resolve and registration-query capabilities `IResolver` composes.                                                                                  |
@@ -87,7 +91,9 @@ The provider is an intrinsically resolvable type — no dedicated slot kind. A p
 ```ts
 import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 
-services.addFactory('app/IReport', (sp) => buildReport(sp), [[RESOLVER_TOKEN]]);
+services = services.addFactory('app/IReport', (sp) => buildReport(sp), [[
+  RESOLVER_TOKEN,
+]]);
 ```
 
 `isProviderToken(token)` is the runtime predicate the engine uses.
@@ -105,7 +111,7 @@ export interface Union {
 Members are tried in array order (first = highest precedence). If no member is resolvable, resolution throws. Each member is itself a `DepSlot`, so nesting is allowed.
 
 ```ts
-services.add('pkg:IHandler', Handler, [[
+services = services.add('pkg:IHandler', Handler, [[
   union('pkg:IRedis', 'pkg:IMemoryCache'),
   'pkg:ILogger',
 ]]);
@@ -224,14 +230,14 @@ export interface DepRecord {
 
 ### Authoring signatures by hand
 
-There's no global metadata store and no decorator. A signature rides directly on the registration, as the optional third argument to `add` / `addFactory`:
+There's no global metadata store and no decorator. A signature rides directly on the registration, as the required third argument to `add` / `addFactory`:
 
 ```ts
 import { ServiceManifest } from '@rhombus-std/di';
 
-const services = new ServiceManifest();
+let services = new ServiceManifest();
 
-services.add('pkg:IHandler', Handler, [
+services = services.add('pkg:IHandler', Handler, [
   ['pkg:ILogger', 'pkg:IDb'],
 ]);
 ```
@@ -267,22 +273,45 @@ substituteToken('pkg:IRepository<$1>', ['pkg:User']);
 
 `ServiceManifest<S>` is the collection interface a consumer holds; `ServiceManifestClass` is its concrete implementation. Three registration surfaces:
 
-- **`add(token, ctor, signatures?)`** — a class; its constructor dependencies are injected per `signatures`.
-- **`addFactory(token, factory, signatures?)`** — a factory function; its call-parameter dependencies are injected per `signatures`.
+- **`add(token, ctor, signatures)`** — a class; its constructor dependencies are injected per `signatures`.
+- **`addFactory(token, factory, signatures)`** — a factory function; its call-parameter dependencies are injected per `signatures`.
 - **`addValue(token, value)`** — an already-built instance; no dependencies, no lifetime.
 
-Each of `add` / `addFactory` returns an `.as(scope?)` continuation so a trailing `.as('singleton')` tags the registration's lifetime:
+`add` and `addFactory` take two further optional positional arguments — `scope` then `key` — and that's the shape to reach for by default:
 
 ```ts
-const services = new ServiceManifest<'singleton' | 'request'>();
-services.add('pkg:ILogger', ConsoleLogger).as('singleton');
+let services = new ServiceManifest<'singleton' | 'request'>();
+services = services.add('pkg:ILogger', ConsoleLogger, [[]], 'singleton');
 ```
+
+### Immutability
+
+A manifest never mutates. Every registration returns a **new** manifest that yields this one's registrations first and its own last, so iteration order is authoring order and the receiver is left exactly as it was. Two consequences worth internalising:
+
+- **Keep the result.** `services.add(...)` on its own line registers nothing — the new manifest is discarded. Declare the variable `let` and reassign it.
+- **Forking is free.** Two branches off the same manifest never see each other's registrations, so a base manifest can be handed to several independent setup functions.
+
+### The fluent chain
+
+What a registration call returns is a full manifest _widened_ with a modifier face for each argument you didn't pass positionally — `withSignature` for `signature`, `as` for `scope`, `withKey` for `key`. Each consumes its own slot, so a slot can be set at most once, and the modifiers compose in any order:
+
+```ts
+services = services.add('pkg:ILogger', ConsoleLogger, [[]]).as('singleton')
+  .withKey('audit');
+services = services.add('pkg:ILogger', ConsoleLogger, [[]]).withKey('audit').as(
+  'singleton',
+);
+```
+
+Both register the same thing, and `.as(...).as(...)` is a compile error. Because the chain node _is_ a manifest, `add` and `build` are reachable at every step — a chain never has to be "finished". Reach for the fluent form when the facets genuinely arrive out of order; the positional call is one call and one reassignment.
+
+`.as(scope)` REPLACES its own node rather than appending one, so `add(...).as('singleton')` stays exactly **one** registration — a stray transient shadow would be invisible to last-wins resolution but would show up in collection aggregation, which enumerates every registration of a token.
 
 There's no built-in root scope — scope names are entirely user-declared tags. `'transient'` isn't a member of that union; transient is what you get when a registration's tagged scope isn't open at resolution time, not a scope you name.
 
-An **open** template token (`pkg:IRepo<$1>` — every type argument a hole) routes into a separate open-registration table instead of the exact map; resolution closes it per requested token. Mixing concrete args and holes in the same service token throws.
+An **open** template token (`pkg:IRepo<$1>` — every type argument a hole) routes into a separate open-registration table instead of the exact map; resolution closes it per requested token. Mixing concrete args and holes in the same service token throws — from the registration call itself, including from a `.withKey(...)` whose recomposed token turns out to be open.
 
-`services.seal()` freezes the collection into an immutable snapshot; `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `IServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
+`services.seal()` materialises the collection by iterating it, bucketing the entries into two frozen lookup indexes; `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `IServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
 
 ## `ActivatorUtilities`
 
@@ -302,7 +331,7 @@ const handler = ActivatorUtilities.createInstance(
 - `createFactory(ctor, signature?)` — pre-builds a reusable `ObjectFactory`: `(provider, args?) => T`, producing a fresh instance on every call.
 - `getServiceOrCreateInstance(provider, token, ctor, signature?)` — returns the token's registered service if there is one, otherwise activates `ctor`.
 
-Signatures here are hand-fed the same way as `add`'s third argument — there's no runtime reflection to read a constructor's parameter types from.
+Signatures here are hand-fed the same way as `add`'s third argument — there's no runtime reflection to read a constructor's parameter types from. (`ActivatorUtilities` is the one place the signature stays optional: it activates a class the manifest never saw, so there is no registration record for it to ride on.)
 
 ## Side-effect import: descriptor mutation verbs
 
@@ -313,17 +342,19 @@ import '@rhombus-std/di.core';
 Just importing the package's entry point registers `removeAll`, `tryAdd` / `tryAddFactory` / `tryAddValue`, and `replace` / `replaceFactory` / `replaceValue` onto every `ServiceManifest`:
 
 ```ts
-services.removeAll('pkg:ILogger');
+services = services.removeAll('pkg:ILogger');
 
-services.tryAdd('pkg:ILogger', ConsoleLogger); // only if unregistered
-services.replace('pkg:ILogger', FileLogger); // unregister, then register anew
+services = services.tryAdd('pkg:ILogger', ConsoleLogger, [[]]); // only if unregistered
+services = services.replace('pkg:ILogger', FileLogger, [[]], 'singleton'); // drop, then register anew
 ```
 
-- `removeAll(token)` removes every registration bound to `token` and returns the collection for chaining.
-- `tryAdd` / `tryAddFactory` / `tryAddValue` register only when `token` has no existing registration. The class/factory forms return the normal `.as(scope?)` continuation — a no-op when nothing was actually added, so a trailing `.as(...)` is safely ignored.
-- `replace` / `replaceFactory` / `replaceValue` unconditionally remove `token`'s existing registrations, then register anew.
+Like every registration verb, each of these returns a **new** manifest — keep the result.
 
-There's no `.as('singleton')`-style lifetime-named verb (`tryAddSingleton`, etc.) — lifetime is always threaded through the fluent `.as(scope)` continuation, the same as ordinary `add`.
+- `removeAll(token)` returns a manifest with every registration bound to `token` dropped.
+- `tryAdd` / `tryAddFactory` / `tryAddValue` register only when `token` has no existing registration; when it does, they return the receiver **unchanged**, which under an immutable manifest is exactly the right no-op.
+- `replace` / `replaceFactory` / `replaceValue` unconditionally drop `token`'s existing registrations, then register anew.
+
+The class/factory verbs mirror `add`'s positional shape (`signatures`, then optional `scope`, then optional `key`) rather than returning a fluent chain — the already-registered branch has no pending registration to hand a modifier face for. There's no lifetime-named verb (`tryAddSingleton`, etc.): lifetime is a `Scopes` argument, the same as on ordinary `add`.
 
 ## How it fits
 

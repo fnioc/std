@@ -89,9 +89,14 @@ export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
 /**
  * The positional dependency signatures of a constructor / factory: one inner
  * array of `DepSlot`s per overload. This is the shape `signatureof(ctor)` derives
- * and the `add(token, ctor, signatures?)` third argument carries — the same type
- * `DepRecord.signatures` holds, named so authoring-time machinery (the
+ * and the REQUIRED third argument of `add(token, ctor, signatures)` carries — the
+ * same type `DepRecord.signatures` holds, named so authoring-time machinery (the
  * `di.transformer` `signatureof` primitive) can refer to it directly.
+ *
+ * It is required, never optional, on the plugin-less registration surface: a
+ * caller without the transformer cannot DERIVE a signature, so "this service
+ * takes no dependencies" must be STATED as `[[]]` rather than inferred from an
+ * absent argument.
  */
 export type DepSignatures = ReadonlyArray<readonly DepSlot[]>;
 
@@ -104,7 +109,7 @@ export type DepSignatures = ReadonlyArray<readonly DepSlot[]>;
  * overload `i`.
  */
 export interface DepRecord {
-  readonly signatures: ReadonlyArray<readonly DepSlot[]>;
+  readonly signatures: DepSignatures;
 }
 
 /**
