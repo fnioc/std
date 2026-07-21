@@ -162,7 +162,7 @@ function oracleLiteral(s: string): string {
       }
       return `"${content.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     })
-    .join('|');
+    .join(' | ');
 }
 
 // A bare number is not a grammar production of its own — it is an
@@ -313,6 +313,15 @@ describe('canonicalisation — parse → stringify is canonical, idempotent, ora
     expect(canonicalise('IPair< A , B >')).toBe('IPair<A,B>');
     expect(canonicalise('IPair<A,B>')).toBe('IPair<A,B>');
     expect(canonicalise('pkg:IFoo  #  primary')).toBe('pkg:IFoo#primary');
+  });
+
+  test('a literal union serialises with spaced pipes (transformer byte-parity)', () => {
+    // The Go transformer emits `strings.Join(members, " | ")`; a re-derived union
+    // must reproduce that spacing byte-for-byte or it misses a transformer-spelled
+    // exact registration. Unspaced and over-spaced input both normalise to ` | `.
+    expect(canonicalise('IFoo<"a"|"b">')).toBe('IFoo<"a" | "b">');
+    expect(canonicalise('IFoo<"a"  |  "b">')).toBe('IFoo<"a" | "b">');
+    expect(stringify(parse('IFoo<"a"|"b"|"c">'))).toBe('IFoo<"a" | "b" | "c">');
   });
 
   test('single quotes canonicalise to double quotes', () => {
@@ -495,6 +504,9 @@ describe('specificity + substitute', () => {
     expect(isOpen(parse('pkg:IFoo<pkg:IA>'))).toBe(false);
     expect(baseKey(parse('pkg:IRepo<$1>'))).toBe('pkg:IRepo');
     expect(baseKey(parse('pkg:IRepo<$1>#primary'))).toBe('pkg:IRepo#primary');
+    // A non-canonical base spelling strips to the same canonical key, so an open
+    // registration and its closing agree on one open-table key.
+    expect(baseKey(parse('pkg:IRepo <$1>'))).toBe('pkg:IRepo');
   });
 });
 

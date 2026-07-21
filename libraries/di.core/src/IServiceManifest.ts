@@ -19,7 +19,7 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { tryParse } from './token.js';
+import { baseKey, tryParse } from './token.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
 import type { DepSlot, Token } from './types.js';
 
@@ -186,20 +186,29 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
       throw new OpenTokenRegistrationError(token, 'add');
     }
+    // The parsed template tree the engine unifies against (`match`). The
+    // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
+    // classification guard; `tryParse` never throws — an all-holes template that
+    // passed the guard always parses.
+    const node = tryParse(token);
+    // Key the open table by the SAME canonical `baseKey` the engine looks it up
+    // by (`baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving the key
+    // from the typed node — not the raw `parseToken` base — keeps registration
+    // and lookup on one canonicalisation: for every canonical template the two
+    // agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`) now
+    // registers under the same stripped key its ground spelling resolves to,
+    // instead of a raw space-bearing key the canonical lookup could never find.
+    const openBase = node !== undefined ? baseKey(node) : parsed.base;
     const open: OpenRegistration = {
       template: token,
-      base: parsed.base,
+      base: openBase,
       pattern: parsed.args,
       ctor,
       scope: undefined,
       signatures,
-      // The parsed template tree the engine unifies against (`match`). The
-      // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
-      // classification guard; `tryParse` never throws — an all-holes template
-      // that passed the guard always parses.
-      node: tryParse(token),
+      node,
     };
-    const entry: ManifestEntry = { kind: 'open', base: parsed.base, open };
+    const entry: ManifestEntry = { kind: 'open', base: openBase, open };
     this.#entries.push(entry);
     return this.#scopedContinuation((scope) => {
       entry.open = { ...open, scope };

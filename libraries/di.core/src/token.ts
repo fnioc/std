@@ -35,6 +35,10 @@
 //     base/key skeleton); the whitespace class is comprehensive (`/\s/`: space,
 //     tab, LF, CR, form feed, vertical tab, NBSP, and the Unicode spaces),
 //     while interior quoted text is preserved EXACTLY;
+//   - a literal union serialises its members ` | `-joined (space-pipe-space),
+//     byte-identical to the Go transformer's deterministic emit and the old
+//     string engine's space-preserving grammar, so a re-derived union matches a
+//     transformer-spelled exact registration;
 //   - quote style is normalised to double quotes (single quotes accepted on
 //     input as an ergonomic, re-emitted as double); the only recognised escapes
 //     inside a literal are `\\` (→ `\`) and `\<quote>` (→ the quote char) — any
@@ -190,7 +194,14 @@ class TokenParser {
       }
       break;
     }
-    const path = parts.map(canonicaliseQuoted).join('|');
+    // The canonical union separator is ` | ` (space-pipe-space), byte-identical
+    // to the Go transformer's deterministic emit (`strings.Join(parts, " | ")`,
+    // transforms/internal/tokens/derive.go) and to the old string engine's
+    // space-preserving grammar. Re-deriving a bound union (open-generic closing,
+    // collection element extraction, TypeArgRef injection) therefore reproduces
+    // the exact string a transformer-emitted registration was keyed under — an
+    // unspaced `"a"|"b"` would miss the spaced `"a" | "b"` exact registration.
+    const path = parts.map(canonicaliseQuoted).join(' | ');
     return { kind: 'concrete', path, args: [] };
   }
 
