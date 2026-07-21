@@ -1,4 +1,4 @@
-// The application builder's services slot (§106). `HostApplicationBuilder`
+// The application builder's services slot (§114). `HostApplicationBuilder`
 // exposes `services` as ONE mutable slot over an immutable manifest chain, and
 // hands that same slot to its `logging` and `metrics` sub-builders. This suite
 // pins the property that fell out of the immutable-manifest change: every
