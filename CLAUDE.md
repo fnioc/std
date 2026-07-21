@@ -427,10 +427,14 @@ pin), never system-wide.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`
-  (`GOTOOLCHAIN=local`, `TTSC_GO_BINARY` from `mise which go`, disk-backed `GOTMPDIR`).
-- **Cache economics** — compiled sidecars cache at **repo-root** `node_modules/.cache/ttsc`
-  (~25 MB/binary, shared not per-package): ~5 min cold once, ~3-4 s warm. CI provisions Go via
-  `jdx/mise-action` and restores the `node_modules/.cache` tree + the Go build cache.
+  (`GOTOOLCHAIN=local`, `TTSC_GO_BINARY` from `mise which go`, shared home-dir `GOTMPDIR` +
+  `TTSC_CACHE_DIR`).
+- **Cache economics (§107)** — the compiled sidecars + ttsc's own Go object cache live at
+  `~/.cache/fnioc-ttsc/cache` (`TTSC_CACHE_DIR`, env-overridable), shared across every worktree and
+  e2e suite: keyed sidecar binaries (~30 MB each) plus the ~3 GB Go object cache. Content-keyed, so
+  the ~5-min cold sidecar compile is paid once per machine, seconds warm. The throwaway e2e sandboxes
+  live per-worktree under `node_modules/.cache/e2e` (off the per-user-quota tmpfs `/tmp`). CI
+  provisions Go via `jdx/mise-action` and restores `~/.cache/fnioc-ttsc` + the Go build cache.
 - **`transforms/go.work` is gitignored** (machine-specific abs paths); `scripts/gen-go-work.mjs`
   rebuilds it against the installed ttsc shim modules (`ttsc` also makes its own during a build, so
   `go.mod` has no `replace`). Parity: `tests/*.ttsc.e2e` (script `test:e2e`, now IN the default
