@@ -118,16 +118,16 @@ beforeAll(() => {
     `declare module "@rhombus-std/di.core" {
   export type Ctor<A extends any[] = any[], I = unknown> = new(...args: A) => I;
   export type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
-  export interface AddBuilder<Scopes extends string = string> {
+  export interface IAsBuilder<Scopes extends string = string> {
     as(scope: Scopes): void;
     as<S extends Scopes>(): void;
   }
   export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
-    add(token: string, ctor: Ctor, signatures?: readonly (readonly unknown[])[]): AddBuilder<Scopes>;
-    add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
-    add<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
-    addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
-    addValue<I>(value: I): void;
+    add(token: string, ctor: Ctor, signatures: readonly (readonly unknown[])[]): IAsBuilder<Scopes>;
+    add<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
+    add<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
+    addValue(token: string, value: unknown): IServiceManifestBase<Scopes, Provider>;
   }
   export interface IRequiredResolver {
     resolve<T>(token: string): T;
@@ -145,7 +145,7 @@ beforeAll(() => {
   export type IServiceManifest<S extends string = string> = IServiceManifestBase<S, IServiceProvider<S>>;
   export namespace Nested {
     export interface IServiceManifestBase<Scopes extends string = string> {
-      add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+      add<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
     }
     export interface IResolver {
       resolve<T>(): T;

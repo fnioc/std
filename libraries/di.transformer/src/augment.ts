@@ -10,7 +10,7 @@
 // and which kills the "compiles but throws at runtime" footgun.
 //
 // The augmentation DECLARATION-MERGES onto `@rhombus-std/di.core`'s public
-// interfaces — `IServiceManifestBase` (registration forms), `AddBuilder` (the
+// interfaces — `IServiceManifestBase` (registration forms), `IAsBuilder` (the
 // `.as` form), and the resolution surface `IResolver` composes: `IRequiredResolver`
 // (the tokenless `resolve` forms), `IServiceQuery` (`isService`), and `IResolver`
 // itself (`resolveAsync` / `tryResolve`). Each tokenless overload merges onto the
@@ -32,10 +32,12 @@
 // referencing `@rhombus-std/di.transformer` pulls the augmentation into its program.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-// The `AddBuilder<Scopes>` continuation type the registration forms return. A
-// named import (not a member reference inside the augmentation block) because
-// unqualified names in a `declare module` body resolve in THIS file's scope.
-import type { AddBuilder } from '@rhombus-std/di.core';
+// The `AddChain<Scopes, Slots>` continuation type the registration forms return,
+// the `Slot` union that indexes it, and the plain `IServiceManifest` a slotless
+// verb hands back. Named imports (not member references inside the augmentation
+// block) because unqualified names in a `declare module` body resolve in THIS
+// file's scope.
+import type { AddChain, IServiceManifest, Slot } from '@rhombus-std/di.core';
 
 // Re-export the authoring brand types so transformer consumers can use
 // `Inject<T, "tok">`, the open-generics placeholders (`Hole<N, C>`, `$<N>`)
@@ -54,17 +56,36 @@ declare module '@rhombus-std/di.core' {
   // interface's type-parameter list.
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
-     * Type-driven class authoring — lowers to `add("token", C)`. The ctor is
-     * typed `Ctor<any[], I>` (a plain construct signature, so an abstract class
-     * is rejected). Never runs post-transform.
+     * Type-driven class authoring — lowers to
+     * `add("token", C, signatures)`. The ctor is typed `Ctor<any[], I>` (a plain
+     * construct signature, so an abstract class is rejected). Never runs
+     * post-transform.
      *
      * A GENERIC impl is authored as an instantiation expression —
      * `add<IRepo<$<1>>>(SqlRepository<$<1>>)` (open template) or
      * `add<IRepo<User>>(SqlRepository<User>)` (closed) — and lowers to
      * `add("token", C, signatures)` with its dep signatures carried on the
      * registration (type args stripped from the emitted ctor).
+     *
+     * The chain it hands back KEEPS the `signature` slot, unlike the plugin-less
+     * form: the transformer already injected a DERIVED signature, so
+     * `withSignature` here is an optional OVERRIDE rather than a gate — an
+     * authored `add<I>(C).withSignature(custom)` lowers to
+     * `add("token", C, custom)` and the modifier never reaches emitted JS.
      */
-    add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
+    add<I>(ctor: Ctor<any[], I>): AddChain<Scopes, 'signature' | 'scope' | 'key'>;
+    /**
+     * Type-driven class authoring with the lifetime chosen POSITIONALLY —
+     * `add<I>(C, "scoped")`. Equivalent to `add<I>(C).as("scoped")`, one call
+     * instead of two. Never runs post-transform.
+     */
+    add<I>(ctor: Ctor<any[], I>, scope: Scopes): AddChain<Scopes, 'signature' | 'key'>;
+    /**
+     * Type-driven class authoring with lifetime AND registration key positionally
+     * — `add<I>(C, "scoped", "audit")`, composing the keyed token `base#key`
+     * (§98). Never runs post-transform.
+     */
+    add<I>(ctor: Ctor<any[], I>, scope: Scopes, key: string): AddChain<Scopes, 'signature'>;
     /**
      * Registration-time override form — a sparse positional override array for a
      * class whose ctor you can't edit (third-party / generic). Each element
@@ -77,38 +98,55 @@ declare module '@rhombus-std/di.core' {
     add<I>(
       ctor: Ctor<any[], I>,
       overrides: ReadonlyArray<string | undefined>,
-    ): AddBuilder<Scopes>;
+    ): AddChain<Scopes, 'signature' | 'scope' | 'key'>;
     /**
-     * Type-driven factory authoring — lowers to `addFactory("token", fn)` (the
-     * transformer knows the arg is a function). Never runs post-transform.
+     * Type-driven factory authoring — lowers to
+     * `addFactory("token", fn, signatures)` (the transformer knows the arg is a
+     * function). Never runs post-transform.
      */
-    add<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    add<I>(factory: Func<any[], I>): AddChain<Scopes, 'signature' | 'scope' | 'key'>;
     /**
      * Type-driven factory authoring, EXPLICIT form — `addFactory<I>(fn)` lowers to
-     * `addFactory("token", fn)`. Mirrors `add<I>(factory)`; the explicit method
-     * name documents intent at the call site (a factory, never a class). It
-     * coexists with di's runtime `addFactory(token, factory, signatures?)` overload
-     * — arity disambiguates (one value arg here vs. the runtime form's leading
-     * string token). Never runs post-transform.
+     * `addFactory("token", fn, signatures)`. Mirrors `add<I>(factory)`; the
+     * explicit method name documents intent at the call site (a factory, never a
+     * class). It coexists with di's runtime
+     * `addFactory(token, factory, signatures, …)` overloads — arity and the
+     * leading string token disambiguate. Never runs post-transform.
      */
-    addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): AddChain<Scopes, 'signature' | 'scope' | 'key'>;
     /**
-     * Type-driven value authoring — lowers to `addValue("token", v)`. Never runs
-     * post-transform.
+     * Type-driven factory authoring with the lifetime chosen POSITIONALLY.
+     * Never runs post-transform.
      */
-    addValue<I>(value: I): void;
+    addFactory<I>(factory: Func<any[], I>, scope: Scopes): AddChain<Scopes, 'signature' | 'key'>;
+    /**
+     * Type-driven factory authoring with lifetime AND registration key
+     * positionally. Never runs post-transform.
+     */
+    addFactory<I>(
+      factory: Func<any[], I>,
+      scope: Scopes,
+      key: string,
+    ): AddChain<Scopes, 'signature'>;
+    /**
+     * Type-driven value authoring — lowers to `addValue("token", v)`. A value
+     * carries neither deps nor a lifetime, so no slot survives: it hands back the
+     * plain new manifest, which the caller must KEEP. Never runs post-transform.
+     */
+    addValue<I>(value: I): IServiceManifest<Scopes>;
   }
 
-  // The authored lifetime form merges onto core's `AddBuilder` interface — the
-  // continuation the registration forms return.
-  interface AddBuilder<Scopes extends string> {
+  // The authored lifetime form merges onto core's `IAsBuilder` face — the `scope`
+  // slot of the chain the registration forms return.
+  interface IAsBuilder<S extends string, Slots extends Slot> {
     /**
      * The AUTHORED lifetime form — `.as<"singleton">()`. The scope name is a
-     * TYPE argument; the `S extends Scopes` bound is the compile-time
+     * TYPE argument; the `Scope extends S` bound is the compile-time
      * captive-misconfiguration guard. The transformer rewrites it to the
-     * value-arg `.as("singleton")` before it runs.
+     * value-arg `.as("singleton")` before it runs, so it consumes the `scope`
+     * slot exactly like the runtime form.
      */
-    as<S extends Scopes>(): void;
+    as<Scope extends S>(): AddChain<S, Exclude<Slots, 'scope'>>;
   }
 
   // The tokenless resolve forms merge onto the SAME di.core interface that DECLARES
