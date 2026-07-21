@@ -103,7 +103,7 @@ function goEnv(): NodeJS.ProcessEnv {
 // with a real parameter dependency give a NON-TRIVIAL signature array, so parity
 // pins the actual slot derivation, not just an empty `[[]]`.
 const APP_SOURCE = `
-import type { AddBuilder, IServiceManifest } from "@rhombus-std/di.core";
+import type { IAsBuilder, IServiceManifest } from "@rhombus-std/di.core";
 
 // Minimal local constructor / factory types, so the source is self-contained
 // (no @rhombus-toolkit/func resolution needed). The overload discriminator reads
@@ -113,8 +113,8 @@ type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
 
 declare module "@rhombus-std/di.core" {
   interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
-    add<I>(ctor: Ctor<any[], I>): AddBuilder<Scopes>;
-    addFactory<I>(factory: Func<any[], I>): AddBuilder<Scopes>;
+    add<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
     addValue<I>(value: I): void;
   }
 }

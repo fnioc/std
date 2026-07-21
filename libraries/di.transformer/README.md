@@ -25,13 +25,15 @@ class SqlUserRepo implements IUserRepo {
   ) {}
 }
 
-services.add<IUserRepo>(SqlUserRepo).as<'request'>();
+services = services.add<IUserRepo>(SqlUserRepo).as<'request'>();
 ```
+
+A registration collection is immutable — every verb hands back a NEW collection — so the result is kept, never discarded.
 
 The transformer rewrites that call, at compile time, into the plain-data form a hand author would otherwise have to type themselves:
 
 ```ts
-services
+services = services
   .add('pkg:IUserRepo', SqlUserRepo, [['pkg:ILogger', 'pkg:IDbConnection']])
   .as('request');
 ```
