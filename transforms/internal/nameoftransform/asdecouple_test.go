@@ -15,7 +15,7 @@ import (
 )
 
 // buildAsDecoupleWorkspace extends buildInlinePresetWorkspace's shape with an
-// `AddBuilder<Scopes>` continuation carrying `.as(scope)` / the authored
+// `IAsBuilder<Scopes>` continuation carrying `.as(scope)` / the authored
 // `.as<S>()` sugar — the #240 decouple's own shape (`add<I>(C).as<"scope">()`),
 // which buildInlinePresetWorkspace's `unknown`-returning add stub can't express.
 // A dedicated builder rather than extending the shared fixture: the sibling
@@ -35,11 +35,11 @@ func buildAsDecoupleWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
     "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "add" } ]
   }
 }`)
-	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface AddBuilder<Scopes extends string> {
-  as(scope: Scopes): void;
+	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IAsBuilder<Scopes extends string> {
+  as(scope: Scopes): IAsBuilder<Scopes>;
 }
 export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown): AddBuilder<'singleton'>;
+  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): IAsBuilder<'singleton'>;
 }
 export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
@@ -49,14 +49,14 @@ declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 `)
 	// The real add-sugar body — see di.transformer's own src/inline.ts — now typed
-	// to return AddBuilder (rather than buildInlinePresetWorkspace's bare unknown)
+	// to return IAsBuilder (rather than buildInlinePresetWorkspace's bare unknown)
 	// so the returned builder's `.as` chain type-checks against a real continuation.
 	// signatureof is imported from its home (di.transformer), nameof from primitives.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
 import { signatureof } from '@rhombus-std/di.transformer';
-import type { AddBuilder, IServiceManifestBase } from './index';
+import type { IAsBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {
-  add<T>(this: IServiceManifestBase, ctor: unknown): AddBuilder<'singleton'> {
+  add<T>(this: IServiceManifestBase, ctor: unknown): IAsBuilder<'singleton'> {
     return this.add(nameof<T>(), ctor, signatureof(ctor));
   },
 };
@@ -75,10 +75,10 @@ export const ManifestInline = {
 	// `.as<S>()` type-arg form merge onto their respective di.core interfaces.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): AddBuilder<'singleton'>;
+    add<T>(ctor: unknown): IAsBuilder<'singleton'>;
   }
-  interface AddBuilder<Scopes extends string> {
-    as<S extends Scopes>(): void;
+  interface IAsBuilder<Scopes extends string> {
+    as<S extends Scopes>(): IAsBuilder<Scopes>;
   }
 }
 export {};

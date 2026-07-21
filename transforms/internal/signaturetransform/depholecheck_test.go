@@ -27,7 +27,7 @@ func TestRegistrationDepHoleErrorsOnInlinePath(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 ` + holeBrands + `interface IRepo<T> {}
 class SqlRepo<T> implements IRepo<$<1>> { constructor(seed: T) { void seed; } }
-declare const services: { add(token: string, ctor: unknown, sig?: unknown): unknown };
+declare const services: { add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
 services.add("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
 `
 	prog, app := buildSigWorkspace(t, mainSrc)
@@ -48,6 +48,36 @@ services.add("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
 	}
 }
 
+// TestRegistrationDepHoleErrorsBehindTrailingKeySlot pins the SLOT the
+// enclosing-call token recovery reads. di.core's registration verbs order their
+// arguments `(token, value, signatures, scope, key)`, so a KEYED registration —
+// the shape the inline sugar lowers a `Keyed<T, K>` service type to — puts the
+// signatureof call at argument 3 with the scope and key slots BEHIND it. It is
+// therefore no longer the last argument, and recovering the token from the tail
+// instead of the slot would silently stop recognizing the enclosing registration,
+// regressing 990010 back to the unchecked standalone lowering. Same orphan-hole
+// setup as the sibling above ($1 bound, $2 referenced) — only the trailing slots
+// differ.
+func TestRegistrationDepHoleErrorsBehindTrailingKeySlot(t *testing.T) {
+	mainSrc := `import { signatureof } from '@scope/prims';
+` + holeBrands + `interface IRepo<T> {}
+class SqlRepo<T> implements IRepo<$<1>> { constructor(seed: T) { void seed; } }
+declare const services: { add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
+services.add("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>), void 0, "redis");
+`
+	prog, app := buildSigWorkspace(t, mainSrc)
+	defer func() { _ = prog.Close() }()
+
+	_, diags := lowerMain(t, prog, app)
+	for _, d := range diags {
+		if d.Code == "990010" && d.Category == ditransform.Error {
+			return
+		}
+	}
+	t.Fatalf("expected a 990010 dep-hole error on a keyed registration whose signatureof "+
+		"is not the last argument, got %+v", diags)
+}
+
 // TestRegistrationDepHoleBoundIsClean is the negative half: the SAME value under a
 // token that DOES bind the referenced hole ($2) raises no 990010, and the emitted
 // dependency-signature array is byte-identical to the one the UNCHECKED standalone
@@ -57,7 +87,7 @@ func TestRegistrationDepHoleBoundIsClean(t *testing.T) {
 	registered := `import { signatureof } from '@scope/prims';
 ` + holeBrands + `interface IRepo<T> {}
 class SqlRepo<T> implements IRepo<$<1>> { constructor(seed: T) { void seed; } }
-declare const services: { add(token: string, ctor: unknown, sig?: unknown): unknown };
+declare const services: { add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
 services.add("m:IRepo<$2>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
 `
 	standalone := `import { signatureof } from '@scope/prims';
