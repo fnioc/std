@@ -21,9 +21,10 @@
 // one's cached instance — when no matching frame encloses the owner, the dep
 // resolves transiently (a fresh instance) instead.
 
-import { closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken, isProviderToken,
-  isTypeArgRef, isUnionSlot, type LiteralRef, type ParsedToken, parseToken, type ServiceProviderOptions,
-  substituteSignatures, type Token, type TypeArgRef, type Union } from '@rhombus-std/di.core';
+import { baseKey, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpen, isOpenToken,
+  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, match, type ServiceProviderOptions, stringify,
+  substituteSignaturesByLabel, type Token, type TokenNode, tryParse, type TypeArgRef,
+  type Union } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
@@ -178,19 +179,28 @@ interface CollectionRequest {
  * so a holey element is rejected here.
  */
 function collectionRequest(token: Token): CollectionRequest | undefined {
-  const parsed = parseToken(token);
+  const parsed = tryParse(token);
   if (
     parsed === undefined
+    || parsed.kind !== 'concrete'
+    || parsed.package !== undefined
+    || parsed.key !== undefined
     || parsed.args.length !== 1
-    || (parsed.base !== ARRAY_TOKEN_BASE && parsed.base !== ITERABLE_TOKEN_BASE)
+    || (parsed.path !== ARRAY_TOKEN_BASE && parsed.path !== ITERABLE_TOKEN_BASE)
   ) {
     return undefined;
   }
-  const element = parsed.args[0]!;
-  if (isOpenToken(element)) {
+  // A holey element (`Array<$1>`) is an open-registration key, not a collection
+  // request — reject it. The `package`/`key === undefined` guards replicate the
+  // old `parseToken` rejection of `pkg:Array<X>` and `Array<X>#k` (parseToken
+  // failed on trailing text after `>`); the element is the canonical
+  // serialisation — byte-identical to the old raw arg for the canonical tokens
+  // the transformer and tests produce.
+  const arg = parsed.args[0]!;
+  if (isOpen(arg)) {
     return undefined;
   }
-  return { base: parsed.base, element };
+  return { base: parsed.path, element: stringify(arg) };
 }
 
 /**
@@ -554,110 +564,86 @@ export class ServiceProviderClass<S extends string = string> implements IService
     }
 
     // An open template is not resolvable — and letting it reach the open table
-    // would "close" the template with its own holes. Miss, never throw.
+    // would "close" the template with its own holes. Classification stays on the
+    // string predicate (the registration-boundary grammar). Miss, never throw.
     if (isOpenToken(token)) {
       return undefined;
     }
 
-    const parsed = parseToken(token);
-    if (parsed === undefined) {
+    // Parse the closed GROUND token into the typed model. A malformed or
+    // non-generic token is not an open-template closing — miss cleanly.
+    // `tryParse` never throws, so `#lookup` never throws (a parse failure that
+    // the old `parseToken` returned `undefined` for now becomes a `tryParse`
+    // miss).
+    const ground = tryParse(token);
+    if (ground === undefined || ground.kind !== 'concrete' || !ground.args.length) {
       return undefined;
     }
 
-    const match = ServiceProviderClass.#matchOpen(
-      this.#openRegistrations.get(parsed.base),
-      parsed,
-    );
-    if (match === undefined) {
+    // The open table is keyed by the template's base; `baseKey(ground)` (base +
+    // package + key, generics stripped) is the matching key.
+    const candidates = this.#openRegistrations.get(baseKey(ground));
+    if (candidates === undefined) {
       return undefined;
     }
 
-    // Synthesize the closed registration: the open registration's ctor + scope
-    // tag, with the closing's arg tokens substituted through the template
-    // signatures carried on the open registration. A signature-less open
-    // registration has no template to substitute (a zero-arg ctor closes to a
-    // bare `new Ctor()`).
-    const template = match.open.signatures;
-    // Substituting the carried signatures for this closing can fail when a
-    // mis-authored template references a hole the service token never binds
-    // (e.g. `IX<$1,$3>` carrying a dep on `$2`) — `substituteSignatures` throws
-    // `RangeError` then. #lookup must NEVER throw (so `#isResolvable` can probe
-    // safely and greedy selection can fall back), so treat a substitution
-    // failure as a plain miss: no synthesis, no memo entry.
-    let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
-    if (template !== undefined) {
-      try {
-        signatures = substituteSignatures(template, match.args);
-      } catch (err) {
-        if (err instanceof RangeError) {
-          return undefined;
-        }
-        throw err;
-      }
-    }
-    // Synthesize the closed producer record. Wrap the template ctor exactly as
-    // the builder does for an exact class, carrying `name`/`arity` off the ctor
-    // (the wrapper itself reports `""`/`0`).
-    const ctor = match.open.ctor;
-    const registration: Registration = {
-      produce: (...a: unknown[]) => new ctor(...a),
-      scope: match.open.scope,
-      signatures,
-      name: ctor.name,
-      arity: ctor.length,
-    };
-    this.#closedMemo.set(token, registration);
-    return registration;
-  }
-
-  /**
-   * Matches a parsed closed token against `base`'s open registrations —
-   * iterated from the END so the most-recent match wins, mirroring the exact
-   * map's last-wins list semantics. A candidate matches when its arity equals
-   * the closing's and its repeated holes bind equal arg tokens. Returns the
-   * matched registration plus the substitution args INDEXED BY HOLE NUMBER
-   * (`args[N-1]` closes `$N` — the template's holes need not be in order).
-   */
-  static #matchOpen(
-    list: readonly OpenRegistration[] | undefined,
-    parsed: ParsedToken,
-  ): { open: OpenRegistration; args: readonly Token[]; } | undefined {
-    if (list === undefined) {
-      return undefined;
-    }
-    for (let i = list.length - 1; i >= 0; i--) {
-      const open = list[i]!;
-      if (open.pattern.length !== parsed.args.length) {
+    // Scan from the END so the most-recently-registered matching template wins,
+    // mirroring the exact map's last-wins list semantics. Pure recency — NO
+    // specificity ranking / most-specific-wins (gated; downstream open
+    // registrations are all single-hole, so this is exactly today's behavior).
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const open = candidates[i]!;
+      // The parsed template tree — carried on the registration, or reparsed for a
+      // hand-built `OpenRegistration` literal that omitted `node`. `match` gates
+      // arity positionally and binds holes with repeated-hole equality.
+      const template = open.node ?? tryParse(open.template);
+      if (template === undefined) {
         continue;
       }
-      const args = ServiceProviderClass.#bindPattern(open.pattern, parsed.args);
-      if (args !== undefined) {
-        return { open, args };
+      const bind = match(template, ground, new Map<number, TokenNode>());
+      if (bind === null) {
+        continue;
       }
+
+      // Synthesize the closed registration: the open registration's ctor + scope
+      // tag, with the closing's args substituted through the carried template
+      // signatures BY LABEL. A signature-less open registration has no template
+      // to substitute (a zero-arg ctor closes to a bare `new Ctor()`).
+      //
+      // Substitution can fail when a mis-authored template references a hole the
+      // service token never binds (e.g. `IX<$1,$3>` carrying a dep on `$2`) —
+      // `substituteSignaturesByLabel` throws `RangeError` then. #lookup must NEVER
+      // throw (so `#isResolvable` can probe safely and greedy selection can fall
+      // back), so treat a substitution failure as a plain miss: no synthesis, no
+      // memo entry.
+      let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
+      if (open.signatures !== undefined) {
+        try {
+          signatures = substituteSignaturesByLabel(open.signatures, bind);
+        } catch (err) {
+          if (err instanceof RangeError) {
+            return undefined;
+          }
+          throw err;
+        }
+      }
+
+      // Synthesize the closed producer record. Wrap the template ctor exactly as
+      // the builder does for an exact class, carrying `name`/`arity` off the ctor
+      // (the wrapper itself reports `""`/`0`). Memoize under the ORIGINAL token
+      // string.
+      const ctor = open.ctor;
+      const registration: Registration = {
+        produce: (...a: unknown[]) => new ctor(...a),
+        scope: open.scope,
+        signatures,
+        name: ctor.name,
+        arity: ctor.length,
+      };
+      this.#closedMemo.set(token, registration);
+      return registration;
     }
     return undefined;
-  }
-
-  /**
-   * Binds a template's hole pattern (each entry exactly `$N` — validated at
-   * registration) to a closing's arg tokens. Returns the args indexed by hole
-   * number, or `undefined` when a repeated hole binds two different tokens.
-   */
-  static #bindPattern(
-    pattern: readonly Token[],
-    args: readonly Token[],
-  ): readonly Token[] | undefined {
-    const bound: Token[] = [];
-    for (let i = 0; i < pattern.length; i++) {
-      const hole = Number(pattern[i]!.slice(1));
-      const prior = bound[hole - 1];
-      if (prior === undefined) {
-        bound[hole - 1] = args[i]!;
-      } else if (prior !== args[i]) {
-        return undefined;
-      }
-    }
-    return bound;
   }
 
   /**

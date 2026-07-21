@@ -19,6 +19,7 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
+import { tryParse } from './token.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
 import type { DepSlot, Token } from './types.js';
 
@@ -28,11 +29,25 @@ import type { DepSlot, Token } from './types.js';
 // the interface; the engine-constructing half of `build()` is a
 // `@rhombus-std/di` extension (see `build()` below).
 
-/** Appends `value` to the list at `key`, creating the list on first use. */
-function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
-  const existing = map.get(key);
+/**
+ * One ordered registration in the builder's single source of truth. An `exact`
+ * entry binds a closed token to a producer `Registration`; an `open` entry binds
+ * a template's base to an `OpenRegistration`. The list is materialised into the
+ * two frozen lookup indexes only at `seal()` (toArray-at-seal), so a `.as(scope)`
+ * continuation can replace its own entry's record IN PLACE — keeping one
+ * `.add(...).as(...)` chain exactly one registration (a spurious transient shadow
+ * would pollute collection aggregation).
+ */
+type ManifestEntry =
+  | { readonly kind: 'exact'; readonly token: Token; registration: Registration; }
+  | { readonly kind: 'open'; readonly base: Token; open: OpenRegistration; };
+
+/** Appends `value` to the list at `key`, creating it on first use — the per-key
+ * bucketing `seal()` uses to derive a frozen index from the ordered entries. */
+function bucket<V>(index: Map<Token, V[]>, key: Token, value: V): void {
+  const existing = index.get(key);
   if (existing === undefined) {
-    map.set(key, [value]);
+    index.set(key, [value]);
   } else {
     existing.push(value);
   }
@@ -101,32 +116,18 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>>
 {
   /**
-   * The service collection: each token maps to a LIST of registrations in
-   * registration order. Registering a token appends; resolution picks the
-   * most-recent (last) registration. Earlier registrations are retained, which
-   * is what lets a later `.add()` override an earlier one without deletion.
+   * The single ordered source of truth: every registration in registration
+   * order, `exact` and `open` interleaved. Resolution picks the most-recent
+   * (last) registration of a token; earlier ones are retained (collection
+   * aggregation enumerates them all, which is what lets a later `.add()` override
+   * an earlier one for bare-T resolution without deletion). `seal()` derives the
+   * two frozen lookup indexes from this list (toArray-at-seal), reproducing
+   * first-occurrence map order and per-token list order. Reassigned (filtered)
+   * by `removeRegistrations`.
    */
-  readonly #registrations = new Map<Token, Registration[]>();
-
-  /**
-   * The OPEN registration table: template base → open registrations in
-   * registration order. Resolution matches against it on an exact-map miss
-   * (base + arity + repeated-hole equality), most-recent match winning —
-   * mirroring the exact map's last-wins list semantics.
-   */
-  readonly #openRegistrations = new Map<Token, OpenRegistration[]>();
+  #entries: ManifestEntry[] = [];
 
   public constructor() {}
-
-  /** Appends a registration to `token`'s list, creating the list on first use. */
-  #append(token: Token, registration: Registration): void {
-    appendTo(this.#registrations, token, registration);
-  }
-
-  /** Appends an open registration to `base`'s list, mirroring `#append`. */
-  #appendOpen(base: Token, registration: OpenRegistration): void {
-    appendTo(this.#openRegistrations, base, registration);
-  }
 
   /**
    * Builds the `.as(scope?)` continuation over an `applyScope` callback that
@@ -162,11 +163,10 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * no trailing `.as()` leaves the base (transient) registration in place.
    */
   #appendScoped(token: Token, base: Registration): AddBuilder<Scopes> {
-    this.#append(token, base);
-    const list = this.#registrations.get(token)!;
-    const index = list.length - 1;
+    const entry: ManifestEntry = { kind: 'exact', token, registration: base };
+    this.#entries.push(entry);
     return this.#scopedContinuation((scope) => {
-      list[index] = { ...base, scope };
+      entry.registration = { ...base, scope };
     });
   }
 
@@ -186,19 +186,23 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
       throw new OpenTokenRegistrationError(token, 'add');
     }
-    const base: OpenRegistration = {
+    const open: OpenRegistration = {
       template: token,
       base: parsed.base,
       pattern: parsed.args,
       ctor,
       scope: undefined,
       signatures,
+      // The parsed template tree the engine unifies against (`match`). The
+      // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
+      // classification guard; `tryParse` never throws — an all-holes template
+      // that passed the guard always parses.
+      node: tryParse(token),
     };
-    this.#appendOpen(parsed.base, base);
-    const list = this.#openRegistrations.get(parsed.base)!;
-    const index = list.length - 1;
+    const entry: ManifestEntry = { kind: 'open', base: parsed.base, open };
+    this.#entries.push(entry);
     return this.#scopedContinuation((scope) => {
-      list[index] = { ...base, scope };
+      entry.open = { ...open, scope };
     });
   }
 
@@ -350,11 +354,15 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     // `undefined` (a value is always transient — no ownership/caching), so a
     // value that is itself a `Promise` is returned raw through the normal path,
     // never awaited (§"Async as values").
-    this.#append(composed, {
-      produce: () => value,
-      scope: undefined,
-      name: '',
-      arity: 0,
+    this.#entries.push({
+      kind: 'exact',
+      token: composed,
+      registration: {
+        produce: () => value,
+        scope: undefined,
+        name: '',
+        arity: 0,
+      },
     });
   }
 
@@ -369,8 +377,12 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * the di runtime, never as a raw method on the collection surface.
    */
   public removeRegistrations(token: Token): void {
-    this.#registrations.delete(token);
-    this.#openRegistrations.delete(token);
+    // The literal double-delete: drop every exact entry under `token` AND every
+    // open entry whose BASE is `token` — the old `#registrations.delete(token)`
+    // + `#openRegistrations.delete(token)`, keyed identically.
+    this.#entries = this.#entries.filter((entry) =>
+      entry.kind === 'exact' ? entry.token !== token : entry.base !== token
+    );
   }
 
   /**
@@ -388,18 +400,15 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * template string, never against a closing it could synthesize.
    */
   public hasRegistrations(token: Token): boolean {
-    const exact = this.#registrations.get(token);
-    if (exact !== undefined && exact.length > 0) {
+    if (this.#entries.some((entry) => entry.kind === 'exact' && entry.token === token)) {
       return true;
     }
-    if (isOpenToken(token)) {
-      const parsed = parseToken(token);
-      if (parsed !== undefined) {
-        const open = this.#openRegistrations.get(parsed.base);
-        if (open !== undefined && open.some((r) => r.template === token)) {
-          return true;
-        }
-      }
+    // An open template dedups against the same template STRING only (never a
+    // closing it could synthesize). Classification stays on the string predicate;
+    // the `parseToken !== undefined` guard reproduces the old behavior (a bare
+    // hole is open but unparseable, so it dedups against nothing).
+    if (isOpenToken(token) && parseToken(token) !== undefined) {
+      return this.#entries.some((entry) => entry.kind === 'open' && entry.open.template === token);
     }
     return false;
   }
@@ -416,21 +425,30 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * runtime resolution engine di.core deliberately does not depend on.
    */
   public seal(): SealedManifest {
-    // Deep-copy the registrations so post-seal builder mutations can't affect
-    // the sealed map. Each per-token list is frozen independently.
-    const registrations = new Map<Token, readonly Registration[]>();
-    for (const [token, list] of this.#registrations) {
-      registrations.set(token, Object.freeze([...list]));
+    // toArray-at-seal: materialise the ordered entry list into the two frozen
+    // lookup indexes. First-occurrence bucketing reproduces the old Map insertion
+    // order (exact keyed by token, open keyed by parsed base) and each per-key
+    // list keeps registration order — so #resolveKeyed's iteration order and the
+    // last-wins semantics stay byte-identical. Fresh arrays (not aliasing
+    // #entries) + deep-freeze mean a post-seal `.add()` can't mutate the snapshot.
+    // (The engine adds its own MUTABLE closed-registration memo separately —
+    // synthesized closings land there, never in these sealed maps.)
+    const registrations = new Map<Token, Registration[]>();
+    const openRegistrations = new Map<Token, OpenRegistration[]>();
+    for (const entry of this.#entries) {
+      if (entry.kind === 'exact') {
+        bucket(registrations, entry.token, entry.registration);
+      } else {
+        bucket(openRegistrations, entry.base, entry.open);
+      }
+    }
+    for (const list of registrations.values()) {
+      Object.freeze(list);
+    }
+    for (const list of openRegistrations.values()) {
+      Object.freeze(list);
     }
     Object.freeze(registrations);
-
-    // The open table is sealed the same way. (The engine adds its own MUTABLE
-    // closed-registration memo separately — synthesized closings land there,
-    // never in these sealed maps.)
-    const openRegistrations = new Map<Token, readonly OpenRegistration[]>();
-    for (const [base, list] of this.#openRegistrations) {
-      openRegistrations.set(base, Object.freeze([...list]));
-    }
     Object.freeze(openRegistrations);
 
     return { registrations, openRegistrations };

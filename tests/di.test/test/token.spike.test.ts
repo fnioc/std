@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { type Descriptor, TokenManifest, TokenProvider } from '../../../libraries/di.core/src/token-manifest.ts';
 import { baseKey, canonicalise, isOpen, match, parse, RESOLVER_TOKEN_STRING, specificity, stringify, substitute,
-  substituteSignature, type Token } from '../../../libraries/di.core/src/token.ts';
+  substituteSignature, type TokenNode } from '../../../libraries/di.core/src/token.ts';
 
 // ── Reference oracle (independent of the module under test) ───────────────────
 
@@ -249,7 +249,7 @@ function oracleMatch(rawTemplate: string, rawGround: string, bind: Map<string, s
 // ── Test helpers ──────────────────────────────────────────────────────────────
 
 /** The module's match binding rendered as the oracle's `$n → canon` shape. */
-function bindingOf(m: Map<number, Token> | null): Map<string, string> | null {
+function bindingOf(m: Map<number, TokenNode> | null): Map<string, string> | null {
   if (m === null) {
     return null;
   }
@@ -386,7 +386,7 @@ describe('canonicalisation — parse → stringify is canonical, idempotent, ora
     expect(canon).toBe('IFoo<"a < b , c >">');
     const tree = parse(canon);
     expect(tree.kind).toBe('concrete');
-    expect((tree as { args: Token[]; }).args).toHaveLength(1);
+    expect((tree as { args: TokenNode[]; }).args).toHaveLength(1);
   });
 
   test('malformed input is rejected', () => {

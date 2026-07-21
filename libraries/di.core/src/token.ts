@@ -1,12 +1,22 @@
-// SPIKE (§ open-generic token redesign, additive — lands alongside the current
-// `tokens.ts` string-grammar engine, replaces nothing). A *typed* token model:
-// the closed-generic grammar parsed into a discriminated union of token nodes,
-// with a canonicalising parser, a canonical serialiser, directional
-// unification (`match`), a specificity metric for most-specific-wins template
-// selection, and hole substitution.
+// The typed open-generic token model — the REAL matching engine of
+// `@rhombus-std/di.core` + `@rhombus-std/di`. A token STRING is the identity; a
+// `TokenNode` is its parsed view: the closed-generic grammar parsed into a
+// discriminated union of token nodes, with a canonicalising parser, a canonical
+// serialiser, directional unification (`match`), a specificity metric, and hole
+// substitution. The resolution engine (`ServiceProviderClass`) closes open
+// registrations by `parse`/`tryParse` → `match` (unification) → `substitute`.
 //
-// Self-contained: this module imports nothing — not even sibling di.core files —
-// so it can be lifted, reviewed, and tested in isolation before any integration.
+// `tokens.ts` (sibling) stays the STRING-grammar compatibility + CLASSIFICATION
+// surface: `isOpenToken`/`parseToken`/`HOLE_PATTERN`/`closeToken` remain the
+// registration-boundary predicates (they define today's routing quirks and are a
+// public downstream API), while THIS module does the matching and substitution.
+//
+// Partial closing and most-specific-wins template selection are implemented here
+// but GATED OFF at the engine (the engine scans templates pure-recency, and the
+// all-holes registration guard keeps templates single-shape); `specificity` +
+// `TokenProvider` remain the exercised reference for those still-gated features.
+//
+// Self-contained: this module imports nothing — not even sibling di.core files.
 //
 // Grammar (BNF the parser implements):
 //
@@ -54,7 +64,7 @@ export interface ConcreteToken {
   readonly kind: 'concrete';
   readonly package?: string;
   readonly path: string;
-  readonly args: Token[];
+  readonly args: TokenNode[];
   readonly key?: string;
 }
 
@@ -70,7 +80,7 @@ export interface ProviderToken {
   readonly kind: 'provider';
 }
 
-export type Token = ConcreteToken | HoleToken | ProviderToken;
+export type TokenNode = ConcreteToken | HoleToken | ProviderToken;
 
 /** Local self-contained exhaustiveness guard (avoids a cross-package import). */
 function assertNever(value: never): never {
@@ -95,7 +105,7 @@ class TokenParser {
     this.#src = src;
   }
 
-  public parse(): Token {
+  public parse(): TokenNode {
     this.#skipWs();
     const token = this.#parseValue();
     this.#skipWs();
@@ -105,7 +115,7 @@ class TokenParser {
     return token;
   }
 
-  #parseValue(): Token {
+  #parseValue(): TokenNode {
     this.#skipWs();
     const ch = this.#src[this.#i];
     if (ch === undefined) {
@@ -184,13 +194,13 @@ class TokenParser {
     return { kind: 'concrete', path, args: [] };
   }
 
-  #parseConcrete(): Token {
+  #parseConcrete(): TokenNode {
     const base = this.#readBase();
     if (!base) {
       throw this.#fail('empty base');
     }
     this.#skipWs();
-    let args: Token[] = [];
+    let args: TokenNode[] = [];
     if (this.#src[this.#i] === '<') {
       args = this.#parseGenerics();
     }
@@ -217,9 +227,9 @@ class TokenParser {
     return { kind: 'concrete', path: base, args, key };
   }
 
-  #parseGenerics(): Token[] {
+  #parseGenerics(): TokenNode[] {
     this.#i++;
-    const args: Token[] = [];
+    const args: TokenNode[] = [];
     this.#skipWs();
     if (this.#src[this.#i] === '>') {
       throw this.#fail('empty generic list `<>`');
@@ -304,12 +314,25 @@ function canonicaliseQuoted(content: string): string {
 /** Parse a raw token string into its typed tree, canonicalising as it goes.
  * Throws on malformed input (empty base, unbalanced brackets, empty arg,
  * trailing text, unterminated quote). */
-export function parse(raw: string): Token {
+export function parse(raw: string): TokenNode {
   return new TokenParser(raw).parse();
 }
 
+/** Throw-free {@link parse}: the parsed tree, or `undefined` for malformed input
+ * (empty base, unbalanced brackets, empty arg, trailing text, unterminated
+ * quote). The engine's `#lookup` funnels the ground token through here so a
+ * malformed token becomes a clean miss instead of a throw — the typed-model
+ * analog of `parseToken` returning `undefined`. */
+export function tryParse(raw: string): TokenNode | undefined {
+  try {
+    return new TokenParser(raw).parse();
+  } catch {
+    return undefined;
+  }
+}
+
 /** The canonical string form of a token tree. */
-export function stringify(token: Token): string {
+export function stringify(token: TokenNode): string {
   switch (token.kind) {
     case 'hole': {
       return `$${token.n}`;
@@ -336,7 +359,7 @@ export function canonicalise(raw: string): string {
 
 /** True when a token tree contains a hole anywhere — i.e. it is an open
  * template rather than a resolvable closed token. */
-export function isOpen(token: Token): boolean {
+export function isOpen(token: TokenNode): boolean {
   switch (token.kind) {
     case 'hole': {
       return true;
@@ -363,10 +386,10 @@ export function isOpen(token: Token): boolean {
  * Returns the label→token binding on success, `null` on mismatch. On failure
  * `bind` may hold partial bindings — callers pass a fresh map per attempt. */
 export function match(
-  template: Token,
-  ground: Token,
-  bind: Map<number, Token> = new Map<number, Token>(),
-): Map<number, Token> | null {
+  template: TokenNode,
+  ground: TokenNode,
+  bind: Map<number, TokenNode> = new Map<number, TokenNode>(),
+): Map<number, TokenNode> | null {
   switch (template.kind) {
     case 'hole': {
       // Directional contract: `ground` is closed. A hole never binds to an open
@@ -421,7 +444,7 @@ export function match(
  * +1 repeat) scores 2 over `IPair<$1,$2>` (concrete=1) — because the former's
  * match set is a strict subset of the latter's (only the diagonal `IPair<T,T>`).
  * Without the repeat term the two tie and selection degrades to add-order. */
-export function specificity(token: Token): number {
+export function specificity(token: TokenNode): number {
   const holeCounts = new Map<number, number>();
   const concrete = countConcrete(token, holeCounts);
   let repeats = 0;
@@ -433,7 +456,7 @@ export function specificity(token: Token): number {
 
 /** Count concrete/provider nodes, tallying each hole label's occurrences into
  * `holeCounts` for the repeated-hole term of {@link specificity}. */
-function countConcrete(token: Token, holeCounts: Map<number, number>): number {
+function countConcrete(token: TokenNode, holeCounts: Map<number, number>): number {
   switch (token.kind) {
     case 'hole': {
       holeCounts.set(token.n, (holeCounts.get(token.n) ?? 0) + 1);
@@ -453,12 +476,15 @@ function countConcrete(token: Token, holeCounts: Map<number, number>): number {
 
 /** Replace each hole reference BY LABEL with its bound token, recursing into
  * concrete args. Throws when a referenced label is unbound. */
-export function substitute(token: Token, bind: ReadonlyMap<number, Token>): Token {
+export function substitute(token: TokenNode, bind: ReadonlyMap<number, TokenNode>): TokenNode {
   switch (token.kind) {
     case 'hole': {
       const bound = bind.get(token.n);
       if (bound === undefined) {
-        throw new Error(`unbound hole $${token.n} in substitution`);
+        // RangeError (not a plain Error) so the engine's `catch (RangeError) →
+        // miss` swallow keeps a gappy template (`IX<$1,$3>` depending on `$2`)
+        // a clean miss rather than an opaque crash out of `#lookup`.
+        throw new RangeError(`unbound hole $${token.n} in substitution`);
       }
       return bound;
     }
@@ -482,15 +508,15 @@ export function substitute(token: Token, bind: ReadonlyMap<number, Token>): Toke
 
 /** Substitute a whole signature (a positional list of dependency tokens). */
 export function substituteSignature(
-  signature: readonly Token[],
-  bind: ReadonlyMap<number, Token>,
-): Token[] {
+  signature: readonly TokenNode[],
+  bind: ReadonlyMap<number, TokenNode>,
+): TokenNode[] {
   return signature.map((slot) => substitute(slot, bind));
 }
 
 /** The base-only string of a token (package + path + key, generics stripped) —
  * the key the template-by-base index is gated on. */
-export function baseKey(token: Token): string {
+export function baseKey(token: TokenNode): string {
   if (token.kind === 'concrete') {
     return stringify({ kind: 'concrete', package: token.package, path: token.path, key: token.key, args: [] });
   }
