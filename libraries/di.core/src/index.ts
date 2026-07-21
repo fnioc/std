@@ -54,6 +54,16 @@ export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from './guards.
 export { typeArg, union } from './slots.js';
 export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from './tokens.js';
 
+// The typed open-generic token model — the REAL matching engine (`@rhombus-std/di`
+// consumes these to close open registrations). A token STRING is the identity;
+// `TokenNode` is its parsed view. `tokens.ts` above stays the string-grammar
+// classification/compat surface; this is what the engine matches and substitutes
+// with. Partial closing / most-specific-wins live in the model but are GATED at
+// the engine (see `token.ts` / `token-manifest.ts`).
+export { substituteSignaturesByLabel } from './token-substitution.js';
+export type { ConcreteToken, HoleToken, ProviderToken, TokenNode } from './token.js';
+export { baseKey, isOpen, match, stringify, tryParse } from './token.js';
+
 // The intrinsic provider token — a `IResolver`-typed parameter derives it, and
 // the engine resolves it to the live provider view (see `provider-token.ts`).
 export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';

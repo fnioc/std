@@ -47,6 +47,17 @@ describe('open-table matching', () => {
     );
   });
 
+  test('a non-canonical (whitespace) template base resolves its canonical closing', () => {
+    const services = new ServiceManifest();
+    // Stray whitespace in the base: the engine keys the open table by the
+    // canonical baseKey, so a canonically-spelled closing still finds it — a
+    // raw-base key would strand it under a spelling the closing never derives.
+    services.add('app/IR <$1>', ZeroRepo);
+    const sp = services.build();
+
+    expect(sp.resolve('app/IR<pkg:IA>')).toBeInstanceOf(ZeroRepo);
+  });
+
   test('repeated holes match only equal args', () => {
     const services = new ServiceManifest();
     services.add('app/IPair<$1,$1>', ZeroRepo);

@@ -5,6 +5,7 @@
 // the abstractions layer both sides depend on.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { TokenNode } from './token.js';
 import type { DepSlot, Token } from './types.js';
 
 export type { Ctor };
@@ -102,6 +103,14 @@ export interface OpenRegistration {
    * substitute (a zero-arg ctor closes to a bare `new Ctor()`).
    */
   readonly signatures?: ReadonlyArray<readonly DepSlot[]>;
+  /**
+   * The parsed template tree (the typed-token model, `./token.ts`) — the engine
+   * unifies a closed ground token against THIS via `match`. Populated at
+   * registration by `ServiceManifestClass`. OPTIONAL so hand-built
+   * `OpenRegistration` literals (tests constructing a provider directly) stay
+   * valid; the engine falls back to `tryParse(template)` when it is absent.
+   */
+  readonly node?: TokenNode;
 }
 
 /**
