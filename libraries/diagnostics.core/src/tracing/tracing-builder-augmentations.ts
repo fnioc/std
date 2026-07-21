@@ -80,7 +80,7 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
       apply(options);
     },
   };
-  builder.services.addValue(TRACING_CONFIGURE_TOKEN, step);
+  builder.services = builder.services.addValue(TRACING_CONFIGURE_TOKEN, step);
   return builder;
 }
 
@@ -105,7 +105,7 @@ export const TracingBuilderExtensions = {
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
+    builder.services = builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
     return builder;
   },
   /**
@@ -116,7 +116,10 @@ export const TracingBuilderExtensions = {
    * (installed as a manifest method through the augmentation registry).
    */
   clearTracingListeners(builder: ITracingBuilder): ITracingBuilder {
-    builder.services.removeAll(TRACING_LISTENER_TOKEN);
+    // See the sibling metrics-builder-augmentations.ts `clearMetricsListeners`
+    // comment: the cast works around a TS structural-comparison depth limit on
+    // `IServiceManifestBase`'s large overload surface, not a real type error.
+    builder.services = builder.services.removeAll(TRACING_LISTENER_TOKEN) as typeof builder.services;
     return builder;
   },
   /**

@@ -27,7 +27,9 @@ export interface MetricsBuilder extends IMetricsBuilder {}
  */
 @augment(nameof<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
-  readonly services: IServiceManifestBase;
+  // Writable (not `readonly`): registering something reassigns `services` to
+  // the new manifest the immutable chain returns (see IMetricsBuilder).
+  services: IServiceManifestBase;
 
   /** @param services The registration surface extension functions register against. */
   public constructor(services: IServiceManifestBase) {

@@ -163,7 +163,9 @@ export function createFrameworkServices(): FrameworkServices {
  * `PopulateServiceCollection`. Runs BEFORE the user's configure-services
  * delegates so a later `useConsoleLifetime` (which appends a
  * {@link HOST_LIFETIME_TOKEN} registration) wins last over the default
- * {@link NullLifetime} registered here.
+ * {@link NullLifetime} registered here. Returns the manifest produced by every
+ * registration -- the chain is immutable, so the caller must thread this
+ * result forward instead of reusing the `services` it passed in.
  */
 export function populateFrameworkServices(
   services: IServiceManifest,
@@ -171,18 +173,18 @@ export function populateFrameworkServices(
   environment: HostingEnvironment,
   config: IConfig,
   framework: FrameworkServices,
-): void {
-  services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
-  services.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
-  services.addValue(CONFIG_TOKEN, config);
-  services.addValue(HOST_APPLICATION_LIFETIME_TOKEN, framework.applicationLifetime);
-  services.addValue(HOST_OPTIONS_TOKEN, framework.hostOptions);
-  services.addValue(LOGGER_FACTORY_TOKEN, framework.loggerFactory);
+): IServiceManifest {
+  let s = services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
+  s = s.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
+  s = s.addValue(CONFIG_TOKEN, config);
+  s = s.addValue(HOST_APPLICATION_LIFETIME_TOKEN, framework.applicationLifetime);
+  s = s.addValue(HOST_OPTIONS_TOKEN, framework.hostOptions);
+  s = s.addValue(LOGGER_FACTORY_TOKEN, framework.loggerFactory);
 
   // The default host lifetime. `useConsoleLifetime` appends a ConsoleLifetime
   // registration under the same token; di.core is append-only last-wins, so the
   // console lifetime overrides this when requested.
-  services.add(HOST_LIFETIME_TOKEN, NullLifetime, [[]]);
+  return s.add(HOST_LIFETIME_TOKEN, NullLifetime, [[]]);
 }
 
 /**

@@ -10,8 +10,9 @@
 // its prototype. The exported const IS the standalone call surface.
 //
 // Idempotence mirrors the console sink's `TryAddEnumerable` semantics: ONE
-// provider per manifest however many addBrowserConsole calls run, tracked in a
-// WeakMap keyed by `builder.services`.
+// provider per BUILDER however many addBrowserConsole calls run, tracked in a
+// WeakMap keyed by the builder itself (the manifest chain is immutable, so the
+// manifest is a different object after each registration).
 
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
@@ -19,7 +20,10 @@ import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primit
 import { nameof } from '@rhombus-std/primitives';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
-const registrations = new WeakMap<ILoggingBuilder['services'], BrowserConsoleLoggerProvider>();
+// Keyed by the BUILDER, not by `builder.services`: the manifest chain is
+// immutable, so the manifest object changes on every registration and would
+// defeat the once-per-configuration-pass dedup this map exists for.
+const registrations = new WeakMap<ILoggingBuilder, BrowserConsoleLoggerProvider>();
 
 /**
  * The `BrowserConsoleLoggerExtensions` augmentation set for
@@ -30,14 +34,14 @@ const registrations = new WeakMap<ILoggingBuilder['services'], BrowserConsoleLog
 export const BrowserConsoleLoggerExtensions = {
   /**
    * Adds a browser console logger to the builder — one
-   * {@link BrowserConsoleLoggerProvider} per manifest, writing through the
+   * {@link BrowserConsoleLoggerProvider} per builder, writing through the
    * platform console global.
    */
   addBrowserConsole(builder: ILoggingBuilder): ILoggingBuilder {
-    let provider = registrations.get(builder.services);
+    let provider = registrations.get(builder);
     if (provider === undefined) {
       provider = new BrowserConsoleLoggerProvider();
-      registrations.set(builder.services, provider);
+      registrations.set(builder, provider);
       LoggingBuilderExtensions.addProvider(builder, provider);
     }
     return builder;

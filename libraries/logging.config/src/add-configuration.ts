@@ -76,20 +76,24 @@ export const LoggingBuilderExtensions = {
     // ILoggerProviderConfig<$1> template closes per provider, its
     // typeArg(1) slot reifying the closing token as the constructor's
     // provider-type argument.
-    builder.services
-      .add(
-        nameof<ILoggerProviderConfigFactory>(),
-        LoggerProviderConfigFactory,
-        [[closeToken('Array', nameof<LoggingConfig>())]],
-      )
-      .as('singleton');
-    builder.services
-      .add(
-        loggerProviderConfigToken('$1'),
-        LoggerProviderConfig,
-        [[nameof<ILoggerProviderConfigFactory>(), typeArg(1)]],
-      )
-      .as('singleton');
+    //
+    // `builder.services` is a MUTABLE field (logging's LoggingBuilder): the
+    // manifest chain itself is immutable, so every step below reassigns it to
+    // the manifest its own registration produced, then the final value is
+    // read back through `builder.services` by the caller (§ the same pattern
+    // `addLogging` uses for its own `configure` delegate).
+    builder.services = builder.services.add(
+      nameof<ILoggerProviderConfigFactory>(),
+      LoggerProviderConfigFactory,
+      [[closeToken('Array', nameof<LoggingConfig>())]],
+      'singleton',
+    );
+    builder.services = builder.services.add(
+      loggerProviderConfigToken('$1'),
+      LoggerProviderConfig,
+      [[nameof<ILoggerProviderConfigFactory>(), typeArg(1)]],
+      'singleton',
+    );
 
     if (!rest.length) {
       return builder;
@@ -99,11 +103,19 @@ export const LoggingBuilderExtensions = {
     // ── The LoggerFilterOptions pipeline (the LoggingBuilderExtensions
     // mirror): assembly + custom configure step + reload change-token source.
     const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
-    builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
-    builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(config));
-    builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigChangeTokenSource(config));
+    builder.services = builder.services
+      .addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions())
+      .as('singleton');
+    builder.services = builder.services.addValue(
+      configureStepToken(optionsToken),
+      new LoggerFilterConfigureOptions(config),
+    );
+    builder.services = builder.services.addValue(
+      changeTokenSourceToken(optionsToken),
+      new ConfigChangeTokenSource(config),
+    );
 
-    builder.services.addValue(nameof<LoggingConfig>(), new LoggingConfig(config));
+    builder.services = builder.services.addValue(nameof<LoggingConfig>(), new LoggingConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<ILoggingBuilder>;

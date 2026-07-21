@@ -129,7 +129,7 @@ export const HostingHostBuilderAugmentations = {
     hostBuilder: IHostBuilder,
     configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>,
   ): IHostBuilder {
-    return hostBuilder.configureServices((context, services) => {
+    return hostBuilder.configureServices((context, services) =>
       services.addValue(
         HOST_OPTIONS_CONFIGURE_TOKEN,
         (options: HostOptions) => {
@@ -139,8 +139,8 @@ export const HostingHostBuilderAugmentations = {
             (configureOptions as Func<[HostOptions], void>)(options);
           }
         },
-      );
-    });
+      )
+    );
   },
 
   /**
@@ -159,6 +159,9 @@ export const HostingHostBuilderAugmentations = {
       } else {
         (configureLoggingDelegate as Func<[ILoggingBuilder], void>)(builder);
       }
+      // The builder holds whatever the delegate registered -- the chain is
+      // immutable, so `services` itself is unchanged.
+      return builder.services;
     });
   },
 
@@ -178,6 +181,9 @@ export const HostingHostBuilderAugmentations = {
       } else {
         (configureMetricsDelegate as Func<[IMetricsBuilder], void>)(builder);
       }
+      // The builder holds whatever the delegate registered -- the chain is
+      // immutable, so `services` itself is unchanged.
+      return builder.services;
     });
   },
 
@@ -210,8 +216,8 @@ export const HostingHostBuilderAugmentations = {
     const options = new ConsoleLifetimeOptions();
     configureOptions?.(options);
     return hostBuilder.configureServices((_context, services) => {
-      services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
-      services.addFactory(
+      const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
+      return withOptions.addFactory(
         HOST_LIFETIME_TOKEN,
         (resolver: IResolver) =>
           new ConsoleLifetime(

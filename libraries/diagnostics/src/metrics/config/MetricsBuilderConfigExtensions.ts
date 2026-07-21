@@ -31,9 +31,12 @@ export const MetricsBuilderConfigExtensions = {
    * `MetricsBuilderConfigExtensions.AddConfiguration`.
    */
   addMetricsConfig(builder: IMetricsBuilder, config: IConfig): IMetricsBuilder {
-    builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(config));
-    builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(config));
-    builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(config));
+    builder.services = builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(config));
+    builder.services = builder.services.addValue(
+      METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+      new ConfigChangeTokenSource(config),
+    );
+    builder.services = builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<IMetricsBuilder>;

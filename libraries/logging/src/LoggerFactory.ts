@@ -193,8 +193,7 @@ export class LoggerFactory implements ILoggerFactory {
    * (and everything it built, the factory included).
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = new ServiceManifest();
-    services.addLogging(configure);
+    const services = new ServiceManifest().addLogging(configure);
     const provider = services.build();
     const singletonScope = provider.createScope('singleton');
     const factory = singletonScope.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN);

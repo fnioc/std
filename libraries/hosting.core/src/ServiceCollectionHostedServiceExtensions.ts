@@ -22,9 +22,9 @@
 // resolves the whole set via the collection wrapper token.
 
 // Named imports: unqualified names in a `declare module` body resolve in THIS
-// file's scope, so `AddBuilder`/`Ctor`/`DepSlot`/`ServiceManifestClass` must be
+// file's scope, so `DepSlot`/`IServiceManifest`/`ServiceManifestClass` must be
 // importable here.
-import { type AddBuilder, type DepSlot, type IResolver, type IServiceManifest, RESOLVER_TOKEN,
+import { type DepSlot, type IResolver, type IServiceManifest, RESOLVER_TOKEN,
   type ServiceManifestClass } from '@rhombus-std/di.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
@@ -51,20 +51,20 @@ declare module '@rhombus-std/di.core' {
      * resolver parameter; a class value is disambiguated by type (not arity) and
      * still resolves to the ctor overload below.
      */
-    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): this;
+    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): IServiceManifest<Scopes>;
     /**
      * Registers `ctor` as an {@link IHostedService} the host will start and stop
      * alongside its lifetime. The singleton lifetime is applied here (the host
      * opens the `"singleton"` scope), mirroring the reference's enumerable
      * singleton registration. `signatures` carries the ctor's dep signatures for
-     * the transformer-free path.
+     * the transformer-free path -- omitted, a dependency-free ctor is assumed.
      */
-    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): this;
+    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): IServiceManifest<Scopes>;
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): this;
-    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): this;
+    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): IServiceManifest<Scopes>;
+    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): IServiceManifest<Scopes>;
   }
 }
 
@@ -88,17 +88,17 @@ export const ServiceCollectionHostedServiceExtensions = {
     ...rest:
       | [ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>]
       | [implementationFactory: Func<[IResolver], IHostedService>]
-  ): ServiceManifestClass<string> {
+  ): IServiceManifest<string> {
     const [target, signatures] = rest;
     // Both forms register the shared enumerable-singleton hosted-service token.
     // The factory form injects the live resolver (via the `[[RESOLVER_TOKEN]]`
     // dep signature) so the delegate receives it, mirroring the reference's
-    // `Func<IServiceProvider, T>`.
-    const builder: AddBuilder<string> = isConstructor(target)
-      ? manifest.add(HOSTED_SERVICE_TOKEN, target, signatures)
-      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]]);
-    builder.as('singleton');
-    return manifest;
+    // `Func<IServiceProvider, T>`. A ctor form with no `signatures` is a
+    // dependency-free ctor, stated explicitly as `[[]]` (di.core has no
+    // plugin-less `add(token, ctor)` overload).
+    return isConstructor(target)
+      ? manifest.add(HOSTED_SERVICE_TOKEN, target, signatures ?? [[]], 'singleton')
+      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]], 'singleton');
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
