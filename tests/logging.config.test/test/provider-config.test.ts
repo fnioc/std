@@ -28,8 +28,9 @@ describe('addConfig() — provider-configuration services', () => {
   });
 
   test('the factory chains the provider-named section of every registered configuration', () => {
-    const services = new ServiceManifest<'singleton'>();
-    const builder = new LoggingBuilder(services);
+    // The chain is immutable, so build the manifest the BUILDER holds after
+    // both addConfig calls — not the one it was constructed with.
+    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
     builder.addConfig(rootWith({
       'FakeProvider:Format': 'json',
       'FakeProvider:MaxDepth': '3',
@@ -39,7 +40,7 @@ describe('addConfig() — provider-configuration services', () => {
       'OtherProvider:Format': 'xml', // other providers' sections are invisible
     }));
 
-    const provider = services.build().createScope('singleton');
+    const provider = builder.services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
     const config = factory.getConfig(FAKE_PROVIDER_TOKEN);
 
@@ -52,10 +53,10 @@ describe('addConfig() — provider-configuration services', () => {
 
   test('the chained provider configuration is LIVE across a reload', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig(config);
+    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    builder.addConfig(config);
 
-    const provider = services.build().createScope('singleton');
+    const provider = builder.services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
     const providerConfig = factory.getConfig(FAKE_PROVIDER_TOKEN);
     expect(providerConfig.get('Format')).toBe('json');
@@ -72,10 +73,10 @@ describe('addConfig() — provider-configuration services', () => {
   });
 
   test('the open ILoggerProviderConfig<$1> registration closes per provider', () => {
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
+    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    builder.addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
 
-    const provider = services.build().createScope('singleton');
+    const provider = builder.services.build().createScope('singleton');
     const token = loggerProviderConfigToken(FAKE_PROVIDER_TOKEN);
     const providerConfig = provider.resolve<ILoggerProviderConfig<unknown>>(token);
 
@@ -85,10 +86,10 @@ describe('addConfig() — provider-configuration services', () => {
   });
 
   test('the no-arg method form registers the services without a filter pipeline', () => {
-    const services = new ServiceManifest<'singleton'>();
-    new LoggingBuilder(services).addConfig();
+    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    builder.addConfig();
 
-    const provider = services.build().createScope('singleton');
+    const provider = builder.services.build().createScope('singleton');
     const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
     // No LoggingConfig registered yet: every provider section is empty.
     expect(factory.getConfig(FAKE_PROVIDER_TOKEN).get('Format')).toBeUndefined();

@@ -27,19 +27,22 @@ import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './t
  * an unowned value the container never disposes, so it is handed to the
  * lifetime, whose `stop`/dispose detaches it — see {@link BrowserLifetime}.
  * `context` is threaded for tests; production callers omit it and both the
- * lifetime and the bridge attach to the platform document/window.
+ * lifetime and the bridge attach to the platform document/window. Returns the
+ * manifest produced by every registration -- the chain is immutable, so the
+ * caller must thread this result forward instead of reusing the `services` it
+ * passed in.
  */
 export function registerBrowserLifetime(
   services: IServiceManifest,
   options: BrowserLifetimeOptions,
   context?: PageContext,
-): void {
-  services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
+): IServiceManifest {
+  let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);
-  services.addValue(PAGE_LIFECYCLE_EVENTS_TOKEN, pageLifecycleEvents);
+  s = s.addValue(PAGE_LIFECYCLE_EVENTS_TOKEN, pageLifecycleEvents);
 
-  services.addFactory(
+  return s.addFactory(
     HOST_LIFETIME_TOKEN,
     (resolver: IResolver) =>
       new BrowserLifetime(

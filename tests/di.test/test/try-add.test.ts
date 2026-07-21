@@ -18,36 +18,35 @@ class Second {
 
 describe('tryAdd (conditional class registration)', () => {
   test('registers when the token is absent', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.tryAdd(T.Service, First);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.tryAdd(T.Service, First, [[]]);
 
     const which = services.build().resolve<First>(T.Service).which;
     expect(which).toBe('first');
   });
 
   test('is a no-op when the token is already registered — first wins', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, First);
-    services.tryAdd(T.Service, Second); // should NOT register
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, First, [[]]);
+    services = services.tryAdd(T.Service, Second, [[]]); // should NOT register
 
     // Last-wins resolution would yield Second if tryAdd had added it.
     expect(services.build().resolve<First>(T.Service).which).toBe('first');
   });
 
-  test('the returned continuation tags the lifetime when it registered', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.tryAdd(T.Service, First).as('singleton');
+  test('tags the lifetime when it registers, via the positional scope arg', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.tryAdd(T.Service, First, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     expect(root.resolve<First>(T.Service)).toBe(root.resolve<First>(T.Service));
   });
 
-  test("the no-op continuation's .as() is safely ignored when already present", () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, First).as('singleton');
-    // Token present: tryAdd returns a no-op continuation, .as() must not throw
-    // and must not register Second.
-    expect(() => services.tryAdd(T.Service, Second).as('singleton')).not.toThrow();
+  test('a no-op tryAdd safely ignores its scope argument when already present', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, First, [[]], 'singleton');
+    // Token present: tryAdd is a no-op and must not throw, and must not register Second.
+    expect(() => services.tryAdd(T.Service, Second, [[]], 'singleton')).not.toThrow();
 
     const root = services.build().createScope('singleton');
     expect(root.resolve<First>(T.Service).which).toBe('first');
@@ -56,17 +55,17 @@ describe('tryAdd (conditional class registration)', () => {
 
 describe('tryAddFactory / tryAddValue (conditional)', () => {
   test('tryAddFactory registers only when absent', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.tryAddFactory(T.Service, () => new First());
-    services.tryAddFactory(T.Service, () => new Second()); // no-op
+    let services = new ServiceManifest<'singleton'>();
+    services = services.tryAddFactory(T.Service, () => new First(), [[]]);
+    services = services.tryAddFactory(T.Service, () => new Second(), [[]]); // no-op
 
     expect(services.build().resolve<First>(T.Service).which).toBe('first');
   });
 
   test('tryAddValue registers only when absent — first value wins', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.tryAddValue(T.Config, { v: 1 });
-    services.tryAddValue(T.Config, { v: 2 }); // no-op
+    let services = new ServiceManifest<'singleton'>();
+    services = services.tryAddValue(T.Config, { v: 1 });
+    services = services.tryAddValue(T.Config, { v: 2 }); // no-op
 
     expect(services.build().resolve<{ v: number; }>(T.Config)).toEqual({ v: 1 });
   });
@@ -74,18 +73,18 @@ describe('tryAddFactory / tryAddValue (conditional)', () => {
 
 describe('replace (unconditional)', () => {
   test('replace swaps the registration — the replacement wins', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, First);
-    services.replace(T.Service, Second);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, First, [[]]);
+    services = services.replace(T.Service, Second, [[]]);
 
     expect(services.build().resolve<Second>(T.Service).which).toBe('second');
   });
 
   test('replace leaves exactly one registration (old ones removed)', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, First);
-    services.add(T.Service, First);
-    services.replace(T.Service, Second);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, First, [[]]);
+    services = services.add(T.Service, First, [[]]);
+    services = services.replace(T.Service, Second, [[]]);
 
     // The collection aggregate holds only the replacement, not the two originals.
     const all = services.build().resolve<Second[]>(`Array<${T.Service}>`);
@@ -94,20 +93,20 @@ describe('replace (unconditional)', () => {
   });
 
   test('replaceValue and replaceFactory swap the registration too', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(T.Config, { v: 1 });
-    services.replaceValue(T.Config, { v: 9 });
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, { v: 1 });
+    services = services.replaceValue(T.Config, { v: 9 });
     expect(services.build().resolve<{ v: number; }>(T.Config)).toEqual({ v: 9 });
 
-    const other = new ServiceManifest<'singleton'>();
-    other.add(T.Service, First);
-    other.replaceFactory(T.Service, () => new Second());
+    let other = new ServiceManifest<'singleton'>();
+    other = other.add(T.Service, First, [[]]);
+    other = other.replaceFactory(T.Service, () => new Second(), [[]]);
     expect(other.build().resolve<Second>(T.Service).which).toBe('second');
   });
 
   test('replace on an absent token simply registers it', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.replace(T.Service, Second);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.replace(T.Service, Second, [[]]);
     expect(services.build().resolve<Second>(T.Service).which).toBe('second');
   });
 });

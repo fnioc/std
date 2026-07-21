@@ -31,16 +31,16 @@ describe('the public slot-token grammar', () => {
       .addInMemoryCollection({ 'Widget:Url': 'http://first' })
       .build() as unknown as IConfigRoot;
 
-    const services = new ServiceManifest<'singleton'>();
-    services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
     // What `configure(TOKEN, section)` does internally, spelled through the
     // public grammar: a custom configure step plus a bare change-token source.
-    services.addValue(configureStepToken(TOKEN), {
+    services = services.addValue(configureStepToken(TOKEN), {
       configure(options: WidgetOptions): void {
         options.Url = config.get('Widget:Url') ?? '';
       },
     });
-    services.addValue(changeTokenSourceToken(TOKEN), new ConfigChangeTokenSource(config));
+    services = services.addValue(changeTokenSourceToken(TOKEN), new ConfigChangeTokenSource(config));
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);

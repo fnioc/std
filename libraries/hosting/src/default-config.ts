@@ -88,8 +88,12 @@ export function applyDefaultAppConfig(
  * providers; those provider packages do not exist in this repo, so only the
  * console provider is registered (see scaffoldedIncomplete for the missing sinks).
  */
-export function addDefaultServices(services: IServiceManifest): void {
-  LoggingBuilderExtensions.addProvider(new LoggingBuilder(services), new ConsoleLoggerProvider());
+export function addDefaultServices(services: IServiceManifest): IServiceManifest {
+  const builder = new LoggingBuilder(services);
+  LoggingBuilderExtensions.addProvider(builder, new ConsoleLoggerProvider());
+  // The chain is immutable, so the registration lives on the manifest the
+  // builder now holds -- not on the one that was passed in.
+  return builder.services;
 }
 
 /**

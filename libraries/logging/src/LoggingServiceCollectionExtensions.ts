@@ -67,13 +67,15 @@ declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
      * Registers the logging services and runs the optional {@link ILoggingBuilder}
-     * configuration delegate. Returns `this` for chaining.
+     * configuration delegate. Returns the manifest produced by every
+     * registration -- its own AND whatever the delegate added through the
+     * builder's `.services` (the manifest chain is immutable -- never `this`).
      */
-    addLogging(configure?: Func<[ILoggingBuilder], void>): this;
+    addLogging(configure?: Func<[ILoggingBuilder], void>): IServiceManifest<Scopes>;
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    addLogging(configure?: Func<[ILoggingBuilder], void>): this;
+    addLogging(configure?: Func<[ILoggingBuilder], void>): IServiceManifest<Scopes>;
   }
 }
 
@@ -86,39 +88,51 @@ export const LoggingServiceCollectionExtensions = {
   addLogging(
     manifest: ServiceManifestClass<string>,
     configure?: Func<[ILoggingBuilder], void>,
-  ): ServiceManifestClass<string> {
+  ): IServiceManifest<string> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
-    manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions())
+    let m: IServiceManifest<string> = manifest
+      .addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions())
       .as('singleton');
-    manifest.addValue(
+    m = m.addValue(
       configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
       new DefaultLoggerLevelConfigureOptions(LogLevel.Information),
     );
 
     // ILoggerFactory, injected with the enumerable provider set and the
     // assembled IOptions<LoggerFilterOptions>.
-    manifest.add(
+    m = m.add(
       LOGGER_FACTORY_TOKEN,
       LoggerFactory,
       [[closeToken('Array', LOGGER_PROVIDER_TOKEN), LOGGER_FILTER_OPTIONS_TOKEN]],
-    ).as('singleton');
+      'singleton',
+    );
 
     // The open ILogger<$1> -> Logger<$1> registration: the closing type's token
     // flows in through typeArg(1), from which Logger<T> derives its category.
-    manifest.add(
+    m = m.add(
       closeToken(ILOGGER_TOKEN_BASE, '$1'),
       LoggerOfT,
       [[LOGGER_FACTORY_TOKEN, typeArg(1)]],
-    ).as('singleton');
+      'singleton',
+    );
 
-    // `manifest` is the widened ServiceManifestClass<string> (see the
-    // declare-module note above), whereas ILoggingBuilder.services is the
-    // singleton-default `ServiceManifest` — matching ME, whose logging services
-    // are singleton-only. Narrow the scope phantom here: LoggingBuilder merely
+    // `m` is the widened IServiceManifest<string> (see the declare-module note
+    // above), whereas ILoggingBuilder.services is the singleton-default
+    // `ServiceManifest` — matching ME, whose logging services are
+    // singleton-only. Narrow the scope phantom here: LoggingBuilder merely
     // stores the manifest and never calls the scope-sensitive `build()`, so the
     // phantom is inert.
-    configure?.(new LoggingBuilder(manifest as unknown as IServiceManifest));
-    return manifest;
+    //
+    // `builder.services` is a MUTABLE field (LoggingBuilder, this package):
+    // the `configure` delegate mutates the builder in place the way a
+    // no-transformer consumer expects (`builder.addProvider(...).setMinimumLevel(...)`
+    // or unchained statement-by-statement), and every builder augmentation
+    // reassigns `builder.services` to the manifest its own registration
+    // produced — so reading `builder.services` back out AFTER the delegate
+    // runs picks up everything it registered.
+    const builder = new LoggingBuilder(m as unknown as IServiceManifest);
+    configure?.(builder);
+    return builder.services as unknown as IServiceManifest<string>;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 

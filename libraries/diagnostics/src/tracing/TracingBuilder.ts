@@ -24,7 +24,9 @@ export interface TracingBuilder extends ITracingBuilder {}
  */
 @augment(nameof<ITracingBuilder>())
 export class TracingBuilder implements ITracingBuilder {
-  readonly services: IServiceManifestBase;
+  // Writable (not `readonly`): registering something reassigns `services` to
+  // the new manifest the immutable chain returns (see ITracingBuilder).
+  services: IServiceManifestBase;
 
   /** @param services The registration surface extension functions register against. */
   public constructor(services: IServiceManifestBase) {

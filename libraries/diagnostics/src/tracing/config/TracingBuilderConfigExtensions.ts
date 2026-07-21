@@ -21,9 +21,12 @@ export const TracingBuilderConfigExtensions = {
    * `TracingBuilderConfigExtensions.AddConfiguration`.
    */
   addTracingConfig(builder: ITracingBuilder, config: IConfig): ITracingBuilder {
-    builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(config));
-    builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(config));
-    builder.services.addValue(TRACING_CONFIGURATION_TOKEN, new TracingConfig(config));
+    builder.services = builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(config));
+    builder.services = builder.services.addValue(
+      TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
+      new ConfigChangeTokenSource(config),
+    );
+    builder.services = builder.services.addValue(TRACING_CONFIGURATION_TOKEN, new TracingConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<ITracingBuilder>;

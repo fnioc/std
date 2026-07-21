@@ -86,25 +86,35 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	}
 }
 
+// signaturesArgIndex is the positional slot the dependency-signature argument
+// occupies in a lowered registration call. di.core's verbs order their arguments
+// `(token, value, signatures, scope, key)`, so signatures is ALWAYS argument 3 —
+// it is required, never elided, and the optional scope / key slots follow it.
+// Reading this slot by index is what makes the match survive a keyed registration
+// (`add("base", C, [[...]], void 0, "redis")`), where the signatureof call is
+// no longer the last argument.
+const signaturesArgIndex = 2
+
 // registrationSignatureofCall recognizes a fully-lowered registration call
-// `receiver.add("token", value, signatureof(value))` (or `.addFactory`) — after
-// the nameof stage lowered arg[0] to a string literal — and returns the
-// signatureof call node (the last argument) plus the service-token string. The
-// signatureof stage stashes this so, when its visitor descends to that call, the
-// argument lowers through the dep-hole-checked extractor variant (990010 parity
-// with the di stage's direct add<I>(C) lowering) rather than the tokenless
-// SignatureArray. Matching is purely structural (kind, member name, string-literal
-// arg[0]) — it never touches the checker, so a synthetic (inline-substituted)
-// call is handled without a position/symbol lookup. The last-arg check that it is
-// actually a signatureof call is left to the per-node signatureofArg gate: a
-// non-signatureof last arg simply leaves the stashed token unused.
+// `receiver.add("token", value, signatureof(value)[, scope[, key]])` (or
+// `.addFactory`) — after the nameof stage lowered arg[0] to a string literal —
+// and returns the signatureof call node (the signatures argument) plus the
+// service-token string. The signatureof stage stashes this so, when its visitor
+// descends to that call, the argument lowers through the dep-hole-checked
+// extractor variant (990010 parity with the di stage's direct add<I>(C) lowering)
+// rather than the tokenless SignatureArray. Matching is purely structural (kind,
+// member name, string-literal arg[0]) — it never touches the checker, so a
+// synthetic (inline-substituted) call is handled without a position/symbol
+// lookup. The check that the slot holds an actual signatureof call is left to the
+// per-node signatureofArg gate: a non-signatureof argument there simply leaves
+// the stashed token unused.
 func registrationSignatureofCall(node *shimast.Node) (*shimast.Node, string, bool) {
 	call := node.AsCallExpression()
 	if call.Arguments == nil {
 		return nil, "", false
 	}
 	args := call.Arguments.Nodes
-	if len(args) < 3 {
+	if len(args) <= signaturesArgIndex {
 		return nil, "", false
 	}
 	callee := call.Expression
@@ -118,11 +128,11 @@ func registrationSignatureofCall(node *shimast.Node) (*shimast.Node, string, boo
 	if args[0].Kind != shimast.KindStringLiteral {
 		return nil, "", false
 	}
-	last := args[len(args)-1]
-	if last.Kind != shimast.KindCallExpression {
+	signatures := args[signaturesArgIndex]
+	if signatures.Kind != shimast.KindCallExpression {
 		return nil, "", false
 	}
-	return last, args[0].Text(), true
+	return signatures, args[0].Text(), true
 }
 
 // signatureofArg returns the value argument of a signatureof call at node — from

@@ -21,7 +21,7 @@
 
 // A named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
-import type { AddBuilder } from '@rhombus-std/di.core';
+import type { AddChain } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
@@ -29,9 +29,11 @@ declare module '@rhombus-std/di.core' {
      * Type-driven options sugar — registers an `IOptions<T>` at `token(IOptions<T>)`
      * that wraps the `T` resolved from `token(T)`. Lowers to the explicit
      * `addOptions(token(IOptions<T>), token(T))` (`@rhombus-std/options.augmentations`).
-     * Never runs post-transform. Returns the `.as(scope)` continuation so the
-     * lifetime is chosen at the registration site.
+     * Never runs post-transform. Returns the same chain the explicit
+     * `addOptions` overloads hand back — a NEW manifest carrying the
+     * registration, still open at the `scope` and `key` slots — so the lifetime
+     * is chosen at the registration site and the result must be KEPT.
      */
-    addOptions<T>(): AddBuilder<Scopes>;
+    addOptions<T>(): AddChain<Scopes, 'scope' | 'key'>;
   }
 }

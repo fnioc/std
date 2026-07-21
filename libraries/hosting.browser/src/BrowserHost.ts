@@ -74,7 +74,7 @@ export const BrowserHost = {
     settings?.configureLifetime?.(lifetimeOptions);
     // Registers the BrowserLifetime AND the eagerly-attached PageLifecycleEvents
     // bridge (whose teardown rides the lifetime — see register-browser-lifetime).
-    registerBrowserLifetime(builder.services, lifetimeOptions, settings?.pageContext);
+    builder.services = registerBrowserLifetime(builder.services, lifetimeOptions, settings?.pageContext);
 
     return builder;
   },

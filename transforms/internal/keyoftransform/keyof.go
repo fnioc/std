@@ -7,12 +7,16 @@
 //
 // The two halves of a keyed inline registration are split across the two type
 // primitives: `add<T>()` lowers to `this.add(nameof<T>(), ctor, signatureof(ctor),
-// keyof<T>())` where nameof gives the BASE token and keyof gives the KEY, composed
-// at runtime as `base#key` — the same token the di direct stage derives via
-// keyedTokenFor. An UNKEYED registration never reaches this stage with a `keyof`
-// argument: the inline stage elides the trailing `keyof<T>()` when T is unkeyed
-// (byte-parity with the pre-keyof 3-argument form), so the only unkeyed calls this
-// stage lowers are source-written ones, which become `void 0`.
+// void 0, keyof<T>())` where nameof gives the BASE token and keyof gives the KEY,
+// composed at runtime as `base#key` — the same token the di direct stage derives
+// via keyedTokenFor. di.core's registration verbs order their arguments
+// `(token, value, signatures, scope, key)`, so the key is argument 5 and the
+// `void 0` ahead of it fills the scope slot the type-driven sugar has no value
+// for. An UNKEYED registration never reaches this stage with a `keyof` argument:
+// the inline stage elides the `keyof<T>()` when T is unkeyed — along with the
+// stranded `void 0` placeholder, restoring the plain 3-argument form — so the
+// only unkeyed calls this stage lowers are source-written ones, which become
+// `void 0` themselves.
 //
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_keyof`
 // stage. A substituted `keyof` call carries no checker symbol (its callee is a

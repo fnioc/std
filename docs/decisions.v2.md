@@ -504,4 +504,20 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
 - **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up.
 
-Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
+## Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
+
+## §107 — A mutable-slot holder is the seam between an immutable manifest and a stateful builder
+
+`ServiceManifest` is immutable (an iterable decorator chain; every verb returns a NEW manifest). Everything that _wraps_ a manifest and is configured by a caller-supplied delegate — `ILoggingBuilder`, `IMetricsBuilder`/`ITracingBuilder`, `IHostApplicationBuilder` — therefore cannot register "into" the manifest it was handed. The seam is a single MUTABLE SLOT: di.core exports `IServiceManifestHolder` (`{ services: IServiceManifest }`), a builder's `services` is that writable slot, and every builder augmentation does `builder.services = builder.services.addX(...)` and returns the same builder. Mutation-shaped ergonomics survive; the chain underneath stays immutable.
+
+Two consequences are load-bearing:
+
+- **Long-lived sibling builders SHARE one holder.** `HostApplicationBuilder` passes `this` as the holder to its `LoggingBuilder` and `MetricsBuilder`, so `builder.logging.addConsole()`, `builder.metrics.enableMetrics(…)`, and `builder.services = builder.services.add(…)` all land on one chain. Constructing them over a manifest VALUE forks the chain three ways and `build()` silently drops two of them. `LoggingBuilder`/`MetricsBuilder` therefore take `IServiceManifest | IServiceManifestHolder` and expose `services` as an accessor pair, not a field.
+- **A short-lived builder is read back.** `addLogging(configure)` / `addMetrics(configure)` / `configureLogging` allocate a builder, run the delegate, and return `builder.services` — never the manifest they were given.
+- **Per-configuration dedup keys on the BUILDER, not on `builder.services`.** The console sinks' `TryAddEnumerable`-idempotence `WeakMap` would otherwise see a fresh key on every call, since the manifest object changes with each registration.
+
+`IHostBuilder.configureServices` / `configureContainer` become RETURNING delegates (`Func<[HostBuilderContext, IServiceManifest], IServiceManifest>`): a delegate is the one place with no builder to write through, so the manifest has to come back out. A void `Action` there is a silent-drop trap — it typechecks and registers nothing.
+
+Build-config corollary: a package whose rolled `.d.ts` INLINES di.core forks `IServiceManifestBase` — the inlined copy carries di.core's own `declare module` self-augmentation, whose return types bind to the inlined interface, so `services = services.removeAll(t)` stops typechecking downstream. Every package that depends on di.core must keep it external in `rollup.dts.mjs` (this bit `@rhombus-std/options`).
+
+_Claude's call (holder shape, shared-slot wiring, returning delegates), forced by the owner-directed immutable-manifest change._

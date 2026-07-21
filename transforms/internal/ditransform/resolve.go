@@ -166,6 +166,19 @@ func (c *context) isNameofCall(call *shimast.Node) bool {
 	if id.Text() == nameofName {
 		return true
 	}
+	// Past the spelling check, the symbol lookup needs the same synthetic-node
+	// guard nameoftransform.isNameofCall documents at length: a callee with no
+	// program position, or one whose `Parent` link the factory never re-established
+	// after rebuilding it around a replaced child, nil-panics inside
+	// GetSymbolAtLocation (it derefs `Parent.Parent` unconditionally). Under the
+	// immutable manifest a registration statement is an ASSIGNMENT (`services =
+	// services.add<T>(C)`), so lowering rebuilds the enclosing binary expression
+	// and hands this visitor a partially synthetic tree where it used to see a
+	// fully lowered one. Such a node was never checked, so it can never BE the
+	// checker's nameof: a clean non-match is the right answer.
+	if callee.Pos() < 0 || callee.Parent == nil {
+		return false
+	}
 	symbol := c.checker.GetSymbolAtLocation(callee)
 	if symbol == nil {
 		return false

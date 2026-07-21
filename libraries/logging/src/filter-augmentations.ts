@@ -125,7 +125,9 @@ function configureFilter(
   builder: ILoggingBuilder,
   configureOptions: Func<[LoggerFilterOptions], void>,
 ): ILoggingBuilder {
-  builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
+  // The chain is immutable: `configure` hands back a NEW manifest, so it must be
+  // written into the builder's slot -- a bare call would register nothing.
+  builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
   return builder;
 }
 

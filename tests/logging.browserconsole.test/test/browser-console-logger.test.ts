@@ -5,15 +5,23 @@ import { BrowserConsoleLogger, BrowserConsoleLoggerExtensions, BrowserConsoleLog
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 
-/** A recording stand-in for the di.core registration builder. */
+/**
+ * A recording stand-in for the di.core registration builder. `addValue` returns
+ * a NEW stand-in over the SAME `values` log, mirroring the real manifest's
+ * immutable chain — a double that returned itself would hide exactly the
+ * silent-drop bug this shape exists to catch.
+ */
 function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
   const values: Array<[Token, unknown]> = [];
-  const services = {
-    addValue(token: Token, value: unknown): void {
-      values.push([token, value]);
-    },
-  } as unknown as IServiceManifest;
-  return { services, values };
+  const make = (): IServiceManifest => {
+    return {
+      addValue(token: Token, value: unknown): IServiceManifest {
+        values.push([token, value]);
+        return make();
+      },
+    } as unknown as IServiceManifest;
+  };
+  return { services: make(), values };
 }
 
 /** Records every console call as `[method, args]`. */
@@ -129,9 +137,9 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   expect(providers[0]?.[1]).toBeInstanceOf(BrowserConsoleLoggerProvider);
 });
 
-test('the per-manifest dedup is keyed by services, not effectively global', () => {
-  // A SECOND manifest must get its own provider — proving the WeakMap keys on
-  // `builder.services` rather than a shared boolean that would suppress it.
+test('the per-builder dedup is keyed by the builder, not effectively global', () => {
+  // A SECOND builder must get its own provider — proving the WeakMap keys per
+  // builder rather than on a shared boolean that would suppress it.
   const first = fakeServices();
   const second = fakeServices();
 

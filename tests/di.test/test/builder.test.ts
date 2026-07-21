@@ -20,9 +20,9 @@ describe('ServiceManifest.add runtime guard', () => {
     class Second {
       public readonly which = 'second';
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, First).as('singleton');
-    services.add(T.Service, Second).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Service, First, [[]], 'singleton');
+    services = services.add(T.Service, Second, [[]], 'singleton');
 
     const resolved = services.build().resolve<First | Second>(T.Service);
     expect(resolved.which).toBe('second');
@@ -43,10 +43,10 @@ describe('re-exports from @rhombus-std/di.core', () => {
       public constructor(public readonly db: DbImpl) {}
     }
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Db, DbImpl).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.add(T.Db, DbImpl, [[]], 'singleton');
     // Signature ride on the registration (third `add` argument).
-    services.add(T.Service, Consumer, [[T.Db]]).as('singleton');
+    services = services.add(T.Service, Consumer, [[T.Db]], 'singleton');
 
     const c = services.build().resolve<Consumer>(T.Service);
     expect(c.db).toBeInstanceOf(DbImpl);

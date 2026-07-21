@@ -529,6 +529,22 @@ func (c *context) lowerRegistrationExpression(expr *shimast.Node, plans map[*shi
 }
 
 // lowerRegistrationCall rewrites a single registration call per its plan.
+//
+// The emitted positional shape is the runtime surface a plugin-less author
+// writes by hand: `add(token, ctor, signatures)` / `addFactory(token, factory,
+// signatures)` / `addValue(token, value)`. `signatures` is a REQUIRED argument on
+// the two dependency-carrying verbs — di.core has no 2-argument overload, and
+// "this service takes no dependencies" is STATED as `[[]]`, never inferred from
+// an absent argument — so the slot is always emitted. `addValue` carries no
+// dependencies and therefore no signatures slot at all.
+//
+// The di direct stage emits NO scope and NO key: a scope arrives through the
+// chained `.as(...)` this stage lowers separately, and a `Keyed<T, K>` service
+// type is composed into the TOKEN by tokenForReg (`base#key`) rather than passed
+// as the trailing key argument. That is why moving key from argument 4 to
+// argument 5 (behind the new scope slot) leaves this function's shape untouched;
+// only the inline path, which splits base and key across nameof / keyof, places
+// the key positionally.
 func (c *context) lowerRegistrationCall(call *shimast.Node, plan *regPlan) *shimast.Node {
 	var tokenLit *shimast.Node
 	if plan.hasToken {
@@ -542,8 +558,17 @@ func (c *context) lowerRegistrationCall(call *shimast.Node, plan *regPlan) *shim
 		valueArg = callArguments(call)[0]
 	}
 	args := []*shimast.Node{tokenLit, valueArg}
-	if plan.hasSignatures {
-		args = append(args, c.signaturesLiteral(plan.signatures))
+	if plan.calleeMethod != "addValue" {
+		// An underivable signature emits `void 0` rather than dropping the slot:
+		// eliding it would shift every later positional slot, and `[[]]` would be a
+		// LIE — an empty signature array means "no dependencies", which suppresses
+		// the engine's missing-metadata signal for a constructor that needs args.
+		// `void 0` reads at runtime exactly as the omitted argument did.
+		if plan.hasSignatures {
+			args = append(args, c.signaturesLiteral(plan.signatures))
+		} else {
+			args = append(args, c.undefinedLit())
+		}
 	}
 
 	var newCallee *shimast.Node

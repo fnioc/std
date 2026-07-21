@@ -25,9 +25,9 @@ describe('configure — section-to-options binding', () => {
   test("resolving IOptions<T> binds the section's values into the base", () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
-    const services = new ServiceManifest<'singleton'>();
-    services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
-    services.configure(TOKEN, config.getSection('Widget'));
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    services = services.configure(TOKEN, config.getSection('Widget'));
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
@@ -38,9 +38,9 @@ describe('configure — section-to-options binding', () => {
   test('a reload delivers a fresh value and fires subscribe with it', () => {
     const config = rootWith({ 'Widget:Url': 'http://first' });
 
-    const services = new ServiceManifest<'singleton'>();
-    services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
-    services.configure(TOKEN, config.getSection('Widget'));
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    services = services.configure(TOKEN, config.getSection('Widget'));
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
@@ -71,10 +71,10 @@ describe('configure — section-to-options binding', () => {
       'Extra:Retries': '5',
     });
 
-    const services = new ServiceManifest<'singleton'>();
-    services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
-    services.configure(TOKEN, config.getSection('Widget'));
-    services.configure(TOKEN, config.getSection('Extra'));
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    services = services.configure(TOKEN, config.getSection('Widget'));
+    services = services.configure(TOKEN, config.getSection('Extra'));
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
@@ -85,8 +85,8 @@ describe('configure — section-to-options binding', () => {
 
 describe('addOptions — no configured source', () => {
   test('delivers a static snapshot (value from makeBase, no subscribe)', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' })).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' })).as('singleton');
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);

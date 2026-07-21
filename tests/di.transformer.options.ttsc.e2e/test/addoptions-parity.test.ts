@@ -129,14 +129,14 @@ beforeAll(() => {
   writeFileSync(
     join(projDir, 'src', 'di-core.d.ts'),
     `declare module "@rhombus-std/di.core" {
-  export type AddBuilder<Scopes extends string = "singleton"> = { as(scope: Scopes): void };
+  export type IAsBuilder<Scopes extends string = "singleton"> = { as(scope: Scopes): void };
   export interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
-    addOptions<T>(): AddBuilder<Scopes>;
-    addOptions(token: string, tToken: string): AddBuilder<Scopes>;
+    addOptions<T>(): IAsBuilder<Scopes>;
+    addOptions(token: string, tToken: string): IAsBuilder<Scopes>;
   }
   export namespace Nested {
     export interface IServiceManifestBase<Scopes extends string = "singleton"> {
-      addOptions<T>(): AddBuilder<Scopes>;
+      addOptions<T>(): IAsBuilder<Scopes>;
     }
   }
 }

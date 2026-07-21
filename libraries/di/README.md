@@ -26,8 +26,10 @@ class ConsoleLogger implements ILogger {
   }
 }
 
-const services = new ServiceManifest<'singleton'>();
-services.add('app:ILogger', ConsoleLogger).as('singleton');
+// A manifest is IMMUTABLE: every registration returns a NEW manifest and
+// leaves the receiver alone, so the result has to be kept.
+const services = new ServiceManifest<'singleton'>()
+  .add('app:ILogger', ConsoleLogger, [[]], 'singleton');
 
 const provider = services.build(); // frameless — nothing pre-opened
 const app = provider.createScope('singleton'); // open the singleton frame
@@ -38,7 +40,17 @@ logger.log('hello'); // -> "hello"
 app.dispose();
 ```
 
-This is the hand-written, no-transformer form: `add(token, Ctor)` takes a plain string token and a constructor, `.as(scope)` sets its lifetime, `build()` seals the registration map into a provider, and `createScope(name)` opens a scope frame that owns and caches singleton instances. With the optional transformer, `services.add<ILogger>(ConsoleLogger).as<'singleton'>()` lowers to exactly the call shown above.
+This is the hand-written, no-transformer form: `add(token, Ctor, signatures, scope?)` takes a plain string token, a constructor, the constructor's dependency signatures, and optionally the lifetime scope; `build()` seals the registration map into a provider; and `createScope(name)` opens a scope frame that owns and caches singleton instances. With the optional transformer, `services.add<ILogger>(ConsoleLogger).as<'singleton'>()` lowers to exactly the call shown above.
+
+**Everything returns a new manifest.** The chain never mutates, so a bare
+`services.add(...)` statement registers _nothing_ — its result is the only place
+the registration exists:
+
+```ts
+let services = new ServiceManifest<'singleton'>();
+services = services.add('app:ILogger', ConsoleLogger, [[]], 'singleton'); // kept
+services.add('app:IClock', SystemClock, [[]]); // SILENTLY REGISTERS NOTHING
+```
 
 ## Design philosophy — scopes are uniform tags
 
@@ -50,7 +62,7 @@ This is the hand-written, no-transformer form: `add(token, Ctor)` takes a plain 
 
 | Export                                                                                                                                                                                                                                                                                                                                                        | What it is                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `ServiceManifest<Scopes>`                                                                                                                                                                                                                                                                                                                                     | The registration builder — `.add()` / `.addFactory()` / `.addValue()` / `.build()`.                               |
+| `ServiceManifest<Scopes>`                                                                                                                                                                                                                                                                                                                                     | The immutable registration builder — `.add()` / `.addFactory()` / `.addValue()` / `.build()`.                     |
 | `ServiceProviderClass`                                                                                                                                                                                                                                                                                                                                        | The concrete container implementation backing `IServiceProvider`, exported for white-box use.                     |
 | `IServiceProvider<Scopes>` (type)                                                                                                                                                                                                                                                                                                                             | The public container surface: `resolve`, `resolveAsync`, `resolveFactory`, `createScope`, disposal.               |
 | `IResolver`, `IScopeFactory`, `IRequiredResolver`, `IServiceQuery` (types)                                                                                                                                                                                                                                                                                    | The capability interfaces `IServiceProvider` composes.                                                            |
@@ -62,7 +74,7 @@ This is the hand-written, no-transformer form: `add(token, Ctor)` takes a plain 
 
 ## `ServiceManifest<Scopes>`
 
-The entry point. `Scopes` is the union of declarable scope-name tags (default `"singleton"`). The tags `.as()` and `createScope()` accept are exactly its members. Transient (no cache, fresh instance on every resolve) is the default — there is no `"transient"` scope; the absence of `.as()`, or the absence of an open frame for a tag, is what makes a registration transient.
+The entry point. `Scopes` is the union of declarable scope-name tags (default `"singleton"`). The tags the `scope` argument, `.as()`, and `createScope()` accept are exactly its members. Transient (no cache, fresh instance on every resolve) is the default — there is no `"transient"` scope; a registration with no scope, or with no open frame for its tag, is transient.
 
 ```ts
 import { ServiceManifest } from '@rhombus-std/di';
@@ -72,25 +84,29 @@ const services = new ServiceManifest<'singleton' | 'request'>();
 
 Registration is append-only: each token holds a **list** of registrations in registration order, and resolution picks the most-recent (last) one. A later `add` for the same token therefore overrides an earlier one without deleting it.
 
+The manifest itself is an **immutable iterable decorator chain**: each verb returns a new manifest that yields the previous one's entries first and its own last, so iteration order is authoring order. Nothing is ever mutated in place — thread the result (`services = services.add(...)`).
+
 ### `.add<Interface>(Concrete).as<"scope">()`
 
-Register a concrete implementation against an interface token. The transformer rewrites `add<IFoo>(Foo)` to `add("pkg:IFoo", Foo)` at build time. Hand-fed consumers pass the token string directly.
+Register a concrete implementation against an interface token. The transformer rewrites `add<IFoo>(Foo)` to `add("pkg:IFoo", Foo, [[…]])` at build time — deriving the signature it injects. Hand-fed consumers pass the token string and the signature directly.
 
 ```ts
-// With transformer (author form):
-services.add<ILogger>(ConsoleLogger).as<'singleton'>();
-services.add<IUserRepo>(SqlUserRepo).as<'request'>();
-services.add<IRequestId>(UuidRequestId); // no .as() → transient
+// With transformer (author form) — each call still returns a new manifest:
+services = services.add<ILogger>(ConsoleLogger).as<'singleton'>();
+services = services.add<IUserRepo>(SqlUserRepo).as<'request'>();
+services = services.add<IRequestId>(UuidRequestId); // no .as() → transient
 
 // Without transformer (lowered form, or plugin-less):
-services.add('pkg:ILogger', ConsoleLogger).as('singleton');
-services.add('pkg:IUserRepo', SqlUserRepo).as('request');
-services.add('pkg:IRequestId', UuidRequestId);
+services = services.add('pkg:ILogger', ConsoleLogger, [[]], 'singleton');
+services = services.add('pkg:IUserRepo', SqlUserRepo, [[]], 'request');
+services = services.add('pkg:IRequestId', UuidRequestId, [[]]);
 ```
 
 The type constraint on `Concrete` is `new (...args: any[]) => Interface` — plain `new`, not `abstract new`. Abstract classes are correctly rejected because the container instantiates the concrete.
 
-`.as<S>()` checks at compile time that `S` is a declared scope name. Passing an undeclared string is a type error.
+`.as<S>()` checks at compile time that `S` is a declared scope name. Passing an undeclared string is a type error. The positional `scope` argument is checked the same way.
+
+**Positional or fluent, never both.** A registration call hands back an `AddChain<Scopes, Slots>` — the manifest itself, widened with a modifier face for each slot the call did _not_ fill positionally (`withSignature`, `as`, `withKey`). Filling a slot consumes its face, so `.as('a').as('b')` is a compile error, while `.withKey('k').as('a')` and `.as('a').withKey('k')` both type-check. Prefer the positional form: it is one call and one assignment.
 
 ### `add<I>(Concrete, sig)` — registration-time signature override
 
@@ -104,16 +120,20 @@ add<ICache>(RedisCache, ['pkg:IRedisClient', undefined, 'pkg:ILogger']);
 
 Pure token users (no transformer) supply a complete signature via the registration's own third argument (`add(token, C, signatures)`) instead.
 
-### `add(token, Ctor, signatures?)` — registration-carried dependency signatures
+### `add(token, Ctor, signatures, scope?, key?)` — registration-carried dependency signatures
 
-Not to be confused with the sparse `sig` override above — that's a type-driven, compile-time-only feature consumed entirely by the transformer. This is the **runtime** form of `add`: an optional third argument, `signatures`, a complete (non-sparse) multi-signature array carried directly on the registration record.
+Not to be confused with the sparse `sig` override above — that's a type-driven, compile-time-only feature consumed entirely by the transformer. This is the **runtime** form of `add`: a REQUIRED third argument, `signatures`, a complete (non-sparse) multi-signature array carried directly on the registration record, followed by the optional `scope` and `key` slots.
 
 ```ts
-add(token: Token, ctor: Ctor, signatures?: readonly (readonly DepSlot[])[]): AddBuilder
-addFactory(token: Token, factory: Factory, signatures?: readonly (readonly DepSlot[])[]): AddBuilder
+add(token: Token, ctor: Ctor, signatures: DepSignatures): AddChain<Scopes, 'scope' | 'key'>
+add(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes): AddChain<Scopes, 'key'>
+add(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes, key: string): IServiceManifest<Scopes>
+// addFactory takes the identical three overloads with `factory: Factory` in place of `ctor`.
 ```
 
-There is no global, constructor-keyed metadata store — this array **is** the sole signature channel, for both classes (`add`) and factories (`addFactory`). Keying it on the registration rather than the constructor function is what lets one JS class back **any number of independent registrations** with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template (see [Open generics](#open-generics) below). `@rhombus-std/di.transformer` emits this array inline for every registration it can statically extract a signature from — `add<IFoo>(Foo)` lowers to `add("pkg:IFoo", Foo, [[...]])`, with no separate prelude call and nothing hoisted. Hand-write it directly for the plugin-less path. Omitting the third argument leaves the registration signature-less: fine for a zero-arg constructor, but a constructor with parameters throws `MissingMetadataError` at resolve time.
+There is no global, constructor-keyed metadata store — this array **is** the sole signature channel, for both classes (`add`) and factories (`addFactory`). Keying it on the registration rather than the constructor function is what lets one JS class back **any number of independent registrations** with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template (see [Open generics](#open-generics) below). `@rhombus-std/di.transformer` emits this array inline for every registration it can statically extract a signature from — `add<IFoo>(Foo)` lowers to `add("pkg:IFoo", Foo, [[...]])`, with no separate prelude call and nothing hoisted. Hand-write it directly for the plugin-less path.
+
+`signatures` is **required** rather than optional, because a plugin-less caller cannot derive it: "this service takes no dependencies" has to be _stated_ as `[[]]`, never inferred from an absent argument. A constructor that does take parameters but is registered with `[[]]` throws `MissingMetadataError` at resolve time.
 
 ### `addFactory(token, factory, signatures?)` and `addValue(token, value)`
 
@@ -124,26 +144,28 @@ import { RESOLVER_TOKEN } from '@rhombus-std/di';
 
 // Factory that wants the live IResolver: declare it as a provider-typed param
 // (its slot is the intrinsic RESOLVER_TOKEN), resolve its own deps by hand.
-services.addFactory(
+services = services.addFactory(
   'pkg:IDb',
   (sp) => new PostgresDb(sp.resolve<IConfig>('pkg:IConfig')),
   [[RESOLVER_TOKEN]],
-)
-  .as('singleton');
+  'singleton',
+);
 
 // Factory with a signature: each param is injected by its slot, like `add`.
-services.addFactory('pkg:IDb', (config) => new PostgresDb(config), [[
-  'pkg:IConfig',
-]])
-  .as('singleton');
+services = services.addFactory(
+  'pkg:IDb',
+  (config) => new PostgresDb(config),
+  [['pkg:IConfig']],
+  'singleton',
+);
 
 // Value: a pre-constructed instance (re-used as-is, no lifetime)
-services.addValue('pkg:ICache', new NullCache());
+services = services.addValue('pkg:ICache', new NullCache());
 ```
 
-`addFactory` returns the `.as(scope?)` continuation, exactly like `add` — `.as("singleton")` caches the result in the nearest enclosing open `"singleton"` frame; no `.as()` call runs the factory fresh on every resolve (transient). A factory that wants the live `IResolver` declares it as an ordinary parameter — the provider is an intrinsically resolvable type (a `IResolver`-typed param derives `RESOLVER_TOKEN`), so "I want the provider" is plain DI. A signature-less factory simply runs with no injected args — nothing is auto-supplied. `addValue` takes no lifetime — the value is always the same reference, and it returns `void`, not a builder.
+`addFactory` takes the same positional `scope` / `key` tail as `add` — `"singleton"` caches the result in the nearest enclosing open `"singleton"` frame; no scope runs the factory fresh on every resolve (transient). A factory that wants the live `IResolver` declares it as an ordinary parameter — the provider is an intrinsically resolvable type (a `IResolver`-typed param derives `RESOLVER_TOKEN`), so "I want the provider" is plain DI. A factory registered with the empty signature `[[]]` simply runs with no injected args — nothing is auto-supplied. `addValue` takes neither signatures nor a lifetime (the value is always the same reference), only an optional trailing `key`; like every other verb it returns the new manifest.
 
-To override a registration for a specific context (e.g. a test double), register a later spec for the same token on the `ServiceManifest` before calling `build()`. The registration map is append-only and last-registration-wins. The map seals at `build()` — no post-build mutation is possible.
+To override a registration for a specific context (e.g. a test double), register a later spec for the same token before calling `build()`. The registration map is append-only and last-registration-wins. `build()` materializes the chain by iterating it, so what a provider contains is exactly the manifest you called `build()` on — an earlier manifest in the chain is unaffected by anything registered after it.
 
 ## Scope model
 
@@ -161,9 +183,9 @@ const req = app.createScope('request'); // per HTTP request
 
 | Registration                     | Behavior                                                                               |
 | -------------------------------- | -------------------------------------------------------------------------------------- |
-| No `.as()` (transient)           | Fresh instance on every resolve. Never cached.                                         |
-| `.as("singleton")`               | Owned and cached by the nearest enclosing **open** `"singleton"` frame.                |
-| `.as("request")`                 | Owned and cached by the nearest enclosing **open** `"request"` frame.                  |
+| No scope (transient)             | Fresh instance on every resolve. Never cached.                                         |
+| Scope `"singleton"`              | Owned and cached by the nearest enclosing **open** `"singleton"` frame.                |
+| Scope `"request"`                | Owned and cached by the nearest enclosing **open** `"request"` frame.                  |
 | Tag with no enclosing open frame | **Transient.** Fresh instance, no cache, no error — an absent frame is just transient. |
 
 ### Captive-dependency protection
@@ -171,10 +193,10 @@ const req = app.createScope('request'); // per HTTP request
 The critical correctness rule: deps are resolved **relative to the frame that will own the instance**, not the frame that triggered the resolve. This is what keeps a longer-lived service from cache-capturing a shorter-lived one.
 
 ```ts
-const services = new ServiceManifest<'singleton' | 'request'>();
-services.add<ICache>(RedisCache).as<'singleton'>();
-services.add<IUserContext>(HttpUserContext).as<'request'>();
-services.add<IUserService>(UserService).as<'singleton'>();
+let services = new ServiceManifest<'singleton' | 'request'>();
+services = services.add<ICache>(RedisCache).as<'singleton'>();
+services = services.add<IUserContext>(HttpUserContext).as<'request'>();
+services = services.add<IUserService>(UserService).as<'singleton'>();
 // UserService constructor: (cache: ICache, ctx: IUserContext)
 
 const app = services.build().createScope('singleton');
@@ -196,7 +218,9 @@ A registration whose service token contains a **hole** (`$1`, `$2`, …) is an _
 
 ```ts
 // Open registration: matches any closing of IRepository<T>, one hole per arg
-services.add<IRepository<$<1>>>(SqlRepository<$<1>>).as<'singleton'>();
+services = services.add<IRepository<$<1>>>(SqlRepository<$<1>>).as<
+  'singleton'
+>();
 
 // Each closing resolves and caches independently
 const userRepo = scope.resolve<IRepository<User>>(); // "pkg:IRepository<pkg:User>"
@@ -208,7 +232,7 @@ const orderRepo = scope.resolve<IRepository<Order>>(); // "pkg:IRepository<pkg:O
 
 - **All-holes only.** Every type-arg position in an open service token must be a hole — `IFoo<$1,$1>` is allowed (repeats mean "match only equal args"); mixing concrete args and holes (`IFoo<$1,User>`) is a registration error.
 - **Class registrations only.** `addValue`/`addFactory` reject an open token — there is no single value or factory that could serve every closing.
-- **`.as(tag)` applies per closing**, not to the template as a whole — `IRepository<A>` and `IRepository<B>` are distinct singletons, each cached in the nearest enclosing frame carrying `tag`, exactly like two unrelated `.as("singleton")` registrations.
+- **The scope tag applies per closing**, not to the template as a whole — `IRepository<A>` and `IRepository<B>` are distinct singletons, each cached in the nearest enclosing frame carrying `tag`, exactly like two unrelated `.as("singleton")` registrations.
 - **Last-registered wins** among multiple open registrations matching the same base + arity (and satisfying any repeated-hole equality constraint) — same semantics as the exact-match list.
 
 ### Resolve-time fallback and memoization
@@ -221,7 +245,7 @@ Resolving a token the exact-match map has no entry for falls through, in order:
 4. **Substitute** — the open registration's carried dependency signatures are substituted with the closing's concrete type args (`TypeArgRef` slots become `LiteralRef`s carrying the substituted token).
 5. **Synthesize** a class `Registration` for the closed token — a constructor-wrapping producer that inherits the constructor and scope tag and carries the substituted signatures — and memoize it.
 
-**Exact beats open.** An exact registration for a closed token — one you registered directly, e.g. `services.add<IRepository<User>>(SpecialUserRepo)` alongside the open `IRepository<$<1>>` registration — is checked _before_ the memo and the open-table fallback, so it always wins.
+**Exact beats open.** An exact registration for a closed token — one you registered directly, e.g. `services = services.add<IRepository<User>>(SpecialUserRepo)` alongside the open `IRepository<$<1>>` registration — is checked _before_ the memo and the open-table fallback, so it always wins.
 
 **Resolving a token that still contains a hole throws.** `scope.resolve("pkg:IRepository<$1>")` is not a valid resolve target — only closed tokens resolve. See `OpenTokenResolutionError` below.
 
@@ -240,11 +264,12 @@ No transformer required — template tokens are just strings with `$N` holes, an
 import { closeToken, typeArg } from '@rhombus-std/di';
 
 // Template registration — carried signatures include a TypeArgRef via typeArg(1)
-services.add(
+services = services.add(
   'app:IRepository<$1>',
   SqlRepository,
   [['app:IDbConnection', typeArg(1)]],
-).as('singleton');
+  'singleton',
+);
 
 // Resolve closings by hand-closing the token
 const userToken = closeToken('app:IRepository', 'app:User'); // "app:IRepository<app:User>"
@@ -255,7 +280,7 @@ Because the signature array lives on the **registration**, not on the constructo
 
 ```ts
 // SqlRepository backs an open template...
-services.add('app:IRepository<$1>', SqlRepository, [[
+services = services.add('app:IRepository<$1>', SqlRepository, [[
   'app:IDbConnection',
   typeArg(1),
 ]]);
@@ -263,7 +288,7 @@ services.add('app:IRepository<$1>', SqlRepository, [[
 // ...and a second, unrelated open template for a different service base,
 // with its own independent signature array. No collision: each registration
 // owns its own signatures.
-services.add('app:IAuditLog<$1>', SqlRepository, [[
+services = services.add('app:IAuditLog<$1>', SqlRepository, [[
   'app:IAuditConnection',
   typeArg(1),
 ]]);
@@ -279,7 +304,7 @@ class MyService {
   constructor(logOrDb: ILogger | IDb, db?: IDb) {/* ... */}
 }
 
-services.add('pkg:myService', MyService, [
+services = services.add('pkg:myService', MyService, [
   ['pkg:IDb'],
   ['pkg:ILogger', 'pkg:IDb'],
 ]);
@@ -330,10 +355,10 @@ Instances owned by ancestor scopes are disposed when those scopes close, not whe
 An async dependency is tokenized at its **true** `Promise<X>` type — never unwrapped to `X`. Register the async factory under the `Promise<X>` token directly:
 
 ```ts
-services.addFactory('Promise<pkg:IDb>', async (sp) => {
+services = services.addFactory('Promise<pkg:IDb>', async (sp) => {
   const pool = sp.resolve<IConnectionPool>('pkg:IConnectionPool');
   return new PostgresDb(await pool.connect());
-}, [[RESOLVER_TOKEN]]).as('singleton');
+}, [[RESOLVER_TOKEN]], 'singleton');
 ```
 
 - `resolve<Promise<IDb>>("Promise<pkg:IDb>")` returns the **raw promise** — the honest, synchronous view of an async registration.
@@ -446,7 +471,7 @@ Thrown when the container tries to build the factory callable and cannot. Two re
 
 | Reason           | Meaning                                                                                                                                                                                         |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `"unregistered"` | The factory's target token has no registration. A factory parameter needs the target registered with `services.add(...)`.                                                                       |
+| `"unregistered"` | The factory's target token has no registration. A factory parameter needs the target registered with `services = services.add(...)`.                                                            |
 | `"not-a-class"`  | The target is registered via `addValue` or `addFactory`, not a class. A factory builds its target with `new`; only class registrations qualify. Resolve it directly or change the registration. |
 
 `FactoryTargetError` is thrown when the factory callable is constructed (at owning-class resolution time), not when the callable is invoked.
@@ -458,7 +483,7 @@ A `Union` dep slot tries each member in declaration order and resolves to the fi
 ```ts
 import { union } from '@rhombus-std/di';
 
-services.add('pkg:IHandler', Handler, [[
+services = services.add('pkg:IHandler', Handler, [[
   union('pkg:IRedis', 'pkg:IMemoryCache'),
   'pkg:ILogger',
 ]]);
@@ -472,15 +497,16 @@ Token users construct `Union` slots with `union(...)`. Transformer users write a
 
 Zero-argument constructor — scopes are just tags, there is no root name to configure.
 
-| Member                                    | Signature                                                                                       | Description                                                                                                                                                                         |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `add<I>(Concrete)`                        | `(ctor: new (...) => I) => AddBuilder`                                                          | Register a concrete class against interface `I`.                                                                                                                                    |
-| `add<I>(Concrete, sig)`                   | `(ctor, sig: readonly (DepSlot \| undefined)[]) => AddBuilder`                                  | Register with a positional signature override.                                                                                                                                      |
-| `.as<S>()`                                | `(scope: S) => void`                                                                            | Set the lifetime scope tag. No call → transient.                                                                                                                                    |
-| `add(token, ctor, signatures?)`           | `(token: string, ctor, signatures?: readonly (readonly DepSlot[])[]) => AddBuilder`             | Class registration (lowered form). An open (holey) token routes to the open-registration table; `signatures` is the sole signature channel (see [Open generics](#open-generics)).   |
-| `addFactory(token, factory, signatures?)` | `(token: string, factory: Factory, signatures?: readonly (readonly DepSlot[])[]) => AddBuilder` | Factory registration. Without `signatures`, the factory receives the live `IResolver` as its sole argument; with `signatures`, each call param is injected by its slot, like `add`. |
-| `addValue(token, value)`                  | `(token: string, value: unknown) => void`                                                       | Value registration. A pre-built instance, re-used as-is.                                                                                                                            |
-| `build()`                                 | `() => IServiceProvider<Scopes>`                                                                | Seal the registration map and return a **frameless** `IServiceProvider` (no scope pre-opened). No post-build mutation is possible.                                                  |
+| Member                                                 | Signature                                                                                            | Description                                                                                                                                                 |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `add<I>(Concrete)`                                     | `(ctor: new (...) => I) => AddChain`                                                                 | Register a concrete class against interface `I`.                                                                                                            |
+| `add<I>(Concrete, sig)`                                | `(ctor, sig: readonly (DepSlot \| undefined)[]) => AddChain`                                         | Register with a positional signature override.                                                                                                              |
+| `.as<S>()`                                             | `(scope: S) => AddChain`                                                                             | Set the lifetime scope tag, returning the new manifest. No call → transient.                                                                                |
+| `.withKey(k)`                                          | `(key: string) => AddChain`                                                                          | Make the registration keyed — its token becomes `base#key`.                                                                                                 |
+| `add(token, ctor, signatures, scope?, key?)`           | `(token, ctor, signatures: DepSignatures, scope?, key?) => AddChain \| IServiceManifest`             | Class registration (lowered form). An open (holey) token routes to the open-registration table; `signatures` is required and is the sole signature channel. |
+| `addFactory(token, factory, signatures, scope?, key?)` | `(token, factory: Factory, signatures: DepSignatures, scope?, key?) => AddChain \| IServiceManifest` | Factory registration. Each call param is injected by its slot, like `add`; `[[RESOLVER_TOKEN]]` hands the factory the live resolver.                        |
+| `addValue(token, value, key?)`                         | `(token: string, value: unknown, key?: string) => IServiceManifest`                                  | Value registration. A pre-built instance, re-used as-is.                                                                                                    |
+| `build()`                                              | `() => IServiceProvider<Scopes>`                                                                     | Seal the registration map and return a **frameless** `IServiceProvider` (no scope pre-opened). No post-build mutation is possible.                          |
 
 ### `IServiceProvider<Scopes>`
 

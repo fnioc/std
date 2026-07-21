@@ -37,7 +37,7 @@ func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown, key?: string): unknown;
+  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
@@ -51,14 +51,15 @@ export declare function keyof<T>(): string | undefined;
 `)
 	// The real add-sugar body, authored over the three compile-time primitives, each
 	// imported from its home module (nameof from primitives, signatureof + keyof from
-	// di.transformer). The trailing keyof<T>() is the §98 keyed-registration key half;
-	// an UNKEYED registration elides it in the inline stage (byte-parity).
+	// di.transformer). keyof<T>() is the §98 keyed-registration key half, in the KEY
+	// slot (argument 5) behind the `void 0` filling the scope slot; an UNKEYED
+	// registration elides both in the inline stage (byte-parity with the plain form).
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.add(nameof<T>(), ctor, signatureof(ctor), keyof<T>());
+    return this.add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
 };
 `)
@@ -200,10 +201,11 @@ services.add<IRepo<$<1>>>(SqlRepo<$<1>>);
 // TestKeyedInlinePipelineComposesBaseKey is the §98 keyed inline lowering
 // end-to-end: `add<Keyed<ICache, "redis">>(RedisCache)` lowered through the full
 // inline pipeline (inline -> nameof -> signatureof -> keyof) splits the keyed token
-// across two arguments — nameof gives the BASE (arg0), keyof gives the KEY (a
-// trailing string literal) — which the runtime composes as `base#key`. The di
-// DIRECT stage composes the whole `base#key` into arg0. This pins that the two
-// halves reunite exactly: the inline base + `#` + the keyof key == the di token.
+// across two arguments — nameof gives the BASE (arg0), keyof gives the KEY (arg5,
+// behind the `void 0` scope slot) — which the runtime composes as `base#key`. The
+// di DIRECT stage composes the whole `base#key` into arg0. This pins that the two
+// halves reunite exactly: the inline base + `#` + the keyof key == the di token,
+// and that the key lands in the KEY slot rather than the scope slot ahead of it.
 func TestKeyedInlinePipelineComposesBaseKey(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 import type { Keyed } from '@rhombus-std/di.core';
@@ -226,9 +228,12 @@ services.add<Keyed<ICache, "redis">>(RedisCache);
 	if !strings.HasSuffix(diTok, "#redis") {
 		t.Fatalf("di direct token must carry the composed key: %q", diTok)
 	}
-	// The keyof half lowered to the "redis" key literal as the trailing argument.
-	if !strings.Contains(inlineOut, `, "redis")`) {
-		t.Fatalf("expected the keyof key %q as the trailing add() argument:\n%s", "redis", inlineOut)
+	// The keyof half lowered to the "redis" key literal in the KEY slot — argument
+	// 5, behind the scope placeholder. Asserting the placeholder too is what pins
+	// the SLOT rather than merely "somewhere at the end": a key that regressed into
+	// the scope slot would still end the call with `"redis")`.
+	if !strings.Contains(inlineOut, `, void 0, "redis")`) {
+		t.Fatalf("expected the keyof key %q in the add() KEY slot (behind the scope placeholder):\n%s", "redis", inlineOut)
 	}
 	// The two halves reunite onto the di direct token.
 	if inlineBase+"#redis" != diTok {
