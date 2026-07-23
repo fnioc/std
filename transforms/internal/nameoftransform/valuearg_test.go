@@ -3,6 +3,10 @@ package nameoftransform
 import (
 	"strings"
 	"testing"
+
+	shimprinter "github.com/microsoft/typescript-go/shim/printer"
+
+	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
 // TestTokenforTypeQueryPinsClassToken pins the by-construction identity the brief
@@ -87,5 +91,79 @@ export const viaType = tokenfor<AppConfig>();
 	}
 	if valueTok != typeTok {
 		t.Fatalf("value-arg tokenfor(cfg) must equal type-arg tokenfor<AppConfig>(): %q vs %q", valueTok, typeTok)
+	}
+}
+
+// TestTokenofValueArgRawType pins the RAW-type semantics of tokenof (the addValue
+// self primitive): a source-written `tokenof(makeThing)` where
+// `makeThing: () => Thing` tokenizes as the function's OWN type (`…:makeThing`),
+// NOT its call-signature return type (`…:Thing`). This is the discriminating
+// difference from tokenfor, whose produced-type derivation WOULD unwrap the same
+// value to `…:Thing`; the two must diverge here for addValue parity to hold.
+func TestTokenofValueArgRawType(t *testing.T) {
+	src := `import { tokenof, tokenfor } from '@rhombus-std/di.core';
+interface Thing {}
+declare function makeThing(): Thing;
+export const viaTokenof = tokenof(makeThing);
+export const viaTokenfor = tokenfor(makeThing);
+`
+	prog, app := buildNameofWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerNameof(t, prog, app)
+	rawTok := nameofToken(t, out, "viaTokenof")
+	producedTok := nameofToken(t, out, "viaTokenfor")
+
+	if !strings.HasSuffix(rawTok, ":makeThing") {
+		t.Fatalf("tokenof(makeThing) should derive the function's OWN type token …:makeThing, got %q", rawTok)
+	}
+	if !strings.HasSuffix(producedTok, ":Thing") {
+		t.Fatalf("tokenfor(makeThing) should unwrap to the return-type token …:Thing, got %q", producedTok)
+	}
+	if rawTok == producedTok {
+		t.Fatalf("tokenof (raw) and tokenfor (produced) must diverge for a callable value: both %q", rawTok)
+	}
+	// The now-unreferenced tokenof/tokenfor imports are both elided.
+	if strings.Contains(out, "import {") {
+		t.Fatalf("the now-unreferenced value-token imports should be elided:\n%s", out)
+	}
+}
+
+// TestValueArgUnderivableReportsDiagnostic is the FINDING-2 failure-path proof
+// (constraint 9): a value-argument token call whose argument has an ANONYMOUS
+// (unnameable) type cannot derive a token, so the stage reports a targeted
+// diagnostic naming the problem and leaves the call UN-lowered — never silently
+// emits the empty token "". It runs for BOTH value primitives (tokenof's raw path
+// and tokenfor's produced path), which share the lowerValueArg failure handling.
+func TestValueArgUnderivableReportsDiagnostic(t *testing.T) {
+	for _, prim := range []string{"tokenof", "tokenfor"} {
+		t.Run(prim, func(t *testing.T) {
+			src := "import { " + prim + " } from '@rhombus-std/di.core';\n" +
+				"export const bad = " + prim + "({ a: 1 });\n"
+			prog, app := buildNameofWorkspace(t, src)
+			defer func() { _ = prog.Close() }()
+
+			ctx := plugin.NewContext(prog, app)
+			var diags []plugin.Diagnostic
+			transform := New(prog, ctx, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
+			ec := shimprinter.NewEmitContext()
+			out := reprint(ec, transform(ec, mainSF(t, prog)))
+
+			if len(diags) != 1 {
+				t.Fatalf("%s: expected exactly one underivable-value diagnostic, got %d: %+v", prim, len(diags), diags)
+			}
+			if diags[0].Code != valueArgUnderivableCode {
+				t.Fatalf("%s: diagnostic code: got %q want %q", prim, diags[0].Code, valueArgUnderivableCode)
+			}
+			if diags[0].File == "" {
+				t.Fatalf("%s: diagnostic should name the source file, got empty File", prim)
+			}
+			if strings.Contains(out, `const bad = ""`) {
+				t.Fatalf("%s: underivable value must NOT lower to the empty token:\n%s", prim, out)
+			}
+			if !strings.Contains(out, prim+"(") {
+				t.Fatalf("%s: the underivable value call should survive un-lowered:\n%s", prim, out)
+			}
+		})
 	}
 }

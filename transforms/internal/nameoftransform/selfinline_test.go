@@ -58,12 +58,14 @@ declare const KEY: unique symbol;
 export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 export declare function keyof<T>(): string | undefined;
 `)
-	// The real sugar bodies, authored over the compile-time primitives (tokenfor
-	// from primitives, signatureof from di.transformer). The self bodies omit the
-	// scope/key slots entirely and derive the token from the VALUE via the value-arg
-	// tokenfor(value); the generic body is present only so a no-type-arg call has an
-	// alternative overload to (correctly) NOT bind to.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	// The real sugar bodies, authored over the compile-time primitives (tokenfor /
+	// tokenof from primitives, signatureof from di.transformer). The self bodies omit
+	// the scope/key slots entirely and derive the token from the VALUE — addClass /
+	// addFactory via the produced-type `tokenfor(value)`, addValue via the raw-type
+	// `tokenof(value)` (an already-built value registers under its own type, matching
+	// the di engine's raw-type addValue path); the generic body is present only so a
+	// no-type-arg call has an alternative overload to (correctly) NOT bind to.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives';
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
@@ -79,7 +81,7 @@ export const ManifestSelfInline = {
     return this.addFactory(tokenfor(factory), factory, signatureof(factory));
   },
   addValue(this: IServiceManifestBase, value: unknown): unknown {
-    return this.addValue(tokenfor(value), value);
+    return this.addValue(tokenof(value), value);
   },
 };
 `)
@@ -211,10 +213,13 @@ services.addFactory(makeThing);
 
 // TestSelfInlineAddValueMatchesDiDirect is the W3 parity proof for addValue:
 // `services.addValue(cfg)` lowered through the inline self body's value-arg
-// tokenfor matches the di direct stage's inferred lowering. A value carries no
+// tokenof matches the di direct stage's inferred lowering. A value carries no
 // deps, so the lowered call is the bare `addValue("token", value)`; the token
-// derives from the value's own (non-callable) type — ProducedTypeOf returns it
-// unchanged, matching the di stage's addValue raw-type path.
+// derives from the value's OWN type (tokenof never unwraps), matching the di
+// stage's addValue raw-type path. For a plain (non-callable) value this is
+// indistinguishable from tokenfor, but see TestSelfInlineAddValueFn /
+// TestSelfInlineAddValueClassRef for the callable/constructable cases where the
+// two diverge and only tokenof holds parity.
 func TestSelfInlineAddValueMatchesDiDirect(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface AppConfig { host: string }
@@ -236,6 +241,74 @@ services.addValue(cfg);
 		t.Fatalf("expected the value's own type token (…:AppConfig), got %q", inlineTok)
 	}
 	// No deps: the inline pipeline must not synthesize a `[[...]]` array for addValue.
+	if strings.Contains(inlineOut, "[[") {
+		t.Fatalf("addValue must carry no dependency array, got:\n%s", inlineOut)
+	}
+}
+
+// TestSelfInlineAddValueFn is the FINDING-1 divergence proof: a CALLABLE value
+// registered via `services.addValue(makeThing)` must tokenize as the function's
+// OWN type (`…:makeThing`), NOT its call-signature return type (`…:Thing`). This is
+// the case where the produced-type `tokenfor` and the raw-type `tokenof` diverge —
+// di.core's inferred `addValue` lowering keeps the raw type, so the inline self
+// body MUST use `tokenof` to stay byte-identical. Were the body still on
+// `tokenfor`, inline would derive `…:Thing` and di-direct `…:makeThing`, breaking
+// parity; this test fails on that regression and passes only with tokenof.
+func TestSelfInlineAddValueFn(t *testing.T) {
+	src := `import { services } from '@rhombus-std/di.core';
+interface IDb {}
+interface Thing {}
+declare function makeThing(db: IDb): Thing;
+services.addValue(makeThing);
+`
+	prog, app := buildSelfInlineWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	inlineOut := lowerInlinePipeline(t, prog, app)
+	diOut := lowerDi(t, prog, app)
+
+	inlineTok := diCallToken(t, inlineOut, "addValue")
+	diTok := diCallToken(t, diOut, "addValue")
+	if inlineTok != diTok {
+		t.Fatalf("addValue(fn) service-token divergence:\n inline = %q\n di     = %q", inlineTok, diTok)
+	}
+	if !strings.HasSuffix(inlineTok, ":makeThing") {
+		t.Fatalf("addValue(fn) must tokenize as the function's OWN type (…:makeThing), not its return type; got %q", inlineTok)
+	}
+	if strings.HasSuffix(inlineTok, ":Thing") {
+		t.Fatalf("addValue(fn) unwrapped to the call-signature return type (…:Thing) — the raw-type tokenof was not used: %q", inlineTok)
+	}
+	if strings.Contains(inlineOut, "[[") {
+		t.Fatalf("addValue must carry no dependency array, got:\n%s", inlineOut)
+	}
+}
+
+// TestSelfInlineAddValueClassRef is the FINDING-1 companion for a CONSTRUCTABLE
+// value registered via `services.addValue(SqlUserRepo)`. Here tokenfor (produced —
+// construct-sig return, the instance) and tokenof (raw — the constructor's static
+// type) happen to derive the IDENTICAL token, because a class's static type
+// carries the class symbol, so `typeof C` and `C` tokenize the same (`…:SqlUserRepo`).
+// The case is pinned so a future change to either derivation cannot silently break
+// the class-reference addValue path, and to prove tokenof matches di-direct here too.
+func TestSelfInlineAddValueClassRef(t *testing.T) {
+	src := `import { services } from '@rhombus-std/di.core';
+class SqlUserRepo {}
+services.addValue(SqlUserRepo);
+`
+	prog, app := buildSelfInlineWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	inlineOut := lowerInlinePipeline(t, prog, app)
+	diOut := lowerDi(t, prog, app)
+
+	inlineTok := diCallToken(t, inlineOut, "addValue")
+	diTok := diCallToken(t, diOut, "addValue")
+	if inlineTok != diTok {
+		t.Fatalf("addValue(classRef) service-token divergence:\n inline = %q\n di     = %q", inlineTok, diTok)
+	}
+	if !strings.HasSuffix(inlineTok, ":SqlUserRepo") {
+		t.Fatalf("addValue(classRef) must tokenize as the class token (…:SqlUserRepo), got %q", inlineTok)
+	}
 	if strings.Contains(inlineOut, "[[") {
 		t.Fatalf("addValue must carry no dependency array, got:\n%s", inlineOut)
 	}

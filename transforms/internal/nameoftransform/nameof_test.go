@@ -19,7 +19,7 @@ import (
 // `@rhombus-std/di.core` — the module ditransform anchors its `addClass` verb on — so
 // the SAME program can be lowered two ways: the tokenfor stage over an explicit
 // `tokenfor<T>()`, and the di stage over a direct `addClass<T>(ctor)` registration. It
-// exports `tokenfor` / `signatureof` / `services` and the `$<N>` hole, `Typeof<T>`,
+// exports `tokenfor` / `tokenof` / `signatureof` / `services` and the `$<N>` hole, `Typeof<T>`,
 // `Keyed<T,K>`, and `Inject<T,K>` brands so the registration grammar resolves.
 func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
@@ -38,6 +38,7 @@ func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string
 export declare const services: IServiceManifestBase;
 export declare function tokenfor<T>(): string;
 export declare function tokenfor(value: unknown): string;
+export declare function tokenof(value: unknown): string;
 export declare function signatureof(value: unknown): unknown;
 declare const HOLE: unique symbol;
 export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };

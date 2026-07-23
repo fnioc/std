@@ -38,6 +38,21 @@ import (
 // still lowers.
 const nameofName = "tokenfor"
 
+// tokenofName is the exported identifier the transformer recognizes as tokenof —
+// the RAW-type value-argument twin of tokenfor. `tokenfor(value)` derives from the
+// value's PRODUCED type (construct/call-sig return); `tokenof(value)` derives from
+// the value's OWN type with NO unwrap, the form the `addValue(v)` self-registration
+// lowers to so an already-built value registers under its own type (matching the
+// di engine's raw-type `addValue` derivation). Both lower in THIS stage; the only
+// difference is the ProducedTypeOf unwrap tokenfor applies and tokenof skips.
+const tokenofName = "tokenof"
+
+// valueArgUnderivableCode is the diagnostic a value-argument token derivation
+// raises when the argument's type yields no derivable token (an anonymous /
+// unnameable type) — a lowering failure the stage reports rather than emitting a
+// silent empty token (constraint 9: failure reporting, not validation).
+const valueArgUnderivableCode = "VALUE_ARG_TOKEN_UNDERIVABLE"
+
 // New builds the per-file transform: it visits every call expression, and
 // replaces each single-type-argument call to `nameof` with a string literal
 // holding the token derived from the type argument.
@@ -48,7 +63,7 @@ const nameofName = "tokenfor"
 // isNameofCall can never anchor it; instead the inline stage registered it in
 // artifacts.PrimitiveCalls with the type it resolved at the original call site,
 // and this stage derives the SAME token from that registered type.
-func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, _ func(plugin.Diagnostic)) plugin.FileTransform {
+func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		var visitor *shimast.NodeVisitor
@@ -70,18 +85,26 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 					token, _ := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
-				// VALUE-argument tokenfor(value) — synthetic (the inline
-				// self-registration body's `this.addClass(tokenfor(ctor), ...)`).
-				if arg, ok := registeredNameofValue(artifacts, node); ok {
+				// VALUE-argument tokenfor(value), PRODUCED semantics — synthetic (the
+				// inline self-registration body's `this.addClass(tokenfor(ctor), ...)`).
+				if arg, ok := registeredValueArg(artifacts, node, nameofName); ok {
 					produced := tokens.ProducedTypeOf(checker, checker.GetTypeAtLocation(arg))
-					token, _ := tokens.ServiceBaseTokenFor(ctx, produced)
-					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+					return lowerValueArg(ec, ctx, emit, node, arg, produced)
 				}
-				// VALUE-argument tokenfor(value) — source-written (no-inline manual path).
-				if arg, ok := valueArgNameofCall(checker, call); ok {
+				// VALUE-argument tokenfor(value), PRODUCED semantics — source-written.
+				if arg, ok := valueArgCall(checker, call, nameofName); ok {
 					produced := tokens.ProducedTypeOf(checker, checker.GetTypeAtLocation(arg))
-					token, _ := tokens.ServiceBaseTokenFor(ctx, produced)
-					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+					return lowerValueArg(ec, ctx, emit, node, arg, produced)
+				}
+				// VALUE-argument tokenof(value), RAW semantics — synthetic (the inline
+				// self-registration body's `this.addValue(tokenof(value), value)`). No
+				// ProducedTypeOf unwrap: the value's OWN type is the token source.
+				if arg, ok := registeredValueArg(artifacts, node, tokenofName); ok {
+					return lowerValueArg(ec, ctx, emit, node, arg, checker.GetTypeAtLocation(arg))
+				}
+				// VALUE-argument tokenof(value), RAW semantics — source-written.
+				if arg, ok := valueArgCall(checker, call, tokenofName); ok {
+					return lowerValueArg(ec, ctx, emit, node, arg, checker.GetTypeAtLocation(arg))
 				}
 			}
 			return visitor.VisitEachChild(node)
@@ -108,22 +131,57 @@ func registeredNameof(artifacts *inlinetransform.Artifacts, node *shimast.Node) 
 	return use, true
 }
 
-// registeredNameofValue reports whether node is a synthetic tokenfor call the
-// inline stage registered with a VALUE argument (`tokenfor(value)`) — the shape
-// the self-registration sugar body (`addClass(ctor) => this.addClass(tokenfor(ctor),
-// ctor, signatureof(ctor))`) mints. It carries the ORIGINAL, program-bound
-// call-site argument (ValueArg) and NO type argument; the stage derives the token
-// from that argument's produced type. It is the value-arg twin of registeredNameof,
-// mirroring how the signatureof stage reads a substituted value argument.
-func registeredNameofValue(artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimast.Node, bool) {
+// registeredValueArg reports whether node is a synthetic value-argument primitive
+// call the inline stage registered under primName (`tokenfor`'s produced form or
+// `tokenof`'s raw form) — the shape a self-registration sugar body mints
+// (`addClass(ctor) => this.addClass(tokenfor(ctor), ...)`,
+// `addValue(value) => this.addValue(tokenof(value), value)`). It carries the
+// ORIGINAL, program-bound call-site argument (ValueArg) and NO type argument; the
+// caller derives the token from that argument's type (produced for tokenfor, raw
+// for tokenof). It is the value-arg twin of registeredNameof, mirroring how the
+// signatureof stage reads a substituted value argument.
+func registeredValueArg(artifacts *inlinetransform.Artifacts, node *shimast.Node, primName string) (*shimast.Node, bool) {
 	if artifacts == nil {
 		return nil, false
 	}
 	use, ok := artifacts.PrimitiveCalls[node]
-	if !ok || use.Name != nameofName || use.ValueArg == nil || len(use.TypeArgs) != 0 {
+	if !ok || use.Name != primName || use.ValueArg == nil || len(use.TypeArgs) != 0 {
 		return nil, false
 	}
 	return use.ValueArg, true
+}
+
+// lowerValueArg derives the service token for a value-argument primitive from t
+// and returns the string-literal replacement for call. When t yields no derivable
+// token — an anonymous / unnameable value type — it reports a targeted diagnostic
+// (naming the failure) against the value ARGUMENT's position and returns the
+// ORIGINAL call un-lowered, so a lowering failure surfaces as a diagnostic rather
+// than a silent empty token (constraint 9). arg is the program-bound value
+// argument (real position even when call itself is synthetic), so the diagnostic
+// always points at real source.
+func lowerValueArg(ec *shimprinter.EmitContext, ctx *tokens.Context, emit func(plugin.Diagnostic), call, arg *shimast.Node, t *shimchecker.Type) *shimast.Node {
+	token, ok := tokens.ServiceBaseTokenFor(ctx, t)
+	if !ok {
+		emit(plugin.Diagnostic{
+			Code:    valueArgUnderivableCode,
+			File:    valueArgFile(arg),
+			Start:   arg.Pos(),
+			Message: "cannot derive a token for this value's type — name the type (annotate the value with a named type, or pass an explicit token string)",
+		})
+		return call
+	}
+	return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+}
+
+// valueArgFile is the absolute file path of a value argument's source file, or ""
+// (a synthetic node with no source file). The inline stage captures the ORIGINAL
+// program-bound argument, so this resolves for the synthetic path too.
+func valueArgFile(arg *shimast.Node) string {
+	sf := shimast.GetSourceFileOfNode(arg)
+	if sf == nil {
+		return ""
+	}
+	return sf.FileName()
 }
 
 // elideNameofImports drops the now-unreferenced `nameof` binding from the file's
@@ -153,13 +211,16 @@ func elideNameofImports(factory *shimast.NodeFactory, sf *shimast.SourceFile) *s
 	return factory.UpdateSourceFile(sf, factory.NewNodeList(kept), sf.EndOfFileToken).AsSourceFile()
 }
 
-// elideNameofImport returns the import statement with any `nameof` specifier
-// removed — the whole declaration dropped (nil) when that was its only binding,
-// the declaration kept with the remaining bindings otherwise. Non-import
-// statements and imports without a `nameof` binding pass through unchanged.
+// elideNameofImport returns the import statement with any lowered-primitive
+// specifier (`tokenfor` / `tokenof`) removed — the whole declaration dropped (nil)
+// when that was its only binding, the declaration kept with the remaining bindings
+// otherwise. Non-import statements and imports without such a binding pass through
+// unchanged. Both primitives lower to inline token literals leaving no runtime
+// reference, so both must elide.
 //
-// Matching mirrors isNameofCall's looseness: any named-import specifier whose
-// EXPORTED name is `nameof` elides (so `import { nameof as keyOf }` elides too).
+// Matching mirrors isNameofCall's / valueArgCall's looseness: any named-import
+// specifier whose EXPORTED name is a lowered primitive elides (so
+// `import { tokenfor as k }` elides too).
 func elideNameofImport(factory *shimast.NodeFactory, statement *shimast.Node) *shimast.Node {
 	if statement.Kind != shimast.KindImportDeclaration {
 		return statement
@@ -181,7 +242,7 @@ func elideNameofImport(factory *shimast.NodeFactory, statement *shimast.Node) *s
 	kept := make([]*shimast.Node, 0, len(elements))
 	for _, element := range elements {
 		specifier := element.AsImportSpecifier()
-		if specifier.IsTypeOnly || exportedName(element) != nameofName {
+		if specifier.IsTypeOnly || !isLoweredPrimitiveName(exportedName(element)) {
 			kept = append(kept, element)
 		}
 	}
@@ -197,6 +258,13 @@ func elideNameofImport(factory *shimast.NodeFactory, statement *shimast.Node) *s
 	}
 	newClause := factory.UpdateImportClause(clause, clause.PhaseModifier, clause.Name(), namedBindings)
 	return factory.UpdateImportDeclaration(decl, decl.Modifiers(), newClause, decl.ModuleSpecifier, decl.Attributes)
+}
+
+// isLoweredPrimitiveName reports whether name is a value-token primitive THIS
+// stage lowers to an inline literal (`tokenfor` / `tokenof`), leaving its import
+// unreferenced and elidable.
+func isLoweredPrimitiveName(name string) bool {
+	return name == nameofName || name == tokenofName
 }
 
 // exportedName is a named import specifier's exported name — its property name
@@ -249,19 +317,21 @@ func isNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) bo
 	return symbol.Name == nameofName
 }
 
-// valueArgNameofCall reports whether call is a source-written VALUE-argument
-// tokenfor call — a NO-type-argument, single-value-argument call whose callee
-// resolves (following an import alias) to the `tokenfor` symbol — and returns its
-// value argument. It is the value-arg twin of isNameofCall: the two are disjoint
-// by the type-argument count (a type-arg call has exactly one type argument, a
-// value-arg call none), so a call never matches both.
+// valueArgCall reports whether call is a source-written VALUE-argument call to
+// primName (`tokenfor`'s produced form or `tokenof`'s raw form) — a
+// NO-type-argument, single-value-argument call whose callee resolves (following an
+// import alias) to the primName symbol — and returns its value argument. It is the
+// value-arg twin of isNameofCall: type-arg and value-arg calls are disjoint by the
+// type-argument count (a type-arg call has exactly one type argument, a value-arg
+// call none), so a call never matches both; and the two value-arg primitives are
+// disjoint by callee symbol, so a call matches at most one primName.
 //
 // It anchors on the checker, so it carries the same synthetic-node guard
 // isNameofCall documents: a callee with no program position (a substituted clone)
 // or an unlinked Parent is never a source-written call — the synthetic value-arg
-// form is handled via registeredNameofValue — so a negative position or nil
-// Parent is a clean skip, not a nil-deref inside GetSymbolAtLocation.
-func valueArgNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) (*shimast.Node, bool) {
+// form is handled via registeredValueArg — so a negative position or nil Parent
+// is a clean skip, not a nil-deref inside GetSymbolAtLocation.
+func valueArgCall(checker *shimchecker.Checker, call *shimast.CallExpression, primName string) (*shimast.Node, bool) {
 	if call.TypeArguments != nil && len(call.TypeArguments.Nodes) != 0 {
 		return nil, false
 	}
@@ -281,7 +351,7 @@ func valueArgNameofCall(checker *shimchecker.Checker, call *shimast.CallExpressi
 			symbol = aliased
 		}
 	}
-	if symbol.Name != nameofName {
+	if symbol.Name != primName {
 		return nil, false
 	}
 	return call.Arguments.Nodes[0], true

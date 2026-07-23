@@ -24,7 +24,7 @@
 import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
   Token } from '@rhombus-std/di.core';
 import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor, tokenof } from '@rhombus-std/primitives';
 import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
 import { valueof } from './valueof.js';
@@ -136,15 +136,21 @@ export const ServiceManifestInline = {
  *
  *   addClass(ctor)   → this.addClass(tokenfor(ctor), ctor, signatureof(ctor))
  *   addFactory(fn)   → this.addFactory(tokenfor(fn), fn, signatureof(fn))
- *   addValue(value)  → this.addValue(tokenfor(value), value)
+ *   addValue(value)  → this.addValue(tokenof(value), value)
  *
- * The value-argument `tokenfor(value)` derives the service token from the
- * argument's PRODUCED type — a constructable value tokenizes as the instance it
- * builds, a callable value as what it returns, any other value as itself — so
+ * The token primitive DIFFERS per verb, matching the di registration engine's own
+ * per-verb derivation (`inferredRegType`): `addClass` / `addFactory` derive from
+ * the value's PRODUCED type via `tokenfor(value)` — a constructable value
+ * tokenizes as the instance it builds, a callable value as what it returns — so
  * `addClass(SqlUserRepo)` registers `SqlUserRepo` under its own instance token
- * (self-registration), matching what di.core's inferred lowering produces
- * byte-for-byte. `signatureof(...)` supplies the same third-argument dependency
- * array as the explicit forms.
+ * (self-registration). `addValue` instead uses `tokenof(value)`, the RAW-type
+ * twin that never unwraps: an already-built value is registered under its OWN
+ * type (a factory stored as a value tokenizes as the function, not its return
+ * type), which is exactly what di.core's inferred `addValue` lowering keeps and
+ * what its documented function-valued `addValue` support requires. Both match the
+ * di-direct lowering byte-for-byte. `signatureof(...)` supplies the same
+ * third-argument dependency array as the explicit forms (a value carries none, so
+ * `addValue` omits it).
  *
  * A self-registration is UNKEYED and lifetime-unchosen by construction (a key
  * needs the `<Keyed<T, K>>` type argument these forms omit, and the lifetime is
@@ -167,7 +173,7 @@ export const ServiceManifestSelfInline = {
     return this.addFactory(tokenfor(factory), factory, signatureof(factory));
   },
   addValue(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
-    return this.addValue(tokenfor(value), value);
+    return this.addValue(tokenof(value), value);
   },
 };
 

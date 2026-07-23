@@ -300,12 +300,14 @@ const chainSemanticDir = join(CHAIN_ROOT, 'semantic');
 // generic signatures are copied verbatim from di.transformer's `src/augment.ts`
 // so the merged member symbols the transforms anchor on are the real faces.
 const AUTHORING_SOURCE = `
-import type { AddChain, Ctor, Slot } from '@rhombus-std/di.core';
+import type { AddChain, Ctor, IServiceManifest, Slot } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     addClass<I>(ctor: Ctor<any[], I>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
+    addValue(value: unknown): IServiceManifest<Scopes>;
+    addValue<I>(value: I): IServiceManifest<Scopes>;
   }
   interface IWithSignatureBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
     withSignature<T extends readonly any[]>(): AddChain<S, Exclude<Slots, 'signatures'>, Gated>;
@@ -373,12 +375,36 @@ declare const services: IServiceManifest<'singleton'>;
 export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache);
 `;
 
+// Value-argument self-registration (W3 tokenof). addValue registers an ALREADY-
+// BUILT value under its OWN type — so a CALLABLE value (a factory) must tokenize
+// as the function itself (…:makeThing), NOT its return type (…:Thing). That is the
+// case where the raw-type tokenof (which the addValue self body uses) diverges from
+// the produced-type tokenfor: were the body on tokenfor, valueFn would derive
+// …:Thing and break parity with the di-direct raw-type addValue lowering. A class
+// REFERENCE (valueClass) tokenizes as its constructor type, which carries the
+// class symbol. Own file so the deliberate raw semantics is compared in isolation,
+// like KEYED_SOURCE.
+const VALUE_SOURCE = `
+import type { IServiceManifest } from '@rhombus-std/di.core';
+
+interface Thing {}
+class ValueRepo {}
+declare function makeThing(): Thing;
+
+declare const services: IServiceManifest<'singleton'>;
+
+export const valueFn = services.addValue(makeThing);
+
+export const valueClass = services.addValue(ValueRepo);
+`;
+
 function writeChainSrc(dir: string): void {
   const src = join(dir, 'src');
   mkdirSync(src, { recursive: true });
   writeFileSync(join(src, 'authoring.ts'), AUTHORING_SOURCE);
   writeFileSync(join(src, 'chain.ts'), CHAIN_SOURCE);
   writeFileSync(join(src, 'keyed.ts'), KEYED_SOURCE);
+  writeFileSync(join(src, 'value.ts'), VALUE_SOURCE);
 }
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
@@ -489,6 +515,8 @@ let chainInline = '';
 let chainSemantic = '';
 let keyedInline = '';
 let keyedSemantic = '';
+let valueInline = '';
+let valueSemantic = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -501,6 +529,8 @@ beforeAll(() => {
   chainSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/chain.ts');
   keyedInline = readChainFile(chainInlineDir, inlineRun, 'src/keyed.ts');
   keyedSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/keyed.ts');
+  valueInline = readChainFile(chainInlineDir, inlineRun, 'src/value.ts');
+  valueSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/value.ts');
 }, COLD_BUILD_MS);
 
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
@@ -510,6 +540,7 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('withSignature<');
   expect(out).not.toContain('.as<');
   expect(out).not.toContain('tokenfor');
+  expect(out).not.toContain('tokenof');
   expect(out).not.toContain('signatureof');
   expect(out).not.toContain('signaturefor');
   expect(out).not.toContain('valueof');
@@ -639,6 +670,29 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(diToken).toEndWith('#redis');
     // …and the two halves reunite exactly onto it.
     expect(`${inlineBase}#redis`).toEqual(diToken);
+  });
+
+  test("value self-registration: addValue(fn) tokenizes the fn's OWN type via tokenof, byte-parity with di-direct", () => {
+    // W3 value-argument self-registration through the REAL ServiceManifestSelfInline
+    // body (end-to-end, unlike the Go tier's fixture body). addValue registers an
+    // already-built value under its OWN type, so a CALLABLE value (makeThing) must
+    // tokenize as the function itself (…:makeThing), NOT its call-signature return
+    // type (…:Thing). This is the exact tokenfor→tokenof divergence: the raw-type
+    // tokenof holds parity with di-direct's raw-type addValue lowering, where the
+    // produced-type tokenfor would have unwrapped to …:Thing and diverged.
+    const fnLine = lineWith(valueInline, 'valueFn =');
+    expect(fnLine).toBeDefined();
+    expect(fnLine).toContain('addValue("');
+    expect(fnLine).toContain(':makeThing"');
+    expect(fnLine).not.toContain(':Thing"');
+    // A value carries no deps and no lifetime — the plain 2-arg addValue form.
+    expect(fnLine).not.toContain('[[');
+    assertNoAuthoringSurvivors(valueInline);
+    // A class REFERENCE tokenizes as its constructor type (the class symbol).
+    expect(lineWith(valueInline, 'valueClass =')).toContain(':ValueRepo"');
+    // Whole-file byte parity: the inline tokenof path equals the di-direct raw-type
+    // addValue lowering for both the callable and the class-reference value.
+    expect(valueSemantic).toEqual(valueInline);
   });
 
   test('empty-tuple withSignature<[]>() is loop-idempotent (lowers to zero-arg .withSignature())', () => {

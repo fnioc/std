@@ -14,7 +14,12 @@ import (
 // its HOME module — the module an inline body is allowed to import it from.
 // `nameof<T>()` binds a TYPE argument and lives in the universal
 // `@rhombus-std/primitives` leaf (runtime source imports it directly, so it must
-// stay universally importable). `signatureof(ctor)` binds a VALUE argument (a
+// stay universally importable). Its value-argument twins live there too:
+// `tokenfor(value)` derives from the value's PRODUCED type (construct/call-sig
+// return; the `addClass` / `addFactory` self forms), and `tokenof(value)` from
+// the value's OWN type with no unwrap (the `addValue` self form, which registers
+// an already-built value under its own type — matching the di engine's raw-type
+// `addValue` derivation). `signatureof(ctor)` binds a VALUE argument (a
 // class / factory) whose dependency signature the signatureof stage extracts, and
 // `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
 // KEY; both are authoring-time-only constructs, so they live in
@@ -33,6 +38,7 @@ import (
 // the declare-by-marker generalization is a future enhancement.
 var knownPrimitives = map[string]string{
 	"tokenfor":      "@rhombus-std/primitives",
+	"tokenof":       "@rhombus-std/primitives",
 	"signatureof":   "@rhombus-std/di.transformer",
 	"keyof":         "@rhombus-std/di.transformer",
 	"signaturefor":  "@rhombus-std/di.core",
