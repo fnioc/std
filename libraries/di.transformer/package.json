@@ -17,7 +17,7 @@
     "directory": "libraries/di.transformer"
   },
   "type": "module",
-  "//rhombus.inline": "The type-driven registration sugar's inline publish list. The bodies live in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses them and substitutes at consumer call sites. The `type` ANCHORS stay @rhombus-std/di.core interfaces (the augmentation targets), while `impl` (ServiceQueryInline / ServiceManifestInline) resolves in THIS package — the authoring-time home of the signatureof primitive those bodies call.",
+  "//rhombus.inline": "The type-driven registration sugar's inline publish list. The bodies live in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses them and substitutes at consumer call sites. The `type` ANCHORS stay @rhombus-std/di.core interfaces (the augmentation targets), while `impl` (ServiceQueryInline / ServiceManifestInline / ManifestChainInline) resolves in THIS package — the authoring-time home of the signatureof / valueof primitives those bodies call (signaturefor / signaturesfor are di.core primitives, imported from the peered core).",
   "rhombus.inline": {
     "entries": [
       {
@@ -39,6 +39,21 @@
         "type": "@rhombus-std/di.core:IServiceManifestBase",
         "impl": "ServiceManifestInline",
         "member": "addValue"
+      },
+      {
+        "type": "@rhombus-std/di.core:IWithSignatureBuilder",
+        "impl": "ManifestChainInline",
+        "member": "withSignature"
+      },
+      {
+        "type": "@rhombus-std/di.core:IWithSignaturesBuilder",
+        "impl": "ManifestChainInline",
+        "member": "withSignatures"
+      },
+      {
+        "type": "@rhombus-std/di.core:IAsBuilder",
+        "impl": "ManifestChainInline",
+        "member": "as"
       }
     ]
   },

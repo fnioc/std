@@ -58,6 +58,16 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toEqual([]);
   });
 
+  test('spread of a primitive call is allowed → reports nothing', () => {
+    // `...signaturefor<T>()` spreads a primitive's minted members into the
+    // surrounding call; the stage inlines them, so the rule permits a spread whose
+    // argument is a primitive call (only that shape — `[...this.items]` stays
+    // banned, covered below).
+    const src = `import { signaturefor } from '@rhombus-std/di.core';\n`
+      + `export const Foo = {\n  bar<T extends readonly any[]>(this: any): unknown { return this.withSignature(...signaturefor<T>()); },\n};\n`;
+    expect(lintInline(src)).toEqual([]);
+  });
+
   test('non-single-return body → singleReturn', () => {
     const src = `export const Foo = {\n  bar<T>(this: any): boolean { const x = 1; return x > 0; },\n};\n`;
     expect(lintInline(src)).toContain('singleReturn');

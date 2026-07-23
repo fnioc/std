@@ -18,14 +18,19 @@ import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
 // may import it from. `nameof` lives in the universal @rhombus-std/primitives leaf
-// (runtime source imports it directly). `signatureof` and `keyof` are
-// authoring-time-only and live in @rhombus-std/di.transformer, imported by that
-// package's own bodies via a package-relative specifier. Mirrors the Go scanner's
-// knownPrimitives map.
+// (runtime source imports it directly). `signaturefor` / `signaturesfor` produce
+// di.core's `DepSlot` shape and are called from runtime source too, so they live
+// in @rhombus-std/di.core (every caller already depends on it). `signatureof`,
+// `keyof`, and `valueof` are authoring-time-only and live in
+// @rhombus-std/di.transformer, imported by that package's own bodies via a
+// package-relative specifier. Mirrors the Go scanner's knownPrimitives map.
 const PRIMITIVE_HOMES = {
   nameof: '@rhombus-std/primitives',
+  signaturefor: '@rhombus-std/di.core',
+  signaturesfor: '@rhombus-std/di.core',
   signatureof: '@rhombus-std/di.transformer',
   keyof: '@rhombus-std/di.transformer',
+  valueof: '@rhombus-std/di.transformer',
 };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
@@ -309,8 +314,19 @@ function walkExpression(root, cb) {
       return;
     }
     if (BANNED[node.type]) {
-      cb.onBanned(node, BANNED[node.type]);
-      // Keep walking to surface nested issues too.
+      // A spread is permitted ONLY when its argument is a primitive call
+      // (`...signaturefor<T>()` / `...signaturesfor<T>()`) — the stage inlines the
+      // primitive's minted members into the surrounding call's argument list, so
+      // the emitted form is the byte-clean, spread-free call a hand author writes.
+      // Any other spread (e.g. `[...this.items]`) stays banned.
+      const primitiveSpread = node.type === 'SpreadElement'
+        && node.argument?.type === 'CallExpression'
+        && node.argument.callee.type === 'Identifier'
+        && cb.primitiveLocals.has(node.argument.callee.name);
+      if (!primitiveSpread) {
+        cb.onBanned(node, BANNED[node.type]);
+        // Keep walking to surface nested issues too.
+      }
     }
 
     if (node.type === 'CallExpression') {

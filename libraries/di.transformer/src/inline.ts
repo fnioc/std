@@ -21,10 +21,13 @@
 // `@rhombus-std/primitives` leaf; `nameof` stays in that leaf, since runtime source
 // imports it directly.
 
-import type { Ctor, DepSignatures, Factory, IServiceManifest, IServiceQuery, Token } from '@rhombus-std/di.core';
+import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
+  Token } from '@rhombus-std/di.core';
+import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
 import { nameof } from '@rhombus-std/primitives';
 import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
+import { valueof } from './valueof.js';
 
 /**
  * The POSITIONAL-TAIL view of the three registration verbs the sugar bodies
@@ -122,5 +125,57 @@ export const ServiceManifestInline = {
   },
   addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
     return this.addValue(nameof<I>(), value, keyof<I>());
+  },
+};
+
+/**
+ * The POSITIONAL-TAIL view of the three chain-continuation modifiers the
+ * fluent sugar bodies lower against — the receiver type their `this` parameter
+ * carries. It is a loose structural stand-in for the `AddChain` builder faces
+ * (`IWithSignatureBuilder` / `IWithSignaturesBuilder` / `IAsBuilder`): the inline
+ * stage substitutes only the body's return EXPRESSION and drops the `this`
+ * parameter, so the exact chain-narrowing types of the real faces are
+ * immaterial here — the body only needs the value-arg verb it lowers to.
+ */
+interface IInlineChainTarget {
+  withSignature(...slots: readonly DepSlot[]): IServiceManifest;
+  withSignatures(...signatures: ReadonlyArray<readonly DepSlot[]>): IServiceManifest;
+  as(scope: string): IServiceManifest;
+}
+
+/**
+ * The type-driven chain-continuation sugar bodies — the `withSignature<T>()`,
+ * `withSignatures<T>()`, and `.as<Scope>()` forms. Each is the EXACT
+ * hand-written form a no-transformer consumer would author:
+ *
+ *   withSignature<T>()  → this.withSignature(...signaturefor<T>())
+ *   withSignatures<T>() → this.withSignatures(...signaturesfor<T>())
+ *   as<Scope>()         → this.as(valueof<Scope>())
+ *
+ * `signaturefor<T>()` mints ONE overload's dependency slots from the type tuple
+ * `T` (spread in as the `withSignature` append args); `signaturesfor<T>()` mints
+ * the whole overload set from a tuple-of-tuples (spread in as the `withSignatures`
+ * bulk args); `valueof<Scope>()` mints the scope literal's VALUE the `as` verb
+ * takes. Each body lowers INDEPENDENTLY to exactly what a hand author would write
+ * — `add(t, c, [[…]]).withSignature('a')` is a hand-writable continuation — so a
+ * `.withSignature<T>()` survives lowering as its own value-arg call rather than
+ * folding into the registration's third argument (the survive-not-fold parity
+ * decision).
+ *
+ * `signaturefor` / `signaturesfor` are di.core primitives (they produce di.core's
+ * `DepSlot` shape and are called from runtime source too), imported from the
+ * peered `@rhombus-std/di.core`; `valueof` is the authoring-only literal-value
+ * primitive homed here in di.transformer (`./valueof.js`), sibling to
+ * `signatureof` / `keyof`.
+ */
+export const ManifestChainInline = {
+  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
+    return this.withSignature(...signaturefor<T>());
+  },
+  withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): IServiceManifest {
+    return this.withSignatures(...signaturesfor<T>());
+  },
+  as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
+    return this.as(valueof<Scope>());
   },
 };

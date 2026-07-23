@@ -134,6 +134,41 @@ declare module '@rhombus-std/di.core' {
     addValue<I>(value: I): IServiceManifest<Scopes>;
   }
 
+  // The type-driven APPEND form merges onto core's `IWithSignatureBuilder` face —
+  // the `signature` slot of the chain a registration returns. `withSignature<T>()`
+  // derives ONE overload's dependency slots from the type tuple `T` and appends
+  // them, lowering to `withSignature(...signaturefor<T>())` — the exact
+  // value-arg form a no-transformer author would hand-write. It carries the third
+  // `Gated` parameter and the same `Exclude<Slots, 'signatures'>` return as core's
+  // value-arg overload, so the two combine as overloads on one face (arity — zero
+  // value args with an explicit type arg vs a `...slots` rest — disambiguates).
+  interface IWithSignatureBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
+    /**
+     * Type-driven append — `withSignature<[IA, IB]>()` derives one overload's
+     * slots from the tuple and appends it, lowering to
+     * `withSignature("A-token", "B-token")`. Repeatable (it strikes only the bulk
+     * `'signatures'` slot). Never runs post-transform.
+     */
+    withSignature<T extends readonly any[]>(): AddChain<S, Exclude<Slots, 'signatures'>, Gated>;
+  }
+
+  // The type-driven BULK form merges onto core's `IWithSignaturesBuilder` face —
+  // the `signatures` slot. `withSignatures<T>()` derives the WHOLE signature set
+  // from a tuple-of-tuples `T` and replaces in one call, lowering to
+  // `withSignatures(...signaturesfor<T>())`. Same third `Gated` parameter and
+  // `Exclude<Slots, 'signature' | 'signatures'>` return as core's value-arg
+  // overload, so the two combine as overloads on one face.
+  interface IWithSignaturesBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
+    /**
+     * Type-driven bulk replace — `withSignatures<[[IA, IB], [IC]]>()` derives the
+     * whole signature set from the tuple-of-tuples and replaces it, lowering to
+     * `withSignatures(["A-token", "B-token"], ["C-token"])`. Once-only (it strikes
+     * both signature slots). Never runs post-transform.
+     */
+    withSignatures<T extends ReadonlyArray<readonly any[]>>(): AddChain<S, Exclude<Slots, 'signature' | 'signatures'>,
+      Gated>;
+  }
+
   // The authored lifetime form merges onto core's `IAsBuilder` face — the `scope`
   // slot of the chain the registration forms return. It carries the third `Gated`
   // parameter so the merge matches core's face signature exactly.

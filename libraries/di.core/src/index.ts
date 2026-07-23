@@ -53,6 +53,15 @@ export type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from './guards.js';
 export { typeArg, union } from './slots.js';
 
+// The compile-time dependency-signature MINT primitives — derive a `DepSlot`
+// signature from an explicit type tuple (`signaturefor<[A, B]>()`) or the whole
+// overload set from a tuple-of-tuples (`signaturesfor<...>()`), the type-driven
+// siblings of `signatureof(value)`'s observe-from-a-value form. They live here
+// (not `@rhombus-std/primitives`) because they produce di.core's `DepSlot` shape
+// and every caller — di runtime libs and `di.transformer` — already depends on
+// di.core. The runtime bodies throw without the transformer, like `nameof`.
+export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } from './signaturefor.js';
+
 // The unified token/slot expression tree — ONE plain-data `TokenNode` tree every
 // token op walks (`@rhombus-std/di` consumes it to close open registrations). A
 // token STRING is the wire identity; `TokenNode` is its transient parsed view.
