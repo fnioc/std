@@ -64,8 +64,8 @@ export function readTsconfigTransforms(dir: string, tsconfigRel: string): string
 export function ttscEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   env.GOTOOLCHAIN = 'local';
-  // GOTMPDIR (Go build scratch) and TTSC_CACHE_DIR (the plugin cache: compiled
-  // sidecar binaries + Go object cache) both default to a shared home dir, off the
+  // GOTMPDIR (Go build scratch) and TTSC_CACHE_DIR (the content-keyed
+  // compiled-sidecar cache) both default to a shared home dir, off the
   // per-user-quota tmpfs /tmp. The cache is content-keyed, so one location is safe
   // to share across every worktree, suite, and session — the cold sidecar compile
   // is paid once per machine. An explicit env value wins (CI / a shell overrides).
@@ -75,6 +75,10 @@ export function ttscEnv(): NodeJS.ProcessEnv {
   const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
   mkdirSync(ttscCache, { recursive: true });
   env.TTSC_CACHE_DIR = ttscCache;
+  // Setting GOCACHE — even to Go's own default path — flips ttsc from a private
+  // object cache under TTSC_CACHE_DIR to the ambient one, sharing compiled
+  // objects with the transforms Go gates: a cold sidecar build mostly re-links.
+  env.GOCACHE = process.env.GOCACHE ?? join(homedir(), '.cache', 'go-build');
   let goBin = env.TTSC_GO_BINARY ?? '';
   if (!goBin) {
     const miseGo = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
