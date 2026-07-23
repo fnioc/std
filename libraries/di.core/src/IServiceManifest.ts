@@ -35,8 +35,9 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { baseKey, tryParse } from './token.js';
-import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
+import { blowUpSignatures } from './token/index.js';
+import { HOLE_PATTERN, isOpenToken, parseToken } from './token/index.js';
+import { TokenNode } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
@@ -123,6 +124,12 @@ type PendingProducer =
  */
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
+  // Materialise every param-level `union` slot into cartesian concrete OVERLOADS
+  // (docs TODO §0). The stored/emitted DepSlot keeps `union(...)` — the wire and
+  // transformer are unchanged; the blow-up is a runtime, in-memory concern of the
+  // registration record, so the resolve side never sees a union. Union-free
+  // signatures pass through unchanged.
+  const signatures = pending.signatures === undefined ? undefined : blowUpSignatures(pending.signatures);
   const producer = pending.producer;
   switch (producer.kind) {
     case 'class': {
@@ -130,7 +137,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       // into the open-registration table instead of the exact map; resolution
       // closes it per requested token.
       if (isOpenToken(token)) {
-        return openEntry(token, producer.ctor, pending.signatures, pending.scope);
+        return openEntry(token, producer.ctor, signatures, pending.scope);
       }
       // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
       // carried EXPLICITLY: the `(...a) => new Ctor(...a)` wrapper reports `""`
@@ -140,7 +147,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       const registration: Registration = {
         produce: (...a: unknown[]) => new construct(...a),
         scope: pending.scope,
-        signatures: pending.signatures,
+        signatures,
         name: construct.name,
         arity: construct.length,
       };
@@ -159,7 +166,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       const registration: Registration = {
         produce: producer.factory,
         scope: pending.scope,
-        signatures: pending.signatures,
+        signatures,
         name: producer.factory.name,
         arity: producer.factory.length,
       };
@@ -206,17 +213,17 @@ function openEntry(
   }
   // The parsed template tree the engine unifies against (`match`). The
   // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
-  // classification guard; `tryParse` never throws — an all-holes template that
-  // passed the guard always parses.
-  const node = tryParse(token);
+  // classification guard; `TokenNode.tryParse` never throws — an all-holes
+  // template that passed the guard always parses.
+  const node = TokenNode.tryParse(token);
   // Key the open table by the SAME canonical `baseKey` the engine looks it up
-  // by (`baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving the key
-  // from the typed node — not the raw `parseToken` base — keeps registration
-  // and lookup on one canonicalisation: for every canonical template the two
-  // agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`) now
-  // registers under the same stripped key its ground spelling resolves to,
+  // by (`TokenNode.baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving
+  // the key from the typed node — not the raw `parseToken` base — keeps
+  // registration and lookup on one canonicalisation: for every canonical template
+  // the two agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`)
+  // now registers under the same stripped key its ground spelling resolves to,
   // instead of a raw space-bearing key the canonical lookup could never find.
-  const base = node !== undefined ? baseKey(node) : parsed.base;
+  const base = node !== undefined ? TokenNode.baseKey(node) : parsed.base;
   const open: OpenRegistration = {
     template: token,
     base,

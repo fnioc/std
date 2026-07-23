@@ -1,24 +1,27 @@
 // The typed-token REFERENCE manifest — a decorator-pattern manifest (a class
-// wrapping an ordered descriptor list), a `seal()` that materialises the list
-// via `toArray()` and splits it into the two frozen lookup indexes, and a
-// provider whose `lookup` fast-paths exact hits, recovers whitespace / quote /
-// number variance through canonicalisation, and synthesises closings of open
-// templates by most-specific-wins unification.
+// wrapping an ordered descriptor list), a `seal()` that materialises the list via
+// `toArray()` and splits it into the two frozen lookup indexes, and a provider
+// whose `lookup` fast-paths exact hits, recovers whitespace/quote/number variance
+// through canonicalisation, and synthesises closings of open templates by
+// most-specific-wins unification.
 //
-// The engine graduation kept the parts that preserve today's behavior:
-// `ServiceManifestClass` adopted the toArray-at-seal PATTERN (one ordered entry
-// list → two frozen maps), and `ServiceProviderClass` adopted `match`/`substitute`
-// from `./token.ts`. This module's remaining EXTRAS — `TokenProvider`'s
-// `specificity` ranking / most-specific-wins, canon-on-miss variance recovery,
-// and negative memoization — stay GATED (they are behavior CHANGES) and live on
-// only as this exercised reference for the still-gated features.
+// The live engine graduation kept the parts that preserve today's behavior;
+// `TokenProvider`'s EXTRAS — `specificity` ranking / most-specific-wins,
+// canon-on-miss variance recovery, negative memoization — stay GATED (they are
+// behavior CHANGES) and live on only as this exercised reference for the
+// still-gated features. Ported to the unified tree: it drives the same
+// `TokenNode.*` statics + `Matcher` / `Substituter` / `Specificity` visitors the
+// live path uses.
 
-import { baseKey, isOpen, match, parse, specificity, stringify, substituteSignature, type TokenNode } from './token.js';
+import { Matcher } from './match.js';
+import type { TokenNode } from './node.js';
+import { TokenNode as Tree } from './node.js';
+import { Specificity } from './specificity.js';
+import { Substituter } from './substitute.js';
 
 /** One registration: the canonical token string, its parsed tree, the opaque
- * producer (class / factory / value — the spike is producer-agnostic), the
- * dependency signatures (positional token lists, substituted on close), and an
- * optional scope. */
+ * producer, the dependency signatures (positional node lists, substituted on
+ * close), and an optional scope. */
 export interface Descriptor<P> {
   readonly token: string;
   readonly tree: TokenNode;
@@ -27,18 +30,18 @@ export interface Descriptor<P> {
   readonly scope?: string;
 }
 
-/** The two frozen lookup indexes a sealed manifest exposes — the exact-string
- * map (last-wins per canonical token) and the template-by-base map (open
- * templates bucketed by their base, for open-generic synthesis). */
+/** The two frozen lookup indexes a sealed manifest exposes — the exact-string map
+ * (last-wins per canonical token) and the template-by-base map (open templates
+ * bucketed by their base, for open-generic synthesis). */
 export interface SealedTokenManifest<P> {
   readonly exact: ReadonlyMap<string, ReadonlyArray<Descriptor<P>>>;
   readonly templates: ReadonlyMap<string, ReadonlyArray<Descriptor<P>>>;
 }
 
-/** The authoring-time builder: a decorator over an ordered descriptor list.
- * Each `add` canonicalises the token and pushes a descriptor; the list is the
- * single ordered source of truth (no eager index maps), materialised by
- * `toArray()` and split into indexes only at `seal()`. */
+/** The authoring-time builder: a decorator over an ordered descriptor list. Each
+ * `add` canonicalises the token and pushes a descriptor; the list is the single
+ * ordered source of truth, materialised by `toArray()` and split into indexes
+ * only at `seal()`. */
 export class TokenManifest<P> implements Iterable<Descriptor<P>> {
   readonly #descriptors: Array<Descriptor<P>> = [];
 
@@ -48,8 +51,8 @@ export class TokenManifest<P> implements Iterable<Descriptor<P>> {
     signatures?: ReadonlyArray<readonly TokenNode[]>,
     scope?: string,
   ): this {
-    const tree = parse(rawToken);
-    this.#descriptors.push({ token: stringify(tree), tree, producer, signatures, scope });
+    const tree = Tree.parse(rawToken);
+    this.#descriptors.push({ token: Tree.toString(tree), tree, producer, signatures, scope });
     return this;
   }
 
@@ -65,8 +68,8 @@ export class TokenManifest<P> implements Iterable<Descriptor<P>> {
     const exact = new Map<string, Array<Descriptor<P>>>();
     const templates = new Map<string, Array<Descriptor<P>>>();
     for (const descriptor of this.toArray()) {
-      if (isOpen(descriptor.tree)) {
-        bucket(templates, baseKey(descriptor.tree), descriptor);
+      if (Tree.isOpen(descriptor.tree)) {
+        bucket(templates, Tree.baseKey(descriptor.tree), descriptor);
       } else {
         bucket(exact, descriptor.token, descriptor);
       }
@@ -101,6 +104,8 @@ export class TokenProvider<P> {
   readonly #exact: ReadonlyMap<string, ReadonlyArray<Descriptor<P>>>;
   readonly #templates: ReadonlyMap<string, ReadonlyArray<Descriptor<P>>>;
   readonly #memo = new Map<string, Descriptor<P> | null>();
+  readonly #matcher = new Matcher();
+  readonly #specificity = new Specificity();
 
   public constructor(sealed: SealedTokenManifest<P>) {
     this.#exact = sealed.exact;
@@ -117,14 +122,12 @@ export class TokenProvider<P> {
       return memoed ?? undefined;
     }
 
-    const tree = parse(raw);
-    // An open (hole-bearing) query is not a resolvable closed token — it can
-    // never hit the exact map nor be legitimately synthesised (a template hole
-    // would bind to the query's hole, leaking an unbound label). Miss outright.
-    if (isOpen(tree)) {
+    const tree = Tree.parse(raw);
+    // An open (hole-bearing) query is not a resolvable closed token — miss.
+    if (Tree.isOpen(tree)) {
       return this.#remember(raw, undefined);
     }
-    const canon = stringify(tree);
+    const canon = Tree.toString(tree);
     if (canon !== raw) {
       const canonHit = this.#exact.get(canon);
       if (canonHit) {
@@ -135,14 +138,14 @@ export class TokenProvider<P> {
     if (tree.kind !== 'concrete' || !tree.args.length) {
       return this.#remember(raw, undefined);
     }
-    const candidates = this.#templates.get(baseKey(tree));
+    const candidates = this.#templates.get(Tree.baseKey(tree));
     if (!candidates) {
       return this.#remember(raw, undefined);
     }
 
-    const ranked = rankTemplates(candidates);
+    const ranked = this.#rankTemplates(candidates);
     for (const template of ranked) {
-      const bind = match(template.tree, tree);
+      const bind = this.#matcher.match(template.tree, tree);
       if (bind) {
         const synthesised = this.#synthesise(template, canon, bind);
         this.#memo.set(canon, synthesised);
@@ -153,11 +156,12 @@ export class TokenProvider<P> {
   }
 
   #synthesise(template: Descriptor<P>, canon: string, bind: Map<number, TokenNode>): Descriptor<P> {
+    const substituter = new Substituter(bind);
     return {
       token: canon,
-      tree: parse(canon),
+      tree: Tree.parse(canon),
       producer: template.producer,
-      signatures: template.signatures?.map((signature) => substituteSignature(signature, bind)),
+      signatures: template.signatures?.map((signature) => signature.map((slot) => substituter.rewrite(slot))),
       scope: template.scope,
     };
   }
@@ -166,25 +170,25 @@ export class TokenProvider<P> {
     this.#memo.set(raw, result ?? null);
     return result;
   }
+
+  /** Rank overlapping templates most-specific-first, breaking ties by LATEST
+   * registration (bucket order is registration order), so a later duplicate of a
+   * template overrides an earlier one. */
+  #rankTemplates(candidates: ReadonlyArray<Descriptor<P>>): Array<Descriptor<P>> {
+    return candidates
+      .map((descriptor, index) => ({ descriptor, index }))
+      .sort((a, b) => {
+        const bySpecificity = this.#specificity.measure(b.descriptor.tree)
+          - this.#specificity.measure(a.descriptor.tree);
+        if (bySpecificity !== 0) {
+          return bySpecificity;
+        }
+        return b.index - a.index;
+      })
+      .map((entry) => entry.descriptor);
+  }
 }
 
 function last<P>(list: ReadonlyArray<Descriptor<P>>): Descriptor<P> {
   return list[list.length - 1]!;
-}
-
-/** Rank overlapping templates most-specific-first, breaking ties by LATEST
- * registration. Bucket order is registration order (see {@link TokenManifest.seal}),
- * so a later duplicate of the same template overrides an earlier one — the same
- * last-wins convention the exact map applies to closed duplicates. */
-function rankTemplates<P>(candidates: ReadonlyArray<Descriptor<P>>): Array<Descriptor<P>> {
-  return candidates
-    .map((descriptor, index) => ({ descriptor, index }))
-    .sort((a, b) => {
-      const bySpecificity = specificity(b.descriptor.tree) - specificity(a.descriptor.tree);
-      if (bySpecificity !== 0) {
-        return bySpecificity;
-      }
-      return b.index - a.index;
-    })
-    .map((entry) => entry.descriptor);
 }

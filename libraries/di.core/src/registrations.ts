@@ -5,7 +5,7 @@
 // the abstractions layer both sides depend on.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-import type { TokenNode } from './token.js';
+import type { TokenNode } from './token/index.js';
 import type { DepSignatures, Token } from './types.js';
 
 export type { Ctor };
