@@ -104,8 +104,12 @@ func buildInline(prog *driver.Program, _ *tokens.Context, env *Env, emit Sink) p
 	})
 }
 
-// buildMergesynth activates the merge-strategy synthesizer (#213). It runs after
-// inline and before nameof: it reads the ORIGINAL augmentation member
+// buildMergesynth activates the merge-strategy synthesizer (#213). The host runs
+// it as a ONE-SHOT PRE-PASS, once per file BEFORE the fixed-point loop (Open issue
+// 2, see transformFileToTypeScript): it is augmentation-side and its matches are
+// only ever source-written installs, so the loop can never mint fresh work for it.
+// It stays ahead of the loop's nameof pass, so nameof still lowers each install
+// call's token argument. It reads the ORIGINAL augmentation member
 // declarations through the checker and threads a plain-JS strategies object as
 // the third argument of each registerAugmentations/applyAugmentations call, so a
 // member-name collision dispatches by argument shape instead of throwing. The

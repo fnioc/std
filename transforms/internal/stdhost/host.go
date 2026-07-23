@@ -239,9 +239,24 @@ func runTransform(host Host, args []string) int {
 
 	artifacts := inlinetransform.NewArtifacts()
 	env := &Env{Cwd: cwd, Artifacts: artifacts, Bodies: scan.Bodies}
-	transforms := make([]plugin.FileTransform, 0, len(selected))
+
+	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
+	// LOOPED set (everything else). Mergesynth is augmentation-side: its matches are
+	// source-written registerAugmentations/applyAugmentations installs, and NO sugar
+	// body mints one, so the loop can never produce fresh work for it — running it
+	// exactly once before the loop keeps termination trivially explainable (Open
+	// issue 2). The rest run repeatedly to a fixed point, since each sugar chain
+	// peels one layer per pass. Order is preserved within each group; the loop's
+	// correctness does not depend on it (disjoint match sets).
+	prePass := make([]plugin.FileTransform, 0, 1)
+	loop := make([]plugin.FileTransform, 0, len(selected))
 	for _, stage := range selected {
-		transforms = append(transforms, stage.Build(prog, ctx, env, emit))
+		built := stage.Build(prog, ctx, env, emit)
+		if stage.Name == stagePrefix+"mergesynth" {
+			prePass = append(prePass, built)
+		} else {
+			loop = append(loop, built)
+		}
 	}
 
 	for _, sf := range prog.SourceFiles() {
@@ -252,7 +267,7 @@ func runTransform(host Host, args []string) int {
 		if filepath.IsAbs(key) || key == ".." || strings.HasPrefix(key, "../") {
 			continue
 		}
-		out.TypeScript[key] = transformFileToTypeScript(prog, transforms, sf, artifacts, emit)
+		out.TypeScript[key] = transformFileToTypeScript(prog, prePass, loop, sf, artifacts, emit)
 	}
 
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
@@ -408,22 +423,62 @@ func selectStages(host Host, entries []pluginEntry, linkedNames map[string]bool,
 	return out, nil
 }
 
-// transformFileToTypeScript lowers one file through every selected stage in a
-// single EmitContext — canonical order, back-to-back — and prints the result
-// back as TypeScript for the ttsc host to type-strip. When the inline stage was
-// active it runs the emit sweep (tripwire 2) over the fully-lowered output after
-// parent pointers are fixed up, so a synthetic node can walk to a positioned
-// ancestor, before printing.
-func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit Sink) string {
+// maxLoopPasses bounds the fixed-point loop. Each sugar chain peels one layer per
+// pass, so a real file settles in a handful of passes (a 3-deep registration chain
+// takes 3); 16 is a generous ceiling far above any legitimate chain depth. Hitting
+// it means a stage is NOT identity-preserving on a no-op (it rebuilds the tree
+// every pass, so the loop can never observe a fixed point) or two stages are
+// rewriting the same node back and forth — either way an engine bug, surfaced
+// LOUDLY as a per-file FIXED_POINT_EXHAUSTED error rather than a silent cap or an
+// infinite spin.
+const maxLoopPasses = 16
+
+// transformFileToTypeScript lowers one file to its fixed point in a single
+// EmitContext and prints the result back as TypeScript for the ttsc host to
+// type-strip.
+//
+// Mergesynth is a ONE-SHOT PRE-PASS, run once before the loop (Open issue 2): it
+// is augmentation-side, its matches are only ever the SOURCE-WRITTEN
+// registerAugmentations/applyAugmentations installs, and no sugar body mints one,
+// so the loop can never create fresh work for it — and one-shot placement makes
+// termination trivially explainable. (In the loop it also misbehaves: its
+// strategyNames has no spread-assignment case, so it re-wraps a hand-merge install
+// every pass and never settles — mergesynth.go.) REJOIN CONDITION, if a future
+// sugar body ever EMITS an install call: mergesynth must move back INTO the loop
+// AND gain a spread-recursing strategyNames (recurse through resolveObjectLiteral)
+// so the loop's newly-minted installs are re-seen.
+//
+// The remaining stages run under RunToFixedPoint — the whole set, back to back,
+// until a full pass changes nothing. Change detection is pointer identity (every
+// stage returns the identical *SourceFile on a no-op). Only after the loop settles
+// does the emit sweep run (tripwire 2) — once, over the fully-lowered, fully-
+// parented output — so a synthetic node can walk to a positioned ancestor.
+func transformFileToTypeScript(prog *driver.Program, prePass, loop []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit Sink) string {
 	options := prog.TSProgram.Options()
 	ec := shimprinter.NewEmitContext()
 	result := sf
-	for _, transform := range transforms {
-		if next := transform(ec, result); next != nil {
+
+	prePassChanged := false
+	for _, transform := range prePass {
+		if next := transform(ec, result); next != nil && next != result {
 			result = next
+			prePassChanged = true
 		}
 	}
-	shimast.SetParentInChildrenUnset(result.AsNode())
+	if prePassChanged {
+		shimast.SetParentInChildrenUnset(result.AsNode())
+	}
+
+	var exhausted bool
+	result, _, exhausted = plugin.RunToFixedPoint(ec, loop, result, maxLoopPasses)
+	if exhausted {
+		emit(Diag{
+			File:    filepath.ToSlash(sf.FileName()),
+			Code:    "FIXED_POINT_EXHAUSTED",
+			Message: fmt.Sprintf("the transform loop did not reach a fixed point after %d passes — the file still changes on every pass. A stage is likely not identity-preserving on a no-op (it rebuilds the tree each pass), or two stages are rewriting the same node back and forth. This is an engine bug, not a user error.", maxLoopPasses),
+		})
+	}
+
 	if artifacts != nil && artifacts.Active {
 		for _, d := range inlinetransform.Sweep(result, artifacts) {
 			emit(DiagFromPlugin(d))
