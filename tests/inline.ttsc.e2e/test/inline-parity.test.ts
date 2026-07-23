@@ -253,13 +253,36 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 // A single shared package.json would therefore force `inline` onto BOTH tsconfigs
 // and collapse the di-direct oracle. Splitting the dep graphs keeps them distinct:
 //
-//   inline/   deps {di.core, di.transformer} → scan activates the FULL set; the
-//             inline stage peels the sugar, primitives lower it, di is a no-op.
+//   inline/   deps {di.core, di.transformer} → scan activates the FULL set,
+//             INCLUDING the `di` stage.
 //   semantic/ deps {di.core} only → di.core declares no stages so the scan is
 //             empty; tsconfig plugins [nameof, di.transformer/ttsc] pick the
 //             di-DIRECT lowering with NO inline stage. di.transformer is symlinked
 //             for its descriptor but kept OUT of package.json so the scan ignores
 //             its stages.
+//
+// ISOLATION GAP — read before trusting the closed-chain / open-template parity.
+// The `di` stage is CO-ACTIVE in the inline/ dir (the scan drags it in alongside
+// valueof, and there is no way to keep valueof without it: valueof has no
+// standalone descriptor, and the collector reads di.transformer's sugar BODIES and
+// its di/valueof STAGES from the ONE dep walk — CollectProject — so a dir that has
+// the bodies inline needs to peel necessarily also has the di stage). In practice
+// inline runs first in the host's stage-table order and strips the type-args before
+// di's declaration-site matcher can claim the call, so di settles as a no-op — but
+// this suite CANNOT prove that: for the closed chain and the open template the two
+// pipelines are byte-IDENTICAL by design, so a regression that stopped inline
+// peeling the `.withSignature`/`.as` continuations would be silently covered by di
+// lowering the whole chain in one deep walk, and the parity would still pass. So
+// for those two cases the byte-parity here is a PRODUCTION-PATH agreement + whole-
+// file regression net (dist-referenced di.core, real ttsc, real descriptors), NOT
+// evidence of which stage did the peeling. The inline stage is proven IN ISOLATION
+// — di stage genuinely absent — at the Go level, where the pipeline is composed by
+// hand with no di transform: TestChainSettlesThroughInlinePrimitivesOnly
+// (looprunner_test.go, the exact closed chain under the loop),
+// TestAsDecoupleInlinePipelineMatchesDiDirect (the `.as` continuation) and
+// TestOpenTemplateInlinePipelineMatchesDiDirect (the open template). The KEYED case
+// below is the one discriminator this suite provides itself (inline and di diverge
+// on keyed output, so parity there DOES pin that inline won the race).
 //
 // Both point at the one shared TTSC_CACHE_DIR, so the sidecar the pilot already
 // built cold is reused warm here. di.core resolves to its dist/bundle types in
@@ -487,10 +510,14 @@ function lineWith(src: string, needle: string): string | undefined {
 
 describe.skipIf(!toolchainReady)('generic inline stage — registration chain parity (W2)', () => {
   test('closed chain: addClass<I>(C).withSignature<[]>().as<"singleton">() lowers to the value form', () => {
-    // The three-deep sugar chain peels through the fixed-point loop to a plain
-    // registration call: the token, the ctor, its derived signature, then the
-    // fluent `.withSignature()` / `.as("singleton")` continuations survive as their
-    // own value-arg calls (survive-not-fold parity).
+    // The three-deep sugar chain peels to a plain registration call: the token, the
+    // ctor, its derived signature, then the fluent `.withSignature()` / `.as(
+    // "singleton")` continuations survive as their own value-arg calls (survive-not-
+    // fold parity). NOTE (see the ISOLATION GAP block above): the `di` stage is co-
+    // active in this dir and independently lowers the identical chain, so the byte-
+    // parity below is a production-path agreement + regression net, not proof inline
+    // did the peeling — that isolation lives in the Go
+    // TestChainSettlesThroughInlinePrimitivesOnly (no di stage).
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
     expect(line).toContain('addClass("');
@@ -501,6 +528,10 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
   });
 
   test('open template: addClass<IRepo<$<1>>>(ThingRepo) carries the "$1" open token + hole dep', () => {
+    // Same co-active-di caveat as the closed chain (ISOLATION GAP block above): di
+    // could lower this identical open template alone, so parity is agreement, not
+    // proof of which stage peeled. Inline-in-isolation for the open template is the
+    // Go TestOpenTemplateInlinePipelineMatchesDiDirect (no di stage).
     const line = lineWith(chainInline, 'open =');
     expect(line).toBeDefined();
     // The service token is the open template IRepo<$1> and the ctor dep carries
@@ -545,6 +576,15 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
   });
 
   test('keyed: addClass<Keyed<ICache, "redis">>(RedisCache) reunites base + key onto the di token', () => {
+    // DISCRIMINATING case (see the ISOLATION GAP block above): unlike the closed
+    // chain and open template — where inline and di emit byte-identical output, so
+    // parity cannot tell which stage peeled — inline and di DIVERGE on keyed output.
+    // Inline keeps the halves split (bare base in arg0, "redis" in the arg-5 KEY slot
+    // behind the scope placeholder); di composes `base#redis` into arg0. So the
+    // `expect(inlineBase).not.toContain('#')` assertion below would FAIL if di had
+    // produced the keyed token — which makes this the one case in this suite that
+    // proves inline, not di, won the addClass race in the SAME compilation despite di
+    // being co-active. (Mirrors the Go TestKeyedInlinePipelineComposesBaseKey.)
     assertNoAuthoringSurvivors(keyedInline);
     const inlineLine = lineWith(keyedInline, 'keyed =');
     const diLine = lineWith(keyedSemantic, 'keyed =');
