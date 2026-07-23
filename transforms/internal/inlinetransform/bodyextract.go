@@ -19,12 +19,25 @@ import (
 // `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
 // KEY; both are authoring-time-only constructs, so they live in
 // `@rhombus-std/di.transformer` and a body imports them via a package-relative
-// specifier from within that package (see primitiveImports). A hardcoded map
-// suffices — the declare-by-marker generalization is a future enhancement.
+// specifier from within that package (see primitiveImports).
+//
+// `signaturefor<T>()` / `signaturesfor<T>()` bind a TYPE argument (a dependency
+// tuple / tuple-of-tuples) and MINT one overload's / the whole set's `DepSlot`s
+// from it — the type-argument siblings of the value-argument `signatureof`. They
+// produce di.core's `DepSlot` shape and are called from runtime source too, so
+// they home in `@rhombus-std/di.core` and a body imports them by that package name
+// (the peered core). `valueof<T>()` binds a literal TYPE argument and lowers to its
+// VALUE (`valueof<"scoped">()` → `"scoped"`) — the authoring-only half of the
+// `.as<Scope>()` sugar, homed in `@rhombus-std/di.transformer` beside signatureof /
+// keyof and imported via a package-relative specifier. A hardcoded map suffices —
+// the declare-by-marker generalization is a future enhancement.
 var knownPrimitives = map[string]string{
-	"nameof":      "@rhombus-std/primitives",
-	"signatureof": "@rhombus-std/di.transformer",
-	"keyof":       "@rhombus-std/di.transformer",
+	"nameof":        "@rhombus-std/primitives",
+	"signatureof":   "@rhombus-std/di.transformer",
+	"keyof":         "@rhombus-std/di.transformer",
+	"signaturefor":  "@rhombus-std/di.core",
+	"signaturesfor": "@rhombus-std/di.core",
+	"valueof":       "@rhombus-std/di.transformer",
 }
 
 // Discriminator is the structural overload key: (type-parameter count, value

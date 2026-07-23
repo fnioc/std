@@ -176,6 +176,17 @@ func (c *context) slotLiteral(slot Slot) *shimast.Node {
 	return c.stringLit("")
 }
 
+// slotArrayLiteral renders a SINGLE-level `[...slots]` — one overload's slot
+// array (a `withSignature` append / a `signaturefor<T>()` result), as opposed to
+// the two-level signatures array signaturesLiteral renders.
+func (c *context) slotArrayLiteral(slots []Slot) *shimast.Node {
+	elems := make([]*shimast.Node, 0, len(slots))
+	for _, slot := range slots {
+		elems = append(elems, c.slotLiteral(slot))
+	}
+	return c.arrayLit(elems)
+}
+
 // signaturesLiteral renders `[[...slots], ...]` — the inline signatures array
 // (an `addClass` / `addFactory` third argument).
 func (c *context) signaturesLiteral(signatures []signature) *shimast.Node {

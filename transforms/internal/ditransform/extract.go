@@ -76,6 +76,44 @@ func (e *Extractor) SignatureArrayForRegistration(arg *shimast.Node, token strin
 	return e.c.signaturesLiteral(sigs), true
 }
 
+// SignatureForTuple mints ONE overload's slots from an EXPLICIT dependency tuple
+// type `T` — the type-argument `signaturefor<T>()` primitive, the minting twin of
+// the value-observing `SignatureArray`. Each tuple ELEMENT becomes a slot through
+// the same per-element classifier a rest-param tuple already uses, so the emitted
+// array is byte-identical to what a hand author writes for the same slots. It
+// renders a SINGLE-level `[slot, ...]` (the `readonly DepSlot[]` a `withSignature`
+// append takes), not the two-level signatures array. ok=false when `T` is not a
+// tuple — a misuse a caller leaves in place for the emit sweep to flag.
+func (e *Extractor) SignatureForTuple(t *shimchecker.Type, anchor *shimast.Node) (*shimast.Node, bool) {
+	slots, ok := e.c.tupleElementSlots(t, anchor)
+	if !ok {
+		return nil, false
+	}
+	return e.c.slotArrayLiteral(slots), true
+}
+
+// SignaturesForTuple mints the WHOLE overload set from a tuple-OF-tuples type `T`
+// — the type-argument `signaturesfor<T>()` primitive. Each OUTER element is itself
+// a dependency tuple lowered through SignatureForTuple's per-element path, so the
+// emitted two-level `[[...], ...]` array is byte-identical to the `withSignatures`
+// bulk form a hand author writes. ok=false when `T` or any outer element is not a
+// tuple.
+func (e *Extractor) SignaturesForTuple(t *shimchecker.Type, anchor *shimast.Node) (*shimast.Node, bool) {
+	if !shimchecker.IsTupleType(t) {
+		return nil, false
+	}
+	outer := e.c.checker.GetTypeArguments(t)
+	sigs := make([]signature, 0, len(outer))
+	for _, elem := range outer {
+		slots, ok := e.c.tupleElementSlots(elem, anchor)
+		if !ok {
+			return nil, false
+		}
+		sigs = append(sigs, slots)
+	}
+	return e.c.signaturesLiteral(sigs), true
+}
+
 // signaturesForValue extracts the dependency signatures a class / factory value
 // carries — the value-inspection half of planAddRegistration, shared with the
 // signatureof primitive. Token derivation, registration-time override merging,

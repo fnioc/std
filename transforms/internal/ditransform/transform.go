@@ -36,11 +36,14 @@ func New(prog *driver.Program, ctx *tokens.Context, addDiagnostic func(Diagnosti
 //
 // Registration lowering is a single file-wide pass: buildRegistrationPlans scans
 // the entire tree for registration calls, and lowerRegistrationExpression walks
-// that same tree once, swapping each planned call and every `.as<"x">()` in
-// place. This is what carries the immutable manifest's assignment-threaded shape
+// that same tree once, swapping each planned call and every DI-DIRECT `.as<"x">()`
+// in place. This carries the immutable manifest's assignment-threaded shape
 // (`services = services.addClass<I>(C).as<"scope">()`), a `const`-initializer, or
 // a `return` inside a factory — none of which is a bare top-level expression
-// statement.
+// statement. The `.as<"x">()` di-direct lowering (via the shared valueof literal
+// extraction) is the ONLY `.as` lowering when di.core is external; when it is
+// source, the inline body + valueof stage lower it upstream and this pass sees a
+// type-argument-less `.as("x")` it skips (§92).
 func (c *context) transformFile(sf *shimast.SourceFile) *shimast.SourceFile {
 	root := sf.AsNode()
 	plans := c.buildRegistrationPlans(root)

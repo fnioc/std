@@ -13,21 +13,35 @@ const declaringModule = "@rhombus-std/di.core"
 // overloads AND the transformer's sugar overloads share one interface:
 //
 //	addClass / addFactory / addValue → IServiceManifestBase
+//	withSignature               → IWithSignatureBuilder
+//	withSignatures              → IWithSignaturesBuilder
 //	as                          → IAsBuilder
 //	resolve                     → IRequiredResolver
 //	resolveAsync / tryResolve   → IResolver
 //	isService                   → IServiceQuery
 //
-// `as` anchors on `IAsBuilder` — the scope-slot face of di.core's `AddChain<S,
-// Slots>` slot algebra, which replaced the single `AddBuilder` continuation when
-// the manifest became immutable. `AddChain` is a type ALIAS (an intersection of
-// the per-slot faces) and declares no members, so it never anchors a declaration
-// here; the member's declaration site is the face interface that owns it.
+// The chain-continuation sugars (`.withSignature<T>()`, `.withSignatures<T>()`,
+// `.as<Scope>()`) anchor on the per-slot faces of di.core's `AddChain<S, Slots>`
+// slot algebra. These DI-DIRECT recognizers are load-bearing wherever the inline
+// stage is inert — a dist-referenced consumer (a published / externalized di.core
+// is not a SOURCE module in the program, so no sugar body is substituted), AND an
+// INNER chain element even when di.core is source (the inline stage substitutes
+// only the OUTERMOST call, leaving `addClass<I>(C).withSignature<T>()` — the natural
+// pre-`.as` position — for this pass). So the di stage's structural recognition is
+// the lowering for these forms in both cases; when di.core is source AND the sugar
+// is the outermost call it instead lowers through its inline body + primitive stage.
+// The paths are mutually exclusive: a substituted / already-lowered call carries no
+// type argument, so these recognizers skip it — exactly mirroring `addClass<I>(C)`'s
+// dual inline / di-direct paths. `AddChain` is a type ALIAS (an intersection of the
+// per-slot faces) and declares no members, so it never anchors a declaration here;
+// the member's declaration site is the face interface that owns it.
 var (
-	registrationInterfaces = map[string]bool{"IServiceManifestBase": true}
-	asInterfaces           = map[string]bool{"IAsBuilder": true}
-	resolveInterfaces      = map[string]bool{"IRequiredResolver": true, "IResolver": true}
-	isServiceInterfaces    = map[string]bool{"IServiceQuery": true}
+	registrationInterfaces   = map[string]bool{"IServiceManifestBase": true}
+	withSignatureInterfaces  = map[string]bool{"IWithSignatureBuilder": true}
+	withSignaturesInterfaces = map[string]bool{"IWithSignaturesBuilder": true}
+	asInterfaces             = map[string]bool{"IAsBuilder": true}
+	resolveInterfaces        = map[string]bool{"IRequiredResolver": true, "IResolver": true}
+	isServiceInterfaces      = map[string]bool{"IServiceQuery": true}
 )
 
 // memberAnchoredOnDiCore reports whether the member referenced at name resolves to

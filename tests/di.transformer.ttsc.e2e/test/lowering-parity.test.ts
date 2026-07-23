@@ -136,10 +136,23 @@ beforeAll(() => {
     as(scope: Scopes): void;
     as<S extends Scopes>(): void;
   }
+  // The per-slot chain faces the di-direct chain-sugar recognizers anchor on —
+  // \`withSignature\`/\`withSignatures\`/\`as\` each on its OWN named face, mirroring
+  // di.core's AddChain intersection. addClass returns the full chain (IChain).
+  export interface IWithSignatureBuilder<Scopes extends string = string> {
+    withSignature(...slots: readonly unknown[]): IChain<Scopes>;
+    withSignature<T extends readonly any[]>(): IChain<Scopes>;
+  }
+  export interface IWithSignaturesBuilder<Scopes extends string = string> {
+    withSignatures(...signatures: readonly (readonly unknown[])[]): IChain<Scopes>;
+    withSignatures<T extends readonly (readonly any[])[]>(): IChain<Scopes>;
+  }
+  export interface IChain<Scopes extends string = string>
+    extends IWithSignatureBuilder<Scopes>, IWithSignaturesBuilder<Scopes>, IAsBuilder<Scopes> {}
   export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
-    addClass(token: string, ctor: Ctor, signatures: readonly (readonly unknown[])[]): IAsBuilder<Scopes>;
-    addClass<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
-    addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
+    addClass(token: string, ctor: Ctor, signatures: readonly (readonly unknown[])[]): IChain<Scopes>;
+    addClass<I>(ctor: Ctor<any[], I>): IChain<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): IChain<Scopes>;
     addValue(token: string, value: unknown): IServiceManifestBase<Scopes, Provider>;
   }
   export interface IRequiredResolver {
@@ -214,6 +227,14 @@ services.addClass<IUserRepo>(SqlUserRepo).as<"request">();
 services.addClass<Keyed<ICache, "redis">>(RedisCache).as<"singleton">();
 services.addClass<CacheConsumer>(CacheConsumer).as<"singleton">();
 services.addClass<IRepo<$<1>>>(ThingRepo<$<1>>).as<"singleton">();
+
+// The type-driven CHAIN sugars — INNER modifiers before \`.as\`, so the inline stage
+// (which reaches only the outermost call) never touches them: this di.core-external
+// build proves the di stage's DI-DIRECT recognizers lower them. withSignature<T>()
+// appends one overload's slots (spread positionally); withSignatures<T>() replaces
+// the whole set (one inner array per overload). Both byte-identical to hand-written.
+services.addClass<ILogger>(ConsoleLogger).withSignature<[IDbConnection, ICache]>().as<"singleton">();
+services.addClass<ILogger>(ConsoleLogger).withSignatures<[[IDbConnection], [IDbConnection, ICache]]>().as<"singleton">();
 
 export const marker = nameof<IUserRepo>();
 export const dep = provider.resolve<ILogger>();
@@ -340,9 +361,25 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     expect(app).not.toContain('add<');
     expect(app).not.toContain('addClass<');
     expect(app).not.toContain('.as<');
+    expect(app).not.toContain('.withSignature<');
+    expect(app).not.toContain('.withSignatures<');
+    expect(app).not.toContain('signaturefor');
+    expect(app).not.toContain('signaturesfor');
     expect(app).not.toContain('resolve<');
     expect(app).not.toContain('isService<');
     expect(app).not.toContain('nameof<');
+  });
+
+  test('di-direct withSignature<T>() → positional slot append (di.core external)', () => {
+    // Inner chain modifier in a dist-referenced (inline-inert) build: the di stage
+    // mints the tuple's slots and spreads them into the value-arg append — the exact
+    // hand-writable form, no wrapping array, no spread, no signaturefor.
+    expect(app).toContain('.withSignature("./app:IDbConnection", "./app:ICache")');
+  });
+
+  test('di-direct withSignatures<T>() → per-overload arrays (di.core external)', () => {
+    // The bulk form: one inner array per overload tuple.
+    expect(app).toContain('.withSignatures(["./app:IDbConnection"], ["./app:IDbConnection", "./app:ICache"])');
   });
 
   test('zero-arg class registration → token + empty inline signature + scope', () => {

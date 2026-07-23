@@ -176,18 +176,35 @@ func (c *context) findRegistrationCalls(expr *shimast.Node) []foundReg {
 	return found
 }
 
-func isAsCall(checker *shimchecker.Checker, call *shimast.Node) bool {
+// isChainSugarCall reports whether call is a single-type-argument chain-sugar call
+// `.<member><T>()` whose member resolves to one of di.core's per-slot chain faces —
+// the DI-DIRECT recognizer shared by `.as`, `.withSignature`, and `.withSignatures`.
+// An already-lowered / substituted value-arg call carries no type argument, so this
+// returns false for it; the inline and di-direct paths never overlap.
+func isChainSugarCall(checker *shimchecker.Checker, call *shimast.Node, member string, faces map[string]bool) bool {
 	callee := call.AsCallExpression().Expression
 	if callee.Kind != shimast.KindPropertyAccessExpression {
 		return false
 	}
-	if callee.Name().Text() != "as" {
+	if callee.Name().Text() != member {
 		return false
 	}
 	if len(callTypeArgs(call)) != 1 {
 		return false
 	}
-	return memberAnchoredOnDiCore(checker, callee.Name(), asInterfaces)
+	return memberAnchoredOnDiCore(checker, callee.Name(), faces)
+}
+
+func isAsCall(checker *shimchecker.Checker, call *shimast.Node) bool {
+	return isChainSugarCall(checker, call, "as", asInterfaces)
+}
+
+func isWithSignatureCall(checker *shimchecker.Checker, call *shimast.Node) bool {
+	return isChainSugarCall(checker, call, "withSignature", withSignatureInterfaces)
+}
+
+func isWithSignaturesCall(checker *shimchecker.Checker, call *shimast.Node) bool {
+	return isChainSugarCall(checker, call, "withSignatures", withSignaturesInterfaces)
 }
 
 func isFactoryArg(arg *shimast.Node) bool {
@@ -473,7 +490,16 @@ func (c *context) applyOverrides(base signature, overrideNode *shimast.Node) sig
 	return result
 }
 
-// lowerRegistrationExpression rewrites each planned call and every `.as<"x">()`.
+// lowerRegistrationExpression rewrites each planned registration call and every
+// DI-DIRECT `.as<"x">()` in place.
+//
+// The `.as<"x">()` lifetime form has TWO lowering paths, exactly like
+// `addClass<I>(C)`: when di.core is a SOURCE module it lowers through its inline
+// sugar body (`this.as(valueof<Scope>())`) plus the valueof primitive stage; when
+// di.core is external (a dist-referenced consumer — the inline stage is then inert,
+// so no body is substituted) it lowers HERE, via the shared valueof literal
+// extraction (§92). A substituted `.as("x")` from the inline path carries no type
+// argument, so isAsCall skips it — the paths never double-fire.
 func (c *context) lowerRegistrationExpression(expr *shimast.Node, plans map[*shimast.Node]*regPlan) *shimast.Node {
 	var visitor *shimast.NodeVisitor
 	visit := func(node *shimast.Node) *shimast.Node {
@@ -486,8 +512,15 @@ func (c *context) lowerRegistrationExpression(expr *shimast.Node, plans map[*shi
 			}
 		}
 		visited := visitor.VisitEachChild(node)
-		if visited.Kind == shimast.KindCallExpression && isAsCall(c.checker, visited) {
-			return c.lowerAsCall(visited)
+		if visited.Kind == shimast.KindCallExpression {
+			switch {
+			case isAsCall(c.checker, visited):
+				return c.lowerAsCall(visited)
+			case isWithSignatureCall(c.checker, visited):
+				return c.lowerWithSignatureCall(visited)
+			case isWithSignaturesCall(c.checker, visited):
+				return c.lowerWithSignaturesCall(visited)
+			}
 		}
 		return visited
 	}
@@ -548,16 +581,65 @@ func (c *context) lowerRegistrationCall(call *shimast.Node, plan *regPlan) *shim
 	return c.factory.NewCallExpression(newCallee, nil, nil, c.factory.NewNodeList(args), 0)
 }
 
-// lowerAsCall rewrites `.as<"x">()` to `.as("x")`.
+// lowerAsCall rewrites the DI-DIRECT `.as<"x">()` to the value-arg `.as("x")`,
+// deriving the scope value from the type argument through the SAME literal
+// extraction the valueof primitive uses (tokens.SingletonValue → literalExpression),
+// so a di-direct lowering and an inline `.as(valueof<Scope>())` lowering land on
+// byte-identical output for any literal scope (string / number / boolean). A
+// non-literal type argument (which the `Scope extends S` bound forbids) leaves the
+// call arg-less rather than inventing a value.
 func (c *context) lowerAsCall(call *shimast.Node) *shimast.Node {
 	typeArg := callTypeArgs(call)[0]
 	existing := callArguments(call)
-	if typeArg.Kind == shimast.KindLiteralType {
-		literal := typeArg.AsLiteralTypeNode().Literal
-		if literal.Kind == shimast.KindStringLiteral {
-			args := append([]*shimast.Node{c.stringLit(literal.Text())}, existing...)
-			return c.factory.NewCallExpression(call.AsCallExpression().Expression, nil, nil, c.factory.NewNodeList(args), 0)
-		}
+	callee := call.AsCallExpression().Expression
+	if value, ok := tokens.SingletonValue(c.checker.GetTypeFromTypeNode(typeArg)); ok {
+		args := append([]*shimast.Node{c.literalExpression(value)}, existing...)
+		return c.factory.NewCallExpression(callee, nil, nil, c.factory.NewNodeList(args), 0)
 	}
-	return c.factory.NewCallExpression(call.AsCallExpression().Expression, nil, nil, c.factory.NewNodeList(existing), 0)
+	return c.factory.NewCallExpression(callee, nil, nil, c.factory.NewNodeList(existing), 0)
+}
+
+// lowerWithSignatureCall rewrites the DI-DIRECT `.withSignature<T>()` to the
+// value-arg append `.withSignature(slotA, slotB, …)` — the tuple `T`'s elements
+// minted through the SAME per-element slot classifier the `signaturefor<T>()`
+// primitive uses, then spread positionally. This is byte-identical to the inline
+// path (`this.withSignature(...signaturefor<T>())` → spread-flattened). A non-tuple
+// `T` (which the `T extends readonly any[]` bound forbids) leaves the call
+// untouched for the emit sweep.
+func (c *context) lowerWithSignatureCall(call *shimast.Node) *shimast.Node {
+	typeArg := callTypeArgs(call)[0]
+	callee := call.AsCallExpression().Expression
+	slots, ok := c.tupleElementSlots(c.checker.GetTypeFromTypeNode(typeArg), typeArg)
+	if !ok {
+		return call
+	}
+	args := make([]*shimast.Node, 0, len(slots))
+	for _, slot := range slots {
+		args = append(args, c.slotLiteral(slot))
+	}
+	return c.factory.NewCallExpression(callee, nil, nil, c.factory.NewNodeList(args), 0)
+}
+
+// lowerWithSignaturesCall rewrites the DI-DIRECT `.withSignatures<T>()` to the
+// value-arg bulk form `.withSignatures([slotA], [slotB, slotC], …)` — the
+// tuple-OF-tuples `T`, one inner array per overload, minted like `signaturesfor<T>()`
+// and spread positionally. Byte-identical to the inline path. A non-tuple `T` (or a
+// non-tuple outer element) leaves the call untouched for the emit sweep.
+func (c *context) lowerWithSignaturesCall(call *shimast.Node) *shimast.Node {
+	typeArg := callTypeArgs(call)[0]
+	callee := call.AsCallExpression().Expression
+	t := c.checker.GetTypeFromTypeNode(typeArg)
+	if !shimchecker.IsTupleType(t) {
+		return call
+	}
+	outer := c.checker.GetTypeArguments(t)
+	args := make([]*shimast.Node, 0, len(outer))
+	for _, elem := range outer {
+		slots, ok := c.tupleElementSlots(elem, typeArg)
+		if !ok {
+			return call
+		}
+		args = append(args, c.slotArrayLiteral(slots))
+	}
+	return c.factory.NewCallExpression(callee, nil, nil, c.factory.NewNodeList(args), 0)
 }

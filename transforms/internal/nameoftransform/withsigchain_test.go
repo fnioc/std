@@ -1,0 +1,150 @@
+package nameoftransform
+
+import (
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/samchon/ttsc/packages/ttsc/driver"
+)
+
+// buildWithSigChainWorkspace stands up a di.core-as-source workspace whose
+// registration chain carries the type-driven `withSignature<T>()` APPEND sugar
+// AND the `.as<Scope>()` lifetime sugar, so the full inline pipeline lowers a
+// realistic `addClass<I>(C).withSignature<[IDep]>().as<'scoped'>()` chain. The
+// inline bodies (in di.core's out-of-barrel src/inline.ts) mirror the real
+// ManifestChainInline: `withSignature<T>() => this.withSignature(...signaturefor<T>())`
+// and `as<Scope>() => this.as(valueof<Scope>())`.
+func buildWithSigChainWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+
+	core := filepath.Join(root, "packages", "di.core")
+	writeFile(t, filepath.Join(core, "package.json"), `{
+  "name": "@rhombus-std/di.core",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "rhombus.inline": {
+    "entries": [
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ChainInline", "member": "addClass" },
+      { "type": "@rhombus-std/di.core:IWithSignatureBuilder", "impl": "ChainInline", "member": "withSignature" },
+      { "type": "@rhombus-std/di.core:IAsBuilder", "impl": "ChainInline", "member": "as" }
+    ]
+  }
+}`)
+	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IAsBuilder<Scopes extends string> {
+  as(scope: Scopes): IAsBuilder<Scopes>;
+}
+export interface IWithSignatureBuilder {
+  withSignature(...slots: readonly unknown[]): IChain;
+}
+export interface IChain extends IWithSignatureBuilder, IAsBuilder<'scoped'> {}
+export interface IServiceManifestBase {
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): IChain;
+}
+export declare const services: IServiceManifestBase;
+export declare function signaturefor<T extends readonly any[]>(): readonly unknown[];
+`)
+	// The inline bodies, mirroring the real di.transformer ManifestChainInline:
+	// addClass derives token + dep-array; withSignature mints ONE overload's slots
+	// from the tuple and spreads them; as mints the scope literal value.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+import { signatureof, valueof } from '@rhombus-std/di.transformer';
+import { signaturefor } from '@rhombus-std/di.core';
+import type { IAsBuilder, IChain, IServiceManifestBase, IWithSignatureBuilder } from './index';
+export const ChainInline = {
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): IChain {
+    return this.addClass(nameof<T>(), ctor, signatureof(ctor));
+  },
+  withSignature<T extends readonly any[]>(this: IWithSignatureBuilder): IChain {
+    return this.withSignature(...signaturefor<T>());
+  },
+  as<Scope extends 'scoped'>(this: IAsBuilder<'scoped'>): IAsBuilder<'scoped'> {
+    return this.as(valueof<Scope>());
+  },
+};
+`)
+
+	app := filepath.Join(root, "packages", "app")
+	writeFile(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@rhombus-std/di.core": "workspace:*" }
+}`)
+	linkPkg(t, app, "@rhombus-std/di.core", core)
+
+	// The consumer augmentation mirroring di.transformer's real declare-module: the
+	// type-driven addClass<T>() / withSignature<T>() / as<S>() overloads merge onto
+	// their respective di.core faces.
+	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
+  interface IServiceManifestBase {
+    addClass<T>(ctor: unknown): IChain;
+  }
+  interface IWithSignatureBuilder {
+    withSignature<T extends readonly any[]>(): IChain;
+  }
+  interface IAsBuilder<Scopes extends string> {
+    as<S extends Scopes>(): IAsBuilder<Scopes>;
+  }
+}
+export {};
+`)
+	writeFile(t, filepath.Join(app, "main.ts"), mainSrc)
+	writeFile(t, filepath.Join(app, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true
+  },
+  "files": ["main.ts", "sugar.d.ts", "node_modules/@rhombus-std/di.core/src/index.ts"]
+}`)
+
+	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatalf("LoadProgram: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	return prog, app
+}
+
+// TestWithSignatureAsChainLowersToHandWritable is the A3/A4 parity case: a
+// `addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>()` sugar CHAIN, run
+// through the full inline pipeline, must lower to EXACTLY the form a no-transformer
+// author would hand-write — the registration token + dep array, the appended
+// overload's slot token spread positionally into `.withSignature("...IDep")`, and
+// the scope literal in `.as("scoped")` — with no authoring generic, spread, or
+// primitive surviving.
+func TestWithSignatureAsChainLowersToHandWritable(t *testing.T) {
+	src := `import { services } from '@rhombus-std/di.core';
+interface IFoo {}
+interface IDep {}
+class Foo implements IFoo {}
+services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
+`
+	prog, app := buildWithSigChainWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerAsDecoupleInlinePipeline(t, prog, app)
+
+	// The appended overload's slot is spread positionally into withSignature — a
+	// bare token arg, NOT wrapped in a single-level array, and NOT a spread.
+	if !strings.Contains(out, `.withSignature("@scope/app/main:IDep")`) {
+		t.Fatalf("withSignature<[IDep]>() did not lower to the hand-writable append:\n%s", out)
+	}
+	// The lifetime sugar lowers to the value-arg form.
+	if !strings.Contains(out, `.as("scoped")`) {
+		t.Fatalf(".as<'scoped'>() did not lower to the value-arg call:\n%s", out)
+	}
+	// The registration itself lowered (token + dep array).
+	if !strings.Contains(out, `.addClass("@scope/app/main:IFoo", Foo,`) {
+		t.Fatalf("addClass<IFoo>(Foo) did not lower to the tokenized registration:\n%s", out)
+	}
+	// No authoring surface survives.
+	for _, banned := range []string{"withSignature<", "as<", "addClass<", "signaturefor", "valueof", "nameof", "..."} {
+		if strings.Contains(out, banned) {
+			t.Fatalf("authoring surface %q survived the chain lowering:\n%s", banned, out)
+		}
+	}
+}

@@ -127,8 +127,8 @@ func swapStreams(out, err *bytes.Buffer) func() {
 // TestSelectStagesBundleExpandsToOrderedSet is the preset core: a consumer that
 // declares ONLY the di.core bundle descriptor (rhombusstd_di_bundle) must get its
 // constituent stages selected in canonical order — inline -> nameof ->
-// signatureof -> keyof -> di — without ever listing them by hand. The binary owns
-// both the membership and the order.
+// signatureof -> keyof -> valueof -> di — without ever listing them by hand. The
+// binary owns both the membership and the order.
 func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil, nil)
 	if err != nil {
@@ -139,6 +139,7 @@ func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 		stagePrefix + "nameof",
 		stagePrefix + "signatureof",
 		stagePrefix + "keyof",
+		stagePrefix + "valueof",
 		stagePrefix + "di",
 	}
 	names := stageNames(got)
@@ -170,6 +171,7 @@ func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 		stagePrefix + "nameof",
 		stagePrefix + "signatureof",
 		stagePrefix + "keyof",
+		stagePrefix + "valueof",
 		stagePrefix + "di",
 		stagePrefix + "di_options",
 	}

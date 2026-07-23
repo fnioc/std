@@ -13,6 +13,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
 // stagePrefix marks a manifest entry as one of a host's own stages. A
@@ -37,14 +38,17 @@ func StageName(id string) string {
 // call — it runs before nameof so nameof still lowers the call's token argument,
 // and later stages leave the synthesized object untouched), then nameof (its
 // token lowering and import elision, including the inline stage's synthetic
-// nameof calls), then signatureof (the dependency-signature array lowering,
-// including the inline stage's synthetic signatureof calls), then keyof (the
-// keyed-registration KEY lowering, including the inline stage's synthetic keyof
-// calls), then the registration verbs, the addOptions sugar, and the config schema
-// lowering. signatureof and keyof both run after nameof (disjoint call shapes — a
-// type-argument vs a value-argument primitive) and before di, so the di stage sees
-// a fully-lowered `add(...)` it leaves untouched. Manifest entry order does not
-// affect this — selection filters the host's stage slice, preserving order.
+// nameof calls), then signatureof (the dependency-signature array lowering — the
+// value-argument `signatureof(ctor)` AND its type-argument minting siblings
+// `signaturefor<T>()` / `signaturesfor<T>()`, including the inline stage's
+// synthetic calls), then keyof (the keyed-registration KEY lowering, including
+// the inline stage's synthetic keyof calls), then valueof (the literal-value
+// lowering of `valueof<Scope>()` — the `.as<Scope>()` sugar's scope half), then
+// the registration verbs, the addOptions sugar, and the config schema lowering.
+// signatureof, keyof, and valueof all run after nameof (disjoint call shapes) and
+// before di, so the di stage sees a fully-lowered `add(...)` / `.as("x")` it
+// leaves untouched. Manifest entry order does not affect this — selection filters
+// the host's stage slice, preserving order.
 //
 // Returned as a fresh slice each call so selection can filter it without
 // mutating shared state.
@@ -55,6 +59,7 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "keyof", Build: buildKeyof},
+		{Name: stagePrefix + "valueof", Build: buildValueof},
 		{Name: stagePrefix + "di", Build: buildDi},
 		{Name: stagePrefix + "di_options", Build: buildDiOptions},
 		{Name: stagePrefix + "config", Build: buildConfig},
@@ -83,6 +88,7 @@ func BaseBundles() map[string][]string {
 			stagePrefix + "nameof",
 			stagePrefix + "signatureof",
 			stagePrefix + "keyof",
+			stagePrefix + "valueof",
 			stagePrefix + "di",
 		},
 	}
@@ -142,6 +148,16 @@ func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit 
 // diagnostics of its own; any it did raise would be hard errors.
 func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return keyoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildValueof activates the valueof primitive stage. It lowers each
+// `valueof<Scope>()` — the inline stage's synthetic `.as<Scope>()` scope call and
+// any source-written one — to the scope's literal value expression. It raises no
+// diagnostics of its own; any it did raise would be hard errors.
+func buildValueof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return valueoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

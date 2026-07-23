@@ -78,7 +78,8 @@
       "transform": "@rhombus-std/di.transformer/ttsc"
     },
     "stages": [
-      "di"
+      "di",
+      "valueof"
     ]
   },
   "files": [
