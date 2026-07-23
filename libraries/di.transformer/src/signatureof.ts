@@ -4,7 +4,7 @@
 // Where `nameof<IFoo>()` binds a TYPE argument and lowers to a token string,
 // `signatureof(ctor)` binds a VALUE argument — a class constructor or a factory
 // function — and lowers to the positional dependency-signature array a
-// hand-written `add("token", ctor, [[...]])` would carry: `[[slot, ...], ...]`,
+// hand-written `addClass("token", ctor, [[...]])` would carry: `[[slot, ...], ...]`,
 // one inner array per constructor / call overload. The transformer derives it
 // from the value's constructor / call parameter types at compile time, so callers
 // never ship the derivation logic to runtime.
@@ -31,7 +31,7 @@ import type { DepSignatures, DepTarget } from '@rhombus-std/di.core';
  * @example
  * ```ts
  * // authored inside a sugar body:
- * this.add(nameof<IFoo>(), Foo, signatureof(Foo)); // → add("pkg:IFoo", Foo, [["pkg:IDep"]])
+ * this.addClass(nameof<IFoo>(), Foo, signatureof(Foo)); // → addClass("pkg:IFoo", Foo, [["pkg:IDep"]])
  * ```
  */
 export function signatureof(target: DepTarget): DepSignatures {
@@ -40,7 +40,7 @@ export function signatureof(target: DepTarget): DepSignatures {
     'signatureof(ctor) requires the @rhombus-std/primitives.transformer signatureof plugin. Add '
       + '{ "transform": "@rhombus-std/primitives.transformer/signatureof-ttsc" } to your '
       + 'tsconfig "plugins", or pass the dependency signatures explicitly as the third '
-      + 'argument to add(token, ctor, signatures).',
+      + 'argument to addClass(token, ctor, signatures).',
   );
 }
 

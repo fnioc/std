@@ -5,7 +5,7 @@
 // `keyof<Keyed<IFoo, "audit">>()` binds a TYPE argument and lowers to that keyed
 // service's registration KEY as a string literal — `"audit"` — or to `undefined`
 // when the type carries no `Keyed<T, K>` brand. The two are the halves of a keyed
-// inline registration: `add<T>(ctor)` lowers to `this.add(nameof<T>(), ctor,
+// inline registration: `addClass<T>(ctor)` lowers to `this.addClass(nameof<T>(), ctor,
 // signatureof(ctor), void 0, keyof<T>())`, where nameof derives the base token,
 // the `void 0` fills the scope slot the key sits behind, and keyof derives the
 // key — composed at runtime by di.core as `base#key`.
@@ -31,8 +31,8 @@
  * @example
  * ```ts
  * // authored inside a sugar body:
- * this.add(nameof<IFoo>(), Foo, signatureof(Foo), void 0, keyof<IFoo>()); // unkeyed → elided
- * this.add(nameof<T>(), C, signatureof(C), void 0, keyof<Keyed<IFoo, "audit">>()); // → …, "audit"
+ * this.addClass(nameof<IFoo>(), Foo, signatureof(Foo), void 0, keyof<IFoo>()); // unkeyed → elided
+ * this.addClass(nameof<T>(), C, signatureof(C), void 0, keyof<Keyed<IFoo, "audit">>()); // → …, "audit"
  * ```
  */
 export function keyof<T>(): string | undefined {
@@ -41,7 +41,7 @@ export function keyof<T>(): string | undefined {
     'keyof<T>() requires the @rhombus-std/primitives.transformer keyof plugin. Add '
       + '{ "transform": "@rhombus-std/primitives.transformer/keyof-ttsc" } to your '
       + 'tsconfig "plugins", or pass the registration key explicitly as the trailing '
-      + 'argument to add(token, ctor, signatures, scope, key).',
+      + 'argument to addClass(token, ctor, signatures, scope, key).',
   );
 }
 

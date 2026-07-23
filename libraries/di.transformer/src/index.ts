@@ -6,7 +6,7 @@
 // authoring contract, not an emit implementation:
 //
 //   - `./augment.ts` — the `declare module '@rhombus-std/di.core'` that lights up
-//     the token-free authoring forms (`add<I>(C)`, `.as<"x">()`, `resolve<T>()`, …)
+//     the token-free authoring forms (`addClass<I>(C)`, `.as<"x">()`, `resolve<T>()`, …)
 //     only when this package is in a consumer's tsconfig `types`.
 //   - `./inline.ts` — the single-expression sugar bodies the inline stage
 //     side-parses from src and substitutes at call sites (never bundled: this
@@ -19,7 +19,6 @@
 import './augment.js';
 
 // Re-export the authoring brand types so a consumer can use `Inject<T, "tok">`,
-// the open-generics placeholders (`Hole<N, C>`, `$<N>`), `Typeof<T>`, and the
-// overload-faithful `OverloadedParameters` / `OverloadedConstructorParameters`
-// without importing from `@rhombus-std/di.core` directly.
-export type { $, Hole, Inject, OverloadedConstructorParameters, OverloadedParameters, Typeof } from './augment.js';
+// the open-generics placeholders (`Hole<N, C>`, `$<N>`), and `Typeof<T>` without
+// importing from `@rhombus-std/di.core` directly.
+export type { $, Hole, Inject, Typeof } from './augment.js';

@@ -48,7 +48,7 @@ import { signatureof } from './signatureof.js';
  * expression and drops the `this` parameter entirely.
  */
 interface IInlineRegistrationTarget {
-  add(
+  addClass(
     token: Token,
     ctor: Ctor,
     signatures: DepSignatures,
@@ -77,11 +77,11 @@ export const ServiceQueryInline = {
 };
 
 /**
- * The type-driven registration sugar bodies — the `add<T>(ctor)`,
+ * The type-driven registration sugar bodies — the `addClass<T>(ctor)`,
  * `addFactory<T>(fn)`, and `addValue<I>(value)` forms. Each is the EXACT
  * hand-written form a no-transformer consumer would author:
  *
- *   add<T>(ctor)        → this.add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())
+ *   addClass<T>(ctor)   → this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())
  *   addFactory<T>(fn)   → this.addFactory(nameof<T>(), fn, signatureof(fn), void 0, keyof<T>())
  *   addValue<I>(value)  → this.addValue(nameof<I>(), value, keyof<I>())
  *
@@ -89,7 +89,7 @@ export const ServiceQueryInline = {
  * `signatureof(...)` derives the positional dependency signatures the third
  * argument carries — exactly the `[[...]]` array the di registration stage
  * synthesizes for the same value; and `keyof<T>()` derives a keyed registration's
- * KEY, which di.core composes onto the base as `base#key`. On `add` / `addFactory`
+ * KEY, which di.core composes onto the base as `base#key`. On `addClass` / `addFactory`
  * the key sits at argument 5, BEHIND the `scope` slot a sugar body has no value
  * for, so the body writes an explicit `void 0` placeholder there. For an UNKEYED
  * type the keyof lowers to `undefined` and the transformer ELIDES it AND the
@@ -101,12 +101,11 @@ export const ServiceQueryInline = {
  * Every verb now returns a NEW manifest (registration is immutable), so each body
  * RETURNS that manifest — a discarded result registers nothing.
  *
- * These forms cover the Wave-1+2 scope: a class constructor (`add<T>(ctor)`), a
+ * These forms cover the Wave-1+2 scope: a class constructor (`addClass<T>(ctor)`), a
  * factory function (`addFactory<T>(fn)`), and an already-built value
- * (`addValue<I>(value)`). The remaining type-driven forms (`add<I>(factory)`
- * overload-by-arg-inspection, `add<I>(ctor, overrides)`, open-template
- * instantiation expressions, `.as<"scope">()`, and the tokenless resolve
- * family) stay on the di registration stage.
+ * (`addValue<I>(value)`). The remaining type-driven forms (`addClass<I>(ctor, overrides)`,
+ * open-template instantiation expressions, `.as<"scope">()`, and the tokenless
+ * resolve family) stay on the di registration stage.
  *
  * The value parameter names (`ctor` / `factory` / `value`) are LOAD-BEARING:
  * the inline stage discriminates a sugar overload from a runtime one
@@ -115,8 +114,8 @@ export const ServiceQueryInline = {
  * `factory` / `value`) it is claimed against.
  */
 export const ServiceManifestInline = {
-  add<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-    return this.add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+  addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
+    return this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
   addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
     return this.addFactory(nameof<T>(), factory, signatureof(factory), void 0, keyof<T>());

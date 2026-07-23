@@ -34,6 +34,6 @@ declare module '@rhombus-std/di.core' {
      * registration, still open at the `scope` and `key` slots — so the lifetime
      * is chosen at the registration site and the result must be KEPT.
      */
-    addOptions<T>(): AddChain<Scopes, 'scope' | 'key'>;
+    addOptions<T>(): AddChain<Scopes, 'scope' | 'key', false>;
   }
 }

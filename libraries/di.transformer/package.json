@@ -28,7 +28,7 @@
       {
         "type": "@rhombus-std/di.core:IServiceManifestBase",
         "impl": "ServiceManifestInline",
-        "member": "add"
+        "member": "addClass"
       },
       {
         "type": "@rhombus-std/di.core:IServiceManifestBase",

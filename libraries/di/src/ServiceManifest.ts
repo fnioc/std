@@ -7,8 +7,8 @@
 // split where the provider-building entry is a runtime-package extension rather
 // than a method on the abstractions-package collection.
 //
-// `build` is authored as `ServiceCollectionContainerBuilderExtensions` (mirroring
-// the reference static class of the same name) and REGISTERED against the OPEN
+// `build` is authored as `ServiceManifestContainerBuilderAugmentations` (mirroring
+// the reference container-builder extension static class) and REGISTERED against the OPEN
 // `ServiceManifest` token — the same token `addOptions`/`addLogging`/... target.
 // `ServiceManifestClass`, decorated with `@augment(token)` in di.core, pulls this
 // set onto its prototype, so importing `@rhombus-std/di` (which re-exports from
@@ -39,12 +39,13 @@ export type IServiceManifest<S extends string = 'singleton'> = ServiceManifestIn
 // MUTABLE, created fresh per `build()` call so every scope frame of one provider
 // tree shares it.
 //
-// One named object literal mirroring the reference static class
-// `ServiceCollectionContainerBuilderExtensions` (a runtime-package extension on
-// `IServiceCollection`, exactly our shape). Receiver-first, checked with
-// `satisfies AugmentationSet<R>`; the exported const is the standalone call
-// surface, and registering it installs the fluent `build()` onto the prototype.
-export const ServiceCollectionContainerBuilderExtensions = {
+// One named object literal `ServiceManifestContainerBuilderAugmentations`
+// mirroring the reference container-builder extension static class (a
+// runtime-package extension on the manifest receiver, exactly our shape).
+// Receiver-first, checked with `satisfies AugmentationSet<R>`; the exported const
+// is the standalone call surface, and registering it installs the fluent `build()`
+// onto the prototype.
+export const ServiceManifestContainerBuilderAugmentations = {
   build(
     manifest: ServiceManifestClass<string>,
     options?: ServiceProviderOptions,
@@ -75,7 +76,7 @@ const containerBuilderMerge = {
 
 registerAugmentations(
   nameof<ServiceManifestInterface>(),
-  ServiceCollectionContainerBuilderExtensions,
+  ServiceManifestContainerBuilderAugmentations,
   containerBuilderMerge,
 );
 
