@@ -212,7 +212,7 @@ function openEntry(
 ): ManifestEntry {
   const parsed = parseToken(token);
   if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
-    throw new OpenTokenRegistrationError(token, 'add');
+    throw new OpenTokenRegistrationError(token, 'addClass');
   }
   // The parsed template tree the engine unifies against (`match`). The
   // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
