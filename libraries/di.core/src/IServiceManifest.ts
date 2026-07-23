@@ -1,14 +1,14 @@
 // The registration builder — an IMMUTABLE, ITERABLE DECORATOR CHAIN. Three
-// registration surfaces:
-//   - `add`        — a class (its ctor deps are injected),
+// explicit registration verbs, one per producer kind — no ambiguous `add`:
+//   - `addClass`   — a class (its ctor deps are injected),
 //   - `addFactory` — a factory function (its call-param deps are injected),
 //   - `addValue`   — an already-built instance (no deps, no lifetime).
-// The transformer lowers the type-driven authoring forms (`add<I>(C)`,
-// `add<I>(fn)`, `addValue<I>(v)`) to these; the explicit-token forms are the
-// plugin-less mechanism for overrides, test doubles, and third-party wiring.
-// `add<I>(fn)` (a factory) lowers to `addFactory("token", fn)` — the transformer
-// statically knows the arg is a function, so the runtime never has to guess
-// class-vs-factory.
+// The transformer lowers the type-driven authoring forms (`addClass<I>(C)`,
+// `addFactory<I>(fn)`, `addValue<I>(v)`) to these; the explicit-token forms are
+// the plugin-less mechanism for overrides, test doubles, and third-party wiring.
+// The verb NAME (not arg inspection) discriminates class from factory — both are
+// functions, so `addClass` and `addFactory` are separate methods rather than one
+// method guessing.
 //
 // THE SHAPE: a manifest is a linked list of frozen nodes, not a container of a
 // mutable array. The root holds an empty inner iterable; every registration
@@ -18,18 +18,17 @@
 // therefore the order last-wins resolution and collection aggregation see. THAT
 // ORDER IS LOAD-BEARING.
 //
-// NOTHING MUTATES. `add`/`addFactory`/`addValue` and each fluent modifier return
-// a NEW manifest; the receiver is untouched. A call whose result is discarded
-// registers nothing:
+// NOTHING MUTATES. `addClass`/`addFactory`/`addValue` and each fluent modifier
+// return a NEW manifest; the receiver is untouched. A call whose result is
+// discarded registers nothing:
 //
 //   let services = new ServiceManifest();
-//   services = services.add("pkg:ILogger", ConsoleLogger, [[]], "singleton");
-//   services.add("pkg:IClock", SystemClock, [[]]);  // ← LOST: result discarded
+//   services = services.addClass("pkg:ILogger", ConsoleLogger, [[]], "singleton");
+//   services.addClass("pkg:IClock", SystemClock, [[]]);  // ← LOST: result discarded
 //   const provider = services.build();
 
 import { augment } from '@rhombus-std/primitives';
 import { nameof } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 
 import type { AddChain, IServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';
@@ -38,7 +37,7 @@ import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, Seal
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 import { baseKey, tryParse } from './token.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './tokens.js';
-import type { DepSignatures, Token } from './types.js';
+import type { DepSignatures, DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
 // interface `IServiceManifestBase` — lives alongside this builder in the
@@ -82,7 +81,7 @@ const KEY_SEPARATOR = '#';
  * call and a transformer-lowered UNKEYED call both register under the bare token
  * exactly as before. A non-empty key suffixes `#<key>`, landing on the same
  * string the transformer's di direct stage composes into arg0 for
- * `add<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
+ * `addClass<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
  */
 function keyedToken(token: Token, key?: string): Token {
   return [token, key].filter(Boolean).join(KEY_SEPARATOR);
@@ -153,15 +152,16 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       if (isOpenToken(token)) {
         throw new OpenTokenRegistrationError(token, 'addFactory');
       }
-      // The factory IS the producer. `arity` is 0 so a signature-less factory
-      // runs with no injected args (it never trips the missing-metadata signal —
-      // only a ctor needing args does).
+      // The factory IS the producer. `arity` is the factory's OWN declared
+      // parameter count (`factory.length`): a signatures-driven factory that
+      // declares parameters but is registered with `[[]]` should trip the
+      // missing-metadata signal, not silently run with no injected args.
       const registration: Registration = {
         produce: producer.factory,
         scope: pending.scope,
         signatures: pending.signatures,
         name: producer.factory.name,
-        arity: 0,
+        arity: producer.factory.length,
       };
       return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
     }
@@ -246,7 +246,7 @@ function openEntry(
  * @example
  * ```ts
  * let services = new ServiceManifest<"singleton" | "request">();
- * services = services.add("pkg:ILogger", ConsoleLogger, [[]], "singleton");
+ * services = services.addClass("pkg:ILogger", ConsoleLogger, [[]], "singleton");
  * const provider = services.build();              // no frame pre-opened
  * const app = provider.createScope("singleton");  // open the singleton frame
  * const logger = app.resolve<ILogger>("pkg:ILogger");
@@ -311,7 +311,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * constructor, so a rejected registration throws from the call that made it and
    * no half-built node escapes.
    */
-  #link(pending: PendingRegistration): AddChain<Scopes, 'scope' | 'key'> {
+  #link(pending: PendingRegistration): AddBuilderManifest<Scopes> {
     return new AddBuilderManifest<Scopes>(this, pending);
   }
 
@@ -321,13 +321,16 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * plugin-less caller writes directly.
    *
    * `signatures` carries the dep signatures ON the registration record — the sole
-   * signature channel now that the global metadata store is retired — and is
-   * REQUIRED. The transformer emits it inline for every constructed class
-   * (`add(token, ctor, [[...]])`); a plugin-less caller hand-feeds it, stating
-   * `[[]]` for a ctor that takes no dependencies rather than leaving it to be
-   * inferred from an absent argument. Keying signatures on the registration (not
-   * on the ctor object) is what lets one JS class close differently per
-   * registration — an open template and its closings never collide.
+   * signature channel now that the global metadata store is retired. Passing it
+   * POSITIONALLY (the 3+-arg overloads) starts the chain ungated. Passing it via
+   * the transformer inline (`addClass(token, ctor, [[...]])`) is the same. The
+   * bare 2-arg form `addClass(token, ctor)` supplies NO signature: it is GATED —
+   * the returned chain withholds the manifest face until `withSignature` /
+   * `withSignatures` supplies one (a plugin-less caller states `[[]]` for a ctor
+   * with no dependencies, either positionally or via `withSignature()`). Keying
+   * signatures on the registration (not on the ctor object) is what lets one JS
+   * class close differently per registration — an open template and its closings
+   * never collide.
    *
    * `scope` and `key` are the positional forms of the `.as()` / `.withKey()`
    * modifiers; whichever are omitted stay reachable on the returned chain.
@@ -339,40 +342,44 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * Returns a NEW manifest — this one is unchanged.
    */
-  public add(token: Token, ctor: Ctor, signatures: DepSignatures): AddChain<Scopes, 'scope' | 'key'>;
-  public add(
+  public addClass(
+    token: Token,
+    ctor: Ctor,
+  ): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true>;
+  public addClass(
+    token: Token,
+    ctor: Ctor,
+    signatures: DepSignatures,
+  ): AddChain<Scopes, 'signature' | 'scope' | 'key', true>;
+  public addClass(
     token: Token,
     ctor: Ctor,
     signatures: DepSignatures,
     scope: Scopes,
-  ): AddChain<Scopes, 'key'>;
-  public add(
+  ): AddChain<Scopes, 'signature' | 'key', true>;
+  public addClass(
     token: Token,
     ctor: Ctor,
     signatures: DepSignatures,
     scope: Scopes,
     key: string,
-  ): IServiceManifest<Scopes>;
-  public add(
-    ...args:
-      | [ctor: Ctor<any[], unknown>]
-      | [ctor: Ctor<any[], unknown>, overrides: ReadonlyArray<string | undefined>]
-      | [factory: Func<any[], unknown>]
-      | [token: Token, ctor: Ctor, signatures: DepSignatures, scope?: Scopes, key?: string]
-  ): AddChain<Scopes, 'scope' | 'key'> {
+  ): AddChain<Scopes, 'signature', true>;
+  public addClass(...args: any[]): AddBuilderManifest<Scopes> {
     // Only the string-token forms reach the engine at runtime. The single-arg
-    // authoring overloads never run post-transform; guard defensively so a
-    // hand-written type-form call fails loud rather than registering junk.
+    // `addClass<I>(ctor)` authoring overload never runs post-transform; guard
+    // defensively so a hand-written type-form call fails loud rather than
+    // registering junk. The 2-arg gated form (a real token, no signatures) is
+    // legitimate — it passes the guard and links with `signatures: undefined`.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        'add<I>(ctor) / add<I>(factory) require the @rhombus-std/di.transformer plugin. '
-          + 'Without it, register with an explicit token: add("my:token", MyClass, [[]]) '
+        'addClass<I>(ctor) requires the @rhombus-std/di.transformer plugin. '
+          + 'Without it, register with an explicit token: addClass("my:token", MyClass, [[]]) '
           + 'or addFactory("my:token", (scope) => ..., [["pkg:IResolver"]]).',
       );
     }
     const [token, ctor, signatures, scope, key] = args;
     return this.#link({
-      producer: { kind: 'class', ctor: ctor as Ctor },
+      producer: { kind: 'class', ctor },
       base: token,
       key,
       signatures,
@@ -382,49 +389,46 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
 
   /**
    * Factory registration — a string token bound to a factory function. The
-   * runtime form the transformer emits for an authored `add<I>(fn)` /
-   * `addFactory<I>(fn)`, and what a plugin-less caller writes directly.
+   * runtime form the transformer emits for an authored `addFactory<I>(fn)`, and
+   * what a plugin-less caller writes directly.
    *
    * Parameter injection follows the metadata rule (see `IServiceProvider`): each
-   * parameter is injected by its slot from the registration-carried `signatures`
-   * (required, as for `add`). A factory that wants the live provider declares it
-   * as an ordinary parameter (a provider-typed slot); a factory declaring `[[]]`
-   * simply runs with no injected args — nothing is auto-supplied. `scope` / `key`
-   * behave exactly as on `add`, so a factory caches at a named scope like a class.
-   *
-   * The implementation signature admits the single-arg authoring form
-   * (`addFactory<I>(fn)`) so the `@rhombus-std/di.transformer` overload merges onto
-   * it — that form never runs post-transform, and the runtime guard below fails a
-   * plugin-less call loud rather than registering junk (mirrors `add`).
+   * parameter is injected by its slot from the registration-carried `signatures`.
+   * A factory that wants the live provider declares it as an ordinary parameter (a
+   * provider-typed slot); a factory declaring `[[]]` simply runs with no injected
+   * args — nothing is auto-supplied. `scope` / `key` behave exactly as on
+   * `addClass`, so a factory caches at a named scope like a class. The bare 2-arg
+   * form is GATED like `addClass`'s.
    *
    * Returns a NEW manifest — this one is unchanged.
    */
   public addFactory(
     token: Token,
     factory: Factory,
+  ): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true>;
+  public addFactory(
+    token: Token,
+    factory: Factory,
     signatures: DepSignatures,
-  ): AddChain<Scopes, 'scope' | 'key'>;
+  ): AddChain<Scopes, 'signature' | 'scope' | 'key', true>;
   public addFactory(
     token: Token,
     factory: Factory,
     signatures: DepSignatures,
     scope: Scopes,
-  ): AddChain<Scopes, 'key'>;
+  ): AddChain<Scopes, 'signature' | 'key', true>;
   public addFactory(
     token: Token,
     factory: Factory,
     signatures: DepSignatures,
     scope: Scopes,
     key: string,
-  ): IServiceManifest<Scopes>;
-  public addFactory(
-    ...args:
-      | [factory: Func<any[], unknown>]
-      | [token: Token, factory: Factory, signatures: DepSignatures, scope?: Scopes, key?: string]
-  ): AddChain<Scopes, 'scope' | 'key'> {
+  ): AddChain<Scopes, 'signature', true>;
+  public addFactory(...args: any[]): AddBuilderManifest<Scopes> {
     // Only the string-token form reaches the engine at runtime. The single-arg
     // `addFactory<I>(fn)` authoring overload never runs post-transform; guard
-    // defensively so a hand-written type-form call fails loud.
+    // defensively so a hand-written type-form call fails loud. The 2-arg gated
+    // form (a real token, no signatures) is legitimate.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
         'addFactory<I>(fn) requires the @rhombus-std/di.transformer plugin. Without it, '
@@ -443,22 +447,21 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
 
   /**
    * Value registration — an already-built instance, no deps and no lifetime.
-   * Separate from `add` because a value may itself be a function (a callable
-   * service), which is structurally indistinguishable from a factory inside one
-   * overload. It takes neither `signatures` nor `scope`; the optional trailing
-   * `key` composes the keyed token `base#key` (§98). The authoring form
-   * `addValue<I>(v)` (which lowers to `addValue("token", v)`) is a PURE TYPING
-   * contributed by the `@rhombus-std/di.transformer` augmentation, not part of
-   * di's published surface.
+   * Separate from `addClass` / `addFactory` because a value may itself be a
+   * function (a callable service), which is structurally indistinguishable from a
+   * factory inside one overload — the verb name is what disambiguates. It takes
+   * neither `signatures` nor `scope`; the optional trailing `key` composes the
+   * keyed token `base#key` (§98). The authoring form `addValue<I>(v)` (which
+   * lowers to `addValue("token", v)`) is a PURE TYPING contributed by the
+   * `@rhombus-std/di.transformer` augmentation, not part of di's published
+   * surface.
    *
    * Returns a NEW manifest — this one is unchanged. There is no chain to
    * continue: a value has no slot left to fill.
    */
   public addValue(token: Token, value: unknown): IServiceManifest<Scopes>;
   public addValue(token: Token, value: unknown, key: string): IServiceManifest<Scopes>;
-  public addValue(
-    ...args: [value: unknown] | [token: Token, value: unknown, key?: string]
-  ): IServiceManifest<Scopes> {
+  public addValue(...args: any[]): IServiceManifest<Scopes> {
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
         'addValue<I>(value) requires the @rhombus-std/di.transformer plugin. Without it, '
@@ -479,7 +482,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * Returns a manifest with EVERY registration bound to `token` dropped — both
    * the exact entries under that token AND the open entries whose canonical BASE
    * is that token. The removal PRIMITIVE behind the
-   * `ServiceCollectionDescriptorExtensions.removeAll` augmentation, which cannot
+   * `ServiceManifestDescriptorAugmentations.removeAll` augmentation, which cannot
    * reach this node's internals from a separate module. Not part of the public
    * authoring interface (`IServiceManifestBase`) — a consumer reaches removal
    * through the fluent `removeAll` augmentation, exactly as `build()` is reached
@@ -499,7 +502,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * True when `token` already has at least one registration — an exact entry, or
    * (for an open template token) a matching template among the open entries. The
    * "already registered?" PRIMITIVE behind the `tryAdd*` augmentations
-   * (`ServiceCollectionDescriptorExtensions`), which cannot reach this node's
+   * (`ServiceManifestDescriptorAugmentations`), which cannot reach this node's
    * internals from a separate module. Like `removeRegistrations`, it is not part
    * of the public authoring interface (`IServiceManifestBase`): a consumer reaches
    * the conditional-add behavior through the fluent `tryAdd`/`replace`
@@ -605,18 +608,23 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
  * A chain node carrying ONE pending registration on top of a predecessor — the
  * single subclass, and the only place the fluent modifiers live.
  *
- * There is deliberately NO class per slot combination. The runtime carries all
- * three modifiers unconditionally; the TYPES do the slicing — `add` and friends
- * declare an `AddChain<Scopes, Slots>` return, and each modifier `Exclude`s its
- * own slot, so a slot can be filled at most once and the modifiers compose in any
- * order without the runtime knowing anything about which are still "open".
+ * There is deliberately NO class per slot combination. The runtime carries ALL
+ * modifiers unconditionally; the TYPES do the slicing — `addClass` and friends
+ * declare an `AddChain<Scopes, Slots, Gated>` return, and each modifier `Exclude`s
+ * the slot(s) it consumes, so the bulk/scope/key facets are set at most once (an
+ * APPEND via `withSignature` is deliberately repeatable) and the modifiers compose
+ * in any order without the runtime knowing anything about which are still "open".
+ * The gate that withholds the manifest face until a signature is supplied is a
+ * TYPE-only construct — every node here carries every method.
  *
- * Each modifier REPLACES this node rather than appending to it: it builds a
- * sibling over the SAME `__inner` predecessor with one facet of the pending
- * registration refined. That is what keeps `.add(...).as("singleton")` exactly
- * ONE registration — an appended transient shadow would be harmless for last-wins
- * bare-token resolution but would pollute collection aggregation (`Array<T>` /
- * `Iterable<T>`), which enumerates every registration of T.
+ * `as` / `withKey` / `withSignatures` REPLACE this node rather than appending: they
+ * build a sibling over the SAME `__inner` predecessor with one facet refined. That
+ * is what keeps `.addClass(...).as("singleton")` exactly ONE registration — an
+ * appended transient shadow would be harmless for last-wins bare-token resolution
+ * but would pollute collection aggregation (`Array<T>` / `Iterable<T>`), which
+ * enumerates every registration of T. `withSignature` also replaces the node, but
+ * grows the registration's OWN signature list (adds an injectable overload), so it
+ * still contributes exactly one entry.
  */
 class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Scopes> {
   /** The captured call, kept so a modifier can re-materialise from it. */
@@ -649,14 +657,26 @@ class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Sco
   }
 
   /**
-   * Overrides the dep signatures. Only reachable under the transformer, which
-   * injects a derived signature and leaves this as the OPTIONAL override — the
-   * plugin-less overloads take `signatures` positionally, so their chain starts
-   * with the slot already consumed. An authored
-   * `add<K>(Foo).withSignature(custom)` LOWERS to `add("token", Foo, custom)`, so
-   * the call never survives into emitted JS.
+   * APPENDS one overload's dependency slots to the registration's signature set.
+   * `slots` is ONE overload (a `readonly DepSlot[]`); it is pushed onto the
+   * existing signatures — base `[]` for the gated 2-arg form that supplied none —
+   * so calling it repeatedly adds injectable overloads. Supplying the first
+   * signature this way is what OPENS the gate at the type level (the manifest face
+   * reappears once `'signatures'` is struck). Hand-writable:
+   * `addClass(t, c, [[…]]).withSignature('a')` is exactly what the survive lowering
+   * emits, so byte-parity holds.
    */
-  public withSignature(signatures: DepSignatures): AddBuilderManifest<Scopes> {
+  public withSignature(...slots: readonly DepSlot[]): AddBuilderManifest<Scopes> {
+    const base = this.#pending.signatures ?? [];
+    return this.#refine({ signatures: [...base, slots] });
+  }
+
+  /**
+   * REPLACES the whole signature set in bulk. `signatures` is the complete 2-D set
+   * (each element one overload). Once-only at the type level — it strikes both the
+   * append and bulk slots — so it cannot follow a `withSignature` append.
+   */
+  public withSignatures(...signatures: ReadonlyArray<readonly DepSlot[]>): AddBuilderManifest<Scopes> {
     return this.#refine({ signatures });
   }
 
@@ -683,11 +703,12 @@ class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Sco
 /**
  * The public registration-builder INTERFACE a di consumer holds — the
  * `IServiceManifestBase` interface bound to the concrete provider `build()`
- * returns (the ME `IServiceCollection` analog). Interface-first (not the impl
- * class) so the `@rhombus-std/di.transformer` augmentation — which merges the
- * authored `add<I>()` forms onto `IServiceManifestBase` — surfaces on a consumer
- * typing against `ServiceManifest<S>`. A class would not inherit those augmented
- * overloads; the interface does.
+ * returns (the reference registration-collection analog). Interface-first (not the
+ * impl class) so the `@rhombus-std/di.transformer` augmentation — which merges the
+ * authored `addClass<I>()` / `addFactory<I>()` / `addValue<I>()` forms onto
+ * `IServiceManifestBase` — surfaces on a consumer typing against
+ * `ServiceManifest<S>`. A class would not inherit those augmented overloads; the
+ * interface does.
  *
  * The constructor side (`ServiceManifestCtor`) and the constructible
  * `ServiceManifest` VALUE live in `@rhombus-std/di`, alongside the `build()`

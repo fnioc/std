@@ -88,29 +88,21 @@ export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
 
 /**
  * The positional dependency signatures of a constructor / factory: one inner
- * array of `DepSlot`s per overload. This is the shape `signatureof(ctor)` derives
- * and the REQUIRED third argument of `add(token, ctor, signatures)` carries — the
- * same type `DepRecord.signatures` holds, named so authoring-time machinery (the
- * `di.transformer` `signatureof` primitive) can refer to it directly.
+ * array of `DepSlot`s per overload — `signatures[i][j]` is the `DepSlot` (a token,
+ * a `FactoryRef`, a `Union`, a `LiteralRef`, or a `TypeArgRef`) for parameter `j`
+ * of overload `i`. This is the shape `signatureof(ctor)` derives and the third
+ * argument `addClass(token, ctor, signatures)` carries, named so authoring-time
+ * machinery (the `di.transformer` `signatureof` primitive) can refer to it
+ * directly.
  *
- * It is required, never optional, on the plugin-less registration surface: a
- * caller without the transformer cannot DERIVE a signature, so "this service
- * takes no dependencies" must be STATED as `[[]]` rather than inferred from an
- * absent argument.
+ * It is required, never optional, on the positional plugin-less registration
+ * surface (the 3+-arg forms): a caller without the transformer cannot DERIVE a
+ * signature, so "this service takes no dependencies" is STATED as `[[]]` rather
+ * than inferred from an absent argument. (The bare 2-arg `addClass(token, ctor)`
+ * form supplies it later through the gated `withSignature`/`withSignatures`
+ * builder.)
  */
 export type DepSignatures = ReadonlyArray<readonly DepSlot[]>;
-
-/**
- * Per-constructor dependency metadata carried on a registration.
- *
- * `signatures` is an array of arrays: each element is one constructor signature
- * (for overload support). `signatures[i][j]` is the `DepSlot` — a token, a
- * `FactoryRef`, a `Union`, or a `LiteralRef` — for constructor parameter `j` of
- * overload `i`.
- */
-export interface DepRecord {
-  readonly signatures: DepSignatures;
-}
 
 /**
  * The result of parsing a closed-generic token `base<arg1,arg2>` into its base
@@ -123,7 +115,5 @@ export interface ParsedToken {
   readonly args: readonly Token[];
 }
 
-// The authoring brands (`Inject`, `Hole`, `$`, `Typeof`) live in `./brands.ts`
-// and the overload-extraction utilities (`OverloadedParameters`,
-// `OverloadedConstructorParameters`) live in `./overloads.ts` -- split out as
-// their own cohesive concerns (see docs/decisions.md #46).
+// The authoring brands (`Inject`, `Hole`, `$`, `Typeof`) live in `./brands.ts` --
+// split out as their own cohesive concern (see docs/decisions.md #46).

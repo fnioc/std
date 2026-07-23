@@ -33,8 +33,9 @@ export type Inject<T, K extends Token> = T & { readonly [TOK]?: K; };
 
 /**
  * Compile-time skolem standing in for the `N`th type argument of an open
- * template (1-based). Writing `add<IRepository<$<1>>>(SqlRepository<$<1>>)` binds
- * the hole; the transformer derives `$N` wherever a Hole-branded type appears.
+ * template (1-based). Writing `addClass<IRepository<$<1>>>(SqlRepository<$<1>>)`
+ * binds the hole; the transformer derives `$N` wherever a Hole-branded type
+ * appears.
  *
  * `C` is the constraint carrier: `Hole<1, Entity>` IS an `Entity` (the brand
  * property is optional, so the intersection stays assignable to `C`), which

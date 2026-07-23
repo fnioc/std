@@ -26,10 +26,9 @@ import { stringify, substitute, type TokenNode, tryParse } from './token.js';
 import type { DepSlot } from './types.js';
 
 /** Closes every slot of every signature against a label→`TokenNode` binding. */
-export function substituteSignaturesByLabel(
-  signatures: ReadonlyArray<readonly DepSlot[]>,
-  bind: ReadonlyMap<number, TokenNode>,
-): ReadonlyArray<readonly DepSlot[]> {
+export function substituteSignaturesByLabel(signatures: ReadonlyArray<readonly DepSlot[]>,
+  bind: ReadonlyMap<number, TokenNode>): ReadonlyArray<readonly DepSlot[]>
+{
   return signatures.map((signature) => signature.map((slot) => substituteSlot(slot, bind)));
 }
 

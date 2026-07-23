@@ -1,7 +1,6 @@
-// The `ServiceCollectionDescriptorExtensions` augmentation -- descriptor-level
+// The `ServiceManifestDescriptorAugmentations` augmentation -- descriptor-level
 // mutation verbs on the registration builder (docs/decisions.md §28/§38). Mirrors
-// the reference DI static class `ServiceCollectionDescriptorExtensions`
-// (DependencyInjection.Abstractions/src/Extensions), an OPEN augmentation on the
+// the reference DI descriptor-mutation static class, an OPEN augmentation on the
 // registration-collection receiver.
 //
 // This is an OPEN set (the `ServiceManifest` receiver is extended by many
@@ -30,7 +29,7 @@
 // discarded result is a silent no-op. Callers thread it:
 // `services = services.removeAll(token)`.
 //
-// The class/factory verbs mirror `add`/`addFactory`'s POSITIONAL shape
+// The class/factory verbs mirror `addClass`/`addFactory`'s POSITIONAL shape
 // (`signatures` required, then optional `scope`, then optional `key`) rather than
 // returning an `AddChain`: the already-registered branch has no pending
 // registration to hand a modifier face for, so the two branches share the plain
@@ -49,7 +48,7 @@
 // is idiomatic for TS; the ME mirror is a weak tiebreaker.)
 //
 // DIVERGENCE -- there is no `ServiceDescriptor` object in std (a registration is
-// authored directly via `add`/`addFactory`/`addValue`, never as a first-class
+// authored directly via `addClass`/`addFactory`/`addValue`, never as a first-class
 // descriptor value), so the reference's descriptor-taking `TryAdd(descriptor)` /
 // `TryAdd(IEnumerable<descriptor>)` / `Replace(descriptor)` collapse into the
 // per-kind verbs here -- the token + ctor/factory/value shapes are std's
@@ -94,8 +93,8 @@ declare module '@rhombus-std/di.core' {
     /**
      * Class registration, but only when `token` has NO registration yet (the
      * reference `TryAdd*` for a type/implementation). Positional `scope` / `key`
-     * exactly as on `add`. When the token was already registered the receiver is
-     * returned UNCHANGED.
+     * exactly as on `addClass`. When the token was already registered the receiver
+     * is returned UNCHANGED.
      */
     tryAdd(token: Token, ctor: Ctor, signatures: DepSignatures): IServiceManifest<Scopes>;
     tryAdd(
@@ -258,12 +257,12 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-// `add`/`addFactory` are OVERLOADED on arity (three explicit overloads, no
-// optional parameters), so a forwarder holding `scope`/`key` as OPTIONAL locals
-// cannot spread them through in one call -- it has to pick the overload that
-// matches what it actually got. These two dispatchers are that pick, shared by the
-// `tryAdd*` and `replace*` pairs.
-function addClass(
+// `addClass`/`addFactory` are OVERLOADED on arity, so a forwarder holding
+// `scope`/`key` as OPTIONAL locals cannot spread them through in one call -- it has
+// to pick the overload that matches what it actually got. These two dispatchers are
+// that pick, shared by the `tryAdd*` and `replace*` pairs. They always pass
+// `signatures` positionally, so the manifest they hand back is ungated.
+function addClassTo(
   manifest: IServiceManifest<string>,
   token: Token,
   ctor: Ctor,
@@ -272,12 +271,12 @@ function addClass(
   key?: string,
 ): IServiceManifest<string> {
   if (scope === undefined) {
-    return manifest.add(token, ctor, signatures);
+    return manifest.addClass(token, ctor, signatures);
   }
   if (key === undefined) {
-    return manifest.add(token, ctor, signatures, scope);
+    return manifest.addClass(token, ctor, signatures, scope);
   }
-  return manifest.add(token, ctor, signatures, scope, key);
+  return manifest.addClass(token, ctor, signatures, scope, key);
 }
 
 function addFactoryTo(
@@ -297,11 +296,11 @@ function addFactoryTo(
   return manifest.addFactory(token, factory, signatures, scope, key);
 }
 
-// One named object literal mirroring one reference static class (docs §28):
-// `ServiceCollectionDescriptorExtensions`. The exported const IS the standalone
-// call surface; registering it installs the fluent prototype methods. Receiver-
-// first members, checked with `satisfies AugmentationSet<R>`.
-export const ServiceCollectionDescriptorExtensions = {
+// One named object literal mirroring one reference descriptor-mutation static
+// class (docs §28): `ServiceManifestDescriptorAugmentations`. The exported const IS
+// the standalone call surface; registering it installs the fluent prototype
+// methods. Receiver-first members, checked with `satisfies AugmentationSet<R>`.
+export const ServiceManifestDescriptorAugmentations = {
   removeAll(
     manifest: ServiceManifestClass<string>,
     token: Token,
@@ -323,7 +322,7 @@ export const ServiceCollectionDescriptorExtensions = {
     if (manifest.hasRegistrations(token)) {
       return manifest;
     }
-    return addClass(manifest, token, ctor, signatures, scope, key);
+    return addClassTo(manifest, token, ctor, signatures, scope, key);
   },
 
   tryAddFactory(
@@ -362,7 +361,7 @@ export const ServiceCollectionDescriptorExtensions = {
     scope?: string,
     key?: string,
   ): IServiceManifest<string> {
-    return addClass(manifest.removeRegistrations(token), token, ctor, signatures, scope, key);
+    return addClassTo(manifest.removeRegistrations(token), token, ctor, signatures, scope, key);
   },
 
   replaceFactory(
@@ -394,4 +393,4 @@ export const ServiceCollectionDescriptorExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), ServiceCollectionDescriptorExtensions);
+registerAugmentations(nameof<IServiceManifest>(), ServiceManifestDescriptorAugmentations);

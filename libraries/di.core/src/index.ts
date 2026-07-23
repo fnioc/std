@@ -6,8 +6,8 @@
  * It carries the dependency-signature data format, the slot/token type surface
  * and its grammar/guard/constructor helpers, the registration ABI, and — mirror
  * of the reference DI split where the abstractions package ships the concrete
- * `ServiceCollection` — the concrete registration builder `ServiceManifestClass`
- * (collects `add`/`addFactory`/`addValue`; `build()` is a `@rhombus-std/di`
+ * registration collection — the concrete registration builder `ServiceManifestClass`
+ * (collects `addClass`/`addFactory`/`addValue`; `build()` is a `@rhombus-std/di`
  * extension). Cross-package fluent-authoring augmentations prototype-patch this
  * class, and depend on di.core ALONE, never the runtime.
  *
@@ -17,20 +17,17 @@
  * `@rhombus-std/di`.
  */
 
-export type { DepRecord, DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
+export type { DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
   Union } from './types.js';
 
 // The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`), plus
 // the pre-instantiated `$1`…`$9` bare-hole aliases.
 export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Keyed, Typeof } from './brands.js';
 
-// The overload-faithful `Parameters<T>` / `ConstructorParameters<T>` analogs.
-export type { OverloadedConstructorParameters, OverloadedParameters } from './overloads.js';
-
 // The authoring surface: the collection interface plus the `AddChain` slot
-// algebra a registration call returns (`Slot` + the three modifier faces).
+// algebra a registration call returns (`Slot` + the four modifier faces).
 export type { AddChain, IAsBuilder, IServiceManifestBase, IServiceManifestHolder, IWithKeyBuilder,
-  IWithSignatureBuilder, Slot } from './authoring.js';
+  IWithSignatureBuilder, IWithSignaturesBuilder, Slot } from './authoring.js';
 
 // The concrete registration builder plus the public authoring interface it is
 // bound to. The class is a runtime value; augmentations prototype-patch it.
@@ -85,8 +82,8 @@ export type { ObjectFactory } from './ActivatorUtilities.js';
 // extend `DiError` from `@rhombus-std/di`.
 export { ActivationError, DiError, OpenTokenRegistrationError } from './errors.js';
 
-// The descriptor-level mutation augmentation (`removeAll`). A side-effect import:
-// pulling the barrel registers it against the `ServiceManifest` token so the verb
-// is installed onto the collection prototype (§28/§38). The const is the
-// standalone call surface.
-export { ServiceCollectionDescriptorExtensions } from './extensions/ServiceCollectionDescriptorExtensions.js';
+// The descriptor-level mutation augmentation (`removeAll`, `tryAdd*`, `replace*`).
+// A side-effect import: pulling the barrel registers it against the
+// `ServiceManifest` token so the verbs are installed onto the collection prototype
+// (§28/§38). The const is the standalone call surface.
+export { ServiceManifestDescriptorAugmentations } from './augmentations/ServiceManifestDescriptorAugmentations.js';

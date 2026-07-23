@@ -65,11 +65,12 @@ export interface Registration {
    */
   readonly name: string;
   /**
-   * The original constructor arity (`Ctor.length`), carried EXPLICITLY because a
-   * rest-param wrapper reports `0` for its own `.length`. Drives the
-   * missing-metadata signal: a signature-less producer whose `arity` is nonzero
-   * (a class ctor that needs args) throws `MissingMetadataError`. `0` for a value
-   * or a factory — a signature-less factory simply runs with no injected args.
+   * The producer's declared parameter count, carried EXPLICITLY because the
+   * ctor-wrapping closure (`(...a) => new Ctor(...a)`) reports `0` for its own
+   * `.length`: a class carries `Ctor.length`, a factory carries `factory.length`.
+   * Drives the missing-metadata signal: a signature-less producer whose `arity` is
+   * nonzero — a class ctor OR a factory that declares parameters — throws
+   * `MissingMetadataError`. `0` for a value.
    */
   readonly arity: number;
 }
@@ -122,10 +123,10 @@ export interface OpenRegistration {
  * `OpenRegistration`.
  *
  * Entries are FROZEN and never refined in place: a modifier (`as` / `withKey` /
- * `withSignature`) builds a whole new node carrying a freshly materialised entry
- * over the SAME predecessor, so one `.add(...).as(...)` chain still contributes
- * exactly one entry to the stream (a spurious shadow would pollute collection
- * aggregation, which enumerates every registration of a token).
+ * `withSignature` / `withSignatures`) builds a whole new node carrying a freshly
+ * materialised entry over the SAME predecessor, so one `.addClass(...).as(...)`
+ * chain still contributes exactly one entry to the stream (a spurious shadow would
+ * pollute collection aggregation, which enumerates every registration of a token).
  */
 export type ManifestEntry =
   | { readonly kind: 'exact'; readonly token: Token; readonly registration: Registration; }
