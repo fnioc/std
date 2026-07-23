@@ -99,7 +99,7 @@ describe('greedy signature selection', () => {
   });
 
   test('equal-arity tie breaks by registration order (first declared wins)', () => {
-    // Two same-length signatures, both satisfiable. The first in the DepRecord
+    // Two same-length signatures, both satisfiable. The first-registered
     // (registration order) is chosen. Distinct tokens so we can tell which ran.
     class Svc {
       public readonly args: unknown[];

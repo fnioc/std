@@ -54,7 +54,7 @@ describe('missing metadata', () => {
     }
   });
 
-  test('an empty-signatures DepRecord on a param ctor still throws', () => {
+  test('an empty-signatures list on a param ctor still throws', () => {
     class EdgeCase {
       public constructor(public readonly a: unknown) {}
     }
