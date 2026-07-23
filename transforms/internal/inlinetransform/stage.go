@@ -155,6 +155,30 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 
+	// Synthetic-node clean-skip guard. A call a PRIOR pass produced by lowering a
+	// sugar chain is never itself a source-written inline candidate — its sugar was
+	// already substituted — so it must not be re-matched. The concrete defect (W2
+	// repro): `.withSignature<[]>()` lowers to the zero-argument `.withSignature()`
+	// (the empty tuple makes `...signaturefor<[]>()` spread nothing); a later pass
+	// then re-visits that call, binds it to the zero-value-arg sugar overload, and
+	// RecoverTypeArguments fails with no type argument to recover — a spurious
+	// INLINE_INFERRED_TYPE_ARGUMENT that fails the build despite a byte-correct emit.
+	//
+	// The synthetic marker is on the CALL EXPRESSION, not its callee. Substitute
+	// DeepCloneNodes the sugar body, which PRESERVES the cloned nodes' original
+	// positions, so the substituted `this.withSignature` property-access callee
+	// keeps a (foreign, body-file) Pos >= 0 — a callee-only Pos guard never fires
+	// (empirically observed: calleePos=463, callPos=-1). It is the CALL node that a
+	// downstream stage rebuilds fresh when it elides the spread, giving it Pos < 0.
+	// resolvedDeclaration feeds THIS node to checker.GetResolvedSignature, so guard
+	// it here, BEFORE that query, exactly as nameof/resolve guard the node they hand
+	// the checker. (Parent is re-linked every pass by RunToFixedPoint's
+	// SetParentInChildrenUnset, so the Pos check is the load-bearing half; the nil
+	// check stays as a defensive backstop for an unlinked node.)
+	if node.Pos() < 0 || node.Parent == nil {
+		return nil, false
+	}
+
 	decl := resolvedDeclaration(st.checker, node)
 	if decl == nil {
 		return nil, false

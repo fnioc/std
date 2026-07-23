@@ -5,7 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	shimast "github.com/microsoft/typescript-go/shim/ast"
+	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
+
+	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/keyoftransform"
+	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signaturetransform"
+	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
 // buildWithSigChainWorkspace stands up a di.core-as-source workspace whose
@@ -145,6 +154,68 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 	for _, banned := range []string{"withSignature<", "as<", "addClass<", "signaturefor", "valueof", "tokenfor", "..."} {
 		if strings.Contains(out, banned) {
 			t.Fatalf("authoring surface %q survived the chain lowering:\n%s", banned, out)
+		}
+	}
+}
+
+// TestEmptyTupleWithSignatureDoesNotReMatchOwnOutput is the W2 regression pin for
+// the synthetic-node re-match bug. `withSignature<[]>()` lowers to the zero-argument
+// `.withSignature()` — the empty tuple makes `...signaturefor<[]>()` spread nothing —
+// and on the NEXT loop pass the inline visitor sees that factory-built, position-less
+// call and, absent the synthetic guard in tryInline, re-matches it against the
+// `withSignature<T>()` sugar overload. RecoverTypeArguments then fails on the
+// argument-less call, emitting a spurious INLINE_INFERRED_TYPE_ARGUMENT and failing
+// the build despite a byte-correct emit. With the guard, the synthetic call is a
+// clean non-match: no diagnostic, and the loop settles instead of spinning to the
+// pass cap.
+func TestEmptyTupleWithSignatureDoesNotReMatchOwnOutput(t *testing.T) {
+	src := `import { services } from '@rhombus-std/di.core';
+interface IFoo {}
+class Foo implements IFoo {}
+services.addClass<IFoo>(Foo).withSignature<[]>();
+`
+	prog, app := buildWithSigChainWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	artifacts := inlinetransform.NewArtifacts()
+	ctx := plugin.NewContext(prog, app)
+	bodies, cerr := inlinetransform.Collect(app)
+	if cerr != nil {
+		t.Fatalf("collect: %v", cerr)
+	}
+
+	var inlineDiags []plugin.Diagnostic
+	captureInline := func(d plugin.Diagnostic) { inlineDiags = append(inlineDiags, d) }
+
+	loop := []plugin.FileTransform{
+		inlinetransform.Build(prog, bodies, artifacts, captureInline),
+		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {}),
+		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+	}
+
+	ec := shimprinter.NewEmitContext()
+	settled, _, exhausted := plugin.RunToFixedPoint(ec, loop, mainSF(t, prog), loopMaxPasses)
+	if exhausted {
+		t.Fatalf("empty-tuple chain did not settle within %d passes — the synthetic re-match spun the loop", loopMaxPasses)
+	}
+	for _, d := range inlineDiags {
+		if d.Code == "INLINE_INFERRED_TYPE_ARGUMENT" {
+			t.Fatalf("inline re-matched its own lowered zero-argument output and emitted a spurious %s: %s", d.Code, d.Message)
+		}
+	}
+
+	shimast.SetParentInChildrenUnset(settled.AsNode())
+	out := reprint(ec, settled)
+	// The empty tuple lowers to a bare zero-argument withSignature call, and nothing
+	// of the authoring surface (generic, spread, primitive) survives.
+	if !strings.Contains(out, ".withSignature()") {
+		t.Fatalf("withSignature<[]>() did not lower to the zero-argument call:\n%s", out)
+	}
+	for _, banned := range []string{"withSignature<", "signaturefor", "..."} {
+		if strings.Contains(out, banned) {
+			t.Fatalf("authoring surface %q survived the empty-tuple lowering:\n%s", banned, out)
 		}
 	}
 }

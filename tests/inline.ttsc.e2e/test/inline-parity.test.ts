@@ -340,6 +340,8 @@ declare const services: IServiceManifest<'singleton'>;
 
 export const closed = services.addClass<ILogger>(ConsoleLogger).withSignature<[IClock]>().as<'singleton'>();
 
+export const emptySig = services.addClass<ILogger>(ConsoleLogger).withSignature<[]>().as<'singleton'>();
+
 export const open = services.addClass<IRepo<$<1>>>(ThingRepo);
 `;
 
@@ -606,15 +608,25 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(`${inlineBase}#redis`).toEqual(diToken);
   });
 
-  // KNOWN GAP (loop idempotence): the EMPTY-tuple `withSignature<[]>()` lowers to a
-  // zero-arg `.withSignature()`, which a subsequent fixed-point pass re-matches
-  // against the zero-value-arg sugar overload and cannot bind — ttsc then exits
-  // non-zero with a spurious INLINE_INFERRED_TYPE_ARGUMENT even though the emitted
-  // bytes are already correct. A NON-empty signature (this suite uses `<[IClock]>`)
-  // lowers to a one-arg call that no longer collides with the sugar overload, so it
-  // is loop-stable. Left as a todo for the loop-idempotence work, not asserted here
-  // (encoding the buggy exit as "expected" would rot when fixed).
-  test.todo(
-    'empty-tuple withSignature<[]>() should be loop-idempotent (currently re-matched → INLINE_INFERRED_TYPE_ARGUMENT)',
-  );
+  test('empty-tuple withSignature<[]>() is loop-idempotent (lowers to zero-arg .withSignature())', () => {
+    // Loop-idempotence regression pin (was a test.todo). The EMPTY-tuple
+    // `withSignature<[]>()` lowers to a zero-argument `.withSignature()` — the empty
+    // tuple makes `...signaturefor<[]>()` spread nothing. A subsequent fixed-point
+    // pass then re-visits that factory-built, position-less call; without the
+    // synthetic-node guard in inlinetransform's tryInline it re-matched the
+    // zero-value-arg sugar overload, failed RecoverTypeArguments, and ttsc exited
+    // non-zero with a spurious INLINE_INFERRED_TYPE_ARGUMENT despite byte-correct
+    // emit. With the guard the synthetic call is a clean non-match: ttsc succeeds
+    // (this suite's beforeAll runChainTtsc would THROW on the non-zero exit
+    // otherwise), the loop settles, and the emitted continuation is the bare
+    // zero-arg call. (Go-level pin: TestEmptyTupleWithSignatureDoesNotReMatchOwnOutput.)
+    const line = lineWith(chainInline, 'emptySig =');
+    expect(line).toBeDefined();
+    expect(line).toContain('addClass("');
+    expect(line).toContain('.withSignature()');
+    expect(line).toContain('.as("singleton")');
+    assertNoAuthoringSurvivors(chainInline);
+    // Byte parity with the di-direct lowering of the same empty-tuple chain.
+    expect(lineWith(chainSemantic, 'emptySig =')).toEqual(line);
+  });
 });
