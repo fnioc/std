@@ -137,8 +137,7 @@ export class OpenTokenResolutionError extends DiError {
     super(
       `Cannot resolve open template "${token}": it still contains holes `
         + `($N). Close the template first — resolve a concrete closing like `
-        + `"base<arg>" (see closeToken / substituteToken), not the template `
-        + `itself.`,
+        + `"base<arg>" (see closeToken), not the template itself.`,
     );
   }
 }

@@ -87,7 +87,7 @@ export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredErr
 // slot shapes as plain data literals instead.
 export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from '@rhombus-std/di.core';
 export { typeArg, union } from '@rhombus-std/di.core';
-export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from '@rhombus-std/di.core';
+export { closeToken, isOpenToken, parseToken } from '@rhombus-std/di.core';
 // The intrinsic provider token — a `IResolver`-typed param derives it, and the
 // engine resolves it to the live provider view.
 export { isProviderToken, RESOLVER_TOKEN } from '@rhombus-std/di.core';
