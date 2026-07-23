@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.transformer.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.transformer satellite: the type-only declare-module for the addOptions<T>() sugar. A Go/ttsc descriptor package — the lowering to addOptions(token(IOptions<T>), token(T)) runs in the shared owner binary.",
+  "description": "A @rhombus-std/di.transformer satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus.inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(tokenfor(IOptions<T>), tokenfor(T))) and lowered by the shared owner binary's inline + tokenfor stages.",
   "keywords": [
     "options",
     "dependency-injection",
@@ -18,6 +18,16 @@
     "directory": "libraries/di.transformer.options"
   },
   "type": "module",
+  "//rhombus.inline": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core IServiceManifestBase interface (the augmentation target); `impl` (ServiceOptionsInline) resolves in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
+  "rhombus.inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceOptionsInline",
+        "member": "addOptions"
+      }
+    ]
+  },
   "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
@@ -51,16 +61,19 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
+    "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*"
   },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^",
     "@rhombus-std/di.transformer": "workspace:^",
+    "@rhombus-std/options": "workspace:^",
     "typescript": ">=5.2"
   },
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di.transformer": "workspace:*"
+    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/options": "workspace:*"
   },
   "publishConfig": {
     "access": "public",

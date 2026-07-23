@@ -412,18 +412,30 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 		}
 		typeArgs := n.AsCallExpression().TypeArguments
 		bound := []*shimchecker.Type{}
+		var composed *ComposedTypeArg
 		if typeArgs != nil {
 			for _, ta := range typeArgs.Nodes {
-				if ta.Kind == shimast.KindTypeReference {
-					if name := ta.AsTypeReferenceNode().TypeName; name != nil && name.Kind == shimast.KindIdentifier {
-						if t, has := env[name.Text()]; has {
-							bound = append(bound, t)
-						}
-					}
+				if ta.Kind != shimast.KindTypeReference {
+					continue
+				}
+				name := ta.AsTypeReferenceNode().TypeName
+				if name == nil || name.Kind != shimast.KindIdentifier {
+					continue
+				}
+				if t, has := env[name.Text()]; has {
+					// A bare type-parameter reference (`tokenfor<T>()`): the env
+					// binding IS the token source.
+					bound = append(bound, t)
+					continue
+				}
+				if ref, ok := body.TypeImports[name.Text()]; ok {
+					// A body-external composed generic (`tokenfor<IOptions<T>>()`):
+					// the base names an imported type, and its leaves bind from env.
+					composed = composedTypeArg(ta, ref, env)
 				}
 			}
 		}
-		use := PrimitiveUse{Name: prim, TypeArgs: bound}
+		use := PrimitiveUse{Name: prim, TypeArgs: bound, Composed: composed}
 		// A VALUE-argument primitive (signatureof(ctor)) records its spliced
 		// argument node — the ORIGINAL call-site expression, still program-bound,
 		// so the signatureof stage can checker-query it. A TYPE-argument primitive
@@ -434,6 +446,37 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 		st.artifacts.PrimitiveCalls[n] = use
 		return false
 	})
+}
+
+// composedTypeArg builds a composed-generic descriptor for a spelled type node
+// (`IOptions<T>`) whose base is a body-external import: it carries the import's
+// module + export (resolved late, in the lowering stage) and its argument types
+// bound from the inline env. An argument that is not a bare env-bound type
+// parameter records nil, so the lowering reports an underivable-token diagnostic
+// for it — the composed generic is only as derivable as its leaves.
+func composedTypeArg(node *shimast.Node, ref TypeImportRef, env map[string]*shimchecker.Type) *ComposedTypeArg {
+	c := &ComposedTypeArg{Module: ref.Module, Export: ref.Export, ArgNode: node}
+	if argList := node.AsTypeReferenceNode().TypeArguments; argList != nil {
+		for _, arg := range argList.Nodes {
+			c.Args = append(c.Args, composedLeafType(arg, env))
+		}
+	}
+	return c
+}
+
+// composedLeafType resolves one composed-generic argument node to its bound
+// checker type, or nil when it is not a bare env-bound type-parameter reference
+// (the only leaf shape the addOptions family spells; a richer nesting would need
+// recursion, deliberately out of scope until a body requires it).
+func composedLeafType(node *shimast.Node, env map[string]*shimchecker.Type) *shimchecker.Type {
+	if node.Kind != shimast.KindTypeReference {
+		return nil
+	}
+	name := node.AsTypeReferenceNode().TypeName
+	if name == nil || name.Kind != shimast.KindIdentifier {
+		return nil
+	}
+	return env[name.Text()]
 }
 
 // isRogueDuplicate reports whether decl is provably the same logical member as an

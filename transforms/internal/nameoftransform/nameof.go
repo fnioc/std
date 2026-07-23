@@ -23,6 +23,8 @@
 package nameoftransform
 
 import (
+	"fmt"
+
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
@@ -53,6 +55,14 @@ const tokenofName = "tokenof"
 // silent empty token (constraint 9: failure reporting, not validation).
 const valueArgUnderivableCode = "VALUE_ARG_TOKEN_UNDERIVABLE"
 
+// composedUnlowerableCode is the diagnostic a COMPOSED-generic token derivation
+// raises when it cannot lower `tokenfor<Wrapper<T>>()`: the wrapper base type is
+// absent from the program, or an argument (`T`) yields no token. It is the exact
+// numeric code the retired bespoke options stage emitted for the same two failure
+// modes (kept for parity), now generic — the wrapper package name arrives as DATA
+// off the body's import map, never a Go-source constant.
+const composedUnlowerableCode = "990020"
+
 // New builds the per-file transform: it visits every call expression, and
 // replaces each single-type-argument call to `nameof` with a string literal
 // holding the token derived from the type argument.
@@ -65,6 +75,13 @@ const valueArgUnderivableCode = "VALUE_ARG_TOKEN_UNDERIVABLE"
 // and this stage derives the SAME token from that registered type.
 func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
+	// The program's source files and a per-run base-symbol memo — the inputs a
+	// COMPOSED-generic derivation needs (`tokenfor<IOptions<T>>()`): the wrapper
+	// base is an imported type resolved against the whole program (side-parsed
+	// bodies carry no checker), and every composed use over the same
+	// (module, export) resolves to the same symbol, so the scan runs once.
+	sourceFiles := prog.TSProgram.GetSourceFiles()
+	baseCache := map[string]composedBase{}
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
@@ -84,6 +101,15 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				if use, ok := registeredNameof(artifacts, node); ok {
 					token, _ := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+				}
+				// TYPE-argument tokenfor<Wrapper<T>>() — COMPOSED generic, synthetic
+				// (the inline addOptions body's `tokenfor<IOptions<T>>()`, where the
+				// wrapper base is a body-external import and its leaves bind from env).
+				// It shares the synthetic tokenfor callee with the bare form above and
+				// is disjoint from it: a composed use records Composed and leaves
+				// TypeArgs empty, so registeredNameof rejects it and this claims it.
+				if use, ok := registeredComposedNameof(artifacts, node); ok {
+					return lowerComposed(ec, ctx, sourceFiles, baseCache, emit, node, use.Composed)
 				}
 				// VALUE-argument tokenfor(value), PRODUCED semantics — synthetic (the
 				// inline self-registration body's `this.addClass(tokenfor(ctor), ...)`).
@@ -129,6 +155,94 @@ func registeredNameof(artifacts *inlinetransform.Artifacts, node *shimast.Node) 
 		return inlinetransform.PrimitiveUse{}, false
 	}
 	return use, true
+}
+
+// registeredComposedNameof reports whether node is a synthetic `nameof` call the
+// inline stage registered with a COMPOSED-generic type argument
+// (`tokenfor<IOptions<T>>()`) — a wrapper base named by a body-external import over
+// env-bound leaves. It is disjoint from registeredNameof by the Composed field: a
+// bare `tokenfor<T>()` records the bound type in TypeArgs and leaves Composed nil.
+func registeredComposedNameof(artifacts *inlinetransform.Artifacts, node *shimast.Node) (inlinetransform.PrimitiveUse, bool) {
+	if artifacts == nil {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	use, ok := artifacts.PrimitiveCalls[node]
+	if !ok || use.Name != nameofName || use.Composed == nil {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	return use, true
+}
+
+// composedBase memoizes one base-symbol resolution: the symbol (nil when the
+// package is absent from the program or does not export the name) and whether it
+// resolved. Resolution scans the whole program, so the same (module, export) is
+// resolved once and reused across every composed use and every file.
+type composedBase struct {
+	symbol *shimast.Symbol
+	ok     bool
+}
+
+// resolveComposedBase returns the wrapper base symbol for (module, export),
+// resolving it against the program's source files on first request and reusing the
+// memoized result afterward. It is the symbol-driven generalization of the retired
+// options stage's once-per-program witness scan.
+func resolveComposedBase(cache map[string]composedBase, ctx *tokens.Context, sourceFiles []*shimast.SourceFile, module, export string) (*shimast.Symbol, bool) {
+	key := module + "\x00" + export
+	if hit, seen := cache[key]; seen {
+		return hit.symbol, hit.ok
+	}
+	symbol, ok := tokens.ResolveExportedSymbol(ctx, sourceFiles, module, export)
+	cache[key] = composedBase{symbol: symbol, ok: ok}
+	return symbol, ok
+}
+
+// lowerComposed derives the token for a composed-generic type argument
+// (`tokenfor<IOptions<T>>()`) and returns the string-literal replacement for call.
+// The wrapper base resolves to an imported symbol against the whole program and the
+// leaves derive from the env-bound argument types, so a valid input composes
+// byte-identically to the token the retired options stage emitted. On either
+// failure — the wrapper base absent from the program, or an argument that yields no
+// token — it reports a targeted 990020 diagnostic (matching the retired stage's two
+// messages in quality) and returns the ORIGINAL call un-lowered, so a lowering
+// failure surfaces as a diagnostic rather than a silent empty token (constraint 9).
+func lowerComposed(
+	ec *shimprinter.EmitContext,
+	ctx *tokens.Context,
+	sourceFiles []*shimast.SourceFile,
+	cache map[string]composedBase,
+	emit func(plugin.Diagnostic),
+	call *shimast.Node,
+	composed *inlinetransform.ComposedTypeArg,
+) *shimast.Node {
+	base, ok := resolveComposedBase(cache, ctx, sourceFiles, composed.Module, composed.Export)
+	if !ok || base == nil {
+		emit(composedDiag(composed, fmt.Sprintf(
+			"cannot derive a token for `%s` from `%s`: the type is not in the program, so the `%s<T>` wrapper token cannot be derived. Ensure `%s` is a dependency.",
+			composed.Export, composed.Module, composed.Export, composed.Module)))
+		return call
+	}
+	token, ok := tokens.ComposedTokenForSymbol(ctx, base, composed.Args)
+	if !ok {
+		emit(composedDiag(composed, fmt.Sprintf(
+			"cannot derive a token for a type argument of `%s` — name the type (an anonymous inline object type has no stable token).",
+			composed.Export)))
+		return call
+	}
+	return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+}
+
+// composedDiag builds a composed-generic unlowerable diagnostic, anchored
+// best-effort at the spelled wrapper type node the inline stage captured (a
+// substituted clone, so its position is a diagnostic hint, not a guarantee — the
+// owner guarantee makes this path unreachable for a valid program).
+func composedDiag(composed *inlinetransform.ComposedTypeArg, message string) plugin.Diagnostic {
+	file := ""
+	start := 0
+	if composed.ArgNode != nil {
+		file = valueArgFile(composed.ArgNode)
+		start = composed.ArgNode.Pos()
+	}
+	return plugin.Diagnostic{Code: composedUnlowerableCode, File: file, Start: start, Message: message}
 }
 
 // registeredValueArg reports whether node is a synthetic value-argument primitive

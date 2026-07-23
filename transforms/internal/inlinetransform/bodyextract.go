@@ -72,15 +72,31 @@ func (d Discriminator) Equal(o Discriminator) bool {
 
 // ResolvedBody is the side-parsed impl body plus the metadata substitution and
 // classification need: the single return expression, the impl's type-parameter
-// and value-parameter names in order, its structural discriminator, and the
-// impl file's primitive-import map (local name -> canonical primitive name).
+// and value-parameter names in order, its structural discriminator, the impl
+// file's primitive-import map (local name -> canonical primitive name), and its
+// body-external TYPE-import map (local name -> imported reference) for
+// composed-generic derivation.
 type ResolvedBody struct {
 	Body             *shimast.Node
 	TypeParams       []string
 	Params           []string
 	Discriminator    Discriminator
 	PrimitiveImports map[string]string
+	TypeImports      map[string]TypeImportRef
 	File             string
+}
+
+// TypeImportRef is a body-external TYPE import a sugar body references in a
+// type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
+// used as the base of `tokenfor<IOptions<T>>()`). The inline stage records it on
+// the composed-generic use so the lowering stage can resolve the base symbol
+// against the consumer program (side-parsed bodies carry no checker).
+type TypeImportRef struct {
+	// Module is the bare package specifier the type is imported from.
+	Module string
+	// Export is the imported type's exported name (its property name when the
+	// specifier is aliased).
+	Export string
 }
 
 // bodyExtractor side-parses declaring packages, caching each parsed file by its
@@ -143,6 +159,7 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
 	primImports := primitiveImports(implSF, packageName(packageDir))
+	typeImports := bodyTypeImports(implSF)
 
 	rb := &ResolvedBody{
 		Body:             expr,
@@ -150,6 +167,7 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 		Params:           params,
 		Discriminator:    disc,
 		PrimitiveImports: primImports,
+		TypeImports:      typeImports,
 		File:             implFile,
 	}
 	if err := b.checkFreeIdentifiers(rb, e); err != nil {
@@ -428,6 +446,52 @@ func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]st
 			if fromHome || fromOwnPackage {
 				out[local] = exported
 			}
+		}
+	}
+	return out
+}
+
+// bodyTypeImports reads sf's top-level named imports from BARE package specifiers
+// and returns a local-name -> imported-reference map for every binding that is NOT
+// a known primitive — the body-external TYPE imports a sugar body may reference in
+// a type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
+// used as `tokenfor<IOptions<T>>()`). Primitives are excluded (they are recorded
+// separately by primitiveImports as CALLEES, never composed-generic bases), and
+// relative specifiers are excluded (a body-external base is always a package the
+// consumer program can resolve by name). Aliasing is honored: the recorded Export
+// is the specifier's property name.
+func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
+	out := map[string]TypeImportRef{}
+	if sf == nil {
+		return out
+	}
+	for _, stmt := range sf.Statements.Nodes {
+		if stmt.Kind != shimast.KindImportDeclaration {
+			continue
+		}
+		decl := stmt.AsImportDeclaration()
+		spec := decl.ModuleSpecifier
+		if spec == nil || spec.Kind != shimast.KindStringLiteral {
+			continue
+		}
+		module := spec.Text()
+		if isRelativeSpecifier(module) {
+			continue
+		}
+		clause := decl.ImportClause
+		if clause == nil {
+			continue
+		}
+		bindings := clause.AsImportClause().NamedBindings
+		if bindings == nil || bindings.Kind != shimast.KindNamedImports {
+			continue
+		}
+		for _, el := range bindings.AsNamedImports().Elements.Nodes {
+			exported := importSpecifierExportedName(el)
+			if _, isPrimitive := knownPrimitives[exported]; isPrimitive {
+				continue
+			}
+			out[el.Name().Text()] = TypeImportRef{Module: module, Export: exported}
 		}
 	}
 	return out

@@ -329,15 +329,18 @@
       "name": "@rhombus-std/di.transformer.options",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.transformer": "workspace:*",
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
       },
       "peerDependencies": {
         "@rhombus-std/di.core": "workspace:^",
         "@rhombus-std/di.transformer": "workspace:^",
+        "@rhombus-std/options": "workspace:^",
         "typescript": ">=5.2",
       },
     },
