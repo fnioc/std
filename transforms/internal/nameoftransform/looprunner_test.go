@@ -77,14 +77,26 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 }
 
 // TestLoopNoOpIdentityTable is the table-driven guard so a FUTURE stage cannot
-// silently regress the no-op identity contract: it runs each looped stage over an
-// already-settled (fully-lowered) file and asserts the pointer is preserved. Where
-// the canary proves a stage is inert on a file it never touches, this proves a
-// stage is inert on a file it ALREADY lowered — the exact shape the loop's second
-// (fixed-point-detecting) pass hands every stage. A stage that re-fired on its own
-// output would loop forever.
+// silently regress the no-op identity contract: it settles a file through the
+// WHOLE looped set to a fixed point, then runs every looped stage once more over
+// that fully-settled tree and asserts the pointer is preserved. Where the canary
+// proves a stage is inert on a file it never touches, this proves a stage is inert
+// on the fully-lowered output — the EXACT shape the loop's terminating
+// (fixed-point-detecting) pass hands every stage. A stage that re-fired on the
+// settled tree would spin the loop to FIXED_POINT_EXHAUSTED.
+//
+// Settling through the whole set (not just the primitive stages) is what makes
+// this table cover the di / di_options / config stages too: they are looped
+// members per stages.go, so a regression in their identity-preservation on the
+// settled tree must be caught HERE, not left to the weaker zero-match canary. The
+// di stage participates in settling the addClass chain, so its inertness check is
+// against output it itself helped lower; di_options and config find no sugar of
+// their own in this fixture and so are pinned inert on the settled tree — their
+// idempotence on output THEY lowered is pinned in their own packages
+// (dioptionstransform / configtransform own-output idempotence tests).
 func TestLoopNoOpIdentityTable(t *testing.T) {
-	// The full chain, lowered ONCE to its fixed point, is the "already settled" input.
+	// The full chain, lowered ONCE through the whole set to its fixed point, is the
+	// "already settled" input every looped stage is then re-run over.
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}
 interface IDep {}
@@ -99,20 +111,15 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "di", "di_options", "config"}
 
 	ec := shimprinter.NewEmitContext()
-	// Drive the primitive stages (indices 0-4) to a fixed point to produce the
-	// settled tree — the di / di_options / config stages are NOT run here (they would
-	// re-lower the still-sugar chain the primitives alone leave; this table pins that
-	// each stage is inert on the PRIMITIVE-settled output, which is what the loop's
-	// detecting pass sees when the primitives own the lowering).
-	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages[:5], mainSF(t, prog), loopMaxPasses)
+	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
 	if exhausted {
-		t.Fatal("primitive loop exhausted maxPasses while settling the fixture")
+		t.Fatal("looped set exhausted maxPasses while settling the fixture")
 	}
 
-	for i, stage := range stages[:5] {
+	for i, stage := range stages {
 		out := stage(ec, settled)
 		if out != settled {
-			t.Errorf("settled-file stage %q re-fired on its own fixed-point output (returned %p, want %p) — the loop would never terminate", names[i], out, settled)
+			t.Errorf("settled-file stage %q re-fired on the fixed-point output (returned %p, want %p) — the loop would never terminate", names[i], out, settled)
 		}
 	}
 }

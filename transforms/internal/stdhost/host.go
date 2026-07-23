@@ -241,22 +241,17 @@ func runTransform(host Host, args []string) int {
 	env := &Env{Cwd: cwd, Artifacts: artifacts, Bodies: scan.Bodies}
 
 	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
-	// LOOPED set (everything else). Mergesynth is augmentation-side: its matches are
-	// source-written registerAugmentations/applyAugmentations installs, and NO sugar
-	// body mints one, so the loop can never produce fresh work for it — running it
-	// exactly once before the loop keeps termination trivially explainable (Open
-	// issue 2). The rest run repeatedly to a fixed point, since each sugar chain
-	// peels one layer per pass. Order is preserved within each group; the loop's
-	// correctness does not depend on it (disjoint match sets).
-	prePass := make([]plugin.FileTransform, 0, 1)
-	loop := make([]plugin.FileTransform, 0, len(selected))
-	for _, stage := range selected {
-		built := stage.Build(prog, ctx, env, emit)
-		if stage.Name == stagePrefix+"mergesynth" {
-			prePass = append(prePass, built)
-		} else {
-			loop = append(loop, built)
-		}
+	// LOOPED set (everything else), then build each into its FileTransform — see
+	// partitionStages for the why. The prePass runs once before the loop; the loop
+	// runs the rest to a fixed point.
+	prePassStages, loopStages := partitionStages(selected)
+	prePass := make([]plugin.FileTransform, 0, len(prePassStages))
+	for _, stage := range prePassStages {
+		prePass = append(prePass, stage.Build(prog, ctx, env, emit))
+	}
+	loop := make([]plugin.FileTransform, 0, len(loopStages))
+	for _, stage := range loopStages {
+		loop = append(loop, stage.Build(prog, ctx, env, emit))
 	}
 
 	for _, sf := range prog.SourceFiles() {
@@ -278,6 +273,26 @@ func runTransform(host Host, args []string) int {
 		return 3
 	}
 	return 0
+}
+
+// partitionStages splits the selected stages into the one-shot PRE-PASS
+// (mergesynth) and the LOOPED set (everything else). Mergesynth is
+// augmentation-side: its matches are source-written
+// registerAugmentations/applyAugmentations installs, and NO sugar body mints one,
+// so the loop can never produce fresh work for it — running it exactly once before
+// the loop keeps termination trivially explainable (Open issue 2). The rest run
+// repeatedly to a fixed point, since each sugar chain peels one layer per pass. The
+// relative order within each group is preserved from selection; the loop's
+// correctness does not depend on it (disjoint match sets).
+func partitionStages(selected []Stage) (prePass, loop []Stage) {
+	for _, stage := range selected {
+		if stage.Name == stagePrefix+"mergesynth" {
+			prePass = append(prePass, stage)
+		} else {
+			loop = append(loop, stage)
+		}
+	}
+	return prePass, loop
 }
 
 // knownValueFlags names the flags this host reads, each of which takes a value.

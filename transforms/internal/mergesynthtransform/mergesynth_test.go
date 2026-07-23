@@ -275,6 +275,66 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 	}
 }
 
+// TestHandMergeReWrapsOnSecondPass reproduces the concrete defect that bans
+// mergesynth from the fixed-point loop and motivates its ONE-SHOT PRE-PASS
+// placement (host.go / Open issue 2): the stage is NOT idempotent on its own
+// output. strategyNames has no spread-assignment case, so when the first pass
+// spreads the hand-merge object into the synthesized third argument, a second pass
+// cannot see the names that spread already covers and re-synthesizes them, wrapping
+// the call again — inside the loop it would never reach a fixed point. Running it
+// exactly once before the loop sidesteps this entirely (its matches are only ever
+// the source-written installs; no sugar body mints one).
+//
+// The fixture hand-authors a `describe` strategy. Pass 1 therefore synthesizes only
+// the uncovered `tag`, leaving `describe` alone (hand-authored wins). Pass 2, blind
+// to the `...handMerge` spread, treats `describe` as uncovered and re-synthesizes
+// it — the appearance of a synthesized `describe` strategy is the re-wrap.
+func TestHandMergeReWrapsOnSecondPass(t *testing.T) {
+	prog, sf := loadFixture(t, `
+export const AlphaExtensions = {
+  describe(self: IAlpha, opts: number): string { return String(opts); },
+  tag(self: IAlpha, name: string): string { return name; },
+};
+const handMerge = {
+  describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {
+    return original;
+  },
+} satisfies Record<string, MergeStrategy>;
+registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
+`)
+	defer func() { _ = prog.Close() }()
+
+	transform := New(prog, func(Diagnostic) {})
+	ec := shimprinter.NewEmitContext()
+
+	first := transform(ec, sf)
+	if first == nil || first == sf {
+		t.Fatal("first pass did not rewrite the hand-merge install")
+	}
+	shimast.SetParentInChildrenUnset(first.AsNode())
+	if strings.Contains(reprintMerge(ec, first), "describe: function (original, extension)") {
+		t.Fatal("first pass synthesized the hand-covered describe — hand-authored strategy should win")
+	}
+
+	second := transform(ec, first)
+	if second == nil || second == first {
+		t.Fatal("second pass was a no-op — mergesynth would be safe inside the loop, contradicting the pre-pass rationale")
+	}
+	shimast.SetParentInChildrenUnset(second.AsNode())
+	if !strings.Contains(reprintMerge(ec, second), "describe: function (original, extension)") {
+		t.Fatalf("second pass did not re-synthesize the hand-covered describe — the non-idempotence this test guards did not reproduce:\n%s", reprintMerge(ec, second))
+	}
+}
+
+// reprintMerge prints a source file through the emit pipeline, matching run's
+// printer setup, without reloading a fresh program.
+func reprintMerge(ec *shimprinter.EmitContext, sf *shimast.SourceFile) string {
+	writer := shimprinter.NewTextWriter("\n", 0)
+	printer := shimprinter.NewPrinter(shimprinter.PrinterOptions{}, shimprinter.PrintHandlers{}, ec)
+	printer.Write(sf.AsNode(), sf, writer, nil)
+	return writer.String()
+}
+
 func write(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
