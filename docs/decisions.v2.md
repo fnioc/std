@@ -533,4 +533,12 @@ load-bearing property this preserves. Two sessions in different worktrees get in
 but share the one content-keyed cache: collision-free, and the ~3 GB per-suite duplication is gone.
 CI caches `~/.cache/fnioc-ttsc/cache` (scoped so the sandboxes ride outside it).
 
-_Owner-directed 2026-07-21._
+**Refinement — the Go objects go to the global `GOCACHE`.** ttsc only invents its private object
+cache when `GOCACHE` is unset; its build code honors an ambient value. Every env site (the eight
+suite `goEnv`s + `ttscEnv`) now also pins `env.GOCACHE = process.env.GOCACHE ?? ~/.cache/go-build`.
+That path is Go's own default — the assignment is not a no-op; a set `GOCACHE` is the signal ttsc
+reads. The sidecar's object graph is the same one the transforms Go gates compile, so the two stop
+double-caching (~3 GB reclaimed) and a cold sidecar build against a gate-warmed cache is mostly
+re-linking; `~/.cache/fnioc-ttsc/cache` shrinks to the keyed sidecar binaries.
+
+_Owner-directed 2026-07-21; GOCACHE refinement owner-approved 2026-07-23._

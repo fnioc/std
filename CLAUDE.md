@@ -429,10 +429,12 @@ pin), never system-wide.
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`
   (`GOTOOLCHAIN=local`, `TTSC_GO_BINARY` from `mise which go`, shared home-dir `GOTMPDIR` +
   `TTSC_CACHE_DIR`).
-- **Cache economics (§107)** — the compiled sidecars + ttsc's own Go object cache live at
-  `~/.cache/fnioc-ttsc/cache` (`TTSC_CACHE_DIR`, env-overridable), shared across every worktree and
-  e2e suite: keyed sidecar binaries (~30 MB each) plus the ~3 GB Go object cache. Content-keyed, so
-  the ~5-min cold sidecar compile is paid once per machine, seconds warm. The throwaway e2e sandboxes
+- **Cache economics (§107)** — the compiled sidecars live at `~/.cache/fnioc-ttsc/cache`
+  (`TTSC_CACHE_DIR`, env-overridable), shared across every worktree and e2e suite: keyed binaries,
+  ~30 MB each. The Go objects go to the global `~/.cache/go-build` (`GOCACHE` pinned to Go's own
+  default — a set value is what flips ttsc off its private cache), shared with the transforms Go
+  gates, so a cold sidecar compile against a gate-warmed cache is mostly re-linking; a truly cold
+  machine pays ~5 min once. The throwaway e2e sandboxes
   live per-worktree at `~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>` — OUTSIDE the repo tree,
   since a sandbox under an enclosing `package.json` makes ttsc re-root its token derivation to that
   package (off the per-user-quota tmpfs `/tmp`). CI provisions Go via `jdx/mise-action` and restores
