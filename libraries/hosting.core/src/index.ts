@@ -50,7 +50,7 @@ export { HostingAbstractionsHostExtensions } from './HostingAbstractionsHostExte
 // Environment predicates (reference HostEnvironmentEnvExtensions).
 export { HostEnvironmentEnvExtensions } from './HostEnvironmentEnvExtensions';
 
-// The `addHostedService` registration augmentation (reference
-// ServiceCollectionHostedServiceExtensions) + its side-effect registration
-// against di.core's ServiceManifest augmentation token.
-export { ServiceCollectionHostedServiceExtensions } from './ServiceCollectionHostedServiceExtensions';
+// The `addHostedService` registration augmentation (reference's
+// `AddHostedService` static class) + its side-effect registration against
+// di.core's ServiceManifest augmentation token.
+export { ServiceManifestHostedServiceAugmentations } from './ServiceManifestHostedServiceAugmentations';

@@ -1,5 +1,5 @@
 // addLogging — the fluent registration entry, ported from ME.Logging's
-// `LoggingServiceCollectionExtensions.AddLogging(this IServiceCollection, ...)`.
+// `AddLogging(this IServiceCollection, ...)` static method.
 //
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
 // — a class this package does NOT own, and an OPEN receiver — so it follows the
@@ -24,9 +24,9 @@
 //     token flowing in through `typeArg(1)`;
 //   - `configure(new LoggingBuilder(manifest))`.
 //
-// `add`, not TryAdd: di.core registrations are append-only last-wins; there is
-// no add-if-absent surface. Re-calling addLogging appends duplicates — harmless,
-// last wins (same precedent logging.config's addConfig records).
+// `addClass`, not TryAdd: di.core registrations are append-only last-wins; there
+// is no add-if-absent surface. Re-calling addLogging appends duplicates —
+// harmless, last wins (same precedent logging.config's addConfig records).
 
 // Side-effect + merge: installs `addOptions`/`configure` (the options pipeline
 // verbs) onto di.core's ServiceManifest, and brings the interface merge that
@@ -79,12 +79,12 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-// One named object literal mirroring the reference `LoggingServiceCollectionExtensions`
-// static class (docs §28), registered against the `ServiceManifest` augmentation
-// token (docs §38) — the concrete `ServiceManifestClass`, decorated with
+// One named object literal mirroring the reference's `AddLogging` static class
+// (docs §28), registered against the `ServiceManifest` augmentation token
+// (docs §38) — the concrete `ServiceManifestClass`, decorated with
 // `@augment(nameof<IServiceManifest>())` in di.core, pulls the member onto
 // its prototype — AND exported so the member is the standalone form.
-export const LoggingServiceCollectionExtensions = {
+export const LoggingServiceManifestAugmentations = {
   addLogging(
     manifest: ServiceManifestClass<string>,
     configure?: Func<[ILoggingBuilder], void>,
@@ -100,7 +100,7 @@ export const LoggingServiceCollectionExtensions = {
 
     // ILoggerFactory, injected with the enumerable provider set and the
     // assembled IOptions<LoggerFilterOptions>.
-    m = m.add(
+    m = m.addClass(
       LOGGER_FACTORY_TOKEN,
       LoggerFactory,
       [[closeToken('Array', LOGGER_PROVIDER_TOKEN), LOGGER_FILTER_OPTIONS_TOKEN]],
@@ -109,7 +109,7 @@ export const LoggingServiceCollectionExtensions = {
 
     // The open ILogger<$1> -> Logger<$1> registration: the closing type's token
     // flows in through typeArg(1), from which Logger<T> derives its category.
-    m = m.add(
+    m = m.addClass(
       closeToken(ILOGGER_TOKEN_BASE, '$1'),
       LoggerOfT,
       [[LOGGER_FACTORY_TOKEN, typeArg(1)]],
@@ -136,4 +136,4 @@ export const LoggingServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), LoggingServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), LoggingServiceManifestAugmentations);

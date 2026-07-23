@@ -5,7 +5,7 @@
 // `services` is WRITABLE (not `readonly`): di.core's `ServiceManifest` chain is
 // immutable (§di-core-immutable-manifest) -- every registration verb returns a
 // NEW manifest -- so an extension function that registers something reassigns
-// `builder.services = builder.services.add(...)` rather than mutating in place.
+// `builder.services = builder.services.addClass(...)` rather than mutating in place.
 
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 

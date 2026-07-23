@@ -6,7 +6,7 @@
 // builder can be pointed at a slot that something ELSE also writes. `addLogging`
 // hands it a private holder (nobody else is looking at that chain); a host
 // application builder hands it ITSELF, so `builder.logging.addProvider(...)` and
-// `builder.services = builder.services.add(...)` stay on one chain instead of
+// `builder.services = builder.services.addClass(...)` stay on one chain instead of
 // forking into two and dropping whichever one `build()` did not read.
 
 import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';

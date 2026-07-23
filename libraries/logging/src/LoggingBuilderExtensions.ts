@@ -67,7 +67,7 @@ export const LoggingBuilderExtensions = {
   /**
    * Removes all {@link ILoggerProvider}s from the builder — the mechanical port
    * of `builder.Services.RemoveAll<ILoggerProvider>()`, via di.core's
-   * `ServiceCollectionDescriptorExtensions.removeAll` (installed as a manifest
+   * `ServiceManifestDescriptorAugmentations.removeAll` (installed as a manifest
    * method through the augmentation registry).
    */
   clearProviders(builder: ILoggingBuilder): ILoggingBuilder {

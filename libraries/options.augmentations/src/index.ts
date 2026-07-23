@@ -73,7 +73,7 @@ declare module '@rhombus-std/di.core' {
      * `.as(scope)` continuation so the lifetime is chosen at the registration
      * site.
      */
-    addOptions(token: Token, tToken: Token): AddChain<Scopes, 'scope' | 'key'>;
+    addOptions(token: Token, tToken: Token): AddChain<Scopes, 'scope' | 'key', false>;
     /**
      * Registers the `IOptions<T>` assembly for `token`: resolving `token`
      * assembles the value from all configure/post-configure/validate steps and
@@ -82,7 +82,7 @@ declare module '@rhombus-std/di.core' {
      * Returns the `.as(scope)` continuation so the lifetime is chosen at the
      * registration site.
      */
-    addOptions<T>(token: Token, makeBase: Func<[], T>): AddChain<Scopes, 'scope' | 'key'>;
+    addOptions<T>(token: Token, makeBase: Func<[], T>): AddChain<Scopes, 'scope' | 'key', false>;
     /**
      * Registers a configuration `section` to bind against the options
      * identified by `token`: adds a config-bind configure step and a
@@ -152,8 +152,8 @@ declare module '@rhombus-std/di.core' {
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    addOptions(token: Token, tToken: Token): AddChain<Scopes, 'scope' | 'key'>;
-    addOptions<T>(token: Token, makeBase: Func<[], T>): AddChain<Scopes, 'scope' | 'key'>;
+    addOptions(token: Token, tToken: Token): AddChain<Scopes, 'scope' | 'key', false>;
+    addOptions<T>(token: Token, makeBase: Func<[], T>): AddChain<Scopes, 'scope' | 'key', false>;
     configure(token: Token, section: IConfig): IServiceManifest<Scopes>;
     configure<T>(token: Token, configureOptions: Func<[T], void>): IServiceManifest<Scopes>;
     configure<T, Deps extends readonly unknown[]>(
@@ -186,12 +186,12 @@ declare module '@rhombus-std/di.core' {
 // path); the const is also exported so the member is the standalone form. The
 // overloads/generics live on the declare-module merge above (the method
 // signature's source of truth); the member impls carry the disambiguating unions.
-export const OptionsServiceCollectionExtensions = {
+export const OptionsServiceManifestAugmentations = {
   addOptions<T>(
     manifest: ServiceManifestClass<string>,
     token: Token,
     source: Token | Func<[], T>,
-  ): AddChain<string, 'scope' | 'key'> {
+  ): AddChain<string, 'scope' | 'key', false> {
     // Two verbs share the name, disambiguated by the second argument (§15):
     //   - a `Token` (string)      → wrap the already-bound `T` resolved from it
     //     (#34): `addFactory(token, (t) => Options.of(t), [[tToken]])`.
@@ -283,7 +283,7 @@ export const OptionsServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-export const OptionsConfigServiceCollectionExtensions = {
+export const OptionsConfigServiceManifestAugmentations = {
   configure<T, Deps extends readonly unknown[]>(
     manifest: ServiceManifestClass<string>,
     token: Token,
@@ -330,8 +330,8 @@ export const OptionsConfigServiceCollectionExtensions = {
 // packages, so they register into the primitives augmentation registry beside
 // this declare-module merge. The `ServiceManifestClass` decorated with the same
 // token (di.core) pulls these members onto its prototype (§38).
-registerAugmentations(nameof<IServiceManifest>(), OptionsServiceCollectionExtensions);
-registerAugmentations(nameof<IServiceManifest>(), OptionsConfigServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), OptionsServiceManifestAugmentations);
+registerAugmentations(nameof<IServiceManifest>(), OptionsConfigServiceManifestAugmentations);
 
 // `validateOnStart` lives in its own file named after its reference static class
 // (`OptionsBuilderExtensions`, §28) with `Extensions` -> `augmentations`, matching

@@ -82,13 +82,13 @@ export const LoggingBuilderExtensions = {
     // the manifest its own registration produced, then the final value is
     // read back through `builder.services` by the caller (§ the same pattern
     // `addLogging` uses for its own `configure` delegate).
-    builder.services = builder.services.add(
+    builder.services = builder.services.addClass(
       nameof<ILoggerProviderConfigFactory>(),
       LoggerProviderConfigFactory,
       [[closeToken('Array', nameof<LoggingConfig>())]],
       'singleton',
     );
-    builder.services = builder.services.add(
+    builder.services = builder.services.addClass(
       loggerProviderConfigToken('$1'),
       LoggerProviderConfig,
       [[nameof<ILoggerProviderConfigFactory>(), typeArg(1)]],

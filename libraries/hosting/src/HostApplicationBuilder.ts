@@ -162,7 +162,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * Rebinds the live services manifest. di.core's `ServiceManifest` chain is
    * immutable -- every registration verb returns a NEW manifest -- so a
    * caller registering something reassigns `builder.services =
-   * builder.services.add(...)` rather than mutating in place.
+   * builder.services.addClass(...)` rather than mutating in place.
    */
   public set services(value: IServiceManifest) {
     this.#services = value;

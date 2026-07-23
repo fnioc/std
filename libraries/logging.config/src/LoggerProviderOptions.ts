@@ -65,8 +65,8 @@ export const LoggerProviderOptions = {
   ): IServiceManifest {
     const providerConfig: Token = loggerProviderConfigToken(providerType);
     return services
-      .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]], 'singleton')
-      .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]],
+      .addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]], 'singleton')
+      .addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]],
         'singleton');
   },
 };

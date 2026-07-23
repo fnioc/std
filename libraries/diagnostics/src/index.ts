@@ -124,7 +124,7 @@ export const MetricsServiceExtensions = {
     // The per-listener configuration factory (the reference's TryAddSingleton of
     // IMetricListenerConfigFactory): ctor-injected with the collection of
     // every MetricsConfig marker addMetricsConfig registered.
-    m = m.add(
+    m = m.addClass(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
       MetricListenerConfigFactory,
       [[collectionToken(METRICS_CONFIGURATION_TOKEN)]],
@@ -134,8 +134,8 @@ export const MetricsServiceExtensions = {
       // The cast works around a TS structural-comparison depth limit -- see
       // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
       // explanation. `MetricsBuilder`'s ctor takes the Scopes-erased
-      // `IServiceManifestBase`; `m`'s huge `add`/`addFactory` overload surface
-      // (di.core's ServiceCollectionDescriptorExtensions merge) pushes the
+      // `IServiceManifestBase`; `m`'s huge `addClass`/`addFactory` overload surface
+      // (di.core's ServiceManifestDescriptorAugmentations merge) pushes the
       // direct-assignment check past TS's recursion budget.
       const builder = new MetricsBuilder(m as IServiceManifestBase);
       configure(builder);
@@ -167,7 +167,7 @@ export const TracingServiceExtensions = {
     // The per-listener configuration factory (the reference's TryAddSingleton of
     // ActivityListenerConfigFactory): ctor-injected with the collection of
     // every TracingConfig marker addTracingConfig registered.
-    m = m.add(
+    m = m.addClass(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
       DefaultActivityListenerConfigFactory,
       [[collectionToken(TRACING_CONFIGURATION_TOKEN)]],

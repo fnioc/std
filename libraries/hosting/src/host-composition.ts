@@ -184,7 +184,7 @@ export function populateFrameworkServices(
   // The default host lifetime. `useConsoleLifetime` appends a ConsoleLifetime
   // registration under the same token; di.core is append-only last-wins, so the
   // console lifetime overrides this when requested.
-  return s.add(HOST_LIFETIME_TOKEN, NullLifetime, [[]]);
+  return s.addClass(HOST_LIFETIME_TOKEN, NullLifetime, [[]]);
 }
 
 /**

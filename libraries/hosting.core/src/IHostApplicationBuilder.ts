@@ -35,7 +35,7 @@ export interface IHostApplicationBuilder {
    * A collection of services for the application to compose. WRITABLE (a
    * di.core `IServiceManifestHolder`): the manifest chain is immutable, so
    * registering something reassigns `builder.services =
-   * builder.services.add(...)`. The same slot backs `logging` and `metrics`, so
+   * builder.services.addClass(...)`. The same slot backs `logging` and `metrics`, so
    * every registration route lands on one chain.
    */
   services: IServiceManifest;

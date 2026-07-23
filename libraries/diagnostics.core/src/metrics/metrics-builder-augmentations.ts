@@ -104,7 +104,7 @@ export const MetricsBuilderExtensions = {
    * dependencies are injected). Mirrors the generic
    * `MetricsBuilderExtensions.AddListener<T>()`. `signatures` carries the ctor's
    * positional dependency slots (as a plugin-less author supplies them, or as the
-   * di.transformer would emit) -- required, like every di.core `add`: a
+   * di.transformer would emit) -- required, like every di.core `addClass`: a
    * dependency-free ctor states `[[]]` explicitly.
    */
   addMetricsListenerType(
@@ -112,14 +112,14 @@ export const MetricsBuilderExtensions = {
     ctor: Ctor,
     signatures: DepSignatures,
   ): IMetricsBuilder {
-    builder.services = builder.services.add(METRICS_LISTENER_TOKEN, ctor, signatures);
+    builder.services = builder.services.addClass(METRICS_LISTENER_TOKEN, ctor, signatures);
     return builder;
   },
   /**
    * Removes all {@link IMetricsListener} registrations from the builder --
    * the port of `MetricsBuilderExtensions.ClearListeners(IMetricsBuilder)`
    * (`builder.Services.RemoveAll<IMetricsListener>()`), via di.core's
-   * `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb
+   * `ServiceManifestDescriptorAugmentations.removeAll` descriptor verb
    * (installed as a manifest method through the augmentation registry).
    */
   clearMetricsListeners(builder: IMetricsBuilder): IMetricsBuilder {
@@ -129,7 +129,7 @@ export const MetricsBuilderExtensions = {
     // `IServiceProvider<Scopes>`) are the same interface at two instantiations
     // that differ only in a covariant position -- genuinely assignable -- but the
     // huge overload surface `IServiceManifestBase` carries (di.core's
-    // ServiceCollectionDescriptorExtensions merge) pushes TS's relationship check
+    // ServiceManifestDescriptorAugmentations merge) pushes TS's relationship check
     // past its recursion budget, which it resolves as "not assignable" rather
     // than re-deriving the true (assignable) relationship.
     builder.services = builder.services.removeAll(METRICS_LISTENER_TOKEN) as typeof builder.services;

@@ -110,7 +110,7 @@ declare module '@rhombus-std/di.core' {
 // augmentation token so the `@augment(nameof<IServiceManifest>())`
 // decoration in di.core pulls `addMemoryCache` onto the `ServiceManifestClass`
 // prototype (the fluent path) AND exported so the member is the standalone form.
-export const MemoryCacheServiceCollectionExtensions = {
+export const MemoryCacheServiceManifestAugmentations = {
   addMemoryCache(
     manifest: ServiceManifestClass<string>,
     setup?: Func<[MemoryCacheOptions], void>,
@@ -134,7 +134,7 @@ export const MemoryCacheServiceCollectionExtensions = {
     // reproduces exactly that.
     // The cast works around a TS structural-comparison depth limit: the
     // `IServiceManifestBase`/`IServiceManifest` overload surface (di.core's
-    // ServiceCollectionDescriptorExtensions merge) is large enough that TS's
+    // ServiceManifestDescriptorAugmentations merge) is large enough that TS's
     // relationship check bails out on this self-assignment even though the two
     // sides are the same type (see diagnostics.core's
     // `clearMetricsListeners` for the full explanation).
@@ -179,7 +179,7 @@ export const MemoryCacheServiceCollectionExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), MemoryCacheServiceCollectionExtensions);
+registerAugmentations(nameof<IServiceManifest>(), MemoryCacheServiceManifestAugmentations);
 
 export { MemoryCache } from './MemoryCache';
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in

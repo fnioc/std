@@ -112,7 +112,7 @@ export const TracingBuilderExtensions = {
    * Removes all {@link ActivityListenerBuilder} registrations from the builder --
    * the port of `TracingBuilderExtensions.ClearListeners(ITracingBuilder)`
    * (`builder.Services.RemoveAll<ActivityListenerBuilder>()`), via di.core's
-   * `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb
+   * `ServiceManifestDescriptorAugmentations.removeAll` descriptor verb
    * (installed as a manifest method through the augmentation registry).
    */
   clearTracingListeners(builder: ITracingBuilder): ITracingBuilder {

@@ -65,25 +65,25 @@ hosted service and starts/stops it as a group.
 
 ## Key exports
 
-| Export                                     | What it is                                                                                                                         |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `IHost`                                    | The running application: `services` (a resolver), `start()`, `stop()`.                                                             |
-| `IHostedService`                           | A unit of work the host starts and stops: `start(abortSignal)`, `stop(abortSignal)`.                                               |
-| `IHostedLifecycleService`                  | Extends `IHostedService` with `starting`/`started`/`stopping`/`stopped` hooks that run around it.                                  |
-| `BackgroundService`                        | Base class for a hosted service that's really one long-running loop — implement `execute`.                                         |
-| `IHostApplicationLifetime`                 | Lifetime signals (`applicationStarted`/`applicationStopping`/`applicationStopped`) plus `stopApplication()` to request a shutdown. |
-| `IHostLifetime`                            | Hook a host calls into around `start`/`stop` — for example, to wait on an external signal before starting.                         |
-| `IHostBuilder`                             | Assembles a host: `configureHostConfig`, `configureAppConfig`, `configureServices`, `build()`.                                     |
-| `IHostApplicationBuilder`                  | The newer builder shape: exposes `configuration`, `environment`, `logging`, `metrics`, and `services` directly as properties.      |
-| `IHostEnvironment`                         | Where the app is running: `environmentName`, `applicationName`, `contentRootPath`, `contentRootFileProvider`.                      |
-| `HostBuilderContext`                       | Carries `hostingEnvironment`, `configuration`, and `properties` through the build process.                                         |
-| `Environments`                             | Common environment name constants (`Development`, `Staging`, `Production`).                                                        |
-| `HostDefaults`                             | The configuration key names a host reads to set `applicationName`, `environment`, and `contentRoot`.                               |
-| `HostAbortedError`                         | Thrown to signal a host is stopping gracefully — not meant to be handled by application code.                                      |
-| `HostingAbstractionsHostExtensions`        | Helpers over `IHost`: `run`/`runAsync` (start, wait for shutdown, dispose), `waitForShutdownAsync`, `stopWithTimeout`.             |
-| `HostingAbstractionsHostBuilderExtensions` | `startHost` — builds an `IHostBuilder` and starts it in one call.                                                                  |
-| `HostEnvironmentEnvExtensions`             | Environment predicates: `isEnvironment`, `isDevelopment`, `isStaging`, `isProduction`.                                             |
-| `ServiceCollectionHostedServiceExtensions` | The `addHostedService` registration helper, installed onto `ServiceManifest`.                                                      |
+| Export                                      | What it is                                                                                                                         |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `IHost`                                     | The running application: `services` (a resolver), `start()`, `stop()`.                                                             |
+| `IHostedService`                            | A unit of work the host starts and stops: `start(abortSignal)`, `stop(abortSignal)`.                                               |
+| `IHostedLifecycleService`                   | Extends `IHostedService` with `starting`/`started`/`stopping`/`stopped` hooks that run around it.                                  |
+| `BackgroundService`                         | Base class for a hosted service that's really one long-running loop — implement `execute`.                                         |
+| `IHostApplicationLifetime`                  | Lifetime signals (`applicationStarted`/`applicationStopping`/`applicationStopped`) plus `stopApplication()` to request a shutdown. |
+| `IHostLifetime`                             | Hook a host calls into around `start`/`stop` — for example, to wait on an external signal before starting.                         |
+| `IHostBuilder`                              | Assembles a host: `configureHostConfig`, `configureAppConfig`, `configureServices`, `build()`.                                     |
+| `IHostApplicationBuilder`                   | The newer builder shape: exposes `configuration`, `environment`, `logging`, `metrics`, and `services` directly as properties.      |
+| `IHostEnvironment`                          | Where the app is running: `environmentName`, `applicationName`, `contentRootPath`, `contentRootFileProvider`.                      |
+| `HostBuilderContext`                        | Carries `hostingEnvironment`, `configuration`, and `properties` through the build process.                                         |
+| `Environments`                              | Common environment name constants (`Development`, `Staging`, `Production`).                                                        |
+| `HostDefaults`                              | The configuration key names a host reads to set `applicationName`, `environment`, and `contentRoot`.                               |
+| `HostAbortedError`                          | Thrown to signal a host is stopping gracefully — not meant to be handled by application code.                                      |
+| `HostingAbstractionsHostExtensions`         | Helpers over `IHost`: `run`/`runAsync` (start, wait for shutdown, dispose), `waitForShutdownAsync`, `stopWithTimeout`.             |
+| `HostingAbstractionsHostBuilderExtensions`  | `startHost` — builds an `IHostBuilder` and starts it in one call.                                                                  |
+| `HostEnvironmentEnvExtensions`              | Environment predicates: `isEnvironment`, `isDevelopment`, `isStaging`, `isProduction`.                                             |
+| `ServiceManifestHostedServiceAugmentations` | The `addHostedService` registration helper, installed onto `ServiceManifest`.                                                      |
 
 The `*Extensions` object literals double as fluent methods once a concrete
 host implementation installs them — call `host.waitForShutdownAsync()`

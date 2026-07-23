@@ -1,5 +1,5 @@
 // The `addHostedService` fluent registration -- ported from the reference's
-// ServiceCollection `AddHostedService<T>` extension (which ships in the Hosting
+// service-manifest `AddHostedService<T>` extension (which ships in the Hosting
 // abstractions package, not the DI runtime). Registered as a cross-package
 // augmentation onto di.core's registration builder, exactly how
 // @rhombus-std/options.augmentations adds `addOptions`/`configure`: TS
@@ -76,10 +76,10 @@ function isConstructor(target: Ctor | Func<[IResolver], IHostedService>): target
   return /^class[\s{]/.test(Function.prototype.toString.call(target));
 }
 
-// One named object literal mirroring the reference `ServiceCollectionHostedServiceExtensions`
-// static class (docs §28), registered into the augmentation registry (the primary
+// One named object literal mirroring the reference's `AddHostedService` static
+// class (docs §28), registered into the augmentation registry (the primary
 // path) AND exported so the member is the standalone form.
-export const ServiceCollectionHostedServiceExtensions = {
+export const ServiceManifestHostedServiceAugmentations = {
   addHostedService(
     manifest: ServiceManifestClass<string>,
     // §42 overloaded member: the ctor form carries optional dep signatures; the
@@ -95,11 +95,11 @@ export const ServiceCollectionHostedServiceExtensions = {
     // dep signature) so the delegate receives it, mirroring the reference's
     // `Func<IServiceProvider, T>`. A ctor form with no `signatures` is a
     // dependency-free ctor, stated explicitly as `[[]]` (di.core has no
-    // plugin-less `add(token, ctor)` overload).
+    // plugin-less `addClass(token, ctor)` overload).
     return isConstructor(target)
-      ? manifest.add(HOSTED_SERVICE_TOKEN, target, signatures ?? [[]], 'singleton')
+      ? manifest.addClass(HOSTED_SERVICE_TOKEN, target, signatures ?? [[]], 'singleton')
       : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]], 'singleton');
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), ServiceCollectionHostedServiceExtensions);
+registerAugmentations(nameof<IServiceManifest>(), ServiceManifestHostedServiceAugmentations);
