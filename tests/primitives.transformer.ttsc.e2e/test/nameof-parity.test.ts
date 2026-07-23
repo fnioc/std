@@ -5,11 +5,11 @@ import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e parity: drives the REAL ttsc (typescript-go toolchain) over
-// a temp project that wires the Go nameof plugin through the `@rhombus-std/
+// a temp project that wires the Go tokenfor plugin through the `@rhombus-std/
 // primitives.transformer/ttsc` descriptor, then asserts the emitted JS carries
-// the SAME byte-identical token strings the hand-written TypeScript nameof
+// the SAME byte-identical token strings the hand-written TypeScript tokenfor
 // transformer produces (the parity corpus lives in
-// tests/di.transformer.test/test/{tokens,nameof}.test.ts).
+// tests/di.transformer.test/test/{tokens,tokenfor}.test.ts).
 //
 // The throwaway project lives OUTSIDE the repo tree, per-worktree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>: it must sit outside any
@@ -138,24 +138,24 @@ beforeAll(() => {
     `export interface IFoo {}\nexport interface ScopedBase<S extends string> {}\nexport type Scoped<S extends string = "singleton"> = ScopedBase<S>;\n`,
   );
 
-  writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
+  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
-import { nameof } from "./nameof";
+import { tokenfor } from "./tokenfor";
 import { IFoo, Scoped } from "your-lib/contracts";
 import { Deep } from "your-lib";
 interface ILocal {}
 interface LocalBase<S extends string> {}
 type Local<S extends string = "singleton"> = LocalBase<S>;
-export const appInternal = nameof<ILocal>();
-export const asyncToken = nameof<Promise<ILocal>>();
-export const packagePublic = nameof<IFoo>();
-export const bareReexport = nameof<Deep>();
-export const localDefaultAlias = nameof<Local>();
-export const localExplicitAlias = nameof<Local<"request">>();
-export const publicDefaultAlias = nameof<Scoped>();
-export const publicExplicitAlias = nameof<Scoped<"request">>();
+export const appInternal = tokenfor<ILocal>();
+export const asyncToken = tokenfor<Promise<ILocal>>();
+export const packagePublic = tokenfor<IFoo>();
+export const bareReexport = tokenfor<Deep>();
+export const localDefaultAlias = tokenfor<Local>();
+export const localExplicitAlias = tokenfor<Local<"request">>();
+export const publicDefaultAlias = tokenfor<Scoped>();
+export const publicExplicitAlias = tokenfor<Scoped<"request">>();
 `,
   );
   writeFileSync(
@@ -197,10 +197,10 @@ export const publicExplicitAlias = nameof<Scoped<"request">>();
   }
 }, COLD_BUILD_MS);
 
-describe.skipIf(!toolchainReady)('ttsc/Go nameof lowering byte-parity', () => {
+describe.skipIf(!toolchainReady)('ttsc/Go tokenfor lowering byte-parity', () => {
   test('app-internal type → rootless ./path:Symbol token', () => {
     expect(app).toContain(`"./app:ILocal"`);
-    expect(app).not.toContain('nameof<');
+    expect(app).not.toContain('tokenfor<');
   });
 
   test('Promise<T> → honest closed-generic token', () => {
@@ -212,15 +212,15 @@ describe.skipIf(!toolchainReady)('ttsc/Go nameof lowering byte-parity', () => {
   });
 
   test('root re-export of a deep declaration → bare-package Tier-1 token', () => {
-    // The augmentation-token shape: nameof<T>() over an interface re-exported
+    // The augmentation-token shape: tokenfor<T>() over an interface re-exported
     // from the package root tokenizes as the bare package, not the nested file.
     expect(app).toContain(`"your-lib:Deep"`);
   });
 
   test('defaulted-generic alias, referenced bare → bare alias token (defaults dropped)', () => {
-    // A fully-defaulted instantiation IS the bare alias, so nameof<Local>() /
-    // nameof<Scoped>() drop the "singleton" default rather than closing it in —
-    // the augmentation-token shape (`nameof<IServiceManifest>()`, whose
+    // A fully-defaulted instantiation IS the bare alias, so tokenfor<Local>() /
+    // tokenfor<Scoped>() drop the "singleton" default rather than closing it in —
+    // the augmentation-token shape (`tokenfor<IServiceManifest>()`, whose
     // `type IServiceManifest<S extends string = "singleton"> = …<S>` mirrors the
     // fixture's `Local`/`Scoped`). Anchor each token to its own export name so
     // the sibling explicit-arg alias in the same file can't cross-match. The
@@ -237,8 +237,8 @@ describe.skipIf(!toolchainReady)('ttsc/Go nameof lowering byte-parity', () => {
     expect(app).toContain(`publicExplicitAlias = "your-lib:Scoped<\\"request\\">"`);
   });
 
-  test('the elided nameof import leaves no dangling build-time import', () => {
-    expect(app).not.toContain('nameof');
-    expect(app).not.toContain('./nameof');
+  test('the elided tokenfor import leaves no dangling build-time import', () => {
+    expect(app).not.toContain('tokenfor');
+    expect(app).not.toContain('./tokenfor');
   });
 });

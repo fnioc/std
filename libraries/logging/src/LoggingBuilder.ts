@@ -12,7 +12,7 @@
 import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 
 // Interface-extends merge (augmentation doctrine): binding the ILoggingBuilder
 // SYMBOL flows every in-program augmentation of the interface — this package's
@@ -22,11 +22,11 @@ import { nameof } from '@rhombus-std/primitives';
 export interface LoggingBuilder extends ILoggingBuilder {}
 
 // OPEN receiver (docs §38): decorate the concrete builder with the ILoggingBuilder
-// augmentation token — derived inline by `nameof<ILoggingBuilder>()`, lowered at
+// augmentation token — derived inline by `tokenfor<ILoggingBuilder>()`, lowered at
 // build time — so every set registered against it — this package's
 // `LoggingBuilderExtensions`, plus downstream `addConfig`/`addConsole` — is
 // (re)installed onto the prototype, whatever the import order.
-@augment(nameof<ILoggingBuilder>())
+@augment(tokenfor<ILoggingBuilder>())
 export class LoggingBuilder implements ILoggingBuilder {
   readonly #holder: IServiceManifestHolder;
 

@@ -14,7 +14,7 @@ An inline-stage primitive that is ONLY ever called inside inline bodies (never i
 
 - `signatureof` (DI dependency-signature extraction) → `di.transformer`, which peers on `di.core`, so it returns di.core's real `DepSignatures` / `DepSlot` directly. The former primitives-side mirror (`DepSlotLike` / `FactoryRefLike` / `UnionLike` / `LiteralRefLike` / `TypeArgRefLike`) is deleted.
 - `schemaof` (config `Schema` from a type) → `config.transformer`, which peers on `config` and already owns the `ts.Type`→`Schema` codegen + the `OPTIONAL` import injection.
-- `nameof` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(nameof<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
+- `tokenfor` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(tokenfor<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
 
 Consequences: the inline BODIES and their `rhombus.inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
 
@@ -66,15 +66,15 @@ A library's `.` export resolves its type-facing conditions and `bun` to the roll
 
 ---
 
-## §74 — `nameof` and token derivation
+## §74 — `tokenfor` and token derivation
 
-`nameof<T>()` is declared in `@rhombus-std/primitives` with a throwing body (a call reaching runtime means the transformer wasn't wired). The transformer lowers it to a token identifying where `T` sits in the exports graph — the package barrel for a publicly-exported type (`pkg:Type`), the `_` subpath for a tests-only one (`pkg/_/file:Type`). It keys on export **membership**, not on-disk path, so a package's own build and an external consumer derive the identical token. _Owner-approved._
+`tokenfor<T>()` is declared in `@rhombus-std/primitives` with a throwing body (a call reaching runtime means the transformer wasn't wired). The transformer lowers it to a token identifying where `T` sits in the exports graph — the package barrel for a publicly-exported type (`pkg:Type`), the `_` subpath for a tests-only one (`pkg/_/file:Type`). It keys on export **membership**, not on-disk path, so a package's own build and an external consumer derive the identical token. The primitive `nameof<T>()` was renamed to `tokenfor<T>()`; the pipeline stage id `nameof` is unchanged. _Owner-approved._
 
 ---
 
-## §83 — The `_` export is for tests and `nameof` only
+## §83 — The `_` export is for tests and `tokenfor` only
 
-Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `nameof`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
+Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `tokenfor`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
 
 ## §24 — No pluggable containers
 
@@ -232,10 +232,10 @@ through the generic inline stage with plain certified bodies. Type-directed disp
 in the engine.
 
 Two authoring-only primitives live in `primitives.transformer` (per §92's homing rule), shipped as
-throwing stubs like `nameof`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
+throwing stubs like `tokenfor`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
 the token grammar's term for a type with exactly one value: a literal, `null`, `undefined`, or
-`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(nameof<T>())`.
-Resolving a singular type IS its value: a hand-written `tryResolve(nameof<'dev'>())` folds
+`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>())`.
+Resolving a singular type IS its value: a hand-written `tryResolve(tokenfor<'dev'>())` folds
 identically, so the sugar and the explicit form share one semantics.
 
 The inline engine constant-folds after primitive lowering — boolean-ternary dead-branch pruning,
@@ -255,10 +255,10 @@ verbs. The compile-time guard stands: without the satellite in the program, the 
 typecheck — no compiles-then-throws.
 
 The bespoke di-options lowering stage retires into the generic inline path: the body lowers to a
-dot-call of the explicit verb (`this.addOptions(nameof<IOptions<T>>(), nameof<T>())`), so the
+dot-call of the explicit verb (`this.addOptions(tokenfor<IOptions<T>>(), tokenfor<T>())`), so the
 augmentation prototype wrapper and any merge dispatcher execute exactly as they would for
 hand-written code. This requires the inline engine to support nested closed-generic type-argument
-instantiation (`nameof<IOptions<T>>()`).
+instantiation (`tokenfor<IOptions<T>>()`).
 
 Token derivation is one function, not two: the non-hole-aware derivation collapses into the
 hole-aware `DeriveTokenF`, mirroring the reference's single `deriveToken`.
@@ -313,10 +313,10 @@ _Owner-directed 2026-07-18._
 ## §98 — Keyed sugar composes through `keyof` and a tail key parameter
 
 A single authoring-only primitive, `keyof<T>()`, lives in `di.transformer` (lowercase — reserved
-only in type positions, family-consistent with `nameof`/`signatureof`/`schemaof`, per §92's homing
+only in type positions, family-consistent with `tokenfor`/`signatureof`/`schemaof`, per §92's homing
 rule). It lowers to the key of a `Keyed<T, K>` type argument (`'audit'`) and to `undefined` for a
-non-keyed type. `nameof` over `Keyed<T, K>` derives the BASE token unchanged — base extraction, not
-key loss — so `keyof` and `nameof` are two independent readings of the same phantom brand.
+non-keyed type. `tokenfor` over `Keyed<T, K>` derives the BASE token unchanged — base extraction, not
+key loss — so `keyof` and `tokenfor` are two independent readings of the same phantom brand.
 
 The explicit registration verbs each carry ONE signature with an optional TAIL parameter —
 `add(token, impl, signatures, key?)`, `addFactory(token, fn, signatures, key?)`,
@@ -470,7 +470,7 @@ di.transformer.options, config.transformer) owns only its per-family sugar: the 
 records where the STAGE machinery lives.
 
 The honest dep edge falls out: because a family transformer's inline bodies call the neutral
-primitives (`nameof`/`signatureof`), that transformer genuinely requires the primitive stages, so
+primitives (`tokenfor`/`signatureof`), that transformer genuinely requires the primitive stages, so
 di.transformer, di.transformer.options, and config.transformer each declare
 `@rhombus-std/primitives.transformer` as a `dependency`. That edge is what lets §103's host scan
 reach the primitive stages for a family-sugar consumer: a library depending on di.transformer's
@@ -486,7 +486,7 @@ the implementation._
 
 Cross-package IDE rename / find-references needs the editor's TypeScript program to see one unified symbol identity across packages, which means resolving `@rhombus-std/*` to **source** — dist-ref (§72) resolves the rolled `.d.ts`, dead-ending navigation at each package boundary. This is served without disturbing the runtime. Each package's `tsconfig.json` becomes an editor-only whole-repo program (`include: ["../*/src/**/*"]`, `customConditions: ["source"]`); the strict CI/build config moves verbatim to `tsconfig.ci.json`, and `tsconfig.ttsc.json`, the per-package `lint` scripts, and `build-lib.ts`'s typecheck repoint to it.
 
-Each package's `.` export gains a `source` condition → `./src/index.ts` (first key), scrubbed from `publishConfig` so it never ships. Only tsserver activates it (via the editor `customConditions`); **bun ignores tsconfig `customConditions`** — it resolves the `bun` condition → dist — so the build and every `bun test` run the distributable byte-for-byte as before. `paths`-based src-refs were tried and rejected: bun DOES honor tsconfig `paths` at runtime, poisoning module resolution so library source executes with an un-lowered `nameof`.
+Each package's `.` export gains a `source` condition → `./src/index.ts` (first key), scrubbed from `publishConfig` so it never ships. Only tsserver activates it (via the editor `customConditions`); **bun ignores tsconfig `customConditions`** — it resolves the `bun` condition → dist — so the build and every `bun test` run the distributable byte-for-byte as before. `paths`-based src-refs were tried and rejected: bun DOES honor tsconfig `paths` at runtime, poisoning module resolution so library source executes with an un-lowered `tokenfor`.
 
 This is a SHARED `source` condition, which §78 (v1) considered and rejected — but §78's concern was a downstream consumer's BUILD/GATE co-compiling a core's src; here `source` is set ONLY by the editor program, and neither the build nor the gate sets `customConditions`, so that harm cannot arise, and the whole-repo over-pull §78 avoided is precisely what the editor wants. src-refs stay internal-only (this editor program, the `<pkg>-source` self-compile condition, and the `./_/*` white-box subpath); dist-ref remains the sole runtime and publish primary.
 

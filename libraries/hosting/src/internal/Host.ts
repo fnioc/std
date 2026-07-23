@@ -18,7 +18,7 @@ import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHost
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavior';
 import type { HostOptions } from '../HostOptions';
@@ -100,7 +100,7 @@ function aggregate(errors: readonly unknown[], message: string): unknown {
 export interface Host extends IHost {}
 
 /** The internal {@link IHost} implementation. */
-@augment(nameof<IHost>())
+@augment(tokenfor<IHost>())
 export class Host implements IHost, AsyncDisposable {
   readonly #services: IServiceProvider;
   readonly #applicationLifetime: ApplicationLifetime;
@@ -179,7 +179,7 @@ export class Host implements IHost, AsyncDisposable {
       // (reference Host order: after resolving hosted services, before
       // starting()). The validator is registered only when `validateOnStart`
       // ran, so resolve it optionally; a validation failure throws out of start.
-      const startupValidator = singletonScope.tryResolve<IStartupValidator>(nameof<IStartupValidator>());
+      const startupValidator = singletonScope.tryResolve<IStartupValidator>(tokenfor<IStartupValidator>());
       startupValidator?.validate();
 
       // starting()

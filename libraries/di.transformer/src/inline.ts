@@ -4,7 +4,7 @@
 // Authored, never executed: the generic inline transform stage substitutes these
 // single-return-expression bodies at consumer call sites (this → the receiver,
 // the type parameter bound from the checker), then the primitive stages lower
-// the result. The bodies contain `nameof<T>()` (and `signatureof(...)` / `keyof<T>()`)
+// the result. The bodies contain `tokenfor<T>()` (and `signatureof(...)` / `keyof<T>()`)
 // over an UNBOUND generic, so they must never go through a per-file primitive lowering
 // here — with no type to bind, that lowering would rewrite them to the empty
 // token `this.isService("")` and an empty signature array.
@@ -18,13 +18,13 @@
 // dependency-signature primitive) and `keyof` (the authoring-time
 // keyed-registration-key primitive) live alongside these bodies here in
 // di.transformer (`./signatureof.js`, `./keyof.js`), not in the runtime
-// `@rhombus-std/primitives` leaf; `nameof` stays in that leaf, since runtime source
+// `@rhombus-std/primitives` leaf; `tokenfor` stays in that leaf, since runtime source
 // imports it directly.
 
 import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
   Token } from '@rhombus-std/di.core';
 import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
 import { valueof } from './valueof.js';
@@ -71,11 +71,11 @@ interface IInlineRegistrationTarget {
 /**
  * `isService<T>()` sugar body — the tokenless registration predicate. It is the
  * exact hand-written form a no-transformer consumer would author:
- * `this.isService(nameof<T>())`.
+ * `this.isService(tokenfor<T>())`.
  */
 export const ServiceQueryInline = {
   isService<T>(this: IServiceQuery): boolean {
-    return this.isService(nameof<T>());
+    return this.isService(tokenfor<T>());
   },
 };
 
@@ -84,11 +84,11 @@ export const ServiceQueryInline = {
  * `addFactory<T>(fn)`, and `addValue<I>(value)` forms. Each is the EXACT
  * hand-written form a no-transformer consumer would author:
  *
- *   addClass<T>(ctor)   → this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())
- *   addFactory<T>(fn)   → this.addFactory(nameof<T>(), fn, signatureof(fn), void 0, keyof<T>())
- *   addValue<I>(value)  → this.addValue(nameof<I>(), value, keyof<I>())
+ *   addClass<T>(ctor)   → this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>())
+ *   addFactory<T>(fn)   → this.addFactory(tokenfor<T>(), fn, signatureof(fn), void 0, keyof<T>())
+ *   addValue<I>(value)  → this.addValue(tokenfor<I>(), value, keyof<I>())
  *
- * `nameof<T>()` derives the service token (the BASE token for a `Keyed<T, K>`);
+ * `tokenfor<T>()` derives the service token (the BASE token for a `Keyed<T, K>`);
  * `signatureof(...)` derives the positional dependency signatures the third
  * argument carries — exactly the `[[...]]` array the di registration stage
  * synthesizes for the same value; and `keyof<T>()` derives a keyed registration's
@@ -99,7 +99,7 @@ export const ServiceQueryInline = {
  * placeholder it strands, so the emitted call is byte-identical to the plain
  * 3-argument form and matches the di stage's direct lowering. `addValue` carries
  * neither deps nor a lifetime, so its key is argument 3 and its body composes
- * `nameof` + `keyof` — no `signatureof`, no placeholder.
+ * `tokenfor` + `keyof` — no `signatureof`, no placeholder.
  *
  * Every verb now returns a NEW manifest (registration is immutable), so each body
  * RETURNS that manifest — a discarded result registers nothing.
@@ -118,13 +118,13 @@ export const ServiceQueryInline = {
  */
 export const ServiceManifestInline = {
   addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-    return this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
   addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
-    return this.addFactory(nameof<T>(), factory, signatureof(factory), void 0, keyof<T>());
+    return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0, keyof<T>());
   },
   addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
-    return this.addValue(nameof<I>(), value, keyof<I>());
+    return this.addValue(tokenfor<I>(), value, keyof<I>());
   },
 };
 

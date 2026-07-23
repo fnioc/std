@@ -12,7 +12,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { EnvironmentVariablesConfigSource,
   type EnvironmentVariablesConfigSourceOptions } from './EnvironmentVariablesConfigSource';
 
@@ -61,7 +61,7 @@ export const EnvironmentVariablesExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), EnvironmentVariablesExtensions);
+registerAugmentations(tokenfor<IConfigBuilder>(), EnvironmentVariablesExtensions);
 
 export { EnvironmentVariablesConfigProvider } from './EnvironmentVariablesConfigProvider';
 export { colonAndDotVariableNameTransformation, defaultVariableNameTransformation,

@@ -122,7 +122,7 @@ beforeAll(() => {
   writeFileSync(join(lib, 'index.d.ts'), `export { IUserRepo } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'contracts', 'index.d.ts'), `export interface IUserRepo {}\n`);
 
-  writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
+  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
 
   // The ambient `declare module "@rhombus-std/di.core"` — the authoring interfaces
   // (runtime + sugar overloads) the transformer's forms anchor on. A script
@@ -184,7 +184,7 @@ beforeAll(() => {
   writeFileSync(
     join(projDir, 'src', 'app.ts'),
     `
-import { nameof } from "./nameof";
+import { tokenfor } from "./tokenfor";
 import { IUserRepo } from "your-lib";
 import type { Nested, IResolver as DiResolver, IServiceManifest, IServiceManifestBase, IServiceProvider } from "@rhombus-std/di.core";
 
@@ -236,7 +236,7 @@ services.addClass<IRepo<$<1>>>(ThingRepo<$<1>>).as<"singleton">();
 services.addClass<ILogger>(ConsoleLogger).withSignature<[IDbConnection, ICache]>().as<"singleton">();
 services.addClass<ILogger>(ConsoleLogger).withSignatures<[[IDbConnection], [IDbConnection, ICache]]>().as<"singleton">();
 
-export const marker = nameof<IUserRepo>();
+export const marker = tokenfor<IUserRepo>();
 export const dep = provider.resolve<ILogger>();
 export const known = provider.isService<ILogger>();
 
@@ -367,7 +367,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     expect(app).not.toContain('signaturesfor');
     expect(app).not.toContain('resolve<');
     expect(app).not.toContain('isService<');
-    expect(app).not.toContain('nameof<');
+    expect(app).not.toContain('tokenfor<');
   });
 
   test('di-direct withSignature<T>() → positional slot append (di.core external)', () => {
@@ -398,7 +398,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     expect(app).toContain(`.as("request")`);
   });
 
-  test('nameof<T>() → the same byte-identical package-public token', () => {
+  test('tokenfor<T>() → the same byte-identical package-public token', () => {
     expect(app).toContain(`marker = "your-lib:IUserRepo"`);
   });
 

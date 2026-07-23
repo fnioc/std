@@ -95,13 +95,13 @@ declare module './configuration-builder.js' {
 - **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheConst)` directly, wherever the
   concrete class is defined.
 - **OPEN receiver** — call `registerAugmentations(token, TheConst)`, where `token` is an inline
-  `nameof<Receiver>()` call (never an exported constant — see Gotchas):
+  `tokenfor<Receiver>()` call (never an exported constant — see Gotchas):
 
   ```ts
-  registerAugmentations(nameof<IConfigBuilder>(), JsonConfigExtensions);
+  registerAugmentations(tokenfor<IConfigBuilder>(), JsonConfigExtensions);
   ```
 
-  Any class decorated `@augment(nameof<IConfigBuilder>())` — anywhere, imported in any
+  Any class decorated `@augment(tokenfor<IConfigBuilder>())` — anywhere, imported in any
   order, defined before or after this call runs — picks the new member up automatically.
 
 ## Implementing an augmented interface (the supported consumer feature)
@@ -123,7 +123,7 @@ export class MyConfigurationBuilder implements IConfigBuilder {
 under:**
 
 ```ts
-@augment(nameof<IConfigBuilder>())
+@augment(tokenfor<IConfigBuilder>())
 export class MyConfigurationBuilder implements IConfigBuilder {
   add(source: IConfigSource): IConfigBuilder {/* ... */}
   build(): IConfig {/* ... */}
@@ -184,8 +184,8 @@ strategy, while two unrelated augmentations that happen to collide by name fail 
 quietly overwriting the other.
 
 **Tokens are values, not names.** `Token` (defined in `primitives`, re-exported by `di.core`) is
-derived inline at every call site via `nameof<Receiver>()` — there are no exported token constants.
-A transformer lowers `nameof<IConfigBuilder>()` to the literal string
+derived inline at every call site via `tokenfor<Receiver>()` — there are no exported token constants.
+A transformer lowers `tokenfor<IConfigBuilder>()` to the literal string
 `"@rhombus-std/config:IConfigBuilder"`; a hand-written, no-transformer caller just writes
 that string directly. Two calls naming the same interface always produce the same token, regardless
 of which package or file they're in.

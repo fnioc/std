@@ -18,7 +18,7 @@ import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.c
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Action, Func } from '@rhombus-toolkit/func';
 import { resolveContentRootPath } from '../host-composition';
 
@@ -34,7 +34,7 @@ function equalsIgnoreCase(left: string | undefined, right: string | undefined): 
 export interface HostBuilderAdapter extends IHostBuilder {}
 
 /** The classic-builder adapter over a modern application builder. */
-@augment(nameof<IHostBuilder>())
+@augment(tokenfor<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {
   readonly #config: IConfigManager;
   // The wrapped application builder ITSELF, held as its services slot -- not a

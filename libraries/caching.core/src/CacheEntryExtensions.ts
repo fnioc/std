@@ -11,7 +11,7 @@
 // caching.core (as ME has it), so the helper is here rather than downstream.
 
 import { type AugmentationSet, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { CacheItemPriority } from './CacheItemPriority';
 import type { ICacheEntry } from './ICacheEntry';
 import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
@@ -118,7 +118,7 @@ export const CacheEntryExtensions = {
 } satisfies AugmentationSet<ICacheEntry>;
 
 // The method-form surface merged onto ICacheEntry (docs §28/§38): the concrete
-// CacheEntry downstream is decorated `@augment(nameof<ICacheEntry>())` and pulls
+// CacheEntry downstream is decorated `@augment(tokenfor<ICacheEntry>())` and pulls
 // these onto its prototype.
 declare module './ICacheEntry' {
   interface ICacheEntry {
@@ -135,4 +135,4 @@ declare module './ICacheEntry' {
 }
 
 // Self-registration for the OPEN `ICacheEntry` receiver (docs §38).
-registerAugmentations(nameof<ICacheEntry>(), CacheEntryExtensions);
+registerAugmentations(tokenfor<ICacheEntry>(), CacheEntryExtensions);

@@ -14,7 +14,7 @@
 // The runtime body exists only so that un-transformed code fails loudly instead
 // of silently returning `undefined` — calling `valueof` without the transformer
 // wired up throws a clear error pointing at the missing plugin, exactly like
-// `nameof` / `signatureof` / `keyof`. The name is lowercase for family
+// `tokenfor` / `signatureof` / `keyof`. The name is lowercase for family
 // consistency; `valueof` is not a reserved word in either type or value
 // positions, so a value-position declaration and call compile under strict tsc.
 //

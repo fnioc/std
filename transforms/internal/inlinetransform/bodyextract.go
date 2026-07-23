@@ -32,7 +32,7 @@ import (
 // keyof and imported via a package-relative specifier. A hardcoded map suffices —
 // the declare-by-marker generalization is a future enhancement.
 var knownPrimitives = map[string]string{
-	"nameof":        "@rhombus-std/primitives",
+	"tokenfor":      "@rhombus-std/primitives",
 	"signatureof":   "@rhombus-std/di.transformer",
 	"keyof":         "@rhombus-std/di.transformer",
 	"signaturefor":  "@rhombus-std/di.core",

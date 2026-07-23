@@ -1,20 +1,20 @@
 // `keyof<T>()` — the compile-time keyed-registration KEY mechanism, sibling to
-// `nameof<T>()` (§98).
+// `tokenfor<T>()` (§98).
 //
-// Where `nameof<IFoo>()` binds a TYPE argument and lowers to a service TOKEN,
+// Where `tokenfor<IFoo>()` binds a TYPE argument and lowers to a service TOKEN,
 // `keyof<Keyed<IFoo, "audit">>()` binds a TYPE argument and lowers to that keyed
 // service's registration KEY as a string literal — `"audit"` — or to `undefined`
 // when the type carries no `Keyed<T, K>` brand. The two are the halves of a keyed
-// inline registration: `addClass<T>(ctor)` lowers to `this.addClass(nameof<T>(), ctor,
-// signatureof(ctor), void 0, keyof<T>())`, where nameof derives the base token,
+// inline registration: `addClass<T>(ctor)` lowers to `this.addClass(tokenfor<T>(), ctor,
+// signatureof(ctor), void 0, keyof<T>())`, where tokenfor derives the base token,
 // the `void 0` fills the scope slot the key sits behind, and keyof derives the
 // key — composed at runtime by di.core as `base#key`.
 //
 // The runtime body exists only so that un-transformed code fails loudly instead
 // of silently returning `undefined` — calling `keyof` without the transformer
 // wired up throws a clear error pointing at the missing plugin, exactly like
-// `nameof` and `signatureof`. The name is lowercase for family consistency with
-// `nameof` / `signatureof`; `keyof` is reserved only in TYPE positions, so a
+// `tokenfor` and `signatureof`. The name is lowercase for family consistency with
+// `tokenfor` / `signatureof`; `keyof` is reserved only in TYPE positions, so a
 // value-position declaration and call compile under strict tsc.
 //
 // It lives here in `@rhombus-std/di.transformer` (the authoring-time DI package),
@@ -31,8 +31,8 @@
  * @example
  * ```ts
  * // authored inside a sugar body:
- * this.addClass(nameof<IFoo>(), Foo, signatureof(Foo), void 0, keyof<IFoo>()); // unkeyed → elided
- * this.addClass(nameof<T>(), C, signatureof(C), void 0, keyof<Keyed<IFoo, "audit">>()); // → …, "audit"
+ * this.addClass(tokenfor<IFoo>(), Foo, signatureof(Foo), void 0, keyof<IFoo>()); // unkeyed → elided
+ * this.addClass(tokenfor<T>(), C, signatureof(C), void 0, keyof<Keyed<IFoo, "audit">>()); // → …, "audit"
  * ```
  */
 export function keyof<T>(): string | undefined {

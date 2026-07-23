@@ -30,7 +30,7 @@
 // stays the standalone `LoggerFactoryExtensions.createLogger(factory, MyService)`.
 
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { AbstractCtor } from '@rhombus-toolkit/func';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
@@ -66,4 +66,4 @@ const factoryMerge = {
   },
 } satisfies MergeStrategies;
 
-registerAugmentations(nameof<ILoggerFactory>(), LoggerFactoryExtensions, factoryMerge);
+registerAugmentations(tokenfor<ILoggerFactory>(), LoggerFactoryExtensions, factoryMerge);

@@ -314,7 +314,7 @@ not appear anywhere in `libraries/di*`):
 
 The PRD's exact token-derivation grammar (package-public vs. app-internal path rules, nested-type
 qualification, the `<source>:<exportName>` format) plausibly still holds in spirit — the same
-concept names (`nameof`, app-internal fallback) exist in `libraries/primitives.transformer/src` —
+concept names (`tokenfor`, app-internal fallback) exist in `libraries/primitives.transformer/src` —
 but wasn't diffed rule-by-rule against the current implementation here. Same caveat for the exact
 factory-signature diagnostic rules and the full token-derivation edge-case table. Verify against
 `libraries/primitives.transformer/src` before citing exact behavior.

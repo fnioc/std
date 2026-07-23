@@ -31,7 +31,7 @@ import { type AddChain, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestCl
 import { type IConfigureOptions, type IPostConfigureOptions, type IValidateOptions, Options,
   ValidateOptionsResult } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleOptions } from './assemble-options.js';
@@ -47,7 +47,7 @@ const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 // A same-length tuple of dependency-token strings, one per entry in `Deps` -- the
 // token list a DI-injected pipeline step (the `configure`/`postConfigure`/
 // `validate` dependency forms below) resolves from the provider before invoking
-// its callback. A typed caller writes `[nameof<Dep1>(), nameof<Dep2>()]`.
+// its callback. A typed caller writes `[tokenfor<Dep1>(), tokenfor<Dep2>()]`.
 type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token; };
 
 // The authored methods merge onto core's `IServiceManifestBase` interface -- the
@@ -106,7 +106,7 @@ declare module '@rhombus-std/di.core' {
      * `configureOptions` after the options value. ME's
      * `OptionsBuilder.Configure<TDep1..5>` family collapsed onto ONE variadic form
      * (§42): a token tuple plus a tuple-typed callback instead of five fixed
-     * arities. A typed caller writes each token as `nameof<Dep>()`.
+     * arities. A typed caller writes each token as `tokenfor<Dep>()`.
      */
     configure<T, Deps extends readonly unknown[]>(
       token: Token,
@@ -330,8 +330,8 @@ export const OptionsConfigServiceManifestAugmentations = {
 // packages, so they register into the primitives augmentation registry beside
 // this declare-module merge. The `ServiceManifestClass` decorated with the same
 // token (di.core) pulls these members onto its prototype (§38).
-registerAugmentations(nameof<IServiceManifest>(), OptionsServiceManifestAugmentations);
-registerAugmentations(nameof<IServiceManifest>(), OptionsConfigServiceManifestAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), OptionsServiceManifestAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), OptionsConfigServiceManifestAugmentations);
 
 // `validateOnStart` lives in its own file named after its reference static class
 // (`OptionsBuilderExtensions`, §28) with `Extensions` -> `augmentations`, matching

@@ -15,10 +15,10 @@ export type { ChangeTokenConsumer, ChangeTokenProducer } from './ChangeToken.js'
 export { CompositeChangeToken } from './CompositeChangeToken.js';
 export type { IChangeToken } from './IChangeToken.js';
 export { Multimap } from './Multimap.js';
-export { nameof, NAMEOF_NAME } from './nameof.js';
 export { process } from './process.js';
 export type { ProcessLike } from './process.js';
 export type { ReadableStream } from './ReadableStream.js';
 export { clearTimeout, setTimeout } from './TimeoutHandle.js';
 export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';
+export { tokenfor, TOKENFOR_NAME } from './tokenfor.js';

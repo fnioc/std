@@ -18,9 +18,9 @@ import (
 // buildInlinePresetWorkspace lays out the di.core inline PRESET workspace: a core
 // package literally named `@rhombus-std/di.core` carrying the `rhombus.inline`
 // `addClass` entry and the real ServiceManifestInline body
-// (`addClass<T>(ctor) => this.addClass(nameof<T>(), ctor, signatureof(ctor))`), so the SAME
+// (`addClass<T>(ctor) => this.addClass(tokenfor<T>(), ctor, signatureof(ctor))`), so the SAME
 // open-template registration can be lowered two ways — through the INLINE pipeline
-// (inline -> nameof -> signatureof) and through the di DIRECT stage. It is the
+// (inline -> tokenfor -> signatureof) and through the di DIRECT stage. It is the
 // fixture the open-template inline-vs-direct parity test drives.
 func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
@@ -50,16 +50,16 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 export declare function keyof<T>(): string | undefined;
 `)
 	// The real add-sugar body, authored over the three compile-time primitives, each
-	// imported from its home module (nameof from primitives, signatureof + keyof from
+	// imported from its home module (tokenfor from primitives, signatureof + keyof from
 	// di.transformer). keyof<T>() is the §98 keyed-registration key half, in the KEY
 	// slot (argument 5) behind the `void 0` filling the scope slot; an UNKEYED
 	// registration elides both in the inline stage (byte-parity with the plain form).
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
 };
 `)
@@ -101,7 +101,7 @@ export {};
 }
 
 // lowerInlinePipeline runs the full inline PRESET pipeline over main.ts — inline
-// substitution, then nameof token lowering, then signatureof dependency-array
+// substitution, then tokenfor token lowering, then signatureof dependency-array
 // lowering, sharing one artifacts bag exactly as the owner host composes them —
 // and returns the reprinted output.
 func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string {
@@ -151,9 +151,9 @@ func depArrayFrom(t *testing.T, out string) string {
 // TestOpenTemplateInlinePipelineMatchesDiDirect is the open-template inline-vs-direct
 // fixture #241 deferred: an open-generic template registration
 // `addClass<IRepo<$<1>>>(SqlRepo<$<1>>)` lowered through the INLINE pipeline
-// (inline -> nameof -> signatureof) must carry the same service token AND the same
+// (inline -> tokenfor -> signatureof) must carry the same service token AND the same
 // dependency-signature array as the di DIRECT stage's lowering of the identical
-// registration. The nameof hole fix is what unblocks it (a non-hole-aware nameof
+// registration. The tokenfor hole fix is what unblocks it (a non-hole-aware tokenfor
 // derived `IRepo<@rhombus-std/di.core:$<1>>` for the service token and diverged).
 //
 // The value-EXPRESSION arg (arg1) is intentionally excluded from the compare: the
@@ -200,8 +200,8 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 
 // TestKeyedInlinePipelineComposesBaseKey is the §98 keyed inline lowering
 // end-to-end: `addClass<Keyed<ICache, "redis">>(RedisCache)` lowered through the full
-// inline pipeline (inline -> nameof -> signatureof -> keyof) splits the keyed token
-// across two arguments — nameof gives the BASE (arg0), keyof gives the KEY (arg5,
+// inline pipeline (inline -> tokenfor -> signatureof -> keyof) splits the keyed token
+// across two arguments — tokenfor gives the BASE (arg0), keyof gives the KEY (arg5,
 // behind the `void 0` scope slot) — which the runtime composes as `base#key`. The
 // di DIRECT stage composes the whole `base#key` into arg0. This pins that the two
 // halves reunite exactly: the inline base + `#` + the keyof key == the di token,
@@ -223,7 +223,7 @@ services.addClass<Keyed<ICache, "redis">>(RedisCache);
 	diTok := diServiceToken(t, diOut)          // arg0 of the di call = the composed base#key
 
 	if strings.Contains(inlineBase, "#") {
-		t.Fatalf("inline nameof arg0 must be the bare base (no key): %q", inlineBase)
+		t.Fatalf("inline tokenfor arg0 must be the bare base (no key): %q", inlineBase)
 	}
 	if !strings.HasSuffix(diTok, "#redis") {
 		t.Fatalf("di direct token must carry the composed key: %q", diTok)

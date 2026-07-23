@@ -12,7 +12,7 @@ import { Host } from '@rhombus-std/hosting/private/index';
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 
-// The nameof-derived token logging registers its providers under (§40). Written
+// The tokenfor-derived token logging registers its providers under (§40). Written
 // as a literal because this package does not depend on @rhombus-std/logging --
 // the same shape tests/logging.test uses for the ILogger<T> base.
 const LOGGER_PROVIDER_TOKEN = '@rhombus-std/logging.core:ILoggerProvider';

@@ -9,16 +9,16 @@ import { basename, join, resolve } from 'node:path';
 // ttsc over a temp project TWO ways over the IDENTICAL source, then asserts
 // they emit byte-identical output:
 //
-//   inline path   — inline + nameof + signatureof + di. The type-driven
+//   inline path   — inline + tokenfor + signatureof + di. The type-driven
 //     `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.transformer's
-//     rhombus.inline entries) substitute to `this.addClass(nameof<I>(), C,
-//     signatureof(C))`; nameof
+//     rhombus.inline entries) substitute to `this.addClass(tokenfor<I>(), C,
+//     signatureof(C))`; tokenfor
 //     lowers the token, signatureof lowers the dependency-signature array, and
 //     the di stage leaves the resulting 3-argument `addClass(...)` untouched.
-//     `addValue<I>(value)` substitutes to `this.addValue(nameof<I>(), value)`
-//     — no `signatureof`, since a value carries no deps — and nameof alone
+//     `addValue<I>(value)` substitutes to `this.addValue(tokenfor<I>(), value)`
+//     — no `signatureof`, since a value carries no deps — and tokenfor alone
 //     lowers it to the 2-argument `addValue("token", value)`.
-//   semantic path — nameof + di. The di registration stage lowers the SAME
+//   semantic path — tokenfor + di. The di registration stage lowers the SAME
 //     `addClass<I>(C)` / `addValue<I>(value)` directly to their explicit-token forms.
 //
 // The load-bearing guarantee is that the signatureof array (and, for
@@ -185,7 +185,7 @@ function setupWorkspace(): void {
   // signatureof primitive), so the inline collector walks to both.
   writeFileSync(
     join(projDir, 'package.json'),
-    // A package name WITHOUT "nameof"/"signatureof" substrings so the derived
+    // A package name WITHOUT "tokenfor"/"signatureof" substrings so the derived
     // tokens (which embed the package name) don't collide with the primitive-call
     // survival assertions below.
     JSON.stringify({
@@ -208,7 +208,7 @@ function setupWorkspace(): void {
   ]);
   // The PRESET path: ONE descriptor — di.core's `./ttsc` bundle — instead of the
   // four primitive-stage transforms the inline tsconfig enumerates. The owner
-  // binary expands `rhombusstd_di_bundle` into inline -> nameof -> signatureof ->
+  // binary expands `rhombusstd_di_bundle` into inline -> tokenfor -> signatureof ->
   // di in canonical order, so a consumer never lists the stages by hand.
   writeTsconfig('tsconfig.bundle.json', 'dist-bundle', [
     { transform: '@rhombus-std/di.core/ttsc' },
@@ -256,14 +256,14 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     expect(withInline).not.toContain('addValue<');
     // No un-lowered primitive CALL survives (assert the call form, not a bare
     // substring, which could appear inside a derived token string).
-    expect(withInline).not.toContain('nameof<');
-    expect(withInline).not.toContain('nameof(');
+    expect(withInline).not.toContain('tokenfor<');
+    expect(withInline).not.toContain('tokenfor(');
     expect(withInline).not.toContain('signatureof(');
   });
 
   test('byte parity: inline+signatureof path vs di semantic path emit the identical output', () => {
     // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
-    // PATH (inline -> synthetic nameof + signatureof) but never the emitted bytes.
+    // PATH (inline -> synthetic tokenfor + signatureof) but never the emitted bytes.
     // Whole-output equality also pins import elision, the derived signature array,
     // and surrounding whitespace.
     const addLine = (src: string) => src.split('\n').find((l) => l.includes('.addClass('))?.trim();
@@ -278,7 +278,7 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
   test('preset bundle: the single di.core/ttsc descriptor emits the identical output', () => {
     // A consumer that wires ONLY `@rhombus-std/di.core/ttsc` (the preset) — never
     // the four primitive-stage transforms — gets the same ordered lowering: the
-    // owner binary expands the bundle name into inline -> nameof -> signatureof ->
+    // owner binary expands the bundle name into inline -> tokenfor -> signatureof ->
     // di. Byte-identity with the hand-enumerated inline path proves the preset is a
     // pure convenience over the manual stage list, not a behavior change.
     expect(withBundle).not.toBe('');

@@ -5,7 +5,7 @@
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface (an OPEN
 // receiver extended across the family), so this downstream sink registers its
-// augmentation set against the shared `nameof<ILoggingBuilder>()` token (docs
+// augmentation set against the shared `tokenfor<ILoggingBuilder>()` token (docs
 // §38): the @augment-decorated concrete LoggingBuilder pulls the method onto
 // its prototype. The exported const IS the standalone call surface.
 //
@@ -17,7 +17,7 @@
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
 // Keyed by the BUILDER, not by `builder.services`: the manifest chain is
@@ -28,7 +28,7 @@ const registrations = new WeakMap<ILoggingBuilder, BrowserConsoleLoggerProvider>
 /**
  * The `BrowserConsoleLoggerExtensions` augmentation set for
  * {@link ILoggingBuilder} (docs §28/§38). Registered against
- * `nameof<ILoggingBuilder>()` below and reachable as the standalone
+ * `tokenfor<ILoggingBuilder>()` below and reachable as the standalone
  * `BrowserConsoleLoggerExtensions.addBrowserConsole(builder)`.
  */
 export const BrowserConsoleLoggerExtensions = {
@@ -59,4 +59,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-registerAugmentations(nameof<ILoggingBuilder>(), BrowserConsoleLoggerExtensions);
+registerAugmentations(tokenfor<ILoggingBuilder>(), BrowserConsoleLoggerExtensions);

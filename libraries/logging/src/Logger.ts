@@ -12,7 +12,7 @@
 
 import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import type { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformation';
 
@@ -21,10 +21,10 @@ const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…, §80) flow onto `Logger`, beside the
-// `@augment(nameof<ILogger>())` install below.
+// `@augment(tokenfor<ILogger>())` install below.
 export interface Logger extends ILogger {}
 
-@augment(nameof<ILogger>())
+@augment(tokenfor<ILogger>())
 export class Logger implements ILogger {
   /** The provider-participation records — resized in place by the factory on `addProvider`. */
   public loggers: LoggerInformation[];

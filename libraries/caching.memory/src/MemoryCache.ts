@@ -30,7 +30,7 @@ import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheE
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { CacheEntry, type IMemoryCacheHost } from './CacheEntry';
@@ -45,7 +45,7 @@ import { NullLogger } from './NullLogger';
 export interface MemoryCache extends IMemoryCache {}
 
 /** A local in-memory cache backed by a `Map`. */
-@augment(nameof<IMemoryCache>())
+@augment(tokenfor<IMemoryCache>())
 export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   readonly #entries = new Map<unknown, CacheEntry>();
   readonly #options: MemoryCacheOptions;

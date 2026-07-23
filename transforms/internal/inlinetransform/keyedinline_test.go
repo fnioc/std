@@ -41,16 +41,16 @@ declare const KEY: unique symbol;
 export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
 	// The impl body — the real add-sugar shape, authored over the three primitives,
-	// each imported from its home module (nameof from primitives, signatureof +
+	// each imported from its home module (tokenfor from primitives, signatureof +
 	// keyof from di.transformer). keyof<T>() is the §98 key half, sitting in the
 	// KEY slot (argument 5) behind the `void 0` that fills the scope slot the
 	// type-driven sugar has no value for.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
 };
 `)
@@ -124,7 +124,7 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 	out := reprint(ec, transform(ec, main))
 
 	// Both registrations inlined: neither sugar type-argument form survives, and
-	// both emit a nameof primitive (its bound type stays recorded in artifacts, so
+	// both emit a tokenfor primitive (its bound type stays recorded in artifacts, so
 	// the emitted type argument is the body's `T`, not the call-site type).
 	if strings.Contains(out, "addClass<IFoo>") {
 		t.Errorf("plain addClass<IFoo> should have inlined, but the sugar form survived:\n%s", out)
@@ -132,8 +132,8 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 	if strings.Contains(out, "addClass<Keyed") {
 		t.Errorf("keyed addClass<Keyed<...>> should have inlined (fence retired), but the sugar form survived:\n%s", out)
 	}
-	if got := strings.Count(out, "nameof<"); got != 2 {
-		t.Errorf("expected 2 inlined nameof calls (plain + keyed), got %d:\n%s", got, out)
+	if got := strings.Count(out, "tokenfor<"); got != 2 {
+		t.Errorf("expected 2 inlined tokenfor calls (plain + keyed), got %d:\n%s", got, out)
 	}
 	// EXACTLY one keyof argument survives: the keyed call keeps it (the keyof stage
 	// lowers it), the plain call ELIDED it — byte-parity with the pre-keyof form.
@@ -150,12 +150,12 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 		t.Errorf("the keyed call must carry its key in the KEY slot, behind the scope placeholder:\n%s", out)
 	}
 
-	// Both registrations registered a nameof primitive; only the keyed one registered
+	// Both registrations registered a tokenfor primitive; only the keyed one registered
 	// a keyof primitive (the plain one's was elided before registration).
 	nameofCount, keyofCount := 0, 0
 	for _, use := range artifacts.PrimitiveCalls {
 		switch use.Name {
-		case "nameof":
+		case "tokenfor":
 			nameofCount++
 		case "keyof":
 			keyofCount++
@@ -167,7 +167,7 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 		}
 	}
 	if nameofCount != 2 {
-		t.Fatalf("expected 2 registered nameof primitives (plain + keyed), got %d", nameofCount)
+		t.Fatalf("expected 2 registered tokenfor primitives (plain + keyed), got %d", nameofCount)
 	}
 	if keyofCount != 1 {
 		t.Fatalf("expected exactly 1 registered keyof primitive (the keyed add), got %d", keyofCount)

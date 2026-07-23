@@ -4,7 +4,7 @@
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
 // — a class this package does NOT own, and an OPEN receiver — so it follows the
 // augmentation-registry path (docs §38): register the set against the shared
-// `nameof<IServiceManifest>()` token and declaration-merge the method onto the
+// `tokenfor<IServiceManifest>()` token and declaration-merge the method onto the
 // di.core `IServiceManifestBase` interface. The `@augment`-decorated
 // `ServiceManifestClass` (in di.core) pulls the member onto its prototype. This is
 // why the package sets `"sideEffects": true` — a consumer who only wants the sugar
@@ -37,7 +37,7 @@ import { closeToken, type IServiceManifest, type ServiceManifestClass, typeArg }
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
@@ -46,11 +46,11 @@ import { LoggingBuilder } from './LoggingBuilder';
 import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 
 // The base of the open `ILogger<$1>` service token — byte-identical to the base
-// a transformer consumer's `nameof<ILogger<TCategory>>()` derives. Hardcoded
-// (not `closeToken(nameof<ILogger>(), "$1")`) because `ILogger` is a defaulted
-// generic: a BARE `nameof<ILogger>()` records the default type argument and
+// a transformer consumer's `tokenfor<ILogger<TCategory>>()` derives. Hardcoded
+// (not `closeToken(tokenfor<ILogger>(), "$1")`) because `ILogger` is a defaulted
+// generic: a BARE `tokenfor<ILogger>()` records the default type argument and
 // lowers to `"…:ILogger<unknown>"` (the augmentation-registry key), NOT the
-// clean service-token base. An explicit `nameof<ILogger<Foo>>()` derives
+// clean service-token base. An explicit `tokenfor<ILogger<Foo>>()` derives
 // `"…:ILogger<pkg:Foo>"` off this same base, so the open template matches. A
 // no-transformer consumer writes this literal directly (docs §40); mirrors
 // logging.config's `LOGGER_PROVIDER_CONFIGURATION_BASE`.
@@ -82,7 +82,7 @@ declare module '@rhombus-std/di.core' {
 // One named object literal mirroring the reference's `AddLogging` static class
 // (docs §28), registered against the `ServiceManifest` augmentation token
 // (docs §38) — the concrete `ServiceManifestClass`, decorated with
-// `@augment(nameof<IServiceManifest>())` in di.core, pulls the member onto
+// `@augment(tokenfor<IServiceManifest>())` in di.core, pulls the member onto
 // its prototype — AND exported so the member is the standalone form.
 export const LoggingServiceManifestAugmentations = {
   addLogging(
@@ -136,4 +136,4 @@ export const LoggingServiceManifestAugmentations = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), LoggingServiceManifestAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), LoggingServiceManifestAugmentations);

@@ -49,13 +49,13 @@ export declare function signaturefor<T extends readonly any[]>(): readonly unkno
 	// The inline bodies, mirroring the real di.transformer ManifestChainInline:
 	// addClass derives token + dep-array; withSignature mints ONE overload's slots
 	// from the tuple and spreads them; as mints the scope literal value.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
 import { signatureof, valueof } from '@rhombus-std/di.transformer';
 import { signaturefor } from '@rhombus-std/di.core';
 import type { IAsBuilder, IChain, IServiceManifestBase, IWithSignatureBuilder } from './index';
 export const ChainInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): IChain {
-    return this.addClass(nameof<T>(), ctor, signatureof(ctor));
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
   },
   withSignature<T extends readonly any[]>(this: IWithSignatureBuilder): IChain {
     return this.withSignature(...signaturefor<T>());
@@ -142,7 +142,7 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 		t.Fatalf("addClass<IFoo>(Foo) did not lower to the tokenized registration:\n%s", out)
 	}
 	// No authoring surface survives.
-	for _, banned := range []string{"withSignature<", "as<", "addClass<", "signaturefor", "valueof", "nameof", "..."} {
+	for _, banned := range []string{"withSignature<", "as<", "addClass<", "signaturefor", "valueof", "tokenfor", "..."} {
 		if strings.Contains(out, banned) {
 			t.Fatalf("authoring surface %q survived the chain lowering:\n%s", banned, out)
 		}

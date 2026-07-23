@@ -6,7 +6,7 @@
 // registers into the primitives augmentation registry under
 // the `IHost` token (beside the interface-side `declare module`
 // merge below, per rule 0.6). The concrete `Host` class -- downstream in
-// `@rhombus-std/hosting` -- is decorated with `@augment(nameof<IHost>())`,
+// `@rhombus-std/hosting` -- is decorated with `@augment(tokenfor<IHost>())`,
 // which pulls this bag onto its prototype; the class-side merge stays downstream
 // next to that class. The members here are also the standalone call surface.
 //
@@ -15,7 +15,7 @@
 
 import { AbortController, type AbortSignal, type AugmentationSet, clearTimeout, neverSignal, registerAugmentations,
   setTimeout } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { IHost } from './IHost';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';
@@ -128,4 +128,4 @@ export const HostingAbstractionsHostExtensions = {
   },
 } satisfies AugmentationSet<IHost>;
 
-registerAugmentations(nameof<IHost>(), HostingAbstractionsHostExtensions);
+registerAugmentations(tokenfor<IHost>(), HostingAbstractionsHostExtensions);

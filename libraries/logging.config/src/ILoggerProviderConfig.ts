@@ -24,16 +24,16 @@ export interface ILoggerProviderConfig<T> {
   readonly config: IConfig;
 }
 
-// The token base — what `nameof<ILoggerProviderConfig<…>>()` derives as
+// The token base — what `tokenfor<ILoggerProviderConfig<…>>()` derives as
 // the generic's base for this declaring package. Kept module-local; every
 // external use site goes through the closing helper below (or derives the
-// closed token inline with `nameof`).
+// closed token inline with `tokenfor`).
 const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.config:ILoggerProviderConfig';
 
 /**
  * The closed di token for {@link ILoggerProviderConfig}`<providerType>`
  * — byte-identical to what a transformer consumer's
- * `nameof<ILoggerProviderConfig<TProvider>>()` derives. Pass `"$1"` to
+ * `tokenfor<ILoggerProviderConfig<TProvider>>()` derives. Pass `"$1"` to
  * spell the open registration template.
  */
 export function loggerProviderConfigToken(providerType: Token): Token {

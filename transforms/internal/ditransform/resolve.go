@@ -7,7 +7,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-const nameofName = "nameof"
+const nameofName = "tokenfor"
 
 var tokenlessResolveMethods = map[string]bool{
 	"resolve":      true,

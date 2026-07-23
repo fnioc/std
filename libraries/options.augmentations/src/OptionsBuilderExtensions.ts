@@ -17,14 +17,14 @@
 // StartupValidatorOptions-through-the-options-pipeline indirection -- see
 // StartupValidator for why that shape does not translate): `validateOnStart(token)`
 // appends `token` to the startup-validation target slot and registers the
-// built-in {@link StartupValidator} under `nameof<IStartupValidator>()`. The host
+// built-in {@link StartupValidator} under `tokenfor<IStartupValidator>()`. The host
 // resolves that (optionally) and calls `validate()`.
 
 import { type IResolver, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass,
   type Token } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 
 import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
 
@@ -58,7 +58,7 @@ declare module '@rhombus-std/di.core' {
 // One named object literal mirroring the reference `OptionsBuilderExtensions`
 // static class (docs §28), registered against the `ServiceManifest` augmentation
 // token (docs §38) -- the concrete `ServiceManifestClass`, decorated with
-// `@augment(nameof<IServiceManifest>())` in di.core, pulls the member onto its
+// `@augment(tokenfor<IServiceManifest>())` in di.core, pulls the member onto its
 // prototype -- AND exported so the member is the standalone form.
 export const OptionsBuilderExtensions = {
   validateOnStart(
@@ -74,7 +74,7 @@ export const OptionsBuilderExtensions = {
     // factory reads the SAME full target list from the resolver at start time
     // (the `addLogging` "add, not TryAdd" precedent).
     m = m.addFactory(
-      nameof<IStartupValidator>(),
+      tokenfor<IStartupValidator>(),
       (resolver: IResolver): IStartupValidator =>
         new StartupValidator(
           resolver,
@@ -86,4 +86,4 @@ export const OptionsBuilderExtensions = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), OptionsBuilderExtensions);
+registerAugmentations(tokenfor<IServiceManifest>(), OptionsBuilderExtensions);

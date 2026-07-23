@@ -8,9 +8,9 @@
 //
 // OPEN receiver (docs §38): `IServiceManifest` is extended by many downstream
 // packages, so this const registers against
-// `nameof<IServiceManifest>()` (owned by di.core). The concrete
+// `tokenfor<IServiceManifest>()` (owned by di.core). The concrete
 // `ServiceManifestClass` -- in `@rhombus-std/di.core` -- is decorated with
-// `@augment(nameof<IServiceManifest>())` there, so it pulls this bag
+// `@augment(tokenfor<IServiceManifest>())` there, so it pulls this bag
 // (and every other cross-package set on the same token) onto its prototype. As
 // this is a FOREIGN receiver class, both the interface-side merge (onto
 // `IServiceManifestBase`) and the class-side merge (onto `ServiceManifestClass`)
@@ -27,7 +27,7 @@
 import { type DepSlot, type IResolver, type IServiceManifest, RESOLVER_TOKEN,
   type ServiceManifestClass } from '@rhombus-std/di.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TOKEN } from './tokens';
@@ -102,4 +102,4 @@ export const ServiceManifestHostedServiceAugmentations = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), ServiceManifestHostedServiceAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestHostedServiceAugmentations);

@@ -8,7 +8,7 @@
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 
 // Interface-extends merge (augmentation doctrine): binding the IMetricsBuilder
 // SYMBOL flows every in-program augmentation of the interface (the listener/rule
@@ -21,11 +21,11 @@ export interface MetricsBuilder extends IMetricsBuilder {}
  * The concrete {@link IMetricsBuilder}.
  *
  * `@augment` subscribes this class to the OPEN `IMetricsBuilder` bag (docs §38):
- * every set registered against nameof<IMetricsBuilder>() -- the
+ * every set registered against tokenfor<IMetricsBuilder>() -- the
  * listener/rule members (diagnostics.core) and the config-binding member (this
  * package) -- is installed onto the prototype, now and on any later registration.
  */
-@augment(nameof<IMetricsBuilder>())
+@augment(tokenfor<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
   // Writable (not `readonly`): registering something reassigns `services` to
   // the new manifest the immutable chain returns (see IMetricsBuilder).

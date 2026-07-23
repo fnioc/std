@@ -22,8 +22,8 @@ import (
 // driver.LoadProgram -> the per-file transform loop -> the JSON envelope. No ttsc,
 // no node, no network.
 //
-// The fixtures compile only LOCAL source — a nameof<T>() over a local interface,
-// imported from a local ./nameof stub — so driver.LoadProgram resolves nothing
+// The fixtures compile only LOCAL source — a tokenfor<T>() over a local interface,
+// imported from a local ./tokenfor stub — so driver.LoadProgram resolves nothing
 // off disk and the tier needs no built dist. That is the deliberate scope line:
 // the semantic di/isService lowerings require di.core to actually RESOLVE (their
 // e2e symlinks and builds it), which couples a lowering to a JS build a Go test
@@ -64,18 +64,18 @@ const fixtureTsconfig = `{
 }
 `
 
-// nameofAppSrc is the shared fixture source: a lone nameof<T>() over a local
-// interface, imported from a local ./nameof stub. isNameofCall matches any call
-// whose callee symbol is named `nameof`, so the local stub is enough; when the
-// nameof stage is active the call lowers to the package-qualified token and the
+// nameofAppSrc is the shared fixture source: a lone tokenfor<T>() over a local
+// interface, imported from a local ./tokenfor stub. isNameofCall matches any call
+// whose callee symbol is named `tokenfor`, so the local stub is enough; when the
+// tokenfor stage is active the call lowers to the package-qualified token and the
 // now-dead import elides.
 var nameofAppSrc = map[string]string{
-	"src/nameof.ts": "export declare function nameof<T>(): string;\n",
-	"src/app.ts": `import { nameof } from "./nameof";
+	"src/tokenfor.ts": "export declare function tokenfor<T>(): string;\n",
+	"src/app.ts": `import { tokenfor } from "./tokenfor";
 
 export interface IWidget {}
 
-export const widgetToken = nameof<IWidget>();
+export const widgetToken = tokenfor<IWidget>();
 `,
 }
 
@@ -153,7 +153,7 @@ func loweredApp(t *testing.T, env decodedEnvelope) string {
 }
 
 // assertNameofLowered checks the emitted app carries a derived IWidget token and
-// no surviving `nameof` (neither the call nor its now-dead import). The token
+// no surviving `tokenfor` (neither the call nor its now-dead import). The token
 // tail is asserted rather than the whole string so the check does not pin the
 // package name or path derivation, only that a token for IWidget was minted.
 func assertNameofLowered(t *testing.T, lowered string) {
@@ -161,13 +161,13 @@ func assertNameofLowered(t *testing.T, lowered string) {
 	if !strings.Contains(lowered, `:IWidget"`) {
 		t.Fatalf("expected a derived token ending in :IWidget\", got:\n%s", lowered)
 	}
-	if strings.Contains(lowered, "nameof") {
-		t.Fatalf("nameof survived lowering (call or import not elided):\n%s", lowered)
+	if strings.Contains(lowered, "tokenfor") {
+		t.Fatalf("tokenfor survived lowering (call or import not elided):\n%s", lowered)
 	}
 }
 
 // TestRunLowersSourceNameofFromManifestInProcess drives the full host over a
-// self-contained fixture, selecting the nameof stage through the --plugins-json
+// self-contained fixture, selecting the tokenfor stage through the --plugins-json
 // manifest. It proves the load-bearing path end-to-end in one process: a real
 // driver.LoadProgram over a real (if tiny) project, the manifest-named stage run
 // over every source file, and the lowered result read back off the envelope.
@@ -183,15 +183,15 @@ func TestRunLowersSourceNameofFromManifestInProcess(t *testing.T) {
 }
 
 // TestRunSelectsNameofStageFromDependencyScanInProcess pins the OTHER selection
-// channel: with an EMPTY manifest, the nameof stage must be activated purely by
+// channel: with an EMPTY manifest, the tokenfor stage must be activated purely by
 // the host's transitive dependency scan (§100 declare-by-depending). The consumer
 // devDeps di.transformer (whose ttsc.stages names `di`, and whose own
-// primitives.transformer dependency carries the nameof stage); CollectProject
+// primitives.transformer dependency carries the tokenfor stage); CollectProject
 // walks those real @rhombus-std packages — read as package.json only, no build —
-// unions their stages, and the host lowers nameof<IWidget>() with no plugin
+// unions their stages, and the host lowers tokenfor<IWidget>() with no plugin
 // manifest at all. The @rhombus-std packages are symlinked into the fixture's
 // node_modules (mirroring the declare-by-depending e2e) purely so the scan's walk
-// resolves them; the compiled program still imports only the local ./nameof.
+// resolves them; the compiled program still imports only the local ./tokenfor.
 func TestRunSelectsNameofStageFromDependencyScanInProcess(t *testing.T) {
 	dir := t.TempDir()
 	scoped := filepath.Join(dir, "node_modules", "@rhombus-std")
@@ -199,7 +199,7 @@ func TestRunSelectsNameofStageFromDependencyScanInProcess(t *testing.T) {
 		t.Fatalf("mkdir node_modules: %v", err)
 	}
 	// di.transformer carries `di`; its primitives.transformer dep carries the
-	// nameof stage; di.core + primitives complete the transitive walk's edges.
+	// tokenfor stage; di.core + primitives complete the transitive walk's edges.
 	for _, name := range []string{"di.transformer", "di.core", "primitives", "primitives.transformer"} {
 		target := repoLibDir(t, name)
 		if err := os.Symlink(target, filepath.Join(scoped, name)); err != nil {
@@ -213,7 +213,7 @@ func TestRunSelectsNameofStageFromDependencyScanInProcess(t *testing.T) {
 
 	env, stderr, code := driveHost(t, dir, `[]`)
 	if code != 0 {
-		t.Fatalf("host exit = %d, want 0 (scan should have selected the nameof stage)\nstderr: %s", code, stderr)
+		t.Fatalf("host exit = %d, want 0 (scan should have selected the tokenfor stage)\nstderr: %s", code, stderr)
 	}
 	assertNameofLowered(t, loweredApp(t, env))
 }

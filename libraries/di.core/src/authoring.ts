@@ -17,7 +17,7 @@
 //   import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 //   import { registerAugmentations } from "@rhombus-std/primitives";
 //   import type { AugmentationSet } from "@rhombus-std/primitives";
-//   import { nameof } from "@rhombus-std/primitives";
+//   import { tokenfor } from "@rhombus-std/primitives";
 //   declare module "@rhombus-std/di.core" {
 //     interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
 //       addMyThing(): IServiceManifest<Scopes>;
@@ -31,7 +31,7 @@
 //       return manifest.addClass("pkg:IMyThing", MyThing, [[]], "singleton");
 //     },
 //   } satisfies AugmentationSet<ServiceManifestClass<string>>;
-//   registerAugmentations(nameof<IServiceManifest>(), MyThingAugmentations);
+//   registerAugmentations(tokenfor<IServiceManifest>(), MyThingAugmentations);
 //
 // This mirrors how `@rhombus-std/config` adds `addJsonFile` to
 // `ConfigBuilder`, and depends on di.core ALONE — never the di runtime. The

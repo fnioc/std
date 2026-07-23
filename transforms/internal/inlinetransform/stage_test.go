@@ -148,11 +148,11 @@ func TestStageHoistsEffectfulReceiverTemp(t *testing.T) {
 }
 export declare function makeProvider(): IQuery;
 `
-	inlineBody := `import { nameof } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(nameof<T>()) && this.isService(nameof<T>());
+    return this.isService(tokenfor<T>()) && this.isService(tokenfor<T>());
   },
 };
 `
@@ -198,11 +198,11 @@ func TestStageUnrecoverableTypeArgIsHardError(t *testing.T) {
 }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { nameof } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(nameof<T>());
+    return this.isService(tokenfor<T>());
   },
 };
 `
@@ -243,11 +243,11 @@ export const bad = provider.isService();
 }
 
 // TestBodyWithConcreteNameofTypeArg PINS the current emergent behavior for an
-// impl body that calls a primitive over a CONCRETE type (`nameof<Marker>()`)
+// impl body that calls a primitive over a CONCRETE type (`tokenfor<Marker>()`)
 // rather than the impl's own type parameter (gap 19). Today: the body passes the
 // Go extract (checkFreeIdentifiers does not descend into primitive type-args), it
-// is inlined, the synthetic `nameof<Marker>()` registers with ZERO bound type
-// args (Marker is not in the impl's type-param env), the nameof stage cannot
+// is inlined, the synthetic `tokenfor<Marker>()` registers with ZERO bound type
+// args (Marker is not in the impl's type-param env), the tokenfor stage cannot
 // lower a zero-arg registration, so it survives — and the emit sweep hard-fails
 // it as INLINE_UNLOWERED_PRIMITIVE. This is a late, confusing failure for a
 // plausibly-legitimate authoring choice; the behavior is characterized here and
@@ -260,11 +260,11 @@ func TestBodyWithConcreteNameofTypeArg(t *testing.T) {
 export interface Marker { readonly m: 'marker'; }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { nameof } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
 import type { IQuery, Marker } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(nameof<Marker>());
+    return this.isService(tokenfor<Marker>());
   },
 };
 `
@@ -280,10 +280,10 @@ export const known = provider.isService<Foo>();
 	var diags []plugin.Diagnostic
 	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
-		t.Fatalf("Build raised diagnostics (the concrete-nameof body currently passes extract): %+v", diags)
+		t.Fatalf("Build raised diagnostics (the concrete-tokenfor body currently passes extract): %+v", diags)
 	}
 	if !artifacts.Active {
-		t.Fatal("artifacts not active — the concrete-nameof entry did not resolve/inline")
+		t.Fatal("artifacts not active — the concrete-tokenfor entry did not resolve/inline")
 	}
 
 	ec := shimprinter.NewEmitContext()
@@ -292,8 +292,8 @@ export const known = provider.isService<Foo>();
 
 	// The concrete-type primitive survives the inline stage unlowered.
 	out := reprint(ec, result)
-	if !strings.Contains(out, "nameof<Marker>") {
-		t.Fatalf("expected the concrete-type nameof<Marker>() to survive the inline stage, got:\n%s", out)
+	if !strings.Contains(out, "tokenfor<Marker>") {
+		t.Fatalf("expected the concrete-type tokenfor<Marker>() to survive the inline stage, got:\n%s", out)
 	}
 
 	// The sweep is the backstop that turns the silent survival into a hard error.
@@ -440,12 +440,12 @@ func setupWorkspace(t *testing.T) (*driver.Program, string) {
 }
 export declare const provider: IQuery;
 `)
-	// The impl body — authored over the nameof primitive, kept out of the barrel.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+	// The impl body — authored over the tokenfor primitive, kept out of the barrel.
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(nameof<T>());
+    return this.isService(tokenfor<T>());
   },
 };
 `)
@@ -493,7 +493,7 @@ export const literal = provider.isService('x');
 
 // TestStageInlinesMemberSugar drives the whole stage over the workspace: collect
 // the publish list, resolve the entry, substitute the body at the explicit call,
-// and register the synthetic nameof call. It asserts the sugar call is gone, the
+// and register the synthetic tokenfor call. It asserts the sugar call is gone, the
 // primitive form remains, exactly one primitive was registered, and the
 // primitive-form (non-sugar) call passed through untouched.
 func TestStageInlinesMemberSugar(t *testing.T) {
@@ -528,8 +528,8 @@ func TestStageInlinesMemberSugar(t *testing.T) {
 		t.Fatalf("expected exactly 1 registered primitive call, got %d", len(artifacts.PrimitiveCalls))
 	}
 	for _, use := range artifacts.PrimitiveCalls {
-		if use.Name != "nameof" || len(use.TypeArgs) != 1 {
-			t.Fatalf("registered primitive = %+v, want nameof with 1 type arg", use)
+		if use.Name != "tokenfor" || len(use.TypeArgs) != 1 {
+			t.Fatalf("registered primitive = %+v, want tokenfor with 1 type arg", use)
 		}
 		if typeName(prog.Checker, use.TypeArgs[0]) != "Foo" {
 			t.Fatalf("registered primitive type arg = %q, want Foo", typeName(prog.Checker, use.TypeArgs[0]))
@@ -567,11 +567,11 @@ func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {}
 export declare const provider: IQuery;
 `)
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(nameof<T>());
+    return this.isService(tokenfor<T>());
   },
 };
 `)

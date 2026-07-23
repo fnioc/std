@@ -43,18 +43,18 @@ function lintInline(source: string, inlineConfig: unknown = DEFAULT_ENTRIES): st
   return messages.map((m) => m.messageId ?? '').filter(Boolean);
 }
 
-const PRIMITIVE_IMPORT = `import { nameof } from '@rhombus-std/primitives';\n`;
+const PRIMITIVE_IMPORT = `import { tokenfor } from '@rhombus-std/primitives';\n`;
 
 describe('inline-authoring rule', () => {
   test('valid pilot body reports nothing', () => {
     const src = PRIMITIVE_IMPORT
-      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(nameof<T>()); },\n};\n`;
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(tokenfor<T>()); },\n};\n`;
     expect(lintInline(src)).toEqual([]);
   });
 
   test('valid multi-param body reports nothing', () => {
     const src = PRIMITIVE_IMPORT
-      + `export function tokenOf<T>(prefix: string): string { return prefix + nameof<T>(); }\n`;
+      + `export function tokenOf<T>(prefix: string): string { return prefix + tokenfor<T>(); }\n`;
     expect(lintInline(src)).toEqual([]);
   });
 
@@ -75,7 +75,7 @@ describe('inline-authoring rule', () => {
 
   test('banned conditional → bannedSyntax', () => {
     const src = PRIMITIVE_IMPORT
-      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.a ? this.b(nameof<T>()) : false; },\n};\n`;
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.a ? this.b(tokenfor<T>()) : false; },\n};\n`;
     expect(lintInline(src)).toContain('bannedSyntax');
   });
 
@@ -85,7 +85,7 @@ describe('inline-authoring rule', () => {
   });
 
   test('aliased primitive import → noAlias', () => {
-    const src = `import { nameof as n } from '@rhombus-std/primitives';\n`
+    const src = `import { tokenfor as n } from '@rhombus-std/primitives';\n`
       + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(n<T>()); },\n};\n`;
     expect(lintInline(src)).toContain('noAlias');
   });
@@ -126,13 +126,13 @@ describe('inline-authoring rule', () => {
 
   test('concrete-type primitive body passes the lint (gap 19 mirror)', () => {
     // typeParamPosition only polices TYPE PARAMETERS; a concrete type in a
-    // primitive call's type-arg position (nameof<Marker>()) is not a violation.
+    // primitive call's type-arg position (tokenfor<Marker>()) is not a violation.
     // This mirrors the Go characterization test TestBodyWithConcreteNameofTypeArg:
     // the lint accepts it, and the failure (if any) only surfaces later at the
     // emit sweep — flagged for an owner decision.
     const src = PRIMITIVE_IMPORT
       + `interface Marker { readonly m: 'marker'; }\n`
-      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(nameof<Marker>()); },\n};\n`;
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(tokenfor<Marker>()); },\n};\n`;
     expect(lintInline(src)).toEqual([]);
   });
 

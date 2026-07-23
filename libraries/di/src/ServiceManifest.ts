@@ -19,7 +19,7 @@
 import { type IServiceManifest as ServiceManifestInterface, type IServiceProvider, type OpenRegistration,
   type Registration, ServiceManifestClass, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 
 import { ServiceProviderClass } from './ServiceProviderClass.js';
 
@@ -75,7 +75,7 @@ const containerBuilderMerge = {
 } satisfies MergeStrategies;
 
 registerAugmentations(
-  nameof<ServiceManifestInterface>(),
+  tokenfor<ServiceManifestInterface>(),
   ServiceManifestContainerBuilderAugmentations,
   containerBuilderMerge,
 );

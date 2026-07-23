@@ -59,7 +59,7 @@ export { typeArg, union } from './slots.js';
 // siblings of `signatureof(value)`'s observe-from-a-value form. They live here
 // (not `@rhombus-std/primitives`) because they produce di.core's `DepSlot` shape
 // and every caller — di runtime libs and `di.transformer` — already depends on
-// di.core. The runtime bodies throw without the transformer, like `nameof`.
+// di.core. The runtime bodies throw without the transformer, like `tokenfor`.
 export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } from './signaturefor.js';
 
 // The unified token/slot expression tree — ONE plain-data `TokenNode` tree every

@@ -11,7 +11,7 @@ import { describe, expect, test } from 'bun:test';
 import { RecordingProvider } from './helpers';
 
 // The di token the closing ILogger<T> registration derives from ILogger — the
-// same string `nameof<ILogger>()` lowers to inside addLogging.
+// same string `tokenfor<ILogger>()` lowers to inside addLogging.
 const ILOGGER_TOKEN = '@rhombus-std/logging.core:ILogger';
 
 function levels(provider: RecordingProvider, category: string): LogLevel[] {

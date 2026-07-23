@@ -9,7 +9,7 @@ import { basename, join, resolve } from 'node:path';
 // (no explicit tsconfig plugins). ttsc's auto-discovery spawns the single owner
 // host (transforms/cmd/ttsc-std) from that dep, and the host self-selects its
 // stages from its own dependency scan — primitives.transformer's ttsc.stages
-// carries mergesynth alongside inline/nameof/signatureof — exactly as a real
+// carries mergesynth alongside inline/tokenfor/signatureof — exactly as a real
 // augmentation package activates it. It then proves the feature three ways:
 //
 //   1. the emitted JS carries the INLINED typia guards (plain JS, no typia
@@ -20,7 +20,7 @@ import { basename, join, resolve } from 'node:path';
 //      strategy wins over synthesis, an un-derivable member falls back to
 //      extension-wins, and — the headline — a strategy-less collision that
 //      throws under the no-transformer runtime no longer throws;
-//   3. the nameof stage still lowers byte-identical tokens (same stage code, now
+//   3. the tokenfor stage still lowers byte-identical tokens (same stage code, now
 //      the one owner binary rather than a full-host sibling).
 //
 // The throwaway project lives OUTSIDE the repo tree, per-worktree, at
@@ -65,7 +65,7 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-/** A build env with a single self-consistent Go toolchain (see the nameof e2e). */
+/** A build env with a single self-consistent Go toolchain (see the tokenfor e2e). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   delete env.GOROOT;
@@ -92,12 +92,12 @@ function goEnv(): NodeJS.ProcessEnv {
 }
 
 // The collision fixture: one token, four registrations exercising each
-// synthesis contract. Tokens are inline nameof calls (lowered by the full
-// host's nameof stage); the registry and installer are the REAL
+// synthesis contract. Tokens are inline tokenfor calls (lowered by the full
+// host's tokenfor stage); the registry and installer are the REAL
 // @rhombus-std/primitives runtime.
 const APP_SOURCE = `
 import { augment, registerAugmentations, type MergeStrategies } from "@rhombus-std/primitives";
-import { nameof } from "./nameof";
+import { tokenfor } from "./tokenfor";
 
 export interface IAlpha {}
 
@@ -161,15 +161,15 @@ export const ZetaExtensions = {
   },
 };
 
-registerAugmentations(nameof<IAlpha>(), AlphaExtensions);
-registerAugmentations(nameof<IAlpha>(), BetaExtensions);
-registerAugmentations(nameof<IAlpha>(), DeltaExtensions);
-registerAugmentations(nameof<IAlpha>(), GammaExtensions, gammaMerge);
-registerAugmentations(nameof<IAlpha>(), EpsilonExtensions);
-registerAugmentations(nameof<IAlpha>(), ZetaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), AlphaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), BetaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), DeltaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), GammaExtensions, gammaMerge);
+registerAugmentations(tokenfor<IAlpha>(), EpsilonExtensions);
+registerAugmentations(tokenfor<IAlpha>(), ZetaExtensions);
 
 export class Alpha implements IAlpha {}
-augment(nameof<IAlpha>())(Alpha);
+augment(tokenfor<IAlpha>())(Alpha);
 `;
 
 let app = '';
@@ -202,7 +202,7 @@ beforeAll(async () => {
   link(PRIM_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
 
-  writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
+  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   // A fixture package.json declaring the primitives.transformer devDep: ttsc's
   // auto-discovery reads it, finds the ttsc.plugin marker, and spawns the one
@@ -302,9 +302,9 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
     expect(spread).toBeGreaterThan(synthesized);
   });
 
-  test('nameof lowering is byte-identical on the collapsed host', () => {
+  test('tokenfor lowering is byte-identical on the collapsed host', () => {
     expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
-    expect(app).not.toContain('nameof');
+    expect(app).not.toContain('tokenfor');
   });
 });
 

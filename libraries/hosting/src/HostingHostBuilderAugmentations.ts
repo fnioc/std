@@ -9,7 +9,7 @@
 // interface-side merge for THIS const's members lives here beside it (rule 0.6);
 // the class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
-// class itself is decorated with `@augment(nameof<IHostBuilder>())`.
+// class itself is decorated with `@augment(tokenfor<IHostBuilder>())`.
 //
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
@@ -22,7 +22,7 @@ import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults,
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
@@ -259,4 +259,4 @@ export const HostingHostBuilderAugmentations = {
   },
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(nameof<IHostBuilder>(), HostingHostBuilderAugmentations);
+registerAugmentations(tokenfor<IHostBuilder>(), HostingHostBuilderAugmentations);

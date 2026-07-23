@@ -60,7 +60,7 @@ func TestSourceWrittenArgSyntheticCalleeGuard(t *testing.T) {
 // fire — while its `Parent` link is unset, because the inline stage's
 // substitution rebuilt the wrapping node over a changed child without
 // re-linking it. This stage's visitor walks every call expression exactly like
-// nameof's, so it reaches the same shape. Detach a parsed (real-position)
+// tokenfor's, so it reaches the same shape. Detach a parsed (real-position)
 // callee's Parent to reproduce the unlinked-but-positioned node directly, and
 // assert the guard returns cleanly with a nil checker — a real checker call
 // here would panic.
@@ -105,7 +105,7 @@ func TestSignatureofArgArtifacts(t *testing.T) {
 
 	// Recorded under a different primitive name -> falls through (no match).
 	mismatch := inlinetransform.NewArtifacts()
-	mismatch.PrimitiveCalls[node] = inlinetransform.PrimitiveUse{Name: "nameof", ValueArg: valueArg}
+	mismatch.PrimitiveCalls[node] = inlinetransform.PrimitiveUse{Name: "tokenfor", ValueArg: valueArg}
 	if arg, ok := signatureofArg(nil, mismatch, node); ok || arg != nil {
 		t.Fatalf("name-mismatch use: got (%v, %t), want (nil, false)", arg, ok)
 	}
@@ -126,7 +126,7 @@ func TestSignatureofArgArtifacts(t *testing.T) {
 // --- program-backed cases ---------------------------------------------------
 
 // buildSigWorkspace lays out a two-package workspace: a `@scope/prims` package
-// declaring `signatureof` (and `nameof`, `keep`), and a consumer `main.ts` whose
+// declaring `signatureof` (and `tokenfor`, `keep`), and a consumer `main.ts` whose
 // body is supplied by the caller. It returns the loaded program and the app dir.
 func buildSigWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
@@ -140,7 +140,7 @@ func buildSigWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export declare function signatureof(value: unknown): unknown;
-export declare function nameof<T>(): string;
+export declare function tokenfor<T>(): string;
 export declare const keep: number;
 `)
 
@@ -231,7 +231,7 @@ func findCallByCallee(sf *shimast.SourceFile, name string) *shimast.Node {
 // source-written `signatureof(Foo)` resolves its callee to the `signatureof`
 // symbol and returns the value argument; an aliased import (`signatureof as sig`)
 // resolves through GetAliasedSymbol; a same-shape call to a DIFFERENT function
-// (`nameof`-like `other(Foo)`) is rejected on the name mismatch.
+// (`tokenfor`-like `other(Foo)`) is rejected on the name mismatch.
 func TestSourceWrittenArgResolvesSymbol(t *testing.T) {
 	mainSrc := `import { signatureof as sig, keep } from '@scope/prims';
 declare function other(value: unknown): unknown;

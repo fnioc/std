@@ -1,7 +1,7 @@
 # Transformer architecture
 
 `@rhombus-std/di.transformer`, `di.transformer.options`, `config.transformer`, and
-`primitives.transformer` each rewrite TypeScript at compile time — `nameof<T>()`, `add<T>()`,
+`primitives.transformer` each rewrite TypeScript at compile time — `tokenfor<T>()`, `add<T>()`,
 `addOptions<T>()`, `withType<T>()`, `keyof<T>()`, and friends. What each rewrite actually _does_ is
 documented on its own package (see each package's README). This doc covers the machinery
 underneath all four: how they run in your build, how they share one native compiler backend, and
@@ -25,9 +25,9 @@ That works because every sugar form is declared twice, in two different senses:
   ```ts
   // @rhombus-std/primitives — the real declaration; the body throws so a
   // call that reaches runtime un-lowered fails loudly instead of returning undefined
-  export function nameof<T>(): string {
+  export function tokenfor<T>(): string {
     throw new Error(
-      'nameof<T>() requires the transformer, or pass an explicit token.',
+      'tokenfor<T>() requires the transformer, or pass an explicit token.',
     );
   }
   ```
@@ -39,7 +39,7 @@ That works because every sugar form is declared twice, in two different senses:
 
 The build track lowers the exact same source through the Go engine, and the guarantee that matters
 is parity: a lowered call produces **exactly what the manual form would have produced**, token
-strings byte-for-byte. `nameof<IWidget>()` lowers to a string literal like
+strings byte-for-byte. `tokenfor<IWidget>()` lowers to a string literal like
 `"@fixture/consumer/tokens/app:IWidget"`; a hand-written `tryResolve("@fixture/consumer/tokens/app:IWidget")`
 and the sugar form are indistinguishable after lowering. You can typecheck against the phantom type
 and build through the Go engine and never see a mismatch — the `tests/*.ttsc.e2e` suites and the
@@ -64,7 +64,7 @@ different tools — but the lowering one is nearly empty:
 
 ```jsonc
 // tsconfig.json — your normal config. Plain tsc sees the phantom `declare module`
-// augmentation through the `types` array (nameof itself needs no entry here — it's an
+// augmentation through the `types` array (tokenfor itself needs no entry here — it's an
 // ordinary declaration in @rhombus-std/primitives — but the tokenless add/addFactory/
 // addValue forms are a merge onto di.core's interface, and TS only applies a merge for
 // a file actually pulled into the program).
@@ -205,11 +205,11 @@ Two fixtures make the transitivity concrete, driven through the real `ttsc` with
 array in either one's `tsconfig.json`:
 
 - A consumer that devDeps `di.transformer` (whose own `stages` field is just `["di"]`) and calls
-  `nameof<IWidget>()`. Auto-discovery spawns the host off `di.transformer`; the host's own scan
+  `tokenfor<IWidget>()`. Auto-discovery spawns the host off `di.transformer`; the host's own scan
   then reaches `primitives.transformer` _through_ `di.transformer`'s dependency on it, activates
-  the `nameof` stage, and `nameof<IWidget>()` lowers to its token.
+  the `nameof` stage, and `tokenfor<IWidget>()` lowers to its token.
 - A consumer that depends on **only** `di.core`. `di.core` carries no marker, so no host spawns at
-  all — `nameof<IWidget>()` survives in the output untouched, even though `di.core` itself devDeps
+  all — `tokenfor<IWidget>()` survives in the output untouched, even though `di.core` itself devDeps
   `primitives.transformer` to build itself. That devDep doesn't leak onto `di.core`'s own
   consumers.
 
@@ -278,7 +278,7 @@ preset), not by finding a pre-built combination that happens to match your needs
 | ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `inline`      | `primitives.transformer` | Substitutes a certified single-expression sugar body (§91) at its call site, before any primitive stage runs.                                                      |
 | `mergesynth`  | `primitives.transformer` | Synthesizes a default merge strategy for every augmentation member with none, from its own parameter types (§103, [below](#the-merge-synthesis-stage-mergesynth)). |
-| `nameof`      | `primitives.transformer` | Lowers `nameof<T>()` to its export-graph token, and elides the now-unused import.                                                                                  |
+| `nameof`      | `primitives.transformer` | Lowers `tokenfor<T>()` to its export-graph token, and elides the now-unused import.                                                                                |
 | `signatureof` | `primitives.transformer` | Lowers `signatureof<T>()` to a dependency-signature array.                                                                                                         |
 | `keyof`       | `primitives.transformer` | Lowers `keyof<T>()` to the key literal of a `Keyed<T, K>` type argument, or `void 0` when unkeyed (§98).                                                           |
 | `di`          | `di.transformer`         | Lowers the tokenless `add`/`addFactory`/`addValue` registration forms.                                                                                             |
@@ -289,7 +289,7 @@ preset), not by finding a pre-built combination that happens to match your needs
 sugar can lean on them, so they're surfaced through `primitives.transformer` rather than
 duplicated per family (§104). `di`, `di_options`, and `config` are each one family's own stage,
 declared by that family's own `*.transformer` package. This split is also where each primitive's
-_authoring_ home lives, independent of which stage lowers it: `nameof` stays in
+_authoring_ home lives, independent of which stage lowers it: `tokenfor` stays in
 `@rhombus-std/primitives` because it's the one primitive called from runtime source; `signatureof`
 and `keyof` are typed against `di.core`'s real types, so their stubs live in `di.transformer` even
 though the stage that lowers them is neutral (§92).
@@ -337,7 +337,7 @@ its stages activated.
 
 The three fields map to TypeScript namespaces:
 
-- `type` — a **type-namespace** export, written as a nameof token (`<package>:<TypeName>`,
+- `type` — a **type-namespace** export, written as a tokenfor token (`<package>:<TypeName>`,
   barrel-relative). The match anchor.
 - `impl` — a **value-namespace** export in the declaring package that holds the body (self-relative,
   resolved to the package's real src).

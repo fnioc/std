@@ -27,7 +27,7 @@
 
 import { type AugmentationSet, type IChangeToken, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { CacheEntryExtensions } from './CacheEntryExtensions';
 import type { ICacheEntry } from './ICacheEntry';
@@ -218,7 +218,7 @@ export const CacheExtensions = {
 } satisfies AugmentationSet<IMemoryCache>;
 
 // The method-form surface merged onto IMemoryCache (docs §28/§38): the concrete
-// MemoryCache downstream is decorated `@augment(nameof<IMemoryCache>())` and pulls
+// MemoryCache downstream is decorated `@augment(tokenfor<IMemoryCache>())` and pulls
 // these onto its prototype. `tryGetValue` is absent here: it shares its name with
 // the IMemoryCache primitive (which the class declares in its body), so TS forbids
 // merging a value-typed convenience overload onto it (TS2430). It still installs as
@@ -262,4 +262,4 @@ const cacheMerge = {
     };
   },
 } satisfies MergeStrategies;
-registerAugmentations(nameof<IMemoryCache>(), CacheExtensions, cacheMerge);
+registerAugmentations(tokenfor<IMemoryCache>(), CacheExtensions, cacheMerge);

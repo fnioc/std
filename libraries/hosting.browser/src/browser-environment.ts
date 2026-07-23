@@ -5,14 +5,14 @@
 // physical provider stays deferred (decisions.md §20).
 //
 // The backing class mirrors hosting's internal `HostingEnvironment`: decorated
-// `@augment(nameof<IHostEnvironment>())` so it pulls hosting.core's
+// `@augment(tokenfor<IHostEnvironment>())` so it pulls hosting.core's
 // environment predicates (isDevelopment/…) from the augmentation registry, and
 // class-side-merged below so it still SATISFIES the fully-merged interface.
 
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { Environments, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 
 /** The name/application settings the browser environment reads. */
 export interface BrowserEnvironmentSettings {
@@ -31,7 +31,7 @@ export interface BrowserEnvironmentSettings {
 export interface BrowserHostingEnvironment extends IHostEnvironment {}
 
 /** The mutable browser {@link IHostEnvironment} — see the module documentation. */
-@augment(nameof<IHostEnvironment>())
+@augment(tokenfor<IHostEnvironment>())
 export class BrowserHostingEnvironment implements IHostEnvironment {
   public environmentName: string = Environments.Production;
   public applicationName = '';

@@ -27,7 +27,7 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from '../tokens';
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { InstrumentRule } from './InstrumentRule';
@@ -195,4 +195,4 @@ declare module '@rhombus-std/diagnostics.core' {
   }
 }
 
-registerAugmentations(nameof<IMetricsBuilder>(), MetricsBuilderExtensions);
+registerAugmentations(tokenfor<IMetricsBuilder>(), MetricsBuilderExtensions);

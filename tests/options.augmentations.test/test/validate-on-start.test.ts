@@ -14,7 +14,7 @@ interface ServerOptions {
 
 const OPTIONS_TOKEN = 'test:ServerOptions';
 const OTHER_TOKEN = 'test:OtherOptions';
-// The nameof-derived token the host resolves the validator under (§40). A
+// The tokenfor-derived token the host resolves the validator under (§40). A
 // no-transformer consumer writes the literal string.
 const STARTUP_VALIDATOR_TOKEN = '@rhombus-std/options:IStartupValidator';
 

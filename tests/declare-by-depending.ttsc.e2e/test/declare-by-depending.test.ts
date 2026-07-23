@@ -11,15 +11,15 @@ import { basename, join, resolve } from 'node:path';
 // fixtures, neither with an explicit tsconfig `plugins` array:
 //
 //   1. transitivity — a consumer that DIRECTLY devDeps di.transformer (whose only
-//      declared stage is `di`) and calls nameof<T>(). Auto-discovery spawns the
+//      declared stage is `di`) and calls tokenfor<T>(). Auto-discovery spawns the
 //      host off di.transformer; the host's scan then reaches primitives.transformer
-//      THROUGH di.transformer's honest dependency edge and activates the nameof
-//      stage, so nameof<T>() lowers to its token. ttsc's own direct-only discovery
+//      THROUGH di.transformer's honest dependency edge and activates the tokenfor
+//      stage, so tokenfor<T>() lowers to its token. ttsc's own direct-only discovery
 //      could never reach that transitive stage — this is what the host scan adds.
 //   2. cores don't force-activate — a consumer that deps ONLY di.core (a core, no
 //      ttsc.plugin marker, though di.core itself devDeps primitives.transformer to
 //      build ITSELF). Auto-discovery finds no marker, so no host spawns and
-//      nameof<T>() is emitted UNTOUCHED. di.core's own devDep must not leak.
+//      tokenfor<T>() is emitted UNTOUCHED. di.core's own devDep must not leak.
 //
 // The fixture root lives OUTSIDE the repo tree, per-worktree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname> (off /tmp, a per-user-quota
@@ -53,16 +53,16 @@ const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc
 const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const COLD_BUILD_MS = 600_000;
 
-// A lone nameof<T>() over a local interface — the observable both fixtures share:
+// A lone tokenfor<T>() over a local interface — the observable both fixtures share:
 // lowered to "@fixture/consumer/tokens/app:IWidget" (the named-package consumer's
 // package-qualified self-token) when the primitive stages activate, left as a bare
-// nameof() call when they do not.
+// tokenfor() call when they do not.
 const APP_SOURCE = `
-import { nameof } from "./nameof";
+import { tokenfor } from "./tokenfor";
 
 export interface IWidget {}
 
-export const widgetToken = nameof<IWidget>();
+export const widgetToken = tokenfor<IWidget>();
 `;
 
 function link(target: string, linkPath: string): void {
@@ -73,7 +73,7 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-/** A build env with a single self-consistent Go toolchain (see the nameof e2e). */
+/** A build env with a single self-consistent Go toolchain (see the tokenfor e2e). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   delete env.GOROOT;
@@ -99,7 +99,7 @@ function goEnv(): NodeJS.ProcessEnv {
 function writeProject(projDir: string): void {
   mkdirSync(join(projDir, 'src'), { recursive: true });
   rmSync(join(projDir, 'dist'), { recursive: true, force: true });
-  writeFileSync(join(projDir, 'src', 'nameof.ts'), `export declare function nameof<T>(): string;\n`);
+  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   writeFileSync(
     join(projDir, 'tsconfig.json'),
@@ -161,7 +161,7 @@ beforeAll(async () => {
   mkdirSync(CORE_ONLY, { recursive: true });
 
   // Fixture 1: devDeps di.transformer (the transitivity proof). di.transformer's
-  // own primitives.transformer dependency is what carries the nameof stage; the
+  // own primitives.transformer dependency is what carries the tokenfor stage; the
   // host reaches it through the scan. The transitive @rhombus-std packages are
   // linked so the host's walk resolves them from the fixture's node_modules.
   writeFileSync(
@@ -210,17 +210,17 @@ beforeAll(async () => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () => {
-  test('a di.transformer dep transitively activates the nameof stage', () => {
+  test('a di.transformer dep transitively activates the tokenfor stage', () => {
     // The host reached primitives.transformer through di.transformer's honest
-    // dependency edge and lowered nameof<IWidget>() to its token.
+    // dependency edge and lowered tokenfor<IWidget>() to its token.
     expect(consumerApp).toContain('"@fixture/consumer/tokens/app:IWidget"');
-    expect(consumerApp).not.toContain('nameof');
+    expect(consumerApp).not.toContain('tokenfor');
   });
 
   test("a di.core-only consumer is left untouched (cores don't force-activate)", () => {
-    // No *.transformer dep → auto-discovery spawns no host → nameof<IWidget>()
+    // No *.transformer dep → auto-discovery spawns no host → tokenfor<IWidget>()
     // survives unlowered. di.core's own primitives.transformer devDep did not leak.
-    expect(coreOnlyApp).toContain('nameof');
+    expect(coreOnlyApp).toContain('tokenfor');
     expect(coreOnlyApp).not.toContain('"@fixture/consumer/tokens/app:IWidget"');
   });
 });

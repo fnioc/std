@@ -8,12 +8,12 @@
 // it), so this const registers into the augmentation registry under
 // the `IHostBuilder` token, beside its interface-side merge
 // (rule 0.6). The concrete `HostBuilder` -- downstream in `@rhombus-std/hosting`
-// -- is decorated with `@augment(nameof<IHostBuilder>())` and pulls both
+// -- is decorated with `@augment(tokenfor<IHostBuilder>())` and pulls both
 // consts' members onto its prototype. The synchronous reference `Start` collapses
 // into the async form -- JS cannot block a thread.
 
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { IHost } from './IHost';
 import type { IHostBuilder } from './IHostBuilder';
 
@@ -62,4 +62,4 @@ export const HostingAbstractionsHostBuilderExtensions = {
   },
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(nameof<IHostBuilder>(), HostingAbstractionsHostBuilderExtensions);
+registerAugmentations(tokenfor<IHostBuilder>(), HostingAbstractionsHostBuilderExtensions);

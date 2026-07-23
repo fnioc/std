@@ -1,7 +1,7 @@
 // `signatureof(ctor)` — the compile-time dependency-signature mechanism, sibling
-// to `nameof<T>()` (PRD §8 "Token generation").
+// to `tokenfor<T>()` (PRD §8 "Token generation").
 //
-// Where `nameof<IFoo>()` binds a TYPE argument and lowers to a token string,
+// Where `tokenfor<IFoo>()` binds a TYPE argument and lowers to a token string,
 // `signatureof(ctor)` binds a VALUE argument — a class constructor or a factory
 // function — and lowers to the positional dependency-signature array a
 // hand-written `addClass("token", ctor, [[...]])` would carry: `[[slot, ...], ...]`,
@@ -12,7 +12,7 @@
 // The runtime body exists only so that un-transformed code fails loudly instead
 // of silently returning `undefined` — calling `signatureof` without the
 // transformer wired up throws a clear error pointing at the missing plugin,
-// exactly like `nameof`.
+// exactly like `tokenfor`.
 //
 // It lives here in `@rhombus-std/di.transformer` (the authoring-time DI package),
 // NOT in the `@rhombus-std/primitives` leaf, because it is ONLY ever called inside
@@ -31,7 +31,7 @@ import type { DepSignatures, DepTarget } from '@rhombus-std/di.core';
  * @example
  * ```ts
  * // authored inside a sugar body:
- * this.addClass(nameof<IFoo>(), Foo, signatureof(Foo)); // → addClass("pkg:IFoo", Foo, [["pkg:IDep"]])
+ * this.addClass(tokenfor<IFoo>(), Foo, signatureof(Foo)); // → addClass("pkg:IFoo", Foo, [["pkg:IDep"]])
  * ```
  */
 export function signatureof(target: DepTarget): DepSignatures {

@@ -17,9 +17,9 @@ import (
 
 // buildNameofWorkspace lays out a workspace whose core package is literally named
 // `@rhombus-std/di.core` — the module ditransform anchors its `addClass` verb on — so
-// the SAME program can be lowered two ways: the nameof stage over an explicit
-// `nameof<T>()`, and the di stage over a direct `addClass<T>(ctor)` registration. It
-// exports `nameof` / `signatureof` / `services` and the `$<N>` hole, `Typeof<T>`,
+// the SAME program can be lowered two ways: the tokenfor stage over an explicit
+// `tokenfor<T>()`, and the di stage over a direct `addClass<T>(ctor)` registration. It
+// exports `tokenfor` / `signatureof` / `services` and the `$<N>` hole, `Typeof<T>`,
 // `Keyed<T,K>`, and `Inject<T,K>` brands so the registration grammar resolves.
 func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
@@ -36,7 +36,7 @@ func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string
   addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
-export declare function nameof<T>(): string;
+export declare function tokenfor<T>(): string;
 export declare function signatureof(value: unknown): unknown;
 declare const HOLE: unique symbol;
 export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
@@ -119,7 +119,7 @@ func reprint(ec *shimprinter.EmitContext, sf *shimast.SourceFile) string {
 	return writer.String()
 }
 
-// lowerNameof runs the nameof stage over main.ts and returns the reprinted output.
+// lowerNameof runs the tokenfor stage over main.ts and returns the reprinted output.
 func lowerNameof(t *testing.T, prog *driver.Program, app string) string {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
@@ -161,7 +161,7 @@ func stringLiteralAt(t *testing.T, out string, open int) string {
 }
 
 // nameofToken returns the (unescaped) token a lowered `export const X = "…";`
-// carries — the token the nameof stage produced.
+// carries — the token the tokenfor stage produced.
 func nameofToken(t *testing.T, out, constName string) string {
 	t.Helper()
 	marker := "const " + constName + " = "
@@ -184,14 +184,14 @@ func diServiceToken(t *testing.T, out string) string {
 	return stringLiteralAt(t, out, i+len(marker))
 }
 
-// TestNameofRendersOpenGenericHole is the core of the hole-aware nameof change: an
-// explicit `nameof<IFoo<$<1>>>()` lowers to a token that renders the hole textually
+// TestNameofRendersOpenGenericHole is the core of the hole-aware tokenfor change: an
+// explicit `tokenfor<IFoo<$<1>>>()` lowers to a token that renders the hole textually
 // as `$1` — `…:IFoo<$1>` — not the pre-change `IFoo<@rhombus-std/di.core:$<1>>` the
 // non-hole-aware DeriveToken produced by tokenizing the `$` brand alias itself.
 func TestNameofRendersOpenGenericHole(t *testing.T) {
-	src := `import { nameof, Typeof, $ } from '@rhombus-std/di.core';
+	src := `import { tokenfor, Typeof, $ } from '@rhombus-std/di.core';
 interface IFoo<T> {}
-export const tok = nameof<IFoo<$<1>>>();
+export const tok = tokenfor<IFoo<$<1>>>();
 void (0 as unknown as Typeof<$<1>>);
 `
 	prog, app := buildNameofWorkspace(t, src)
@@ -206,16 +206,16 @@ void (0 as unknown as Typeof<$<1>>);
 }
 
 // TestNameofOpenGenericTokenMatchesDiDirect proves the load-bearing parity: the
-// token the nameof stage derives for `nameof<IFoo<$<1>>>()` is byte-identical to
+// token the tokenfor stage derives for `tokenfor<IFoo<$<1>>>()` is byte-identical to
 // the service token the di registration stage derives for the direct
 // `addClass<IFoo<$<1>>>(Foo<$<1>>)` — the two halves of the inline registration path
-// (nameof produces the token, the di stage the direct one) must never diverge.
+// (tokenfor produces the token, the di stage the direct one) must never diverge.
 func TestNameofOpenGenericTokenMatchesDiDirect(t *testing.T) {
-	src := `import { nameof, services, Typeof, $ } from '@rhombus-std/di.core';
+	src := `import { tokenfor, services, Typeof, $ } from '@rhombus-std/di.core';
 interface IFoo<T> {}
 interface IStore<T> {}
 class Foo<T> implements IFoo<$<1>> { constructor(store: IStore<T>) { void store; } }
-export const tok = nameof<IFoo<$<1>>>();
+export const tok = tokenfor<IFoo<$<1>>>();
 services.addClass<IFoo<$<1>>>(Foo<$<1>>);
 void (0 as unknown as Typeof<$<1>>);
 `
@@ -225,7 +225,7 @@ void (0 as unknown as Typeof<$<1>>);
 	nameofTok := nameofToken(t, lowerNameof(t, prog, app), "tok")
 	diTok := diServiceToken(t, lowerDi(t, prog, app))
 	if nameofTok != diTok {
-		t.Fatalf("service-token divergence:\n nameof = %q\n di     = %q", nameofTok, diTok)
+		t.Fatalf("service-token divergence:\n tokenfor = %q\n di     = %q", nameofTok, diTok)
 	}
 	if !strings.Contains(nameofTok, "IFoo<$1>") {
 		t.Fatalf("expected an open-generic token, got %q", nameofTok)
@@ -238,14 +238,14 @@ void (0 as unknown as Typeof<$<1>>);
 // literal / intrinsic / collection target derives the identical token it did
 // before. Guards the common case against a regression.
 func TestNameofClosedTokensUnchanged(t *testing.T) {
-	src := `import { nameof } from '@rhombus-std/di.core';
+	src := `import { tokenfor } from '@rhombus-std/di.core';
 interface IBar {}
 interface IFoo<T> {}
-export const a = nameof<IBar>();
-export const b = nameof<IFoo<IBar>>();
-export const c = nameof<"lit">();
-export const d = nameof<string>();
-export const e = nameof<IBar[]>();
+export const a = tokenfor<IBar>();
+export const b = tokenfor<IFoo<IBar>>();
+export const c = tokenfor<"lit">();
+export const d = tokenfor<string>();
+export const e = tokenfor<IBar[]>();
 `
 	prog, app := buildNameofWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -264,7 +264,7 @@ export const e = nameof<IBar[]>();
 	for _, tc := range cases {
 		got := nameofToken(t, out, tc.name)
 		if got != tc.want {
-			t.Errorf("nameof<%s>: got %q, want %q", tc.name, got, tc.want)
+			t.Errorf("tokenfor<%s>: got %q, want %q", tc.name, got, tc.want)
 		}
 	}
 }
@@ -272,35 +272,35 @@ export const e = nameof<IBar[]>();
 // TestNameofAnonymousTypeDerivesEmpty covers the one intentional behavior change of
 // the switch: DeriveToken rejected only the literal name "__type", but typescript-go
 // stores an anonymous object type behind the 0xFE internal-symbol prefix, so the old
-// nameof would derive a bogus token for `nameof<{…}>()`. DeriveTokenF rejects the
+// tokenfor would derive a bogus token for `tokenfor<{…}>()`. DeriveTokenF rejects the
 // whole internal-symbol family, yielding the empty token — matching how the di stage
-// already treats an anonymous type. Anonymous types are not legitimate nameof
+// already treats an anonymous type. Anonymous types are not legitimate tokenfor
 // targets, so no real call site regresses.
 func TestNameofAnonymousTypeDerivesEmpty(t *testing.T) {
-	src := `import { nameof } from '@rhombus-std/di.core';
-export const anon = nameof<{ readonly a: number }>();
+	src := `import { tokenfor } from '@rhombus-std/di.core';
+export const anon = tokenfor<{ readonly a: number }>();
 `
 	prog, app := buildNameofWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 	out := lowerNameof(t, prog, app)
 	if !strings.Contains(out, `const anon = ""`) {
-		t.Fatalf("anonymous nameof target should derive the empty token:\n%s", out)
+		t.Fatalf("anonymous tokenfor target should derive the empty token:\n%s", out)
 	}
 }
 
-// TestNameofDerivesKeyedBase is the keyed base-derivation invariant (§98): nameof
+// TestNameofDerivesKeyedBase is the keyed base-derivation invariant (§98): tokenfor
 // lowers a `Keyed<T, K>` service type to just the BASE token — the brand stripped,
 // with NO `#key` suffix and NOT the aliased `Keyed<...>` reference. The di direct
 // path composes the full `base#key`; the inline registration path splits that in
-// two — nameof gives the base, keyof<T>() gives the key — so the runtime `#`
+// two — tokenfor gives the base, keyof<T>() gives the key — so the runtime `#`
 // composition of the two halves lands byte-for-byte on the di direct token. This
-// test pins that split: the nameof base is exactly the di token minus its `#key`
+// test pins that split: the tokenfor base is exactly the di token minus its `#key`
 // tail, so the halves compose rather than diverge (the old fence is gone).
 func TestNameofDerivesKeyedBase(t *testing.T) {
-	src := `import { nameof, services, Keyed } from '@rhombus-std/di.core';
+	src := `import { tokenfor, services, Keyed } from '@rhombus-std/di.core';
 interface ICache {}
 class RedisCache implements ICache {}
-export const tok = nameof<Keyed<ICache, "redis">>();
+export const tok = tokenfor<Keyed<ICache, "redis">>();
 services.addClass<Keyed<ICache, "redis">>(RedisCache);
 `
 	prog, app := buildNameofWorkspace(t, src)
@@ -311,15 +311,15 @@ services.addClass<Keyed<ICache, "redis">>(RedisCache);
 	if !strings.HasSuffix(diTok, "#redis") {
 		t.Fatalf("di direct path should compose the keyed suffix, got %q", diTok)
 	}
-	// nameof gives the BASE only — no key suffix, and not the aliased Keyed<...>.
+	// tokenfor gives the BASE only — no key suffix, and not the aliased Keyed<...>.
 	if strings.Contains(nameofTok, "#") {
-		t.Fatalf("nameof must derive the base (no key suffix); got %q", nameofTok)
+		t.Fatalf("tokenfor must derive the base (no key suffix); got %q", nameofTok)
 	}
 	if strings.Contains(nameofTok, "Keyed<") {
-		t.Fatalf("nameof must strip the Keyed brand, not tokenize the alias; got %q", nameofTok)
+		t.Fatalf("tokenfor must strip the Keyed brand, not tokenize the alias; got %q", nameofTok)
 	}
 	// The two halves compose exactly onto the di direct token.
 	if nameofTok+"#redis" != diTok {
-		t.Fatalf("base + key must compose onto the di token: nameof=%q + #redis != di=%q", nameofTok, diTok)
+		t.Fatalf("base + key must compose onto the di token: tokenfor=%q + #redis != di=%q", nameofTok, diTok)
 	}
 }

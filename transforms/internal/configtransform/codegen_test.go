@@ -2,7 +2,7 @@ package configtransform
 
 // Checker-backed end-to-end tests for the schema codegen (schemaLiteralForTypeNode
 // / schemaForType / objectLiteralForType / isAcceptableRecord / isLibraryOrExternal),
-// driven the way the nameof/signature suites drive their stage: a LoadProgram
+// driven the way the tokenfor/signature suites drive their stage: a LoadProgram
 // TempDir fixture whose `main.ts` calls `.withType<T>()`, lowered through New and
 // reprinted, then the lowered `withSchema({...})` (or the raised diagnostic) is
 // asserted. Plus the pure, checker-free helpers (isUnderNodeModules, jsIdentifier,

@@ -8,11 +8,11 @@
 // the `IHostEnvironment` token, beside its interface-side merge
 // (rule 0.6). The concrete `HostingEnvironment` -- downstream in
 // `@rhombus-std/hosting` -- is decorated with
-// `@augment(nameof<IHostEnvironment>())` and pulls this bag onto its
+// `@augment(tokenfor<IHostEnvironment>())` and pulls this bag onto its
 // prototype; the class-side merge stays downstream next to that class.
 
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { Environments } from './Environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 
@@ -59,4 +59,4 @@ export const HostEnvironmentEnvExtensions = {
   },
 } satisfies AugmentationSet<IHostEnvironment>;
 
-registerAugmentations(nameof<IHostEnvironment>(), HostEnvironmentEnvExtensions);
+registerAugmentations(tokenfor<IHostEnvironment>(), HostEnvironmentEnvExtensions);

@@ -7,7 +7,7 @@
 //
 // Exercised through the public authoring surface only; the options token is
 // the hand-written literal a no-transformer consumer writes — byte-identical
-// to the inline `nameof<IOptions<LoggerFilterOptions>>()` the library derives.
+// to the inline `tokenfor<IOptions<LoggerFilterOptions>>()` the library derives.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { ServiceManifest } from '@rhombus-std/di';

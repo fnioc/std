@@ -12,7 +12,7 @@
 // Both REUSE `signatureof`'s extractor over the explicit type-tuple elements, so
 // they express the FULL `DepSlot` vocabulary — a plain token, a collection
 // token, a `{ union }`, a `{ value }` literal, a `{ typeArg }` hole — not the
-// token-only map `nameof<T>()` produces. That is what lets a hand author (or the
+// token-only map `tokenfor<T>()` produces. That is what lets a hand author (or the
 // `withSignature<T>()` / `withSignatures<T>()` sugar bodies) express structured
 // non-token slots from types alone.
 //
@@ -21,14 +21,14 @@
 // runtime library source (a hardcoded `[["pkg:IA"]]` literal becomes
 // `signaturefor<[IA]>()`) AND the sugar inline bodies. The only package every
 // such caller already depends on — di.runtime libs depend on di.core;
-// `di.transformer` peers it — is di.core. `nameof` stays in `@rhombus-std/primitives`
+// `di.transformer` peers it — is di.core. `tokenfor` stays in `@rhombus-std/primitives`
 // because `Token` is a primitives type; `DepSlot` is not, so that precedent does
 // NOT carry the slot ABI up into the zero-dependency leaf.
 //
 // The runtime bodies exist only so that un-transformed code fails loudly instead
 // of silently returning `undefined` — calling either without the transformer
 // wired up throws a clear error pointing at the missing plugin, exactly like
-// `nameof` / `signatureof`. The names are lowercase for family consistency.
+// `tokenfor` / `signatureof`. The names are lowercase for family consistency.
 
 import type { DepSignatures, DepSlot } from './types.js';
 

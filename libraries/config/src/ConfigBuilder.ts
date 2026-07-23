@@ -24,18 +24,18 @@
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { coerceBySchema } from './coerce';
 import { ConfigRoot } from './ConfigRoot';
 import type { Infer, ObjectSchema, Schema } from './schema';
 
 /**
  * `@augment` decorates the concrete builder for the OPEN IConfigBuilder
- * receiver: it (re)installs the nameof<IConfigBuilder>() bag
+ * receiver: it (re)installs the tokenfor<IConfigBuilder>() bag
  * onto the prototype now and on every later registration, so downstream
  * provider packages' add* sugar reaches it (docs/decisions.md §38).
  */
-@augment(nameof<IConfigBuilder>())
+@augment(tokenfor<IConfigBuilder>())
 export class ConfigBuilder<T = IndexedSection> {
   readonly #sources: IConfigSource[] = [];
   readonly #properties = new Map<string, unknown>();

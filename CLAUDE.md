@@ -61,7 +61,7 @@ Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` 
 - **Lint** is eslint (typescript-eslint, type-aware) over `libraries|examples/*/src`; but
   transformer-consuming packages lint by _typechecking_ (`tsc --noEmit`) — the authored tokenless
   forms type-check against the transformer's `declare module` augmentation (pulled in via `types`),
-  with no plugin, since `nameof` and the sugar forms have no type-level footprint. Formatting is
+  with no plugin, since `tokenfor` and the sugar forms have no type-level footprint. Formatting is
   **dprint** (`useBraces: always`).
 - **Go gates** (the ttsc engine's own): `node scripts/gen-go-work.mjs` then, from `transforms/`,
   `go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on PATH; the
@@ -104,7 +104,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger`, and `di`'s
   `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
-  `primitives.transformer` hosts the `nameof<T>()`/token-derivation machinery extracted from
+  `primitives.transformer` hosts the `tokenfor<T>()`/token-derivation machinery extracted from
   di.transformer (which depends on it and re-exports the old surface). It also owns the structural
   platform typings (§39/§44): `AbortSignal`/`AbortController` (+ the inert `neverSignal`
   singleton), `ProcessLike`/`process`, `TimeoutHandle`/`setTimeout`/`clearTimeout`, and
@@ -381,14 +381,14 @@ One further deviation, because a **transformer** is in play — now a single **G
 
 - **Lint/typecheck is plain `tsc`.** Transformer-active packages type-check with `tsc --noEmit`; a
   `types` array in `tsconfig.ci.json` pulls the transformer's `declare module` augmentation into the
-  program, so the authored tokenless forms type-check with no plugin (`nameof` and the sugar forms
+  program, so the authored tokenless forms type-check with no plugin (`tokenfor` and the sugar forms
   have no type-level footprint). `rollup` + `rollup-plugin-dts` live at the repo root.
-- **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `nameof<T>()` (etc.)
+- **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `tokenfor<T>()` (etc.)
   ships it LOWERED: `buildPackage` runs a per-file `Bun.build` with the `@ttsc/unplugin/bun` adapter
   active — every `src/**/*.ts` its own entrypoint, all imports external — so each file is lowered
   into a stage dir; the main bundle then consumes that emit with no plugin (lowering commutes with
   bundling). The per-file emit is KEPT as `dist/stage/` (reached through the `./private/*` export's
-  `bun` condition — white-box tests execute the lowered JS, since un-lowered `nameof` throws at
+  `bun` condition — white-box tests execute the lowered JS, since un-lowered `tokenfor` throws at
   import time; publish-excluded via `"!dist/stage"` in `files`), and the `.` export's `bun`
   condition points at `dist/bundle/index.js`.
 
@@ -410,7 +410,7 @@ config is the leaf `tsconfig.ttsc.json`, and a self-augmenting core's
 
 The four authoring-time transformers lower on ONE engine: a Go/`ttsc` port under the root
 `transforms/` module (`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std`
-linking all stages, shared `internal/`). It lowers `nameof`/`add`/`addOptions`/`withType` into the
+linking all stages, shared `internal/`). It lowers `tokenfor`/`add`/`addOptions`/`withType` into the
 shipped JS, and the lowered output equals what a no-transformer author would hand-write (the parity
 invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (restore tag
 `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only** (`mise.toml`

@@ -28,7 +28,7 @@
 //   const provider = services.build();
 
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 
 import type { AddChain, IServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';
@@ -275,11 +275,11 @@ function openEntry(
  * augmentation token: every cross-package registration augmentation (`build`,
  * `addOptions`, `addLogging`, `addMetrics`, `addMemoryCache`,
  * `addHostedService`, `removeAll`, ...) registers its set against
- * `nameof<IServiceManifest>()`, and the decorator subscribes the class
+ * `tokenfor<IServiceManifest>()`, and the decorator subscribes the class
  * so each set — including those registered by DOWNSTREAM packages loaded after
  * this one — is (re)installed onto the prototype (docs/decisions.md §38).
  */
-@augment(nameof<IServiceManifest>())
+@augment(tokenfor<IServiceManifest>())
 export class ServiceManifestClass<Scopes extends string = 'singleton'>
   implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>>
 {

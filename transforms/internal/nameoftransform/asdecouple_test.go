@@ -55,15 +55,15 @@ export type Typeof<T> = { readonly [ARG]?: T };
 	// The real add-sugar body — see di.transformer's own src/inline.ts — now typed
 	// to return IAsBuilder (rather than buildInlinePresetWorkspace's bare unknown)
 	// so the returned builder's `.as` chain type-checks against a real continuation.
-	// signatureof / valueof are imported from their home (di.transformer), nameof
+	// signatureof / valueof are imported from their home (di.transformer), tokenfor
 	// from primitives. The `.as<Scope>()` body lowers via valueof — the #269 decouple
 	// makes `.as` a plain inline body (`this.as(valueof<Scope>())`), not a di-stage form.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
 import { signatureof, valueof } from '@rhombus-std/di.transformer';
 import type { IAsBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): IAsBuilder<'singleton'> {
-    return this.addClass(nameof<T>(), ctor, signatureof(ctor));
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
   },
   as<Scope extends 'singleton'>(this: IAsBuilder<'singleton'>): IAsBuilder<'singleton'> {
     return this.as(valueof<Scope>());
@@ -112,7 +112,7 @@ export {};
 }
 
 // lowerAsDecoupleInlinePipeline runs the full bundle over main.ts — inline
-// substitution, nameof token lowering, signatureof dependency-array lowering,
+// substitution, tokenfor token lowering, signatureof dependency-array lowering,
 // valueof scope-value lowering (which owns the trailing `.as<Scope>()` scope
 // half), THEN the di stage — sharing one artifacts bag exactly as the owner host
 // composes them. The di stage no longer touches `.as`: the inline body
@@ -143,7 +143,7 @@ func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app strin
 // deviation note): a `.as<"singleton">()` chained directly onto an
 // inline-substituted `addClass<I>(C)` call must lower to the value-arg `.as("singleton")`
 // with no authored generic or primitive surviving, and it must not panic — the
-// #240-noted nameof/checker nil-deref (`isNameofCall` -> `GetSymbolAtLocation`)
+// #240-noted tokenfor/checker nil-deref (`isNameofCall` -> `GetSymbolAtLocation`)
 // reproduced ONLY in this exact shape: a chained call whose OBJECT expression was
 // just replaced by the inline substitution keeps a real source position (so the
 // existing `Pos() < 0` synthetic guard doesn't fire) but loses its `Parent` link
@@ -169,7 +169,7 @@ services.addClass<IFoo>(Foo).as<'singleton'>();
 	if strings.Contains(out, "addClass<") {
 		t.Fatalf("authored addClass<> generic survived lowering:\n%s", out)
 	}
-	if strings.Contains(out, "nameof") || strings.Contains(out, "signatureof(") || strings.Contains(out, "valueof") {
+	if strings.Contains(out, "tokenfor") || strings.Contains(out, "signatureof(") || strings.Contains(out, "valueof") {
 		t.Fatalf("an un-lowered primitive survived:\n%s", out)
 	}
 }

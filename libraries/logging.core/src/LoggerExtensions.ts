@@ -5,7 +5,7 @@
 // Dual export (docs §28/§38): the receiver-first functions are exported plain
 // (the standalone surface), grouped into the `LoggerExtensions` set and
 // registered against the `ILogger` token so every concrete logger decorated
-// with `@augment(nameof<ILogger>())` gains the method form. The method surface
+// with `@augment(tokenfor<ILogger>())` gains the method form. The method surface
 // is merged onto `ILogger` itself via the `declare module './ILogger'` block
 // below — the §36/§48 many-implementers carve-out is retired (§80): every
 // receiver, `ILogger` included, uses the standard declare-module interface
@@ -22,7 +22,7 @@
 // an explicit event id calls `logger.log(level, EventId.from(n), …)` directly.
 
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
 import type { ILogger } from './ILogger';
@@ -108,7 +108,7 @@ export function beginScope(logger: ILogger, messageFormat: string, ...args: unkn
  * The `LoggerExtensions` augmentation set for {@link ILogger} (docs §28/§38).
  * Registered against the `ILogger` token below and reachable standalone as
  * `LoggerExtensions.logInformation(logger, …)`; a concrete logger class
- * decorated with `@augment(nameof<ILogger>())` gains the members as methods.
+ * decorated with `@augment(tokenfor<ILogger>())` gains the members as methods.
  */
 export const LoggerExtensions = {
   log,
@@ -124,7 +124,7 @@ export const LoggerExtensions = {
 // The method-form surface merged onto {@link ILogger} (docs §28/§38): the merge
 // types the wrappers on the interface itself, so every `ILogger` value carries
 // them and each concrete logger class `extends ILogger` beside its
-// `@augment(nameof<ILogger>())` decoration to declare them where they install.
+// `@augment(tokenfor<ILogger>())` decoration to declare them where they install.
 //
 // `log` and `beginScope` are absent from THIS interface merge — their names ARE
 // `ILogger`'s own primitives, and TS forbids merging an incompatible convenience
@@ -186,4 +186,4 @@ const loggerMerge = {
   },
 } satisfies MergeStrategies;
 
-registerAugmentations(nameof<ILogger>(), LoggerExtensions, loggerMerge);
+registerAugmentations(tokenfor<ILogger>(), LoggerExtensions, loggerMerge);

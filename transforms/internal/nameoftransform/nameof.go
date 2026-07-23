@@ -33,10 +33,10 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-// nameofName is the exported identifier the transformer recognizes as nameof —
-// matched on the resolved symbol so an aliased import (`import { nameof as k }`)
+// nameofName is the exported identifier the transformer recognizes as tokenfor —
+// matched on the resolved symbol so an aliased import (`import { tokenfor as k }`)
 // still lowers.
-const nameofName = "nameof"
+const nameofName = "tokenfor"
 
 // New builds the per-file transform: it visits every call expression, and
 // replaces each single-type-argument call to `nameof` with a string literal

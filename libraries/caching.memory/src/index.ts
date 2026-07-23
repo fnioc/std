@@ -42,11 +42,11 @@ import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 // The runtime install is the registry path (docs §38): caching.core registers
 // CacheExtensions/CacheEntryExtensions against the `IMemoryCache`/`ICacheEntry`
-// tokens, and the `@augment(nameof<…>())` decoration beside MemoryCache/CacheEntry
+// tokens, and the `@augment(tokenfor<…>())` decoration beside MemoryCache/CacheEntry
 // pulls them onto the prototypes. Each concrete class satisfies its interface via
 // its own `interface ... extends I` merge beside the class -- no class-side module.
 import { DISTRIBUTED_CACHE_TOKEN } from './distributed-cache-token';
@@ -58,15 +58,15 @@ import { MemoryDistributedCache } from './MemoryDistributedCache';
 import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // The registration token @rhombus-std/logging's `addLogging` binds the
-// `ILoggerFactory` singleton at -- derived here via `nameof<ILoggerFactory>()`
+// `ILoggerFactory` singleton at -- derived here via `tokenfor<ILoggerFactory>()`
 // rather than importing logging's const: importing the runtime const would add
 // a dependency on the concrete logging package, an edge the reference graph
 // doesn't have (ME.Caching.Memory references Logging.Abstractions only) and one
 // whose barrel import would drag logging's side-effect registrations into every
 // caching consumer. Deriving off the type-only `ILoggerFactory` import keeps
 // the edge type-only AND stays byte-identical to logging's own
-// `nameof<ILoggerFactory>()` token, so the two never desync.
-const LOGGER_FACTORY_TOKEN = nameof<ILoggerFactory>();
+// `tokenfor<ILoggerFactory>()` token, so the two never desync.
+const LOGGER_FACTORY_TOKEN = tokenfor<ILoggerFactory>();
 
 // Merge `addMemoryCache` onto core's `IServiceManifestBase` interface (the
 // surface a consumer holding `ServiceManifest<S>` resolves to) AND onto the
@@ -107,7 +107,7 @@ declare module '@rhombus-std/di.core' {
 
 // One named object literal mirroring the reference `MemoryCacheServiceCollectionExtensions`
 // static class (docs §28/§38), registered against the OPEN `ServiceManifest`
-// augmentation token so the `@augment(nameof<IServiceManifest>())`
+// augmentation token so the `@augment(tokenfor<IServiceManifest>())`
 // decoration in di.core pulls `addMemoryCache` onto the `ServiceManifestClass`
 // prototype (the fluent path) AND exported so the member is the standalone form.
 export const MemoryCacheServiceManifestAugmentations = {
@@ -179,7 +179,7 @@ export const MemoryCacheServiceManifestAugmentations = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), MemoryCacheServiceManifestAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), MemoryCacheServiceManifestAugmentations);
 
 export { MemoryCache } from './MemoryCache';
 // MemoryCacheEntryOptions now lives in caching.core (as ME has it in

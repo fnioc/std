@@ -2,7 +2,7 @@
 //
 // The with-transformer composition root: src/main.ts is authored in the
 // tokenless dialect and needs BOTH the di.core preset bundle (registration sugar
-// via inline -> nameof -> signatureof -> di — add/addFactory/addValue inline
+// via inline -> tokenfor -> signatureof -> di — add/addFactory/addValue inline
 // substituted, plus the di stage's tokenless resolve/resolveAsync + `.as<>`
 // lowering) and its di.transformer.options
 // (addOptions<T>) plugin to lower. This is the ttsc/Go analog of the former

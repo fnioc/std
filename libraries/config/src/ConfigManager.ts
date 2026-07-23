@@ -31,7 +31,7 @@
 import type { ConfigObject, IConfigBuilder, IConfigManager, IConfigProvider, IConfigRoot, IConfigSection,
   IConfigSource } from '@rhombus-std/config.core';
 import { augment, ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigRoot } from './ConfigRoot';
@@ -52,7 +52,7 @@ import { MemoryConfigSource } from './memory/MemoryConfigSource';
  * addConfig, ...) reaches `manager.` exactly as it reaches `builder.`
  * (docs/decisions.md §38).
  */
-@augment(nameof<IConfigBuilder>())
+@augment(tokenfor<IConfigBuilder>())
 export class ConfigManager implements IConfigManager, IConfigRoot {
   readonly #sources: IConfigSource[] = [];
   readonly #properties = new Map<string, unknown>();

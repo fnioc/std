@@ -4,7 +4,7 @@
 // registration-collection receiver.
 //
 // This is an OPEN set (the `ServiceManifest` receiver is extended by many
-// downstream families), so it registers against `nameof<IServiceManifest>()`
+// downstream families), so it registers against `tokenfor<IServiceManifest>()`
 // through the primitives augmentation registry rather than a direct
 // `applyAugmentations` at the class -- the same token every cross-package
 // registration augmentation (`addOptions`, `addLogging`, `addMetrics`, ...)
@@ -64,7 +64,7 @@
 // the finalize phase (tracked against #75).
 
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 // Type-only: the const references `ServiceManifestClass` solely in type position
@@ -393,4 +393,4 @@ export const ServiceManifestDescriptorAugmentations = {
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), ServiceManifestDescriptorAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestDescriptorAugmentations);

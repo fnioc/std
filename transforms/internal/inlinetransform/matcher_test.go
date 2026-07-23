@@ -26,7 +26,7 @@ export declare const manifest: IServiceManifest;
 `
 
 // First augmentation file: the inlineable sugar overload of isService (the pilot
-// body is ` return this.isService(nameof<T>()) `) and a second member `pick`
+// body is ` return this.isService(tokenfor<T>()) `) and a second member `pick`
 // whose type parameter appears in a value position so it is INFERABLE.
 const fixtureSugar = `declare module './core' {
   interface IServiceManifest {

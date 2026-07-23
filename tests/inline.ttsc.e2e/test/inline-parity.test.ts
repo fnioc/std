@@ -5,13 +5,13 @@ import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the generic single-expression inline stage. It drives
-// the REAL ttsc over a temp project wiring the inline + nameof + di descriptors
+// the REAL ttsc over a temp project wiring the inline + tokenfor + di descriptors
 // (all three resolve to the one owner Go host), then asserts:
 //
 //   1. the isService<T>() sugar is inlined and lowered to isService("<token>"),
-//      with no nameof and no authoring-form generics surviving; and
+//      with no tokenfor and no authoring-form generics surviving; and
 //   2. BYTE PARITY — the same source compiled with the inline stage present vs
-//      absent (nameof+di only, where the di semantic stage lowers isService
+//      absent (tokenfor+di only, where the di semantic stage lowers isService
 //      itself) emits the identical isService line. The pilot changes the path,
 //      never the output.
 //
@@ -209,15 +209,15 @@ beforeAll(() => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () => {
-  test('isService<T>() is inlined and lowered to a token, no sugar or nameof survives', () => {
+  test('isService<T>() is inlined and lowered to a token, no sugar or tokenfor survives', () => {
     expect(withInline).toContain('isService("');
     expect(withInline).not.toContain('isService<');
-    expect(withInline).not.toContain('nameof');
+    expect(withInline).not.toContain('tokenfor');
   });
 
   test('byte parity: inline path vs di semantic path emit the identical output', () => {
     // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
-    // PATH (inline stage → synthetic nameof → di) but never the emitted bytes, so
+    // PATH (inline stage → synthetic tokenfor → di) but never the emitted bytes, so
     // the two whole transpiled outputs must be identical. Whole-output equality is
     // strictly stronger than comparing only the isService line — it also pins
     // import elision, declare-module handling, and surrounding whitespace.

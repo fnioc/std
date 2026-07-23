@@ -6,7 +6,7 @@
 // merging + a registry registration) -- ConfigBuilder itself carries no
 // add* sugar of its own, only augmentations, even for the in-package Chained
 // provider. `addConfig` targets the OPEN `IConfigBuilder`
-// receiver, so it registers against nameof<IConfigBuilder>()
+// receiver, so it registers against tokenfor<IConfigBuilder>()
 // (docs/decisions.md §38) rather than installing directly -- both concrete
 // builders (ConfigBuilder and ConfigManager) are decorated with
 // that token, so one registration reaches both.
@@ -20,7 +20,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig, IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { ChainedConfigSource } from './ChainedConfigSource';
 
 export { ChainedConfigProvider } from './ChainedConfigProvider';
@@ -60,4 +60,4 @@ export const ChainedBuilderExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), ChainedBuilderExtensions);
+registerAugmentations(tokenfor<IConfigBuilder>(), ChainedBuilderExtensions);

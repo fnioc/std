@@ -8,7 +8,7 @@
 // This is an OPEN receiver (ILoggingBuilder is extended by downstream packages —
 // logging.config's addConfig, logging.console's addConsole), so the
 // install goes through the augmentation registry (docs §38): register the set
-// against the `ILoggingBuilder` token — derived inline by `nameof<ILoggingBuilder>()`
+// against the `ILoggingBuilder` token — derived inline by `tokenfor<ILoggingBuilder>()`
 // and lowered to its string literal by the primitives.transformer build stage —
 // and the `@augment`-decorated LoggingBuilder pulls it (plus every later
 // registrant) onto its prototype. The exported const IS the standalone call surface.
@@ -25,7 +25,7 @@
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 
@@ -88,4 +88,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-registerAugmentations(nameof<ILoggingBuilder>(), LoggingBuilderExtensions);
+registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderExtensions);
