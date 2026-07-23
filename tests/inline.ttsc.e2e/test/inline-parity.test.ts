@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the generic single-expression inline stage. It drives
 // the REAL ttsc over a temp project wiring the inline + nameof + di descriptors
@@ -15,16 +15,18 @@ import { join, resolve } from 'node:path';
 //      itself) emits the identical isService line. The pilot changes the path,
 //      never the output.
 //
-// The two compilations run in ONE stable project dir with two tsconfigs
-// (tsconfig.inline.json / tsconfig.semantic.json), and BOTH point ttsc at a
-// single pinned plugin cache (TTSC_CACHE_DIR, see goEnv). This matters: ttsc's
-// plugin cache is resolved per project root, so two sibling project dirs — or an
-// unpinned cache that lands under each project's own node_modules — each get a
-// PRIVATE cache, and a cold run builds the SAME Go sidecar TWICE (~2× the
-// multi-minute cold compile: deterministically over budget, and a timeout-kill
-// then abandons a build lock the next run must reclaim). One dir + one pinned
-// cache → the sidecar builds once cold and the second compilation is warm. This
-// mirrors the di.transformer.ttsc.e2e harness.
+// The two compilations run in ONE per-worktree project dir OUTSIDE the repo tree
+// (~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>, off the per-user-quota tmpfs
+// /tmp; it must sit outside any enclosing package.json or ttsc re-roots the
+// fixture's token derivation to that package) with two tsconfigs
+// (tsconfig.inline.json / tsconfig.semantic.json), and BOTH point ttsc at the
+// single shared plugin cache (TTSC_CACHE_DIR, see goEnv). This matters: ttsc's
+// plugin cache is resolved per project root, so an unpinned cache that lands
+// under each project's own node_modules would build the SAME Go sidecar afresh
+// (multi-minute cold compile, and a timeout-kill then abandons a build lock the
+// next run must reclaim). One shared, content-keyed cache → the sidecar builds
+// once cold per machine and every later compilation is warm. This mirrors the
+// di.transformer.ttsc.e2e harness.
 //
 // The inline stage reads di.core's REAL src (its rhombus.inline entry + the
 // out-of-barrel src/inline.ts body), so the real di.core is symlinked, not
@@ -43,7 +45,9 @@ const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
 
-const projDir = join(tmpdir(), 'fnioc-ttsc-inline-e2e');
+// Outside the repo tree (see the header: an enclosing package.json re-roots token
+// derivation), keyed by the worktree dir name so concurrent sessions don't collide.
+const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'inline');
 // One honest cold Go-sidecar compile fits comfortably here; the second (warm)
 // compilation is seconds. Sized against the sibling suite's single-cold budget
 // with headroom, now that the shared cache guarantees a single cold build.
@@ -66,15 +70,15 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-const goBuildTmp = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-inline-gobuild');
 // Pin the ttsc plugin cache (compiled sidecar binary AND its go-build object
-// cache) to a stable home-backed dir under the repo, NOT the project-local
-// default. The project dir lives in the OS tmpdir, a size-capped tmpfs here; a
-// cold typescript-go plugin compile would otherwise write its Go object cache
-// (hundreds of MB) onto that tmpfs and risk ENOSPC. Anchoring it under the repo
-// keeps the heavy cache off tmpfs and — being one fixed path — is what makes the
-// two compilations share the cache and the sidecar build exactly once.
-const ttscCache = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-inline-e2e');
+// cache) and the Go build scratch to the shared, content-keyed home dir, NOT the
+// project-local default. The project dir would otherwise write its Go object
+// cache (~3G) onto the per-user-quota tmpfs /tmp and risk EDQUOT; anchoring both
+// under ~/.cache/fnioc-ttsc keeps the heavy cache off tmpfs and — being one
+// shared path — makes every compilation (here and in every other suite/worktree)
+// reuse the sidecar the first cold build produced. Default-if-unset for CI/shell.
+const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
+const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;

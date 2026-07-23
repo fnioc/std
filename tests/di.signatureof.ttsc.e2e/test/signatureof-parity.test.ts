@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the signatureof primitive, plus the deps-free
 // `addValue<I>(value)` sugar riding the same inline path. It drives the REAL
@@ -44,7 +44,10 @@ const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
 
-const projDir = join(tmpdir(), 'fnioc-ttsc-signatureof-e2e');
+// Outside the repo tree — the sandbox must sit outside any enclosing package.json
+// or ttsc re-roots its token derivation to that package; keyed by the worktree dir
+// name so concurrent sessions don't collide (see the inline.ttsc.e2e header).
+const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'signatureof');
 const COLD_BUILD_MS = 600_000;
 
 function link(target: string, linkPath: string): void {
@@ -64,8 +67,11 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-const goBuildTmp = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-signatureof-gobuild');
-const ttscCache = join(REPO_ROOT, 'node_modules', '.cache', 'ttsc-signatureof-e2e');
+// Pin the Go build scratch and the content-keyed plugin cache to the shared home
+// dir (off the per-user-quota tmpfs /tmp), so the sidecar builds once per machine
+// and every suite/worktree reuses it. Default-if-unset for CI/shell.
+const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
+const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;

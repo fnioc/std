@@ -505,3 +505,32 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 - **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up.
 
 Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
+
+---
+
+## §107 — ttsc plugin cache is shared on disk; e2e sandboxes are per-worktree
+
+`/tmp` here is a `tmpfs` with a per-user quota (~6 GiB). ttsc resolves its plugin cache per WORKSPACE
+ROOT (`<root>/node_modules/.cache/ttsc`), and each e2e suite's throwaway project is its own workspace
+root, so every unpinned suite grew a PRIVATE cache — each a compiled sidecar (~30 MB) plus ttsc's own
+Go object cache (GOCACHE under the cache root, ~3 GB). The unpinned suites on `/tmp` plus the main
+build drove a cold full gate toward ~15 GB into the ~6 GiB quota → `EDQUOT`.
+
+The cache is content-keyed, so ONE shared location is correct: a version skew is just different keys
+in the same store, and Go's object cache is concurrency-safe. So `TTSC_CACHE_DIR` and `GOTMPDIR`
+default to a shared, disk-backed home dir — `~/.cache/fnioc-ttsc/{cache,gotmp}` — for the main build
+(`build-package.ts`'s `ttscEnv`) AND every e2e suite's `goEnv`, each written default-if-unset so CI
+or a shell can override. The cold ~5-min sidecar compile is now paid once per machine, not once per
+suite or worktree.
+
+The throwaway sandboxes move to `~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>/<suite>` — keyed by
+the worktree directory name for per-worktree isolation, but crucially OUTSIDE the repo tree. A
+sandbox must sit outside any enclosing `package.json`: ttsc derives its tokens relative to the
+nearest package root, so a sandbox under the monorepo re-roots a fixture's local tokens as members of
+`@rhombus-std/monorepo` (`@rhombus-std/monorepo/…:ILocal`) instead of the package-less `./app:ILocal`
+the parity corpus expects. The old `tmpdir()` / `~/.cache` homes had no enclosing manifest — a
+load-bearing property this preserves. Two sessions in different worktrees get independent sandboxes
+but share the one content-keyed cache: collision-free, and the ~3 GB per-suite duplication is gone.
+CI caches `~/.cache/fnioc-ttsc/cache` (scoped so the sandboxes ride outside it).
+
+_Owner-directed 2026-07-21._
