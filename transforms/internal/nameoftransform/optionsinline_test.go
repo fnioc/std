@@ -95,9 +95,16 @@ export const ManifestOptionsInline = {
 
 	// The tokenless addOptions<T>() sugar overload, declaration-merged onto di.core's
 	// IServiceManifestBase — the declaration site the inline resolver anchors on.
+	// The two-token verb and the `addOptions<I>(token, makeBase)` overload
+	// (@rhombus-std/options.augmentations contributes both alongside the sugar) are
+	// included so the resolver discriminates the (1, []) sugar overload against a
+	// SECOND type-param-count-1 overload — the exact merged shape the real program
+	// carries, which a two-overload fixture would not exercise.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
     addOptions<T>(): unknown;
+    addOptions(token: string, tToken: string): unknown;
+    addOptions<I>(token: string, makeBase: () => I): unknown;
   }
 }
 export {};

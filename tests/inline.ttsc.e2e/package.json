@@ -11,6 +11,8 @@
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/di.transformer.options": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.transformer": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",

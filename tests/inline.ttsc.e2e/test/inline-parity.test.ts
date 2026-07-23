@@ -717,3 +717,139 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(lineWith(chainSemantic, 'emptySig =')).toEqual(line);
   });
 });
+
+// ===========================================================================
+// W4 — addOptions<T>() options witness.
+//
+// The addOptions<T>() sugar is no longer a bespoke stage: it is a
+// di.transformer.options rhombus.inline body substituted by the inline stage, its
+// composed `IOptions<T>` wrapper token + bare `T` element token lowered by the
+// tokenfor (nameof) stage's composed-generic derivation. This witness compiles a
+// lone `addOptions<UserOptions>()` through the REAL ttsc and asserts the two-token
+// verb: the wrapper is `@rhombus-std/options:IOptions<element>` over the SAME
+// element token the second argument carries (relationally locked), byte-identical
+// to the retired dioptionstransform stage's lowering (whose idempotence test
+// pinned exactly this shape before it was deleted). There is no di-direct oracle
+// to compare against — that stage is gone — so the witness pins the canonical
+// two-token SHAPE, which is also the form the runtime addOptions augmentation
+// (installed by @rhombus-std/options.augmentations) dispatches on.
+//
+// Single sandbox (no split dep graphs): with no oracle path there is nothing to
+// keep the inline stage out of, so the one dir wires the primitives descriptors
+// to spawn the host and lists di.transformer + di.transformer.options in deps —
+// the host's own scan activates inline + nameof + di + valueof and collects the
+// addOptions body, and @rhombus-std/options is loaded so the wrapper base resolves.
+
+const DI_OPTIONS = join(REPO_ROOT, 'libraries', 'di.transformer.options');
+const OPTIONS = join(REPO_ROOT, 'libraries', 'options');
+
+const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'options');
+
+// The addOptions<T>() sugar overload + the explicit two-token verb, hand-declared
+// as a di.core module augmentation (like the chain's AUTHORING_SOURCE), so the
+// program carries the sugar surface without pulling di.transformer.options's rolled
+// declare-module types. The generic signatures mirror di.transformer.options's
+// src/augment.ts + options.augmentations so the merged member symbol the inline
+// resolver anchors on is the real face.
+const OPTIONS_AUTHORING = `
+import type { AddChain, Token } from '@rhombus-std/di.core';
+
+declare module '@rhombus-std/di.core' {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+    addOptions<T>(): AddChain<Scopes, 'scope' | 'key', false>;
+    addOptions(token: Token, tToken: Token): AddChain<Scopes, 'scope' | 'key', false>;
+  }
+}
+export {};
+`;
+
+const OPTIONS_SOURCE = `
+import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { IOptions } from '@rhombus-std/options';
+
+// Force @rhombus-std/options into the program so the composed wrapper base
+// (@rhombus-std/options:IOptions) resolves — the tokenfor stage scans the loaded
+// source files for it, and an unimported peer would not be loaded.
+export type __KeepOptions<T> = IOptions<T>;
+
+interface UserOptions {
+  name: string;
+}
+
+declare const services: IServiceManifest<'singleton'>;
+
+export const opts = services.addOptions<UserOptions>();
+`;
+
+function linkOptionsDeps(dir: string): void {
+  const nm = join(dir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  mkdirSync(join(nm, '@ttsc'), { recursive: true });
+  link(TS7, join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
+  link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
+  link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
+  link(DI_OPTIONS, join(nm, '@rhombus-std', 'di.transformer.options'));
+  link(OPTIONS, join(nm, '@rhombus-std', 'options'));
+  link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
+  link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
+}
+
+function setupOptionsWorkspace(): void {
+  rmSync(join(OPTIONS_DIR, 'dist'), { recursive: true, force: true });
+  linkOptionsDeps(OPTIONS_DIR);
+  writeFileSync(
+    join(OPTIONS_DIR, 'package.json'),
+    JSON.stringify({
+      name: 'options-app',
+      version: '0.0.0',
+      dependencies: {
+        '@rhombus-std/di.core': 'workspace:*',
+        '@rhombus-std/di.transformer': 'workspace:*',
+        '@rhombus-std/di.transformer.options': 'workspace:*',
+      },
+    }),
+  );
+  const src = join(OPTIONS_DIR, 'src');
+  mkdirSync(src, { recursive: true });
+  writeFileSync(join(src, 'authoring.ts'), OPTIONS_AUTHORING);
+  writeFileSync(join(src, 'options-app.ts'), OPTIONS_SOURCE);
+  writeChainTsconfig(OPTIONS_DIR, [
+    { transform: '@rhombus-std/primitives.transformer/inline-ttsc' },
+    { transform: '@rhombus-std/primitives.transformer/ttsc' },
+    { transform: '@rhombus-std/primitives.transformer/signatureof-ttsc' },
+    { transform: '@rhombus-std/primitives.transformer/keyof-ttsc' },
+  ]);
+}
+
+let optionsOut = '';
+
+beforeAll(() => {
+  if (!toolchainReady) {
+    return;
+  }
+  setupOptionsWorkspace();
+  const run = runChainTtsc(OPTIONS_DIR);
+  optionsOut = readChainFile(OPTIONS_DIR, run, 'src/options-app.ts');
+}, COLD_BUILD_MS);
+
+describe.skipIf(!toolchainReady)('generic inline stage — addOptions options witness (W4)', () => {
+  test('addOptions<T>() lowers to the relationally-locked two-token verb', () => {
+    const line = lineWith(optionsOut, 'opts =');
+    expect(line).toBeDefined();
+    // Two-token verb over the peered options package's IOptions — no sugar type
+    // argument and no tokenfor primitive survives.
+    expect(line).toContain('addOptions("@rhombus-std/options:IOptions<');
+    expect(optionsOut).not.toContain('addOptions<');
+    expect(optionsOut).not.toContain('tokenfor');
+    const m = /addOptions\("(@rhombus-std\/options:IOptions<[^"]*>)", "([^"]*)"\)/.exec(line as string);
+    expect(m).not.toBeNull();
+    const [, wrapper, element] = m as RegExpExecArray;
+    // Relational lock: the wrapper is IOptions<element> over the SAME element token
+    // the second argument carries (both minted from the one element derivation).
+    expect(wrapper).toEqual(`@rhombus-std/options:IOptions<${element}>`);
+    // The element is the app's own UserOptions type.
+    expect(element).toContain('UserOptions');
+  });
+});
