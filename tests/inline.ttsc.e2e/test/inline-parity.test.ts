@@ -1,8 +1,13 @@
+import { ServiceManifest } from '@rhombus-std/di';
+import type { IOptions } from '@rhombus-std/options';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+// Side-effect import: installs the addOptions augmentation onto ServiceManifestClass
+// through the OPEN augmentation registry — the same production path a consumer uses.
+import '@rhombus-std/options.augmentations';
 
 // Production-path e2e for the generic single-expression inline stage. It drives
 // the REAL ttsc over a temp project wiring the inline + tokenfor + di descriptors
@@ -839,10 +844,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     const line = lineWith(optionsOut, 'opts =');
     expect(line).toBeDefined();
     // Two-token verb over the peered options package's IOptions — no sugar type
-    // argument and no tokenfor primitive survives.
+    // argument and neither token primitive (the wrapper's tokenfor, the element's
+    // tokenof) survives.
     expect(line).toContain('addOptions("@rhombus-std/options:IOptions<');
     expect(optionsOut).not.toContain('addOptions<');
     expect(optionsOut).not.toContain('tokenfor');
+    expect(optionsOut).not.toContain('tokenof');
     const m = /addOptions\("(@rhombus-std\/options:IOptions<[^"]*>)", "([^"]*)"\)/.exec(line as string);
     expect(m).not.toBeNull();
     const [, wrapper, element] = m as RegExpExecArray;
@@ -851,5 +858,37 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     expect(wrapper).toEqual(`@rhombus-std/options:IOptions<${element}>`);
     // The element is the app's own UserOptions type.
     expect(element).toContain('UserOptions');
+  });
+
+  test('registry dispatch: the emitted two-token verb resolves IOptions<T> through the real augmentation', () => {
+    // Runtime-EXECUTION witness (the text tests above only prove the emitted bytes).
+    // It feeds the transformer's ACTUAL emitted (wrapper, element) tokens to a real
+    // ServiceManifest whose addOptions is installed the production way — the
+    // top-of-file `import '@rhombus-std/options.augmentations'` mounts it into the
+    // OPEN augmentation registry, so the call below dispatches through the installed
+    // ServiceManifestClass proto-wrapper, not a standalone. Registering the element
+    // token's value and resolving the wrapper must deliver an IOptions<T> over that
+    // exact value: proof the two emitted tokens land in the right runtime slots
+    // (wrapper = registration key, element = the wrapped dependency). Argument-order
+    // or shape drift would compile clean and pass every text net above, yet misregister
+    // and fail HERE — the gap this test closes.
+    const line = lineWith(optionsOut, 'opts =');
+    const m = /addOptions\("(@rhombus-std\/options:IOptions<[^"]*>)", "([^"]*)"\)/.exec(line as string);
+    expect(m).not.toBeNull();
+    const [, wrapper, element] = m as RegExpExecArray;
+
+    interface UserOptions {
+      name: string;
+    }
+    const value: UserOptions = { name: 'ada' };
+
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(element, value);
+    services = services.addOptions(wrapper, element).as('singleton');
+
+    const provider = services.build().createScope('singleton');
+    const options = provider.resolve<IOptions<UserOptions>>(wrapper);
+    // The wrapper resolves an IOptions<T> whose value IS the element-registered T.
+    expect(options.value).toBe(value);
   });
 });
