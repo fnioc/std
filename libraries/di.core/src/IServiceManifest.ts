@@ -35,7 +35,6 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { blowUpSignatures } from './token/index.js';
 import { HOLE_PATTERN, isOpenToken, parseToken } from './token/index.js';
 import { TokenNode } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
@@ -124,12 +123,16 @@ type PendingProducer =
  */
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
-  // Materialise every param-level `union` slot into cartesian concrete OVERLOADS
-  // (docs TODO §0). The stored/emitted DepSlot keeps `union(...)` — the wire and
-  // transformer are unchanged; the blow-up is a runtime, in-memory concern of the
-  // registration record, so the resolve side never sees a union. Union-free
-  // signatures pass through unchanged.
-  const signatures = pending.signatures === undefined ? undefined : blowUpSignatures(pending.signatures);
+  // NOTE: `blowUpSignatures` (docs TODO §0 — cartesian union-to-overloads at
+  // registration) is NOT wired here yet, deliberately. It stays exported for the
+  // later PR that deletes the engine's per-param union resolution. That deletion
+  // is the precondition for blowing up: per-param `#resolveUnion` falls through on
+  // a member's RUNTIME failure (a ctor that throws at build, a Promise that
+  // rejects — union.test's GAP2 / async-reject pins), whereas blown static
+  // overloads select purely on registration-presence and cannot express that
+  // fall-through. While per-param resolution is retained, the signatures must
+  // reach the engine union-bearing, so materialise threads them through untouched.
+  const signatures = pending.signatures;
   const producer = pending.producer;
   switch (producer.kind) {
     case 'class': {
