@@ -172,7 +172,7 @@ func (c *context) isNameofCall(call *shimast.Node) bool {
 	// after rebuilding it around a replaced child, nil-panics inside
 	// GetSymbolAtLocation (it derefs `Parent.Parent` unconditionally). Under the
 	// immutable manifest a registration statement is an ASSIGNMENT (`services =
-	// services.add<T>(C)`), so lowering rebuilds the enclosing binary expression
+	// services.addClass<T>(C)`), so lowering rebuilds the enclosing binary expression
 	// and hands this visitor a partially synthetic tree where it used to see a
 	// fully lowered one. Such a node was never checked, so it can never BE the
 	// checker's nameof: a clean non-match is the right answer.

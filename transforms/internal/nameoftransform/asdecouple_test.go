@@ -16,7 +16,7 @@ import (
 
 // buildAsDecoupleWorkspace extends buildInlinePresetWorkspace's shape with an
 // `IAsBuilder<Scopes>` continuation carrying `.as(scope)` / the authored
-// `.as<S>()` sugar — the #240 decouple's own shape (`add<I>(C).as<"scope">()`),
+// `.as<S>()` sugar — the #240 decouple's own shape (`addClass<I>(C).as<"scope">()`),
 // which buildInlinePresetWorkspace's `unknown`-returning add stub can't express.
 // A dedicated builder rather than extending the shared fixture: the sibling
 // open-template test already depends on buildInlinePresetWorkspace's exact
@@ -32,14 +32,14 @@ func buildAsDecoupleWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus.inline": {
-    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "add" } ]
+    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IAsBuilder<Scopes extends string> {
   as(scope: Scopes): IAsBuilder<Scopes>;
 }
 export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): IAsBuilder<'singleton'>;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): IAsBuilder<'singleton'>;
 }
 export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
@@ -56,8 +56,8 @@ export type Typeof<T> = { readonly [ARG]?: T };
 import { signatureof } from '@rhombus-std/di.transformer';
 import type { IAsBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {
-  add<T>(this: IServiceManifestBase, ctor: unknown): IAsBuilder<'singleton'> {
-    return this.add(nameof<T>(), ctor, signatureof(ctor));
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): IAsBuilder<'singleton'> {
+    return this.addClass(nameof<T>(), ctor, signatureof(ctor));
   },
 };
 `)
@@ -71,11 +71,11 @@ export const ManifestInline = {
 	linkPkg(t, app, "@rhombus-std/di.core", core)
 
 	// The standard consumer augmentation (mirroring di.transformer's real
-	// declare-module) — both the `add<T>()` sugar overload AND the authored
+	// declare-module) — both the `addClass<T>()` sugar overload AND the authored
 	// `.as<S>()` type-arg form merge onto their respective di.core interfaces.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): IAsBuilder<'singleton'>;
+    addClass<T>(ctor: unknown): IAsBuilder<'singleton'>;
   }
   interface IAsBuilder<Scopes extends string> {
     as<S extends Scopes>(): IAsBuilder<Scopes>;
@@ -129,7 +129,7 @@ func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app strin
 // TestAsDecoupleInlinePipelineLowersCleanly is the #240 `.as<>`-decouple's own
 // dedicated fixture, deferred by that PR (its "e2e `.as` extension dropped"
 // deviation note): a `.as<"singleton">()` chained directly onto an
-// inline-substituted `add<I>(C)` call must lower to the value-arg `.as("singleton")`
+// inline-substituted `addClass<I>(C)` call must lower to the value-arg `.as("singleton")`
 // with no authored generic or primitive surviving, and it must not panic — the
 // #240-noted nameof/checker nil-deref (`isNameofCall` -> `GetSymbolAtLocation`)
 // reproduced ONLY in this exact shape: a chained call whose OBJECT expression was
@@ -142,7 +142,7 @@ func TestAsDecoupleInlinePipelineLowersCleanly(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}
 class Foo implements IFoo {}
-services.add<IFoo>(Foo).as<'singleton'>();
+services.addClass<IFoo>(Foo).as<'singleton'>();
 `
 	prog, app := buildAsDecoupleWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -154,8 +154,8 @@ services.add<IFoo>(Foo).as<'singleton'>();
 	if strings.Contains(out, "as<") {
 		t.Fatalf("authored .as<> generic survived lowering:\n%s", out)
 	}
-	if strings.Contains(out, "add<") {
-		t.Fatalf("authored add<> generic survived lowering:\n%s", out)
+	if strings.Contains(out, "addClass<") {
+		t.Fatalf("authored addClass<> generic survived lowering:\n%s", out)
 	}
 	if strings.Contains(out, "nameof") || strings.Contains(out, "signatureof(") {
 		t.Fatalf("an un-lowered primitive survived:\n%s", out)
@@ -163,7 +163,7 @@ services.add<IFoo>(Foo).as<'singleton'>();
 }
 
 // TestAsDecoupleInlinePipelineMatchesDiDirect is the byte-parity half of the
-// #240 decouple fixture: the SAME `add<I>(C).as<"scope">()` registration, lowered
+// #240 decouple fixture: the SAME `addClass<I>(C).as<"scope">()` registration, lowered
 // once through the inline pipeline and once through the di stage's direct
 // (non-inline) recognition, must carry the same service token, dependency array,
 // AND `.as` lowering — the decouple changes the PATH only, never the bytes. This
@@ -174,7 +174,7 @@ func TestAsDecoupleInlinePipelineMatchesDiDirect(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}
 class Foo implements IFoo {}
-services.add<IFoo>(Foo).as<'singleton'>();
+services.addClass<IFoo>(Foo).as<'singleton'>();
 `
 	prog, app := buildAsDecoupleWorkspace(t, src)
 	defer func() { _ = prog.Close() }()

@@ -13,7 +13,7 @@ import (
 // foundReg is a registration call found on the original expression.
 type foundReg struct {
 	call        *shimast.Node
-	method      string // "add" | "addValue" | "addFactory"
+	method      string // "addClass" | "addValue" | "addFactory"
 	typeArg     *shimast.Node
 	arg         *shimast.Node
 	overrideArg *shimast.Node
@@ -23,7 +23,7 @@ type foundReg struct {
 type regPlan struct {
 	token         string
 	hasToken      bool
-	calleeMethod  string // "add" | "addFactory" | "addValue"
+	calleeMethod  string // "addClass" | "addFactory" | "addValue"
 	valueOverride *shimast.Node
 	signatures    []signature
 	hasSignatures bool
@@ -35,26 +35,19 @@ type serviceTokenShape struct {
 	mixed bool
 }
 
-// lowerStatement lowers an expression statement containing registration chains,
-// carrying each derived signature inline. Returns nil when the statement is not
-// a registration.
-func (c *context) lowerStatement(statement *shimast.Node) []*shimast.Node {
-	if statement.Kind != shimast.KindExpressionStatement {
-		return nil
-	}
-	expr := statement.AsExpressionStatement().Expression
-	registrations := c.findRegistrationCalls(expr)
-	// A statement with no recognized registration is still kept in the lowering
-	// path when it carries a trailing `.as<"x">()`: the inline stage substitutes
-	// `add<I>(C)` into a 3-argument `add(...)` the di stage deliberately no longer
-	// recognizes, so the `.as` chained onto it would otherwise survive un-lowered.
-	// `.as` lowering lives in lowerRegistrationExpression, which tolerates an empty
-	// plan map, so an empty registration set with an `.as` present just rewrites
-	// the `.as`.
-	if len(registrations) == 0 && !c.hasAsCall(expr) {
-		return nil
-	}
-
+// buildRegistrationPlans collects every registration call reachable under root
+// (the whole source file) and returns its rewrite plan, carrying each derived
+// signature inline. Plan-building is context-FREE: a registration is planned
+// wherever it appears — a top-level `services.addClass<I>(C)`, an
+// assignment RHS (`services = services.addClass<I>(C)`), a variable initializer
+// (`const s = manifest.addClass<I>(C)`), or a `return manifest.addClass<I>(C)`
+// inside a factory function — because the immutable manifest (#269) threads every
+// registration through an assignment/return, so the sugar is almost never a bare
+// top-level expression statement any more. The rewrite itself is applied by
+// lowerRegistrationExpression, which walks the same tree and swaps each planned
+// call in place along with every `.as<"x">()`.
+func (c *context) buildRegistrationPlans(root *shimast.Node) map[*shimast.Node]*regPlan {
+	registrations := c.findRegistrationCalls(root)
 	plans := map[*shimast.Node]*regPlan{}
 	for _, reg := range registrations {
 		token, hasToken := c.tokenForReg(reg)
@@ -74,9 +67,7 @@ func (c *context) lowerStatement(statement *shimast.Node) []*shimast.Node {
 		}
 		plans[reg.call] = c.planAddRegistration(reg, token, hasToken, shape)
 	}
-
-	lowered := c.lowerRegistrationExpression(expr, plans)
-	return []*shimast.Node{c.factory.NewExpressionStatement(lowered)}
+	return plans
 }
 
 func regAnchor(reg foundReg) *shimast.Node {
@@ -97,12 +88,12 @@ func registrationMethod(checker *shimchecker.Checker, call *shimast.Node) (strin
 		return "", false
 	}
 	name := callee.Name().Text()
-	if name != "add" && name != "addValue" && name != "addFactory" {
+	if name != "addClass" && name != "addValue" && name != "addFactory" {
 		return "", false
 	}
 	// Anchor the receiver at the member's declaration site: the called verb must
 	// resolve to IServiceManifestBase inside `declare module '@rhombus-std/di.core'`,
-	// so an unrelated `.add()` (e.g. `new Set().add(v)`) is never lowered.
+	// so an unrelated `.addClass()` on some other object is never lowered.
 	if !memberAnchoredOnDiCore(checker, callee.Name(), registrationInterfaces) {
 		return "", false
 	}
@@ -114,7 +105,7 @@ func registrationMethod(checker *shimchecker.Checker, call *shimast.Node) (strin
 		}
 		return "", false
 	}
-	if name != "add" && name != "addValue" {
+	if name != "addClass" && name != "addValue" {
 		return "", false
 	}
 	if name == "addValue" {
@@ -124,13 +115,13 @@ func registrationMethod(checker *shimchecker.Checker, call *shimast.Node) (strin
 		return "", false
 	}
 	if argCount == 1 {
-		return "add", true
+		return "addClass", true
 	}
 	if argCount == 2 {
 		if typeArgs == nil || len(typeArgs.Nodes) == 0 {
 			return "", false
 		}
-		return "add", true
+		return "addClass", true
 	}
 	return "", false
 }
@@ -185,30 +176,6 @@ func (c *context) findRegistrationCalls(expr *shimast.Node) []foundReg {
 	return found
 }
 
-// hasAsCall reports whether expr contains an `.as<"x">()` chain call. It mirrors
-// findRegistrationCalls' walk, short-circuiting on the first hit, and lets a
-// statement whose registration call was pre-empted by the inline stage still
-// reach `.as` lowering.
-func (c *context) hasAsCall(expr *shimast.Node) bool {
-	found := false
-	var walk func(node *shimast.Node)
-	walk = func(node *shimast.Node) {
-		if node == nil || found {
-			return
-		}
-		if node.Kind == shimast.KindCallExpression && isAsCall(c.checker, node) {
-			found = true
-			return
-		}
-		node.ForEachChild(func(child *shimast.Node) bool {
-			walk(child)
-			return false
-		})
-	}
-	walk(expr)
-	return found
-}
-
 func isAsCall(checker *shimchecker.Checker, call *shimast.Node) bool {
 	callee := call.AsCallExpression().Expression
 	if callee.Kind != shimast.KindPropertyAccessExpression {
@@ -237,7 +204,7 @@ func (c *context) tokenForReg(reg foundReg) (string, bool) {
 	if t == nil {
 		return "", false
 	}
-	// A `add<Keyed<T, "k">>(Impl)` registration composes the derived base with a
+	// A `addClass<Keyed<T, "k">>(Impl)` registration composes the derived base with a
 	// `#k` suffix — the raw `T & { [KEY]?: K }` intersection has no symbol, so
 	// DeriveTokenF alone would miss it. Unbranded types fall straight through.
 	if token, ok := tokens.KeyedTokenFor(c.tokens, t); ok {
@@ -386,7 +353,7 @@ func (c *context) emitOpenTokenError(token, method string, reg foundReg) {
 			"class registrations only; register a class implementation or close the token")
 }
 
-// planAddRegistration plans an add / addFactory registration.
+// planAddRegistration plans an addClass / addFactory registration.
 func (c *context) planAddRegistration(reg foundReg, token string, hasToken bool, shape serviceTokenShape) *regPlan {
 	arg := reg.arg
 	openToken := hasToken && tokentext.IsOpenToken(token)
@@ -424,7 +391,7 @@ func (c *context) planAddRegistration(reg foundReg, token string, hasToken bool,
 			return &regPlan{
 				token:         token,
 				hasToken:      hasToken,
-				calleeMethod:  "add",
+				calleeMethod:  "addClass",
 				valueOverride: arg.AsExpressionWithTypeArguments().Expression,
 				signatures:    signatures,
 				hasSignatures: true,
@@ -453,7 +420,7 @@ func (c *context) planAddRegistration(reg foundReg, token string, hasToken bool,
 		if ok {
 			c.checkDepHoles(signatures, token, hasToken, shape, arg)
 		}
-		return &regPlan{token: token, hasToken: hasToken, calleeMethod: "add", signatures: signatures, hasSignatures: ok}
+		return &regPlan{token: token, hasToken: hasToken, calleeMethod: "addClass", signatures: signatures, hasSignatures: ok}
 	}
 
 	if len(c.callSignatures(t)) != 0 {
@@ -467,7 +434,7 @@ func (c *context) planAddRegistration(reg foundReg, token string, hasToken bool,
 		return &regPlan{token: token, hasToken: hasToken, calleeMethod: "addFactory", signatures: signatures, hasSignatures: ok}
 	}
 
-	return &regPlan{token: token, hasToken: hasToken, calleeMethod: "add"}
+	return &regPlan{token: token, hasToken: hasToken, calleeMethod: "addClass"}
 }
 
 // classSignatureFromExtraction returns the class signatures and runs the §4.5
@@ -531,7 +498,7 @@ func (c *context) lowerRegistrationExpression(expr *shimast.Node, plans map[*shi
 // lowerRegistrationCall rewrites a single registration call per its plan.
 //
 // The emitted positional shape is the runtime surface a plugin-less author
-// writes by hand: `add(token, ctor, signatures)` / `addFactory(token, factory,
+// writes by hand: `addClass(token, ctor, signatures)` / `addFactory(token, factory,
 // signatures)` / `addValue(token, value)`. `signatures` is a REQUIRED argument on
 // the two dependency-carrying verbs — di.core has no 2-argument overload, and
 // "this service takes no dependencies" is STATED as `[[]]`, never inferred from

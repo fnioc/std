@@ -16,9 +16,9 @@ import (
 )
 
 // buildNameofWorkspace lays out a workspace whose core package is literally named
-// `@rhombus-std/di.core` — the module ditransform anchors its `add` verb on — so
+// `@rhombus-std/di.core` — the module ditransform anchors its `addClass` verb on — so
 // the SAME program can be lowered two ways: the nameof stage over an explicit
-// `nameof<T>()`, and the di stage over a direct `add<T>(ctor)` registration. It
+// `nameof<T>()`, and the di stage over a direct `addClass<T>(ctor)` registration. It
 // exports `nameof` / `signatureof` / `services` and the `$<N>` hole, `Typeof<T>`,
 // `Keyed<T,K>`, and `Inject<T,K>` brands so the registration grammar resolves.
 func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
@@ -33,7 +33,7 @@ func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 export declare function nameof<T>(): string;
@@ -49,7 +49,7 @@ declare const TOK: unique symbol;
 export type Inject<T, K extends string> = T & { readonly [TOK]?: K };
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): unknown;
+    addClass<T>(ctor: unknown): unknown;
   }
 }
 `)
@@ -172,14 +172,14 @@ func nameofToken(t *testing.T, out, constName string) string {
 	return stringLiteralAt(t, out, i+len(marker))
 }
 
-// diServiceToken returns the (unescaped) arg[0] of the lowered `services.add("…", …)`
+// diServiceToken returns the (unescaped) arg[0] of the lowered `services.addClass("…", …)`
 // call — the service token the di stage derived directly.
 func diServiceToken(t *testing.T, out string) string {
 	t.Helper()
-	marker := ".add("
+	marker := ".addClass("
 	i := strings.Index(out, marker)
 	if i < 0 || i+len(marker) >= len(out) || out[i+len(marker)] != '"' {
-		t.Fatalf("no lowered `.add(\"…\")` call in:\n%s", out)
+		t.Fatalf("no lowered `.addClass(\"…\")` call in:\n%s", out)
 	}
 	return stringLiteralAt(t, out, i+len(marker))
 }
@@ -208,7 +208,7 @@ void (0 as unknown as Typeof<$<1>>);
 // TestNameofOpenGenericTokenMatchesDiDirect proves the load-bearing parity: the
 // token the nameof stage derives for `nameof<IFoo<$<1>>>()` is byte-identical to
 // the service token the di registration stage derives for the direct
-// `add<IFoo<$<1>>>(Foo<$<1>>)` — the two halves of the inline registration path
+// `addClass<IFoo<$<1>>>(Foo<$<1>>)` — the two halves of the inline registration path
 // (nameof produces the token, the di stage the direct one) must never diverge.
 func TestNameofOpenGenericTokenMatchesDiDirect(t *testing.T) {
 	src := `import { nameof, services, Typeof, $ } from '@rhombus-std/di.core';
@@ -216,7 +216,7 @@ interface IFoo<T> {}
 interface IStore<T> {}
 class Foo<T> implements IFoo<$<1>> { constructor(store: IStore<T>) { void store; } }
 export const tok = nameof<IFoo<$<1>>>();
-services.add<IFoo<$<1>>>(Foo<$<1>>);
+services.addClass<IFoo<$<1>>>(Foo<$<1>>);
 void (0 as unknown as Typeof<$<1>>);
 `
 	prog, app := buildNameofWorkspace(t, src)
@@ -301,7 +301,7 @@ func TestNameofDerivesKeyedBase(t *testing.T) {
 interface ICache {}
 class RedisCache implements ICache {}
 export const tok = nameof<Keyed<ICache, "redis">>();
-services.add<Keyed<ICache, "redis">>(RedisCache);
+services.addClass<Keyed<ICache, "redis">>(RedisCache);
 `
 	prog, app := buildNameofWorkspace(t, src)
 	defer func() { _ = prog.Close() }()

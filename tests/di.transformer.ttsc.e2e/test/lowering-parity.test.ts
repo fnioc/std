@@ -137,9 +137,8 @@ beforeAll(() => {
     as<S extends Scopes>(): void;
   }
   export interface IServiceManifestBase<Scopes extends string = string, Provider = unknown> {
-    add(token: string, ctor: Ctor, signatures: readonly (readonly unknown[])[]): IAsBuilder<Scopes>;
-    add<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
-    add<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
+    addClass(token: string, ctor: Ctor, signatures: readonly (readonly unknown[])[]): IAsBuilder<Scopes>;
+    addClass<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
     addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
     addValue(token: string, value: unknown): IServiceManifestBase<Scopes, Provider>;
   }
@@ -159,7 +158,7 @@ beforeAll(() => {
   export type IServiceManifest<S extends string = string> = IServiceManifestBase<S, IServiceProvider<S>>;
   export namespace Nested {
     export interface IServiceManifestBase<Scopes extends string = string> {
-      add<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
+      addClass<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
     }
     export interface IResolver {
       resolve<T>(): T;
@@ -210,11 +209,11 @@ class ThingRepo<T> implements IRepo<T> {
 declare const services: IServiceManifest<string>;
 declare const provider: IServiceProvider<string>;
 
-services.add<ILogger>(ConsoleLogger).as<"singleton">();
-services.add<IUserRepo>(SqlUserRepo).as<"request">();
-services.add<Keyed<ICache, "redis">>(RedisCache).as<"singleton">();
-services.add<CacheConsumer>(CacheConsumer).as<"singleton">();
-services.add<IRepo<$<1>>>(ThingRepo<$<1>>).as<"singleton">();
+services.addClass<ILogger>(ConsoleLogger).as<"singleton">();
+services.addClass<IUserRepo>(SqlUserRepo).as<"request">();
+services.addClass<Keyed<ICache, "redis">>(RedisCache).as<"singleton">();
+services.addClass<CacheConsumer>(CacheConsumer).as<"singleton">();
+services.addClass<IRepo<$<1>>>(ThingRepo<$<1>>).as<"singleton">();
 
 export const marker = nameof<IUserRepo>();
 export const dep = provider.resolve<ILogger>();
@@ -230,7 +229,7 @@ class RegImpl implements IReg {}
 // (b) subinterface receiver
 interface MyManifest extends IServiceManifestBase {}
 declare const sub: MyManifest;
-sub.add<ISub>(SubImpl).as<"singleton">();
+sub.addClass<ISub>(SubImpl).as<"singleton">();
 
 // (c) user concrete class + @augment + empty extends-merge
 declare function augment(token: string): <T>(target: T) => T;
@@ -238,10 +237,10 @@ declare function augment(token: string): <T>(target: T) => T;
 class MyRegistry {}
 interface MyRegistry extends IServiceManifestBase {}
 declare const reg: MyRegistry;
-reg.add<IReg>(RegImpl).as<"singleton">();
+reg.addClass<IReg>(RegImpl).as<"singleton">();
 
-// (d) generic bound by IResolver — pinned via the resolve family (registration is
-// top-level-only by design)
+// (d) generic bound by IResolver — pinned via the resolve family (this case
+// registers nothing; it resolves through a generic-bound receiver)
 function wireGeneric<R extends DiResolver>(r: R) {
   return r.resolve<IGen>();
 }
@@ -259,20 +258,20 @@ class BagImpl implements IBag {}
 
 // (e) an unrelated same-named local stub class
 class FakeManifest {
-  add<I>(ctor: new() => I): { as<S extends string>(): void } {
+  addClass<I>(ctor: new() => I): { as<S extends string>(): void } {
     return { as() {} };
   }
 }
 declare const fake: FakeManifest;
-export const fakeReg = fake.add<IFake>(FakeImpl);
+export const fakeReg = fake.addClass<IFake>(FakeImpl);
 
-// (g) Set.add / repo.add-style false positives
+// (g) Set.add / repo.addClass-style false positives
 const nums = new Set<number>();
 nums.add(1);
-class Repo { add<T>(entity: T): void {} }
+class Repo { addClass<T>(entity: T): void {} }
 declare const repo: Repo;
 declare const entity: IEntity;
-repo.add<IEntity>(entity);
+repo.addClass<IEntity>(entity);
 
 // (h) resolve family on a non-IResolver receiver
 class NotResolver { resolve<T>(): T { return {} as T; } }
@@ -280,14 +279,14 @@ declare const nr: NotResolver;
 export const notDep = nr.resolve<INr>();
 
 // (f) anonymous / structural object receivers (add + resolve)
-const bag = { add<I>(ctor: new() => I): { as(s: string): void } { return { as() {} }; } };
-export const bagReg = bag.add<IBag>(BagImpl);
+const bag = { addClass<I>(ctor: new() => I): { as(s: string): void } { return { as() {} }; } };
+export const bagReg = bag.addClass<IBag>(BagImpl);
 const rbag = { resolve<T>(): T { return {} as T; } };
 export const rbagDep = rbag.resolve<IRbag>();
 
 // (i) namespace-nested declaring interfaces (add + resolve)
 declare const nested: Nested.IServiceManifestBase;
-export const nestedReg = nested.add<INested>(FakeImpl);
+export const nestedReg = nested.addClass<INested>(FakeImpl);
 declare const nestedResolver: Nested.IResolver;
 export const nestedDep = nestedResolver.resolve<INested>();
 `,
@@ -323,7 +322,7 @@ export const nestedDep = nestedResolver.resolve<INested>();
   // TypeScript for each file as a stdout envelope (not a written dist/*.js). The
   // production consumer (a bundler via @ttsc/unplugin) then type-strips that
   // source to JS — which is where the type-only scaffolding (`declare const
-  // services: { add<I>… }`, interface decls) disappears. Reproduce that final
+  // services: { addClass<I>… }`, interface decls) disappears. Reproduce that final
   // step here so the assertions test the SHIPPED JS, not the intermediate TS:
   // otherwise a retained generic type annotation reads as an un-lowered call.
   let lowered: string;
@@ -339,6 +338,7 @@ export const nestedDep = nestedResolver.resolve<INested>();
 describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', () => {
   test('no type-argument authoring forms survive the lowering', () => {
     expect(app).not.toContain('add<');
+    expect(app).not.toContain('addClass<');
     expect(app).not.toContain('.as<');
     expect(app).not.toContain('resolve<');
     expect(app).not.toContain('isService<');
@@ -346,7 +346,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
   });
 
   test('zero-arg class registration → token + empty inline signature + scope', () => {
-    // services.add<ILogger>(ConsoleLogger).as<"singleton">()
+    // services.addClass<ILogger>(ConsoleLogger).as<"singleton">()
     expect(app).toContain(`"./app:ILogger"`);
     expect(app).toContain('ConsoleLogger');
     expect(app).toContain(`.as("singleton")`);
@@ -373,10 +373,10 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     expect(app).toContain(`isService("./app:ILogger")`);
   });
 
-  test('add<Keyed<T, "k">>(Impl) → registration under the <base>#k token', () => {
+  test('addClass<Keyed<T, "k">>(Impl) → registration under the <base>#k token', () => {
     // The keyed registration composes the plain ICache token with a `#redis`
     // suffix — byte-identical to the hand-written keyed lowering.
-    expect(app).toContain(`services.add("./app:ICache#redis", RedisCache,`);
+    expect(app).toContain(`services.addClass("./app:ICache#redis", RedisCache,`);
   });
 
   test('Keyed<T, "k"> ctor param → dependency signature carries <base>#k', () => {
@@ -390,17 +390,17 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
     // must render `$1` inside the base BEFORE the `#redis` suffix. The Go engine
     // must use hole-aware base derivation here to stay byte-identical to the hand-written form
     // (a non-hole-aware derivation drops the key and hard-errors instead).
-    expect(app).toContain(`services.add("./app:IRepo<$1>", ThingRepo,`);
+    expect(app).toContain(`services.addClass("./app:IRepo<$1>", ThingRepo,`);
     expect(app).toContain(`[["./app:IThing<$1>#redis"]]`);
   });
 
   // ── receiver-shape POSITIVES ────────────────────────────────────────────────
   test('(b) a subinterface receiver is lowered', () => {
-    expect(app).toContain(`sub.add("./app:ISub", SubImpl,`);
+    expect(app).toContain(`sub.addClass("./app:ISub", SubImpl,`);
   });
 
   test('(c) a user concrete class with @augment + extends-merge is lowered', () => {
-    expect(app).toContain(`reg.add("./app:IReg", RegImpl,`);
+    expect(app).toContain(`reg.addClass("./app:IReg", RegImpl,`);
   });
 
   test('(d) a generic bound by IResolver is lowered via the resolve family', () => {
@@ -409,13 +409,13 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
 
   // ── receiver-shape NEGATIVES (no token minted, member left verbatim) ─────────
   test('(e) an unrelated same-named local manifest class is NOT lowered', () => {
-    expect(app).not.toContain('fake.add("');
+    expect(app).not.toContain('fake.addClass("');
     expect(app).not.toContain('./app:IFake');
   });
 
-  test('(g) Set.add / repo.add-style calls are NOT lowered', () => {
+  test('(g) Set.add / repo.addClass-style calls are NOT lowered', () => {
     expect(app).not.toContain('nums.add("');
-    expect(app).not.toContain('repo.add("');
+    expect(app).not.toContain('repo.addClass("');
     expect(app).not.toContain('./app:IEntity');
   });
 
@@ -425,14 +425,14 @@ describe.skipIf(!toolchainReady)('ttsc/Go registration lowering byte-parity', ()
   });
 
   test('(f) anonymous/structural object receivers are NOT lowered (add + resolve)', () => {
-    expect(app).not.toContain('bag.add("');
+    expect(app).not.toContain('bag.addClass("');
     expect(app).not.toContain('rbag.resolve("');
     expect(app).not.toContain('./app:IBag');
     expect(app).not.toContain('./app:IRbag');
   });
 
   test('(i) namespace-nested declaring interfaces are NOT lowered (add + resolve)', () => {
-    expect(app).not.toContain('nested.add("');
+    expect(app).not.toContain('nested.addClass("');
     expect(app).not.toContain('nestedResolver.resolve("');
     expect(app).not.toContain('./app:INested');
   });

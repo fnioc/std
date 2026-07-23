@@ -12,8 +12,8 @@ import (
 // extraction as a standalone primitive for the signatureof stage. It shares the
 // di registration stage's EXACT extraction + rendering path — the array literal
 // it returns is byte-identical to the third argument the di stage synthesizes
-// for the same class / factory value — so the inline `add<T>()` / `addFactory<T>()`
-// sugar lowering (nameof + signatureof) and the di stage's direct `add<I>(C)`
+// for the same class / factory value — so the inline `addClass<T>()` / `addFactory<T>()`
+// sugar lowering (nameof + signatureof) and the di stage's direct `addClass<I>(C)`
 // lowering never diverge. Sharing the code (not duplicating it) is what makes
 // that parity structural rather than coincidental.
 type Extractor struct {
@@ -58,10 +58,10 @@ func (e *Extractor) SignatureArray(arg *shimast.Node) (*shimast.Node, bool) {
 // check (990010) against the service token the value is registered under. The
 // plain SignatureArray deliberately omits that check (a standalone `signatureof(x)`
 // has no service token in scope), but when a signatureof call is the third
-// argument of a fully-lowered `add(token, value, signatureof(value))` registration
+// argument of a fully-lowered `addClass(token, value, signatureof(value))` registration
 // the sibling token IS in scope — the nameof stage runs before signatureof, so
 // arg[0] is already a string literal. Parity with the di stage's direct
-// `add<I>(C)` lowering then requires the SAME 990010 to fire for a dependency that
+// `addClass<I>(C)` lowering then requires the SAME 990010 to fire for a dependency that
 // references a hole the service token does not bind; without this the inline
 // (inline + signatureof) path would silently emit `??unresolvable??` where the
 // direct path errors. The emitted literal is byte-identical to SignatureArray for
@@ -82,7 +82,7 @@ func (e *Extractor) SignatureArrayForRegistration(arg *shimast.Node, token strin
 // and dependency-hole checking are the di stage's concern (they belong to the
 // service token, not the value's own signature) and are deliberately excluded,
 // so this reproduces exactly the signatures the di stage renders for a bare
-// `add<I>(C)` / `addFactory<I>(fn)` — the two forms Wave-1 authors as inline
+// `addClass<I>(C)` / `addFactory<I>(fn)` — the two forms Wave-1 authors as inline
 // bodies. The branch order mirrors planAddRegistration's value branches.
 func (c *context) signaturesForValue(arg *shimast.Node) ([]signature, bool) {
 	if isFactoryArg(arg) {

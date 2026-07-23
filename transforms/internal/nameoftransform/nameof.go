@@ -9,8 +9,8 @@
 // bare DeriveToken: the reference transformer's ONE deriveToken renders a
 // `Hole<N>` type argument as the literal `$N`, so `nameof<IRepository<$<1>>>()`
 // must lower to `…:IRepository<$1>` — byte-identical to the token the di
-// registration stage derives for the matching direct `add<IRepository<$<1>>>(…)`.
-// Without the hole branch the inline registration path (`add<T>()` sugar →
+// registration stage derives for the matching direct `addClass<IRepository<$<1>>>(…)`.
+// Without the hole branch the inline registration path (`addClass<T>()` sugar →
 // `nameof<T>()`) could never produce the open-template service token. DeriveTokenF
 // also rejects the typescript-go internal-symbol name family (the `0xFE`-prefixed
 // anonymous `__type` equivalents), so an anonymous type argument derives no token
@@ -186,9 +186,9 @@ func exportedName(element *shimast.Node) string {
 // clean skip, not a nil-deref inside GetSymbolAtLocation.
 //
 // A second, subtler hazard shares the same failure mode: a call whose callee is
-// a SOURCE-POSITIONED property access (e.g. the `.as` in `add(...).as<"x">()`)
+// a SOURCE-POSITIONED property access (e.g. the `.as` in `addClass(...).as<"x">()`)
 // but whose OBJECT expression was just replaced by the inline stage's
-// substitution (`add<T>(ctor)` → `add(nameof<T>(), ctor, signatureof(ctor))`).
+// substitution (`addClass<T>(ctor)` → `addClass(nameof<T>(), ctor, signatureof(ctor))`).
 // The factory's `Update...` call rebuilds the property-access node because its
 // child changed, so the node itself keeps a real position, but the rebuild never
 // re-links its `Parent` pointer (that linking only happens for a fresh parse or

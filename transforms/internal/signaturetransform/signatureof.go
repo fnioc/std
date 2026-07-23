@@ -5,13 +5,13 @@
 // emitted literal is byte-identical to the third argument the di registration
 // stage synthesizes for the same value. It is a VALUE-argument primitive (unlike
 // the type-argument nameof): `signatureof(ctor)` binds a constructor / factory
-// expression, and its extracted signature is what a hand-written `add("token",
+// expression, and its extracted signature is what a hand-written `addClass("token",
 // ctor, [[...]])` would carry.
 //
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_signatureof`
 // stage, in canonical order AFTER nameof and BEFORE the di stage: it lowers the
-// synthetic third argument the inline `add<T>()` sugar body emits, leaving the di
-// stage a 3-argument `add(...)` it ignores. A source-written `signatureof(x)`
+// synthetic third argument the inline `addClass<T>()` sugar body emits, leaving the di
+// stage a 3-argument `addClass(...)` it ignores. A source-written `signatureof(x)`
 // (the no-inline manual path) is anchored by symbol, mirroring nameof's two
 // branches.
 package signaturetransform
@@ -48,12 +48,12 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		extractor := ditransform.NewExtractor(ctx, checker, ec, sf, emit)
 		// tokenForCall records the service token of the enclosing registration for a
-		// signatureof call that is a lowered `add(token, value, signatureof(value))`
+		// signatureof call that is a lowered `addClass(token, value, signatureof(value))`
 		// third argument. It is populated TOP-DOWN when the enclosing call is visited
 		// (arg[0] already lowered to a string literal by the nameof stage), then read
 		// when the visitor descends to that signatureof call so it lowers through the
 		// dep-hole-checked extractor variant — 990010 parity with the di stage's
-		// direct add<I>(C) lowering. A standalone signatureof (no enclosing
+		// direct addClass<I>(C) lowering. A standalone signatureof (no enclosing
 		// registration) is absent from this map and keeps its unchecked lowering.
 		tokenForCall := map[*shimast.Node]string{}
 		var visitor *shimast.NodeVisitor
@@ -91,17 +91,17 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 // `(token, value, signatures, scope, key)`, so signatures is ALWAYS argument 3 —
 // it is required, never elided, and the optional scope / key slots follow it.
 // Reading this slot by index is what makes the match survive a keyed registration
-// (`add("base", C, [[...]], void 0, "redis")`), where the signatureof call is
+// (`addClass("base", C, [[...]], void 0, "redis")`), where the signatureof call is
 // no longer the last argument.
 const signaturesArgIndex = 2
 
 // registrationSignatureofCall recognizes a fully-lowered registration call
-// `receiver.add("token", value, signatureof(value)[, scope[, key]])` (or
+// `receiver.addClass("token", value, signatureof(value)[, scope[, key]])` (or
 // `.addFactory`) — after the nameof stage lowered arg[0] to a string literal —
 // and returns the signatureof call node (the signatures argument) plus the
 // service-token string. The signatureof stage stashes this so, when its visitor
 // descends to that call, the argument lowers through the dep-hole-checked
-// extractor variant (990010 parity with the di stage's direct add<I>(C) lowering)
+// extractor variant (990010 parity with the di stage's direct addClass<I>(C) lowering)
 // rather than the tokenless SignatureArray. Matching is purely structural (kind,
 // member name, string-literal arg[0]) — it never touches the checker, so a
 // synthetic (inline-substituted) call is handled without a position/symbol
@@ -122,7 +122,7 @@ func registrationSignatureofCall(node *shimast.Node) (*shimast.Node, string, boo
 		return nil, "", false
 	}
 	method := callee.Name().Text()
-	if method != "add" && method != "addFactory" {
+	if method != "addClass" && method != "addFactory" {
 		return nil, "", false
 	}
 	if args[0].Kind != shimast.KindStringLiteral {

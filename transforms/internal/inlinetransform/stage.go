@@ -201,7 +201,7 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 			})
 			return nil, false
 		}
-		// A keyed sugar (`add<Keyed<T, K>>(Impl)`) now inlines like any other (§98):
+		// A keyed sugar (`addClass<Keyed<T, K>>(Impl)`) now inlines like any other (§98):
 		// the body's `nameof<T>()` derives the BASE token (ServiceBaseTokenFor strips
 		// the brand) and its trailing `keyof<T>()` derives the KEY, composed at
 		// runtime as `base#key` — the same token the di direct stage derives via
@@ -248,7 +248,7 @@ const keyofPrimitiveName = "keyof"
 // elideUnkeyedKeyArg drops the `keyof<T>()` argument from a substituted
 // registration call when T carries no `Keyed<T, K>` brand, so an UNKEYED lowering
 // is byte-identical to the plain form a hand-writer would author
-// (`this.add(nameof<T>(), ctor, signatureof(ctor))` — no scope, no key). A KEYED
+// (`this.addClass(nameof<T>(), ctor, signatureof(ctor))` — no scope, no key). A KEYED
 // call keeps the argument exactly where the body placed it; the keyof stage
 // lowers it to the key string, which di.core composes at runtime as `base#key`.
 //
@@ -320,8 +320,8 @@ func keyArgIndex(args []*shimast.Node, body *ResolvedBody) (int, bool) {
 // trimTrailingUndefined drops trailing explicit undefined arguments. Removing an
 // unkeyed key argument strands the placeholders that were only there to push the
 // key into its slot — a body with no scope to pass writes
-// `add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())`, and dropping
-// only the keyof would leave `add(..., void 0)`, which is not the plain
+// `addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())`, and dropping
+// only the keyof would leave `addClass(..., void 0)`, which is not the plain
 // 3-argument form a hand-writer authors. Trimming is TRAILING-ONLY, so a
 // placeholder a body passes deliberately with a real argument after it survives.
 func trimTrailingUndefined(args []*shimast.Node) []*shimast.Node {

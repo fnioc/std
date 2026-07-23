@@ -17,8 +17,8 @@ import (
 
 // buildInlinePresetWorkspace lays out the di.core inline PRESET workspace: a core
 // package literally named `@rhombus-std/di.core` carrying the `rhombus.inline`
-// `add` entry and the real ServiceManifestInline body
-// (`add<T>(ctor) => this.add(nameof<T>(), ctor, signatureof(ctor))`), so the SAME
+// `addClass` entry and the real ServiceManifestInline body
+// (`addClass<T>(ctor) => this.addClass(nameof<T>(), ctor, signatureof(ctor))`), so the SAME
 // open-template registration can be lowered two ways — through the INLINE pipeline
 // (inline -> nameof -> signatureof) and through the di DIRECT stage. It is the
 // fixture the open-template inline-vs-direct parity test drives.
@@ -33,11 +33,11 @@ func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus.inline": {
-    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "add" } ]
+    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
@@ -58,8 +58,8 @@ export declare function keyof<T>(): string | undefined;
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
-  add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
+    return this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
 };
 `)
@@ -73,10 +73,10 @@ export const ManifestInline = {
 	linkPkg(t, app, "@rhombus-std/di.core", core)
 
 	// The sugar overload arrives through the standard consumer declare-module
-	// augmentation, so `services.add<I<$1>>(C<$1>)` anchors on the di.core member.
+	// augmentation, so `services.addClass<I<$1>>(C<$1>)` anchors on the di.core member.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): unknown;
+    addClass<T>(ctor: unknown): unknown;
   }
 }
 export {};
@@ -125,7 +125,7 @@ func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string 
 }
 
 // depArrayFrom returns the `[[...]]` dependency-signature array literal of the sole
-// lowered `services.add(...)` call — the balanced substring from the first `[[`.
+// lowered `services.addClass(...)` call — the balanced substring from the first `[[`.
 func depArrayFrom(t *testing.T, out string) string {
 	t.Helper()
 	start := strings.Index(out, "[[")
@@ -150,7 +150,7 @@ func depArrayFrom(t *testing.T, out string) string {
 
 // TestOpenTemplateInlinePipelineMatchesDiDirect is the open-template inline-vs-direct
 // fixture #241 deferred: an open-generic template registration
-// `add<IRepo<$<1>>>(SqlRepo<$<1>>)` lowered through the INLINE pipeline
+// `addClass<IRepo<$<1>>>(SqlRepo<$<1>>)` lowered through the INLINE pipeline
 // (inline -> nameof -> signatureof) must carry the same service token AND the same
 // dependency-signature array as the di DIRECT stage's lowering of the identical
 // registration. The nameof hole fix is what unblocks it (a non-hole-aware nameof
@@ -171,7 +171,7 @@ interface IStore<T> {}
 class SqlRepo<T> implements IRepo<$<1>> {
   constructor(store: IStore<T>) { void store; }
 }
-services.add<IRepo<$<1>>>(SqlRepo<$<1>>);
+services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 `
 	prog, app := buildInlinePresetWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -199,7 +199,7 @@ services.add<IRepo<$<1>>>(SqlRepo<$<1>>);
 }
 
 // TestKeyedInlinePipelineComposesBaseKey is the §98 keyed inline lowering
-// end-to-end: `add<Keyed<ICache, "redis">>(RedisCache)` lowered through the full
+// end-to-end: `addClass<Keyed<ICache, "redis">>(RedisCache)` lowered through the full
 // inline pipeline (inline -> nameof -> signatureof -> keyof) splits the keyed token
 // across two arguments — nameof gives the BASE (arg0), keyof gives the KEY (arg5,
 // behind the `void 0` scope slot) — which the runtime composes as `base#key`. The
@@ -211,7 +211,7 @@ func TestKeyedInlinePipelineComposesBaseKey(t *testing.T) {
 import type { Keyed } from '@rhombus-std/di.core';
 interface ICache {}
 class RedisCache implements ICache {}
-services.add<Keyed<ICache, "redis">>(RedisCache);
+services.addClass<Keyed<ICache, "redis">>(RedisCache);
 `
 	prog, app := buildInlinePresetWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -233,7 +233,7 @@ services.add<Keyed<ICache, "redis">>(RedisCache);
 	// the SLOT rather than merely "somewhere at the end": a key that regressed into
 	// the scope slot would still end the call with `"redis")`.
 	if !strings.Contains(inlineOut, `, void 0, "redis")`) {
-		t.Fatalf("expected the keyof key %q in the add() KEY slot (behind the scope placeholder):\n%s", "redis", inlineOut)
+		t.Fatalf("expected the keyof key %q in the addClass() KEY slot (behind the scope placeholder):\n%s", "redis", inlineOut)
 	}
 	// The two halves reunite onto the di direct token.
 	if inlineBase+"#redis" != diTok {

@@ -14,9 +14,9 @@ import (
 
 // buildDiParityWorkspace lays out a workspace whose core package is literally
 // named `@rhombus-std/di.core` — the module the di registration stage anchors its
-// `add` verb on (ditransform's memberAnchoredOnDiCore hardcodes that specifier). It
-// declares the `add<T>(ctor)` sugar overload inside a `declare module
-// '@rhombus-std/di.core'` block so a `services.add<I<$1>>(C<$1>)` call anchors,
+// `addClass` verb on (ditransform's memberAnchoredOnDiCore hardcodes that specifier). It
+// declares the `addClass<T>(ctor)` sugar overload inside a `declare module
+// '@rhombus-std/di.core'` block so a `services.addClass<I<$1>>(C<$1>)` call anchors,
 // plus the `signatureof` primitive and the `$<N>` hole / `Typeof<T>` brands.
 // main.ts is caller-supplied.
 func buildDiParityWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
@@ -31,7 +31,7 @@ func buildDiParityWorkspace(t *testing.T, mainSrc string) (*driver.Program, stri
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 export declare function signatureof(value: unknown): unknown;
@@ -42,7 +42,7 @@ declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): unknown;
+    addClass<T>(ctor: unknown): unknown;
   }
 }
 `)
@@ -74,7 +74,7 @@ declare module '@rhombus-std/di.core' {
 }
 
 // lowerDiMain runs the di registration stage over main.ts and returns the
-// reprinted output plus diagnostics — the direct `add<I<$1>>(C<$1>)` lowering the
+// reprinted output plus diagnostics — the direct `addClass<I<$1>>(C<$1>)` lowering the
 // signatureof path must byte-match.
 func lowerDiMain(t *testing.T, prog *driver.Program, app string) (string, []ditransform.Diagnostic) {
 	t.Helper()
@@ -91,7 +91,7 @@ func lowerDiMain(t *testing.T, prog *driver.Program, app string) (string, []ditr
 // hole-aware signatureof contract: the `[[...]]` dependency-signature array the
 // signatureof stage emits for an open-template value `C<$<N>>` is BYTE-IDENTICAL to
 // the third argument the di registration stage synthesizes for the direct
-// `add<I<$<N>>>(C<$<N>>)` lowering of the SAME value. Both stages share ditransform's
+// `addClass<I<$<N>>>(C<$<N>>)` lowering of the SAME value. Both stages share ditransform's
 // extractInstantiatedSignature + signaturesLiteral path, so a hole renders the same
 // way in both — as the literal `$N` inside a dependency token string, or as the
 // `{ typeArg: N }` slot for a bare `Typeof<$<N>>` positional-token param. Driving
@@ -102,7 +102,7 @@ func TestSignatureofHoleParityWithDiDirect(t *testing.T) {
 		name string
 		// decl declares the interfaces + class the registration targets.
 		decl string
-		// reg is the direct `services.add<I<$1>>(C<$1>)` registration statement.
+		// reg is the direct `services.addClass<I<$1>>(C<$1>)` registration statement.
 		reg string
 		// val is the value expression `signatureof(...)` extracts — the same
 		// class/instantiation expression the reg registers.
@@ -114,7 +114,7 @@ func TestSignatureofHoleParityWithDiDirect(t *testing.T) {
 			name: "bare-typeof-hole",
 			decl: `interface IFoo<T> {}
 class TokenDep { constructor(tok: Typeof<$<1>>) { void tok; } }`,
-			reg: `services.add<IFoo<$<1>>>(TokenDep);`,
+			reg: `services.addClass<IFoo<$<1>>>(TokenDep);`,
 			val: `TokenDep`,
 		},
 		{
@@ -124,7 +124,7 @@ class TokenDep { constructor(tok: Typeof<$<1>>) { void tok; } }`,
 			decl: `interface IRepo<T> {}
 interface IStore<T> {}
 class Repo<T> implements IRepo<$<1>> { constructor(store: IStore<T>) { void store; } }`,
-			reg: `services.add<IRepo<$<1>>>(Repo<$<1>>);`,
+			reg: `services.addClass<IRepo<$<1>>>(Repo<$<1>>);`,
 			val: `Repo<$<1>>`,
 		},
 		{
@@ -136,7 +136,7 @@ class Repo<T> implements IRepo<$<1>> { constructor(store: IStore<T>) { void stor
 interface IStore<T> {}
 interface ILogger {}
 class Svc<T> implements ISvc<$<1>> { constructor(store: IStore<T>, logger: ILogger) { void store; void logger; } }`,
-			reg: `services.add<ISvc<$<1>>>(Svc<$<1>>);`,
+			reg: `services.addClass<ISvc<$<1>>>(Svc<$<1>>);`,
 			val: `Svc<$<1>>`,
 		},
 	}

@@ -15,10 +15,10 @@ type $<N extends number> = Hole<N>;
 `
 
 // TestRegistrationDepHoleErrorsOnInlinePath is the dep-hole fix (#236 finding #1):
-// a fully-lowered `services.add("token", Ctor<$<N>>, signatureof(Ctor<$<N>>))` —
-// the shape the inline `add<T>()` sugar lowers to — whose dependency references a
+// a fully-lowered `services.addClass("token", Ctor<$<N>>, signatureof(Ctor<$<N>>))` —
+// the shape the inline `addClass<T>()` sugar lowers to — whose dependency references a
 // hole the service token does NOT bind must raise 990010 on the signatureof path,
-// at parity with the di stage's direct `add<I>(C)` lowering. Before the fix the
+// at parity with the di stage's direct `addClass<I>(C)` lowering. Before the fix the
 // signatureof stage lowered the third argument through the UNCHECKED SignatureArray
 // (the token was out of scope), silently emitting the array with no error; the
 // enclosing-call token recovery restores the check. The token here binds $1 only,
@@ -27,8 +27,8 @@ func TestRegistrationDepHoleErrorsOnInlinePath(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 ` + holeBrands + `interface IRepo<T> {}
 class SqlRepo<T> implements IRepo<$<1>> { constructor(seed: T) { void seed; } }
-declare const services: { add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
-services.add("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
+declare const services: { addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
+services.addClass("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
 `
 	prog, app := buildSigWorkspace(t, mainSrc)
 	defer func() { _ = prog.Close() }()
@@ -62,8 +62,8 @@ func TestRegistrationDepHoleErrorsBehindTrailingKeySlot(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 ` + holeBrands + `interface IRepo<T> {}
 class SqlRepo<T> implements IRepo<$<1>> { constructor(seed: T) { void seed; } }
-declare const services: { add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
-services.add("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>), void 0, "redis");
+declare const services: { addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
+services.addClass("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>), void 0, "redis");
 `
 	prog, app := buildSigWorkspace(t, mainSrc)
 	defer func() { _ = prog.Close() }()
@@ -87,8 +87,8 @@ func TestRegistrationDepHoleBoundIsClean(t *testing.T) {
 	registered := `import { signatureof } from '@scope/prims';
 ` + holeBrands + `interface IRepo<T> {}
 class SqlRepo<T> implements IRepo<$<1>> { constructor(seed: T) { void seed; } }
-declare const services: { add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
-services.add("m:IRepo<$2>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
+declare const services: { addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown };
+services.addClass("m:IRepo<$2>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
 `
 	standalone := `import { signatureof } from '@scope/prims';
 ` + holeBrands + `interface IRepo<T> {}

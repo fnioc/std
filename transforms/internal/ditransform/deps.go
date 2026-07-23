@@ -425,7 +425,7 @@ func (c *context) extractParamSlot(param *shimast.Node, typeOverride *shimchecke
 	if failure.UnboundTypeParameter != nil {
 		c.emitError(anchor, codeUnboundTypeParameter,
 			"this parameter references an unbound type parameter — register the class "+
-				"via an instantiation expression that binds it (`add<IFoo<$<1>>>(Foo<$<1>>)` "+
+				"via an instantiation expression that binds it (`addClass<IFoo<$<1>>>(Foo<$<1>>)` "+
 				"for an open template, or `Foo<Concrete>` for a closed one)")
 	} else {
 		c.emitError(anchor, codeUnderivableToken,

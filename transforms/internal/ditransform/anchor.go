@@ -12,7 +12,7 @@ const declaringModule = "@rhombus-std/di.core"
 // The di.core authoring interface each matched member is declared on — its runtime
 // overloads AND the transformer's sugar overloads share one interface:
 //
-//	add / addFactory / addValue → IServiceManifestBase
+//	addClass / addFactory / addValue → IServiceManifestBase
 //	as                          → IAsBuilder
 //	resolve                     → IRequiredResolver
 //	resolveAsync / tryResolve   → IResolver
@@ -42,7 +42,7 @@ func memberAnchoredOnDiCore(checker *shimchecker.Checker, name *shimast.Node, de
 	}
 	// A SYNTHETIC name node (no program position) carries no checker symbol — e.g.
 	// the callee of a registration the inline stage already substituted and lowered
-	// (`services.add("tok", C, [[...]])`, whose `add` is a side-parsed clone). The
+	// (`services.addClass("tok", C, [[...]])`, whose `addClass` is a side-parsed clone). The
 	// checker panics on GetSymbolAtLocation for such a node; guard on the position
 	// so a synthetic callee is a clean non-match (the call is already fully lowered),
 	// mirroring the nameof / resolve stages' own `Pos() < 0` guards.

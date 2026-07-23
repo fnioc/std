@@ -12,10 +12,10 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-// setupKeyedInlineWorkspace lays out an inline-active `add`-sugar workspace — the
+// setupKeyedInlineWorkspace lays out an inline-active `addClass`-sugar workspace — the
 // real ServiceManifestInline shape carrying the §98 trailing `keyof<T>()` — whose
-// consumer registers one PLAIN `add<IFoo>(Foo)` and one KEYED
-// `add<Keyed<ICache, "redis">>(RedisCache)`. It is the fixture for keyed inline
+// consumer registers one PLAIN `addClass<IFoo>(Foo)` and one KEYED
+// `addClass<Keyed<ICache, "redis">>(RedisCache)`. It is the fixture for keyed inline
 // lowering: both calls inline, the plain one ELIDES its keyof argument AND the
 // `void 0` scope placeholder that elision strands (byte-parity with the plain
 // 3-argument form), while the keyed one KEEPS both for the keyof stage to lower.
@@ -30,11 +30,11 @@ func setupKeyedInlineWorkspace(t *testing.T) (*driver.Program, string) {
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IServiceManifestBase", "impl": "ManifestInline", "member": "add" } ]
+    "entries": [ { "type": "@scope/core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
   }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 declare const KEY: unique symbol;
@@ -49,8 +49,8 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
-  add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.add(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
+    return this.addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
 };
 `)
@@ -65,7 +65,7 @@ export const ManifestInline = {
 
 	write(t, filepath.Join(app, "sugar.d.ts"), `declare module '@scope/core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): unknown;
+    addClass<T>(ctor: unknown): unknown;
   }
 }
 export {};
@@ -77,8 +77,8 @@ interface IFoo {}
 interface ICache {}
 class Foo implements IFoo {}
 class RedisCache implements ICache {}
-export const a = services.add<IFoo>(Foo);
-export const b = services.add<Keyed<ICache, "redis">>(RedisCache);
+export const a = services.addClass<IFoo>(Foo);
+export const b = services.addClass<Keyed<ICache, "redis">>(RedisCache);
 `)
 	write(t, filepath.Join(app, "tsconfig.json"), `{
   "compilerOptions": {
@@ -99,10 +99,10 @@ export const b = services.add<Keyed<ICache, "redis">>(RedisCache);
 }
 
 // TestStageLowersKeyedRegistration is the §98 keyed inline lowering (retiring the
-// #244 fence): `add<Keyed<T, K>>(Impl)` now INLINES like any other registration.
+// #244 fence): `addClass<Keyed<T, K>>(Impl)` now INLINES like any other registration.
 // The keyed call keeps its `keyof<T>()` argument in the KEY slot (registered for
 // the keyof stage, which lowers it to the key string composed at runtime as
-// `base#key`), while the sibling plain `add<IFoo>(Foo)` inlines and ELIDES that
+// `base#key`), while the sibling plain `addClass<IFoo>(Foo)` inlines and ELIDES that
 // argument along with the `void 0` scope placeholder ahead of it — byte-identical
 // to the plain 3-argument registration form.
 func TestStageLowersKeyedRegistration(t *testing.T) {
@@ -126,11 +126,11 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 	// Both registrations inlined: neither sugar type-argument form survives, and
 	// both emit a nameof primitive (its bound type stays recorded in artifacts, so
 	// the emitted type argument is the body's `T`, not the call-site type).
-	if strings.Contains(out, "add<IFoo>") {
-		t.Errorf("plain add<IFoo> should have inlined, but the sugar form survived:\n%s", out)
+	if strings.Contains(out, "addClass<IFoo>") {
+		t.Errorf("plain addClass<IFoo> should have inlined, but the sugar form survived:\n%s", out)
 	}
-	if strings.Contains(out, "add<Keyed") {
-		t.Errorf("keyed add<Keyed<...>> should have inlined (fence retired), but the sugar form survived:\n%s", out)
+	if strings.Contains(out, "addClass<Keyed") {
+		t.Errorf("keyed addClass<Keyed<...>> should have inlined (fence retired), but the sugar form survived:\n%s", out)
 	}
 	if got := strings.Count(out, "nameof<"); got != 2 {
 		t.Errorf("expected 2 inlined nameof calls (plain + keyed), got %d:\n%s", got, out)

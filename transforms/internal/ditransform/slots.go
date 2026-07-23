@@ -177,7 +177,7 @@ func (c *context) slotLiteral(slot Slot) *shimast.Node {
 }
 
 // signaturesLiteral renders `[[...slots], ...]` — the inline signatures array
-// (an `add` / `addFactory` third argument).
+// (an `addClass` / `addFactory` third argument).
 func (c *context) signaturesLiteral(signatures []signature) *shimast.Node {
 	arrays := make([]*shimast.Node, 0, len(signatures))
 	for _, sig := range signatures {

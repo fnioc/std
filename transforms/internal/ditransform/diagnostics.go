@@ -1,5 +1,5 @@
 // Package ditransform is the Go port of the registration transformer: it lowers
-// the type-driven authoring forms (`add<I>(C)`, `.as<"x">()`, tokenless
+// the type-driven authoring forms (`addClass<I>(C)`, `.as<"x">()`, tokenless
 // `resolve<I>()` / `isService<I>()`, and `nameof<T>()`) to their string-token
 // runtime forms over the ttsc-shipped typescript-go checker, carrying the
 // derived dependency signature inline on each registration. It is the emit-path

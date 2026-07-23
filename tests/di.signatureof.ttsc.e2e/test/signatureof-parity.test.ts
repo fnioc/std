@@ -10,16 +10,16 @@ import { basename, join, resolve } from 'node:path';
 // they emit byte-identical output:
 //
 //   inline path   — inline + nameof + signatureof + di. The type-driven
-//     `add<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.transformer's
-//     rhombus.inline entries) substitute to `this.add(nameof<I>(), C,
+//     `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.transformer's
+//     rhombus.inline entries) substitute to `this.addClass(nameof<I>(), C,
 //     signatureof(C))`; nameof
 //     lowers the token, signatureof lowers the dependency-signature array, and
-//     the di stage leaves the resulting 3-argument `add(...)` untouched.
+//     the di stage leaves the resulting 3-argument `addClass(...)` untouched.
 //     `addValue<I>(value)` substitutes to `this.addValue(nameof<I>(), value)`
 //     — no `signatureof`, since a value carries no deps — and nameof alone
 //     lowers it to the 2-argument `addValue("token", value)`.
 //   semantic path — nameof + di. The di registration stage lowers the SAME
-//     `add<I>(C)` / `addValue<I>(value)` directly to their explicit-token forms.
+//     `addClass<I>(C)` / `addValue<I>(value)` directly to their explicit-token forms.
 //
 // The load-bearing guarantee is that the signatureof array (and, for
 // `addValue`, the bare token) is byte-identical to what the di stage
@@ -113,7 +113,7 @@ type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
 
 declare module "@rhombus-std/di.core" {
   interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
-    add<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
+    addClass<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
     addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
     addValue<I>(value: I): void;
   }
@@ -137,7 +137,7 @@ declare const bazValue: IBaz;
 // Top-level registration statements: the di registration stage lowers
 // registrations that appear as top-level expression statements, so the semantic
 // (di-only) comparison path exercises the same shape the inline path does.
-services.add<IFoo>(Foo);
+services.addClass<IFoo>(Foo);
 services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
 services.addValue<IBaz>(bazValue);
 `;
@@ -244,14 +244,14 @@ beforeAll(() => {
   withBundle = lower('tsconfig.bundle.json', 'dist-bundle');
 }, COLD_BUILD_MS);
 
-describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFactory<I>(fn) / addValue<I>(value)', () => {
+describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
   test('the sugar is lowered: string token (+ signature array where deps exist), no generics or primitives survive', () => {
-    // add / addFactory lowered to a 3-arg call carrying a token and a signature
+    // addClass / addFactory lowered to a 3-arg call carrying a token and a signature
     // array; addValue lowered to a bare 2-arg token + value call (no deps).
-    expect(withInline).toContain('.add("');
+    expect(withInline).toContain('.addClass("');
     expect(withInline).toContain('.addFactory("');
     expect(withInline).toContain('.addValue("');
-    expect(withInline).not.toContain('add<');
+    expect(withInline).not.toContain('addClass<');
     expect(withInline).not.toContain('addFactory<');
     expect(withInline).not.toContain('addValue<');
     // No un-lowered primitive CALL survives (assert the call form, not a bare
@@ -266,7 +266,7 @@ describe.skipIf(!toolchainReady)('signatureof primitive — add<I>(C) / addFacto
     // PATH (inline -> synthetic nameof + signatureof) but never the emitted bytes.
     // Whole-output equality also pins import elision, the derived signature array,
     // and surrounding whitespace.
-    const addLine = (src: string) => src.split('\n').find((l) => l.includes('.add('))?.trim();
+    const addLine = (src: string) => src.split('\n').find((l) => l.includes('.addClass('))?.trim();
     const addValueLine = (src: string) => src.split('\n').find((l) => l.includes('.addValue('))?.trim();
     expect(addLine(withInline)).toBeDefined();
     expect(addLine(withInline)).toEqual(addLine(withoutInline));
