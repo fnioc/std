@@ -25,6 +25,23 @@
 // library imports it from one home.
 
 /**
+ * Compile-time token for a TYPE, derived RAW — `tokenof<IOptions<T>>()`. The
+ * transformer derives the token from the type exactly as spelled, alias-preserving
+ * and with NO brand handling: a `Keyed<T, K>` argument tokenizes as the aliased
+ * `Keyed<...>` reference, NOT the brand-stripped base `tokenfor<T>()` yields for a
+ * keyed SERVICE registration. It is the derivation the tokenless `addOptions<T>()`
+ * form lowers to for its element token, so the registered `IOptions<T>` wrapper and
+ * the `T` it wraps are minted from the one raw derivation and stay relationally
+ * locked. Rewritten at compile time to a string literal; the runtime body only runs
+ * when the transformer is absent.
+ *
+ * @example
+ * ```ts
+ * const key = tokenof<UserOptions>(); // → "pkg:UserOptions" at compile time
+ * ```
+ */
+export function tokenof<T>(): string;
+/**
  * Compile-time token for the value's OWN type — `tokenof(makeThing)`. The
  * transformer derives the token from the argument's type exactly as reported,
  * with NO construct/call unwrap: a factory tokenizes as the function itself, a
@@ -39,7 +56,8 @@
  * const key = tokenof(makeThing); // → "pkg:makeThing" (the function's own type) at compile time
  * ```
  */
-export function tokenof(_value: unknown): string {
+export function tokenof(value: unknown): string;
+export function tokenof(_value?: unknown): string {
   throw new Error(
     'tokenof() requires the @rhombus-std/primitives.transformer build-time transformer, '
       + 'or pass an explicit token string.',

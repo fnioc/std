@@ -2,6 +2,7 @@ package nameoftransform
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -16,10 +17,13 @@ import (
 // dioptionstransform stage pinned (its idempotence test asserted exactly this
 // string). The addOptions<T>() sugar now lowers through the generic inline body +
 // the tokenfor stage's COMPOSED-generic derivation, and it must reproduce this
-// canonical form: the closed-generic wrapper `IOptions<T>` token and the bare
-// element `T` token, relationally locked over the SAME element derivation. The
-// wrapper base is `@rhombus-std/options:IOptions` (the peered options package's
-// root export) and the element is the app-internal `@scope/app/main:UserOptions`.
+// canonical form: the closed-generic wrapper `IOptions<T>` token (composed inner
+// via DeriveTokenF) and the bare element `T` token (`tokenof<T>()`, the RAW
+// DeriveTokenF derivation). Both leaves derive the same raw way, so the wrapper's
+// inner and the element stay relationally locked — including for a brand-carrying
+// element (TestAddOptionsInlineKeyedElementLocksWrapperAndElement). The wrapper
+// base is `@rhombus-std/options:IOptions` (the peered options package's root
+// export) and the element is the app-internal `@scope/app/main:UserOptions`.
 const canonicalAddOptions = `.addOptions("@rhombus-std/options:IOptions<@scope/app/main:UserOptions>", "@scope/app/main:UserOptions")`
 
 // buildOptionsInlineWorkspace lays out the W4 addOptions workspace: a real on-disk
@@ -63,17 +67,19 @@ func buildOptionsInlineWorkspace(t *testing.T, mainSrc string, withOptions bool)
   addOptions(token: string, tToken: string): unknown;
 }
 export declare const services: IServiceManifestBase;
+declare const KEY: unique symbol;
+export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
 	// The real addOptions sugar body, authored over the compile-time tokenfor
 	// primitive (from primitives) and the body-external IOptions type (from the
 	// peered options package). Side-parsed substitution source — never in the app's
 	// typecheck program, so its imports need not resolve on disk here.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives';
 import type { IOptions } from '@rhombus-std/options';
 import type { IServiceManifestBase } from './index';
 export const ManifestOptionsInline = {
   addOptions<T>(this: IServiceManifestBase): unknown {
-    return this.addOptions(tokenfor<IOptions<T>>(), tokenfor<T>());
+    return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
   },
 };
 `)
@@ -185,6 +191,49 @@ services.addOptions<UserOptions>();
 	}
 	if strings.Contains(out, "tokenfor") {
 		t.Fatalf("a tokenfor primitive survived lowering:\n%s", out)
+	}
+}
+
+// TestAddOptionsInlineKeyedElementLocksWrapperAndElement is the brand-carrying
+// element parity net: when T is a `Keyed<IFoo, "k">`, the wrapper's inner token
+// and the bare element token must STILL be minted from the one derivation, so the
+// registered `IOptions<element>` and the `element` it wraps agree — the relational
+// lock the two-token verb depends on. The element uses `tokenof<T>()` (the RAW,
+// alias-preserving derivation), NOT `tokenfor<T>()` (which strips the Keyed brand
+// to the bare base for keyed SERVICE registration); the composed wrapper's inner
+// leaf derives the same RAW way, so the pair is locked. Without it the wrapper
+// carried `IOptions<...Keyed<...>>` while the element carried the stripped base —
+// a mismatched pair diverging from the retired stage's single-derivation lowering.
+func TestAddOptionsInlineKeyedElementLocksWrapperAndElement(t *testing.T) {
+	src := `import { services, Keyed } from '@rhombus-std/di.core';
+interface IFoo { name: string; }
+services.addOptions<Keyed<IFoo, "k">>();
+`
+	prog, app := buildOptionsInlineWorkspace(t, src, true)
+	defer func() { _ = prog.Close() }()
+
+	out, diags := lowerOptionsInline(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics lowering addOptions<Keyed<IFoo,\"k\">>(): %+v", diags)
+	}
+	// A TS string literal may embed escaped quotes (a keyed token carries `\"k\"`),
+	// so match the two literals with an escape-aware pattern and strip the outer
+	// quotes to compare their inner token content.
+	lit := `"(?:\\.|[^"\\])*"`
+	m := regexp.MustCompile(`\.addOptions\((` + lit + `), (` + lit + `)\)`).FindStringSubmatch(out)
+	if m == nil {
+		t.Fatalf("addOptions did not lower to the two-token verb:\n%s", out)
+	}
+	wrapper, element := m[1][1:len(m[1])-1], m[2][1:len(m[2])-1]
+	// Relational lock: the wrapper is IOptions<element> over the SAME element token
+	// the second argument carries — both minted from the one raw derivation.
+	if want := "@rhombus-std/options:IOptions<" + element + ">"; wrapper != want {
+		t.Fatalf("wrapper/element not locked for a keyed element:\n wrapper: %s\n element: %s\n want wrapper: %s", wrapper, element, want)
+	}
+	// The keyed element derives RAW (the aliased Keyed<...> reference), never the
+	// brand-stripped bare base a keyed service registration would use.
+	if !strings.Contains(element, "Keyed<") {
+		t.Fatalf("keyed element should carry the raw Keyed<...> token, got %q", element)
 	}
 }
 

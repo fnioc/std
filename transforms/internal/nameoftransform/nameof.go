@@ -97,9 +97,27 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 					token, _ := tokens.ServiceBaseTokenFor(ctx, t)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
+				// TYPE-argument tokenof<T>() — RAW derivation, source-written. The
+				// checker-anchored twin of the synthetic path above: derives the token
+				// exactly as spelled (DeriveTokenF, no keyed strip).
+				if t, ok := tokenofTypeCall(checker, call); ok {
+					token, _ := tokens.DeriveTokenF(ctx, t, nil)
+					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+				}
 				// TYPE-argument tokenfor<T>() — synthetic (inline-substituted).
 				if use, ok := registeredNameof(artifacts, node); ok {
 					token, _ := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
+					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+				}
+				// TYPE-argument tokenof<T>() — RAW derivation, synthetic
+				// (inline-substituted). Unlike tokenfor's ServiceBaseTokenFor above,
+				// this derives the token exactly as spelled (DeriveTokenF): NO keyed
+				// brand strip, so a `Keyed<T, K>` element tokenizes as the aliased
+				// `Keyed<...>` reference. It is the element half of the addOptions
+				// body (`tokenof<T>()`) and derives the SAME way the composed wrapper's
+				// inner leaf does, keeping the wrapper/element pair relationally locked.
+				if use, ok := registeredTokenofType(artifacts, node); ok {
+					token, _ := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
 				// TYPE-argument tokenfor<Wrapper<T>>() — COMPOSED generic, synthetic
@@ -168,6 +186,23 @@ func registeredComposedNameof(artifacts *inlinetransform.Artifacts, node *shimas
 	}
 	use, ok := artifacts.PrimitiveCalls[node]
 	if !ok || use.Name != nameofName || use.Composed == nil {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	return use, true
+}
+
+// registeredTokenofType reports whether node is a synthetic `tokenof` call the
+// inline stage registered with a resolved TYPE argument (`tokenof<T>()`) — the
+// RAW-derivation twin of registeredNameof (which matches tokenfor and strips the
+// keyed brand via ServiceBaseTokenFor). It is disjoint from registeredNameof by
+// callee symbol (tokenof vs tokenfor) and from the value-arg tokenof form (which
+// carries a ValueArg and no TypeArgs), so a call matches at most one path.
+func registeredTokenofType(artifacts *inlinetransform.Artifacts, node *shimast.Node) (inlinetransform.PrimitiveUse, bool) {
+	if artifacts == nil {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	use, ok := artifacts.PrimitiveCalls[node]
+	if !ok || use.Name != tokenofName || len(use.TypeArgs) == 0 {
 		return inlinetransform.PrimitiveUse{}, false
 	}
 	return use, true
@@ -429,6 +464,36 @@ func isNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) bo
 		}
 	}
 	return symbol.Name == nameofName
+}
+
+// tokenofTypeCall reports whether call is a source-written single-TYPE-argument
+// call whose callee resolves (following an import alias) to the `tokenof` symbol,
+// and returns the type argument's checker type. It is the type-arg twin of
+// valueArgCall (which matches a NO-type-argument tokenof over a value): the two are
+// disjoint by type-argument count, so a tokenof call matches at most one. It shares
+// isNameofCall's synthetic-node guard — a callee with no program position or an
+// unlinked Parent is never a source-written call (the synthetic form is handled via
+// registeredTokenofType) — so such a node is a clean skip, not a checker nil-deref.
+func tokenofTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression) (*shimchecker.Type, bool) {
+	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+		return nil, false
+	}
+	if call.Expression.Pos() < 0 || call.Expression.Parent == nil {
+		return nil, false
+	}
+	symbol := checker.GetSymbolAtLocation(call.Expression)
+	if symbol == nil {
+		return nil, false
+	}
+	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
+		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
+			symbol = aliased
+		}
+	}
+	if symbol.Name != tokenofName {
+		return nil, false
+	}
+	return checker.GetTypeFromTypeNode(call.TypeArguments.Nodes[0]), true
 }
 
 // valueArgCall reports whether call is a source-written VALUE-argument call to

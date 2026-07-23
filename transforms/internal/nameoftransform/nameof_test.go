@@ -38,6 +38,7 @@ func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string
 export declare const services: IServiceManifestBase;
 export declare function tokenfor<T>(): string;
 export declare function tokenfor(value: unknown): string;
+export declare function tokenof<T>(): string;
 export declare function tokenof(value: unknown): string;
 export declare function signatureof(value: unknown): unknown;
 declare const HOLE: unique symbol;
@@ -323,5 +324,48 @@ services.addClass<Keyed<ICache, "redis">>(RedisCache);
 	// The two halves compose exactly onto the di direct token.
 	if nameofTok+"#redis" != diTok {
 		t.Fatalf("base + key must compose onto the di token: tokenfor=%q + #redis != di=%q", nameofTok, diTok)
+	}
+}
+
+// TestTokenofTypeArgDerivesRawType pins the RAW type-argument derivation
+// `tokenof<T>()` — the source-written twin of the synthetic addOptions element —
+// against its `tokenfor<T>()` sibling. For a `Keyed<T, K>` type, `tokenof<T>()`
+// keeps the WHOLE aliased `Keyed<...>` reference (DeriveTokenF, no brand strip),
+// whereas `tokenfor<T>()` strips to the bare service base. This is the distinction
+// the addOptions element depends on to stay locked to the composed wrapper's inner
+// leaf (which also derives raw); a plain (unbranded) type derives identically
+// through both, so only the brand case discriminates them.
+func TestTokenofTypeArgDerivesRawType(t *testing.T) {
+	src := `import { tokenfor, tokenof, Keyed } from '@rhombus-std/di.core';
+interface ICache {}
+export const raw = tokenof<Keyed<ICache, "redis">>();
+export const base = tokenfor<Keyed<ICache, "redis">>();
+export const plainRaw = tokenof<ICache>();
+export const plainBase = tokenfor<ICache>();
+`
+	prog, app := buildNameofWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerNameof(t, prog, app)
+	rawTok := nameofToken(t, out, "raw")
+	baseTok := nameofToken(t, out, "base")
+
+	// tokenof keeps the raw aliased Keyed<...> reference — no brand strip, no key.
+	if !strings.Contains(rawTok, "Keyed<") {
+		t.Fatalf("tokenof<Keyed<...>>() should keep the raw Keyed<...> reference, got %q", rawTok)
+	}
+	if strings.Contains(rawTok, "#") {
+		t.Fatalf("tokenof derives the raw type, never a keyed base#key suffix; got %q", rawTok)
+	}
+	// tokenfor strips the brand; the two must therefore DIVERGE on a keyed type.
+	if strings.Contains(baseTok, "Keyed<") {
+		t.Fatalf("tokenfor<Keyed<...>>() strips the brand; got %q", baseTok)
+	}
+	if rawTok == baseTok {
+		t.Fatalf("tokenof (raw) and tokenfor (stripped base) must diverge on a keyed type: both %q", rawTok)
+	}
+	// A plain unbranded type derives identically through both primitives.
+	if plainRaw, plainBase := nameofToken(t, out, "plainRaw"), nameofToken(t, out, "plainBase"); plainRaw != plainBase {
+		t.Fatalf("tokenof and tokenfor must agree on a plain type: %q vs %q", plainRaw, plainBase)
 	}
 }
