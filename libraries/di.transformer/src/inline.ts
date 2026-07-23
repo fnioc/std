@@ -55,17 +55,17 @@ interface IInlineRegistrationTarget {
     token: Token,
     ctor: Ctor,
     signatures: DepSignatures,
-    scope: undefined,
-    key: string | undefined,
+    scope?: undefined,
+    key?: string | undefined,
   ): IServiceManifest;
   addFactory(
     token: Token,
     factory: Factory,
     signatures: DepSignatures,
-    scope: undefined,
-    key: string | undefined,
+    scope?: undefined,
+    key?: string | undefined,
   ): IServiceManifest;
-  addValue(token: Token, value: unknown, key: string | undefined): IServiceManifest;
+  addValue(token: Token, value: unknown, key?: string | undefined): IServiceManifest;
 }
 
 /**
@@ -125,6 +125,49 @@ export const ServiceManifestInline = {
   },
   addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
     return this.addValue(tokenfor<I>(), value, keyof<I>());
+  },
+};
+
+/**
+ * The no-type-arg SELF-registration sugar bodies — the `addClass(ctor)`,
+ * `addFactory(fn)`, and `addValue(value)` forms, where the service token is
+ * derived from the VALUE rather than an explicit `<I>` type argument. Each is the
+ * EXACT hand-written form a no-transformer consumer would author:
+ *
+ *   addClass(ctor)   → this.addClass(tokenfor(ctor), ctor, signatureof(ctor))
+ *   addFactory(fn)   → this.addFactory(tokenfor(fn), fn, signatureof(fn))
+ *   addValue(value)  → this.addValue(tokenfor(value), value)
+ *
+ * The value-argument `tokenfor(value)` derives the service token from the
+ * argument's PRODUCED type — a constructable value tokenizes as the instance it
+ * builds, a callable value as what it returns, any other value as itself — so
+ * `addClass(SqlUserRepo)` registers `SqlUserRepo` under its own instance token
+ * (self-registration), matching what di.core's inferred lowering produces
+ * byte-for-byte. `signatureof(...)` supplies the same third-argument dependency
+ * array as the explicit forms.
+ *
+ * A self-registration is UNKEYED and lifetime-unchosen by construction (a key
+ * needs the `<Keyed<T, K>>` type argument these forms omit, and the lifetime is
+ * chosen later via `.as(...)`), so the bodies write NO scope placeholder and NO
+ * `keyof` — the lowered call is the plain 3-argument (`addClass` / `addFactory`)
+ * or 2-argument (`addValue`) form directly, with nothing to elide.
+ *
+ * These are SEPARATE object-literal members from `ServiceManifestInline` because
+ * the inline stage discriminates a sugar overload from a runtime one structurally,
+ * by TYPE-PARAMETER COUNT and value-parameter names: the self forms carry ZERO
+ * type parameters (count 0) where the generic forms carry one, so the two never
+ * collide even though they share the member names and the `ctor` / `factory` /
+ * `value` parameter names.
+ */
+export const ServiceManifestSelfInline = {
+  addClass(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
+    return this.addClass(tokenfor(ctor), ctor, signatureof(ctor));
+  },
+  addFactory(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
+    return this.addFactory(tokenfor(factory), factory, signatureof(factory));
+  },
+  addValue(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
+    return this.addValue(tokenfor(value), value);
   },
 };
 

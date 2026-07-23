@@ -55,6 +55,21 @@ declare module '@rhombus-std/di.core' {
   // interface's type-parameter list.
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     /**
+     * No-type-arg SELF-registration — `addClass(SqlUserRepo)` registers the class
+     * under its OWN service token (the instance it builds), lowering to
+     * `addClass("token", C, signatures)` exactly like the explicit form with the
+     * token derived from the VALUE instead of a `<I>` type argument. It is the
+     * form you reach for when the implementation IS the service (no separate
+     * interface to register against). Never runs post-transform.
+     *
+     * Declared BEFORE the generic `addClass<I>(ctor)` so a no-type-arg call binds
+     * this non-generic overload (TypeScript picks the first applicable overload in
+     * declaration order); an explicit `addClass<ILogger>(C)` skips it — type
+     * arguments are not applicable to a non-generic signature — and binds the
+     * generic interface-registration form below.
+     */
+    addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
+    /**
      * Type-driven class authoring — lowers to
      * `addClass("token", C, signatures)`. The ctor is typed `Ctor<any[], I>` (a
      * plain construct signature, so an abstract class is rejected). Never runs
@@ -103,6 +118,14 @@ declare module '@rhombus-std/di.core' {
       overrides: ReadonlyArray<string | undefined>,
     ): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     /**
+     * No-type-arg SELF-registration — `addFactory(makeThing)` registers the
+     * factory under the service token of what it RETURNS, lowering to
+     * `addFactory("token", fn, signatures)` with the token derived from the value.
+     * Declared before the generic `addFactory<I>(fn)` for the same overload-order
+     * reason as `addClass`. Never runs post-transform.
+     */
+    addFactory(factory: Func<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
+    /**
      * Type-driven factory authoring — `addFactory<I>(fn)` lowers to
      * `addFactory("token", fn, signatures)`. It coexists with di's runtime
      * `addFactory(token, factory, signatures, …)` overloads — arity and the
@@ -126,6 +149,14 @@ declare module '@rhombus-std/di.core' {
       scope: Scopes,
       key: string,
     ): AddChain<Scopes, 'signature' | 'signatures', false>;
+    /**
+     * No-type-arg SELF-registration — `addValue(config)` registers the value
+     * under its OWN type's service token, lowering to `addValue("token", v)`. A
+     * value carries no construct/call signature, so the token is the value's own
+     * type. Declared before the generic `addValue<I>(value)` for the same
+     * overload-order reason as `addClass`. Never runs post-transform.
+     */
+    addValue(value: unknown): IServiceManifest<Scopes>;
     /**
      * Type-driven value authoring — lowers to `addValue("token", v)`. A value
      * carries neither deps nor a lifetime, so no slot survives: it hands back the

@@ -58,14 +58,29 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 			}
 			if node.Kind == shimast.KindCallExpression {
 				call := node.AsCallExpression()
+				// TYPE-argument tokenfor<T>() — source-written.
 				if isNameofCall(checker, call) {
 					typeNode := call.TypeArguments.Nodes[0]
 					t := checker.GetTypeFromTypeNode(typeNode)
 					token, _ := tokens.ServiceBaseTokenFor(ctx, t)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
+				// TYPE-argument tokenfor<T>() — synthetic (inline-substituted).
 				if use, ok := registeredNameof(artifacts, node); ok {
 					token, _ := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
+					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+				}
+				// VALUE-argument tokenfor(value) — synthetic (the inline
+				// self-registration body's `this.addClass(tokenfor(ctor), ...)`).
+				if arg, ok := registeredNameofValue(artifacts, node); ok {
+					produced := tokens.ProducedTypeOf(checker, checker.GetTypeAtLocation(arg))
+					token, _ := tokens.ServiceBaseTokenFor(ctx, produced)
+					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+				}
+				// VALUE-argument tokenfor(value) — source-written (no-inline manual path).
+				if arg, ok := valueArgNameofCall(checker, call); ok {
+					produced := tokens.ProducedTypeOf(checker, checker.GetTypeAtLocation(arg))
+					token, _ := tokens.ServiceBaseTokenFor(ctx, produced)
 					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 				}
 			}
@@ -81,7 +96,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 }
 
 // registeredNameof reports whether node is a synthetic `nameof` call the inline
-// stage registered with a resolved type argument.
+// stage registered with a resolved TYPE argument (`tokenfor<T>()`).
 func registeredNameof(artifacts *inlinetransform.Artifacts, node *shimast.Node) (inlinetransform.PrimitiveUse, bool) {
 	if artifacts == nil {
 		return inlinetransform.PrimitiveUse{}, false
@@ -91,6 +106,24 @@ func registeredNameof(artifacts *inlinetransform.Artifacts, node *shimast.Node) 
 		return inlinetransform.PrimitiveUse{}, false
 	}
 	return use, true
+}
+
+// registeredNameofValue reports whether node is a synthetic tokenfor call the
+// inline stage registered with a VALUE argument (`tokenfor(value)`) — the shape
+// the self-registration sugar body (`addClass(ctor) => this.addClass(tokenfor(ctor),
+// ctor, signatureof(ctor))`) mints. It carries the ORIGINAL, program-bound
+// call-site argument (ValueArg) and NO type argument; the stage derives the token
+// from that argument's produced type. It is the value-arg twin of registeredNameof,
+// mirroring how the signatureof stage reads a substituted value argument.
+func registeredNameofValue(artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimast.Node, bool) {
+	if artifacts == nil {
+		return nil, false
+	}
+	use, ok := artifacts.PrimitiveCalls[node]
+	if !ok || use.Name != nameofName || use.ValueArg == nil || len(use.TypeArgs) != 0 {
+		return nil, false
+	}
+	return use.ValueArg, true
 }
 
 // elideNameofImports drops the now-unreferenced `nameof` binding from the file's
@@ -214,4 +247,42 @@ func isNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) bo
 		}
 	}
 	return symbol.Name == nameofName
+}
+
+// valueArgNameofCall reports whether call is a source-written VALUE-argument
+// tokenfor call — a NO-type-argument, single-value-argument call whose callee
+// resolves (following an import alias) to the `tokenfor` symbol — and returns its
+// value argument. It is the value-arg twin of isNameofCall: the two are disjoint
+// by the type-argument count (a type-arg call has exactly one type argument, a
+// value-arg call none), so a call never matches both.
+//
+// It anchors on the checker, so it carries the same synthetic-node guard
+// isNameofCall documents: a callee with no program position (a substituted clone)
+// or an unlinked Parent is never a source-written call — the synthetic value-arg
+// form is handled via registeredNameofValue — so a negative position or nil
+// Parent is a clean skip, not a nil-deref inside GetSymbolAtLocation.
+func valueArgNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) (*shimast.Node, bool) {
+	if call.TypeArguments != nil && len(call.TypeArguments.Nodes) != 0 {
+		return nil, false
+	}
+	if call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		return nil, false
+	}
+	callee := call.Expression
+	if callee.Pos() < 0 || callee.Parent == nil {
+		return nil, false
+	}
+	symbol := checker.GetSymbolAtLocation(callee)
+	if symbol == nil {
+		return nil, false
+	}
+	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
+		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
+			symbol = aliased
+		}
+	}
+	if symbol.Name != nameofName {
+		return nil, false
+	}
+	return call.Arguments.Nodes[0], true
 }

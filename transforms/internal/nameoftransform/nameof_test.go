@@ -37,6 +37,7 @@ func buildNameofWorkspace(t *testing.T, mainSrc string) (*driver.Program, string
 }
 export declare const services: IServiceManifestBase;
 export declare function tokenfor<T>(): string;
+export declare function tokenfor(value: unknown): string;
 export declare function signatureof(value: unknown): unknown;
 declare const HOLE: unique symbol;
 export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };

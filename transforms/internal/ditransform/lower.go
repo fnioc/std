@@ -232,16 +232,15 @@ func (c *context) tokenForReg(reg foundReg) (string, bool) {
 
 func (c *context) inferredRegType(reg foundReg) *shimchecker.Type {
 	t := c.checker.GetTypeAtLocation(reg.arg)
+	// addValue registers an already-built value under its own type — no
+	// construct/call unwrap. Every other verb produces the type the value builds
+	// or returns, which is exactly the value-arg `tokenfor(value)` primitive's
+	// semantics, shared from the tokens core so the di-direct and inline
+	// self-registration paths derive the same token by construction.
 	if reg.method == "addValue" {
 		return t
 	}
-	if ctorSigs := c.constructSignatures(t); len(ctorSigs) != 0 {
-		return c.checker.GetReturnTypeOfSignature(ctorSigs[0])
-	}
-	if callSigs := c.callSignatures(t); len(callSigs) != 0 {
-		return c.checker.GetReturnTypeOfSignature(callSigs[0])
-	}
-	return t
+	return tokens.ProducedTypeOf(c.checker, t)
 }
 
 // classifyServiceToken classifies a derived service token against the open-

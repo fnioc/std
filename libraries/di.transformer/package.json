@@ -41,6 +41,21 @@
         "member": "addValue"
       },
       {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestSelfInline",
+        "member": "addClass"
+      },
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestSelfInline",
+        "member": "addFactory"
+      },
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestSelfInline",
+        "member": "addValue"
+      },
+      {
         "type": "@rhombus-std/di.core:IWithSignatureBuilder",
         "impl": "ManifestChainInline",
         "member": "withSignature"

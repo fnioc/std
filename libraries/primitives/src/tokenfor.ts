@@ -15,7 +15,7 @@
 // the calls.
 
 /**
- * Compile-time token for a type. Rewritten by the
+ * Compile-time token for a TYPE — `tokenfor<IUserRepo>()`. Rewritten by the
  * @rhombus-std/primitives.transformer build-time transformer to a string
  * literal; the runtime body only runs when the transformer is absent.
  *
@@ -24,10 +24,25 @@
  * const key = tokenfor<IUserRepo>(); // → "pkg/contracts:IUserRepo" at compile time
  * ```
  */
-export function tokenfor<T>(): string {
-  void (0 as unknown as T);
+export function tokenfor<T>(): string;
+/**
+ * Compile-time token for the type a VALUE produces — `tokenfor(SqlUserRepo)`.
+ * The transformer derives the token from the argument's PRODUCED type: a
+ * constructable value (a class) yields the instance it builds, a callable value
+ * (a factory) yields what it returns, any other value yields its own type. It is
+ * the derivation the no-type-arg self-registration forms (`addClass(C)`,
+ * `addFactory(fn)`, `addValue(v)`) lower to. Rewritten at compile time to a string
+ * literal; the runtime body only runs when the transformer is absent.
+ *
+ * @example
+ * ```ts
+ * const key = tokenfor(SqlUserRepo); // → "pkg:SqlUserRepo" (the instance type) at compile time
+ * ```
+ */
+export function tokenfor(value: unknown): string;
+export function tokenfor(_value?: unknown): string {
   throw new Error(
-    'tokenfor<T>() requires the @rhombus-std/primitives.transformer build-time transformer, '
+    'tokenfor() requires the @rhombus-std/primitives.transformer build-time transformer, '
       + 'or pass an explicit token string.',
   );
 }

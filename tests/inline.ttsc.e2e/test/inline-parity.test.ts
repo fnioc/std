@@ -304,6 +304,7 @@ import type { AddChain, Ctor, Slot } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+    addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     addClass<I>(ctor: Ctor<any[], I>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
   }
   interface IWithSignatureBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
@@ -330,6 +331,11 @@ interface IRepo<T> {}
 interface IStore<T> {}
 
 class ConsoleLogger implements ILogger {}
+class SelfRepo {
+  constructor(clock: IClock) {
+    void clock;
+  }
+}
 class ThingRepo {
   constructor(store: IStore<$<1>>) {
     void store;
@@ -341,6 +347,10 @@ declare const services: IServiceManifest<'singleton'>;
 export const closed = services.addClass<ILogger>(ConsoleLogger).withSignature<[IClock]>().as<'singleton'>();
 
 export const emptySig = services.addClass<ILogger>(ConsoleLogger).withSignature<[]>().as<'singleton'>();
+
+// W3 no-type-arg SELF-registration: the token derives from the VALUE (SelfRepo's
+// own instance type), not an explicit <I>. Lowers to the plain 3-arg form.
+export const self = services.addClass(SelfRepo);
 
 export const open = services.addClass<IRepo<$<1>>>(ThingRepo);
 `;
@@ -544,6 +554,29 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // Byte parity with di-direct (the bare ThingRepo value has no instantiation
     // type args to strip, so the whole call matches, not just the token).
     expect(lineWith(chainSemantic, 'open =')).toEqual(line);
+  });
+
+  test('self-registration: addClass(SelfRepo) derives the token from the value, byte-parity with di-direct', () => {
+    // W3 no-type-arg self-registration. The inline path routes through
+    // ServiceManifestSelfInline (value-arg tokenfor + signatureof), the di-direct
+    // path through inferredRegType — both derive SelfRepo's own instance token and
+    // its ctor dependency signature, so the lowered call is byte-identical. Same
+    // co-active-di caveat as the closed chain (di could lower a no-type-arg addClass
+    // alone), so this is production-path agreement + regression net; the Go
+    // TestSelfInlineAddClassMatchesDiDirect proves inline-in-isolation.
+    const line = lineWith(chainInline, 'self =');
+    expect(line).toBeDefined();
+    expect(line).toContain('addClass("');
+    // Self-registration is unkeyed and lifetime-unchosen: the plain 3-arg form,
+    // no scope placeholder or trailing key.
+    expect(line).not.toContain('void 0');
+    expect(line).not.toContain('undefined');
+    assertNoAuthoringSurvivors(chainInline);
+    // The token is SelfRepo's own instance token, and the ctor dep is IClock.
+    expect(line).toContain('SelfRepo');
+    expect(chainInline).toContain('IClock');
+    // Byte parity with the di-direct inferred lowering of the same call.
+    expect(lineWith(chainSemantic, 'self =')).toEqual(line);
   });
 
   test('whole-file byte parity: inline pipeline ≡ di-direct for the closed + open chain', () => {
