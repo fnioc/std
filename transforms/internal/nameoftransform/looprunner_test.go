@@ -167,6 +167,106 @@ func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
 	}
 }
 
+// buildSelfInlineLoop builds the inline + primitive stages (inline, nameof,
+// signatureof, keyof, valueof — NO di stage) over a self-inline workspace, sharing
+// ONE artifacts bag in canonical order. It is the inline-ISOLATION loop for the
+// self-registration cases: excluding the di stage proves the inline path alone
+// settles, the same isolation TestChainSettlesThroughInlinePrimitivesOnly uses for
+// the chain.
+func buildSelfInlineLoop(t *testing.T, prog *driver.Program, app string, artifacts *inlinetransform.Artifacts) []plugin.FileTransform {
+	t.Helper()
+	ctx := plugin.NewContext(prog, app)
+	bodies, cerr := inlinetransform.Collect(app)
+	if cerr != nil {
+		t.Fatalf("collect: %v", cerr)
+	}
+	return []plugin.FileTransform{
+		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
+		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {}),
+		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+	}
+}
+
+// TestSelfRegistrationSettlesUnderLoop is the FINDING-3 loop-stability net for the
+// no-type-arg self-registration forms — the same gap class that hid the W2 zero-arg
+// re-match bug (a single fixed pass would never surface a stage re-matching its own
+// lowered output). Each self form (addClass / addFactory / addValue, PLUS the
+// tokenof raw-type addValue-of-a-function case the W3 fix introduced) is driven
+// through plugin.RunToFixedPoint: it must SETTLE (never exhaust the pass cap) in a
+// couple of passes, and re-running every stage over the settled tree must be a
+// pointer-identity no-op — proving no stage re-fires on its own output.
+func TestSelfRegistrationSettlesUnderLoop(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "addClass",
+			src: `import { services } from '@rhombus-std/di.core';
+interface IDb {}
+class SqlUserRepo { constructor(db: IDb) { void db; } }
+services.addClass(SqlUserRepo);
+`,
+		},
+		{
+			name: "addFactory",
+			src: `import { services } from '@rhombus-std/di.core';
+interface IDb {}
+interface Thing {}
+declare function makeThing(db: IDb): Thing;
+services.addFactory(makeThing);
+`,
+		},
+		{
+			name: "addValue",
+			src: `import { services } from '@rhombus-std/di.core';
+interface AppConfig { host: string }
+declare const cfg: AppConfig;
+services.addValue(cfg);
+`,
+		},
+		{
+			// The W3-fix raw-type case: a callable value registered via addValue lowers
+			// through tokenof (own type), not tokenfor (produced type). Its loop
+			// stability is the case the fix must not regress.
+			name: "addValue(fn) via tokenof",
+			src: `import { services } from '@rhombus-std/di.core';
+interface Thing {}
+declare function makeThing(): Thing;
+services.addValue(makeThing);
+`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prog, app := buildSelfInlineWorkspace(t, tc.src)
+			defer func() { _ = prog.Close() }()
+
+			artifacts := inlinetransform.NewArtifacts()
+			stages := buildSelfInlineLoop(t, prog, app, artifacts)
+
+			ec := shimprinter.NewEmitContext()
+			settled, passes, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
+			if exhausted {
+				t.Fatalf("%s did not settle within %d passes", tc.name, loopMaxPasses)
+			}
+			if !artifacts.Active {
+				t.Fatalf("%s: inline artifacts not active — the self entry did not resolve", tc.name)
+			}
+			if passes > 4 {
+				t.Errorf("%s took %d passes to settle, want <= 4", tc.name, passes)
+			}
+			for i, stage := range stages {
+				if out := stage(ec, settled); out != settled {
+					t.Errorf("%s: settled-tree stage %d re-fired (%p != %p) — the loop would not terminate", tc.name, i, out, settled)
+				}
+			}
+		})
+	}
+}
+
 // TestChainSettlesThroughInlinePrimitivesOnly is the W1 verification: a 3-deep
 // registration chain `addClass<I>(C).withSignature<T>().as<S>()` lowered through
 // inline + the primitive stages ONLY (no di stage) must SETTLE under the
