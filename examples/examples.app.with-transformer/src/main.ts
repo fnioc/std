@@ -213,8 +213,8 @@ let services = builder.services;
 // library's greeting + health check via its manual registration function. Both
 // greetings land in the one IGreeting collection. The manifest is immutable, so
 // every registration call is threaded back into `services` — a bare
-// `services.add(...)` statement would silently register nothing.
-services = services.add<IGreeting>(FormalGreeting).as<'singleton'>();
+// `services.addClass(...)` statement would silently register nothing.
+services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>();
 services = addCasualServices(services);
 
 // The async banner (Promise<IBanner>) and the report factory, both from the

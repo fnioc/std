@@ -32,8 +32,8 @@ export function addCasualServices<S extends string>(
   // Contributes a greeting to the shared IGreeting collection at the hand-written
   // token — the same one the with-transformer side derives. Zero-dep ctor, so the
   // signature list is empty.
-  services = services.add(GREETING_TOKEN, CasualGreeting, [[]], 'singleton');
+  services = services.addClass(GREETING_TOKEN, CasualGreeting, [[]], 'singleton');
   // The optional health check — present only because this library was wired in.
-  services = services.add(HEALTH_CHECK_TOKEN, HealthCheck, [[]], 'singleton');
+  services = services.addClass(HEALTH_CHECK_TOKEN, HealthCheck, [[]], 'singleton');
   return services;
 }

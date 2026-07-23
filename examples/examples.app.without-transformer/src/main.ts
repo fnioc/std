@@ -196,9 +196,9 @@ let services = builder.services;
 // The with-transformer library's greeting at the shared token, plus the
 // without-transformer library's greeting + health check via its manual function.
 // The manifest is immutable, so every registration call is threaded back into
-// `services` — a bare `services.add(...)` statement would silently register
+// `services` — a bare `services.addClass(...)` statement would silently register
 // nothing.
-services = services.add(GREETING_TOKEN, FormalGreeting, [[]], 'singleton');
+services = services.addClass(GREETING_TOKEN, FormalGreeting, [[]], 'singleton');
 services = addCasualServices(services);
 
 // The async banner and the report factory, both from the built with-transformer
