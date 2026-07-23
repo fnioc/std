@@ -1,7 +1,7 @@
 # Transformer architecture
 
 `@rhombus-std/di.transformer`, `di.transformer.options`, `config.transformer`, and
-`primitives.transformer` each rewrite TypeScript at compile time — `tokenfor<T>()`, `add<T>()`,
+`primitives.transformer` each rewrite TypeScript at compile time — `tokenfor<T>()`, `addClass<T>()`,
 `addOptions<T>()`, `withType<T>()`, `keyof<T>()`, and friends. What each rewrite actually _does_ is
 documented on its own package (see each package's README). This doc covers the machinery
 underneath all four: how they run in your build, how they share one native compiler backend, and
@@ -33,7 +33,7 @@ That works because every sugar form is declared twice, in two different senses:
   ```
 
 - **A phantom type** — usually a `declare module` augmentation onto the receiving interface (e.g.
-  `IServiceManifestBase.add<T>()`) — which is what makes the tokenless forms typecheck at all.
+  `IServiceManifestBase.addClass<T>()`) — which is what makes the tokenless forms typecheck at all.
   That's ordinary TypeScript; no plugin is needed to see it, only to get the declaring file into
   your program (see [Wiring](#wiring-a-transformer-into-your-project) below).
 
@@ -65,7 +65,7 @@ different tools — but the lowering one is nearly empty:
 ```jsonc
 // tsconfig.json — your normal config. Plain tsc sees the phantom `declare module`
 // augmentation through the `types` array (tokenfor itself needs no entry here — it's an
-// ordinary declaration in @rhombus-std/primitives — but the tokenless add/addFactory/
+// ordinary declaration in @rhombus-std/primitives — but the tokenless addClass/addFactory/
 // addValue forms are a merge onto di.core's interface, and TS only applies a merge for
 // a file actually pulled into the program).
 {
@@ -147,7 +147,7 @@ A `*.transformer` package declares the stage ids it contributes in its own `pack
 {
   "ttsc": {
     "plugin": { "transform": "@rhombus-std/di.transformer/ttsc" },
-    "stages": ["di"],
+    "stages": ["di", "valueof"],
   },
 }
 ```
@@ -231,12 +231,13 @@ expands into its ordered constituents —
     "rhombusstd_nameof",
     "rhombusstd_signatureof",
     "rhombusstd_keyof",
+    "rhombusstd_valueof",
     "rhombusstd_di",
   ],
 }
 ```
 
-— so a consumer of `di.core`'s type-driven `add<T>()`/`addFactory<T>()` sugar wires one line:
+— so a consumer of `di.core`'s type-driven `addClass<T>()`/`addFactory<T>()` sugar wires one line:
 
 ```jsonc
 { "plugins": [{ "transform": "@rhombus-std/di.core/ttsc" }] }
@@ -261,7 +262,7 @@ the same Go source (`transforms/cmd/ttsc-std`). That's deliberate:
 - **A hardcoded, canonical execution order**, regardless of manifest or dependency-scan order:
 
   ```
-  inline → mergesynth → nameof → signatureof → keyof → di → di_options → config
+  inline → mergesynth → nameof → signatureof → keyof → valueof → di → di_options → config
   ```
 
 - **Loud failure, not silent skip.** Selecting a stage neither the scan nor the manifest
@@ -274,29 +275,33 @@ preset), not by finding a pre-built combination that happens to match your needs
 
 ### The stage table
 
-| Stage id      | Declared by              | What it does                                                                                                                                                       |
-| ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `inline`      | `primitives.transformer` | Substitutes a certified single-expression sugar body (§91) at its call site, before any primitive stage runs.                                                      |
-| `mergesynth`  | `primitives.transformer` | Synthesizes a default merge strategy for every augmentation member with none, from its own parameter types (§103, [below](#the-merge-synthesis-stage-mergesynth)). |
-| `nameof`      | `primitives.transformer` | Lowers `tokenfor<T>()` to its export-graph token, and elides the now-unused import.                                                                                |
-| `signatureof` | `primitives.transformer` | Lowers `signatureof<T>()` to a dependency-signature array.                                                                                                         |
-| `keyof`       | `primitives.transformer` | Lowers `keyof<T>()` to the key literal of a `Keyed<T, K>` type argument, or `void 0` when unkeyed (§98).                                                           |
-| `di`          | `di.transformer`         | Lowers the tokenless `add`/`addFactory`/`addValue` registration forms.                                                                                             |
-| `di_options`  | `di.transformer.options` | Lowers the `addOptions<T>()` sugar.                                                                                                                                |
-| `config`      | `config.transformer`     | Lowers `.withType<T>()` into a generated `.withSchema({...})` runtime schema literal.                                                                              |
+| Stage id      | Declared by              | What it does                                                                                                                                                                                                     |
+| ------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `inline`      | `primitives.transformer` | Substitutes a certified single-expression sugar body (§91) at its call site, before any primitive stage runs.                                                                                                    |
+| `mergesynth`  | `primitives.transformer` | Synthesizes a default merge strategy for every augmentation member with none, from its own parameter types (§103, [below](#the-merge-synthesis-stage-mergesynth)).                                               |
+| `nameof`      | `primitives.transformer` | Lowers `tokenfor<T>()` to its export-graph token, and elides the now-unused import.                                                                                                                              |
+| `signatureof` | `primitives.transformer` | Lowers `signatureof<T>()` to a dependency-signature array, and the minting siblings `signaturefor<T>()`/`signaturesfor<T>()` (the `withSignature<T>()`/`withSignatures<T>()` sugar) to the same slot vocabulary. |
+| `keyof`       | `primitives.transformer` | Lowers `keyof<T>()` to the key literal of a `Keyed<T, K>` type argument, or `void 0` when unkeyed (§98).                                                                                                         |
+| `valueof`     | `di.transformer`         | Lowers `valueof<T>()` to its literal type's value — the `.as<Scope>()` sugar's scope argument.                                                                                                                   |
+| `di`          | `di.transformer`         | Lowers the tokenless `addClass`/`addFactory`/`addValue` registration forms and the chain sugars (`.as`/`.withSignature`/`.withSignatures`).                                                                      |
+| `di_options`  | `di.transformer.options` | Lowers the `addOptions<T>()` sugar.                                                                                                                                                                              |
+| `config`      | `config.transformer`     | Lowers `.withType<T>()` into a generated `.withSchema({...})` runtime schema literal.                                                                                                                            |
 
 `inline`, `mergesynth`, `nameof`, `signatureof`, and `keyof` are family-neutral — any family's
 sugar can lean on them, so they're surfaced through `primitives.transformer` rather than
-duplicated per family (§104). `di`, `di_options`, and `config` are each one family's own stage,
-declared by that family's own `*.transformer` package. This split is also where each primitive's
-_authoring_ home lives, independent of which stage lowers it: `tokenfor` stays in
+duplicated per family (§104). `di`, `di_options`, `config`, and `valueof` are each one family's own
+stage, declared by that family's own `*.transformer` package. This split is also where each
+primitive's _authoring_ home lives, independent of which stage lowers it: `tokenfor` stays in
 `@rhombus-std/primitives` because it's the one primitive called from runtime source; `signatureof`
 and `keyof` are typed against `di.core`'s real types, so their stubs live in `di.transformer` even
-though the stage that lowers them is neutral (§92).
+though the stage that lowers them is neutral (§92). `signaturefor`/`signaturesfor` are typed the
+same way but produce `di.core`'s own `DepSlot`, so they're homed in `di.core` itself rather than
+`di.transformer`; `valueof` is authoring-only (mints a literal-type value, not a di.core type) and
+is homed in `di.transformer`, sibling to `keyof`.
 
-`signatureof` and `keyof` both run after `nameof` (disjoint call shapes — a type-argument primitive
-vs. a value-argument one) and before `di`, so the `di` stage sees a fully-lowered `add(...)` call
-it leaves untouched.
+`signatureof`, `keyof`, and `valueof` all run after `nameof` (disjoint call shapes — a
+type-argument primitive vs. a value-argument one) and before `di`, so the `di` stage sees a
+fully-lowered `addClass(...)` / `.as("x")` it leaves untouched.
 
 ## The generic inline stage (`rhombusstd_inline`)
 
