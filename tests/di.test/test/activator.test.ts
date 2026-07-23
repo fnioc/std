@@ -29,7 +29,7 @@ const NAME_TOKEN = 'pkg:name' as const;
 
 function providerWithLogger(): IResolver {
   let services = new ServiceManifest<'singleton'>();
-  services = services.add(T.Logger, Logger, [[]]); // transient — resolvable on the frameless provider
+  services = services.addClass(T.Logger, Logger, [[]]); // transient — resolvable on the frameless provider
   return services.build();
 }
 

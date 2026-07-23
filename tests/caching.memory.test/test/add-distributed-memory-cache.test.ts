@@ -1,9 +1,9 @@
 // addDistributedMemoryCache: the ServiceManifest registration member appended
-// to MemoryCacheServiceCollectionExtensions -- both the standalone member and
+// to MemoryCacheServiceManifestAugmentations -- both the standalone member and
 // the registry-installed method form (docs §38), and the resolved singleton's
 // end-to-end behavior.
 
-import { DISTRIBUTED_CACHE_TOKEN, MemoryCacheServiceCollectionExtensions, MemoryDistributedCache,
+import { DISTRIBUTED_CACHE_TOKEN, MemoryCacheServiceManifestAugmentations, MemoryDistributedCache,
   MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';
 import { ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
 import { describe, expect, test } from 'bun:test';
@@ -37,7 +37,7 @@ describe('addDistributedMemoryCache', () => {
     const services = new ServiceManifestClass<string>();
     let seen: MemoryDistributedCacheOptions | undefined;
 
-    const returned = MemoryCacheServiceCollectionExtensions.addDistributedMemoryCache(services, (options) => {
+    const returned = MemoryCacheServiceManifestAugmentations.addDistributedMemoryCache(services, (options) => {
       seen = options;
     });
 

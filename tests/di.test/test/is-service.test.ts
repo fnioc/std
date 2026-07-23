@@ -8,7 +8,7 @@ import { defineDeps, G, OneDep, T, ZeroArg } from './fixtures.js';
 
 test('isService is true for a registered token, false for an unregistered one', () => {
   let services = new ServiceManifest<'singleton'>();
-  services = services.add(T.Service, ZeroArg, [[]]);
+  services = services.addClass(T.Service, ZeroArg, [[]]);
   const provider = services.build();
 
   expect(provider.isService(T.Service)).toBe(true);
@@ -20,7 +20,7 @@ test('isService is true for a registered token even when its dependency is unreg
   // registered service. (resolve would throw; isService reports true.)
   let services = new ServiceManifest<'singleton'>();
   defineDeps(OneDep, [[T.Db]]);
-  services = services.add(T.Service, OneDep, [[T.Db]]);
+  services = services.addClass(T.Service, OneDep, [[T.Db]]);
   const provider = services.build();
 
   expect(provider.isService(T.Service)).toBe(true);
@@ -29,7 +29,7 @@ test('isService is true for a registered token even when its dependency is unreg
 
 test('isService closes an open-generic template — true for a resolvable closing', () => {
   let services = new ServiceManifest<'singleton'>();
-  services = services.add(G.RepoTemplate, ZeroArg, [[]]);
+  services = services.addClass(G.RepoTemplate, ZeroArg, [[]]);
   const provider = services.build();
 
   expect(provider.isService(G.RepoOfA)).toBe(true);

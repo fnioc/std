@@ -12,7 +12,7 @@ test('@rhombus-std/di exports the engine and re-exports the core substrate', () 
   class Probe {
     public readonly ok = true;
   }
-  services = services.add('pkg:IProbe', Probe, [[]], 'singleton');
+  services = services.addClass('pkg:IProbe', Probe, [[]], 'singleton');
   const probe = services.build().resolve<Probe>('pkg:IProbe');
   expect(probe.ok).toBe(true);
 });

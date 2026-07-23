@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { T } from './fixtures.js';
 
 // The `tryAdd*` / `replace*` descriptor verbs (di.core's
-// `ServiceCollectionDescriptorExtensions`). Conditional-add registers only when
+// `ServiceManifestDescriptorAugmentations`). Conditional-add registers only when
 // the token is absent (first registration wins); replace strips existing
 // registrations then adds anew. Exercised through build + resolve — all hand-fed,
 // no transformer.
@@ -27,7 +27,7 @@ describe('tryAdd (conditional class registration)', () => {
 
   test('is a no-op when the token is already registered — first wins', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, First, [[]]);
+    services = services.addClass(T.Service, First, [[]]);
     services = services.tryAdd(T.Service, Second, [[]]); // should NOT register
 
     // Last-wins resolution would yield Second if tryAdd had added it.
@@ -44,7 +44,7 @@ describe('tryAdd (conditional class registration)', () => {
 
   test('a no-op tryAdd safely ignores its scope argument when already present', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, First, [[]], 'singleton');
+    services = services.addClass(T.Service, First, [[]], 'singleton');
     // Token present: tryAdd is a no-op and must not throw, and must not register Second.
     expect(() => services.tryAdd(T.Service, Second, [[]], 'singleton')).not.toThrow();
 
@@ -74,7 +74,7 @@ describe('tryAddFactory / tryAddValue (conditional)', () => {
 describe('replace (unconditional)', () => {
   test('replace swaps the registration — the replacement wins', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, First, [[]]);
+    services = services.addClass(T.Service, First, [[]]);
     services = services.replace(T.Service, Second, [[]]);
 
     expect(services.build().resolve<Second>(T.Service).which).toBe('second');
@@ -82,8 +82,8 @@ describe('replace (unconditional)', () => {
 
   test('replace leaves exactly one registration (old ones removed)', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, First, [[]]);
-    services = services.add(T.Service, First, [[]]);
+    services = services.addClass(T.Service, First, [[]]);
+    services = services.addClass(T.Service, First, [[]]);
     services = services.replace(T.Service, Second, [[]]);
 
     // The collection aggregate holds only the replacement, not the two originals.
@@ -99,7 +99,7 @@ describe('replace (unconditional)', () => {
     expect(services.build().resolve<{ v: number; }>(T.Config)).toEqual({ v: 9 });
 
     let other = new ServiceManifest<'singleton'>();
-    other = other.add(T.Service, First, [[]]);
+    other = other.addClass(T.Service, First, [[]]);
     other = other.replaceFactory(T.Service, () => new Second(), [[]]);
     expect(other.build().resolve<Second>(T.Service).which).toBe('second');
   });

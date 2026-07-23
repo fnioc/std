@@ -38,9 +38,9 @@ describe('greedy signature selection', () => {
     ]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Logger, LoggerImpl, [[]], 'singleton');
-    services = services.add(T.Db, DbImpl, [[]], 'singleton');
-    services = services.add(T.Service, Svc, [[T.Logger, T.Db], [T.Db]], 'singleton');
+    services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
+    services = services.addClass(T.Db, DbImpl, [[]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[T.Logger, T.Db], [T.Db]], 'singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(2);
@@ -62,9 +62,9 @@ describe('greedy signature selection', () => {
     ]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Logger, LoggerImpl, [[]], 'singleton');
+    services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
     // T.Db deliberately NOT registered.
-    services = services.add(T.Service, Svc, [[T.Logger, T.Db], [T.Logger]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[T.Logger, T.Db], [T.Logger]], 'singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(1);
@@ -88,9 +88,9 @@ describe('greedy signature selection', () => {
     ]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Logger, LoggerImpl, [[]], 'singleton');
+    services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
     // UNREGISTERED deliberately NOT registered.
-    services = services.add(T.Service, Svc, [[T.Logger, UNREGISTERED], [T.Logger]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[T.Logger, UNREGISTERED], [T.Logger]], 'singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     // Selection falls to [T.Logger] — the shorter satisfiable overload.
@@ -111,9 +111,9 @@ describe('greedy signature selection', () => {
     defineDeps(Svc, [[T.Logger], [T.Db]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Logger, LoggerImpl, [[]], 'singleton');
-    services = services.add(T.Db, DbImpl, [[]], 'singleton');
-    services = services.add(T.Service, Svc, [[T.Logger], [T.Db]], 'singleton');
+    services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
+    services = services.addClass(T.Db, DbImpl, [[]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[T.Logger], [T.Db]], 'singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(1);
@@ -129,7 +129,7 @@ describe('greedy signature selection', () => {
 
     let services = new ServiceManifest<'singleton'>();
     // Neither Logger nor Db registered.
-    services = services.add(T.Service, Svc, [[T.Logger, T.Db]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[T.Logger, T.Db]], 'singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.Service)).toThrow(NoSatisfiableSignatureError);
@@ -158,7 +158,7 @@ describe('greedy signature selection', () => {
     defineDeps(Svc, [[UNREGISTERED]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, Svc, [[UNREGISTERED]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[UNREGISTERED]], 'singleton');
     // UNREGISTERED not registered.
 
     const root = services.build();
@@ -174,7 +174,7 @@ describe('greedy signature selection', () => {
     defineDeps(Svc, [[T.Db, UNREGISTERED]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, Svc, [[T.Db, UNREGISTERED]], 'singleton'); // T.Db NOT registered
+    services = services.addClass(T.Service, Svc, [[T.Db, UNREGISTERED]], 'singleton'); // T.Db NOT registered
 
     const root = services.build();
     expect(() => root.resolve(T.Service)).toThrow(NoSatisfiableSignatureError);

@@ -43,7 +43,7 @@ function attemptWrite(target: object, key: string): void {
 describe('the receiver is unchanged after every registration verb', () => {
   test('add leaves the receiver empty', () => {
     const base = new ServiceManifest<'singleton'>();
-    base.add(T.Service, Alpha, [[]], 'singleton'); // result DISCARDED
+    base.addClass(T.Service, Alpha, [[]], 'singleton'); // result DISCARDED
 
     expect(tokensOf(base)).toEqual([]);
     expect(() => base.build().resolve(T.Service)).toThrow();
@@ -67,11 +67,11 @@ describe('the receiver is unchanged after every registration verb', () => {
 
   test('the pre-op manifest resolves exactly what it did before the op', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    base = base.add(T.Service, Alpha, [[]], 'singleton');
+    base = base.addClass(T.Service, Alpha, [[]], 'singleton');
 
     const before = base.build().resolve<Alpha>(T.Service).which;
     // Every verb, all discarded — none may reach `base`.
-    base.add(T.Service, Beta, [[]], 'singleton');
+    base.addClass(T.Service, Beta, [[]], 'singleton');
     base.addFactory(T.Service, () => new Beta(), [[]], 'singleton');
     base.addValue(T.Service, new Beta());
     base.removeAll(T.Service);
@@ -85,7 +85,7 @@ describe('the receiver is unchanged after every registration verb', () => {
 describe('the receiver is unchanged after every fluent modifier', () => {
   test('as() leaves the chain node it was called on untouched', () => {
     const base = new ServiceManifest<'singleton'>();
-    const unscoped = base.add(T.Service, Alpha, [[]]);
+    const unscoped = base.addClass(T.Service, Alpha, [[]]);
     unscoped.as('singleton'); // DISCARDED
 
     // `unscoped` is still transient — a fresh instance per resolve even with the
@@ -96,7 +96,7 @@ describe('the receiver is unchanged after every fluent modifier', () => {
 
   test('withKey() leaves the chain node it was called on untouched', () => {
     const base = new ServiceManifest<'singleton'>();
-    const unkeyed = base.add(T.Service, Alpha, [[]], 'singleton');
+    const unkeyed = base.addClass(T.Service, Alpha, [[]], 'singleton');
     unkeyed.withKey('k'); // DISCARDED
 
     // The registration is still under the BARE token, and no keyed token exists.
@@ -107,9 +107,6 @@ describe('the receiver is unchanged after every fluent modifier', () => {
   });
 
   test('withSignature() leaves the chain node it was called on untouched', () => {
-    // `withSignature` is only type-reachable on a transformer-authored chain (the
-    // plugin-less overloads consume the signature slot positionally), so the cast
-    // reaches the runtime face the transformer would have handed us.
     class Holder {
       public constructor(public readonly dep: string) {}
     }
@@ -117,8 +114,8 @@ describe('the receiver is unchanged after every fluent modifier', () => {
     base = base.addValue(T.A, 'a-dep');
     base = base.addValue(T.B, 'b-dep');
 
-    const chain = base.add(T.Service, Holder, [[T.A]]);
-    (chain as unknown as { withSignature(s: unknown): unknown; }).withSignature([[T.B]]); // DISCARDED
+    const chain = base.addClass(T.Service, Holder, [[T.A]]);
+    chain.withSignature(T.B); // DISCARDED — appends a 2nd overload, never mutates `chain`
 
     expect(chain.build().resolve<Holder>(T.Service).dep).toBe('a-dep');
   });
@@ -134,7 +131,7 @@ describe('nodes are frozen', () => {
   });
 
   test('a chain node is frozen and rejects a write', () => {
-    const chain = new ServiceManifest<'singleton'>().add(T.Service, Alpha, [[]]);
+    const chain = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]);
 
     expect(Object.isFrozen(chain)).toBe(true);
     attemptWrite(chain, 'smuggled');
@@ -143,7 +140,7 @@ describe('nodes are frozen', () => {
 
   test('a node produced by a modifier is frozen too', () => {
     const refined = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .as('singleton')
       .withKey('k');
 
@@ -154,7 +151,7 @@ describe('nodes are frozen', () => {
 
   test('a node produced by removeAll is frozen', () => {
     const pruned = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]], 'singleton')
+      .addClass(T.Service, Alpha, [[]], 'singleton')
       .removeAll(T.Service);
 
     expect(Object.isFrozen(pruned)).toBe(true);
@@ -181,7 +178,7 @@ describe('build() snapshots the node it was called on', () => {
 
   test('building the same node twice yields two independent providers', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    base = base.add(T.Service, Alpha, [[]], 'singleton');
+    base = base.addClass(T.Service, Alpha, [[]], 'singleton');
 
     const first = base.build().createScope('singleton');
     const second = base.build().createScope('singleton');
@@ -194,11 +191,11 @@ describe('build() snapshots the node it was called on', () => {
 
   test('building does NOT close the chain — you can keep adding afterwards', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    base = base.add(T.Service, Alpha, [[]], 'singleton');
+    base = base.addClass(T.Service, Alpha, [[]], 'singleton');
 
     const early = base.build();
     // Keep registering off the ALREADY-BUILT manifest.
-    const later = base.add(T.Service, Beta, [[]], 'singleton').addValue(T.Config, 'late');
+    const later = base.addClass(T.Service, Beta, [[]], 'singleton').addValue(T.Config, 'late');
 
     // The earlier provider is untouched by everything registered after it.
     expect(early.resolve<Alpha>(T.Service).which).toBe('alpha');
@@ -211,7 +208,7 @@ describe('build() snapshots the node it was called on', () => {
 
   test('a built manifest can be branched twice with no cross-talk', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    base = base.add(T.Service, Alpha, [[]], 'singleton');
+    base = base.addClass(T.Service, Alpha, [[]], 'singleton');
     base.build(); // seal once, then fork
 
     const withValue = base.addValue(T.Config, 'x');
@@ -226,7 +223,7 @@ describe('build() snapshots the node it was called on', () => {
 describe('removeAll returns a NEW manifest', () => {
   test('the original still resolves the removed token', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    base = base.add(T.Service, Alpha, [[]], 'singleton');
+    base = base.addClass(T.Service, Alpha, [[]], 'singleton');
 
     const pruned = base.removeAll(T.Service);
 
@@ -265,7 +262,7 @@ describe('removeAll returns a NEW manifest', () => {
   test('it removes the OPEN-template entry for that token as well', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     // Both an exact closing and the open template live under base `pkg:IBox`.
-    base = base.add('pkg:IBox<$1>', Alpha, [[]], 'singleton');
+    base = base.addClass('pkg:IBox<$1>', Alpha, [[]], 'singleton');
     base = base.addValue('pkg:IBox', 'exact');
 
     const pruned = base.removeAll('pkg:IBox');

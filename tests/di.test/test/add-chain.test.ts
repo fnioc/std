@@ -1,16 +1,18 @@
 import { OpenTokenRegistrationError, ServiceManifest } from '@rhombus-std/di';
-import type { AddChain, IServiceManifest, ManifestEntry, Slot, Token } from '@rhombus-std/di.core';
+import type { IServiceManifest, ManifestEntry, Token } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 import { G, T } from './fixtures.js';
 
 // The `AddChain` registration continuation: STRUCTURAL SHARING (two branches off
 // one manifest never see each other), ORDER-FREE once-each modifiers
-// (`.as` / `.withKey` / `.withSignature` in any order, each at most once), the
-// equivalence of the positional and fluent spellings, and the registration-time
-// ERROR TIMING that a REPLACE-not-append modifier has to preserve.
+// (`.as` / `.withKey` / `.withSignatures` in any order, each at most once — the
+// APPEND face `.withSignature` is deliberately repeatable and sits outside that
+// "each at most once" set), the equivalence of the positional and fluent
+// spellings, and the registration-time ERROR TIMING that a REPLACE-not-append
+// modifier has to preserve.
 //
 // A modifier REPLACES its own node over the same predecessor, so one
-// `.add(...).as(...)` chain is exactly ONE registration — the entry-count
+// `.addClass(...).as(...)` chain is exactly ONE registration — the entry-count
 // assertions below are what catch a shadow entry, since last-wins resolution
 // would look identical either way.
 
@@ -29,18 +31,6 @@ class Holder {
 /** The entry stream's tokens, in registration order — `open` entries by base. */
 function tokensOf(manifest: Iterable<ManifestEntry>): string[] {
   return [...manifest].map((entry) => (entry.kind === 'exact' ? entry.token : entry.base));
-}
-
-/**
- * Widens a plugin-less chain to the FULL slot set. `withSignature` is only
- * type-reachable on a transformer-authored call — the plugin-less overloads take
- * `signatures` positionally, so their chain starts with that slot consumed. The
- * runtime carries all three modifiers unconditionally, and this is the shape the
- * transformer hands an author, so the cast exercises real surface rather than
- * inventing one.
- */
-function allSlots<S extends string>(chain: AddChain<S, 'scope' | 'key'>): AddChain<S, Slot> {
-  return chain as AddChain<S, Slot>;
 }
 
 describe('structural sharing — branches off one manifest never contaminate', () => {
@@ -105,7 +95,7 @@ describe('structural sharing — branches off one manifest never contaminate', (
 
   test('branching AFTER .as() — the refined node is a shareable prefix', () => {
     const scoped = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .as('singleton');
 
     const withA = scoped.addValue(T.A, 'a');
@@ -123,11 +113,11 @@ describe('structural sharing — branches off one manifest never contaminate', (
 
   test('branching AFTER .withKey() — the key does not leak across branches', () => {
     const keyed = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]], 'singleton')
+      .addClass(T.Service, Alpha, [[]], 'singleton')
       .withKey('redis');
 
     const withA = keyed.addValue(T.A, 'a');
-    const withB = keyed.add(T.Service, Beta, [[]], 'singleton');
+    const withB = keyed.addClass(T.Service, Beta, [[]], 'singleton');
 
     // The keyed registration is present on both, under `base#redis`.
     expect(withA.build().resolve<Alpha>(T.Service, 'redis')).toBeInstanceOf(Alpha);
@@ -142,7 +132,7 @@ describe('structural sharing — branches off one manifest never contaminate', (
     // chain node twice yields two independent one-entry manifests.
     let base: IServiceManifest<'singleton' | 'request'> = new ServiceManifest<'singleton' | 'request'>();
     base = base.addValue(T.Config, 'shared');
-    const pending = base.add(T.Service, Alpha, [[]]);
+    const pending = base.addClass(T.Service, Alpha, [[]]);
 
     const asSingleton = pending.as('singleton');
     const asRequest = pending.as('request');
@@ -161,7 +151,10 @@ describe('structural sharing — branches off one manifest never contaminate', (
 describe('modifiers are order-free and apply at most once', () => {
   // One registration, three facets, six orderings. Every ordering must land the
   // SAME registration: token `pkg:IService#k`, lifetime `singleton`, and the
-  // OVERRIDDEN signature `[[T.B]]` (so the injected dep is `b-dep`, not `a-dep`).
+  // signature `[[T.B]]` (so the injected dep is `b-dep`). The chain starts from
+  // the GATED 2-arg `addClass` form (no positional signature) so `withSignatures`
+  // — the once-only BULK face — stays reachable; a positional signature would
+  // strike it, leaving only the repeatable `withSignature` APPEND face.
   function seed(): IServiceManifest<'singleton'> {
     let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     services = services.addValue(T.A, 'a-dep');
@@ -170,7 +163,7 @@ describe('modifiers are order-free and apply at most once', () => {
   }
 
   /** Asserts the one-registration outcome every permutation must produce. */
-  function expectKeyedSingletonWithOverriddenSignature(manifest: IServiceManifest<'singleton'>): void {
+  function expectKeyedSingletonWithSignature(manifest: IServiceManifest<'singleton'>): void {
     // Exactly THREE entries: the two seeded values plus ONE for the chain. A
     // modifier that appended instead of replacing would show up as a fourth.
     expect(tokensOf(manifest)).toEqual([T.A, T.B, `${T.Service}#k`]);
@@ -178,7 +171,7 @@ describe('modifiers are order-free and apply at most once', () => {
     const root = manifest.build().createScope('singleton');
     const holder = root.resolve<Holder>(T.Service, 'k');
     expect(holder).toBeInstanceOf(Holder);
-    // `withSignature` overrode `[[T.A]]`.
+    // `withSignatures` set the signature to `[[T.B]]`.
     expect(holder.dep).toBe('b-dep');
     // `.as('singleton')` took effect — cached in the open frame.
     expect(root.resolve<Holder>(T.Service, 'k')).toBe(holder);
@@ -186,62 +179,62 @@ describe('modifiers are order-free and apply at most once', () => {
     expect(root.tryResolve<Holder>(T.Service)).toBeUndefined();
   }
 
-  test('as → withKey → withSignature', () => {
-    const chain = allSlots(seed().add(T.Service, Holder, [[T.A]]));
-    expectKeyedSingletonWithOverriddenSignature(
-      chain.as('singleton').withKey('k').withSignature([[T.B]]),
+  test('as → withKey → withSignatures', () => {
+    const chain = seed().addClass(T.Service, Holder);
+    expectKeyedSingletonWithSignature(
+      chain.as('singleton').withKey('k').withSignatures([T.B]),
     );
   });
 
-  test('as → withSignature → withKey', () => {
-    const chain = allSlots(seed().add(T.Service, Holder, [[T.A]]));
-    expectKeyedSingletonWithOverriddenSignature(
-      chain.as('singleton').withSignature([[T.B]]).withKey('k'),
+  test('as → withSignatures → withKey', () => {
+    const chain = seed().addClass(T.Service, Holder);
+    expectKeyedSingletonWithSignature(
+      chain.as('singleton').withSignatures([T.B]).withKey('k'),
     );
   });
 
-  test('withKey → as → withSignature', () => {
-    const chain = allSlots(seed().add(T.Service, Holder, [[T.A]]));
-    expectKeyedSingletonWithOverriddenSignature(
-      chain.withKey('k').as('singleton').withSignature([[T.B]]),
+  test('withKey → as → withSignatures', () => {
+    const chain = seed().addClass(T.Service, Holder);
+    expectKeyedSingletonWithSignature(
+      chain.withKey('k').as('singleton').withSignatures([T.B]),
     );
   });
 
-  test('withKey → withSignature → as', () => {
-    const chain = allSlots(seed().add(T.Service, Holder, [[T.A]]));
-    expectKeyedSingletonWithOverriddenSignature(
-      chain.withKey('k').withSignature([[T.B]]).as('singleton'),
+  test('withKey → withSignatures → as', () => {
+    const chain = seed().addClass(T.Service, Holder);
+    expectKeyedSingletonWithSignature(
+      chain.withKey('k').withSignatures([T.B]).as('singleton'),
     );
   });
 
-  test('withSignature → as → withKey', () => {
-    const chain = allSlots(seed().add(T.Service, Holder, [[T.A]]));
-    expectKeyedSingletonWithOverriddenSignature(
-      chain.withSignature([[T.B]]).as('singleton').withKey('k'),
+  test('withSignatures → as → withKey', () => {
+    const chain = seed().addClass(T.Service, Holder);
+    expectKeyedSingletonWithSignature(
+      chain.withSignatures([T.B]).as('singleton').withKey('k'),
     );
   });
 
-  test('withSignature → withKey → as', () => {
-    const chain = allSlots(seed().add(T.Service, Holder, [[T.A]]));
-    expectKeyedSingletonWithOverriddenSignature(
-      chain.withSignature([[T.B]]).withKey('k').as('singleton'),
+  test('withSignatures → withKey → as', () => {
+    const chain = seed().addClass(T.Service, Holder);
+    expectKeyedSingletonWithSignature(
+      chain.withSignatures([T.B]).withKey('k').as('singleton'),
     );
   });
 });
 
 describe('positional and fluent spellings agree', () => {
-  test('add(t, C, sig, scope, key) ≡ add(t, C, sig).as(scope).withKey(key)', () => {
+  test('addClass(t, C, sig, scope, key) ≡ addClass(t, C, sig).as(scope).withKey(key)', () => {
     const positional = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]], 'singleton', 'k');
+      .addClass(T.Service, Alpha, [[]], 'singleton', 'k');
     const fluent = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .as('singleton')
       .withKey('k');
     const mixed = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]], 'singleton')
+      .addClass(T.Service, Alpha, [[]], 'singleton')
       .withKey('k');
     const reordered = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .withKey('k')
       .as('singleton');
 
@@ -283,7 +276,7 @@ describe('positional and fluent spellings agree', () => {
     // Re-keying is not reachable (the slot is consumed once), but the positional
     // key and the fluent key must land on the SAME single `#` suffix.
     const manifest = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .withKey('k')
       .as('singleton');
 
@@ -293,7 +286,7 @@ describe('positional and fluent spellings agree', () => {
 
   test('an EMPTY key is unkeyed — the token is left bare', () => {
     const manifest = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]], 'singleton')
+      .addClass(T.Service, Alpha, [[]], 'singleton')
       .withKey('');
 
     expect(tokensOf(manifest)).toEqual([T.Service]);
@@ -301,29 +294,45 @@ describe('positional and fluent spellings agree', () => {
   });
 });
 
-describe('withSignature overrides the signature the chain was constructed with', () => {
-  test('the override wins over the positional signature', () => {
+describe('withSignature appends; withSignatures replaces in bulk', () => {
+  test('withSignature APPENDS an overload — the first-declared (positional) signature still wins the arity tie', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     base = base.addValue(T.A, 'a-dep');
     base = base.addValue(T.B, 'b-dep');
 
-    const chain = allSlots(base.add(T.Service, Holder, [[T.A]]));
-    const overridden = chain.withSignature([[T.B]]);
+    const chain = base.addClass(T.Service, Holder, [[T.A]]);
+    const appended = chain.withSignature(T.B);
 
-    expect(overridden.build().resolve<Holder>(T.Service).dep).toBe('b-dep');
-    // ...and one entry only — the override REPLACED, it did not append.
-    expect(tokensOf(overridden)).toEqual([T.A, T.B, T.Service]);
+    // `[T.A]` and `[T.B]` are now both satisfiable, equal-arity overloads; the
+    // FIRST-declared one (the positional `[T.A]`) wins the tie (see
+    // signature-selection.test.ts) — appending does not override it.
+    expect(appended.build().resolve<Holder>(T.Service).dep).toBe('a-dep');
+    // ...and one entry only — `withSignature` replaces the CHAIN NODE; only the
+    // node's signature SET grows.
+    expect(tokensOf(appended)).toEqual([T.A, T.B, T.Service]);
   });
 
-  test('it overrides on a FACTORY chain as well', () => {
+  test('withSignatures REPLACES the whole signature set — reachable only before any signature is supplied', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     base = base.addValue(T.A, 'a-dep');
     base = base.addValue(T.B, 'b-dep');
 
-    const chain = allSlots(base.addFactory(T.Service, (dep: string) => ({ dep }), [[T.A]]));
-    const overridden = chain.withSignature([[T.B]]);
+    const chain = base.addClass(T.Service, Holder); // gated: no positional signature yet
+    const configured = chain.withSignatures([T.B]);
 
-    expect(overridden.build().resolve<{ dep: string; }>(T.Service).dep).toBe('b-dep');
+    expect(configured.build().resolve<Holder>(T.Service).dep).toBe('b-dep');
+    expect(tokensOf(configured)).toEqual([T.A, T.B, T.Service]);
+  });
+
+  test('withSignatures also composes on a FACTORY chain', () => {
+    let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
+    base = base.addValue(T.A, 'a-dep');
+    base = base.addValue(T.B, 'b-dep');
+
+    const chain = base.addFactory(T.Service, (dep: string) => ({ dep })); // gated
+    const configured = chain.withSignatures([T.B]);
+
+    expect(configured.build().resolve<{ dep: string; }>(T.Service).dep).toBe('b-dep');
   });
 });
 
@@ -340,9 +349,9 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     expect(() => services.addValue(G.RepoTemplate, 'x')).toThrow(OpenTokenRegistrationError);
   });
 
-  test('a mixed concrete/hole service token throws from the add call', () => {
+  test('a mixed concrete/hole service token throws from the addClass call', () => {
     const services = new ServiceManifest<'singleton'>();
-    expect(() => services.add('app/IR<pkg:IA,$1>', Alpha, [[]])).toThrow(
+    expect(() => services.addClass('app/IR<pkg:IA,$1>', Alpha, [[]])).toThrow(
       OpenTokenRegistrationError,
     );
   });
@@ -358,10 +367,10 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     expect(() => services.build()).not.toThrow();
   });
 
-  test('the plugin-less guard on add<I>(ctor) throws a TypeError from the call', () => {
+  test('the plugin-less guard on addClass<I>(ctor) throws a TypeError from the call', () => {
     const services = new ServiceManifest<'singleton'>();
-    const untyped = services as unknown as { add(c: unknown): unknown; };
-    expect(() => untyped.add(Alpha)).toThrow(TypeError);
+    const untyped = services as unknown as { addClass(c: unknown): unknown; };
+    expect(() => untyped.addClass(Alpha)).toThrow(TypeError);
   });
 
   test('the plugin-less guard on addFactory<I>(fn) throws a TypeError from the call', () => {
@@ -383,7 +392,7 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     // under a keyed spelling: its closings must not resolve.
     const services = new ServiceManifest<'singleton'>();
     expect(() => {
-      const keyed = services.add(G.RepoTemplate, Alpha, [[]], 'singleton').withKey('k');
+      const keyed = services.addClass(G.RepoTemplate, Alpha, [[]], 'singleton').withKey('k');
       return keyed.build().resolve(G.RepoOfA);
     }).toThrow();
   });
@@ -395,28 +404,33 @@ describe('type-level slot gating (compile-time only)', () => {
   // so the suite also proves the surrounding chain is otherwise well-formed.
   test('a slot can be consumed at most once, and a consumed slot disappears', () => {
     const services = new ServiceManifest<'singleton'>();
-    const chain = services.add(T.Service, Alpha, [[]]);
+    const chain = services.addClass(T.Service, Alpha, [[]]);
 
     // @ts-expect-error — the `scope` slot is consumed; `.as()` is gone.
     chain.as('singleton').as('singleton');
     // @ts-expect-error — the `key` slot is consumed; `.withKey()` is gone.
     chain.withKey('a').withKey('b');
-    // @ts-expect-error — the plugin-less overload consumed the `signature` slot.
-    chain.withSignature([[T.A]]);
+    // @ts-expect-error — the positional signature struck the bulk `signatures`
+    // slot; only the repeatable `withSignature` APPEND face survives it.
+    chain.withSignatures([T.A]);
 
-    // The legal spellings still type-check.
-    expect(tokensOf(chain.as('singleton').withKey('k'))).toEqual([`${T.Service}#k`]);
+    // The legal spellings still type-check — `withSignature` (append) stays
+    // reachable even after a positional signature.
+    expect(tokensOf(chain.withSignature(T.A).as('singleton').withKey('k'))).toEqual([`${T.Service}#k`]);
   });
 
-  test('a fully positional call returns a plain manifest with NO modifier faces', () => {
+  test('a fully positional call leaves only the repeatable `withSignature` append face', () => {
     const services = new ServiceManifest<'singleton'>();
-    const done = services.add(T.Service, Alpha, [[]], 'singleton', 'k');
+    const done = services.addClass(T.Service, Alpha, [[]], 'singleton', 'k');
 
-    // @ts-expect-error — every slot was filled positionally.
+    // @ts-expect-error — the `scope` slot was filled positionally.
     done.as('singleton');
-    // @ts-expect-error — every slot was filled positionally.
+    // @ts-expect-error — the `key` slot was filled positionally.
     done.withKey('other');
 
+    // `signature` is the one slot a positional fill never consumes — it stays
+    // repeatable so a hand author can append another overload.
+    expect(tokensOf(done.withSignature())).toEqual([`${T.Service}#k`]);
     expect(tokensOf(done)).toEqual([`${T.Service}#k`]);
   });
 
@@ -435,8 +449,9 @@ describe('type-level slot gating (compile-time only)', () => {
   test('a scope-consumed chain still exposes withKey (and vice versa)', () => {
     const services = new ServiceManifest<'singleton'>();
 
-    // Positional scope leaves ONLY the key face...
-    const keyOnly = services.add(T.Service, Alpha, [[]], 'singleton');
+    // Positional scope leaves the key face (plus the repeatable signature
+    // append face, unexercised here)...
+    const keyOnly = services.addClass(T.Service, Alpha, [[]], 'singleton');
     expect(tokensOf(keyOnly.withKey('k'))).toEqual([`${T.Service}#k`]);
     // @ts-expect-error — ...and the scope face is gone.
     keyOnly.as('singleton');

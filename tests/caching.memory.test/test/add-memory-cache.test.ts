@@ -4,7 +4,7 @@
 // LAZILY when the options resolve), and the ILoggerFactory injection.
 
 import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_CACHE_TOKEN, MemoryCache, MemoryCacheOptions,
-  MemoryCacheServiceCollectionExtensions } from '@rhombus-std/caching.memory';
+  MemoryCacheServiceManifestAugmentations } from '@rhombus-std/caching.memory';
 import { ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
 import { LOGGER_FACTORY_TOKEN, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -44,7 +44,7 @@ describe('addMemoryCache', () => {
 
     // The manifest is immutable, so `addMemoryCache` hands back a NEW manifest
     // carrying the registrations -- build from `returned`, not `services`.
-    const returned = MemoryCacheServiceCollectionExtensions.addMemoryCache(services, (options) => {
+    const returned = MemoryCacheServiceManifestAugmentations.addMemoryCache(services, (options) => {
       ran++;
       expect(options).toBeInstanceOf(MemoryCacheOptions);
       options.trackStatistics = true;

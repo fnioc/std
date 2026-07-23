@@ -3,8 +3,8 @@ import { describe, expect, test } from 'bun:test';
 import { T } from './fixtures.js';
 
 // The redesigned registration surface: the service collection
-// (Map<Token, Registration[]>) with last-wins resolution, the three `add`
-// shapes (class / useFactory / useValue), and `build()` returning a frameless
+// (Map<Token, Registration[]>) with last-wins resolution, the three registration
+// shapes (addClass / addFactory / addValue), and `build()` returning a frameless
 // provider from which scopes are opened with `createScope`.
 
 describe('service collection — last-wins over a retained list', () => {
@@ -19,9 +19,9 @@ describe('service collection — last-wins over a retained list', () => {
       public readonly which = 'third';
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, First, [[]], 'singleton');
-    services = services.add(T.Service, Second, [[]], 'singleton');
-    services = services.add(T.Service, Third, [[]], 'singleton');
+    services = services.addClass(T.Service, First, [[]], 'singleton');
+    services = services.addClass(T.Service, Second, [[]], 'singleton');
+    services = services.addClass(T.Service, Third, [[]], 'singleton');
 
     const resolved = services.build().resolve<Third>(T.Service);
     expect(resolved.which).toBe('third');
@@ -33,7 +33,7 @@ describe('service collection — last-wins over a retained list', () => {
     }
     const fake = { which: 'fake' };
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, Real, [[]], 'singleton');
+    services = services.addClass(T.Service, Real, [[]], 'singleton');
     services = services.addValue(T.Service, fake);
 
     expect(services.build().resolve<typeof fake>(T.Service)).toBe(fake);
@@ -45,7 +45,7 @@ describe('service collection — last-wins over a retained list', () => {
     }
     let services = new ServiceManifest<'singleton'>();
     services = services.addFactory(T.Service, () => ({ which: 'factory' }), [[]], 'singleton');
-    services = services.add(T.Service, Winner, [[]], 'singleton');
+    services = services.addClass(T.Service, Winner, [[]], 'singleton');
 
     const resolved = services.build().resolve<Winner>(T.Service);
     expect(resolved).toBeInstanceOf(Winner);
@@ -67,13 +67,13 @@ describe('service collection — last-wins over a retained list', () => {
   });
 });
 
-describe('the three add shapes', () => {
-  test('class — add(token, Ctor).as(scope) caches at the owning scope', () => {
+describe('the three registration shapes', () => {
+  test('class — addClass(token, Ctor).as(scope) caches at the owning scope', () => {
     class Svc {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, Svc, [[]], 'singleton');
+    services = services.addClass(T.Service, Svc, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     expect(root.resolve<Svc>(T.Service)).toBe(root.resolve<Svc>(T.Service));
@@ -84,7 +84,7 @@ describe('the three add shapes', () => {
       public readonly kind = 'dep';
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Db, Dep, [[]], 'singleton');
+    services = services.addClass(T.Db, Dep, [[]], 'singleton');
     // A factory that wants the live provider declares it as a provider-typed
     // parameter — its token is the intrinsic `RESOLVER_TOKEN`, resolved to the
     // live view. The auto-`sp` escape hatch is gone.
@@ -120,7 +120,7 @@ describe('the three add shapes', () => {
 describe('build() frameless provider + opened scopes', () => {
   test('build() returns a frameless provider — .name throws until a scope is opened', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Logger, class L {}, [[]], 'singleton');
+    services = services.addClass(T.Logger, class L {}, [[]], 'singleton');
     const provider = services.build();
     expect(() => provider.name).toThrow();
     // Opening a scope gives the frame a name.
@@ -132,7 +132,7 @@ describe('build() frameless provider + opened scopes', () => {
       public readonly kind = 'app';
     }
     let services = new ServiceManifest<'app' | 'request'>();
-    services = services.add(T.Service, App, [[]], 'app');
+    services = services.addClass(T.Service, App, [[]], 'app');
 
     const app = services.build().createScope('app');
     expect(app.name).toBe('app');
@@ -144,7 +144,7 @@ describe('build() frameless provider + opened scopes', () => {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.add(T.Service, Req, [[]], 'request');
+    services = services.addClass(T.Service, Req, [[]], 'request');
 
     const root = services.build().createScope('singleton');
     const reqA = root.createScope('request');
@@ -161,7 +161,7 @@ describe('build() frameless provider + opened scopes', () => {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.add(T.Service, Shared, [[]], 'singleton');
+    services = services.addClass(T.Service, Shared, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const deep = root.createScope('request').createScope('request');
@@ -176,7 +176,7 @@ describe('build() frameless provider + opened scopes', () => {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, Shared, [[]], 'singleton');
+    services = services.addClass(T.Service, Shared, [[]], 'singleton');
 
     const provider = services.build(); // no scope opened
     // No "singleton" frame is open ⇒ fresh instance per resolve, never cached.
@@ -197,7 +197,7 @@ describe('ServiceManifest type + construction surface', () => {
     // One generic param `Scopes`; both `.as(...)` and `createScope(...)` accept
     // exactly its members. This compiles only because the surface is single-param.
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.add(
+    services = services.addClass(
       T.Service,
       class S {
         public readonly id = Math.random();

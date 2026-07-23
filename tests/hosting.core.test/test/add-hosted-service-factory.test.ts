@@ -37,7 +37,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
   }
 
   let manifest = new ServiceManifest();
-  manifest = manifest.add('test:Dependency', Dependency, [[]]);
+  manifest = manifest.addClass('test:Dependency', Dependency, [[]]);
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
   manifest = manifest.addHostedService((resolver) => resolver.resolve<Dependency>('test:Dependency'));

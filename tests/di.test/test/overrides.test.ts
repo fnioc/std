@@ -38,7 +38,7 @@ describe('useFactory', () => {
       public constructor(public readonly bar: Bar) {}
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.B, Bar, [[]], 'singleton');
+    services = services.addClass(T.B, Bar, [[]], 'singleton');
     services = services.addFactory(T.A, (c) => new Foo(c.resolve<Bar>(T.B)), [[RESOLVER_TOKEN]]);
 
     const root = services.build();

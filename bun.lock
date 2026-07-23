@@ -782,13 +782,6 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
     },
-    "tests/di.tests.integration": {
-      "name": "@rhombus-std/di.tests.integration",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
-      },
-    },
     "tests/di.transformer.options.ttsc.e2e": {
       "name": "@rhombus-std/di.transformer.options.ttsc.e2e",
       "version": "0.0.0",
@@ -1386,8 +1379,6 @@
     "@rhombus-std/di.signatureof.ttsc.e2e": ["@rhombus-std/di.signatureof.ttsc.e2e@workspace:tests/di.signatureof.ttsc.e2e"],
 
     "@rhombus-std/di.test": ["@rhombus-std/di.test@workspace:tests/di.test"],
-
-    "@rhombus-std/di.tests.integration": ["@rhombus-std/di.tests.integration@workspace:tests/di.tests.integration"],
 
     "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
 

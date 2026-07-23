@@ -40,7 +40,7 @@ describe('iteration yields entries in REGISTRATION order, inner-first', () => {
 
   test('the order survives mixed registration verbs', () => {
     let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    services = services.add(T.A, Alpha, [[]], 'singleton');
+    services = services.addClass(T.A, Alpha, [[]], 'singleton');
     services = services.addFactory(T.B, () => new Beta(), [[]], 'singleton');
     services = services.addValue(T.C, new Gamma());
 
@@ -73,9 +73,9 @@ describe('iteration yields entries in REGISTRATION order, inner-first', () => {
 describe('last-wins resolution follows the entry stream', () => {
   test('a later add of the same token overrides an earlier one for bare-T', () => {
     let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, Alpha, [[]], 'singleton');
-    services = services.add(T.Service, Beta, [[]], 'singleton');
-    services = services.add(T.Service, Gamma, [[]], 'singleton');
+    services = services.addClass(T.Service, Alpha, [[]], 'singleton');
+    services = services.addClass(T.Service, Beta, [[]], 'singleton');
+    services = services.addClass(T.Service, Gamma, [[]], 'singleton');
 
     // Three entries retained, the LAST one wins.
     expect(tokensOf(services)).toEqual([T.Service, T.Service, T.Service]);
@@ -84,12 +84,12 @@ describe('last-wins resolution follows the entry stream', () => {
 
   test('last-wins is decided by the entry stream, not by which BRANCH added last', () => {
     let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
-    base = base.add(T.Service, Alpha, [[]], 'singleton');
+    base = base.addClass(T.Service, Alpha, [[]], 'singleton');
 
     // `beta` is created first in wall-clock order but each branch is its own
     // stream, so each resolves ITS OWN tail.
-    const beta = base.add(T.Service, Beta, [[]], 'singleton');
-    const gamma = base.add(T.Service, Gamma, [[]], 'singleton');
+    const beta = base.addClass(T.Service, Beta, [[]], 'singleton');
+    const gamma = base.addClass(T.Service, Gamma, [[]], 'singleton');
 
     expect(beta.build().resolve<Beta>(T.Service).which).toBe('beta');
     expect(gamma.build().resolve<Gamma>(T.Service).which).toBe('gamma');
@@ -124,7 +124,7 @@ describe('collection aggregation enumerates EVERY registration, in order', () =>
   test('the aggregate mirrors the entry stream one-for-one', () => {
     let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     services = services.addValue(T.Service, 'v1');
-    services = services.add(T.Service, Alpha, [[]], 'singleton');
+    services = services.addClass(T.Service, Alpha, [[]], 'singleton');
     services = services.addFactory(T.Service, () => new Beta(), [[]], 'singleton');
 
     const entries = tokensOf(services).filter((token) => token === T.Service);
@@ -141,18 +141,18 @@ describe('a modifier REPLACES its node — one chain is exactly ONE entry', () =
   // The sharp tests. Resolution alone cannot catch a shadow entry (last-wins would
   // still pick the refined one); the entry COUNT and the collection aggregate can.
 
-  test('.add(...).as(scope) contributes ONE entry, not two', () => {
+  test('.addClass(...).as(scope) contributes ONE entry, not two', () => {
     const services = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .as('singleton');
 
     expect(tokensOf(services)).toEqual([T.Service]);
     expect(services.build().resolve<unknown[]>(`Array<${T.Service}>`)).toHaveLength(1);
   });
 
-  test('.add(...).withKey(key) contributes ONE entry — under the KEYED token only', () => {
+  test('.addClass(...).withKey(key) contributes ONE entry — under the KEYED token only', () => {
     const services = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]], 'singleton')
+      .addClass(T.Service, Alpha, [[]], 'singleton')
       .withKey('k');
 
     // No leftover shadow under the bare token: the refined node REPLACED it.
@@ -160,9 +160,9 @@ describe('a modifier REPLACES its node — one chain is exactly ONE entry', () =
     expect(services.build().resolve<unknown[]>(`Array<${T.Service}>`)).toEqual([]);
   });
 
-  test('.add(...).as(...).withKey(...) — still ONE entry after two refinements', () => {
+  test('.addClass(...).as(...).withKey(...) — still ONE entry after two refinements', () => {
     const services = new ServiceManifest<'singleton'>()
-      .add(T.Service, Alpha, [[]])
+      .addClass(T.Service, Alpha, [[]])
       .as('singleton')
       .withKey('k');
 
@@ -181,7 +181,7 @@ describe('a modifier REPLACES its node — one chain is exactly ONE entry', () =
   test('a refined chain does not shadow a PRIOR registration of the same token', () => {
     let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     services = services.addValue(T.Service, 'earlier');
-    services = services.add(T.Service, Alpha, [[]]).as('singleton');
+    services = services.addClass(T.Service, Alpha, [[]]).as('singleton');
 
     // Exactly two entries — the value, then the refined class. A shadow would
     // make it three and put an extra element in the aggregate.
@@ -195,7 +195,7 @@ describe('a modifier REPLACES its node — one chain is exactly ONE entry', () =
   test('a refinement does not disturb the position of LATER registrations', () => {
     let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
     services = services.addValue(T.A, 'a');
-    services = services.add(T.Service, Alpha, [[]]).as('singleton');
+    services = services.addClass(T.Service, Alpha, [[]]).as('singleton');
     services = services.addValue(T.C, 'c');
 
     expect(tokensOf(services)).toEqual([T.A, T.Service, T.C]);

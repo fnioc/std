@@ -4,16 +4,16 @@ import { T } from './fixtures.js';
 
 // Builder edge cases + the one-import re-export ergonomics.
 
-describe('ServiceManifest.add runtime guard', () => {
-  test('the type-only add<I>(ctor) form throws if invoked directly at runtime', () => {
+describe('ServiceManifest.addClass runtime guard', () => {
+  test('the type-only addClass<I>(ctor) form throws if invoked directly at runtime', () => {
     class Foo {}
     const services = new ServiceManifest<'singleton'>();
-    // The transformer lowers add<I>(ctor) → add(token, ctor). Calling the
-    // single-arg form at runtime (no transform) is a misuse — fail loud.
-    expect(() => (services.add as (c: unknown) => unknown)(Foo)).toThrow(TypeError);
+    // The transformer lowers addClass<I>(ctor) → addClass(token, ctor). Calling
+    // the single-arg form at runtime (no transform) is a misuse — fail loud.
+    expect(() => (services.addClass as (c: unknown) => unknown)(Foo)).toThrow(TypeError);
   });
 
-  test('a later .add() for the same token overrides the earlier registration', () => {
+  test('a later .addClass() for the same token overrides the earlier registration', () => {
     class First {
       public readonly which = 'first';
     }
@@ -21,8 +21,8 @@ describe('ServiceManifest.add runtime guard', () => {
       public readonly which = 'second';
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, First, [[]], 'singleton');
-    services = services.add(T.Service, Second, [[]], 'singleton');
+    services = services.addClass(T.Service, First, [[]], 'singleton');
+    services = services.addClass(T.Service, Second, [[]], 'singleton');
 
     const resolved = services.build().resolve<First | Second>(T.Service);
     expect(resolved.which).toBe('second');
@@ -44,9 +44,9 @@ describe('re-exports from @rhombus-std/di.core', () => {
     }
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Db, DbImpl, [[]], 'singleton');
-    // Signature ride on the registration (third `add` argument).
-    services = services.add(T.Service, Consumer, [[T.Db]], 'singleton');
+    services = services.addClass(T.Db, DbImpl, [[]], 'singleton');
+    // Signature rides on the registration (third `addClass` argument).
+    services = services.addClass(T.Service, Consumer, [[T.Db]], 'singleton');
 
     const c = services.build().resolve<Consumer>(T.Service);
     expect(c.db).toBeInstanceOf(DbImpl);

@@ -64,7 +64,7 @@ describe('resolveAsync — honest Promise<T> fallback', () => {
     defineDeps(Widget, [[T.Config]]);
 
     let services = new ServiceManifest();
-    services = services.add(T.Widget, Widget, [[T.Config]]);
+    services = services.addClass(T.Widget, Widget, [[T.Config]]);
     services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ url: 'db://transitive' }), [[]]);
 
     const provider = services.build();
@@ -93,7 +93,7 @@ describe('resolveAsync — single-flight + cached-Pending semantics', () => {
     defineDeps(AsyncScoped, [[T.Config]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
     services = services.addFactory(promiseOf(T.Config), () => {
       factoryRuns += 1;
       return Promise.resolve({ n: 7 });
@@ -121,7 +121,7 @@ describe('resolveAsync — single-flight + cached-Pending semantics', () => {
     defineDeps(AsyncScoped, [[T.Config]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
     services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }), [[]]);
 
     const scope = services.build().createScope('singleton');
@@ -144,7 +144,7 @@ describe('resolveAsync — union async-reject fall-through', () => {
     defineDeps(UnionHolder, [[union(T.A, T.B)]]);
 
     let services = new ServiceManifest();
-    services = services.add(T.UnionHolder, UnionHolder, [[union(T.A, T.B)]]);
+    services = services.addClass(T.UnionHolder, UnionHolder, [[union(T.A, T.B)]]);
     // Member A resolves only via the async fallback — and rejects.
     services = services.addFactory(promiseOf(T.A), () => Promise.reject(new Error('A is down')), [[]]);
     // Member B is a plain value — the fall-through winner.
@@ -166,7 +166,7 @@ describe('disposal of async-owned instances', () => {
     defineDeps(AsyncScoped, [[T.Config]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
     services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }), [[]]);
 
     const scope = services.build().createScope('singleton');
@@ -188,7 +188,7 @@ describe('disposal of async-owned instances', () => {
     defineDeps(AsyncScoped, [[T.Config]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
     services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }), [[]]);
 
     const scope = services.build().createScope('singleton');

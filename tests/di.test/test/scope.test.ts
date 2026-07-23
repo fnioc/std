@@ -17,7 +17,7 @@ class FakeDb {
 describe('scope chain + sealed registration lookup', () => {
   test('a later builder registration shadows the earlier one (last-wins)', () => {
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.add(T.Db, RealDb, [[]], 'request');
+    services = services.addClass(T.Db, RealDb, [[]], 'request');
     services = services.addValue(T.Db, new FakeDb());
 
     const root = services.build();
@@ -30,7 +30,7 @@ describe('scope chain + sealed registration lookup', () => {
 
   test('lookup falls through to the builder base map when no override', () => {
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.add(T.Db, RealDb, [[]], 'singleton');
+    services = services.addClass(T.Db, RealDb, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const req = root.createScope('request');
@@ -51,7 +51,7 @@ describe('scope chain + sealed registration lookup', () => {
 
   test('IMMUTABLE: deriving a new manifest after build() does not affect the already-built root', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Db, RealDb, [[]], 'singleton');
+    services = services.addClass(T.Db, RealDb, [[]], 'singleton');
     const root = services.build();
 
     // Deriving a new manifest from `services` hands back a DIFFERENT value — it
@@ -82,7 +82,7 @@ describe('no open frame ⇒ transient (uniform-tag fallback)', () => {
 
   test("(a) provider-level resolve with no scope open ⇒ fresh instance per call, even for 'singleton'-tagged", () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(T.Service, RequestScoped, [[]], 'singleton');
+    services = services.addClass(T.Service, RequestScoped, [[]], 'singleton');
 
     const provider = services.build(); // frameless
 
@@ -93,8 +93,8 @@ describe('no open frame ⇒ transient (uniform-tag fallback)', () => {
   test("(b) a 'singleton'-tagged dep resolved inside only a 'request' frame ⇒ transient", () => {
     let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(SingletonNeedingRequest, [[T.Service]]);
-    services = services.add(T.Service, RequestScoped, [[]], 'request');
-    services = services.add(T.Repo, SingletonNeedingRequest, [[T.Service]], 'singleton');
+    services = services.addClass(T.Service, RequestScoped, [[]], 'request');
+    services = services.addClass(T.Repo, SingletonNeedingRequest, [[T.Service]], 'singleton');
 
     // Open ONLY a request frame (no enclosing singleton).
     const req = services.build().createScope('request');
@@ -119,8 +119,8 @@ describe('no open frame ⇒ transient (uniform-tag fallback)', () => {
     }
     let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(SingletonHolder, [[T.Service]]);
-    services = services.add(T.Service, RequestScoped, [[]], 'request');
-    services = services.add(T.Repo, SingletonHolder, [[T.Service]], 'singleton');
+    services = services.addClass(T.Service, RequestScoped, [[]], 'request');
+    services = services.addClass(T.Repo, SingletonHolder, [[T.Service]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const req = root.createScope('request');
@@ -135,7 +135,7 @@ describe('no open frame ⇒ transient (uniform-tag fallback)', () => {
 
   test('a tag whose frame is never opened anywhere ⇒ transient (never auto-created)', () => {
     let services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
-    services = services.add(T.Db, RealDb, [[]], 'transaction'); // never opened
+    services = services.addClass(T.Db, RealDb, [[]], 'transaction'); // never opened
 
     const root = services.build().createScope('singleton');
     const req = root.createScope('request');
@@ -160,8 +160,8 @@ describe('THE critical rule — construct relative to the owning scope', () => {
   test('(c) nearest-frame caching works when the right frame is open — shared singleton across requests', () => {
     let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(RequestService, [[T.Logger]]);
-    services = services.add(T.Logger, Singleton, [[]], 'singleton');
-    services = services.add(T.Service, RequestService, [[T.Logger]], 'request');
+    services = services.addClass(T.Logger, Singleton, [[]], 'singleton');
+    services = services.addClass(T.Service, RequestService, [[T.Logger]], 'request');
 
     const root = services.build().createScope('singleton');
     const reqA = root.createScope('request');
@@ -186,8 +186,8 @@ describe('THE critical rule — construct relative to the owning scope', () => {
     }
     let services = new ServiceManifest<'singleton' | 'request'>();
     defineDeps(A, [[T.B]]);
-    services = services.add(T.B, B, [[]], 'singleton');
-    services = services.add(T.A, A, [[T.B]], 'singleton');
+    services = services.addClass(T.B, B, [[]], 'singleton');
+    services = services.addClass(T.A, A, [[T.B]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const deepChild = root.createScope('request').createScope('request');

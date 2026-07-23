@@ -111,8 +111,8 @@ describe('element lifetime / scoping', () => {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(ELEMENT, Alpha, [[]], 'singleton');
-    services = services.add(ELEMENT, Beta, [[]], 'singleton');
+    services = services.addClass(ELEMENT, Alpha, [[]], 'singleton');
+    services = services.addClass(ELEMENT, Beta, [[]], 'singleton');
 
     const root = services.build().createScope('singleton');
     const first = root.resolve<Alpha[]>(ARRAY);
@@ -131,7 +131,7 @@ describe('element lifetime / scoping', () => {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton'>();
-    services = services.add(ELEMENT, Transient, [[]]); // no scope — transient
+    services = services.addClass(ELEMENT, Transient, [[]]); // no scope — transient
 
     const root = services.build().createScope('singleton');
     const a = root.resolve<Transient[]>(ARRAY);
@@ -144,7 +144,7 @@ describe('element lifetime / scoping', () => {
       public readonly id = Math.random();
     }
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.add(ELEMENT, Scoped, [[]], 'request');
+    services = services.addClass(ELEMENT, Scoped, [[]], 'request');
 
     const root = services.build().createScope('singleton');
     const reqA = root.createScope('request');
@@ -190,7 +190,7 @@ describe('collection tokens as DEPENDENCY SLOTS', () => {
     let services = new ServiceManifest<'singleton'>();
     services = services.addValue(ELEMENT, 'a');
     services = services.addValue(ELEMENT, 'b');
-    services = services.add('pkg:Host', Host, [[ARRAY]]);
+    services = services.addClass('pkg:Host', Host, [[ARRAY]]);
 
     const host = services.build().resolve<Host>('pkg:Host');
     expect(host.plugins).toEqual(['a', 'b']);
@@ -198,7 +198,7 @@ describe('collection tokens as DEPENDENCY SLOTS', () => {
 
   test('an EMPTY aggregate still satisfies the signature (injects [])', () => {
     let services = new ServiceManifest<'singleton'>();
-    services = services.add('pkg:Host', Host, [[ARRAY]]);
+    services = services.addClass('pkg:Host', Host, [[ARRAY]]);
 
     const host = services.build().resolve<Host>('pkg:Host');
     expect(host.plugins).toEqual([]);
