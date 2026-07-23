@@ -123,6 +123,10 @@ function goEnv(): NodeJS.ProcessEnv {
   env.GOTOOLCHAIN = 'local';
   env.GOTMPDIR = goTmp;
   env.TTSC_CACHE_DIR = ttscCache;
+  // Setting GOCACHE — even to Go's own default path — flips ttsc from a private
+  // object cache under TTSC_CACHE_DIR to the ambient one, sharing compiled
+  // objects with the transforms Go gates: a cold sidecar build mostly re-links.
+  env.GOCACHE = process.env.GOCACHE ?? join(homedir(), '.cache', 'go-build');
   env.TTSC_GO_BINARY = goBin;
   return env;
 }
