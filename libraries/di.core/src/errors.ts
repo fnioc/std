@@ -41,8 +41,10 @@ export class ActivationError extends DiError {
 /**
  * An open template token was passed to a registration method that cannot
  * accept one: `addValue`/`addFactory` (open registrations are class-only), or
- * `add` with a template whose type arguments are not ALL holes (v1 forbids
- * mixing concrete args and holes in the service token).
+ * `addClass` with a template no closed token could ever match — one the token
+ * grammar refuses, or a bare hole (`$1`), which names no base to register under.
+ * Concrete args and holes MIX freely (`pkg:IRepo<pkg:IUser,$1>`); the v1
+ * all-holes rule that used to be enforced here is retired.
  */
 export class OpenTokenRegistrationError extends DiError {
   public constructor(
@@ -51,9 +53,10 @@ export class OpenTokenRegistrationError extends DiError {
   ) {
     super(
       method === 'addClass'
-        ? `Cannot register open template "${token}": every type argument of `
-          + `an open service token must be a hole ($N). Make every argument `
-          + `a hole, or close the token fully.`
+        ? `Cannot register open template "${token}": an open service token must `
+          + `be a well-formed generic application carrying at least one hole `
+          + `(e.g. "pkg:IRepo<$1>" or "pkg:IRepo<pkg:IUser,$1>"). This one names `
+          + `no matchable base, so no closed token could ever resolve against it.`
         : `Cannot register open template "${token}" with ${method}(): open `
           + `registrations are class-only. Register a class with `
           + `addClass("${token}", MyClass), or close the token first.`,

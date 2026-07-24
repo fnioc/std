@@ -35,7 +35,7 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { HOLE_PATTERN, isOpenToken, parseToken } from './token/index.js';
+import { isOpenToken, parseToken } from './token/index.js';
 import { TokenNode } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
 
@@ -134,9 +134,9 @@ function materialise(pending: PendingRegistration): ManifestEntry {
   const producer = pending.producer;
   switch (producer.kind) {
     case 'class': {
-      // An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes
-      // into the open-registration table instead of the exact map; resolution
-      // closes it per requested token.
+      // An OPEN template token (`pkg:IRepo<$1>`, `pkg:IRepo<pkg:IA,$1>` — any
+      // type arg a hole, at any depth) routes into the open-registration table
+      // instead of the exact map; resolution closes it per requested token.
       if (isOpenToken(token)) {
         return openEntry(token, producer.ctor, signatures, pending.scope);
       }
@@ -198,9 +198,20 @@ function materialise(pending: PendingRegistration): ManifestEntry {
 
 /**
  * Builds the OPEN entry for a class registration whose token is a template.
- * Enforces the v1 all-holes rule: every top-level type argument of the service
- * template must be exactly a hole (`$N`); repeats (`IFoo<$<1>,$<1>>`) are allowed
- * and constrain a match to equal args.
+ * It CLASSIFIES nothing — `materialise` already routed here off `isOpenToken` —
+ * it only parses the template into the tree the engine unifies against and
+ * buckets it under the engine's lookup key.
+ *
+ * Any mix of concrete args and holes is legal (`pkg:IRepo<pkg:IA,$1>`,
+ * `pkg:IRepo<app/IBox<$1>>`): a hole binds whatever the closing carries in that
+ * position, a concrete arg must match the closing's exactly, and a repeated hole
+ * label (`IFoo<$1,$1>`) constrains a match to equal args. The v1 all-holes rule
+ * this function used to enforce is retired.
+ *
+ * What is still rejected is a template no closed token could ever match: one the
+ * typed grammar refuses (`"a b<$1>"` — trailing text after the base), and a bare
+ * hole (`"$1"`), which has no base to bucket under and so is never reached by
+ * `#lookup`. Both would otherwise register a silent never-matches.
  */
 function openEntry(
   token: Token,
@@ -208,27 +219,21 @@ function openEntry(
   signatures: DepSignatures | undefined,
   scope: string | undefined,
 ): ManifestEntry {
-  const parsed = parseToken(token);
-  if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
+  const node = TokenNode.tryParse(token);
+  if (node === undefined || node.kind !== 'concrete' || !node.args.length) {
     throw new OpenTokenRegistrationError(token, 'addClass');
   }
-  // The parsed template tree the engine unifies against (`match`). The
-  // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
-  // classification guard; `TokenNode.tryParse` never throws — an all-holes
-  // template that passed the guard always parses.
-  const node = TokenNode.tryParse(token);
   // Key the open table by the SAME canonical `baseKey` the engine looks it up
   // by (`TokenNode.baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving
-  // the key from the typed node — not the raw `parseToken` base — keeps
-  // registration and lookup on one canonicalisation: for every canonical template
-  // the two agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`)
-  // now registers under the same stripped key its ground spelling resolves to,
-  // instead of a raw space-bearing key the canonical lookup could never find.
-  const base = node !== undefined ? TokenNode.baseKey(node) : parsed.base;
+  // the key from the typed node keeps registration and lookup on one
+  // canonicalisation: for every canonical template the two agree (`pkg:IRepo`),
+  // and a non-canonical base spelling (`t:IR <$1>`) registers under the same
+  // stripped key its ground spelling resolves to, instead of a raw space-bearing
+  // key the canonical lookup could never find.
+  const base = TokenNode.baseKey(node);
   const open: OpenRegistration = {
     template: token,
     base,
-    pattern: parsed.args,
     ctor,
     scope,
     signatures,
@@ -343,10 +348,11 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * `scope` and `key` are the positional forms of the `.as()` / `.withKey()`
    * modifiers; whichever are omitted stay reachable on the returned chain.
    *
-   * An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes into
-   * the open-registration table instead of the exact map; resolution closes it
-   * per requested token. Mixing concrete args and holes in the service token
-   * throws (v1 all-holes rule).
+   * An OPEN template token (`pkg:IRepo<$1>` — any type arg a hole, at any depth)
+   * routes into the open-registration table instead of the exact map; resolution
+   * closes it per requested token. Concrete args and holes MIX freely
+   * (`pkg:IRepo<pkg:IUser,$1>`, `pkg:IRepo<app/IBox<$1>>`): a concrete arg must
+   * match the closing's exactly, a hole binds whatever the closing carries.
    *
    * Returns a NEW manifest — this one is unchanged.
    */

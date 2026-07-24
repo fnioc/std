@@ -502,7 +502,7 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 - **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
 - **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
-- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up.
+- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **PARTLY SUPERSEDED:** the all-holes registration guard is retired, so partial closing is live (§124). Template selection is still pure-recency. The rest of this entry stands: the string grammar remains `materialise`'s and `#lookup`'s open-vs-closed classifier.
 
 Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
 
@@ -753,3 +753,38 @@ backstop that catches one that never got pruned or lowered. A SOURCE-WRITTEN use
 call directly) has no later rescue, so it emits a targeted diagnostic naming the problem
 immediately. This retires the prior split behavior where different code paths independently chose
 `""` vs `null` vs no diagnostic for the same underlying "can't derive this" condition.
+
+---
+
+## §124 — The all-holes open-registration rule is retired; a template mixes concrete args and holes freely
+
+`ServiceManifestClass.openEntry` used to enforce a v1 rule that every top-level type argument of
+an open service template be exactly a hole (`$N`), throwing `OpenTokenRegistrationError` on
+`addClass("pkg:IRepo<pkg:IUser,$1>", …)`. That rule is retired. The typed matcher (§106) has
+always been fully recursive on its concrete arm — a concrete template arg requires an equal ground
+arg, a hole binds — so partial closing worked end-to-end on the resolve side and only registration
+blocked it. §118 killed the transform-side twin (diagnostics 990008/990009/990010) on the ruling
+that validating a user's design is not a transform's job; this retires the runtime guard §118 left
+standing.
+
+`openEntry` now classifies nothing — `materialise` already routed to it off `isOpenToken` — and
+only parses the template into the tree the engine unifies against. What it still rejects is a
+template no closed token could ever match: one the typed grammar refuses (`"a b<$1>"`, whose base
+stops at the space, leaving trailing text) and a bare hole (`"$1"`), which names no base to bucket
+under. Both previously registered a **silent never-matches** — the unparseable one through
+`openEntry`'s `node !== undefined ? … : parsed.base` fallback, so that phantom is fixed by the same
+change. `OpenRegistration.pattern` (the parsed top-level args, documented as "each exactly a hole")
+is deleted: it was written at registration and read nowhere, and its contract is exactly the
+retired rule.
+
+Two known gaps stay OPEN, both pinned by tests rather than fixed, because both are grammar
+decisions of their own: `materialise` still classifies with the string-grammar `isOpenToken`, which
+requires the closing `>` to be the token's last character, so a KEYED open template
+(`pkg:IRepo<$1>#k`, reachable via `.withKey`) reads as closed and registers as an exact holey entry
+no closing can resolve. Moving the classifier onto `TokenNode.tryParse` + `TokenNode.isOpen` would
+fix that and drop the string grammar's second parser, but it also flips `$0` from not-a-hole
+(`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole (the typed parser accepts any digits), which
+`token-grammar.test.ts` currently pins.
+
+_Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
+guard's shape (reject only what can never match, on the typed tree) is Claude's.

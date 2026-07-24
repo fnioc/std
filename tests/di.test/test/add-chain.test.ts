@@ -1,4 +1,4 @@
-import { OpenTokenRegistrationError, ServiceManifest } from '@rhombus-std/di';
+import { OpenTokenRegistrationError, ServiceManifest, UnregisteredTokenError } from '@rhombus-std/di';
 import type { IServiceManifest, ManifestEntry, Token } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 import { G, T } from './fixtures.js';
@@ -349,10 +349,32 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     expect(() => services.addValue(G.RepoTemplate, 'x')).toThrow(OpenTokenRegistrationError);
   });
 
-  test('a mixed concrete/hole service token throws from the addClass call', () => {
+  test('a mixed concrete/hole service token registers as an OPEN entry, no throw', () => {
     const services = new ServiceManifest<'singleton'>();
-    expect(() => services.addClass('app/IR<pkg:IA,$1>', Alpha, [[]])).toThrow(
+    expect(() => services.addClass('app/IR<pkg:IA,$1>', Alpha, [[]])).not.toThrow();
+  });
+
+  test('an unmatchable open service token throws from the addClass call', () => {
+    const services = new ServiceManifest<'singleton'>();
+    // A bare hole names no base to bucket under, so no closing could reach it.
+    expect(() => services.addClass('$1', Alpha, [[]])).toThrow(
       OpenTokenRegistrationError,
+    );
+  });
+
+  test('withKey on an open template composes a token the open table cannot serve', () => {
+    // KNOWN GAP, pinned rather than fixed: `withKey` recomposes `base#key`, and
+    // the string-grammar classifier (`isOpenToken`, which requires the closing
+    // `>` to be the token's last character) reads `pkg:IRepo<$1>#k` as CLOSED. It
+    // therefore registers as an EXACT entry whose token still carries a hole, so
+    // no keyed closing ever resolves against it. Moving the classifier onto the
+    // typed parser would fix this, but that is a grammar decision of its own (it
+    // also flips `$0` from not-a-hole to a hole).
+    const services = new ServiceManifest<'singleton'>();
+    const keyed = services.addClass(G.RepoTemplate, Alpha, [[]]).withKey('k');
+
+    expect(() => keyed.build().resolve('pkg:IRepo<pkg:IA>', 'k')).toThrow(
+      UnregisteredTokenError,
     );
   });
 

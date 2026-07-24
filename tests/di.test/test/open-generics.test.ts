@@ -1,6 +1,6 @@
-import { closeToken, type IResolver, NoSatisfiableSignatureError, type OpenRegistration, OpenTokenRegistrationError,
-  OpenTokenResolutionError, type Registration, RESOLVER_TOKEN, ServiceManifest, ServiceProviderClass, type Token,
-  typeArg, union, UnregisteredTokenError } from '@rhombus-std/di';
+import { closeToken, type IResolver, type IServiceManifest, NoSatisfiableSignatureError, type OpenRegistration,
+  OpenTokenRegistrationError, OpenTokenResolutionError, type Registration, RESOLVER_TOKEN, ServiceManifest,
+  ServiceProviderClass, type Token, typeArg, union, UnregisteredTokenError } from '@rhombus-std/di';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
 import { AsyncDisposableThing, defineDeps, DisposeLog, G, SyncDisposable, T } from './fixtures.js';
@@ -131,6 +131,137 @@ describe('open-table matching', () => {
   });
 });
 
+// A template may mix concrete args and holes at any depth. The v1 all-holes
+// registration rule is retired: a concrete arg constrains the match (it must
+// equal the closing's arg exactly), a hole binds whatever the closing carries.
+describe('partially-closed templates', () => {
+  test('a concrete arg pins its position; the hole still binds and substitutes', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass('app/IR<pkg:IA,$1>', SqlRepo, [['$1']]);
+
+    const sp = services.build();
+    const repo = sp.resolve<SqlRepo>('app/IR<pkg:IA,pkg:IB>');
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('B!');
+    // The concrete first arg has to match exactly — a different one misses.
+    expect(() => sp.resolve('app/IR<pkg:IZ,pkg:IB>')).toThrow(UnregisteredTokenError);
+  });
+
+  test('a hole nested inside a concrete arg closes', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IR<app/IBox<$1>>', SqlRepo, [['$1']]);
+
+    const sp = services.build();
+    const repo = sp.resolve<SqlRepo>('app/IR<app/IBox<pkg:IA>>');
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('A!');
+    // The nesting is structural: an unwrapped arg is a different shape.
+    expect(() => sp.resolve('app/IR<pkg:IA>')).toThrow(UnregisteredTokenError);
+  });
+
+  test('holes bind by LABEL around a pinned middle arg', () => {
+    class Inverted {
+      public constructor(
+        public readonly first: unknown,
+        public readonly second: unknown,
+      ) {}
+    }
+    let services = new ServiceManifest();
+    services = services.addClass('app/IInv<$7,pkg:IB,$3>', Inverted, [[typeArg(3), typeArg(7)]]);
+
+    const sp = services.build();
+    const inv = sp.resolve<Inverted>('app/IInv<pkg:IX,pkg:IB,pkg:IY>');
+
+    expect(inv.first).toBe('pkg:IY');
+    expect(inv.second).toBe('pkg:IX');
+    expect(() => sp.resolve('app/IInv<pkg:IX,pkg:IC,pkg:IY>')).toThrow(
+      UnregisteredTokenError,
+    );
+  });
+
+  test('every slot kind closes through a template that also carries a concrete arg', () => {
+    class KitchenSink {
+      public constructor(
+        public readonly sp: IResolver,
+        public readonly lit: unknown,
+        public readonly argToken: unknown,
+        public readonly dep: unknown,
+        public readonly viaUnion: unknown,
+      ) {}
+    }
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IKitchen<pkg:IC,$1>', KitchenSink, [[
+      RESOLVER_TOKEN,
+      { value: 42 },
+      typeArg(1),
+      '$1',
+      union('app/absent', '$1'),
+    ]]);
+
+    const sp = services.build();
+    const sink = sp.resolve<KitchenSink>('app/IKitchen<pkg:IC,pkg:IA>');
+
+    expect(typeof sink.sp.resolve).toBe('function');
+    expect(sink.lit).toBe(42);
+    expect(sink.argToken).toBe(T.A);
+    expect(sink.dep).toBe('A!');
+    expect(sink.viaUnion).toBe('A!');
+  });
+
+  test('a partially-closed template and a general one share a base and split the closings', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass('app/IR<$1,$2>', MemRepo, [[{ value: 'general' }]]);
+    services = services.addClass('app/IR<pkg:IA,$1>', SqlRepo, [['$1']]);
+
+    const sp = services.build();
+
+    // The specific template serves the closings it covers; the general one
+    // serves the rest.
+    expect(sp.resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(SqlRepo);
+    expect(sp.resolve('app/IR<pkg:IZ,pkg:IB>')).toBeInstanceOf(MemRepo);
+  });
+
+  test('the open-table key of a mixed template is the base its closings derive', () => {
+    // Both templates bucket under `app/IR`, the same key `#lookup` derives from
+    // every closing of them — the invariant the open table is gated on.
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IR<pkg:IA,$1>', ZeroRepo, [[]]);
+    services = services.addClass('app/IR<app/IBox<$1>>', SqlRepo, [['$1']]);
+
+    const sp = services.build();
+
+    expect(sp.resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(ZeroRepo);
+    expect(sp.resolve('app/IR<app/IBox<pkg:IA>>')).toBeInstanceOf(SqlRepo);
+  });
+
+  test('dedup is by template STRING — a mixed template does not dedup against a general one', () => {
+    let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
+    base = base.addClass('app/IR<pkg:IA,$1>', ZeroRepo, [[]]);
+
+    // Same template string: the tryAdd is a no-op, so the first ctor survives.
+    expect(base.tryAdd('app/IR<pkg:IA,$1>', MemRepo, [[]]).build().resolve(
+      'app/IR<pkg:IA,pkg:IB>',
+    )).toBeInstanceOf(ZeroRepo);
+
+    // A DIFFERENT template on the same base is a different service token, so it
+    // registers rather than dedup'ing away.
+    expect(base.tryAdd('app/IR<$1,$2>', MemRepo, [[]]).build().resolve(
+      'app/IR<pkg:IZ,pkg:IB>',
+    )).toBeInstanceOf(MemRepo);
+
+    // removeAll is keyed by the canonical BASE the entry is bucketed under.
+    const cleared = base.removeAll('app/IR').build();
+    expect(() => cleared.resolve('app/IR<pkg:IA,pkg:IB>')).toThrow(UnregisteredTokenError);
+  });
+});
+
 describe('substitution across slot kinds', () => {
   test('provider token, LiteralRef, TypeArgRef, hole token, and Union-with-hole all close', () => {
     class KitchenSink {
@@ -226,7 +357,6 @@ describe('memoization', () => {
       openTable({
         template: G.RepoTemplate,
         base: T.Repo,
-        pattern: ['$1'],
         ctor: ZeroRepo,
         scope: undefined,
       }),
@@ -250,7 +380,6 @@ describe('memoization', () => {
       openTable({
         template: G.RepoTemplate,
         base: T.Repo,
-        pattern: ['$1'],
         ctor: ZeroRepo,
         scope: undefined,
       }),
@@ -411,18 +540,22 @@ describe('errors', () => {
     );
   });
 
-  test('mixing concrete args and holes in the service token throws', () => {
+  test('a bare hole as the service token throws — it names no base to register under', () => {
     const services = new ServiceManifest();
 
-    expect(() => services.addClass('app/IR<pkg:IA,$1>', ZeroRepo, [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
-    // Nested holes are not top-level hole nodes either.
-    expect(() => services.addClass('app/IR<app/IBox<$1>>', ZeroRepo, [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
-    // A bare hole has no base at all.
     expect(() => services.addClass('$1', ZeroRepo, [[]])).toThrow(
+      OpenTokenRegistrationError,
+    );
+  });
+
+  test('a template the token grammar refuses throws instead of registering a never-matches', () => {
+    const services = new ServiceManifest();
+
+    // `a b<$1>` is open by the string grammar (base `a b`, arg `$1`) but the
+    // typed parser stops the base at the space and rejects the trailing text.
+    // The engine unifies on the typed tree, so registering this would bucket an
+    // entry `#lookup` could never match.
+    expect(() => services.addClass('a b<$1>', ZeroRepo, [[]])).toThrow(
       OpenTokenRegistrationError,
     );
   });
