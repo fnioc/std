@@ -128,6 +128,16 @@ type PendingProducer =
  */
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
+  // Classify off the BASE, never the key-composed token. A key suffix can
+  // neither introduce nor remove a hole, but the string grammar cannot see past
+  // one: `parseToken` requires the closing `>` to be the token's LAST character,
+  // so `isOpenToken("pkg:IRepo<$1>#redis")` answers false and a keyed template
+  // used to land as an exact entry on a literal holey string no closing could
+  // ever resolve. The typed side has always handled it — `TokenNode` parses
+  // `base<args>#key`, `baseKey` yields the `base#key` the engine's open table is
+  // indexed by, and `Matcher` compares template key against ground key — so
+  // classifying on the base is all that was missing.
+  const open = isOpenToken(pending.base);
   // Union slots reach the engine union-bearing: per-param `#resolveUnion` resolves
   // each union at RESOLVE time and falls through on a member's runtime failure (a
   // ctor that throws at build, a Promise that rejects — union.test's GAP2 /
@@ -142,7 +152,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       // An OPEN template token (`pkg:IRepo<$1>`, `pkg:IRepo<pkg:IA,$1>` — any
       // type arg a hole, at any depth) routes into the open-registration table
       // instead of the exact map; resolution closes it per requested token.
-      if (isOpenToken(token)) {
+      if (open) {
         return openEntry(token, producer.ctor, signatures, pending.scope);
       }
       // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
@@ -162,7 +172,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
     case 'factory': {
       // Open registrations are class-only: a template must synthesize per-closing
       // class registrations, which a factory/value shape cannot express in v1.
-      if (isOpenToken(token)) {
+      if (open) {
         throw new OpenTokenRegistrationError(token, 'addFactory');
       }
       // The factory IS the producer. `arity` is the factory's OWN declared
@@ -179,7 +189,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
     }
     case 'value': {
-      if (isOpenToken(token)) {
+      if (open) {
         throw new OpenTokenRegistrationError(token, 'addValue');
       }
       // The value collapses to a producer that returns it verbatim. `scope` stays
@@ -203,9 +213,11 @@ function materialise(pending: PendingRegistration): ManifestEntry {
 
 /**
  * Builds the OPEN entry for a class registration whose token is a template.
- * It CLASSIFIES nothing — `materialise` already routed here off `isOpenToken` —
- * it only parses the template into the tree the engine unifies against and
- * buckets it under the engine's lookup key.
+ * It CLASSIFIES nothing — `materialise` already routed here off the base's
+ * `isOpenToken` — it only parses the template into the tree the engine unifies
+ * against and buckets it under the engine's lookup key. `token` is the
+ * key-COMPOSED string, so a keyed template buckets under `base#key`, which is
+ * exactly the key `#lookup` derives from a keyed closing.
  *
  * Any mix of concrete args and holes is legal (`pkg:IRepo<pkg:IA,$1>`,
  * `pkg:IRepo<app/IBox<$1>>`): a hole binds whatever the closing carries in that

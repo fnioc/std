@@ -362,19 +362,25 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     );
   });
 
-  test('withKey on an open template composes a token the open table cannot serve', () => {
-    // KNOWN GAP, pinned rather than fixed: `withKey` recomposes `base#key`, and
-    // the string-grammar classifier (`isOpenToken`, which requires the closing
-    // `>` to be the token's last character) reads `pkg:IRepo<$1>#k` as CLOSED. It
-    // therefore registers as an EXACT entry whose token still carries a hole, so
-    // no keyed closing ever resolves against it. Moving the classifier onto the
-    // typed parser would fix this, but that is a grammar decision of its own (it
-    // also flips `$0` from not-a-hole to a hole).
+  test('withKey on an open template registers a KEYED open entry the closings reach', () => {
+    // Classification runs on the BASE token, so the `#k` suffix cannot hide the
+    // hole from it. The entry buckets under `pkg:IRepo#k` — the key a keyed
+    // closing derives — so only the matching key resolves through it.
     const services = new ServiceManifest<'singleton'>();
-    const keyed = services.addClass(G.RepoTemplate, Alpha, [[]]).withKey('k');
+    const sp = services.addClass(G.RepoTemplate, Alpha, [[]]).withKey('k').build();
 
-    expect(() => keyed.build().resolve('pkg:IRepo<pkg:IA>', 'k')).toThrow(
-      UnregisteredTokenError,
+    expect(sp.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
+    expect(() => sp.resolve('pkg:IRepo<pkg:IA>')).toThrow(UnregisteredTokenError);
+    expect(() => sp.resolve('pkg:IRepo<pkg:IA>', 'other')).toThrow(UnregisteredTokenError);
+  });
+
+  test('a keyed open template still rejects the factory and value verbs', () => {
+    const services = new ServiceManifest<'singleton'>();
+    expect(() => services.addFactory(G.RepoTemplate, () => 1, [[]]).withKey('k')).toThrow(
+      OpenTokenRegistrationError,
+    );
+    expect(() => services.addValue(G.RepoTemplate, 'x', 'k')).toThrow(
+      OpenTokenRegistrationError,
     );
   });
 
