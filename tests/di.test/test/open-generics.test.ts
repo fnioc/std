@@ -286,6 +286,33 @@ describe('partially-closed templates', () => {
     // removeAll is keyed by the canonical BASE the entry is bucketed under.
     const cleared = base.removeAll('app/IR').build();
     expect(() => cleared.resolve('app/IR<pkg:IA,pkg:IB>')).toThrow(UnregisteredTokenError);
+
+    // A bare BASE never dedups a template away — they are different services.
+    expect(base.tryAdd('app/IR', MemRepo, [[]]).build().resolve('app/IR')).toBeInstanceOf(
+      MemRepo,
+    );
+  });
+
+  test('removeAll also drops an open entry named by its TEMPLATE', () => {
+    let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
+    base = base.addClass('app/IR<$1>', ZeroRepo, [[]]);
+    base = base.addClass('app/IR<pkg:IA,$1>', MemRepo, [[]]);
+
+    // The template names exactly one entry; its sibling on the same base stays.
+    const cleared = base.removeAll('app/IR<$1>').build();
+    expect(() => cleared.resolve('app/IR<pkg:IB>')).toThrow(UnregisteredTokenError);
+    expect(cleared.resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(MemRepo);
+  });
+
+  test('replace on a template SWAPS it rather than accumulating a duplicate', () => {
+    let base: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
+    base = base.addClass('app/IR<$1>', ZeroRepo, [[]]);
+    base = base.replace('app/IR<$1>', MemRepo, [[]]);
+
+    // One entry left, and it is the replacement — not a second template the
+    // most-specific-first scan happens to reach first.
+    expect([...base].filter((e) => e.kind === 'open')).toHaveLength(1);
+    expect(base.build().resolve('app/IR<pkg:IB>')).toBeInstanceOf(MemRepo);
   });
 });
 

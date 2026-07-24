@@ -15,7 +15,10 @@
 //   - `removeAll(token)` -- returns a manifest with EVERY registration bound to
 //     `token` dropped (the reference `RemoveAll(Type)` / `RemoveAll<T>()`; a token
 //     is our service-type analog). Required by logging's `clearProviders`, which
-//     strips all `ILoggerProvider` registrations.
+//     strips all `ILoggerProvider` registrations. An OPEN registration answers to
+//     both of its names here -- its template (`pkg:IRepo<$1>`) and the canonical
+//     base it buckets under (`pkg:IRepo`) -- deliberately broader than the
+//     identity-exact `tryAdd*` dedup (see `removeRegistrations`).
 //   - `tryAdd` / `tryAddFactory` / `tryAddValue` -- conditional registration: add
 //     only when `token` has NO registration yet (the reference `TryAdd*` family).
 //     When the token was ALREADY registered they return the receiver UNCHANGED --

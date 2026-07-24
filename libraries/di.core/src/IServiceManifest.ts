@@ -35,8 +35,7 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { isOpenToken, parseToken } from './token/index.js';
-import { TokenNode } from './token/index.js';
+import { isOpenToken, TokenNode } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
@@ -510,14 +509,22 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   }
 
   /**
-   * Returns a manifest with EVERY registration bound to `token` dropped — both
-   * the exact entries under that token AND the open entries whose canonical BASE
-   * is that token. The removal PRIMITIVE behind the
+   * Returns a manifest with EVERY registration bound to `token` dropped: the
+   * exact entries under that token, plus the open entries `token` names — by
+   * their TEMPLATE (`pkg:IRepo<$1>`) or by the canonical BASE they bucket under
+   * (`pkg:IRepo`). The removal PRIMITIVE behind the
    * `ServiceManifestDescriptorAugmentations.removeAll` augmentation, which cannot
    * reach this node's internals from a separate module. Not part of the public
    * authoring interface (`IServiceManifestBase`) — a consumer reaches removal
    * through the fluent `removeAll` augmentation, exactly as `build()` is reached
    * through the di runtime, never as a raw method on the collection surface.
+   *
+   * An open entry answering to BOTH names is DELIBERATELY broader than
+   * `hasRegistrations`, which identifies it by its template alone: removal is the
+   * "drop everything filed under this name" verb (the reference
+   * `RemoveAll(IRepo<>)` affordance — clear a base and every template on it goes),
+   * while dedup is identity-exact, since `pkg:IRepo` and `pkg:IRepo<$1>` are
+   * different services and a bare base must never dedup a template away.
    *
    * It REBASES rather than filters in place: the survivors become the inner list
    * of a fresh root, collapsing the chain walked so far into one frozen array.
@@ -525,13 +532,17 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * returned manifest.
    */
   public removeRegistrations(token: Token): IServiceManifest<Scopes> {
-    const kept = [...this].filter((entry) => entry.kind === 'exact' ? entry.token !== token : entry.base !== token);
+    const kept = [...this].filter((entry) =>
+      entry.kind === 'exact'
+        ? entry.token !== token
+        : entry.open.template !== token && entry.base !== token
+    );
     return new ServiceManifestClass<Scopes>(Object.freeze(kept));
   }
 
   /**
    * True when `token` already has at least one registration — an exact entry, or
-   * (for an open template token) a matching template among the open entries. The
+   * (for an open template token) the same template among the open entries. The
    * "already registered?" PRIMITIVE behind the `tryAdd*` augmentations
    * (`ServiceManifestDescriptorAugmentations`), which cannot reach this node's
    * internals from a separate module. Like `removeRegistrations`, it is not part
@@ -541,22 +552,17 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * The token is our service-type key (the reference `TryAdd` dedups by
    * `ServiceType`). Matching is exact — an open template dedups against the same
-   * template string, never against a closing it could synthesize.
+   * template string, never against a closing it could synthesize and never
+   * against the bare base it buckets under.
    */
   public hasRegistrations(token: Token): boolean {
-    // An open template dedups against the same template STRING only (never a
-    // closing it could synthesize). Classification stays on the string predicate;
-    // the `parseToken !== undefined` guard reproduces the old behavior (a bare
-    // hole is open but unparseable, so it dedups against nothing).
-    const openQuery = isOpenToken(token) && parseToken(token) !== undefined;
+    // Plain string equality on BOTH arms. An open entry's template always carries
+    // a hole and a bare hole never registers (`openEntry` rejects it), so no
+    // classification guard is needed to keep a closed query off the open arm —
+    // and a guard built on `isOpenToken` would miss a KEYED template outright,
+    // since the string grammar cannot see a hole past a `#key` suffix.
     for (const entry of this) {
-      if (entry.kind === 'exact') {
-        if (entry.token === token) {
-          return true;
-        }
-        continue;
-      }
-      if (openQuery && entry.open.template === token) {
+      if (entry.kind === 'exact' ? entry.token === token : entry.open.template === token) {
         return true;
       }
     }
