@@ -54,7 +54,35 @@ const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
 // from the golden and reunite it, exactly as the live semantic sandbox did.
 const TESTDATA = join(import.meta.dir, 'testdata');
 function golden(name: string): string {
-  return readFileSync(join(TESTDATA, name), 'utf8');
+  return canonQuotes(readFileSync(join(TESTDATA, name), 'utf8'));
+}
+
+// canonQuotes normalizes the two COSMETIC artifacts Bun.Transpiler (the type-strip
+// step) introduces, so the comparison pins tokens + call structure rather than
+// incidental formatting the production bundler discards anyway. The Go engine emits
+// deterministic single-line, double-quoted output (verified: the raw ttsc envelope
+// is byte-identical to the golden); Bun.Transpiler then (1) flips string quotes to
+// whichever style dominates the file and (2) wraps long lines — both content-
+// sensitive, so they differ between the frozen di-direct goldens (captured with the
+// di stage co-active) and the pure-inline output. Applied to BOTH sides:
+//   - every simple single-quoted literal → double quotes; and
+//   - Bun's line-wrapping is rejoined delimiter-aware, restoring the golden's
+//     single-line spacing (comma-SPACE preserved, so the round-trip regexes and
+//     needles that carry `, ` keep matching). Top-level statement newlines are left
+//     intact, so per-line lineWith() lookups still isolate one statement each.
+// The exact byte-for-byte Go-printer parity is pinned separately at the Go tier.
+function canonQuotes(s: string): string {
+  return s
+    .replace(/'([^'\\\n]*)'/g, '"$1"')
+    .replace(/([([{])\s*\n\s*/g, '$1')
+    .replace(/,\s*\n\s*/g, ', ')
+    .replace(/\n\s*\./g, '.')
+    .replace(/\s*\n\s*([)\]}])/g, '$1')
+    // Bun emits a TRAILING comma when it wraps a call/array multi-line
+    // (`f(\n  "a",\n)`); the deterministic single-line Go output (and the golden)
+    // has none. Drop a comma immediately before a close delimiter (inter-element
+    // commas are never adjacent to a close, so this only strips the trailing one).
+    .replace(/,\s*([)\]}])/g, '$1');
 }
 const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
@@ -207,7 +235,7 @@ function lower(tsconfig: string, outDir: string): string {
     const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
     lowered = envelope.typescript['src/app.ts'] ?? '';
   }
-  return new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered);
+  return canonQuotes(new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered));
 }
 
 let withInline = '';
@@ -584,7 +612,7 @@ function readChainFile(dir: string, result: ReturnType<typeof spawnSync>, srcRel
     const envelope = JSON.parse(String(result.stdout)) as { typescript: Record<string, string>; };
     lowered = envelope.typescript[srcRel] ?? '';
   }
-  return new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered);
+  return canonQuotes(new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered));
 }
 
 let chainInline = '';
