@@ -52,7 +52,7 @@ plugin's.
 
 ## Key exports
 
-This package has no JavaScript API of its own — like `@rhombus-std/config.transformer` and
+This package has no JavaScript API of its own — like `@rhombus-std/config.extras` and
 `@rhombus-std/primitives.extras`, it's a build-time-only Go/`ttsc` engine descriptor.
 Importing it (or listing it in your `tsconfig.json`'s `types` array) carries a type-only side
 effect instead: it declares the `addOptions<T>()` overload on the registration builder. Without

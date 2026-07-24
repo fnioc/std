@@ -1,4 +1,4 @@
-// @rhombus-std/config.transformer — the config authoring surface for the
+// @rhombus-std/config.extras — the config authoring surface for the
 // `.withType<T>()` schema sugar.
 //
 // Build-time only, and not a TS-plugin transformer: the lowering runs on the

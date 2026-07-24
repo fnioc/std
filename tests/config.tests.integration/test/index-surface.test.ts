@@ -57,7 +57,7 @@ describe('cross-package public surface (built dist)', () => {
     await import('@rhombus-std/config/with-type-augment');
     const builder = new ConfigBuilder();
     assert.equal(typeof builder.withType, 'function');
-    assert.throws(() => builder.withType(), /@rhombus-std\/config.transformer/);
+    assert.throws(() => builder.withType(), /@rhombus-std\/config.extras/);
   });
 
   test('provider option types are usable in a type position', () => {

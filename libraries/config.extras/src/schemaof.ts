@@ -13,7 +13,7 @@
 // silently returning `undefined` — calling `schemaof` without the transformer wired
 // up throws a clear error pointing at the missing plugin, exactly like `tokenfor`.
 //
-// It lives here in `@rhombus-std/config.transformer` (the config authoring package),
+// It lives here in `@rhombus-std/config.extras` (the config authoring package),
 // NOT in a runtime leaf, because it is ONLY ever called inside the inline-sugar body
 // (`./inline.ts`) — never in runtime source — so it is an authoring-time construct
 // that belongs with the domain transformer.
@@ -32,7 +32,7 @@
 export function schemaof<T>(): unknown {
   void (null as T | null);
   throw new Error(
-    "schemaof<T>() requires @rhombus-std/config.transformer's compile-time transform to run. "
+    "schemaof<T>() requires @rhombus-std/config.extras's compile-time transform to run. "
       + 'It has not been applied. Use withSchema({...}) directly, or configure the transformer.',
   );
 }

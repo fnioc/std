@@ -1,4 +1,4 @@
-# @rhombus-std/config.transformer
+# @rhombus-std/config.extras
 
 **Turns a TypeScript interface into a configuration schema, at compile time.**
 
@@ -11,7 +11,7 @@ fully-coerced configuration with zero hand-written schema.
 ## Install
 
 ```sh
-bun add @rhombus-std/config.transformer @rhombus-std/config
+bun add @rhombus-std/config.extras @rhombus-std/config
 ```
 
 This package is a build-time-only engine with no JavaScript API of its own — installing it is
@@ -69,7 +69,7 @@ directly; see [Usage](#usage) above for the `.withType<T>()` call it lowers.
 
 ## How it fits
 
-`@rhombus-std/config.transformer` is a standalone, build-time-only companion to
+`@rhombus-std/config.extras` is a standalone, build-time-only companion to
 [`@rhombus-std/config`](../config/README.md) — it has no dependency-injection
 involvement and no runtime footprint of its own; every byte it emits is a call
 `@rhombus-std/config` already knows how to run. Install it alongside `config`

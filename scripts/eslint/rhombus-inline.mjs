@@ -40,7 +40,7 @@ const PRIMITIVE_HOMES = {
   isFactory: '@rhombus-std/primitives.extras',
   returntokenfor: '@rhombus-std/primitives.extras',
   paramtokensfor: '@rhombus-std/primitives.extras',
-  schemaof: '@rhombus-std/config.transformer',
+  schemaof: '@rhombus-std/config.extras',
 };
 
 // Body-imported RUNTIME callees (§99, option B) — a bounded category distinct from

@@ -1,10 +1,10 @@
-// Tier 2 seam -- `.withType<T>()`, contributed later by @rhombus-std/config.transformer.
+// Tier 2 seam -- `.withType<T>()`, contributed later by @rhombus-std/config.extras.
 //
 // withType MUST NOT exist on the base ConfigBuilder: calling it without
 // the transformer must be a COMPILE error, never a silent runtime lie. So it
 // ships as a separate, opt-in side-effect module -- import
 // "@rhombus-std/config/with-type-augment" to bring the declaration (and the
-// throwing stub) into scope. The real @rhombus-std/config.transformer will replace this
+// throwing stub) into scope. The real @rhombus-std/config.extras will replace this
 // stub with a compile-time transform that rewrites `.withType<T>()` into a
 // generated `.withSchema({...})`.
 //
@@ -29,7 +29,7 @@ import { ConfigBuilder } from './ConfigBuilder';
 declare module '@rhombus-std/config' {
   interface ConfigBuilder<T = IndexedSection> {
     /**
-     * TIER 2 -- contributed by @rhombus-std/config.transformer, which rewrites this call
+     * TIER 2 -- contributed by @rhombus-std/config.extras, which rewrites this call
      * into `.withSchema({...generated literal...})` at compile time. Present
      * only when this augment is imported; without it, calling `withType` is a
      * compile error. Without the transformer's transform actually running, the
@@ -44,7 +44,7 @@ declare module '@rhombus-std/config' {
 // than silently returning an un-coerced builder.
 ConfigBuilder.prototype.withType = function(): never {
   throw new Error(
-    "withType<T>() requires @rhombus-std/config.transformer's compile-time transform to run. "
+    "withType<T>() requires @rhombus-std/config.extras's compile-time transform to run. "
       + 'It has not been applied. Use withSchema({...}) directly, or configure the transformer.',
   );
 };

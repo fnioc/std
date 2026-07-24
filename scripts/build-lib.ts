@@ -38,7 +38,7 @@
 //   |--------------------|----------------------------------------|--------------------------------------------------|
 //   | config.core        | typesOnly: true                        | pure-types package -- no JS bundle, asserted (§40) |
 //   | di.extras     | inline: [primitives.extras, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
-//   | config.transformer | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
+//   | config.extras | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

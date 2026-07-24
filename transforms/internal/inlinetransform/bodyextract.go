@@ -53,7 +53,7 @@ import (
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
-// family's `@rhombus-std/config.transformer` (a body imports it via a
+// family's `@rhombus-std/config.extras` (a body imports it via a
 // package-relative specifier from within that package).
 var knownPrimitives = map[string]string{
 	"tokenfor":       "@rhombus-std/primitives.extras",
@@ -69,7 +69,7 @@ var knownPrimitives = map[string]string{
 	"isFactory":      "@rhombus-std/primitives.extras",
 	"returntokenfor": "@rhombus-std/primitives.extras",
 	"paramtokensfor": "@rhombus-std/primitives.extras",
-	"schemaof":       "@rhombus-std/config.transformer",
+	"schemaof":       "@rhombus-std/config.extras",
 }
 
 // knownRuntimeCallees maps each RUNTIME helper a certified body may CALL — as

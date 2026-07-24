@@ -59,7 +59,7 @@ Mirrors the order of the `## Architecture` section in the root `CLAUDE.md`.
 | 1 | `primitives`    | ME.Primitives (change-token subset only)                                                                                                  |
 | 2 | `di`            | ME.DependencyInjection.Abstractions, ME.DependencyInjection (+ our `.transformer` areas, no analog)                                       |
 | 3 | `options`       | ME.Options, ME.Options.ConfigExtensions, ME.Options.DataAnnotations                                                                       |
-| 4 | `config`        | ME.Configuration(.Abstractions/.Binder/.FileExtensions) + providers (.Json/.EnvironmentVariables/.CommandLine) + our `config.transformer` |
+| 4 | `config`        | ME.Configuration(.Abstractions/.Binder/.FileExtensions) + providers (.Json/.EnvironmentVariables/.CommandLine) + our `config.extras` |
 | 5 | `hosting`       | ME.Hosting, ME.Hosting.Abstractions                                                                                                       |
 | 6 | `diagnostics`   | ME.Diagnostics, ME.Diagnostics.Abstractions                                                                                               |
 | 7 | `logging`       | ME.Logging, ME.Logging.Abstractions, ME.Logging.Configuration                                                                             |

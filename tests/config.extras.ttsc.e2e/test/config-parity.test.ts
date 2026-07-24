@@ -4,12 +4,12 @@ import { mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-// Production-path e2e for the config.transformer INLINE + schemaof lowering, the
+// Production-path e2e for the config.extras INLINE + schemaof lowering, the
 // sole path now that the bespoke config stage is deleted (W6p3). It drives the real
 // ttsc (typescript-go) HOST over a temp project wired through the
-// `@rhombus-std/config.transformer/ttsc` descriptor against a REAL resolvable
+// `@rhombus-std/config.extras/ttsc` descriptor against a REAL resolvable
 // @rhombus-std/config package: the declare-by-depending scan activates inline +
-// schemaof, the config.transformer body substitutes `.withType<T>()` ->
+// schemaof, the config.extras body substitutes `.withType<T>()` ->
 // `this.withSchema(schemaof<T>())`, and schemaof lowers it to the runtime schema
 // literal. `ttsc -p` prints the `{ typescript }` envelope to stdout (it writes no
 // dist JS) — the exact lowered source @ttsc/unplugin/bun consumes. Lowering, OPTIONAL
@@ -18,7 +18,7 @@ import { basename, join, resolve } from 'node:path';
 // The schemaof≡config byte-parity and the 992001/992002 rejection table (formerly
 // this suite's config-stage oracle + direct-sidecar diagnostics projects) are frozen
 // at the Go tier: transforms/internal/schemaoftransform parity_test.go. The parity
-// corpus these mirror is tests/config.transformer.test.
+// corpus these mirror is tests/config.extras.test.
 //
 // The working tree lives per-worktree OUTSIDE the repo tree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname> — it must sit outside any
@@ -81,7 +81,7 @@ const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
 const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
-const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.transformer');
+const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.extras');
 
 // The working tree is per-worktree and OUTSIDE the repo tree (an enclosing
 // package.json re-roots token derivation; a fixed global home path collided across
@@ -91,7 +91,7 @@ const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.transformer');
 const WORK_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'config');
 // The inline-path consumer: a REAL resolvable @rhombus-std/config package + a
 // consumer package.json, so the host's declare-by-depending scan activates the
-// full stage set (inline + schemaof) and the config.transformer inline body
+// full stage set (inline + schemaof) and the config.extras inline body
 // substitutes `.withType<T>()` -> `this.withSchema(schemaof<T>())`, which the
 // schemaof stage lowers. This is the SOLE lowering path now that the bespoke
 // config stage is deleted (W6p3); the ambient-mock config-stage oracle + its
@@ -144,7 +144,7 @@ const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";\n`;
 // leaves inline inert. `withType<U>()` merges onto the class via a TOP-LEVEL
 // interface (NOT a `declare module` block), so the config-stage matcher — which
 // requires the member declared inside `declare module '@rhombus-std/config'` —
-// deliberately IGNORES it, while the config.transformer inline body still resolves
+// deliberately IGNORES it, while the config.extras inline body still resolves
 // it off the merged ConfigBuilder symbol. Any lowering here is therefore PROVABLY
 // the inline + schemaof path, not the config-stage oracle.
 const REAL_CONFIG_DTS = `export const OPTIONAL: unique symbol;
@@ -173,7 +173,7 @@ const INLINE_CONSUMER_PKG = JSON.stringify({
   type: 'module',
   dependencies: {
     '@rhombus-std/config': '*',
-    '@rhombus-std/config.transformer': '*',
+    '@rhombus-std/config.extras': '*',
   },
 });
 
@@ -191,7 +191,7 @@ function setupInlineProject(dir: string): void {
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
-  link(CONFIG_TR, join(nm, '@rhombus-std', 'config.transformer'));
+  link(CONFIG_TR, join(nm, '@rhombus-std', 'config.extras'));
 
   // The real @rhombus-std/config package (written, not linked): a consumer import
   // and the inline witness both resolve it.
@@ -215,7 +215,7 @@ function tsconfig(withPlugin: boolean): string {
       rootDir: 'src',
       skipLibCheck: true,
       noEmitOnError: false,
-      ...(withPlugin ? { plugins: [{ transform: '@rhombus-std/config.transformer/ttsc' }] } : {}),
+      ...(withPlugin ? { plugins: [{ transform: '@rhombus-std/config.extras/ttsc' }] } : {}),
     },
     include: ['src/**/*'],
   });
@@ -237,7 +237,7 @@ beforeAll(() => {
 
   // 4. INLINE project — the config consumer shape, driven through the real ttsc
   //    host so the dependency scan activates inline + schemaof and the
-  //    config.transformer body lowers `.withType<T>()` via the primitive path.
+  //    config.extras body lowers `.withType<T>()` via the primitive path.
   setupInlineProject(projInline);
   const isrc = join(projInline, 'src');
   writeFileSync(
@@ -316,7 +316,7 @@ function inlined(name: string): string {
 
 describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parity', () => {
   // ── the inline + schemaof consumer path (real ttsc host, real config package) ──
-  // The scan activates inline + schemaof; the config.transformer body substitutes
+  // The scan activates inline + schemaof; the config.extras body substitutes
   // `.withType<T>()` -> `this.withSchema(schemaof<T>())` and the schemaof stage
   // lowers it to the SAME literal the config-stage oracle emits above. No
   // `schemaof(` survives the emit (the sweep would fail the build otherwise).

@@ -34,7 +34,7 @@ No `z.object({...})` to keep in sync. No class wall of decorators. No codegen
 step to remember to run. `AppConfig` is both the type you already wanted and
 the schema `@rhombus-std/config` validates against — `.withType<AppConfig>()`
 is compiled away into a `.withSchema({...})` literal by
-`@rhombus-std/config.transformer`, an optional build-time transformer, so
+`@rhombus-std/config.extras`, an optional build-time transformer, so
 there's nothing left to run beyond your normal build.
 
 ## Features
@@ -63,7 +63,7 @@ bun add @rhombus-std/config
 bun add @rhombus-std/config.json @rhombus-std/config.env @rhombus-std/config.commandline
 
 # optional — powers .withType<T>() for schema-free full typing
-bun add @rhombus-std/config.transformer
+bun add @rhombus-std/config.extras
 ```
 
 Providers register their `add*` builder methods via side-effect import:
@@ -112,7 +112,7 @@ const config = new ConfigBuilder()
 `.withType<T>()` only exists once you `import
 "@rhombus-std/config/with-type-augment"` — calling it without that import is
 a compile error, never a silent no-op. And it only does anything once
-`@rhombus-std/config.transformer`'s build-time engine actually runs; without
+`@rhombus-std/config.extras`'s build-time engine actually runs; without
 it, the call reaches a throwing runtime stub instead of silently skipping
 validation.
 
@@ -229,7 +229,7 @@ No implicit coercion, no truthy/falsy guessing, no `parseInt` landmines.
 
 Skip the transformer and there's nothing to run before `build()` — every
 source is read, merged, and coerced at runtime, on every process start. Add
-`@rhombus-std/config.transformer` when (and only when) you want
+`@rhombus-std/config.extras` when (and only when) you want
 `.withType<T>()` to save you from writing `.withSchema({...})` yourself.
 
 ## Key exports
@@ -261,7 +261,7 @@ Install source packages alongside it as needed —
 [`@rhombus-std/config.env`](../config.env/README.md), and
 [`@rhombus-std/config.commandline`](../config.commandline/README.md) each
 add their own `add*` builder method via side-effect import.
-[`@rhombus-std/config.transformer`](../config.transformer/README.md) is the
+[`@rhombus-std/config.extras`](../config.extras/README.md) is the
 optional compile-time companion for `.withType<T>()`.
 
 Downstream, [`@rhombus-std/options`](../options/README.md) and
@@ -270,7 +270,7 @@ config to bind typed options and assemble an application host.
 
 ---
 
-`@rhombus-std/config.transformer` is an optional add-on package.
+`@rhombus-std/config.extras` is an optional add-on package.
 `@rhombus-std/config` doesn't depend on it, doesn't require it, and
 everything in this README except the transformer-specific sections works
 without it installed.

@@ -189,6 +189,16 @@
         "@rhombus-std/config": "workspace:^",
       },
     },
+    "libraries/config.extras": {
+      "name": "@rhombus-std/config.extras",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives.extras": "workspace:*",
+      },
+      "peerDependencies": {
+        "@rhombus-std/config": "workspace:^",
+      },
+    },
     "libraries/config.file": {
       "name": "@rhombus-std/config.file",
       "version": "0.0.0",
@@ -245,16 +255,6 @@
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
-      },
-    },
-    "libraries/config.transformer": {
-      "name": "@rhombus-std/config.transformer",
-      "version": "0.0.0",
-      "dependencies": {
-        "@rhombus-std/primitives.extras": "workspace:*",
       },
       "peerDependencies": {
         "@rhombus-std/config": "workspace:^",
@@ -674,6 +674,16 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
     },
+    "tests/config.extras.ttsc.e2e": {
+      "name": "@rhombus-std/config.extras.ttsc.e2e",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config.extras": "workspace:*",
+        "@ttsc/unplugin": "^0.18.1",
+        "ttsc": "^0.18.1",
+        "typescript": "^7.0.2",
+      },
+    },
     "tests/config.file.test": {
       "name": "@rhombus-std/config.file.test",
       "version": "0.0.0",
@@ -729,16 +739,6 @@
         "@rhombus-std/config.json": "workspace:*",
         "@rhombus-std/config.xml": "workspace:*",
         "@types/node": "^24.13.2",
-      },
-    },
-    "tests/config.transformer.ttsc.e2e": {
-      "name": "@rhombus-std/config.transformer.ttsc.e2e",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/config.transformer": "workspace:*",
-        "@ttsc/unplugin": "^0.18.1",
-        "ttsc": "^0.18.1",
-        "typescript": "^7.0.2",
       },
     },
     "tests/config.xml.test": {
@@ -1333,6 +1333,10 @@
 
     "@rhombus-std/config.env.test": ["@rhombus-std/config.env.test@workspace:tests/config.env.test"],
 
+    "@rhombus-std/config.extras": ["@rhombus-std/config.extras@workspace:libraries/config.extras"],
+
+    "@rhombus-std/config.extras.ttsc.e2e": ["@rhombus-std/config.extras.ttsc.e2e@workspace:tests/config.extras.ttsc.e2e"],
+
     "@rhombus-std/config.file": ["@rhombus-std/config.file@workspace:libraries/config.file"],
 
     "@rhombus-std/config.file.test": ["@rhombus-std/config.file.test@workspace:tests/config.file.test"],
@@ -1348,10 +1352,6 @@
     "@rhombus-std/config.test": ["@rhombus-std/config.test@workspace:tests/config.test"],
 
     "@rhombus-std/config.tests.integration": ["@rhombus-std/config.tests.integration@workspace:tests/config.tests.integration"],
-
-    "@rhombus-std/config.transformer": ["@rhombus-std/config.transformer@workspace:libraries/config.transformer"],
-
-    "@rhombus-std/config.transformer.ttsc.e2e": ["@rhombus-std/config.transformer.ttsc.e2e@workspace:tests/config.transformer.ttsc.e2e"],
 
     "@rhombus-std/config.xml": ["@rhombus-std/config.xml@workspace:libraries/config.xml"],
 
@@ -3491,7 +3491,7 @@
 
     "@pnpm/network.ca-file/graceful-fs": ["graceful-fs@4.2.10", "", {}, "sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA=="],
 
-    "@rhombus-std/config.transformer.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
+    "@rhombus-std/config.extras.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "@rhombus-std/declare-by-depending.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
