@@ -1,16 +1,16 @@
 // @ts-check
-// ttsc descriptor for the addOptions<T>() sugar transform stage. ttsc loads this
-// thin JS module, calls it with a factory context, and gets back the ABSOLUTE
-// PATH to the single owner Go host (transforms/cmd/ttsc-std) plus a stage name;
-// ttsc then compiles and runs that source as a sidecar with the local Go toolchain.
+// ttsc descriptor for the @rhombus-std owner transform host. ttsc loads this thin
+// JS module, calls it with a factory context, and gets back the ABSOLUTE PATH to
+// the single owner Go host (transforms/cmd/ttsc-std); ttsc then compiles and runs
+// that source as a sidecar with the local Go toolchain.
 //
-// Every @rhombus-std/*.transformer descriptor resolves to the SAME owner host, so
-// ttsc dedupes them to one cache key and one spawn — a consumer that needs both
-// the registration and options stages simply lists both `./ttsc` descriptors;
-// the host runs each declared stage in canonical order (no aggregate descriptor
-// needed, and none exists).
+// Every @rhombus-std descriptor resolves to the SAME owner host under the SAME
+// name, so ttsc dedupes them to one cache key and one spawn. There is no stage
+// selection (W7): the host runs its whole stage table, and the addOptions<T>()
+// sugar body in play comes from this package's rhombus.inline entry via the
+// dependency scan — not from the descriptor.
 //
-// This is the Go/ttsc emit path — the sole lowering engine now, wired through the
+// This is the Go/ttsc emit path — the sole lowering engine — wired through the
 // `./ttsc` subpath.
 
 import path from 'node:path';
@@ -30,7 +30,7 @@ export function createTtscPlugin(context) {
     'cmd',
     'ttsc-std',
   );
-  return { name: 'rhombusstd_di_bundle', source };
+  return { name: 'rhombusstd', source };
 }
 
 export default createTtscPlugin;

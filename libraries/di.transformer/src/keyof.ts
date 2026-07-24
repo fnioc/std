@@ -38,9 +38,9 @@
 export function keyof<T>(): string | undefined {
   void (0 as unknown as T);
   throw new Error(
-    'keyof<T>() requires the @rhombus-std/primitives.transformer keyof plugin. Add '
-      + '{ "transform": "@rhombus-std/primitives.transformer/keyof-ttsc" } to your '
-      + 'tsconfig "plugins", or pass the registration key explicitly as the trailing '
+    'keyof<T>() requires the @rhombus-std/di.transformer authoring transform. '
+      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+      + 'host (which lowers keyof), or pass the registration key explicitly as the trailing '
       + 'argument to addClass(token, ctor, signatures, scope, key).',
   );
 }

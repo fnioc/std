@@ -45,9 +45,9 @@ import type { DepSignatures, DepSlot } from './types.js';
 export function signaturefor<T extends readonly any[]>(): readonly DepSlot[] {
   void (0 as unknown as T);
   throw new Error(
-    'signaturefor<T>() requires the @rhombus-std/primitives.transformer signatureof plugin. Add '
-      + '{ "transform": "@rhombus-std/primitives.transformer/signatureof-ttsc" } to your '
-      + 'tsconfig "plugins", or pass the dependency slots explicitly.',
+    'signaturefor<T>() requires the @rhombus-std/di.transformer authoring transform. '
+      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+      + 'host (which lowers signaturefor), or pass the dependency slots explicitly.',
   );
 }
 
@@ -64,9 +64,9 @@ export function signaturefor<T extends readonly any[]>(): readonly DepSlot[] {
 export function signaturesfor<T extends ReadonlyArray<readonly any[]>>(): DepSignatures {
   void (0 as unknown as T);
   throw new Error(
-    'signaturesfor<T>() requires the @rhombus-std/primitives.transformer signatureof plugin. Add '
-      + '{ "transform": "@rhombus-std/primitives.transformer/signatureof-ttsc" } to your '
-      + 'tsconfig "plugins", or pass the dependency signatures explicitly.',
+    'signaturesfor<T>() requires the @rhombus-std/di.transformer authoring transform. '
+      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+      + 'host (which lowers signaturesfor), or pass the dependency signatures explicitly.',
   );
 }
 

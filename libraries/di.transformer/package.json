@@ -111,10 +111,7 @@
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/di.transformer/ttsc"
-    },
-    "stages": [
-      "valueof"
-    ]
+    }
   },
   "files": [
     "dist",

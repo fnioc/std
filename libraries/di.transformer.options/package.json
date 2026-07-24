@@ -47,8 +47,7 @@
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/di.transformer.options/ttsc"
-    },
-    "stages": []
+    }
   },
   "files": [
     "dist",

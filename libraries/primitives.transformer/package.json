@@ -26,23 +26,16 @@
       "import": "./dist/bundle/index.js",
       "default": "./dist/bundle/index.js"
     },
-    "./ttsc": "./ttsc.mjs",
-    "./inline-ttsc": "./ttsc-inline.mjs",
-    "./signatureof-ttsc": "./ttsc-signatureof.mjs",
-    "./keyof-ttsc": "./ttsc-keyof.mjs"
+    "./ttsc": "./ttsc.mjs"
   },
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/primitives.transformer/ttsc"
-    },
-    "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth", "singular", "factory", "fold"]
+    }
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "ttsc-inline.mjs",
-    "ttsc-signatureof.mjs",
-    "ttsc-keyof.mjs"
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -59,10 +52,7 @@
         "import": "./dist/bundle/index.js",
         "default": "./dist/bundle/index.js"
       },
-      "./ttsc": "./ttsc.mjs",
-      "./inline-ttsc": "./ttsc-inline.mjs",
-      "./signatureof-ttsc": "./ttsc-signatureof.mjs",
-      "./keyof-ttsc": "./ttsc-keyof.mjs"
+      "./ttsc": "./ttsc.mjs"
     }
   }
 }

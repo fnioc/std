@@ -37,10 +37,10 @@ import type { DepSignatures, DepTarget } from '@rhombus-std/di.core';
 export function signatureof(target: DepTarget): DepSignatures {
   void target;
   throw new Error(
-    'signatureof(ctor) requires the @rhombus-std/primitives.transformer signatureof plugin. Add '
-      + '{ "transform": "@rhombus-std/primitives.transformer/signatureof-ttsc" } to your '
-      + 'tsconfig "plugins", or pass the dependency signatures explicitly as the third '
-      + 'argument to addClass(token, ctor, signatures).',
+    'signatureof(ctor) requires the @rhombus-std/di.transformer authoring transform. '
+      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+      + 'host (which lowers signatureof), or pass the dependency signatures explicitly as '
+      + 'the third argument to addClass(token, ctor, signatures).',
   );
 }
 

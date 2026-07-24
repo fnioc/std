@@ -33,8 +33,7 @@
   "ttsc": {
     "plugin": {
       "transform": "@rhombus-std/config.transformer/ttsc"
-    },
-    "stages": ["schemaof"]
+    }
   },
   "files": [
     "ttsc.mjs"
