@@ -105,8 +105,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
   `primitives.extras` (the sugar-only authoring package, née `primitives.transformer`) hosts the
-  `tokenfor<T>()`/`tokenof()` token primitives — moved here out of this runtime leaf (W7,
-  constraint 11: pure transformables, elided after lowering) — and the token-derivation machinery,
+  `tokenfor<T>()`/`tokenof()` token primitives — moved here out of this runtime leaf (§121:
+  pure transformables, elided after lowering) — and the token-derivation machinery,
   di-independent so any family can mint augmentation tokens from types. The runtime leaf itself owns
   the structural
   platform typings (§39/§44): `AbortSignal`/`AbortController` (+ the inert `neverSignal`
@@ -173,7 +173,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (`IniStreamParser` grammar), and `config.xml` (a self-contained tokenizer, NO XML-parser dep;
   encrypted-config decryptor and `KeyPerFile` out of scope). Hosting's default `reloadOnChange` stays
   OFF pending file-provider-watcher disposal ownership (§75, the #182 disposal question).
-  `config.extras` rewrites `.withType<T>()` and is standalone — di-independent (§15).
+  `config.extras` rewrites `.withType<T>()` via the generic `schemaof<T>()` primitive and is
+  standalone — di-independent (§15).
 - **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
   `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/
   `HostBuilderContext`/`IHostEnvironment`/`IHostApplicationBuilder` + the `addHostedService`
@@ -322,7 +323,7 @@ Architecture section above. `decisions.md` is the full record; this file is the 
   - `.augmentations` — a side-effect declaration-merging extension package.
   - `.extras` — a sugar-only authoring package for a family (declare-module typings +
     `rhombus.inline` bodies + one ttsc spawn descriptor). The old `.transformer` qualifier
-    was renamed to `.extras` (W7, constraint 11): `primitives.extras`, `di.extras`,
+    was renamed to `.extras` (§121): `primitives.extras`, `di.extras`,
     `di.extras.options`, `config.extras`. `primitives.extras` also homes the shared
     authoring-time token primitives (`tokenfor`/`tokenof` moved out of the runtime
     `primitives` leaf, plus `isSingular`/`singularValue`/`isFactory`/etc.).
@@ -414,16 +415,19 @@ tsconfigs extend the shared root fragment `tsconfig.lib.json` (typecheck profile
 config is the leaf `tsconfig.ttsc.json`, and a self-augmenting core's
 `customConditions: ["<pkg>-source"]` (§78) stays leaf-side too.
 
-### The transformer engine (Go/`ttsc`, §41/§90, rewritten §TBD)
+### The transformer engine (Go/`ttsc`, §41/§90, rewritten §115)
 
-<!-- ASSUMPTION (whole subsection): describes the TARGET end state of the fixed-point rewrite
-     (see docs/features/transformer-architecture.md and transforms-rewrite-design.md, W1-W8). As
-     of writing, stage selection (ttsc.stages markers, BaseBundles, selectStages) and the three
-     bespoke domain Go stages (ditransform/dioptionstransform/configtransform) still exist
-     alongside the new primitive set — W6's final deletions and W7's selection retirement have
-     not landed. Reconcile this subsection against the finished code once they do. -->
+The authoring-time sugar lowers on ONE engine: a Go/`ttsc` port under the root `transforms/`
+module (`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std` linking every
+stage, shared `internal/`). One always-on set of domain-agnostic primitive stages runs to a fixed
+point per file (§115); the authoring surfaces (`add`/`addOptions`/`withType`/resolve-family) lower
+as `rhombus.inline` sugar bodies the inline stage substitutes and the primitives lower — no bespoke
+per-family Go stage (§117). The lowered output equals what a no-transformer author would hand-write
+(the parity invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (restore
+tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only**
+(`mise.toml` pin), never system-wide. Full mechanics: `docs/features/transformer-architecture.md`.
 
-- **Descriptor wiring — one always-on stage table, NO selection (W7).** Every `*.extras` package's
+- **Descriptor wiring — one always-on stage table, NO selection (§119).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
   the host runs its WHOLE stage table on every file in a fixed canonical order (inline → mergesynth →
