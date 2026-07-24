@@ -6,30 +6,29 @@ import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the signatureof primitive, plus the deps-free
 // `addValue<I>(value)` sugar riding the same inline path. It drives the REAL
-// ttsc over a temp project TWO ways over the IDENTICAL source, then asserts
+// ttsc over a temp project TWICE over the IDENTICAL source — through two
+// DIFFERENT spawn descriptors for the SAME always-on host (W7) — then asserts
 // they emit byte-identical output:
 //
-//   inline path   — inline + tokenfor + signatureof + di. The type-driven
-//     `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.extras's
-//     rhombus.inline entries) substitute to `this.addClass(tokenfor<I>(), C,
-//     signatureof(C))`; tokenfor
-//     lowers the token, signatureof lowers the dependency-signature array, and
-//     the di stage leaves the resulting 3-argument `addClass(...)` untouched.
-//     `addValue<I>(value)` substitutes to `this.addValue(tokenfor<I>(), value)`
-//     — no `signatureof`, since a value carries no deps — and tokenfor alone
-//     lowers it to the 2-argument `addValue("token", value)`.
-//   semantic path — tokenfor + di. The di registration stage lowers the SAME
-//     `addClass<I>(C)` / `addValue<I>(value)` directly to their explicit-token forms.
+//   The type-driven `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies
+//   (di.extras's rhombus.inline entries) substitute to
+//   `this.addClass(tokenfor<I>(), C, signatureof(C))`; tokenfor lowers the token,
+//   signatureof lowers the dependency-signature array, leaving the resulting
+//   3-argument `addClass(...)` in place. `addValue<I>(value)` substitutes to
+//   `this.addValue(tokenfor<I>(), value)` — no `signatureof`, since a value carries
+//   no deps — which tokenfor alone lowers to the 2-argument `addValue("token",
+//   value)`.
 //
-// The load-bearing guarantee is that the signatureof array (and, for
-// `addValue`, the bare token) is byte-identical to what the di stage
-// synthesizes for the same value: the new inline(+signatureof) lowering
-// changes the PATH, never the emitted bytes. This mirrors the inline.ttsc.e2e
-// isService pilot, extended to the value-argument signatureof primitive and a
-// non-trivial (dependency-carrying) signature, plus the deps-free addValue form.
+// The load-bearing guarantee is descriptor independence: the whole always-on stage
+// table runs regardless of which descriptor spawned the host, so the two lowerings
+// are byte-identical — the derived signatureof array, the bare addValue token, and
+// import elision all pinned. This mirrors the inline.ttsc.e2e isService pilot,
+// extended to the value-argument signatureof primitive and a non-trivial
+// (dependency-carrying) signature, plus the deps-free addValue form. The bespoke di
+// domain stage that once provided the comparison oracle is DELETED (W6p3).
 //
 // Toolchain pinning, the single shared plugin cache, and the one-project-dir /
-// two-tsconfig layout all mirror that sibling harness; see its header for why.
+// two-tsconfig layout all mirror the inline.ttsc.e2e harness; see its header.
 
 const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
 const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
@@ -134,9 +133,9 @@ class BarImpl implements IBar {
 declare const services: IServiceManifest<"singleton">;
 declare const bazValue: IBaz;
 
-// Top-level registration statements: the di registration stage lowers
-// registrations that appear as top-level expression statements, so the semantic
-// (di-only) comparison path exercises the same shape the inline path does.
+// Top-level registration statements: the inline stage substitutes the sugar
+// bodies for registrations that appear as top-level expression statements, so both
+// spawn-descriptor lowerings exercise the same shape.
 services.addClass<IFoo>(Foo);
 services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
 services.addValue<IBaz>(bazValue);
@@ -170,7 +169,6 @@ function setupWorkspace(): void {
   mkdirSync(join(projDir, 'src'), { recursive: true });
   rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
   rmSync(join(projDir, 'dist-semantic'), { recursive: true, force: true });
-  rmSync(join(projDir, 'dist-bundle'), { recursive: true, force: true });
 
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
@@ -196,22 +194,16 @@ function setupWorkspace(): void {
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
+  // Two DIFFERENT spawn descriptors for the SAME always-on host (W7). Neither
+  // selects stages — the whole stage table runs either way — so the two lowerings
+  // must be byte-identical; that descriptor-independence is what the parity test
+  // below asserts. The di.extras/ttsc descriptor is the DI authoring package a
+  // consumer directly depends on; primitives.extras/ttsc is its transitive base.
   writeTsconfig('tsconfig.inline.json', 'dist-inline', [
-    { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.extras/ttsc' },
-    { transform: '@rhombus-std/primitives.extras/signatureof-ttsc' },
     { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
   writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
     { transform: '@rhombus-std/primitives.extras/ttsc' },
-    { transform: '@rhombus-std/di.extras/ttsc' },
-  ]);
-  // The PRESET path: ONE descriptor — di.core's `./ttsc` bundle — instead of the
-  // four primitive-stage transforms the inline tsconfig enumerates. The owner
-  // binary expands `rhombusstd_di_bundle` into inline -> tokenfor -> signatureof ->
-  // di in canonical order, so a consumer never lists the stages by hand.
-  writeTsconfig('tsconfig.bundle.json', 'dist-bundle', [
-    { transform: '@rhombus-std/di.core/ttsc' },
   ]);
 }
 
@@ -232,7 +224,6 @@ function lower(tsconfig: string, outDir: string): string {
 
 let withInline = '';
 let withoutInline = '';
-let withBundle = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -241,7 +232,6 @@ beforeAll(() => {
   setupWorkspace();
   withInline = lower('tsconfig.inline.json', 'dist-inline');
   withoutInline = lower('tsconfig.semantic.json', 'dist-semantic');
-  withBundle = lower('tsconfig.bundle.json', 'dist-bundle');
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
@@ -261,11 +251,12 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     expect(withInline).not.toContain('signatureof(');
   });
 
-  test('byte parity: inline+signatureof path vs di semantic path emit the identical output', () => {
-    // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
-    // PATH (inline -> synthetic tokenfor + signatureof) but never the emitted bytes.
-    // Whole-output equality also pins import elision, the derived signature array,
-    // and surrounding whitespace.
+  test('descriptor independence: two different spawn descriptors emit the identical output', () => {
+    // Both tsconfigs compile the IDENTICAL source through the SAME always-on host
+    // (W7), differing only in which descriptor spawned it. Since the host performs
+    // no stage selection, the emitted bytes must be identical — whole-output
+    // equality also pins import elision, the derived signature array, and
+    // surrounding whitespace.
     const addLine = (src: string) => src.split('\n').find((l) => l.includes('.addClass('))?.trim();
     const addValueLine = (src: string) => src.split('\n').find((l) => l.includes('.addValue('))?.trim();
     expect(addLine(withInline)).toBeDefined();
@@ -273,15 +264,5 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     expect(addValueLine(withInline)).toBeDefined();
     expect(addValueLine(withInline)).toEqual(addValueLine(withoutInline));
     expect(withInline).toEqual(withoutInline);
-  });
-
-  test('preset bundle: the single di.core/ttsc descriptor emits the identical output', () => {
-    // A consumer that wires ONLY `@rhombus-std/di.core/ttsc` (the preset) — never
-    // the four primitive-stage transforms — gets the same ordered lowering: the
-    // owner binary expands the bundle name into inline -> tokenfor -> signatureof ->
-    // di. Byte-identity with the hand-enumerated inline path proves the preset is a
-    // pure convenience over the manual stage list, not a behavior change.
-    expect(withBundle).not.toBe('');
-    expect(withBundle).toEqual(withInline);
   });
 });

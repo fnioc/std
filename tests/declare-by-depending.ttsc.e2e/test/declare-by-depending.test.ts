@@ -4,22 +4,21 @@ import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-// End-to-end proof of declare-by-depending stage selection, driven through the
-// REAL ttsc (§100). Selection is HOST-SIDE: ttsc's own auto-discovery spawns the
-// one owner host from a consumer's DIRECT *.transformer dep, and the host then
-// self-selects the full stage set from its own transitive dependency scan. Two
-// fixtures, neither with an explicit tsconfig `plugins` array:
+// End-to-end proof of declare-by-depending, driven through the REAL ttsc (§100).
+// There is no stage selection (W7): the one owner host runs its WHOLE always-on
+// stage table once spawned, and SPAWNING is what a dependency governs — ttsc's own
+// auto-discovery spawns the host from a consumer's DIRECT *.extras dep (its
+// ttsc.plugin marker), else no host spawns at all. Two fixtures, neither with an
+// explicit tsconfig `plugins` array:
 //
-//   1. transitivity — a consumer that DIRECTLY devDeps di.extras (whose only
-//      declared stage is `di`) and calls tokenfor<T>(). Auto-discovery spawns the
-//      host off di.extras; the host's scan then reaches primitives.extras
-//      THROUGH di.extras's honest dependency edge and activates the tokenfor
-//      stage, so tokenfor<T>() lowers to its token. ttsc's own direct-only discovery
-//      could never reach that transitive stage — this is what the host scan adds.
-//   2. cores don't force-activate — a consumer that deps ONLY di.core (a core, no
-//      ttsc.plugin marker, though di.core itself devDeps primitives.extras to
-//      build ITSELF). Auto-discovery finds no marker, so no host spawns and
-//      tokenfor<T>() is emitted UNTOUCHED. di.core's own devDep must not leak.
+//   1. a marked authoring dep spawns the host — a consumer that DIRECTLY devDeps
+//      di.extras (which carries the ttsc.plugin marker) and calls tokenfor<T>().
+//      Auto-discovery spawns the host off di.extras; the always-on host lowers
+//      tokenfor<T>() to its token.
+//   2. cores don't spawn the host — a consumer that deps ONLY di.core (a core, no
+//      ttsc.plugin marker, though di.core itself devDeps primitives.extras to build
+//      ITSELF). Auto-discovery finds no marker, so NO host spawns and tokenfor<T>()
+//      is emitted UNTOUCHED. di.core's own devDep must not spill onto its consumer.
 //
 // The fixture root lives OUTSIDE the repo tree, per-worktree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname> (off /tmp, a per-user-quota
@@ -210,15 +209,15 @@ beforeAll(async () => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () => {
-  test('a di.extras dep transitively activates the tokenfor stage', () => {
-    // The host reached primitives.extras through di.extras's honest
-    // dependency edge and lowered tokenfor<IWidget>() to its token.
+  test('a direct di.extras dep spawns the always-on host and lowers tokenfor', () => {
+    // Auto-discovery spawned the host off di.extras's ttsc.plugin marker; the
+    // always-on host lowered tokenfor<IWidget>() to its token.
     expect(consumerApp).toContain('"@fixture/consumer/tokens/app:IWidget"');
     expect(consumerApp).not.toContain('tokenfor');
   });
 
-  test("a di.core-only consumer is left untouched (cores don't force-activate)", () => {
-    // No *.transformer dep → auto-discovery spawns no host → tokenfor<IWidget>()
+  test("a di.core-only consumer is left untouched (cores don't spawn the host)", () => {
+    // No *.extras dep → auto-discovery spawns no host → tokenfor<IWidget>()
     // survives unlowered. di.core's own primitives.extras devDep did not leak.
     expect(coreOnlyApp).toContain('tokenfor');
     expect(coreOnlyApp).not.toContain('"@fixture/consumer/tokens/app:IWidget"');

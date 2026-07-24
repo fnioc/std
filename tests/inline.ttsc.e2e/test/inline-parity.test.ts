@@ -216,9 +216,10 @@ function setupWorkspace(): void {
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
+  // One descriptor spawns the always-on host (W7): every stage runs regardless of
+  // which @rhombus-std/*.extras descriptor is named, and the sugar bodies in play
+  // come from the dependency scan (di.core + di.extras), not the plugin list.
   writeTsconfig('tsconfig.inline.json', 'dist-inline', [
-    { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.extras/ttsc' },
     { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
 }
@@ -291,52 +292,26 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 //   2. open template services.addClass<IRepo<$<1>>>(ThingRepo)  (hole-carrying dep)
 //   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache)
 //
-// WIRING — why two project dirs, not the pilot's one-dir/two-tsconfig shape.
-// The chain needs the `valueof` stage (`.as<Scope>()` → `this.as(valueof<Scope>())`
-// in the sugar body). `valueof` has NO explicit descriptor: it activates ONLY
-// through the host's declare-by-depending dependency scan, which reads
-// di.extras's package.json `ttsc.stages` (["di","valueof"]). But the host
-// UNIONs that scan with the tsconfig plugin list, and the scan walks the WHOLE
-// transitive dep graph — so a di.extras dependency drags in primitives.
-// transformer's stages too (inline + nameof + signatureof + keyof + mergesynth).
-// A single shared package.json would therefore force `inline` onto BOTH tsconfigs
-// and collapse the di-direct oracle. Splitting the dep graphs keeps them distinct:
+// WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
+// packages, and names ONE spawn descriptor. The always-on host (W7) runs its whole
+// stage table — inline peels the `.addClass<…>()` / `.withSignature<…>()` /
+// `.as<…>()` sugar one layer per pass, and the primitive stages (nameof /
+// signatureof / keyof / valueof) lower the calls it mints. The bespoke di /
+// di_options domain stages are DELETED (W6p3): there is no live di-direct oracle
+// any more, so the inline output is byte-compared against the checked-in
+// `*.di-direct.js` goldens frozen from that oracle before its deletion.
 //
-//   inline/   deps {di.core, di.extras} → scan activates the FULL set,
-//             INCLUDING the `di` stage.
-//   semantic/ deps {di.core} only → di.core declares no stages so the scan is
-//             empty; tsconfig plugins [nameof, di.extras/ttsc] pick the
-//             di-DIRECT lowering with NO inline stage. di.extras is symlinked
-//             for its descriptor but kept OUT of package.json so the scan ignores
-//             its stages.
+// ISOLATION. This production-path suite proves whole-file byte-parity against the
+// frozen goldens, not which stage did the peeling. The inline stage is proven IN
+// ISOLATION (no di stage in the pipeline at all) at the Go level, where the loop is
+// composed by hand: TestChainSettlesThroughInlinePrimitivesOnly (looprunner_test.go,
+// the exact closed chain under the loop), TestAsDecoupleInlinePipelineMatchesDiDirect
+// (the `.as` continuation), and TestOpenTemplateInlinePipelineMatchesDiDirect (the
+// open template). The KEYED case below additionally discriminates in this suite.
 //
-// ISOLATION GAP — read before trusting the closed-chain / open-template parity.
-// The `di` stage is CO-ACTIVE in the inline/ dir (the scan drags it in alongside
-// valueof, and there is no way to keep valueof without it: valueof has no
-// standalone descriptor, and the collector reads di.extras's sugar BODIES and
-// its di/valueof STAGES from the ONE dep walk — CollectProject — so a dir that has
-// the bodies inline needs to peel necessarily also has the di stage). In practice
-// inline runs first in the host's stage-table order and strips the type-args before
-// di's declaration-site matcher can claim the call, so di settles as a no-op — but
-// this suite CANNOT prove that: for the closed chain and the open template the two
-// pipelines are byte-IDENTICAL by design, so a regression that stopped inline
-// peeling the `.withSignature`/`.as` continuations would be silently covered by di
-// lowering the whole chain in one deep walk, and the parity would still pass. So
-// for those two cases the byte-parity here is a PRODUCTION-PATH agreement + whole-
-// file regression net (dist-referenced di.core, real ttsc, real descriptors), NOT
-// evidence of which stage did the peeling. The inline stage is proven IN ISOLATION
-// — di stage genuinely absent — at the Go level, where the pipeline is composed by
-// hand with no di transform: TestChainSettlesThroughInlinePrimitivesOnly
-// (looprunner_test.go, the exact closed chain under the loop),
-// TestAsDecoupleInlinePipelineMatchesDiDirect (the `.as` continuation) and
-// TestOpenTemplateInlinePipelineMatchesDiDirect (the open template). The KEYED case
-// below is the one discriminator this suite provides itself (inline and di diverge
-// on keyed output, so parity there DOES pin that inline won the race).
-//
-// Both point at the one shared TTSC_CACHE_DIR, so the sidecar the pilot already
-// built cold is reused warm here. di.core resolves to its dist/bundle types in
-// both dirs (Open issue 1: does inline substitution work against a dist-referenced
-// di.core? — answered empirically by the parity below).
+// The sandbox points at the one shared TTSC_CACHE_DIR, so the sidecar the pilot
+// already built cold is reused warm here. di.core resolves to its dist/bundle
+// types (inline substitution works against a dist-referenced di.core).
 
 const CHAIN_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'chain');
 const chainInlineDir = join(CHAIN_ROOT, 'inline');
@@ -587,11 +562,9 @@ function setupChainWorkspaces(): void {
     }),
   );
   writeChainSrc(chainInlineDir);
+  // One descriptor spawns the always-on host; the full stage table runs (W7).
   writeChainTsconfig(chainInlineDir, [
-    { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.extras/ttsc' },
-    { transform: '@rhombus-std/primitives.extras/signatureof-ttsc' },
-    { transform: '@rhombus-std/primitives.extras/keyof-ttsc' },
+    { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
 }
 
@@ -1095,11 +1068,10 @@ function setupOptionsWorkspace(): void {
   mkdirSync(src, { recursive: true });
   writeFileSync(join(src, 'authoring.ts'), OPTIONS_AUTHORING);
   writeFileSync(join(src, 'options-app.ts'), OPTIONS_SOURCE);
+  // One descriptor spawns the always-on host; the full stage table runs (W7). The
+  // addOptions<T>() body comes from the di.extras.options dep via the scan.
   writeChainTsconfig(OPTIONS_DIR, [
-    { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.extras/ttsc' },
-    { transform: '@rhombus-std/primitives.extras/signatureof-ttsc' },
-    { transform: '@rhombus-std/primitives.extras/keyof-ttsc' },
+    { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
 }
 

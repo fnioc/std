@@ -24,8 +24,8 @@ rmSync(dist, { recursive: true, force: true });
 
 // Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
 // tsconfig.ttsc.json plugins array, @ttsc/unplugin/bun's auto-discovery spawns the
-// one owner host from this app's direct *.transformer devDeps (di.extras +
-// di.extras.options), and the host self-selects the full transitive stage set
+// one owner host from this app's direct *.extras devDeps (di.extras +
+// di.extras.options), and the host runs its whole always-on stage table
 // — the di + di_options stages plus the primitive stages reached through their
 // primitives.extras dep — from its own dependency scan. Compute the override:
 // a non-empty manual plugins array wins; otherwise `undefined` (NEVER [], which
@@ -52,7 +52,7 @@ const js = await Bun.build({
   ],
   // ttscTransforms is undefined by default, so @ttsc/unplugin/bun runs its
   // auto-discovery — spawning the one owner host from the app's direct
-  // *.transformer deps, which ttsc dedupes to a single spawn. The host then
+  // *.extras deps, which ttsc dedupes to a single spawn. The host then
   // self-selects the transitive stage union from its own dependency scan.
   plugins: [
     await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms),

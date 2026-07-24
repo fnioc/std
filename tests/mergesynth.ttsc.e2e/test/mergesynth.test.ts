@@ -7,10 +7,10 @@ import { basename, join, resolve } from 'node:path';
 // Production-path e2e for the #213 merge-strategy synthesis stage: drives the
 // REAL ttsc over a temp project that DEPENDS ON @rhombus-std/primitives.extras
 // (no explicit tsconfig plugins). ttsc's auto-discovery spawns the single owner
-// host (transforms/cmd/ttsc-std) from that dep, and the host self-selects its
-// stages from its own dependency scan — primitives.extras's ttsc.stages
-// carries mergesynth alongside inline/tokenfor/signatureof — exactly as a real
-// augmentation package activates it. It then proves the feature three ways:
+// host (transforms/cmd/ttsc-std) from that dep, and the host runs its WHOLE
+// always-on stage table (W7 — no selection), mergesynth included as its one-shot
+// pre-pass — exactly as a real augmentation package's build gets it. It then
+// proves the feature three ways:
 //
 //   1. the emitted JS carries the INLINED typia guards (plain JS, no typia
 //      import or reference of any kind — typia is build-time-only) and threads a
@@ -206,10 +206,10 @@ beforeAll(async () => {
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   // A fixture package.json declaring the primitives.extras devDep: ttsc's
   // auto-discovery reads it, finds the ttsc.plugin marker, and spawns the one
-  // owner host. The host then self-selects its stages from its own dependency
-  // scan — primitives.extras's ttsc.stages carries mergesynth — exactly as a
-  // real augmentation package does. No tsconfig `plugins` array (an explicit list
-  // would suppress discovery and never spawn the host).
+  // owner host. The host runs its whole always-on stage table (W7 — no selection),
+  // mergesynth included, exactly as a real augmentation package's build does. No
+  // tsconfig `plugins` array (an explicit list would suppress discovery and never
+  // spawn the host).
   writeFileSync(
     join(projDir, 'package.json'),
     JSON.stringify({
