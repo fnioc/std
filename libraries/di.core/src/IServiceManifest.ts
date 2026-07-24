@@ -82,8 +82,13 @@ const KEY_SEPARATOR = '#';
  * exactly as before. A non-empty key suffixes `#<key>`, landing on the same
  * string the transformer's di direct stage composes into arg0 for
  * `addClass<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
+ *
+ * Exported for the descriptor verbs (`ServiceManifestDescriptorAugmentations`),
+ * which must probe / remove under the SAME token their add path registers under.
+ * Package-internal: it is not re-exported from the barrel, so it never reaches
+ * di.core's published surface.
  */
-function keyedToken(token: Token, key?: string): Token {
+export function keyedToken(token: Token, key?: string): Token {
   return [token, key].filter(Boolean).join(KEY_SEPARATOR);
 }
 
