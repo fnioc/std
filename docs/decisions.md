@@ -1463,11 +1463,11 @@ two sides. §28's authoring shape is unchanged; only the install path for OPEN r
   idempotent `Object.assign`. `Token` itself is hoisted from di.core to primitives (di.core
   re-exports it), since config-family tokens can't depend on di.core (di ⊥ config).
 - ~~**Token constants**, one per OPEN receiver, named `<RECEIVER>_AUGMENTATION_TOKEN` with
-  nameof-format values (`"<package>:<TypeName>"`), each owned by the `.core` package that owns the
+  tokenfor-format values (`"<package>:<TypeName>"`), each owned by the `.core` package that owns the
   receiver interface. One token can decorate several classes (`ConfigurationBuilder` AND
   `ConfigurationManager`; diagnostics' AND hosting's `MetricsBuilder` — fixing the orphaned-builder
   bug for good, regression-covered in `tests/augmentations.test`).~~
-  ~~Superseded by §40 below (the consts are gone; tokens derive inline via `nameof<Receiver>()`);
+  ~~Superseded by §40 below (the consts are gone; tokens derive inline via `tokenfor<Receiver>()`);
   struck — never read for behavior.~~
 - **Self-registration moves consts' interface merges into `.core` (retires §28's
   "merge lives downstream" rule for OPEN receivers).** Because the registry decouples install from
@@ -1512,11 +1512,11 @@ two sides. §28's authoring shape is unchanged; only the install path for OPEN r
   and `CacheEntryExtensions` (`setEntryOptions` renamed `setOptions`, per ME). The freed
   `MemoryCacheEntryExtensions` name is reserved for ME's genuine fluent-options-builder class —
   deferred, YAGNI.
-- **`primitives.transformer` extraction:** `nameof`/token-derivation (`nameof.ts`, `tokens.ts`,
+- **`primitives.transformer` extraction:** `tokenfor`/token-derivation (`nameof.ts`, `tokens.ts`,
   `grammar.ts`, `context.ts`) move from di.transformer into the new
   `@rhombus-std/primitives.transformer` (tokens are a primitives concept now); di.transformer
   depends on it and re-exports its full prior surface, so no consumer breaks. The new package also
-  ships a minimal standalone transformer that rewrites only `nameof<T>()`, so di-free packages can
+  ships a minimal standalone transformer that rewrites only `tokenfor<T>()`, so di-free packages can
   mint tokens with sugar.
 - **Options layout divergence (recorded):** `addOptions` stays in `options.augmentations` (§14's
   placement) rather than mirroring ME's in-package `OptionsServiceCollectionExtensions` home —
@@ -1557,32 +1557,32 @@ sees our own types, not a platform-lib requirement.
   examples (which do carry bun/node types) are left on the platform globals unchanged — a platform
   instance is structurally assignable to our params either way.
 
-## 40. Augmentation tokens are derived inline — `nameof<Interface>()` at every use site, no token consts
+## 40. Augmentation tokens are derived inline — `tokenfor<Interface>()` at every use site, no token consts
 
 §38 minted one exported `<RECEIVER>_AUGMENTATION_TOKEN` const per OPEN receiver. Those consts are
 gone: every `registerAugmentations(...)` / `@augment(...)` site now derives its token INLINE with
-`nameof<Receiver>()` — the receiver interface itself is the token
-(`nameof<ServiceManifest>()` → `"@rhombus-std/di.core:ServiceManifest"`,
-`nameof<IConfigurationBuilder>()`, `nameof<ILoggingBuilder>()`, `nameof<IHost>()`, …). The
+`tokenfor<Receiver>()` — the receiver interface itself is the token
+(`tokenfor<ServiceManifest>()` → `"@rhombus-std/di.core:ServiceManifest"`,
+`tokenfor<IConfigurationBuilder>()`, `tokenfor<ILoggingBuilder>()`, `tokenfor<IHost>()`, …). The
 literal is byte-identical to what the consts hardcoded, so the wire format is unchanged; only the
 spelling moves from a shared const to the type reference at each site. A no-transformer consumer
 (the primary surface, per the repo rule) writes the literal string directly — the format stays
 `"<declaring-package>:<TypeName>"`.
 
-- **Every `nameof` caller is a transformer-consumer, and lowering must reach the SHIPPED JS.**
-  `Bun.build` never runs ts-patch transformers, so each library that calls `nameof<T>()` gains a
+- **Every `tokenfor` caller is a transformer-consumer, and lowering must reach the SHIPPED JS.**
+  `Bun.build` never runs ts-patch transformers, so each library that calls `tokenfor<T>()` gains a
   `tsconfig.build.json` (root config + `plugins: [{ transform: "@rhombus-std/primitives.transformer",
   import: "transform" }]`, `outDir: .tspc-out`) and a lowering stage in its publish build
   (`buildPackage`'s `tspcProject` option, or the equivalent inline stage in hosting's custom
   builds): `tspc` emits transformer-lowered per-file JS, and `bun build` bundles THAT emit.
-  Un-lowered `nameof<T>()` throws at runtime by design — a loud failure, never a silent
+  Un-lowered `tokenfor<T>()` throws at runtime by design — a loud failure, never a silent
   wrong-token.
 - **The `bun` conditions flip to lowered artifacts.** The `.` export's `bun` condition moves to
   `./dist/index.js` and `internal/*`'s to `./dist/internal/*.js` — the retained per-file stage
   emit (`renameSync(.tspc-out → dist/internal)`), publish-excluded via `"!dist/internal"` in
   `files`. This keeps the white-box surface EXECUTABLE under bun: sibling test packages that
   import `internal/*` run the same lowered JS a published consumer gets, instead of raw src whose
-  module-load-time `nameof` would throw. `@rhombus-std/config`'s `./configuration-builder` /
+  module-load-time `tokenfor` would throw. `@rhombus-std/config`'s `./configuration-builder` /
   `./configuration-manager` subpaths point at their `dist/internal` per-file emits, and
   `./with-type-augment` at its chunk-split `dist/with-type-augment.js` (chunk-splitting keeps the
   `ConfigurationBuilder` identity shared with the barrel).
@@ -1599,24 +1599,24 @@ spelling moves from a shared const to the type reference at each site. A no-tran
   fully-defaulted instantiation IS the bare alias (identical type ⇒ identical token), the alias
   branch of `genericTypeArguments` now drops arguments that are reference-equal to the declared
   parameter defaults. Explicit non-default arguments still tokenize closed.
-- **Newly-converted packages:** `di.core` (both `@augment(nameof<ServiceManifest>())` and the
+- **Newly-converted packages:** `di.core` (both `@augment(tokenfor<ServiceManifest>())` and the
   `removeAll` registration; `augmentation-tokens.ts` deleted, the const's index export gone),
   `di`, `options.augmentations`, `logging.configuration`, `logging.console` (the last two had
   dodged the Proof phase with file-local literal consts). `config.core` returns to PURE-TYPES
   status — the token const was its only runtime export, so `emitJs: false` + `assertNoJs` again.
 - **Install defects fixed in the same pass:** logging.core's floating `ILogger` wrappers become a
   real `LoggerExtensions` set (file renamed `logger-augmentations.ts`) registered against
-  `nameof<ILogger>()`, with `Logger`/`NullLogger` decorated `@augment(nameof<ILogger>())`;
+  `tokenfor<ILogger>()`, with `Logger`/`NullLogger` decorated `@augment(tokenfor<ILogger>())`;
   class-side `LoggerExtensionMethods` typing only — NO `ILogger` interface merge (§36), and the
   wrapper `log` is excluded from the prototype install (it would shadow the primitive and
   self-recurse — caching's `tryGetValue` precedent). caching's `CacheExtensions` /
   `CacheEntryExtensions` move from caching.memory's direct downstream `applyAugmentations` to the
-  registry in caching.core (`nameof<IMemoryCache>()` / `nameof<ICacheEntry>()`, `tryGetValue`
+  registry in caching.core (`tokenfor<IMemoryCache>()` / `tokenfor<ICacheEntry>()`, `tryGetValue`
   exclusion preserved), with `MemoryCache`/`CacheEntry` decorated in caching.memory.
 
 ## 41. `transforms/` — the Go/`ttsc` engine as a dual-track port of the four transformers
 
-The four authoring-time transformers (`primitives.transformer` nameof/token-derivation core,
+The four authoring-time transformers (`primitives.transformer` tokenfor/token-derivation core,
 `di.transformer` registration lowering, `di.transformer.options` `addOptions<T>()`,
 `config.transformer` `withType<T>()`) are ported to Go, compiled and run as `ttsc`
 (`typescript-go`) plugin sidecars. The Go sources live in a NEW ROOT module `transforms/`
@@ -1627,7 +1627,7 @@ and their test packages stay and keep passing verbatim.
 - **Dual-track policy — the two engines have distinct jobs.** ts-patch/TS5 stays the
   **lint/typecheck gate** for transformer-consumers (the `tsc`/`tspc --noEmit` and eslint passes,
   the `built`-condition src-referencing story of the Build-layout section — all unchanged). The
-  Go/`ttsc` path is the **build/emit engine**: it is what actually lowers `nameof<T>()` /
+  Go/`ttsc` path is the **build/emit engine**: it is what actually lowers `tokenfor<T>()` /
   `add<T>()` / `addOptions<T>()` / `withType<T>()` into the shipped JS. The two must produce
   **semantically equivalent lowering** — token strings byte-identical — and that equivalence is
   the load-bearing invariant, not the code shape.
@@ -1677,9 +1677,9 @@ and their test packages stay and keep passing verbatim.
   and restores this cache keyed on the Go sources + `go.mod` + `bun.lock` (the `ttsc` version),
   with the `verify` job timeout raised to survive a cold-cache run.
 - **`caching.core` is the pilot; full library-tier conversion is a measured follow-up.** Only
-  `caching.core` (a `nameof`-only consumer) flips its emit to `ttscProject` this pass — its dist
+  `caching.core` (a `tokenfor`-only consumer) flips its emit to `ttscProject` this pass — its dist
   output is byte-identical to the tspc twin (retained as `tsconfig.build.json`). The remaining
-  `nameof` consumers stay on `tspcProject`. A `ttsc` package produces no per-file `dist/internal`
+  `tokenfor` consumers stay on `tspcProject`. A `ttsc` package produces no per-file `dist/internal`
   white-box surface (`Bun.build` bundles), so a `ttsc` consumer that needs `internal/*` (§40's
   executable white-box story) is part of that follow-up; `caching.core` has no such consumer.
 - **The parity harnesses are the bridge-keeper.** `tests/{di.transformer,di.transformer.options,
@@ -1878,7 +1878,7 @@ repo use, admitting abstract constructors to match the reference's `Type`-accept
 
 Completes the reference's split `FilterLoggingBuilderExtensions` class: the `LoggerFilterOptions`-
 receiver half was already ported; this adds the separate `ILoggingBuilder`-receiver const (an OPEN
-receiver, registered via the registry against `nameof<ILoggingBuilder>()`), honoring the recorded
+receiver, registered via the registry against `tokenfor<ILoggingBuilder>()`), honoring the recorded
 single-receiver-per-const split rather than folding the two into one. The reference's private
 `ConfigureFilter` helper is realized by routing each `addFilter` call through `options.augmentations`'
 `configure` verb at a new `LOGGER_FILTER_OPTIONS_TOKEN` — the first consumer of an OPEN options-
@@ -2151,8 +2151,8 @@ requirement onto every package that src-compiles the abstractions barrel.
 registration, the closing type's token flowing in via `typeArg(1)`. TS forbids two same-named
 interfaces of differing arity, so `ILogger` and the reference's `ILogger<TCategoryName>` collapse
 into one defaulted-generic interface (`ILogger` = `ILogger<unknown>`) — consequently
-`nameof<ILogger>()` lowers to `…:ILogger<unknown>` (the registry key), while the open service token
-uses the clean `…:ILogger` base a `nameof<ILogger<Foo>>()` derives.
+`tokenfor<ILogger>()` lowers to `…:ILogger<unknown>` (the registry key), while the open service token
+uses the clean `…:ILogger` base a `tokenfor<ILogger<Foo>>()` derives.
 
 `setMinimumLevel` and `LoggerFactory.create` are UNSTUBBED — the former through the configure
 pipeline, the latter through a real `@rhombus-std/di` container. The reference edge
@@ -2202,7 +2202,7 @@ reference, harmless for stable deps) and passed to the callback as trailing argu
 reference's five fixed arities collapse into one variadic overload (§42): a token tuple plus a
 tuple-typed callback, so each verb keeps exactly two public overloads (the existing non-DI form +
 this one) rather than growing six. The dep list is token strings, not compile-time type parameters
-— a typed caller inlines `nameof<Dep>()`.
+— a typed caller inlines `tokenfor<Dep>()`.
 
 ## 65. `caching`: `MemoryCache` statistics, keys, linked entries + a real `addMemoryCache` options pipeline — #164
 
@@ -2540,7 +2540,7 @@ reference `FileExtensions` / `Ini` / `Xml` packages. `config.json` is rebased on
   side-effect extension methods, so the `Extensions⇒augmentations` rule (§0) doesn't fire. Depends
   on `config` (peer), `config.core`, `fileproviders.core`, and `fileproviders.physical` (the
   centralized default provider). It is inherently node-side; the `config` barrel stays
-  browser-clean by never importing it. Born dist-referenced (§72) with the `nameof` `internal/*`
+  browser-clean by never importing it. Born dist-referenced (§72) with the `tokenfor` `internal/*`
   lowering split (§40).
 
   - **Read is synchronous via `physicalPath` (flagged deviation).** `load()` is synchronous, but
@@ -2781,7 +2781,7 @@ complete, every runtime library is dist-referenced.**
   receivers (`./configuration-builder`, `./configuration-manager`) needed both a barrel collapse
   AND a `config.transformer` token-derivation change. The token half was wrong (see §74's
   correction): config derives no runtime augmentation token from the concrete `ConfigurationBuilder`
-  class — every config-family registry token is `nameof<IConfigurationBuilder>()`, the interface,
+  class — every config-family registry token is `tokenfor<IConfigurationBuilder>()`, the interface,
   which lives in the already-dist `config.core`, so its barrel/subpath form is stable regardless of
   `config`'s own flip; and `config.transformer` rewrites only `.withType<T>()`, deriving no token.
   So the flip was mechanical, identical in shape to the three self-augmenting cores above: the two
@@ -2815,7 +2815,7 @@ empty `export interface C extends I {}` beside its `@augment` decoration.
   a `declare module './logger' { interface ILogger<TCategoryName = unknown> { … } }` merge and
   deletes the interface (and its barrel export); `distributed-cache-augmentations.ts` does the same
   for the two `DistributedCacheExtensionMethods` signatures via `declare module './IDistributedCache'`.
-  The `registerAugmentations(nameof<…>(), …)` runtime registration is unchanged — this is a
+  The `registerAugmentations(tokenfor<…>(), …)` runtime registration is unchanged — this is a
   type-side move, so emitted `dist` JS is byte-identical. Each concrete implementer
   (`Logger`/`Logger<T>`/`NullLogger`/`NullLogger<T>`/`ConsoleLogger`/`BrowserConsoleLogger`;
   caching.memory's private `NullLoggerImpl`; `MemoryDistributedCache`) repoints its

@@ -22,7 +22,7 @@
 //
 // The builder half honours the recorded single-receiver split rule: it is the
 // SEPARATE `FilterLoggingBuilderExtensions` const targeting the `ILoggingBuilder`
-// token (`nameof<ILoggingBuilder>()`) — never folded into
+// token (`tokenfor<ILoggingBuilder>()`) — never folded into
 // `LoggerFilterOptionsExtensions`. As an OPEN-receiver set it installs through
 // the augmentation registry (docs §38). Each builder overload routes through the
 // shared `configureFilter` helper, mirroring the reference's
@@ -43,7 +43,7 @@ import '@rhombus-std/options.augmentations';
 
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { applyAugmentations, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';
@@ -125,7 +125,9 @@ function configureFilter(
   builder: ILoggingBuilder,
   configureOptions: Func<[LoggerFilterOptions], void>,
 ): ILoggingBuilder {
-  builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
+  // The chain is immutable: `configure` hands back a NEW manifest, so it must be
+  // written into the builder's slot -- a bare call would register nothing.
+  builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
   return builder;
 }
 
@@ -142,4 +144,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-registerAugmentations(nameof<ILoggingBuilder>(), FilterLoggingBuilderExtensions);
+registerAugmentations(tokenfor<ILoggingBuilder>(), FilterLoggingBuilderExtensions);

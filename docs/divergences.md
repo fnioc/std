@@ -29,3 +29,19 @@ ME exposes `IOptionsFactory<T>` as a DI-swappable interface so a consumer can su
 ### Deep-merge config bind
 
 ME's config→options bind (`NamedConfigureFromConfigurationOptions`) calls the reflective `ConfigurationBinder.Bind`. Reflection is impossible under TS type erasure, so `ConfigConfigureOptions`/`bindSection` reimplements the bind **structurally** as a deep merge of the section's key/value subtree onto the value. Beyond just being reflection-free, the deep merge carries a stronger guarantee than ME's `Bind`: two configure steps binding overlapping sections **compose** rather than clobber each other's nested keys. Recorded in decisions.md §76.
+
+### Registration delegates return the collection
+
+ME's registration-time delegates are `Action`s — `IHostBuilder.ConfigureServices(Action<HostBuilderContext, IServiceCollection>)`, and every callback shaped like it — because `IServiceCollection` is a mutable list the delegate registers INTO; nothing needs to come back out. Here, `ServiceManifest` is immutable (§107/§108 — every registration verb and chain modifier returns a NEW manifest, never mutates its receiver), so a delegate with no manifest to write through has nowhere to put its registrations except its return value. Every such delegate is therefore a `Func` that takes the incoming manifest and returns the one carrying its additions, not a void `Action`: `IHostBuilder.configureServices`/`configureContainer` and every other registration-time callback in this port follow this shape. A void `Action` here would typecheck and silently register nothing — the `Func` signature is what makes the immutability the caller's problem to get right, at the type level, everywhere a delegate registers, not just at these two call sites.
+
+```ts
+// ME: void delegate mutates the collection it's handed
+hostBuilder.ConfigureServices((context, services) => {
+  services.AddSingleton<ILogger, ConsoleLogger>();
+});
+
+// here: the delegate returns the manifest carrying its additions
+hostBuilder.configureServices((context, services) =>
+  services.addClass<ILogger>(ConsoleLogger).as<'singleton'>()
+);
+```

@@ -16,72 +16,11 @@ import (
 // only the element type argument (`Array<elem>` / `Iterable<elem>`).
 var collectionTokenBases = map[string]bool{"Array": true, "Iterable": true}
 
-// DeriveToken returns the token string for a type, or ok=false for an anonymous
-// structural type with no name and for an unbound type parameter. Intrinsics
-// tokenize by name, literals by value, and a generic reference recurses into its
-// checker-resolved type arguments to render `base<arg1,arg2>`.
-func DeriveToken(ctx *Context, t *shimchecker.Type) (string, bool) {
-	if t == nil {
-		return "", false
-	}
-
-	if lit, ok := literalToken(t); ok {
-		return lit, true
-	}
-
-	if name, ok := intrinsicToken(t); ok {
-		return name, true
-	}
-
-	// An unbound type parameter names a compile-time binding, not a type
-	// identity, so it has no token.
-	if t.Flags()&shimchecker.TypeFlagsTypeParameter != 0 {
-		return "", false
-	}
-
-	// Prefer the ALIAS symbol over the underlying symbol (`type.aliasSymbol ??
-	// type.getSymbol()`): a reference spelled through an alias (`ServiceManifest`,
-	// `type UserRepo = IRepository<User>`) tokenizes on the alias name, and an
-	// alias of an anonymous object literal has no underlying name at all.
-	symbol := t.Symbol()
-	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
-		symbol = alias.symbol
-	}
-	if symbol == nil {
-		return "", false
-	}
-	name := symbol.Name
-	if name == "" || name == "__type" {
-		return "", false
-	}
-
-	decl := primaryDeclaration(symbol)
-	if decl == nil {
-		return "", false
-	}
-	sourceFile := shimast.GetSourceFileOfNode(decl)
-	if sourceFile == nil {
-		return "", false
-	}
-	base := baseTokenFor(ctx, symbol, sourceFile)
-
-	args := genericTypeArguments(ctx, t)
-	if len(args) == 0 {
-		return base, true
-	}
-	if collectionTokenBases[base] && len(args) > 1 {
-		args = args[:1]
-	}
-	parts := make([]string, 0, len(args))
-	for _, arg := range args {
-		token, ok := DeriveToken(ctx, arg)
-		if !ok {
-			return "", false
-		}
-		parts = append(parts, token)
-	}
-	return base + "<" + strings.Join(parts, ",") + ">", true
-}
+// This file holds the shared token-derivation helpers (intrinsic / literal / base
+// / generic-argument rendering) that DeriveTokenF (holes.go) composes into the ONE
+// derivation the engine uses. The former plain, non-hole-aware DeriveToken was
+// removed in W6p3 with its last caller (the deleted di_options stage); DeriveTokenF
+// is byte-identical to it for a closed (hole-free) type and is now the sole entry.
 
 // intrinsicToken returns the bare token for an intrinsic type (string / number /
 // boolean / symbol / bigint / any / unknown / void / never), or ok=false for a

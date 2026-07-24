@@ -24,9 +24,7 @@ test('HostBuilder.build runs and stops its hosted services', async () => {
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => {
-    services.addHostedService(Worker, [[]]);
-  });
+  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
 
   const host = builder.build();
   expect(host.services).toBeDefined();
@@ -65,9 +63,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => {
-    services.addHostedService(Recorder, [[]]);
-  });
+  builder.configureServices((_context, services) => services.addHostedService(Recorder, [[]]));
 
   const host = builder.build();
   const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
@@ -126,9 +122,7 @@ test('BackgroundService: execute runs on start; stop aborts its stopping signal'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => {
-    services.addHostedService(Worker, [[]]);
-  });
+  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
 
   const host = builder.build();
   await host.start();
@@ -169,9 +163,10 @@ test('addHostedService registers many under one shared token; the host resolves 
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services.addHostedService(A, [[]]);
-    services.addHostedService(B, [[]]);
-    services.addHostedService(C, [[]]);
+    services = services.addHostedService(A, [[]]);
+    services = services.addHostedService(B, [[]]);
+    services = services.addHostedService(C, [[]]);
+    return services;
   });
 
   const host = builder.build();
@@ -238,7 +233,7 @@ test('Host.createApplicationBuilder().build() produces a runnable IHost', async 
   expect(builder.config).toBeDefined();
   expect(builder.logging).toBeDefined();
 
-  builder.services.addHostedService(Worker, [[]]);
+  builder.services = builder.services.addHostedService(Worker, [[]]);
 
   const host = builder.build();
   await host.start();

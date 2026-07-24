@@ -17,15 +17,40 @@ import { dirname, join } from 'node:path';
 import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
-// may import it from. `nameof` lives in the universal @rhombus-std/primitives leaf
-// (runtime source imports it directly). `signatureof` and `keyof` are
-// authoring-time-only and live in @rhombus-std/di.transformer, imported by that
+// may import it from. `tokenfor` / `tokenof` are pure transformables that home in
+// the authoring package @rhombus-std/primitives.extras (constraint 11 moved them
+// out of the runtime @rhombus-std/primitives leaf — every call elides after
+// lowering). `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
+// and are called from runtime source too, so they live in @rhombus-std/di.core
+// (every caller already depends on it). `signatureof`, `keyof`, and `valueof` are
+// authoring-time-only and live in @rhombus-std/di.extras, imported by that
 // package's own bodies via a package-relative specifier. Mirrors the Go scanner's
 // knownPrimitives map.
 const PRIMITIVE_HOMES = {
-  nameof: '@rhombus-std/primitives',
-  signatureof: '@rhombus-std/di.transformer',
-  keyof: '@rhombus-std/di.transformer',
+  tokenfor: '@rhombus-std/primitives.extras',
+  tokenof: '@rhombus-std/primitives.extras',
+  signaturefor: '@rhombus-std/di.core',
+  signaturesfor: '@rhombus-std/di.core',
+  signatureof: '@rhombus-std/di.extras',
+  keyof: '@rhombus-std/di.extras',
+  keyedtokenfor: '@rhombus-std/di.extras',
+  valueof: '@rhombus-std/di.extras',
+  isSingular: '@rhombus-std/primitives.extras',
+  singularValue: '@rhombus-std/primitives.extras',
+  isFactory: '@rhombus-std/primitives.extras',
+  returntokenfor: '@rhombus-std/primitives.extras',
+  paramtokensfor: '@rhombus-std/primitives.extras',
+  schemaof: '@rhombus-std/config.extras',
+};
+
+// Body-imported RUNTIME callees (§99, option B) — a bounded category distinct from
+// the compile-time primitives above: a body may CALL these, they SURVIVE lowering
+// as ordinary function calls, and the inline stage materializes their import. They
+// are allowed ONLY in callee position (never a bare value reference, no globals, no
+// arrows). Mirrors the Go scanner's knownRuntimeCallees map. `overrideSignatures`
+// (di.core) merges a sparse registration-override array at runtime.
+const RUNTIME_CALLEE_HOMES = {
+  overrideSignatures: '@rhombus-std/di.core',
 };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
@@ -123,6 +148,9 @@ const rule = {
     // Local names bound to a known primitive, and whether each is aliased.
     /** @type {Set<string>} */
     const primitiveLocals = new Set();
+    // Local names bound to a known body-imported RUNTIME callee (§99).
+    /** @type {Set<string>} */
+    const runtimeCalleeLocals = new Set();
 
     return {
       ImportDeclaration(node) {
@@ -133,6 +161,17 @@ const rule = {
             continue;
           }
           const imported = spec.imported.type === 'Identifier' ? spec.imported.name : String(spec.imported.value);
+          // A body-imported RUNTIME callee (unaliased, from its home module) — a
+          // value the body may CALL, distinct from the compile-time primitives.
+          const calleeHome = RUNTIME_CALLEE_HOMES[imported];
+          if (calleeHome !== undefined && module === calleeHome) {
+            if (spec.local.name !== imported) {
+              context.report({ node: spec, messageId: 'noAlias', data: { name: imported } });
+              continue;
+            }
+            runtimeCalleeLocals.add(spec.local.name);
+            continue;
+          }
           const home = PRIMITIVE_HOMES[imported];
           // Accept a primitive only from its home module directly, or — when its
           // home IS the declaring package — via a package-relative specifier. Any
@@ -170,7 +209,7 @@ const rule = {
           }
           const fn = prop.value;
           if (fn && (fn.type === 'FunctionExpression' || fn.type === 'ArrowFunctionExpression')) {
-            checkBody(context, fn, primitiveLocals, listedNames, listedMembers);
+            checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers);
           }
         }
       },
@@ -180,14 +219,17 @@ const rule = {
         if (!node.id || !freeFns.has(node.id.name)) {
           return;
         }
-        checkBody(context, node, primitiveLocals, listedNames, listedMembers);
+        checkBody(context, node, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers);
       },
     };
   },
 };
 
 const BANNED = {
-  ConditionalExpression: 'a conditional (?:)',
+  // A conditional (?:) is PERMITTED (§94): the resolve-family sugar bodies branch
+  // `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())`, a single
+  // compile-time expression the engine constant-folds. The other control forms stay
+  // banned — a body is still one side-effect-free expression.
   LogicalExpression: 'a logical operator (&&/||/??)',
   AssignmentExpression: 'assignment',
   SequenceExpression: 'a comma sequence',
@@ -202,7 +244,7 @@ const BANNED = {
 /**
  * Enforces the single-return-expression hygiene on one function-like body.
  */
-function checkBody(context, fn, primitiveLocals, listedNames, listedMembers) {
+function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers) {
   const body = fn.body;
   if (!body || body.type !== 'BlockStatement' || body.body.length !== 1 || body.body[0].type !== 'ReturnStatement'
     || !body.body[0].argument)
@@ -262,6 +304,7 @@ function checkBody(context, fn, primitiveLocals, listedNames, listedMembers) {
       context.report({ node, messageId: 'noNesting', data: { name } });
     },
     primitiveLocals,
+    runtimeCalleeLocals,
     listedMembers,
   });
 
@@ -309,13 +352,28 @@ function walkExpression(root, cb) {
       return;
     }
     if (BANNED[node.type]) {
-      cb.onBanned(node, BANNED[node.type]);
-      // Keep walking to surface nested issues too.
+      // A spread is permitted ONLY when its argument is a primitive call
+      // (`...signaturefor<T>()` / `...signaturesfor<T>()`) — the stage inlines the
+      // primitive's minted members into the surrounding call's argument list, so
+      // the emitted form is the byte-clean, spread-free call a hand author writes.
+      // Any other spread (e.g. `[...this.items]`) stays banned.
+      const primitiveSpread = node.type === 'SpreadElement'
+        && node.argument?.type === 'CallExpression'
+        && node.argument.callee.type === 'Identifier'
+        && cb.primitiveLocals.has(node.argument.callee.name);
+      if (!primitiveSpread) {
+        cb.onBanned(node, BANNED[node.type]);
+        // Keep walking to surface nested issues too.
+      }
     }
 
     if (node.type === 'CallExpression') {
       const callee = node.callee;
       const isPrimitive = callee.type === 'Identifier' && cb.primitiveLocals.has(callee.name);
+      // A body-imported RUNTIME callee (§99) is valid in callee position — its
+      // arguments are ordinary runtime positions (NOT primitive args), so it does
+      // not set the insidePrimitiveArgs flag; only its callee identifier is skipped.
+      const isRuntimeCallee = callee.type === 'Identifier' && cb.runtimeCalleeLocals.has(callee.name);
       // A this.<member> call to another listed member is nesting (unless it is
       // the primitive-form call, which the stage handles).
       if (callee.type === 'MemberExpression' && callee.object.type === 'ThisExpression'
@@ -331,9 +389,9 @@ function walkExpression(root, cb) {
       for (const ta of typeArgs) {
         cb.onTypeArg(ta, isPrimitive);
       }
-      // Callee: skip a primitive callee identifier (it is a primitive ref, fine);
-      // otherwise walk it.
-      if (!(callee.type === 'Identifier' && isPrimitive)) {
+      // Callee: skip a primitive OR runtime-callee callee identifier (both are
+      // recognized call targets, not free identifiers); otherwise walk it.
+      if (!(callee.type === 'Identifier' && (isPrimitive || isRuntimeCallee))) {
         visit(callee, insidePrimitiveArgs);
       }
       for (const arg of node.arguments) {

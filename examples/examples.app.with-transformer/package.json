@@ -24,8 +24,8 @@
   },
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di.transformer": "workspace:*",
-    "@rhombus-std/di.transformer.options": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
+    "@rhombus-std/di.extras.options": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "@types/bun": "^1.3.0",

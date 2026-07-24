@@ -7,8 +7,8 @@
 // split where the provider-building entry is a runtime-package extension rather
 // than a method on the abstractions-package collection.
 //
-// `build` is authored as `ServiceCollectionContainerBuilderExtensions` (mirroring
-// the reference static class of the same name) and REGISTERED against the OPEN
+// `build` is authored as `ServiceManifestContainerBuilderAugmentations` (mirroring
+// the reference container-builder extension static class) and REGISTERED against the OPEN
 // `ServiceManifest` token — the same token `addOptions`/`addLogging`/... target.
 // `ServiceManifestClass`, decorated with `@augment(token)` in di.core, pulls this
 // set onto its prototype, so importing `@rhombus-std/di` (which re-exports from
@@ -19,7 +19,7 @@
 import { type IServiceManifest as ServiceManifestInterface, type IServiceProvider, type OpenRegistration,
   type Registration, ServiceManifestClass, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { ServiceProviderClass } from './ServiceProviderClass.js';
 
@@ -27,7 +27,7 @@ import { ServiceProviderClass } from './ServiceProviderClass.js';
  * The public authoring INTERFACE a `@rhombus-std/di` consumer holds — di.core's
  * `ServiceManifest<S>`, re-declared locally so it merges with the constructible
  * VALUE of the same name below (one name carrying both type and value through the
- * barrel). The `@rhombus-std/di.transformer` augmentation surfaces through it: it
+ * barrel). The `@rhombus-std/di.extras` augmentation surfaces through it: it
  * merges onto `IServiceManifestBase`, which this resolves to.
  */
 export type IServiceManifest<S extends string = 'singleton'> = ServiceManifestInterface<S>;
@@ -39,12 +39,13 @@ export type IServiceManifest<S extends string = 'singleton'> = ServiceManifestIn
 // MUTABLE, created fresh per `build()` call so every scope frame of one provider
 // tree shares it.
 //
-// One named object literal mirroring the reference static class
-// `ServiceCollectionContainerBuilderExtensions` (a runtime-package extension on
-// `IServiceCollection`, exactly our shape). Receiver-first, checked with
-// `satisfies AugmentationSet<R>`; the exported const is the standalone call
-// surface, and registering it installs the fluent `build()` onto the prototype.
-export const ServiceCollectionContainerBuilderExtensions = {
+// One named object literal `ServiceManifestContainerBuilderAugmentations`
+// mirroring the reference container-builder extension static class (a
+// runtime-package extension on the manifest receiver, exactly our shape).
+// Receiver-first, checked with `satisfies AugmentationSet<R>`; the exported const
+// is the standalone call surface, and registering it installs the fluent `build()`
+// onto the prototype.
+export const ServiceManifestContainerBuilderAugmentations = {
   build(
     manifest: ServiceManifestClass<string>,
     options?: ServiceProviderOptions,
@@ -74,8 +75,8 @@ const containerBuilderMerge = {
 } satisfies MergeStrategies;
 
 registerAugmentations(
-  nameof<ServiceManifestInterface>(),
-  ServiceCollectionContainerBuilderExtensions,
+  tokenfor<ServiceManifestInterface>(),
+  ServiceManifestContainerBuilderAugmentations,
   containerBuilderMerge,
 );
 

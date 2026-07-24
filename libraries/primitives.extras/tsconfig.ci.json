@@ -1,0 +1,5 @@
+{
+  "//": "Lint-by-typecheck for the authoring-only token-grammar predicate stubs (isSingular / singularValue, §94). Plain tsc over this package's own src -- the stubs are throwing functions with no transformer footprint of their own.",
+  "extends": "../../tsconfig.lib.json",
+  "include": ["src/**/*"]
+}

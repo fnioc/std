@@ -4,7 +4,7 @@
 // LAZILY when the options resolve), and the ILoggerFactory injection.
 
 import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_CACHE_TOKEN, MemoryCache, MemoryCacheOptions,
-  MemoryCacheServiceCollectionExtensions } from '@rhombus-std/caching.memory';
+  MemoryCacheServiceManifestAugmentations } from '@rhombus-std/caching.memory';
 import { ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
 import { LOGGER_FACTORY_TOKEN, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -23,9 +23,9 @@ class RecordingLoggerFactory implements ILoggerFactory {
 
 describe('addMemoryCache', () => {
   test('method form registers a resolvable IMemoryCache singleton', () => {
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
 
-    expect(services.addMemoryCache()).toBe(services); // chains
+    services = services.addMemoryCache();
 
     const scope = services.build().createScope('singleton');
     const cache = scope.resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
@@ -42,14 +42,15 @@ describe('addMemoryCache', () => {
     const services = new ServiceManifestClass<string>();
     let ran = 0;
 
-    const returned = MemoryCacheServiceCollectionExtensions.addMemoryCache(services, (options) => {
+    // The manifest is immutable, so `addMemoryCache` hands back a NEW manifest
+    // carrying the registrations -- build from `returned`, not `services`.
+    const returned = MemoryCacheServiceManifestAugmentations.addMemoryCache(services, (options) => {
       ran++;
       expect(options).toBeInstanceOf(MemoryCacheOptions);
       options.trackStatistics = true;
     });
-    expect(returned).toBe(services);
 
-    const scope = services.build().createScope('singleton');
+    const scope = returned.build().createScope('singleton');
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
@@ -61,8 +62,8 @@ describe('addMemoryCache', () => {
   });
 
   test('the assembled IOptions<MemoryCacheOptions> is itself resolvable at its token', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addMemoryCache((options) => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addMemoryCache((options) => {
       options.name = 'configured';
     });
 
@@ -73,10 +74,10 @@ describe('addMemoryCache', () => {
   });
 
   test('injects the registered ILoggerFactory into the cache', () => {
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     const factory = new RecordingLoggerFactory();
-    services.addValue(LOGGER_FACTORY_TOKEN, factory);
-    services.addMemoryCache();
+    services = services.addValue(LOGGER_FACTORY_TOKEN, factory);
+    services = services.addMemoryCache();
 
     services.build().createScope('singleton').resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
 
@@ -84,19 +85,19 @@ describe('addMemoryCache', () => {
   });
 
   test('resolves without a registered ILoggerFactory (null-logger fallback)', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addMemoryCache();
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addMemoryCache();
 
     const cache = services.build().createScope('singleton').resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
     expect(cache).toBeInstanceOf(MemoryCache);
   });
 
   test('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     const sentinel = { marker: 'pre-registered' };
-    services.addValue(MEMORY_CACHE_TOKEN, sentinel);
+    services = services.addValue(MEMORY_CACHE_TOKEN, sentinel);
 
-    services.addMemoryCache();
+    services = services.addMemoryCache();
 
     const resolved = services.build().createScope('singleton').resolve(MEMORY_CACHE_TOKEN);
     expect(resolved).toBe(sentinel);

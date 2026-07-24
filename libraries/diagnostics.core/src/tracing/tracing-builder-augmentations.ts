@@ -28,7 +28,7 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
@@ -80,7 +80,7 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
       apply(options);
     },
   };
-  builder.services.addValue(TRACING_CONFIGURE_TOKEN, step);
+  builder.services = builder.services.addValue(TRACING_CONFIGURE_TOKEN, step);
   return builder;
 }
 
@@ -105,18 +105,21 @@ export const TracingBuilderExtensions = {
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
+    builder.services = builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
     return builder;
   },
   /**
    * Removes all {@link ActivityListenerBuilder} registrations from the builder --
    * the port of `TracingBuilderExtensions.ClearListeners(ITracingBuilder)`
    * (`builder.Services.RemoveAll<ActivityListenerBuilder>()`), via di.core's
-   * `ServiceCollectionDescriptorExtensions.removeAll` descriptor verb
+   * `ServiceManifestDescriptorAugmentations.removeAll` descriptor verb
    * (installed as a manifest method through the augmentation registry).
    */
   clearTracingListeners(builder: ITracingBuilder): ITracingBuilder {
-    builder.services.removeAll(TRACING_LISTENER_TOKEN);
+    // See the sibling metrics-builder-augmentations.ts `clearMetricsListeners`
+    // comment: the cast works around a TS structural-comparison depth limit on
+    // `IServiceManifestBase`'s large overload surface, not a real type error.
+    builder.services = builder.services.removeAll(TRACING_LISTENER_TOKEN) as typeof builder.services;
     return builder;
   },
   /**
@@ -183,4 +186,4 @@ declare module '@rhombus-std/diagnostics.core' {
   }
 }
 
-registerAugmentations(nameof<ITracingBuilder>(), TracingBuilderExtensions);
+registerAugmentations(tokenfor<ITracingBuilder>(), TracingBuilderExtensions);

@@ -1,0 +1,105 @@
+// The `addHostedService` fluent registration -- ported from the reference's
+// service-manifest `AddHostedService<T>` extension (which ships in the Hosting
+// abstractions package, not the DI runtime). Registered as a cross-package
+// augmentation onto di.core's registration builder, exactly how
+// @rhombus-std/options.augmentations adds `addOptions`/`configure`: TS
+// declaration merging onto the interface + a runtime install through the
+// augmentation registry.
+//
+// OPEN receiver (docs §38): `IServiceManifest` is extended by many downstream
+// packages, so this const registers against
+// `tokenfor<IServiceManifest>()` (owned by di.core). The concrete
+// `ServiceManifestClass` -- in `@rhombus-std/di.core` -- is decorated with
+// `@augment(tokenfor<IServiceManifest>())` there, so it pulls this bag
+// (and every other cross-package set on the same token) onto its prototype. As
+// this is a FOREIGN receiver class, both the interface-side merge (onto
+// `IServiceManifestBase`) and the class-side merge (onto `ServiceManifestClass`)
+// live here in the extending package.
+//
+// The reference registers `IHostedService` specifically (an enumerable
+// singleton), NOT the concrete type -- so here every hosted service registers
+// under the ONE shared {@link HOSTED_SERVICE_TOKEN} as a singleton, and the host
+// resolves the whole set via the collection wrapper token.
+
+// Named imports: unqualified names in a `declare module` body resolve in THIS
+// file's scope, so `DepSlot`/`IServiceManifest`/`ServiceManifestClass` must be
+// importable here.
+import { type DepSlot, type IResolver, type IServiceManifest, RESOLVER_TOKEN,
+  type ServiceManifestClass } from '@rhombus-std/di.core';
+import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { IHostedService } from './IHostedService';
+import { HOSTED_SERVICE_TOKEN } from './tokens';
+
+// The authored method merges onto core's `IServiceManifestBase` interface -- the
+// surface the public `IServiceManifest` resolves to -- AND onto the concrete
+// `ServiceManifestClass`, so the class still SATISFIES the interface once the new
+// name is on it. `Provider` is defaulted so the merge matches the target's
+// type-parameter list (TS2428 requires identical parameters).
+declare module '@rhombus-std/di.core' {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+    /**
+     * Registers a factory as an {@link IHostedService} — the reference's
+     * `AddHostedService(Func<IServiceProvider, THostedService>)` overload. Use it
+     * to surface an instance already registered under a different token as a
+     * hosted service (e.g. `addHostedService((sp) => sp.resolve(SOME_TOKEN))`).
+     * The factory receives the resolver and returns the service; it is registered
+     * as the same enumerable singleton the ctor form uses.
+     *
+     * Listed before the ctor overload so an un-annotated factory lambda infers its
+     * resolver parameter; a class value is disambiguated by type (not arity) and
+     * still resolves to the ctor overload below.
+     */
+    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): IServiceManifest<Scopes>;
+    /**
+     * Registers `ctor` as an {@link IHostedService} the host will start and stop
+     * alongside its lifetime. The singleton lifetime is applied here (the host
+     * opens the `"singleton"` scope), mirroring the reference's enumerable
+     * singleton registration. `signatures` carries the ctor's dep signatures for
+     * the transformer-free path -- omitted, a dependency-free ctor is assumed.
+     */
+    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): IServiceManifest<Scopes>;
+  }
+
+  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
+    addHostedService(implementationFactory: Func<[IResolver], IHostedService>): IServiceManifest<Scopes>;
+    addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): IServiceManifest<Scopes>;
+  }
+}
+
+// Discriminates the two `addHostedService` forms: an ES class stringifies to a
+// `class …` head, a factory (arrow or plain function) does not. Realistic hosted
+// services are classes and factories are lambdas, so this cleanly separates the
+// construct-signature form from the provider-taking one.
+function isConstructor(target: Ctor | Func<[IResolver], IHostedService>): target is Ctor {
+  return /^class[\s{]/.test(Function.prototype.toString.call(target));
+}
+
+// One named object literal mirroring the reference's `AddHostedService` static
+// class (docs §28), registered into the augmentation registry (the primary
+// path) AND exported so the member is the standalone form.
+export const ServiceManifestHostedServiceAugmentations = {
+  addHostedService(
+    manifest: ServiceManifestClass<string>,
+    // §42 overloaded member: the ctor form carries optional dep signatures; the
+    // factory form is a lone provider-taking function. A class value matches the
+    // construct-signature arm, an arrow/function the call-signature arm.
+    ...rest:
+      | [ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>]
+      | [implementationFactory: Func<[IResolver], IHostedService>]
+  ): IServiceManifest<string> {
+    const [target, signatures] = rest;
+    // Both forms register the shared enumerable-singleton hosted-service token.
+    // The factory form injects the live resolver (via the `[[RESOLVER_TOKEN]]`
+    // dep signature) so the delegate receives it, mirroring the reference's
+    // `Func<IServiceProvider, T>`. A ctor form with no `signatures` is a
+    // dependency-free ctor, stated explicitly as `[[]]` (di.core has no
+    // plugin-less `addClass(token, ctor)` overload).
+    return isConstructor(target)
+      ? manifest.addClass(HOSTED_SERVICE_TOKEN, target, signatures ?? [[]], 'singleton')
+      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]], 'singleton');
+  },
+} satisfies AugmentationSet<ServiceManifestClass<string>>;
+
+registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestHostedServiceAugmentations);

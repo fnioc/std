@@ -25,7 +25,7 @@ The reference keys logging services by CLR type (`Singleton(typeof(ILogger<>), t
 is keyed by a namespaced string token derived from the type name —
 `"@rhombus-std/logging:ILoggerFactory"`, `"@rhombus-std/logging.core:ILogger"`. A no-transformer
 consumer writes the literal string; a transformer consumer derives the same string from
-`nameof<T>()`. The tokens are the DI identity.
+`tokenfor<T>()`. The tokens are the DI identity.
 
 ```ts
 // libraries/logging/src/tokens.ts
@@ -47,7 +47,7 @@ function categoryFromToken(token: string): string {
   return separator === -1 ? token : token.slice(separator + 1);
 }
 
-@augment(nameof<ILogger>())
+@augment(tokenfor<ILogger>())
 export class Logger<T> implements ILogger<T> {
   public constructor(factory: ILoggerFactory, categoryType: Typeof<T>) {
     this.#logger = factory.createLogger(
@@ -157,7 +157,7 @@ selection reachable at log time (`LoggerFactory` subscribes and re-selects via
 
 ```ts
 // libraries/logging.config/src/add-configuration.ts
-const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
+const optionsToken = tokenfor<IOptions<LoggerFilterOptions>>();
 builder.services.addOptions<LoggerFilterOptions>(optionsToken,
   () => new LoggerFilterOptions()).as('singleton');
 builder.services.addValue(configureStepToken(optionsToken),

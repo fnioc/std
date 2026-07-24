@@ -43,18 +43,28 @@ function lintInline(source: string, inlineConfig: unknown = DEFAULT_ENTRIES): st
   return messages.map((m) => m.messageId ?? '').filter(Boolean);
 }
 
-const PRIMITIVE_IMPORT = `import { nameof } from '@rhombus-std/primitives';\n`;
+const PRIMITIVE_IMPORT = `import { tokenfor } from '@rhombus-std/primitives.extras';\n`;
 
 describe('inline-authoring rule', () => {
   test('valid pilot body reports nothing', () => {
     const src = PRIMITIVE_IMPORT
-      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(nameof<T>()); },\n};\n`;
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(tokenfor<T>()); },\n};\n`;
     expect(lintInline(src)).toEqual([]);
   });
 
   test('valid multi-param body reports nothing', () => {
     const src = PRIMITIVE_IMPORT
-      + `export function tokenOf<T>(prefix: string): string { return prefix + nameof<T>(); }\n`;
+      + `export function tokenOf<T>(prefix: string): string { return prefix + tokenfor<T>(); }\n`;
+    expect(lintInline(src)).toEqual([]);
+  });
+
+  test('spread of a primitive call is allowed → reports nothing', () => {
+    // `...signaturefor<T>()` spreads a primitive's minted members into the
+    // surrounding call; the stage inlines them, so the rule permits a spread whose
+    // argument is a primitive call (only that shape — `[...this.items]` stays
+    // banned, covered below).
+    const src = `import { signaturefor } from '@rhombus-std/di.core';\n`
+      + `export const Foo = {\n  bar<T extends readonly any[]>(this: any): unknown { return this.withSignature(...signaturefor<T>()); },\n};\n`;
     expect(lintInline(src)).toEqual([]);
   });
 
@@ -63,10 +73,14 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toContain('singleReturn');
   });
 
-  test('banned conditional → bannedSyntax', () => {
+  test('conditional (?:) is PERMITTED — the §94 resolve-family shape', () => {
+    // The resolve-family sugar branches `isSingular<T>() ? singularValue<T>() :
+    // this.resolve(tokenfor<T>())`, a single compile-time expression the engine
+    // constant-folds. A conditional over otherwise-clean operands is no longer a
+    // bannedSyntax violation.
     const src = PRIMITIVE_IMPORT
-      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.a ? this.b(nameof<T>()) : false; },\n};\n`;
-    expect(lintInline(src)).toContain('bannedSyntax');
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.a ? this.b(tokenfor<T>()) : false; },\n};\n`;
+    expect(lintInline(src)).toEqual([]);
   });
 
   test('free identifier → freeIdentifier', () => {
@@ -75,7 +89,7 @@ describe('inline-authoring rule', () => {
   });
 
   test('aliased primitive import → noAlias', () => {
-    const src = `import { nameof as n } from '@rhombus-std/primitives';\n`
+    const src = `import { tokenfor as n } from '@rhombus-std/primitives.extras';\n`
       + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(n<T>()); },\n};\n`;
     expect(lintInline(src)).toContain('noAlias');
   });
@@ -116,19 +130,19 @@ describe('inline-authoring rule', () => {
 
   test('concrete-type primitive body passes the lint (gap 19 mirror)', () => {
     // typeParamPosition only polices TYPE PARAMETERS; a concrete type in a
-    // primitive call's type-arg position (nameof<Marker>()) is not a violation.
+    // primitive call's type-arg position (tokenfor<Marker>()) is not a violation.
     // This mirrors the Go characterization test TestBodyWithConcreteNameofTypeArg:
     // the lint accepts it, and the failure (if any) only surfaces later at the
     // emit sweep — flagged for an owner decision.
     const src = PRIMITIVE_IMPORT
       + `interface Marker { readonly m: 'marker'; }\n`
-      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(nameof<Marker>()); },\n};\n`;
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(tokenfor<Marker>()); },\n};\n`;
     expect(lintInline(src)).toEqual([]);
   });
 
-  // One fixture per remaining banned construct (conditional is covered above).
-  // Each is a single return expression whose only issue is the banned form, so
-  // the rule reports bannedSyntax.
+  // One fixture per remaining banned construct (a conditional is now PERMITTED,
+  // §94, covered above). Each is a single return expression whose only issue is the
+  // banned form, so the rule reports bannedSyntax.
   const bannedFixtures: Array<{ name: string; member: string; }> = [
     { name: 'logical', member: `bar<T>(this: any): boolean { return this.a && this.b; }` },
     { name: 'assignment', member: `bar<T>(this: any): boolean { return this.x = true; }` },

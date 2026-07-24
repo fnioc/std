@@ -32,7 +32,17 @@ import { MetricsBuilder } from './MetricsBuilder';
 /** A hosted applications and services builder -- the modern {@link IHostApplicationBuilder}. */
 export class HostApplicationBuilder implements IHostApplicationBuilder {
   readonly #config: ConfigManager;
-  readonly #services = new ServiceManifest();
+  // Writable (not `readonly`): di.core's `ServiceManifest` chain is immutable,
+  // so every registration verb returns a NEW manifest -- the `services` setter
+  // below reassigns this field, mirroring the `builder.services = ...` pattern
+  // every registration call site now uses.
+  //
+  // THIS FIELD IS THE ONE SLOT. `#logging`, `#metrics`, and the classic-builder
+  // adapter are all constructed over `this` as their `IServiceManifestHolder`,
+  // so they read and write here rather than each carrying a fork of the chain.
+  // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
+  // build a chain that `build()` never sees.
+  #services: IServiceManifest = new ServiceManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;
@@ -93,11 +103,17 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
       properties: new Map<string | symbol, unknown>(),
     };
 
-    populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config, this.#framework);
+    this.#services = populateFrameworkServices(
+      this.#services,
+      this.#context,
+      this.#environment,
+      this.#config,
+      this.#framework,
+    );
 
     if (!resolved.disableDefaults) {
       applyDefaultAppConfig(this.#config, this.#environment, resolved.args);
-      addDefaultServices(this.#services);
+      this.#services = addDefaultServices(this.#services);
     }
 
     // The reference computes the default service-provider options here (dev-env
@@ -107,8 +123,9 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
       ? undefined
       : createDefaultServiceProviderOptions(this.#environment);
 
-    this.#logging = new LoggingBuilder(this.#services);
-    this.#metrics = new MetricsBuilder(this.#services);
+    // Both take `this` as their shared services holder -- see `#services`.
+    this.#logging = new LoggingBuilder(this);
+    this.#metrics = new MetricsBuilder(this);
   }
 
   /** A central location for sharing state between components during the build. */
@@ -142,6 +159,16 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /**
+   * Rebinds the live services manifest. di.core's `ServiceManifest` chain is
+   * immutable -- every registration verb returns a NEW manifest -- so a
+   * caller registering something reassigns `builder.services =
+   * builder.services.addClass(...)` rather than mutating in place.
+   */
+  public set services(value: IServiceManifest) {
+    this.#services = value;
+  }
+
+  /**
    * Registers a factory used to create the service provider. This repo has a
    * SINGLE container type, so this is a minimal no-op single-container hook: the
    * default `ServiceManifest` build path is always used. See diNotes.
@@ -160,7 +187,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   public asHostBuilder(): IHostBuilder {
     return this.#hostBuilderAdapter ??= new HostBuilderAdapter(
       this.#config,
-      this.#services,
+      this,
       this.#context,
     );
   }

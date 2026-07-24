@@ -230,7 +230,7 @@ func reportNonPublicSubpath(ctx *Context, target *shimast.Symbol, declFile *shim
 // resolved entry module either way, the derived token is byte-identical in every
 // compilation context. The literal stem is always tried first, so any context in
 // which the literal target is loaded is unaffected.
-// Mirrors the TS engine's entrySourceFile (libraries/primitives.transformer/src/tokens.ts).
+// Mirrors the TS engine's entrySourceFile (libraries/primitives.extras/src/tokens.ts).
 func entrySourceFile(
 	pkg *packageInfo,
 	entry tokentext.ExportEntry,

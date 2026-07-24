@@ -5,7 +5,7 @@
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface (an OPEN
 // receiver extended across the family), so this downstream sink registers its
-// augmentation set against the shared `nameof<ILoggingBuilder>()` token (docs
+// augmentation set against the shared `tokenfor<ILoggingBuilder>()` token (docs
 // §38): the @augment-decorated concrete LoggingBuilder pulls the methods onto
 // its prototype. The exported const IS the standalone call surface.
 //
@@ -15,9 +15,10 @@
 // provider). That options-DI pipeline doesn't exist here, so the port follows
 // this repo's existing wiring — direct construction routed through
 // `LoggingBuilderExtensions.addProvider` — with the reference semantics kept:
-//   - ONE provider per manifest, however many add* calls run (the
-//     `TryAddEnumerable` idempotence), tracked in a WeakMap keyed by
-//     `builder.services`.
+//   - ONE provider per BUILDER, however many add* calls run (the
+//     `TryAddEnumerable` idempotence), tracked in a WeakMap keyed by the
+//     builder itself -- the manifest chain is immutable, so `builder.services`
+//     is a different object after each registration and would defeat the dedup.
 //   - configure delegates ACCUMULATE: each applies to the shared mutable
 //     options object and notifies through a ReloadableOptions, which re-runs
 //     the provider's option-reload path — the reference `OnChange` route. One
@@ -41,7 +42,7 @@
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
@@ -55,7 +56,7 @@ import { SimpleConsoleFormatter } from './SimpleConsoleFormatter';
 import { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
 import { SystemdConsoleFormatter } from './SystemdConsoleFormatter';
 
-/** The per-manifest console registration state (see the module doc). */
+/** The per-builder console registration state (see the module doc). */
 interface ConsoleRegistration {
   loggerOptions: ReloadableOptions<ConsoleLoggerOptions>;
   simpleOptions: ReloadableOptions<SimpleConsoleFormatterOptions>;
@@ -66,10 +67,15 @@ interface ConsoleRegistration {
   provider: ConsoleLoggerProvider | undefined;
 }
 
-const registrations = new WeakMap<ILoggingBuilder['services'], ConsoleRegistration>();
+// Keyed by the BUILDER, not by `builder.services`. The manifest chain is
+// immutable, so `builder.services` is a DIFFERENT object after every
+// registration -- keying on it would hand each `addConsole` a fresh state bag
+// and register a second provider. The builder is the stable identity that spans
+// one configuration pass, which is exactly the scope this dedup means.
+const registrations = new WeakMap<ILoggingBuilder, ConsoleRegistration>();
 
 function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
-  let registration = registrations.get(builder.services);
+  let registration = registrations.get(builder);
   if (registration === undefined) {
     registration = {
       loggerOptions: new ReloadableOptions(new ConsoleLoggerOptions()),
@@ -79,7 +85,7 @@ function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
       pendingFormatters: [],
       provider: undefined,
     };
-    registrations.set(builder.services, registration);
+    registrations.set(builder, registration);
   }
   return registration;
 }
@@ -94,13 +100,13 @@ function addFormatterWithName(builder: ILoggingBuilder, name: string): ILoggingB
 /**
  * The `ConsoleLoggerExtensions` augmentation set for {@link ILoggingBuilder}
  * (docs §28/§38) — mirrors the reference `ConsoleLoggerExtensions`.
- * Registered against `nameof<ILoggingBuilder>()` below and reachable as the
+ * Registered against `tokenfor<ILoggingBuilder>()` below and reachable as the
  * standalone `ConsoleLoggerExtensions.addConsole(builder)`.
  */
 export const ConsoleLoggerExtensions = {
   /**
    * Adds a console logger to the builder — one {@link ConsoleLoggerProvider}
-   * per manifest, seeded with the three built-in formatters (plus any custom
+   * per builder, seeded with the three built-in formatters (plus any custom
    * ones registered via {@link addConsoleFormatter}). The reference's
    * configure-delegate overload collapses into the optional `configure`,
    * which applies to the shared {@link ConsoleLoggerOptions} and re-runs the
@@ -208,4 +214,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-registerAugmentations(nameof<ILoggingBuilder>(), ConsoleLoggerExtensions);
+registerAugmentations(tokenfor<ILoggingBuilder>(), ConsoleLoggerExtensions);

@@ -8,7 +8,7 @@ import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIG
   TRACING_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { TracingConfig } from './TracingConfig';
 import { TracingConfigureOptions } from './TracingConfigureOptions';
@@ -21,9 +21,12 @@ export const TracingBuilderConfigExtensions = {
    * `TracingBuilderConfigExtensions.AddConfiguration`.
    */
   addTracingConfig(builder: ITracingBuilder, config: IConfig): ITracingBuilder {
-    builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(config));
-    builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(config));
-    builder.services.addValue(TRACING_CONFIGURATION_TOKEN, new TracingConfig(config));
+    builder.services = builder.services.addValue(TRACING_CONFIGURE_TOKEN, new TracingConfigureOptions(config));
+    builder.services = builder.services.addValue(
+      TRACING_CHANGE_TOKEN_SOURCE_TOKEN,
+      new ConfigChangeTokenSource(config),
+    );
+    builder.services = builder.services.addValue(TRACING_CONFIGURATION_TOKEN, new TracingConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<ITracingBuilder>;
@@ -49,4 +52,4 @@ declare module '@rhombus-std/diagnostics.core' {
   }
 }
 
-registerAugmentations(nameof<ITracingBuilder>(), TracingBuilderConfigExtensions);
+registerAugmentations(tokenfor<ITracingBuilder>(), TracingBuilderConfigExtensions);

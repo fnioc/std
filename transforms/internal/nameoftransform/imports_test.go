@@ -33,7 +33,7 @@ func reprintSF(ec *shimprinter.EmitContext, sf *shimast.SourceFile) string {
 }
 
 // TestElideNameofImports covers the whole-file elision pass over each import
-// shape: a value `nameof` binding is dropped (whole decl when sole, the specifier
+// shape: a value `tokenfor` binding is dropped (whole decl when sole, the specifier
 // alone otherwise, aliased or not), while a type-position binding — a `type`
 // specifier modifier or an `import type` phase modifier — is preserved (it has no
 // runtime reference to strip).
@@ -46,38 +46,38 @@ func TestElideNameofImports(t *testing.T) {
 	}{
 		{
 			name:    "sole-binding-drops-whole-decl",
-			src:     "import { nameof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"nameof", "@rhombus-std/primitives"},
+			src:     "import { tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			absent:  []string{"tokenfor", "@rhombus-std/primitives"},
 			present: []string{"export const x = 1"},
 		},
 		{
 			name:    "partial-keeps-sibling",
-			src:     "import { nameof, other } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"nameof"},
+			src:     "import { tokenfor, other } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			absent:  []string{"tokenfor"},
 			present: []string{"other", "@rhombus-std/primitives"},
 		},
 		{
 			name:    "aliased-exported-name-drops",
-			src:     "import { nameof as keyOf } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"nameof", "keyOf"},
+			src:     "import { tokenfor as keyOf } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			absent:  []string{"tokenfor", "keyOf"},
 			present: []string{"export const x = 1"},
 		},
 		{
 			name:    "type-only-specifier-kept",
-			src:     "import { type nameof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			src:     "import { type tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n",
 			absent:  []string{},
-			present: []string{"nameof"},
+			present: []string{"tokenfor"},
 		},
 		{
 			name:    "import-type-phase-modifier-kept",
-			src:     "import type { nameof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			src:     "import type { tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n",
 			absent:  []string{},
-			present: []string{"nameof"},
+			present: []string{"tokenfor"},
 		},
 		{
 			name:    "default-plus-named-drops-named-keeps-default",
-			src:     "import def, { nameof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"nameof"},
+			src:     "import def, { tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			absent:  []string{"tokenfor"},
 			present: []string{"def", "@rhombus-std/primitives"},
 		},
 	}
@@ -101,7 +101,7 @@ func TestElideNameofImports(t *testing.T) {
 	}
 }
 
-// TestElideNameofImportsPassthrough: a file with no `nameof` value binding is
+// TestElideNameofImportsPassthrough: a file with no `tokenfor` value binding is
 // returned UNCHANGED — same source-file pointer (changed==false), covering both a
 // non-import statement and an import without the binding.
 func TestElideNameofImportsPassthrough(t *testing.T) {
@@ -109,7 +109,7 @@ func TestElideNameofImportsPassthrough(t *testing.T) {
 	sf := parseTS(t, "import { other } from '@rhombus-std/primitives';\nexport const x = 1;\n")
 	out := elideNameofImports(ec.Factory.AsNodeFactory(), sf)
 	if out != sf {
-		t.Fatal("a file with no nameof binding must be returned unchanged (same pointer)")
+		t.Fatal("a file with no tokenfor binding must be returned unchanged (same pointer)")
 	}
 }
 
@@ -136,15 +136,15 @@ func firstNamedImportSpecifiers(t *testing.T, sf *shimast.SourceFile) []*shimast
 }
 
 // TestExportedName: the exported name of a specifier is its PROPERTY name when
-// aliased (`nameof as keyOf` -> "nameof"), else its local name.
+// aliased (`tokenfor as keyOf` -> "tokenfor"), else its local name.
 func TestExportedName(t *testing.T) {
-	sf := parseTS(t, "import { nameof as keyOf, other } from '@rhombus-std/primitives';\n")
+	sf := parseTS(t, "import { tokenfor as keyOf, other } from '@rhombus-std/primitives';\n")
 	specs := firstNamedImportSpecifiers(t, sf)
 	if len(specs) != 2 {
 		t.Fatalf("expected 2 specifiers, got %d", len(specs))
 	}
-	if got := exportedName(specs[0]); got != "nameof" {
-		t.Errorf("aliased specifier exportedName = %q, want nameof", got)
+	if got := exportedName(specs[0]); got != "tokenfor" {
+		t.Errorf("aliased specifier exportedName = %q, want tokenfor", got)
 	}
 	if got := exportedName(specs[1]); got != "other" {
 		t.Errorf("plain specifier exportedName = %q, want other", got)

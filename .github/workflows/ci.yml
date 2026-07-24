@@ -224,10 +224,10 @@ jobs:
           # corpora, so they sit in separate legs.
           - name: e2e-inline
             suites: inline.ttsc.e2e mergesynth.ttsc.e2e
-          - name: e2e-config-di
-            suites: config.transformer.ttsc.e2e di.transformer.ttsc.e2e di.transformer.options.ttsc.e2e
+          - name: e2e-config
+            suites: config.extras.ttsc.e2e declare-by-depending.ttsc.e2e
           - name: e2e-derive
-            suites: primitives.transformer.ttsc.e2e di.signatureof.ttsc.e2e declare-by-depending.ttsc.e2e
+            suites: primitives.extras.ttsc.e2e di.signatureof.ttsc.e2e
           - name: go-gates
             suites: ""
             go: true
@@ -365,7 +365,7 @@ jobs:
           ALPHA_VERSION: ${{ inputs.alpha_version }}
         run: |
           set -euo pipefail
-          ORDER=(primitives config.core options di.core config config.env config.json config.commandline options.augmentations di di.transformer config.transformer di.transformer.options)
+          ORDER=(primitives config.core options di.core config config.env config.json config.commandline options.augmentations di di.extras config.extras di.extras.options)
           for pkg in "${ORDER[@]}"; do
             (
               cd "libraries/$pkg"

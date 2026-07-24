@@ -12,13 +12,13 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-// setupKeyedInlineWorkspace lays out an inline-active `add`-sugar workspace — the
+// setupKeyedInlineWorkspace lays out an inline-active `addClass`-sugar workspace — the
 // real ServiceManifestInline shape carrying the §98 trailing `keyof<T>()` — whose
-// consumer registers one PLAIN `add<IFoo>(Foo)` and one KEYED
-// `add<Keyed<ICache, "redis">>(RedisCache)`. It is the fixture for keyed inline
-// lowering: both calls inline, the plain one ELIDES its trailing keyof argument
-// (byte-parity with the pre-keyof form) while the keyed one KEEPS it for the keyof
-// stage to lower to the key string.
+// consumer registers one PLAIN `addClass<IFoo>(Foo)` and one KEYED
+// `addClass<Keyed<ICache, "redis">>(RedisCache)`. It is the fixture for keyed inline
+// lowering: both calls inline, the plain one ELIDES its keyof argument AND the
+// `void 0` scope placeholder that elision strands (byte-parity with the plain
+// 3-argument form), while the keyed one KEEPS both for the keyof stage to lower.
 func setupKeyedInlineWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -30,25 +30,27 @@ func setupKeyedInlineWorkspace(t *testing.T) (*driver.Program, string) {
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IServiceManifestBase", "impl": "ManifestInline", "member": "add" } ]
+    "entries": [ { "type": "@scope/core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
   }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown, key?: string): unknown;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
 }
 export declare const services: IServiceManifestBase;
 declare const KEY: unique symbol;
 export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
 	// The impl body — the real add-sugar shape, authored over the three primitives,
-	// each imported from its home module (nameof from primitives, signatureof +
-	// keyof from di.transformer). The trailing keyof<T>() is the §98 key half.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
-import { signatureof, keyof } from '@rhombus-std/di.transformer';
+	// each imported from its home module (tokenfor from primitives, signatureof +
+	// keyof from di.extras). keyof<T>() is the §98 key half, sitting in the
+	// KEY slot (argument 5) behind the `void 0` that fills the scope slot the
+	// type-driven sugar has no value for.
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
+import { signatureof, keyof } from '@rhombus-std/di.extras';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
-  add<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.add(nameof<T>(), ctor, signatureof(ctor), keyof<T>());
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
   },
 };
 `)
@@ -63,7 +65,7 @@ export const ManifestInline = {
 
 	write(t, filepath.Join(app, "sugar.d.ts"), `declare module '@scope/core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): unknown;
+    addClass<T>(ctor: unknown): unknown;
   }
 }
 export {};
@@ -75,8 +77,8 @@ interface IFoo {}
 interface ICache {}
 class Foo implements IFoo {}
 class RedisCache implements ICache {}
-export const a = services.add<IFoo>(Foo);
-export const b = services.add<Keyed<ICache, "redis">>(RedisCache);
+export const a = services.addClass<IFoo>(Foo);
+export const b = services.addClass<Keyed<ICache, "redis">>(RedisCache);
 `)
 	write(t, filepath.Join(app, "tsconfig.json"), `{
   "compilerOptions": {
@@ -97,11 +99,12 @@ export const b = services.add<Keyed<ICache, "redis">>(RedisCache);
 }
 
 // TestStageLowersKeyedRegistration is the §98 keyed inline lowering (retiring the
-// #244 fence): `add<Keyed<T, K>>(Impl)` now INLINES like any other registration.
-// The keyed call keeps its trailing `keyof<T>()` argument (registered for the keyof
-// stage, which lowers it to the key string composed at runtime as `base#key`),
-// while the sibling plain `add<IFoo>(Foo)` inlines and ELIDES its trailing keyof
-// argument entirely — byte-identical to the pre-keyof 3-argument form.
+// #244 fence): `addClass<Keyed<T, K>>(Impl)` now INLINES like any other registration.
+// The keyed call keeps its `keyof<T>()` argument in the KEY slot (registered for
+// the keyof stage, which lowers it to the key string composed at runtime as
+// `base#key`), while the sibling plain `addClass<IFoo>(Foo)` inlines and ELIDES that
+// argument along with the `void 0` scope placeholder ahead of it — byte-identical
+// to the plain 3-argument registration form.
 func TestStageLowersKeyedRegistration(t *testing.T) {
 	prog, app := setupKeyedInlineWorkspace(t)
 	defer func() { _ = prog.Close() }()
@@ -121,29 +124,38 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 	out := reprint(ec, transform(ec, main))
 
 	// Both registrations inlined: neither sugar type-argument form survives, and
-	// both emit a nameof primitive (its bound type stays recorded in artifacts, so
+	// both emit a tokenfor primitive (its bound type stays recorded in artifacts, so
 	// the emitted type argument is the body's `T`, not the call-site type).
-	if strings.Contains(out, "add<IFoo>") {
-		t.Errorf("plain add<IFoo> should have inlined, but the sugar form survived:\n%s", out)
+	if strings.Contains(out, "addClass<IFoo>") {
+		t.Errorf("plain addClass<IFoo> should have inlined, but the sugar form survived:\n%s", out)
 	}
-	if strings.Contains(out, "add<Keyed") {
-		t.Errorf("keyed add<Keyed<...>> should have inlined (fence retired), but the sugar form survived:\n%s", out)
+	if strings.Contains(out, "addClass<Keyed") {
+		t.Errorf("keyed addClass<Keyed<...>> should have inlined (fence retired), but the sugar form survived:\n%s", out)
 	}
-	if got := strings.Count(out, "nameof<"); got != 2 {
-		t.Errorf("expected 2 inlined nameof calls (plain + keyed), got %d:\n%s", got, out)
+	if got := strings.Count(out, "tokenfor<"); got != 2 {
+		t.Errorf("expected 2 inlined tokenfor calls (plain + keyed), got %d:\n%s", got, out)
 	}
 	// EXACTLY one keyof argument survives: the keyed call keeps it (the keyof stage
 	// lowers it), the plain call ELIDED it — byte-parity with the pre-keyof form.
 	if got := strings.Count(out, "keyof<"); got != 1 {
 		t.Errorf("expected exactly 1 surviving keyof call (keyed kept, plain elided), got %d:\n%s", got, out)
 	}
+	// The scope placeholder shares the key's fate. The plain call dropped it with
+	// its keyof (leaving the plain 3-argument form); the keyed call keeps it, and
+	// keeps it AHEAD of the key — the slot order the runtime verb reads.
+	if got := strings.Count(out, "void 0"); got != 1 {
+		t.Errorf("expected exactly 1 surviving `void 0` scope placeholder (keyed only), got %d:\n%s", got, out)
+	}
+	if !strings.Contains(out, "void 0, keyof<") {
+		t.Errorf("the keyed call must carry its key in the KEY slot, behind the scope placeholder:\n%s", out)
+	}
 
-	// Both registrations registered a nameof primitive; only the keyed one registered
+	// Both registrations registered a tokenfor primitive; only the keyed one registered
 	// a keyof primitive (the plain one's was elided before registration).
 	nameofCount, keyofCount := 0, 0
 	for _, use := range artifacts.PrimitiveCalls {
 		switch use.Name {
-		case "nameof":
+		case "tokenfor":
 			nameofCount++
 		case "keyof":
 			keyofCount++
@@ -155,7 +167,7 @@ func TestStageLowersKeyedRegistration(t *testing.T) {
 		}
 	}
 	if nameofCount != 2 {
-		t.Fatalf("expected 2 registered nameof primitives (plain + keyed), got %d", nameofCount)
+		t.Fatalf("expected 2 registered tokenfor primitives (plain + keyed), got %d", nameofCount)
 	}
 	if keyofCount != 1 {
 		t.Fatalf("expected exactly 1 registered keyof primitive (the keyed add), got %d", keyofCount)

@@ -52,9 +52,9 @@ func TestElideSignatureofImports(t *testing.T) {
 		},
 		{
 			name:    "partial-keeps-sibling",
-			src:     "import { signatureof, nameof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			src:     "import { signatureof, tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n",
 			absent:  []string{"signatureof"},
-			present: []string{"nameof", "@rhombus-std/primitives"},
+			present: []string{"tokenfor", "@rhombus-std/primitives"},
 		},
 		{
 			name:    "aliased-exported-name-drops",
@@ -106,7 +106,7 @@ func TestElideSignatureofImports(t *testing.T) {
 // covering both a non-import statement and an import without the binding.
 func TestElideSignatureofImportsPassthrough(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parseTS(t, "import { nameof } from '@rhombus-std/primitives';\nexport const x = 1;\n")
+	sf := parseTS(t, "import { tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n")
 	out := elideSignatureofImports(ec.Factory.AsNodeFactory(), sf)
 	if out != sf {
 		t.Fatal("a file with no signatureof binding must be returned unchanged (same pointer)")
@@ -138,7 +138,7 @@ func firstNamedImportSpecifiers(t *testing.T, sf *shimast.SourceFile) []*shimast
 // TestExportedName: the exported name of a specifier is its PROPERTY name when
 // aliased (`signatureof as sig` -> "signatureof"), else its local name.
 func TestExportedName(t *testing.T) {
-	sf := parseTS(t, "import { signatureof as sig, nameof } from '@rhombus-std/primitives';\n")
+	sf := parseTS(t, "import { signatureof as sig, tokenfor } from '@rhombus-std/primitives';\n")
 	specs := firstNamedImportSpecifiers(t, sf)
 	if len(specs) != 2 {
 		t.Fatalf("expected 2 specifiers, got %d", len(specs))
@@ -146,7 +146,7 @@ func TestExportedName(t *testing.T) {
 	if got := exportedName(specs[0]); got != "signatureof" {
 		t.Errorf("aliased specifier exportedName = %q, want signatureof", got)
 	}
-	if got := exportedName(specs[1]); got != "nameof" {
-		t.Errorf("plain specifier exportedName = %q, want nameof", got)
+	if got := exportedName(specs[1]); got != "tokenfor" {
+		t.Errorf("plain specifier exportedName = %q, want tokenfor", got)
 	}
 }

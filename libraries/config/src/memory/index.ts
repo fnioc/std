@@ -12,7 +12,7 @@
 // config's own ConfigBuilder augmenters merge onto one type.
 //
 // `addInMemoryCollection` targets the OPEN `IConfigBuilder` receiver, so
-// it registers against nameof<IConfigBuilder>() (docs §38)
+// it registers against tokenfor<IConfigBuilder>() (docs §38)
 // rather than installing directly: the reference extension method targets
 // IConfigBuilder, and ConfigManager implements that interface
 // too, so both concrete builders are decorated with that one token and a
@@ -27,7 +27,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { type ConfigData, MemoryConfigSource } from './MemoryConfigSource';
 
 export { MemoryConfigProvider } from './MemoryConfigProvider';
@@ -66,4 +66,4 @@ export const MemoryConfigBuilderExtensions = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), MemoryConfigBuilderExtensions);
+registerAugmentations(tokenfor<IConfigBuilder>(), MemoryConfigBuilderExtensions);

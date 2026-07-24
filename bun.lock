@@ -32,8 +32,8 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/di.transformer.options": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
+        "@rhombus-std/di.extras.options": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "@types/bun": "^1.3.0",
@@ -72,7 +72,8 @@
       },
       "devDependencies": {
         "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -98,7 +99,7 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -118,7 +119,7 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -137,7 +138,7 @@
         "@rhombus-toolkit/type-guards": "^1.3.4",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/proxy-base": "^1.0.0",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -153,7 +154,7 @@
       },
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -180,10 +181,20 @@
       },
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
+      },
+      "peerDependencies": {
+        "@rhombus-std/config": "workspace:^",
+      },
+    },
+    "libraries/config.extras": {
+      "name": "@rhombus-std/config.extras",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/primitives.extras": "workspace:*",
       },
       "peerDependencies": {
         "@rhombus-std/config": "workspace:^",
@@ -201,7 +212,7 @@
       },
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -221,7 +232,7 @@
       },
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -241,20 +252,10 @@
       },
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
-      },
-    },
-    "libraries/config.transformer": {
-      "name": "@rhombus-std/config.transformer",
-      "version": "0.0.0",
-      "dependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
       },
       "peerDependencies": {
         "@rhombus-std/config": "workspace:^",
@@ -271,7 +272,7 @@
       },
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -288,7 +289,7 @@
         "@rhombus-std/primitives": "workspace:^",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -302,19 +303,19 @@
         "@rhombus-std/primitives": "workspace:^",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
       },
     },
-    "libraries/di.transformer": {
-      "name": "@rhombus-std/di.transformer",
+    "libraries/di.extras": {
+      "name": "@rhombus-std/di.extras",
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
       },
       "devDependencies": {
@@ -325,19 +326,22 @@
         "typescript": ">=5.2",
       },
     },
-    "libraries/di.transformer.options": {
-      "name": "@rhombus-std/di.transformer.options",
+    "libraries/di.extras.options": {
+      "name": "@rhombus-std/di.extras.options",
       "version": "0.0.0",
       "dependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
       },
       "peerDependencies": {
         "@rhombus-std/di.core": "workspace:^",
-        "@rhombus-std/di.transformer": "workspace:^",
+        "@rhombus-std/di.extras": "workspace:^",
+        "@rhombus-std/options": "workspace:^",
         "typescript": ">=5.2",
       },
     },
@@ -355,7 +359,7 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -374,7 +378,7 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -427,7 +431,7 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "@types/bun": "^1.3.0",
         "rollup": "^4.61.0",
@@ -452,7 +456,7 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -471,7 +475,7 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "@types/bun": "^1.3.0",
         "rollup": "^4.61.0",
@@ -492,7 +496,7 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -511,7 +515,7 @@
         "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -532,7 +536,7 @@
         "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -549,7 +553,7 @@
         "@rhombus-toolkit/type-guards": "^1.3.4",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -564,7 +568,7 @@
         "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -591,7 +595,7 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -607,8 +611,8 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
     },
-    "libraries/primitives.transformer": {
-      "name": "@rhombus-std/primitives.transformer",
+    "libraries/primitives.extras": {
+      "name": "@rhombus-std/primitives.extras",
       "version": "10.1.0",
     },
     "tests/augmentations.test": {
@@ -671,6 +675,16 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
     },
+    "tests/config.extras.ttsc.e2e": {
+      "name": "@rhombus-std/config.extras.ttsc.e2e",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/config.extras": "workspace:*",
+        "@ttsc/unplugin": "^0.18.1",
+        "ttsc": "^0.18.1",
+        "typescript": "^7.0.2",
+      },
+    },
     "tests/config.file.test": {
       "name": "@rhombus-std/config.file.test",
       "version": "0.0.0",
@@ -728,16 +742,6 @@
         "@types/node": "^24.13.2",
       },
     },
-    "tests/config.transformer.ttsc.e2e": {
-      "name": "@rhombus-std/config.transformer.ttsc.e2e",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/config.transformer": "workspace:*",
-        "@ttsc/unplugin": "^0.18.1",
-        "ttsc": "^0.18.1",
-        "typescript": "^7.0.2",
-      },
-    },
     "tests/config.xml.test": {
       "name": "@rhombus-std/config.xml.test",
       "version": "0.0.0",
@@ -752,9 +756,9 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^7.0.2",
@@ -765,9 +769,9 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^7.0.2",
@@ -780,33 +784,6 @@
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-toolkit/func": "^3.5.3",
-      },
-    },
-    "tests/di.tests.integration": {
-      "name": "@rhombus-std/di.tests.integration",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
-      },
-    },
-    "tests/di.transformer.options.ttsc.e2e": {
-      "name": "@rhombus-std/di.transformer.options.ttsc.e2e",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.transformer.options": "workspace:*",
-        "@ttsc/unplugin": "^0.18.1",
-        "ttsc": "^0.18.1",
-        "typescript": "^7.0.2",
-      },
-    },
-    "tests/di.transformer.ttsc.e2e": {
-      "name": "@rhombus-std/di.transformer.ttsc.e2e",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@ttsc/unplugin": "^0.18.1",
-        "ttsc": "^0.18.1",
-        "typescript": "^7.0.2",
       },
     },
     "tests/diagnostics.core.test": {
@@ -901,10 +878,14 @@
       "name": "@rhombus-std/inline.ttsc.e2e",
       "version": "0.0.0",
       "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
+        "@rhombus-std/di.extras.options": "workspace:*",
+        "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^7.0.2",
@@ -971,7 +952,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.transformer": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^7.0.2",
@@ -996,21 +977,21 @@
         "@rhombus-std/primitives": "workspace:*",
       },
     },
+    "tests/primitives.extras.ttsc.e2e": {
+      "name": "@rhombus-std/primitives.extras.ttsc.e2e",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/primitives.extras": "workspace:*",
+        "@ttsc/unplugin": "^0.18.1",
+        "ttsc": "^0.18.1",
+        "typescript": "^7.0.2",
+      },
+    },
     "tests/primitives.test": {
       "name": "@rhombus-std/primitives.test",
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/primitives": "workspace:*",
-      },
-    },
-    "tests/primitives.transformer.ttsc.e2e": {
-      "name": "@rhombus-std/primitives.transformer.ttsc.e2e",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rhombus-std/primitives.transformer": "workspace:*",
-        "@ttsc/unplugin": "^0.18.1",
-        "ttsc": "^0.18.1",
-        "typescript": "^7.0.2",
       },
     },
   },
@@ -1353,6 +1334,10 @@
 
     "@rhombus-std/config.env.test": ["@rhombus-std/config.env.test@workspace:tests/config.env.test"],
 
+    "@rhombus-std/config.extras": ["@rhombus-std/config.extras@workspace:libraries/config.extras"],
+
+    "@rhombus-std/config.extras.ttsc.e2e": ["@rhombus-std/config.extras.ttsc.e2e@workspace:tests/config.extras.ttsc.e2e"],
+
     "@rhombus-std/config.file": ["@rhombus-std/config.file@workspace:libraries/config.file"],
 
     "@rhombus-std/config.file.test": ["@rhombus-std/config.file.test@workspace:tests/config.file.test"],
@@ -1369,10 +1354,6 @@
 
     "@rhombus-std/config.tests.integration": ["@rhombus-std/config.tests.integration@workspace:tests/config.tests.integration"],
 
-    "@rhombus-std/config.transformer": ["@rhombus-std/config.transformer@workspace:libraries/config.transformer"],
-
-    "@rhombus-std/config.transformer.ttsc.e2e": ["@rhombus-std/config.transformer.ttsc.e2e@workspace:tests/config.transformer.ttsc.e2e"],
-
     "@rhombus-std/config.xml": ["@rhombus-std/config.xml@workspace:libraries/config.xml"],
 
     "@rhombus-std/config.xml.test": ["@rhombus-std/config.xml.test@workspace:tests/config.xml.test"],
@@ -1383,19 +1364,13 @@
 
     "@rhombus-std/di.core": ["@rhombus-std/di.core@workspace:libraries/di.core"],
 
+    "@rhombus-std/di.extras": ["@rhombus-std/di.extras@workspace:libraries/di.extras"],
+
+    "@rhombus-std/di.extras.options": ["@rhombus-std/di.extras.options@workspace:libraries/di.extras.options"],
+
     "@rhombus-std/di.signatureof.ttsc.e2e": ["@rhombus-std/di.signatureof.ttsc.e2e@workspace:tests/di.signatureof.ttsc.e2e"],
 
     "@rhombus-std/di.test": ["@rhombus-std/di.test@workspace:tests/di.test"],
-
-    "@rhombus-std/di.tests.integration": ["@rhombus-std/di.tests.integration@workspace:tests/di.tests.integration"],
-
-    "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
-
-    "@rhombus-std/di.transformer.options": ["@rhombus-std/di.transformer.options@workspace:libraries/di.transformer.options"],
-
-    "@rhombus-std/di.transformer.options.ttsc.e2e": ["@rhombus-std/di.transformer.options.ttsc.e2e@workspace:tests/di.transformer.options.ttsc.e2e"],
-
-    "@rhombus-std/di.transformer.ttsc.e2e": ["@rhombus-std/di.transformer.ttsc.e2e@workspace:tests/di.transformer.ttsc.e2e"],
 
     "@rhombus-std/diagnostics": ["@rhombus-std/diagnostics@workspace:libraries/diagnostics"],
 
@@ -1475,11 +1450,11 @@
 
     "@rhombus-std/primitives": ["@rhombus-std/primitives@workspace:libraries/primitives"],
 
+    "@rhombus-std/primitives.extras": ["@rhombus-std/primitives.extras@workspace:libraries/primitives.extras"],
+
+    "@rhombus-std/primitives.extras.ttsc.e2e": ["@rhombus-std/primitives.extras.ttsc.e2e@workspace:tests/primitives.extras.ttsc.e2e"],
+
     "@rhombus-std/primitives.test": ["@rhombus-std/primitives.test@workspace:tests/primitives.test"],
-
-    "@rhombus-std/primitives.transformer": ["@rhombus-std/primitives.transformer@workspace:libraries/primitives.transformer"],
-
-    "@rhombus-std/primitives.transformer.ttsc.e2e": ["@rhombus-std/primitives.transformer.ttsc.e2e@workspace:tests/primitives.transformer.ttsc.e2e"],
 
     "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.5.3", "", {}, "sha512-FH+iLcXj7MzQi1XIsP5Arm/w7Z9XBIF7EbSmv23U5fHW7D5LKNaPC5xKQC7u9yWXY7cJj4eeRJVDI3y2SH5nYw=="],
 
@@ -3517,21 +3492,17 @@
 
     "@pnpm/network.ca-file/graceful-fs": ["graceful-fs@4.2.10", "", {}, "sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA=="],
 
-    "@rhombus-std/config.transformer.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
+    "@rhombus-std/config.extras.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "@rhombus-std/declare-by-depending.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "@rhombus-std/di.signatureof.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
-    "@rhombus-std/di.transformer.options.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
-
-    "@rhombus-std/di.transformer.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
-
     "@rhombus-std/inline.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "@rhombus-std/mergesynth.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
-    "@rhombus-std/primitives.transformer.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
+    "@rhombus-std/primitives.extras.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "@rushstack/eslint-config/@typescript-eslint/eslint-plugin": ["@typescript-eslint/eslint-plugin@8.56.1", "", { "dependencies": { "@eslint-community/regexpp": "^4.12.2", "@typescript-eslint/scope-manager": "8.56.1", "@typescript-eslint/type-utils": "8.56.1", "@typescript-eslint/utils": "8.56.1", "@typescript-eslint/visitor-keys": "8.56.1", "ignore": "^7.0.5", "natural-compare": "^1.4.0", "ts-api-utils": "^2.4.0" }, "peerDependencies": { "@typescript-eslint/parser": "^8.56.1", "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.0.0" } }, "sha512-Jz9ZztpB37dNC+HU2HI28Bs9QXpzCz+y/twHOwhyrIRdbuVDxSytJNDl6z/aAKlaRIwC7y8wJdkBv7FxYGgi0A=="],
 

@@ -5,8 +5,8 @@
 // the abstractions layer both sides depend on.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-import type { TokenNode } from './token.js';
-import type { DepSlot, Token } from './types.js';
+import type { TokenNode } from './token/index.js';
+import type { DepSignatures, Token } from './types.js';
 
 export type { Ctor };
 
@@ -56,7 +56,7 @@ export interface Registration {
    * and hand-fed by a plugin-less caller. Absent or empty means `produce` takes
    * no injected args (a zero-arg ctor, a value, or a signature-less factory).
    */
-  readonly signatures?: ReadonlyArray<readonly DepSlot[]>;
+  readonly signatures?: DepSignatures;
   /**
    * The producer's diagnostic name — the ctor / factory name, carried EXPLICITLY
    * because a wrapper closure (`(...a) => new Ctor(...a)`) reports `""` for its
@@ -65,11 +65,12 @@ export interface Registration {
    */
   readonly name: string;
   /**
-   * The original constructor arity (`Ctor.length`), carried EXPLICITLY because a
-   * rest-param wrapper reports `0` for its own `.length`. Drives the
-   * missing-metadata signal: a signature-less producer whose `arity` is nonzero
-   * (a class ctor that needs args) throws `MissingMetadataError`. `0` for a value
-   * or a factory — a signature-less factory simply runs with no injected args.
+   * The producer's declared parameter count, carried EXPLICITLY because the
+   * ctor-wrapping closure (`(...a) => new Ctor(...a)`) reports `0` for its own
+   * `.length`: a class carries `Ctor.length`, a factory carries `factory.length`.
+   * Drives the missing-metadata signal: a signature-less producer whose `arity` is
+   * nonzero — a class ctor OR a factory that declares parameters — throws
+   * `MissingMetadataError`. `0` for a value.
    */
   readonly arity: number;
 }
@@ -102,7 +103,7 @@ export interface OpenRegistration {
    * substituted per closing. When absent, the closing has no template to
    * substitute (a zero-arg ctor closes to a bare `new Ctor()`).
    */
-  readonly signatures?: ReadonlyArray<readonly DepSlot[]>;
+  readonly signatures?: DepSignatures;
   /**
    * The parsed template tree (the typed-token model, `./token.ts`) — the engine
    * unifies a closed ground token against THIS via `match`. Populated at
@@ -114,9 +115,27 @@ export interface OpenRegistration {
 }
 
 /**
+ * ONE registration as it comes out of a manifest's iteration. A manifest is an
+ * `Iterable<ManifestEntry>` — the decorator CHAIN yields its predecessor's
+ * entries first, then its own — so the entry stream IS the manifest's ordered
+ * source of truth. An `exact` entry binds a closed token to a producer
+ * `Registration`; an `open` entry binds a template's canonical base to an
+ * `OpenRegistration`.
+ *
+ * Entries are FROZEN and never refined in place: a modifier (`as` / `withKey` /
+ * `withSignature` / `withSignatures`) builds a whole new node carrying a freshly
+ * materialised entry over the SAME predecessor, so one `.addClass(...).as(...)`
+ * chain still contributes exactly one entry to the stream (a spurious shadow would
+ * pollute collection aggregation, which enumerates every registration of a token).
+ */
+export type ManifestEntry =
+  | { readonly kind: 'exact'; readonly token: Token; readonly registration: Registration; }
+  | { readonly kind: 'open'; readonly base: Token; readonly open: OpenRegistration; };
+
+/**
  * The sealed, immutable snapshot a `ServiceManifestClass` hands to the engine.
- * `ServiceManifestClass.seal()` deep-freezes its registration tables into this
- * shape; `@rhombus-std/di`'s `build()` extension reads it to construct the
+ * `ServiceManifestClass.seal()` materialises its entry stream into these two
+ * deep-frozen tables; `@rhombus-std/di`'s `build()` extension reads it to construct the
  * provider (the engine-constructing half stays in the runtime package). This is
  * the seam that lets the collection live in di.core while provider construction
  * lives in di.

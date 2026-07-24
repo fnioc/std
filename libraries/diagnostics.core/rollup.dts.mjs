@@ -17,7 +17,7 @@ export default {
     /^@rhombus-std\/di\.core$/,
     /^@rhombus-std\/options$/,
     /^@rhombus-std\/primitives$/,
-    /^@rhombus-std\/primitives\.transformer(\/|$)/,
+    /^@rhombus-std\/primitives\.extras(\/|$)/,
     /^@rhombus-toolkit\/func$/,
   ],
   plugins: [

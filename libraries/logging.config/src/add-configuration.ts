@@ -10,7 +10,7 @@
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface and an OPEN
 // receiver, so this downstream extender registers the set against the shared
-// `nameof<ILoggingBuilder>()` token; the @augment-decorated LoggingBuilder
+// `tokenfor<ILoggingBuilder>()` token; the @augment-decorated LoggingBuilder
 // pulls `builder.addConfig(…)` onto its prototype. The exported const
 // IS the standalone call surface.
 //
@@ -33,7 +33,7 @@
 //     behavior as the reference's TryAdd (di.core has no add-if-absent
 //     surface; see @rhombus-std/logging's addLogging precedent note).
 //
-// The options token is derived INLINE (`nameof<IOptions<LoggerFilterOptions>>()`
+// The options token is derived INLINE (`tokenfor<IOptions<LoggerFilterOptions>>()`
 // → `"@rhombus-std/options:IOptions<@rhombus-std/logging:LoggerFilterOptions>"`,
 // docs §40) — the same token the logging family's own consumers derive from
 // the type, with no shared const.
@@ -46,7 +46,7 @@ import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigChangeTokenSource,
   configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { loggerProviderConfigToken } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
@@ -76,20 +76,24 @@ export const LoggingBuilderExtensions = {
     // ILoggerProviderConfig<$1> template closes per provider, its
     // typeArg(1) slot reifying the closing token as the constructor's
     // provider-type argument.
-    builder.services
-      .add(
-        nameof<ILoggerProviderConfigFactory>(),
-        LoggerProviderConfigFactory,
-        [[closeToken('Array', nameof<LoggingConfig>())]],
-      )
-      .as('singleton');
-    builder.services
-      .add(
-        loggerProviderConfigToken('$1'),
-        LoggerProviderConfig,
-        [[nameof<ILoggerProviderConfigFactory>(), typeArg(1)]],
-      )
-      .as('singleton');
+    //
+    // `builder.services` is a MUTABLE field (logging's LoggingBuilder): the
+    // manifest chain itself is immutable, so every step below reassigns it to
+    // the manifest its own registration produced, then the final value is
+    // read back through `builder.services` by the caller (§ the same pattern
+    // `addLogging` uses for its own `configure` delegate).
+    builder.services = builder.services.addClass(
+      tokenfor<ILoggerProviderConfigFactory>(),
+      LoggerProviderConfigFactory,
+      [[closeToken('Array', tokenfor<LoggingConfig>())]],
+      'singleton',
+    );
+    builder.services = builder.services.addClass(
+      loggerProviderConfigToken('$1'),
+      LoggerProviderConfig,
+      [[tokenfor<ILoggerProviderConfigFactory>(), typeArg(1)]],
+      'singleton',
+    );
 
     if (!rest.length) {
       return builder;
@@ -98,12 +102,20 @@ export const LoggingBuilderExtensions = {
 
     // ── The LoggerFilterOptions pipeline (the LoggingBuilderExtensions
     // mirror): assembly + custom configure step + reload change-token source.
-    const optionsToken = nameof<IOptions<LoggerFilterOptions>>();
-    builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
-    builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(config));
-    builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigChangeTokenSource(config));
+    const optionsToken = tokenfor<IOptions<LoggerFilterOptions>>();
+    builder.services = builder.services
+      .addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions())
+      .as('singleton');
+    builder.services = builder.services.addValue(
+      configureStepToken(optionsToken),
+      new LoggerFilterConfigureOptions(config),
+    );
+    builder.services = builder.services.addValue(
+      changeTokenSourceToken(optionsToken),
+      new ConfigChangeTokenSource(config),
+    );
 
-    builder.services.addValue(nameof<LoggingConfig>(), new LoggingConfig(config));
+    builder.services = builder.services.addValue(tokenfor<LoggingConfig>(), new LoggingConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<ILoggingBuilder>;
@@ -122,4 +134,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-registerAugmentations(nameof<ILoggingBuilder>(), LoggingBuilderExtensions);
+registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderExtensions);

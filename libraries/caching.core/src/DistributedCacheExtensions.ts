@@ -17,12 +17,12 @@
 // `declare module './IDistributedCache'` block below -- the §36/§48 many-
 // implementers carve-out is retired (§80): every receiver uses the standard
 // interface merge, and each concrete cache class `extends IDistributedCache`
-// beside its `@augment(nameof<IDistributedCache>())` decoration. The set is
+// beside its `@augment(tokenfor<IDistributedCache>())` decoration. The set is
 // still registered against the `IDistributedCache` token so every decorated
 // class gains the method form on its prototype at runtime.
 
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor } from '@rhombus-toolkit/func';
 import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 import type { IDistributedCache } from './IDistributedCache';
@@ -94,7 +94,7 @@ export const DistributedCacheExtensions = {
 // The method-form surface merged onto {@link IDistributedCache} (docs §28/§38):
 // the merge types the wrappers on the interface itself, so every
 // `IDistributedCache` value carries them and each concrete cache class
-// `extends IDistributedCache` beside its `@augment(nameof<IDistributedCache>())`
+// `extends IDistributedCache` beside its `@augment(tokenfor<IDistributedCache>())`
 // decoration to declare them where they install. `set` is absent -- its name IS
 // `IDistributedCache`'s own primitive, so it stays standalone-only (excluded
 // from both this merge and the prototype install; see the registration below).
@@ -120,4 +120,4 @@ declare module './IDistributedCache' {
 // from unused checks).
 const { set: _set, ...distributedCacheInstanceMethods } = DistributedCacheExtensions;
 
-registerAugmentations(nameof<IDistributedCache>(), distributedCacheInstanceMethods);
+registerAugmentations(tokenfor<IDistributedCache>(), distributedCacheInstanceMethods);

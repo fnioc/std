@@ -8,7 +8,7 @@
 // parameters BY TYPE, and resolves the rest via `IServiceProvider`. std has no
 // runtime reflection and no runtime parameter types, so activation is driven by
 // the SAME explicit dependency signature (`DepSlot[]`) the rest of di.core uses:
-// a `nameof`-free caller hand-feeds it, exactly as `add(token, ctor, [[...]])`
+// a `tokenfor`-free caller hand-feeds it, exactly as `add(token, ctor, [[...]])`
 // does. Each slot is resolved against the provider through its PUBLIC `IResolver`
 // surface — activation never enters the `@rhombus-std/di` resolution engine, just
 // as the reference never routes through the container's own construction path.

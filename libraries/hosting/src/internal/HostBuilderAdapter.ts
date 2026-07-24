@@ -14,12 +14,12 @@
 //     application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
-import type { Action } from '@rhombus-toolkit/func';
+import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { Action, Func } from '@rhombus-toolkit/func';
 import { resolveContentRootPath } from '../host-composition';
 
 /** Ordinal case-insensitive comparison, treating an absent value as the empty string. */
@@ -34,23 +34,27 @@ function equalsIgnoreCase(left: string | undefined, right: string | undefined): 
 export interface HostBuilderAdapter extends IHostBuilder {}
 
 /** The classic-builder adapter over a modern application builder. */
-@augment(nameof<IHostBuilder>())
+@augment(tokenfor<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {
   readonly #config: IConfigManager;
-  readonly #services: IServiceManifest;
+  // The wrapped application builder ITSELF, held as its services slot -- not a
+  // snapshot of the manifest. The chain is immutable, so `applyChanges` has to
+  // write each delegate's returned manifest back into the live slot; a captured
+  // manifest would replay the delegates onto a chain nobody builds from.
+  readonly #holder: IServiceManifestHolder;
   readonly #context: HostBuilderContext;
 
   readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
-  readonly #configureServicesActions: Array<Action<[HostBuilderContext, IServiceManifest]>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, IServiceManifest], IServiceManifest>> = [];
 
   public constructor(
     config: IConfigManager,
-    services: IServiceManifest,
+    holder: IServiceManifestHolder,
     context: HostBuilderContext,
   ) {
     this.#config = config;
-    this.#services = services;
+    this.#holder = holder;
     this.#context = context;
   }
 
@@ -71,7 +75,9 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureServices(configureDelegate: Action<[HostBuilderContext, IServiceManifest]>): this {
+  public configureServices(
+    configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>,
+  ): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
@@ -85,7 +91,7 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   /** No-op single-container hook (docs §24), mirroring the application builder. */
   public configureContainer<TContainerBuilder>(
-    _configureDelegate: Action<[HostBuilderContext, TContainerBuilder]>,
+    _configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
   ): this {
     return this;
   }
@@ -151,7 +157,7 @@ export class HostBuilderAdapter implements IHostBuilder {
       action(this.#context, config);
     }
     for (const action of this.#configureServicesActions) {
-      action(this.#context, this.#services);
+      this.#holder.services = action(this.#context, this.#holder.services);
     }
   }
 }

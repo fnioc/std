@@ -10,7 +10,7 @@ import (
 // plus a live `import { tokenOf } from 'p'` that anchors the free-function check.
 const residueSource = `import { tokenOf } from 'p';
 declare const x: any;
-const a = nameof<Foo>();
+const a = tokenfor<Foo>();
 const b = x.isService<Foo>();
 const c = tokenOf(1);
 `
@@ -36,7 +36,7 @@ func TestSweepFlagsResidue(t *testing.T) {
 
 	diags := Sweep(sf, activeResidueArtifacts())
 	if len(diags) != 3 {
-		t.Fatalf("expected 3 diagnostics (nameof primitive, isService member sugar, tokenOf free-fn sugar), got %d: %+v", len(diags), diags)
+		t.Fatalf("expected 3 diagnostics (tokenfor primitive, isService member sugar, tokenOf free-fn sugar), got %d: %+v", len(diags), diags)
 	}
 
 	codes := map[string]int{}
@@ -44,7 +44,7 @@ func TestSweepFlagsResidue(t *testing.T) {
 		codes[d.Code]++
 	}
 	if codes["INLINE_UNLOWERED_PRIMITIVE"] != 1 {
-		t.Errorf("want 1 INLINE_UNLOWERED_PRIMITIVE (the surviving nameof<Foo>()), got %d: %+v", codes["INLINE_UNLOWERED_PRIMITIVE"], diags)
+		t.Errorf("want 1 INLINE_UNLOWERED_PRIMITIVE (the surviving tokenfor<Foo>()), got %d: %+v", codes["INLINE_UNLOWERED_PRIMITIVE"], diags)
 	}
 	if codes["INLINE_UNLOWERED_SUGAR"] != 2 {
 		t.Errorf("want 2 INLINE_UNLOWERED_SUGAR (isService member + tokenOf free-fn), got %d: %+v", codes["INLINE_UNLOWERED_SUGAR"], diags)
@@ -52,7 +52,7 @@ func TestSweepFlagsResidue(t *testing.T) {
 }
 
 // TestSweepFlagsRegisteredPrimitiveNode covers the sweep's first branch: a call
-// still carried in artifacts.PrimitiveCalls (a substituted primitive the nameof
+// still carried in artifacts.PrimitiveCalls (a substituted primitive the tokenfor
 // stage never lowered) is flagged INLINE_UNLOWERED_PRIMITIVE by node identity,
 // independent of its callee text or shape.
 func TestSweepFlagsRegisteredPrimitiveNode(t *testing.T) {
@@ -65,7 +65,7 @@ func TestSweepFlagsRegisteredPrimitiveNode(t *testing.T) {
 	registered := callContaining(t, sf, "plain(")
 	artifacts := NewArtifacts()
 	artifacts.Active = true
-	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "nameof"}
+	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "tokenfor"}
 
 	diags := Sweep(sf, artifacts)
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_PRIMITIVE" {
@@ -117,4 +117,26 @@ const b = x.isService<Foo>('token');
 			t.Fatalf("a free-function call whose import was elided must not be flagged, got %+v", diags)
 		}
 	})
+}
+
+// TestSweepFlagsSurvivingSingularValue covers the §94 targeted-diagnostic branch: a
+// registered `singularValue<T>()` that SURVIVED lowering (the singular stage left it
+// un-lowered over a non-singular type, and no fold pruned it) is flagged with the
+// specific SINGULAR_VALUE_NON_SINGULAR code — naming the failure — not the generic
+// INLINE_UNLOWERED_PRIMITIVE. A guarded singularValue is pruned before the sweep, so
+// one that reaches here is unguarded over a non-singular type.
+func TestSweepFlagsSurvivingSingularValue(t *testing.T) {
+	sf := parse(t, "/sweep/singular.ts", `const s = singularValue<Foo>();
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	registered := callContaining(t, sf, "singularValue<")
+	artifacts := NewArtifacts()
+	artifacts.Active = true
+	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "singularValue"}
+
+	diags := Sweep(sf, artifacts)
+	if len(diags) != 1 || diags[0].Code != "SINGULAR_VALUE_NON_SINGULAR" {
+		t.Fatalf("expected 1 SINGULAR_VALUE_NON_SINGULAR from the surviving-singularValue branch, got %+v", diags)
+	}
 }

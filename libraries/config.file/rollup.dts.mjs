@@ -20,7 +20,7 @@ export default {
     /^@rhombus-std\/fileproviders\.core$/,
     /^@rhombus-std\/fileproviders\.physical$/,
     /^@rhombus-std\/primitives$/,
-    /^@rhombus-std\/primitives\.transformer(\/|$)/,
+    /^@rhombus-std\/primitives\.extras(\/|$)/,
     /^@rhombus-toolkit\/func$/,
   ],
   plugins: [

@@ -3,7 +3,7 @@
 // `IResolver` (#49) that assembles a report by resolving every input TOKENLESSLY:
 // the `IGreeting` collection (#48), the live `IOptions<ServerOptions>` (#6/#40),
 // the static `IOptions<GreetingPolicy>` (#34), and an optional `IHealthCheck`
-// probed with `tryResolve`/`isService` (#25/#23). The `@rhombus-std/di.transformer`
+// probed with `tryResolve`/`isService` (#25/#23). The `@rhombus-std/di.extras`
 // lowers each `resolve<T>()` / `tryResolve<T>()` / `isService<T>()` to its string
 // token during the build; the raw source would call them with no token and throw
 // — so a source-libs entry that skipped the build would silently break.

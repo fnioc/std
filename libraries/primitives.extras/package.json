@@ -1,0 +1,58 @@
+{
+  "name": "@rhombus-std/primitives.extras",
+  "version": "10.1.0",
+  "description": "The standalone token-derivation authoring transformer: the nameof<T>() compile-time token mechanism plus the inline and signatureof primitive stages. A Go/ttsc descriptor package — the derivation runs in the shared owner binary, di-independent so any family can mint augmentation tokens from types.",
+  "keywords": [
+    "primitives",
+    "typescript",
+    "transformer",
+    "compiler",
+    "nameof"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/primitives.extras"
+  },
+  "type": "module",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
+    },
+    "./ttsc": "./ttsc.mjs"
+  },
+  "ttsc": {
+    "plugin": {
+      "transform": "@rhombus-std/primitives.extras/ttsc"
+    }
+  },
+  "files": [
+    "dist",
+    "ttsc.mjs"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
+      },
+      "./ttsc": "./ttsc.mjs"
+    }
+  }
+}

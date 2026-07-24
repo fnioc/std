@@ -25,8 +25,8 @@
 //     `nameof<T>()` (and the registration/options/config sugar) in a per-file
 //     stage before the bundle. Absent -> no lowering stage. WHICH stages run is
 //     declare-by-depending, resolved HOST-SIDE (§100): ttsc auto-discovery spawns
-//     the one owner host from the package's direct `*.transformer` dep, and the
-//     host self-selects the full transitive stage set from its own dependency
+//     the one owner host from the package's direct `*.extras` dep, and the
+//     host runs its whole always-on stage table from its own dependency
 //     scan. So this script passes NO explicit plugin list (a non-empty manual
 //     `tsconfig.ttsc.json` `plugins` array is the only override). See below.
 //
@@ -37,8 +37,8 @@
 //   | package            | field                                  | why                                              |
 //   |--------------------|----------------------------------------|--------------------------------------------------|
 //   | config.core        | typesOnly: true                        | pure-types package -- no JS bundle, asserted (§40) |
-//   | di.transformer     | inline: [primitives.transformer, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
-//   | config.transformer | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
+//   | di.extras     | inline: [primitives.extras, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
+//   | config.extras | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -122,7 +122,7 @@ const ttscProject = existsSync(join(dir, 'tsconfig.ttsc.json')) ? 'tsconfig.ttsc
 
 // ttsc lowering: stage selection is declare-by-depending, resolved HOST-SIDE
 // (§100). ttsc's own auto-discovery spawns the one owner host from this package's
-// direct `*.transformer` dep; the host then self-selects the full transitive
+// direct `*.extras` dep; the host then self-selects the full transitive
 // stage union via its own dependency scan (inlinetransform.CollectProject). So
 // pass NO explicit plugin list -- `undefined` lets auto-discovery run. CRITICAL:
 // it must be `undefined`, never `[]` -- an empty array is an explicit plugin list

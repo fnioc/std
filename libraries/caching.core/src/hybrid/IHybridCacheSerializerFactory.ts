@@ -9,7 +9,7 @@
 //   - The reference member takes no runtime argument: a factory inspects
 //     `typeof(T)` reflectively to decide whether it supports the type. TS
 //     erases `T`, so the type's identity must arrive as a value -- the runtime
-//     type token (docs §40), derived inline at call sites via `nameof<T>()`
+//     type token (docs §40), derived inline at call sites via `tokenfor<T>()`
 //     (or written as the literal string by hand), is the platform analog of
 //     `typeof(T)`.
 
@@ -22,7 +22,7 @@ export interface IHybridCacheSerializerFactory {
    * Requests a serializer for the provided type, if possible.
    *
    * @param type The token of the type being serialized or deserialized -- the
-   * runtime analog of `T`, derived inline via `nameof<T>()` (docs §40).
+   * runtime analog of `T`, derived inline via `tokenfor<T>()` (docs §40).
    * @returns The serializer, or `undefined` if the factory does not support
    * this type.
    */

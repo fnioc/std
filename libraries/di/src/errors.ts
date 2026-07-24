@@ -22,7 +22,7 @@ export class UnregisteredTokenError extends DiError {
   public constructor(public readonly token: Token) {
     super(
       `No registration found for token "${token}". Register it with `
-        + `services.add(...) before resolving.`,
+        + `services.addClass(...) before resolving.`,
     );
   }
 }
@@ -39,8 +39,8 @@ export class MissingMetadataError extends DiError {
     super(
       `No dep metadata found for ${ctorName} (resolving "${token}"). The `
         + `constructor has parameters but no dep signature was found on its `
-        + `registration. Pass the signature as the third add argument `
-        + `(add(token, ctor, [[...]])), compile with @rhombus-std/di.transformer, or `
+        + `registration. Pass the signature as the third addClass argument `
+        + `(addClass(token, ctor, [[...]])), compile with @rhombus-std/di.extras, or `
         + `register it with a factory.`,
     );
   }
@@ -101,12 +101,12 @@ export class FactoryTargetError extends DiError {
         ? `Cannot inject a factory for "${factoryToken}": no registration `
           + `found for it. A factory parameter (typed \`() => IFoo\`) needs `
           + `the target registered as a class with `
-          + `services.add(...) before it can build instances.`
+          + `services.addClass(...) before it can build instances.`
         : `Cannot inject a factory for "${factoryToken}": it is registered `
           + `as a useValue/useFactory override, not a class. A factory builds `
           + `its target with \`new\`, so the target must be a class `
           + `registration. Resolve it directly instead of as a factory, or `
-          + `register the class with services.add(...).`,
+          + `register the class with services.addClass(...).`,
     );
   }
 }
@@ -137,8 +137,7 @@ export class OpenTokenResolutionError extends DiError {
     super(
       `Cannot resolve open template "${token}": it still contains holes `
         + `($N). Close the template first — resolve a concrete closing like `
-        + `"base<arg>" (see closeToken / substituteToken), not the template `
-        + `itself.`,
+        + `"base<arg>" (see closeToken), not the template itself.`,
     );
   }
 }

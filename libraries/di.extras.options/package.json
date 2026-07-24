@@ -1,0 +1,89 @@
+{
+  "name": "@rhombus-std/di.extras.options",
+  "version": "0.0.0",
+  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus.inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(tokenfor(IOptions<T>), tokenfor(T))) and lowered by the shared owner binary's inline + tokenfor stages.",
+  "keywords": [
+    "options",
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "transformer",
+    "compiler"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/di.extras.options"
+  },
+  "type": "module",
+  "//rhombus.inline": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core IServiceManifestBase interface (the augmentation target); `impl` (ServiceOptionsInline) resolves in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
+  "rhombus.inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceOptionsInline",
+        "member": "addOptions"
+      }
+    ]
+  },
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
+    },
+    "./ttsc": "./ttsc.mjs",
+    "./tokens/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "ttsc": {
+    "plugin": {
+      "transform": "@rhombus-std/di.extras.options/ttsc"
+    }
+  },
+  "files": [
+    "dist",
+    "ttsc.mjs"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
+  },
+  "dependencies": {
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*"
+  },
+  "peerDependencies": {
+    "@rhombus-std/di.core": "workspace:^",
+    "@rhombus-std/di.extras": "workspace:^",
+    "@rhombus-std/options": "workspace:^",
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
+    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
+    "@rhombus-std/options": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
+      },
+      "./ttsc": "./ttsc.mjs"
+    }
+  }
+}

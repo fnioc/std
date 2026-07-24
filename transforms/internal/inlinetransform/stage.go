@@ -7,6 +7,7 @@ package inlinetransform
 
 import (
 	"fmt"
+	"sort"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
 // matchTarget is a declaration node's inline plan: the sugar body plus the
@@ -105,10 +107,15 @@ type fileState struct {
 	emit          func(plugin.Diagnostic)
 	temps         []*shimast.Node // temps needing a hoisted `var` declaration
 	elideFns      map[string]bool // free-function local names now unreferenced
+	// runtimeCallees collects the (module, export) of every RUNTIME callee a
+	// substituted body referenced in this file (§99 `overrideSignatures`), so their
+	// imports are materialized once after the pass.
+	runtimeCallees map[valueimport.Ref]bool
 }
 
 func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	st.elideFns = map[string]bool{}
+	st.runtimeCallees = map[valueimport.Ref]bool{}
 	var visitor *shimast.NodeVisitor
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
@@ -129,7 +136,37 @@ func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	result := out.AsSourceFile()
 	result = st.hoistTemps(result)
 	result = st.elideFunctionImports(result)
+	result = st.materializeRuntimeCallees(result)
 	return result
+}
+
+// materializeRuntimeCallees injects an import for every RUNTIME callee a
+// substituted body referenced in this file (§99 `overrideSignatures`), reusing an
+// existing binding when present. It returns sf unchanged when nothing was recorded
+// (or every callee was already imported), preserving the loop's pointer identity.
+// Refs are ordered deterministically so the injected import order is stable.
+func (st *fileState) materializeRuntimeCallees(sf *shimast.SourceFile) *shimast.SourceFile {
+	if len(st.runtimeCallees) == 0 {
+		return sf
+	}
+	refs := make([]valueimport.Ref, 0, len(st.runtimeCallees))
+	for ref := range st.runtimeCallees {
+		refs = append(refs, ref)
+	}
+	sort.Slice(refs, func(i, j int) bool {
+		if refs[i].Module != refs[j].Module {
+			return refs[i].Module < refs[j].Module
+		}
+		return refs[i].Export < refs[j].Export
+	})
+	factory := st.ec.Factory.AsNodeFactory()
+	bindings := make([]*valueimport.Binding, 0, len(refs))
+	for _, ref := range refs {
+		binding := valueimport.Resolve(sf, ref)
+		binding.Used = true
+		bindings = append(bindings, binding)
+	}
+	return valueimport.Ensure(factory, sf, bindings...)
 }
 
 // tryInline attempts to inline one call. It returns (replacement, true) when the
@@ -152,6 +189,30 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		memberCandidate = st.functionNames[calleeName]
 	}
 	if !memberCandidate {
+		return nil, false
+	}
+
+	// Synthetic-node clean-skip guard. A call a PRIOR pass produced by lowering a
+	// sugar chain is never itself a source-written inline candidate — its sugar was
+	// already substituted — so it must not be re-matched. The concrete defect (W2
+	// repro): `.withSignature<[]>()` lowers to the zero-argument `.withSignature()`
+	// (the empty tuple makes `...signaturefor<[]>()` spread nothing); a later pass
+	// then re-visits that call, binds it to the zero-value-arg sugar overload, and
+	// RecoverTypeArguments fails with no type argument to recover — a spurious
+	// INLINE_INFERRED_TYPE_ARGUMENT that fails the build despite a byte-correct emit.
+	//
+	// The synthetic marker is on the CALL EXPRESSION, not its callee. Substitute
+	// DeepCloneNodes the sugar body, which PRESERVES the cloned nodes' original
+	// positions, so the substituted `this.withSignature` property-access callee
+	// keeps a (foreign, body-file) Pos >= 0 — a callee-only Pos guard never fires
+	// (empirically observed: calleePos=463, callPos=-1). It is the CALL node that a
+	// downstream stage rebuilds fresh when it elides the spread, giving it Pos < 0.
+	// resolvedDeclaration feeds THIS node to checker.GetResolvedSignature, so guard
+	// it here, BEFORE that query, exactly as nameof/resolve guard the node they hand
+	// the checker. (Parent is re-linked every pass by RunToFixedPoint's
+	// SetParentInChildrenUnset, so the Pos check is the load-bearing half; the nil
+	// check stays as a defensive backstop for an unlinked node.)
+	if node.Pos() < 0 || node.Parent == nil {
 		return nil, false
 	}
 
@@ -179,6 +240,11 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 	if !ok {
 		return nil, false
 	}
+	// A matched body always references its runtime callees (single-expression form),
+	// so record them for import materialization once the pass completes.
+	for _, ref := range target.body.RuntimeCallees {
+		st.runtimeCallees[ref] = true
+	}
 	return replacement, true
 }
 
@@ -201,7 +267,7 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 			})
 			return nil, false
 		}
-		// A keyed sugar (`add<Keyed<T, K>>(Impl)`) now inlines like any other (§98):
+		// A keyed sugar (`addClass<Keyed<T, K>>(Impl)`) now inlines like any other (§98):
 		// the body's `nameof<T>()` derives the BASE token (ServiceBaseTokenFor strips
 		// the brand) and its trailing `keyof<T>()` derives the KEY, composed at
 		// runtime as `base#key` — the same token the di direct stage derives via
@@ -230,54 +296,178 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 		st.temps = append(st.temps, res.Temp)
 	}
 
-	// Byte-parity elision: an UNKEYED registration drops its trailing `keyof<T>()`
-	// argument so the lowered call is identical to the pre-keyof 3-argument form.
-	// Done BEFORE registerPrimitives so a dropped keyof is never registered for the
-	// keyof stage; a KEYED call keeps it, and the stage lowers it to the key string.
+	// Instantiation-expression VALUE parity: an open-template impl argument
+	// (`addClass<IRepo<$<1>>>(ThingRepo<$<1>>)`) is an ExpressionWithTypeArguments the
+	// body splices into the value slot verbatim. The di direct stage registers the
+	// BARE constructor expression (`ThingRepo`) — an instantiation expression's type
+	// arguments are type-level and carry no runtime value — so strip them here too,
+	// keeping the lowered call byte-identical to the oracle at the TS level (not only
+	// after a downstream TS->JS type-strip).
+	res.Expr = st.normalizeInstantiationArgs(res.Expr)
+
+	// Byte-parity elision: an UNKEYED registration drops the `keyof<T>()` argument
+	// (and the placeholder slots it leaves trailing) so the lowered call is
+	// identical to the plain 3-argument registration form. Done BEFORE
+	// registerPrimitives so a dropped keyof is never registered for the keyof
+	// stage; a KEYED call keeps it, and the stage lowers it to the key string.
 	res.Expr = st.elideUnkeyedKeyArg(res.Expr, body, env)
 
 	st.registerPrimitives(res.Expr, body, env)
 	return wrapForPrecedence(st.ec, res.Expr), true
 }
 
-// keyofPrimitiveName is the canonical primitive name a `keyof<T>()` import maps to
-// (knownPrimitives), matched on the trailing registration argument for elision.
-const keyofPrimitiveName = "keyof"
-
-// elideUnkeyedKeyArg drops a trailing `keyof<T>()` argument from a substituted
-// registration call when T carries no `Keyed<T, K>` brand, so an UNKEYED lowering
-// is byte-identical to the pre-keyof form (`this.add(nameof<T>(), ctor,
-// signatureof(ctor))`, no 4th argument). A KEYED call keeps the argument — the
-// keyof stage lowers it to the key string, composed at runtime as `base#key`.
-//
-// Detection is structural: the substituted outer call whose LAST argument is a
-// call to a `keyof` primitive (per the body's import map). The certified
-// registration sugars use `this` exactly once with a simple/property receiver, so
-// Substitute returns the bare outer call; a non-call root (defensive) is left
-// untouched, keeping the keyof arg for the stage to lower to `void 0`.
-func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) *shimast.Node {
+// normalizeInstantiationArgs strips the type arguments from an
+// ExpressionWithTypeArguments argument of a substituted registration call
+// (`ThingRepo<$<1>>` → `ThingRepo`), matching the di direct stage which registers
+// the BARE constructor expression via `arg.AsExpressionWithTypeArguments().Expression`.
+// An instantiation expression used as a value carries no runtime type arguments, so
+// this is a domain-free TS→value normalization, applied only to the OUTER call's
+// arguments — the value slot is the only place a registration body splices a
+// user-authored expression; the derived token / signature arguments are literals a
+// body never spells as an instantiation expression. A substituted resolve body is a
+// conditional (not a call) and is left untouched.
+func (st *fileState) normalizeInstantiationArgs(expr *shimast.Node) *shimast.Node {
 	if expr.Kind != shimast.KindCallExpression {
 		return expr
 	}
 	call := expr.AsCallExpression()
-	if call.Arguments == nil || len(call.Arguments.Nodes) == 0 {
+	if call.Arguments == nil {
 		return expr
 	}
 	args := call.Arguments.Nodes
-	last := args[len(args)-1]
-	if last.Kind != shimast.KindCallExpression {
+	changed := false
+	kept := make([]*shimast.Node, len(args))
+	for i, arg := range args {
+		if arg.Kind == shimast.KindExpressionWithTypeArguments {
+			kept[i] = arg.AsExpressionWithTypeArguments().Expression
+			changed = true
+			continue
+		}
+		kept[i] = arg
+	}
+	if !changed {
 		return expr
 	}
-	callee := last.AsCallExpression().Expression
-	if callee.Kind != shimast.KindIdentifier || body.PrimitiveImports[callee.Text()] != keyofPrimitiveName {
-		return expr
-	}
-	if st.keyofArgIsKeyed(last, env) {
-		return expr
-	}
-	kept := args[:len(args)-1]
 	factory := st.ec.Factory.AsNodeFactory()
 	return factory.NewCallExpression(call.Expression, nil, nil, factory.NewNodeList(kept), 0)
+}
+
+// keyofPrimitiveName is the canonical primitive name a `keyof<T>()` import maps to
+// (knownPrimitives), matched on a registration argument for elision.
+const keyofPrimitiveName = "keyof"
+
+// elideUnkeyedKeyArg drops the `keyof<T>()` argument from a substituted
+// registration call when T carries no `Keyed<T, K>` brand, so an UNKEYED lowering
+// is byte-identical to the plain form a hand-writer would author
+// (`this.addClass(nameof<T>(), ctor, signatureof(ctor))` — no scope, no key). A KEYED
+// call keeps the argument exactly where the body placed it; the keyof stage
+// lowers it to the key string, which di.core composes at runtime as `base#key`.
+//
+// THE KEY IS FOUND BY POSITION, NOT BY BEING LAST. di.core's registration verbs
+// order their optional slots `(token, value, signatures, scope, key)`, so the key
+// sits at argument 5 with the scope slot ahead of it — a type-driven sugar body,
+// which has no scope to pass, writes an explicit `void 0` placeholder there. So
+// this scans the argument list for the keyof call instead of indexing the tail,
+// and after removing it trims the placeholder arguments the removal strands (see
+// trimTrailingUndefined). Indexing the tail happens to still find the key in
+// TODAY's body shape, but only because the key is the last slot; the moment a
+// body passes anything after it, or the elision has to reach past a placeholder,
+// the tail assumption breaks.
+//
+// THE AUTHORED BODY OWNS THE ARGUMENT LAYOUT. This stage never repositions or
+// synthesizes an argument: whatever slot the sugar body wrote the `keyof<T>()`
+// into is the slot a KEYED registration emits, which is what keeps the lowered
+// call equal to the hand-written form. The only edit made here is the unkeyed
+// DELETION.
+//
+// Detection is structural: the substituted outer call carrying an argument that
+// is a call to a `keyof` primitive (per the body's import map). The certified
+// registration sugars use `this` exactly once with a simple/property receiver, so
+// Substitute returns the bare outer call; a non-call root (defensive) is left
+// untouched, keeping the keyof arg for the stage to lower to `void 0`.
+func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) *shimast.Node {
+	// The resolve-family bodies (§94) are a CONDITIONAL, not a bare call:
+	// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())`.
+	// The keyof argument lives in the whenFalse branch (the token-resolve arm the
+	// fold keeps for a non-singular T), so descend there and elide from it. The
+	// singular whenTrue arm never carries a keyof, and the fold prunes it anyway.
+	if expr.Kind == shimast.KindConditionalExpression {
+		cond := expr.AsConditionalExpression()
+		newWhenFalse := st.elideUnkeyedKeyArg(cond.WhenFalse, body, env)
+		if newWhenFalse == cond.WhenFalse {
+			return expr
+		}
+		factory := st.ec.Factory.AsNodeFactory()
+		return factory.UpdateConditionalExpression(cond, cond.Condition, cond.QuestionToken, cond.WhenTrue, cond.ColonToken, newWhenFalse)
+	}
+	if expr.Kind != shimast.KindCallExpression {
+		return expr
+	}
+	call := expr.AsCallExpression()
+	if call.Arguments == nil {
+		return expr
+	}
+	args := call.Arguments.Nodes
+	index, found := keyArgIndex(args, body)
+	if !found {
+		return expr
+	}
+	if st.keyofArgIsKeyed(args[index], env) {
+		return expr
+	}
+	kept := make([]*shimast.Node, 0, len(args))
+	kept = append(kept, args[:index]...)
+	kept = append(kept, args[index+1:]...)
+	kept = trimTrailingUndefined(kept)
+	factory := st.ec.Factory.AsNodeFactory()
+	return factory.NewCallExpression(call.Expression, nil, nil, factory.NewNodeList(kept), 0)
+}
+
+// keyArgIndex returns the position of the `keyof<T>()` argument in a substituted
+// registration call's argument list. A registration body writes at most one, so
+// the first match wins.
+func keyArgIndex(args []*shimast.Node, body *ResolvedBody) (int, bool) {
+	for i, arg := range args {
+		if arg.Kind != shimast.KindCallExpression {
+			continue
+		}
+		callee := arg.AsCallExpression().Expression
+		if callee.Kind != shimast.KindIdentifier {
+			continue
+		}
+		if body.PrimitiveImports[callee.Text()] == keyofPrimitiveName {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+// trimTrailingUndefined drops trailing explicit undefined arguments. Removing an
+// unkeyed key argument strands the placeholders that were only there to push the
+// key into its slot — a body with no scope to pass writes
+// `addClass(nameof<T>(), ctor, signatureof(ctor), void 0, keyof<T>())`, and dropping
+// only the keyof would leave `addClass(..., void 0)`, which is not the plain
+// 3-argument form a hand-writer authors. Trimming is TRAILING-ONLY, so a
+// placeholder a body passes deliberately with a real argument after it survives.
+func trimTrailingUndefined(args []*shimast.Node) []*shimast.Node {
+	for len(args) != 0 && isUndefinedLiteral(args[len(args)-1]) {
+		args = args[:len(args)-1]
+	}
+	return args
+}
+
+// isUndefinedLiteral reports whether node is an explicit undefined placeholder.
+// `void 0` is the form a sugar body must use: the body validator
+// (INLINE_BODY_FREE_IDENTIFIER) rejects any identifier that is not a parameter,
+// type parameter, or primitive import, and a bare `undefined` is exactly such a
+// free identifier. It is also the shadow-proof spelling, and the one ditransform
+// emits for the same value. The `undefined` identifier is still recognized here
+// so a hand-lowered call reaching this path is trimmed identically.
+func isUndefinedLiteral(node *shimast.Node) bool {
+	if node.Kind == shimast.KindVoidExpression {
+		return true
+	}
+	return node.Kind == shimast.KindIdentifier && node.Text() == "undefined"
 }
 
 // keyofArgIsKeyed reports whether a `keyof<T>()` call's bound type argument carries
@@ -323,18 +513,30 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 		}
 		typeArgs := n.AsCallExpression().TypeArguments
 		bound := []*shimchecker.Type{}
+		var composed *ComposedTypeArg
 		if typeArgs != nil {
 			for _, ta := range typeArgs.Nodes {
-				if ta.Kind == shimast.KindTypeReference {
-					if name := ta.AsTypeReferenceNode().TypeName; name != nil && name.Kind == shimast.KindIdentifier {
-						if t, has := env[name.Text()]; has {
-							bound = append(bound, t)
-						}
-					}
+				if ta.Kind != shimast.KindTypeReference {
+					continue
+				}
+				name := ta.AsTypeReferenceNode().TypeName
+				if name == nil || name.Kind != shimast.KindIdentifier {
+					continue
+				}
+				if t, has := env[name.Text()]; has {
+					// A bare type-parameter reference (`tokenfor<T>()`): the env
+					// binding IS the token source.
+					bound = append(bound, t)
+					continue
+				}
+				if ref, ok := body.TypeImports[name.Text()]; ok {
+					// A body-external composed generic (`tokenfor<IOptions<T>>()`):
+					// the base names an imported type, and its leaves bind from env.
+					composed = composedTypeArg(ta, ref, env)
 				}
 			}
 		}
-		use := PrimitiveUse{Name: prim, TypeArgs: bound}
+		use := PrimitiveUse{Name: prim, TypeArgs: bound, Composed: composed}
 		// A VALUE-argument primitive (signatureof(ctor)) records its spliced
 		// argument node — the ORIGINAL call-site expression, still program-bound,
 		// so the signatureof stage can checker-query it. A TYPE-argument primitive
@@ -345,6 +547,37 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 		st.artifacts.PrimitiveCalls[n] = use
 		return false
 	})
+}
+
+// composedTypeArg builds a composed-generic descriptor for a spelled type node
+// (`IOptions<T>`) whose base is a body-external import: it carries the import's
+// module + export (resolved late, in the lowering stage) and its argument types
+// bound from the inline env. An argument that is not a bare env-bound type
+// parameter records nil, so the lowering reports an underivable-token diagnostic
+// for it — the composed generic is only as derivable as its leaves.
+func composedTypeArg(node *shimast.Node, ref TypeImportRef, env map[string]*shimchecker.Type) *ComposedTypeArg {
+	c := &ComposedTypeArg{Module: ref.Module, Export: ref.Export, ArgNode: node}
+	if argList := node.AsTypeReferenceNode().TypeArguments; argList != nil {
+		for _, arg := range argList.Nodes {
+			c.Args = append(c.Args, composedLeafType(arg, env))
+		}
+	}
+	return c
+}
+
+// composedLeafType resolves one composed-generic argument node to its bound
+// checker type, or nil when it is not a bare env-bound type-parameter reference
+// (the only leaf shape the addOptions family spells; a richer nesting would need
+// recursion, deliberately out of scope until a body requires it).
+func composedLeafType(node *shimast.Node, env map[string]*shimchecker.Type) *shimchecker.Type {
+	if node.Kind != shimast.KindTypeReference {
+		return nil
+	}
+	name := node.AsTypeReferenceNode().TypeName
+	if name == nil || name.Kind != shimast.KindIdentifier {
+		return nil
+	}
+	return env[name.Text()]
 }
 
 // isRogueDuplicate reports whether decl is provably the same logical member as an

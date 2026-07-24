@@ -31,8 +31,14 @@ export interface IHostApplicationBuilder {
   /** A builder that allows enabling metrics and directing their output. */
   readonly metrics: IMetricsBuilder;
 
-  /** A collection of services for the application to compose. */
-  readonly services: IServiceManifest;
+  /**
+   * A collection of services for the application to compose. WRITABLE (a
+   * di.core `IServiceManifestHolder`): the manifest chain is immutable, so
+   * registering something reassigns `builder.services =
+   * builder.services.addClass(...)`. The same slot backs `logging` and `metrics`, so
+   * every registration route lands on one chain.
+   */
+  services: IServiceManifest;
 
   /**
    * Registers a factory used to create the service provider. The `configure`

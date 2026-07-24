@@ -5,17 +5,17 @@
 //
 // This is a SECOND concrete `IMetricsBuilder` alongside `@rhombus-std/diagnostics`'s
 // own `MetricsBuilder`; both share the `IMetricsBuilder` receiver, so this class is
-// decorated with `@augment(nameof<IMetricsBuilder>())` (docs §38) to pull
+// decorated with `@augment(tokenfor<IMetricsBuilder>())` (docs §38) to pull
 // the metrics augmentation bag (`addMetricsListener`/`enableMetrics`/... registered
 // by the diagnostics family) onto its prototype -- otherwise a host's `builder.metrics`
 // would never receive `enableMetrics`. The class-side merge below keeps this class
 // satisfying `IMetricsBuilder` once diagnostics.core merges those members onto the
 // interface (rule 0.6).
 
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 // Interface-extends merge (augmentation doctrine): the metrics augmentation
 // members reach `IMetricsBuilder` via diagnostics.core's interface-side merge;
@@ -25,11 +25,35 @@ import { nameof } from '@rhombus-std/primitives';
 export interface MetricsBuilder extends IMetricsBuilder {}
 
 /** Carries the service-registration surface the metrics extension functions register against. */
-@augment(nameof<IMetricsBuilder>())
+@augment(tokenfor<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
-  public readonly services: IServiceManifest;
+  readonly #holder: IServiceManifestHolder;
 
-  public constructor(services: IServiceManifest) {
-    this.services = services;
+  /**
+   * Wraps either a bare manifest (a private holder is allocated for it) or an
+   * existing {@link IServiceManifestHolder} whose slot this builder then SHARES
+   * -- the host application builder passes ITSELF, so `builder.metrics`
+   * registrations and `builder.services` registrations stay on one chain.
+   */
+  public constructor(services: IServiceManifest | IServiceManifestHolder) {
+    this.#holder = isHolder(services) ? services : { services };
   }
+
+  /** The current manifest -- read through the shared holder. */
+  public get services(): IServiceManifest {
+    return this.#holder.services;
+  }
+
+  /**
+   * Rebinds the shared holder's manifest. The chain is immutable, so every
+   * metrics augmentation threads by assigning here.
+   */
+  public set services(value: IServiceManifest) {
+    this.#holder.services = value;
+  }
+}
+
+/** A manifest is never itself a holder: only a holder carries a `services` slot. */
+function isHolder(value: IServiceManifest | IServiceManifestHolder): value is IServiceManifestHolder {
+  return 'services' in value;
 }

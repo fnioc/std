@@ -28,8 +28,8 @@ class NeedsProvider {
 const NAME_TOKEN = 'pkg:name' as const;
 
 function providerWithLogger(): IResolver {
-  const services = new ServiceManifest<'singleton'>();
-  services.add(T.Logger, Logger); // transient — resolvable on the frameless provider
+  let services = new ServiceManifest<'singleton'>();
+  services = services.addClass(T.Logger, Logger, [[]]); // transient — resolvable on the frameless provider
   return services.build();
 }
 
@@ -112,8 +112,8 @@ describe('createFactory', () => {
 describe('getServiceOrCreateInstance', () => {
   test('returns the registered service when the token resolves', () => {
     const sentinel = new Logger();
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(T.Logger, sentinel);
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Logger, sentinel);
     const provider = services.build();
 
     const got = ActivatorUtilities.getServiceOrCreateInstance(provider, T.Logger, Logger);

@@ -18,7 +18,7 @@ import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIG
   METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { MetricsConfig } from './MetricsConfig';
 import { MetricsConfigureOptions } from './MetricsConfigureOptions';
@@ -31,9 +31,12 @@ export const MetricsBuilderConfigExtensions = {
    * `MetricsBuilderConfigExtensions.AddConfiguration`.
    */
   addMetricsConfig(builder: IMetricsBuilder, config: IConfig): IMetricsBuilder {
-    builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(config));
-    builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN, new ConfigChangeTokenSource(config));
-    builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(config));
+    builder.services = builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(config));
+    builder.services = builder.services.addValue(
+      METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+      new ConfigChangeTokenSource(config),
+    );
+    builder.services = builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(config));
     return builder;
   },
 } satisfies AugmentationSet<IMetricsBuilder>;
@@ -60,4 +63,4 @@ declare module '@rhombus-std/diagnostics.core' {
   }
 }
 
-registerAugmentations(nameof<IMetricsBuilder>(), MetricsBuilderConfigExtensions);
+registerAugmentations(tokenfor<IMetricsBuilder>(), MetricsBuilderConfigExtensions);

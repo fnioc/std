@@ -17,11 +17,11 @@ const OPTIONS_TOKEN = '@rhombus-std/options:IOptions<test:Widget>';
 
 describe('addOptions(token, tToken) — wrap the bound T', () => {
   test('resolving the wrapper delivers an IOptions<T> over the bound T', () => {
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
-    services.addValue(WIDGET_TOKEN, widget);
-    services.addOptions(OPTIONS_TOKEN, WIDGET_TOKEN).as('singleton');
+    services = services.addValue(WIDGET_TOKEN, widget);
+    services = services.addOptions(OPTIONS_TOKEN, WIDGET_TOKEN).as('singleton');
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<Widget>>(OPTIONS_TOKEN);
@@ -39,10 +39,10 @@ describe('addOptions(token, tToken) — wrap the bound T', () => {
     const ENGINE_TOKEN = 'test:Engine';
     const ENGINE_OPTIONS = '@rhombus-std/options:IOptions<test:Engine>';
 
-    const services = new ServiceManifest<'singleton'>();
+    let services = new ServiceManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
-    services.add(ENGINE_TOKEN, Engine).as('singleton');
-    services.addOptions(ENGINE_OPTIONS, ENGINE_TOKEN).as('singleton');
+    services = services.addClass(ENGINE_TOKEN, Engine, [[]], 'singleton');
+    services = services.addOptions(ENGINE_OPTIONS, ENGINE_TOKEN).as('singleton');
 
     const provider = services.build().createScope('singleton');
     const engine = provider.resolve<Engine>(ENGINE_TOKEN);

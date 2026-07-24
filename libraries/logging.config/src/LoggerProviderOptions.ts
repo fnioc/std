@@ -23,8 +23,8 @@
 // Divergences from the reference, both platform-forced:
 //   - `<TOptions, TProvider>` reify as runtime tokens (`optionsToken`,
 //     `providerType`) — type arguments erase here. A transformer consumer
-//     derives them inline (`nameof<IOptions<MyOptions>>()`,
-//     `nameof<MyProvider>()`); a hand-written one passes the literal strings.
+//     derives them inline (`tokenfor<IOptions<MyOptions>>()`,
+//     `tokenfor<MyProvider>()`); a hand-written one passes the literal strings.
 //   - The reference's `TryAddEnumerable` dedupes repeat registrations by
 //     implementation type; di.core registrations are append-only, so calling
 //     this twice for one (options, provider) pair appends the step twice
@@ -52,19 +52,21 @@ export const LoggerProviderOptions = {
    * @param services The registration builder to register on.
    * @param optionsToken The `IOptions<TOptions>` token the steps attach to —
    * the same token the `addOptions`/`configure` pipeline uses.
-   * @param providerType The provider type's token (`nameof<TProvider>()`).
+   * @param providerType The provider type's token (`tokenfor<TProvider>()`).
+   * @returns The manifest carrying both registrations. The chain is immutable,
+   * so the caller MUST keep it (`services = LoggerProviderOptions
+   * .registerProviderOptions(services, …)`) — the `services` passed in is
+   * unchanged.
    */
   registerProviderOptions<TOptions, TProvider>(
     services: IServiceManifest,
     optionsToken: Typeof<IOptions<TOptions>>,
     providerType: Typeof<TProvider>,
-  ): void {
+  ): IServiceManifest {
     const providerConfig: Token = loggerProviderConfigToken(providerType);
-    services
-      .add(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]])
-      .as('singleton');
-    services
-      .add(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]])
-      .as('singleton');
+    return services
+      .addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]], 'singleton')
+      .addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[providerConfig]],
+        'singleton');
   },
 };

@@ -11,8 +11,8 @@ describe('missing metadata', () => {
     class NoDeps {
       public readonly ok = true;
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, NoDeps).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, NoDeps, [[]], 'singleton');
 
     const instance = services.build().resolve<NoDeps>(
       T.Service,
@@ -24,9 +24,11 @@ describe('missing metadata', () => {
     class NeedsParams {
       public constructor(public readonly a: unknown) {}
     }
-    // No signature passed — the transformer never saw it and it's un-annotated.
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, NeedsParams).as('singleton');
+    // No candidate signature — the transformer never saw it and it's un-annotated.
+    // Under the mandatory-signatures API, "unannotated" is spelled `[]` (no
+    // overloads to try at all), not `[[]]` (one zero-arg overload).
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, NeedsParams, [], 'singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.Service)).toThrow(MissingMetadataError);
@@ -36,8 +38,8 @@ describe('missing metadata', () => {
     class WidgetService {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, WidgetService).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, WidgetService, [], 'singleton');
 
     try {
       services.build().resolve(T.Service);
@@ -52,12 +54,12 @@ describe('missing metadata', () => {
     }
   });
 
-  test('an empty-signatures DepRecord on a param ctor still throws', () => {
+  test('an empty-signatures list on a param ctor still throws', () => {
     class EdgeCase {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Service, EdgeCase, []).as('singleton'); // empty signatures
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, EdgeCase, [], 'singleton'); // empty signatures
 
     expect(() => services.build().resolve(T.Service)).toThrow(MissingMetadataError);
   });
@@ -71,9 +73,9 @@ describe('cycle detection', () => {
     class B {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, A, [[T.B]]).as('singleton');
-    services.add(T.B, B, [[T.A]]).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.A, A, [[T.B]], 'singleton');
+    services = services.addClass(T.B, B, [[T.A]], 'singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.A)).toThrow(CircularDependencyError);
@@ -92,8 +94,8 @@ describe('cycle detection', () => {
     class SelfRef {
       public constructor(public readonly self: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, SelfRef, [[T.A]]).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.A, SelfRef, [[T.A]], 'singleton');
 
     const root = services.build();
     expect(() => root.resolve(T.A)).toThrow(CircularDependencyError);
@@ -109,10 +111,10 @@ describe('cycle detection', () => {
     class C {
       public constructor(public readonly a: unknown) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.A, A, [[T.B]]).as('singleton');
-    services.add(T.B, B, [[T.C]]).as('singleton');
-    services.add(T.C, C, [[T.A]]).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.A, A, [[T.B]], 'singleton');
+    services = services.addClass(T.B, B, [[T.C]], 'singleton');
+    services = services.addClass(T.C, C, [[T.A]], 'singleton');
 
     try {
       services.build().resolve(T.A);
@@ -141,11 +143,11 @@ describe('cycle detection', () => {
         public readonly c: C,
       ) {}
     }
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Db, D, [[]]).as('singleton');
-    services.add(T.B, B, [[T.Db]]).as('singleton');
-    services.add(T.C, C, [[T.Db]]).as('singleton');
-    services.add(T.A, A, [[T.B, T.C]]).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Db, D, [[]], 'singleton');
+    services = services.addClass(T.B, B, [[T.Db]], 'singleton');
+    services = services.addClass(T.C, C, [[T.Db]], 'singleton');
+    services = services.addClass(T.A, A, [[T.B, T.C]], 'singleton');
 
     const a = services.build().createScope('singleton').resolve<A>(T.A);
     expect(a.b.d).toBe(a.c.d); // shared singleton D, no false cycle

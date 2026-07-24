@@ -1,8 +1,8 @@
 // Rolls the public type surface of @rhombus-std/di into a single dist/bundle/index.d.ts.
 // @rhombus-std/di.core is kept EXTERNAL — the output re-exports the abstraction
-// interfaces (`IResolver`, `IServiceProvider`, `AddBuilder`, `IServiceManifestBase`,
+// interfaces (`IResolver`, `IServiceProvider`, `AddChain`, `IServiceManifestBase`,
 // …) FROM `@rhombus-std/di.core` rather than inlining them. This is load-bearing:
-// `@rhombus-std/di.transformer` augments `declare module "@rhombus-std/di.core"`, so
+// `@rhombus-std/di.extras` augments `declare module "@rhombus-std/di.core"`, so
 // the interfaces a consumer holds must carry the `@rhombus-std/di.core` module
 // identity for the tokenless authoring forms (`resolve<T>()`, `add<I>()`) to
 // merge onto them. Inlining core would fork that identity and the augmentation

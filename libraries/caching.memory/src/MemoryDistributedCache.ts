@@ -15,17 +15,17 @@ import type { DistributedCacheEntryOptions, IDistributedCache } from '@rhombus-s
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { MemoryCache } from './MemoryCache';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // Binds the `IDistributedCache` interface symbol onto the class so the
 // interface-merged wrapper methods (setString/getString, §80) flow onto it,
-// beside the `@augment(nameof<IDistributedCache>())` install below.
+// beside the `@augment(tokenfor<IDistributedCache>())` install below.
 export interface MemoryDistributedCache extends IDistributedCache {}
 
 /** Implements `IDistributedCache` by storing items in a private in-memory {@link MemoryCache}. */
-@augment(nameof<IDistributedCache>())
+@augment(tokenfor<IDistributedCache>())
 export class MemoryDistributedCache implements IDistributedCache {
   readonly #memCache: MemoryCache;
 

@@ -3,33 +3,35 @@ package stdhost
 import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/configtransform"
-	"github.com/fnioc/std/transforms/internal/dioptionstransform"
-	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/factorytransform"
+	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/schemaoftransform"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
+	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
-// stagePrefix marks a manifest entry as one of a host's own stages. A
-// descriptor name carrying it (e.g. "rhombusstd_nameof") selects the matching
-// FileTransform; a prefixed name with no matching stage is a hard UNKNOWN_STAGE
-// error, and a NON-prefixed entry is a foreign plugin handled by the linked
-// machinery (or rejected when it is not linked) — see host.go.
+// stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_nameof").
+// The names are host-internal identifiers now — used to single out mergesynth for
+// the pre-pass split (partitionStages) and to label diagnostics — not selectors:
+// the whole stage table always runs (W7).
 const stagePrefix = "rhombusstd_"
 
-// StageName returns the manifest descriptor name for a bare stage id
-// ("nameof" -> "rhombusstd_nameof"), so a sibling host composes extra stages
-// without restating the prefix convention.
-func StageName(id string) string {
-	return stagePrefix + id
-}
-
-// BaseStages is the fixed execution order every activated base stage runs in:
+// BaseStages is the fixed execution order every base stage runs in. There is no
+// selection — the host runs this whole table on every file (W7); a stage that
+// matches nothing is a cheap no-op (disjoint match sets).
+// Every stage is now a DOMAIN-AGNOSTIC primitive: the bespoke di / di_options /
+// config registration stages were deleted (W6p3), their authoring forms
+// re-expressed as inline sugar bodies the primitives lower under the fixed-point
+// loop. Order:
+//
 // inline first (so single-expression sugar bodies are substituted before any
 // primitive stage runs), then mergesynth (it reads the ORIGINAL augmentation
 // member declarations through the checker and threads a plain-JS merge-strategies
@@ -37,17 +39,20 @@ func StageName(id string) string {
 // call — it runs before nameof so nameof still lowers the call's token argument,
 // and later stages leave the synthesized object untouched), then nameof (its
 // token lowering and import elision, including the inline stage's synthetic
-// nameof calls), then signatureof (the dependency-signature array lowering,
-// including the inline stage's synthetic signatureof calls), then keyof (the
-// keyed-registration KEY lowering, including the inline stage's synthetic keyof
-// calls), then the registration verbs, the addOptions sugar, and the config schema
-// lowering. signatureof and keyof both run after nameof (disjoint call shapes — a
-// type-argument vs a value-argument primitive) and before di, so the di stage sees
-// a fully-lowered `add(...)` it leaves untouched. Manifest entry order does not
-// affect this — selection filters the host's stage slice, preserving order.
+// nameof calls), then signatureof (the dependency-signature array lowering — the
+// value-argument `signatureof(ctor)` AND its type-argument minting siblings
+// `signaturefor<T>()` / `signaturesfor<T>()`, including the inline stage's
+// synthetic calls), then keyof (the keyed-registration KEY lowering, including
+// the inline stage's synthetic keyof calls), then valueof (the literal-value
+// lowering of `valueof<Scope>()` — the `.as<Scope>()` sugar's scope half), then
+// singular / factory (the resolve-family predicate + value primitives), then fold
+// (dead-branch pruning of the boolean-literal ternaries singular/factory produce),
+// then schemaof (the config `.withType<T>()` sugar's schema-literal lowering). All
+// stages own DISJOINT match sets, so correctness never depends on this order — it
+// is fixed only for reproducible output.
 //
-// Returned as a fresh slice each call so selection can filter it without
-// mutating shared state.
+// Returned as a fresh slice each call so a caller can reorder or extend it
+// without mutating shared state.
 func BaseStages() []Stage {
 	return []Stage{
 		{Name: stagePrefix + "inline", Build: buildInline},
@@ -55,36 +60,11 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "keyof", Build: buildKeyof},
-		{Name: stagePrefix + "di", Build: buildDi},
-		{Name: stagePrefix + "di_options", Build: buildDiOptions},
-		{Name: stagePrefix + "config", Build: buildConfig},
-	}
-}
-
-// BaseBundles maps a PRESET descriptor name to the ordered set of stage names it
-// expands into. A bundle lets a library declare its primitive-stage "package" once
-// (di.core's `add<T>()` / `addFactory<T>()` sugar needs inline -> nameof ->
-// signatureof -> keyof -> di) so a consumer wires ONE transform instead of
-// enumerating them in the right order: selectStages replaces a bundle name with its
-// constituents, which the host's stage table then sorts and dedups. The single
-// owner binary owns both the membership AND the order, so no consumer ever
-// hand-lists the primitive stages — the whole point of the preset. Discovery
-// (stock ttsc's marker -> single transform string) is untouched: the one string
-// a bundle descriptor yields resolves to a name WE choose here, and expansion
-// is ours.
-//
-// Bundles are the EXPLICIT opt-in channel (di.core's `./ttsc`); the default path
-// needs none — the host self-selects the full stage union from its own dependency
-// scan (§100 declare-by-depending, see runTransform), not from a bundle name.
-func BaseBundles() map[string][]string {
-	return map[string][]string{
-		stagePrefix + "di_bundle": {
-			stagePrefix + "inline",
-			stagePrefix + "nameof",
-			stagePrefix + "signatureof",
-			stagePrefix + "keyof",
-			stagePrefix + "di",
-		},
+		{Name: stagePrefix + "valueof", Build: buildValueof},
+		{Name: stagePrefix + "singular", Build: buildSingular},
+		{Name: stagePrefix + "factory", Build: buildFactory},
+		{Name: stagePrefix + "fold", Build: buildFold},
+		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
 }
 
@@ -98,8 +78,12 @@ func buildInline(prog *driver.Program, _ *tokens.Context, env *Env, emit Sink) p
 	})
 }
 
-// buildMergesynth activates the merge-strategy synthesizer (#213). It runs after
-// inline and before nameof: it reads the ORIGINAL augmentation member
+// buildMergesynth activates the merge-strategy synthesizer (#213). The host runs
+// it as a ONE-SHOT PRE-PASS, once per file BEFORE the fixed-point loop (Open issue
+// 2, see transformFileToTypeScript): it is augmentation-side and its matches are
+// only ever source-written installs, so the loop can never mint fresh work for it.
+// It stays ahead of the loop's nameof pass, so nameof still lowers each install
+// call's token argument. It reads the ORIGINAL augmentation member
 // declarations through the checker and threads a plain-JS strategies object as
 // the third argument of each registerAugmentations/applyAugmentations call, so a
 // member-name collision dispatches by argument shape instead of throwing. The
@@ -126,12 +110,12 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 	})
 }
 
-// buildSignatureof activates the signatureof primitive stage. It shares
-// ditransform's extraction path, so it is category-aware the same way buildDi is:
-// a §4.5 advisory Warning is reported without failing emit, matching what the di
-// stage would emit for the same value.
+// buildSignatureof activates the signatureof primitive stage. It drives the
+// shared signatures extraction engine, so it is category-aware: a §4.5 advisory
+// Warning is reported without failing emit (only hard errors gate the build),
+// matching what a hand-written registration would carry for the same value.
 func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return signaturetransform.New(prog, ctx, env.Artifacts, func(d ditransform.Diagnostic) {
+	return signaturetransform.New(prog, ctx, env.Artifacts, func(d signatures.Diagnostic) {
 		emit(DiagFromDi(d))
 	})
 }
@@ -146,28 +130,65 @@ func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) 
 	})
 }
 
-// buildDi activates the registration lowering stage. It is category-aware: a
-// ditransform advisory Warning is reported without failing emit, matching the
-// reference transformer where only hard errors gate the build.
-func buildDi(prog *driver.Program, ctx *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
-	transform := ditransform.New(prog, ctx, func(d ditransform.Diagnostic) {
-		emit(DiagFromDi(d))
-	})
-	return plugin.FileTransform(transform)
-}
-
-// buildDiOptions activates the addOptions<T>() sugar lowering stage. Every
-// diagnostic it raises is a hard error.
-func buildDiOptions(prog *driver.Program, ctx *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
-	return dioptionstransform.AddOptionsTransform(prog, ctx, func(d plugin.Diagnostic) {
+// buildValueof activates the valueof primitive stage. It lowers each
+// `valueof<Scope>()` — the inline stage's synthetic `.as<Scope>()` scope call and
+// any source-written one — to the scope's literal value expression. It raises no
+// diagnostics of its own; any it did raise would be hard errors.
+func buildValueof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return valueoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }
 
-// buildConfig activates the withType->withSchema lowering stage. Every
-// diagnostic it raises is a hard error.
-func buildConfig(prog *driver.Program, ctx *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
-	return configtransform.New(prog, ctx, func(d plugin.Diagnostic) {
+// buildSingular activates the resolve-family SINGULAR predicate/value primitive
+// stage (§94). It lowers each `isSingular<T>()` — the inline resolve body's
+// compile-time singular-type test — to a boolean literal, and each
+// `singularValue<T>()` over a singular T to that type's value literal (leaving a
+// non-singular one un-lowered for the fold to prune or the sweep to flag). It runs
+// after the token/keyof/valueof primitives and before the fold, whose
+// boolean-ternary pruning consumes the `isSingular` literals it produces. It
+// raises no diagnostics of its own.
+func buildSingular(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return singulartransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildFold activates the generic constant-fold / dead-branch-prune stage. It is
+// a domain-agnostic AST simplification: a conditional (ternary) expression whose
+// condition is a boolean literal folds to the taken branch (`true ? A : B` -> A,
+// `false ? A : B` -> B), so a dead branch's primitives are removed before the emit
+// sweep sees them. It runs after the singular stage produces the boolean-literal
+// conditions the resolve sugar branches on. It raises no diagnostics of its own.
+func buildFold(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
+	return foldtransform.New(prog, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildFactory activates the resolve-family FACTORY primitives stage (§94, factory
+// form). It lowers `isFactory<T>()` to a boolean literal, `returntokenfor<T>()` to
+// the factory return type's token, and `paramtokensfor<T>()` to the parameter-token
+// array (elided as a trailing `resolveFactory` argument for a no-arg factory). It
+// runs after singular and before the fold, so the `isFactory` boolean it produces
+// is available to the fold's dead-branch pruning. A factory parameter whose type
+// yields no token raises a targeted diagnostic.
+func buildFactory(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return factorytransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildSchemaof activates the generic `schemaof<T>()` primitive stage. It lowers
+// each schemaof call — the inline `.withType<T>()` body's synthetic schema call
+// and any source-written one — to T's runtime config-schema object literal,
+// materializing the OPTIONAL value-import a wrapped field needs. It runs the SAME
+// schema walk the config stage drives, so the inline path and the config-stage
+// oracle emit byte-identical literals. On an unsupported field type / non-object
+// root it reports the targeted 992001/992002 (a hard error) and leaves the call
+// un-lowered — the sweep defers the surviving-primitive diagnostic to it.
+func buildSchemaof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return schemaoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

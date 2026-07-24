@@ -17,14 +17,14 @@
 // StartupValidatorOptions-through-the-options-pipeline indirection -- see
 // StartupValidator for why that shape does not translate): `validateOnStart(token)`
 // appends `token` to the startup-validation target slot and registers the
-// built-in {@link StartupValidator} under `nameof<IStartupValidator>()`. The host
+// built-in {@link StartupValidator} under `tokenfor<IStartupValidator>()`. The host
 // resolves that (optionally) and calls `validate()`.
 
 import { type IResolver, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass,
   type Token } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
 
@@ -42,38 +42,39 @@ declare module '@rhombus-std/di.core' {
      * validate steps) before starting hosted services, so a validation failure
      * surfaces at boot instead of on first use. Requires a prior
      * {@link addOptions} for the same `token` and a host that resolves the
-     * built-in `IStartupValidator`. Returns the collection for chaining. The
+     * built-in `IStartupValidator`. Returns the manifest produced by its
+     * registrations (the manifest chain is immutable -- never `this`). The
      * reference `OptionsBuilder.ValidateOnStart<T>` analog -- collapsed onto the
      * manifest (OptionsBuilder is unported).
      */
-    validateOnStart(token: Token): this;
+    validateOnStart(token: Token): IServiceManifest<Scopes>;
   }
 
   interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    validateOnStart(token: Token): this;
+    validateOnStart(token: Token): IServiceManifest<Scopes>;
   }
 }
 
 // One named object literal mirroring the reference `OptionsBuilderExtensions`
 // static class (docs §28), registered against the `ServiceManifest` augmentation
 // token (docs §38) -- the concrete `ServiceManifestClass`, decorated with
-// `@augment(nameof<IServiceManifest>())` in di.core, pulls the member onto its
+// `@augment(tokenfor<IServiceManifest>())` in di.core, pulls the member onto its
 // prototype -- AND exported so the member is the standalone form.
 export const OptionsBuilderExtensions = {
   validateOnStart(
     manifest: ServiceManifestClass<string>,
     token: Token,
-  ): ServiceManifestClass<string> {
+  ): IServiceManifest<string> {
     // Accumulate the target in the flat startup-validation slot.
-    manifest.addValue(startupValidationTargetToken(), token);
+    let m: IServiceManifest<string> = manifest.addValue(startupValidationTargetToken(), token);
     // Register the built-in validator under `IStartupValidator`. di.core has no
     // TryAdd surface (registrations are append-only, last-wins), so a repeated
     // `validateOnStart` appends an equivalent transient registration -- harmless:
     // the host resolves a single `IStartupValidator`, and every registration's
     // factory reads the SAME full target list from the resolver at start time
     // (the `addLogging` "add, not TryAdd" precedent).
-    manifest.addFactory(
-      nameof<IStartupValidator>(),
+    m = m.addFactory(
+      tokenfor<IStartupValidator>(),
       (resolver: IResolver): IStartupValidator =>
         new StartupValidator(
           resolver,
@@ -81,8 +82,8 @@ export const OptionsBuilderExtensions = {
         ),
       [[RESOLVER_TOKEN]],
     );
-    return manifest;
+    return m;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;
 
-registerAugmentations(nameof<IServiceManifest>(), OptionsBuilderExtensions);
+registerAugmentations(tokenfor<IServiceManifest>(), OptionsBuilderExtensions);

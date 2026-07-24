@@ -15,7 +15,6 @@ export type { ChangeTokenConsumer, ChangeTokenProducer } from './ChangeToken.js'
 export { CompositeChangeToken } from './CompositeChangeToken.js';
 export type { IChangeToken } from './IChangeToken.js';
 export { Multimap } from './Multimap.js';
-export { nameof, NAMEOF_NAME } from './nameof.js';
 export { process } from './process.js';
 export type { ProcessLike } from './process.js';
 export type { ReadableStream } from './ReadableStream.js';

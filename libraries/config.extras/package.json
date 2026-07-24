@@ -1,0 +1,57 @@
+{
+  "name": "@rhombus-std/config.extras",
+  "version": "0.0.0",
+  "description": "The @rhombus-std/config authoring transformer: rewrites .withType<T>() on a ConfigBuilder into a generated .withSchema({...}) runtime schema literal at compile time. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
+  "keywords": [
+    "configuration",
+    "config",
+    "ioc",
+    "typescript",
+    "transformer",
+    "compiler"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/config.extras"
+  },
+  "type": "module",
+  "//rhombus.inline": "The .withType<T>() config-schema sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of any barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the schemaof stage lowers the schemaof<T>() it mints into the runtime schema literal. The `type` ANCHOR is @rhombus-std/config's ConfigBuilder interface (the withType<U>() augmentation target, declared in config's with-type-augment.ts); `impl` (ConfigBuilderInline) resolves in THIS package — schemaof is the authoring-time config-schema primitive homed here (src/schemaof.ts), imported package-relative.",
+  "rhombus.inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/config:ConfigBuilder",
+        "impl": "ConfigBuilderInline",
+        "member": "withType"
+      }
+    ]
+  },
+  "exports": {
+    "./ttsc": "./ttsc.mjs"
+  },
+  "ttsc": {
+    "plugin": {
+      "transform": "@rhombus-std/config.extras/ttsc"
+    }
+  },
+  "files": [
+    "ttsc.mjs"
+  ],
+  "scripts": {
+    "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
+  },
+  "dependencies": {
+    "@rhombus-std/primitives.extras": "workspace:*"
+  },
+  "peerDependencies": {
+    "@rhombus-std/config": "workspace:^"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./ttsc": "./ttsc.mjs"
+    }
+  }
+}

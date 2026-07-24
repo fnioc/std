@@ -47,16 +47,16 @@ export class ActivationError extends DiError {
 export class OpenTokenRegistrationError extends DiError {
   public constructor(
     public readonly token: Token,
-    public readonly method: 'add' | 'addFactory' | 'addValue',
+    public readonly method: 'addClass' | 'addFactory' | 'addValue',
   ) {
     super(
-      method === 'add'
+      method === 'addClass'
         ? `Cannot register open template "${token}": every type argument of `
           + `an open service token must be a hole ($N). Make every argument `
           + `a hole, or close the token fully.`
         : `Cannot register open template "${token}" with ${method}(): open `
           + `registrations are class-only. Register a class with `
-          + `add("${token}", MyClass), or close the token first.`,
+          + `addClass("${token}", MyClass), or close the token first.`,
     );
   }
 }

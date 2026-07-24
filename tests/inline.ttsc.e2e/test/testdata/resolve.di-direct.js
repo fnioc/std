@@ -1,0 +1,11 @@
+export const tokenful = provider.resolve('chain-app/tokens/resolve:IThing');
+export const asyncTok = provider.resolveAsync('chain-app/tokens/resolve:IThing');
+export const tryTok = provider.tryResolve('chain-app/tokens/resolve:IThing');
+export const singular = 'dev';
+export const factoryTok = provider.resolveFactory('chain-app/tokens/resolve:ICache', [
+  'chain-app/tokens/resolve:IThing',
+]);
+export const factoryNoArg = provider.resolveFactory('chain-app/tokens/resolve:IThing');
+export const keyedTok = provider.resolve('@rhombus-std/di.core:Keyed<chain-app/tokens/resolve:ICache,"redis">');
+export const keyedKnown = provider.isService('@rhombus-std/di.core:Keyed<chain-app/tokens/resolve:ICache,"redis">');
+export const keyedAsync = provider.resolveAsync('@rhombus-std/di.core:Keyed<chain-app/tokens/resolve:ICache,"redis">');

@@ -11,7 +11,7 @@
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
 import type { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
@@ -24,11 +24,11 @@ const sharedStringWriter = new StringWriter();
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…, §80) flow onto `ConsoleLogger`, beside the
-// `@augment(nameof<ILogger>())` install below — see @rhombus-std/logging's Logger.
+// `@augment(tokenfor<ILogger>())` install below — see @rhombus-std/logging's Logger.
 export interface ConsoleLogger extends ILogger {}
 
 /** An {@link ILogger} that renders through a {@link ConsoleFormatter} and queues writes. */
-@augment(nameof<ILogger>())
+@augment(tokenfor<ILogger>())
 export class ConsoleLogger implements ILogger {
   readonly #name: string;
   readonly #queueProcessor: ConsoleLoggerProcessor;

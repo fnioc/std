@@ -90,7 +90,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
   // The shape that used to re-install a member once per later registration:
   // MANY packages register DIFFERENT-named members onto ONE shared token, and
   // TWO concrete classes (a builder and a manager) are decorated with it -- the
-  // real `nameof<IConfigBuilder>()` fan-out across config.json / .env /
+  // real `tokenfor<IConfigBuilder>()` fan-out across config.json / .env /
   // .commandline / .ini / .xml / .file plus config's memory + chained sources.
   // The live proof runs in `config.tests.integration`; this reproduces the shape
   // over synthetic classes so the mechanism is pinned in the leaf package too.

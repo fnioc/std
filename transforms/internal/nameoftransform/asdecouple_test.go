@@ -5,18 +5,21 @@ import (
 	"strings"
 	"testing"
 
+	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
+	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
 // buildAsDecoupleWorkspace extends buildInlinePresetWorkspace's shape with an
-// `AddBuilder<Scopes>` continuation carrying `.as(scope)` / the authored
-// `.as<S>()` sugar — the #240 decouple's own shape (`add<I>(C).as<"scope">()`),
+// `IAsBuilder<Scopes>` continuation carrying `.as(scope)` / the authored
+// `.as<S>()` sugar — the #240 decouple's own shape (`addClass<I>(C).as<"scope">()`),
 // which buildInlinePresetWorkspace's `unknown`-returning add stub can't express.
 // A dedicated builder rather than extending the shared fixture: the sibling
 // open-template test already depends on buildInlinePresetWorkspace's exact
@@ -32,14 +35,17 @@ func buildAsDecoupleWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus.inline": {
-    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "add" } ]
+    "entries": [
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" },
+      { "type": "@rhombus-std/di.core:IAsBuilder", "impl": "ManifestInline", "member": "as" }
+    ]
   }
 }`)
-	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface AddBuilder<Scopes extends string> {
-  as(scope: Scopes): void;
+	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IAsBuilder<Scopes extends string> {
+  as(scope: Scopes): IAsBuilder<Scopes>;
 }
 export interface IServiceManifestBase {
-  add(token: string, ctor: unknown, sig?: unknown): AddBuilder<'singleton'>;
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): IAsBuilder<'singleton'>;
 }
 export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
@@ -48,16 +54,21 @@ export type $<N extends number> = Hole<N>;
 declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 `)
-	// The real add-sugar body — see di.transformer's own src/inline.ts — now typed
-	// to return AddBuilder (rather than buildInlinePresetWorkspace's bare unknown)
+	// The real add-sugar body — see di.extras's own src/inline.ts — now typed
+	// to return IAsBuilder (rather than buildInlinePresetWorkspace's bare unknown)
 	// so the returned builder's `.as` chain type-checks against a real continuation.
-	// signatureof is imported from its home (di.transformer), nameof from primitives.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { nameof } from '@rhombus-std/primitives';
-import { signatureof } from '@rhombus-std/di.transformer';
-import type { AddBuilder, IServiceManifestBase } from './index';
+	// signatureof / valueof are imported from their home (di.extras), tokenfor
+	// from primitives. The `.as<Scope>()` body lowers via valueof — the #269 decouple
+	// makes `.as` a plain inline body (`this.as(valueof<Scope>())`), not a di-stage form.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
+import { signatureof, valueof } from '@rhombus-std/di.extras';
+import type { IAsBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {
-  add<T>(this: IServiceManifestBase, ctor: unknown): AddBuilder<'singleton'> {
-    return this.add(nameof<T>(), ctor, signatureof(ctor));
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): IAsBuilder<'singleton'> {
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+  },
+  as<Scope extends 'singleton'>(this: IAsBuilder<'singleton'>): IAsBuilder<'singleton'> {
+    return this.as(valueof<Scope>());
   },
 };
 `)
@@ -70,15 +81,15 @@ export const ManifestInline = {
 }`)
 	linkPkg(t, app, "@rhombus-std/di.core", core)
 
-	// The standard consumer augmentation (mirroring di.transformer's real
-	// declare-module) — both the `add<T>()` sugar overload AND the authored
+	// The standard consumer augmentation (mirroring di.extras's real
+	// declare-module) — both the `addClass<T>()` sugar overload AND the authored
 	// `.as<S>()` type-arg form merge onto their respective di.core interfaces.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
-    add<T>(ctor: unknown): AddBuilder<'singleton'>;
+    addClass<T>(ctor: unknown): IAsBuilder<'singleton'>;
   }
-  interface AddBuilder<Scopes extends string> {
-    as<S extends Scopes>(): void;
+  interface IAsBuilder<Scopes extends string> {
+    as<S extends Scopes>(): IAsBuilder<Scopes>;
   }
 }
 export {};
@@ -102,10 +113,17 @@ export {};
 	return prog, app
 }
 
-// lowerAsDecoupleInlinePipeline runs the full bundle over main.ts — inline
-// substitution, nameof token lowering, signatureof dependency-array lowering,
-// THEN the di stage (which owns the trailing `.as<>` lowering) — sharing one
-// artifacts bag exactly as the owner host composes them.
+// lowerAsDecoupleInlinePipeline runs the inline + primitive stages over main.ts
+// under the fixed-point loop — inline substitution, tokenfor token lowering,
+// signatureof dependency-array lowering, keyof key lowering, valueof scope-value
+// lowering (which owns the trailing `.as<Scope>()` scope half) — sharing one
+// artifacts bag exactly as the owner host composes them. The di stage was deleted
+// (W6p3): the inline body `this.as(valueof<Scope>())` plus the valueof stage lower
+// `.as<>` entirely, and the LOOP is what makes the inner chain positions (the
+// registration and any `.withSignature`) reachable — the inline visitor peels only
+// the outermost layer per pass, so a single pass would leave the inner sugar
+// un-lowered (previously masked by the co-active di stage's one-pass deep walk).
+// The byte-reference is the frozen di-direct golden (lowerDi).
 func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app string) string {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
@@ -114,24 +132,31 @@ func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app strin
 	if cerr != nil {
 		t.Fatalf("collect: %v", cerr)
 	}
-	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
-	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
-	diT := ditransform.New(prog, ctx, func(ditransform.Diagnostic) {})
+	stages := []plugin.FileTransform{
+		inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {}),
+		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
+		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+	}
+	ec := shimprinter.NewEmitContext()
+	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
+	if exhausted {
+		t.Fatal("as-decouple inline pipeline exhausted maxPasses — did not settle")
+	}
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the add preset entry did not resolve")
 	}
-	ec := shimprinter.NewEmitContext()
-	sf := mainSF(t, prog)
-	return reprint(ec, diT(ec, sigT(ec, nameofT(ec, inlineT(ec, sf)))))
+	shimast.SetParentInChildrenUnset(settled.AsNode())
+	return reprint(ec, settled)
 }
 
 // TestAsDecoupleInlinePipelineLowersCleanly is the #240 `.as<>`-decouple's own
 // dedicated fixture, deferred by that PR (its "e2e `.as` extension dropped"
 // deviation note): a `.as<"singleton">()` chained directly onto an
-// inline-substituted `add<I>(C)` call must lower to the value-arg `.as("singleton")`
+// inline-substituted `addClass<I>(C)` call must lower to the value-arg `.as("singleton")`
 // with no authored generic or primitive surviving, and it must not panic — the
-// #240-noted nameof/checker nil-deref (`isNameofCall` -> `GetSymbolAtLocation`)
+// #240-noted tokenfor/checker nil-deref (`isNameofCall` -> `GetSymbolAtLocation`)
 // reproduced ONLY in this exact shape: a chained call whose OBJECT expression was
 // just replaced by the inline substitution keeps a real source position (so the
 // existing `Pos() < 0` synthetic guard doesn't fire) but loses its `Parent` link
@@ -142,7 +167,7 @@ func TestAsDecoupleInlinePipelineLowersCleanly(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}
 class Foo implements IFoo {}
-services.add<IFoo>(Foo).as<'singleton'>();
+services.addClass<IFoo>(Foo).as<'singleton'>();
 `
 	prog, app := buildAsDecoupleWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -154,27 +179,28 @@ services.add<IFoo>(Foo).as<'singleton'>();
 	if strings.Contains(out, "as<") {
 		t.Fatalf("authored .as<> generic survived lowering:\n%s", out)
 	}
-	if strings.Contains(out, "add<") {
-		t.Fatalf("authored add<> generic survived lowering:\n%s", out)
+	if strings.Contains(out, "addClass<") {
+		t.Fatalf("authored addClass<> generic survived lowering:\n%s", out)
 	}
-	if strings.Contains(out, "nameof") || strings.Contains(out, "signatureof(") {
+	if strings.Contains(out, "tokenfor") || strings.Contains(out, "signatureof(") || strings.Contains(out, "valueof") {
 		t.Fatalf("an un-lowered primitive survived:\n%s", out)
 	}
 }
 
-// TestAsDecoupleInlinePipelineMatchesDiDirect is the byte-parity half of the
-// #240 decouple fixture: the SAME `add<I>(C).as<"scope">()` registration, lowered
+// TestAsDecoupleInlinePipelineMatchesDiDirect is the byte-parity half of the #269
+// decouple fixture: the SAME `addClass<I>(C).as<"scope">()` registration, lowered
 // once through the inline pipeline and once through the di stage's direct
-// (non-inline) recognition, must carry the same service token, dependency array,
-// AND `.as` lowering — the decouple changes the PATH only, never the bytes. This
-// is the transformer-byte coverage #240 deferred in favor of the app's
-// expected.txt runtime gate; that gate stays authoritative for the real app, this
-// pins the primitive-level contract the app's byte-identity relies on.
+// (non-inline) recognition, must carry the same service token AND the same `.as`
+// lowering. `.as<Scope>()` keeps BOTH lowering paths (mirroring addClass): the
+// inline path lowers it via its body + valueof, the di-direct path via the di
+// stage's own recognizer (routed through the shared valueof literal extraction).
+// Both must produce the hand-writable `.as("singleton")` — the decouple changed
+// how the valueof extraction is SHARED, never the bytes.
 func TestAsDecoupleInlinePipelineMatchesDiDirect(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}
 class Foo implements IFoo {}
-services.add<IFoo>(Foo).as<'singleton'>();
+services.addClass<IFoo>(Foo).as<'singleton'>();
 `
 	prog, app := buildAsDecoupleWorkspace(t, src)
 	defer func() { _ = prog.Close() }()

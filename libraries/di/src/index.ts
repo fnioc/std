@@ -1,9 +1,9 @@
 // @rhombus-std/di — the ioc runtime engine.
 //
-// Consumes the plain-data ABI emitted by @rhombus-std/di.transformer (or hand-fed via
+// Consumes the plain-data ABI emitted by @rhombus-std/di.extras (or hand-fed via
 // @rhombus-std/di.core's authoring surfaces) and resolves the dependency graph. Never
 // touches a TypeScript type — works purely on string tokens and the positional
-// DepRecord signatures in the global-symbol Map.
+// dependency signatures in the global-symbol Map.
 //
 // Phase 2A scope: registration, the scope chain + scoped lifetimes, resolution
 // (a tag whose frame is not open resolves transiently), greedy signature
@@ -26,15 +26,20 @@
 export { ServiceManifestClass } from '@rhombus-std/di.core';
 export { ServiceManifest } from './ServiceManifest.js';
 export type { IServiceManifest, ServiceManifestCtor } from './ServiceManifest.js';
-// The `build()` augmentation const (mirrors the reference
-// `ServiceCollectionContainerBuilderExtensions`) — the standalone call surface;
-// importing it here also runs its registry registration side effect.
-export { ServiceCollectionContainerBuilderExtensions } from './ServiceManifest.js';
+// The `build()` augmentation const (mirrors the reference container-builder
+// extension static class) — the standalone call surface; importing it here also
+// runs its registry registration side effect.
+export { ServiceManifestContainerBuilderAugmentations } from './ServiceManifest.js';
 
 // The authoring TYPE-machinery lives in @rhombus-std/di.core alongside the builder.
 // Re-exported here so a di consumer reaches the whole authoring surface through
 // the single @rhombus-std/di import, exactly as before the split.
-export type { AddBuilder, IServiceManifestBase } from '@rhombus-std/di.core';
+// `AddChain<S, Slots, Gated>` is the immutable registration continuation a call to
+// `addClass`/`addFactory` returns: the manifest itself (withheld while gated), plus
+// whichever modifier faces (`withSignature`/`withSignatures`/`as`/`withKey`) the
+// call has not already filled positionally.
+export type { AddChain, IAsBuilder, IServiceManifestBase, IServiceManifestHolder, IWithKeyBuilder,
+  IWithSignatureBuilder, IWithSignaturesBuilder, Slot } from '@rhombus-std/di.core';
 
 // The concrete container impl. Consumers hold the `IServiceProvider` INTERFACE
 // (re-exported from types.js below); the class is exported for white-box use
@@ -61,6 +66,7 @@ export type {
   IServiceProviderFactory,
   IServiceQuery,
   Lifetime,
+  ManifestEntry,
   OpenRegistration,
   Producer,
   Registration,
@@ -81,7 +87,7 @@ export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredErr
 // slot shapes as plain data literals instead.
 export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from '@rhombus-std/di.core';
 export { typeArg, union } from '@rhombus-std/di.core';
-export { closeToken, isOpenToken, parseToken, substituteSignatures, substituteToken } from '@rhombus-std/di.core';
+export { closeToken, isOpenToken, parseToken } from '@rhombus-std/di.core';
 // The intrinsic provider token — a `IResolver`-typed param derives it, and the
 // engine resolves it to the live provider view.
 export { isProviderToken, RESOLVER_TOKEN } from '@rhombus-std/di.core';
@@ -94,5 +100,5 @@ export type { ObjectFactory } from '@rhombus-std/di.core';
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole
 // surface is reachable through one @rhombus-std/di import.
-export type { $, DepRecord, DepSlot, Hole, Inject, ParsedToken, Token, TypeArgRef, Typeof,
+export type { $, DepSignatures, DepSlot, Hole, Inject, ParsedToken, Token, TypeArgRef, Typeof,
   Union } from '@rhombus-std/di.core';

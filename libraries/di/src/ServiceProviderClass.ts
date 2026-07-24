@@ -21,16 +21,22 @@
 // one's cached instance — when no matching frame encloses the owner, the dep
 // resolves transiently (a fresh instance) instead.
 
-import { baseKey, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpen, isOpenToken,
-  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, match, type ServiceProviderOptions, stringify,
-  substituteSignaturesByLabel, type Token, type TokenNode, tryParse, type TypeArgRef,
-  type Union } from '@rhombus-std/di.core';
+import { closeSignatures, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken,
+  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, type ServiceProviderOptions, type Token,
+  TokenNode, type TypeArgRef, type Union } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
   MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
   RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
 import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Registration } from './types.js';
+
+/**
+ * The one directional-unification op the open-generic close path drives. Stateless
+ * (each `match` starts from a fresh binding map), so a single module-level instance
+ * serves every provider — the tree-op replacement for the former free `match`.
+ */
+const MATCHER = new Matcher();
 
 /** True when a value implements the native synchronous `Disposable`. */
 function isDisposable(value: unknown): value is Disposable {
@@ -179,28 +185,27 @@ interface CollectionRequest {
  * so a holey element is rejected here.
  */
 function collectionRequest(token: Token): CollectionRequest | undefined {
-  const parsed = tryParse(token);
+  const parsed = TokenNode.tryParse(token);
   if (
     parsed === undefined
     || parsed.kind !== 'concrete'
-    || parsed.package !== undefined
     || parsed.key !== undefined
     || parsed.args.length !== 1
-    || (parsed.path !== ARRAY_TOKEN_BASE && parsed.path !== ITERABLE_TOKEN_BASE)
+    || (parsed.base !== ARRAY_TOKEN_BASE && parsed.base !== ITERABLE_TOKEN_BASE)
   ) {
     return undefined;
   }
   // A holey element (`Array<$1>`) is an open-registration key, not a collection
-  // request — reject it. The `package`/`key === undefined` guards replicate the
-  // old `parseToken` rejection of `pkg:Array<X>` and `Array<X>#k` (parseToken
-  // failed on trailing text after `>`); the element is the canonical
-  // serialisation — byte-identical to the old raw arg for the canonical tokens
-  // the transformer and tests produce.
+  // request — reject it. The `base` equality guard subsumes the old package
+  // rejection of `pkg:Array<X>` (its base is `pkg:Array`, not `Array`); the
+  // `key === undefined` guard replicates the old `Array<X>#k` rejection. The
+  // element is the canonical serialisation — byte-identical to the old raw arg
+  // for the canonical tokens the transformer and tests produce.
   const arg = parsed.args[0]!;
-  if (isOpen(arg)) {
+  if (TokenNode.isOpen(arg)) {
     return undefined;
   }
-  return { base: parsed.path, element: stringify(arg) };
+  return { base: parsed.base, element: TokenNode.toString(arg) };
 }
 
 /**
@@ -421,7 +426,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolve<T>(token?: Token, key: string | RegExp = ''): T | T[] {
     if (token === undefined) {
       throw new TypeError(
-        'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+        'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
           + 'runtime). Without it, resolve with an explicit token: '
           + 'resolve<T>("my:token").',
       );
@@ -448,7 +453,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public async resolveAsync<T>(token?: Token): Promise<T> {
     if (token === undefined) {
       throw new TypeError(
-        'resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no token '
+        'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no token '
           + 'at runtime). Without it, resolve with an explicit token: '
           + 'resolveAsync<T>("my:token").',
       );
@@ -472,7 +477,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public tryResolve<T>(token?: Token, key: string | RegExp = ''): T | T[] | undefined {
     if (token === undefined) {
       throw new TypeError(
-        'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+        'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
           + 'runtime). Without it, resolve with an explicit token: '
           + 'tryResolve<T>("my:token").',
       );
@@ -575,14 +580,15 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // `tryParse` never throws, so `#lookup` never throws (a parse failure that
     // the old `parseToken` returned `undefined` for now becomes a `tryParse`
     // miss).
-    const ground = tryParse(token);
+    const ground = TokenNode.tryParse(token);
     if (ground === undefined || ground.kind !== 'concrete' || !ground.args.length) {
       return undefined;
     }
 
-    // The open table is keyed by the template's base; `baseKey(ground)` (base +
-    // package + key, generics stripped) is the matching key.
-    const candidates = this.#openRegistrations.get(baseKey(ground));
+    // The open table is keyed by the template's base; `TokenNode.baseKey(ground)`
+    // (base + key, generics stripped — package is folded into base) is the
+    // matching key.
+    const candidates = this.#openRegistrations.get(TokenNode.baseKey(ground));
     if (candidates === undefined) {
       return undefined;
     }
@@ -596,12 +602,12 @@ export class ServiceProviderClass<S extends string = string> implements IService
       // The parsed template tree — carried on the registration, or reparsed for a
       // hand-built `OpenRegistration` literal that omitted `node`. `match` gates
       // arity positionally and binds holes with repeated-hole equality.
-      const template = open.node ?? tryParse(open.template);
+      const template = open.node ?? TokenNode.tryParse(open.template);
       if (template === undefined) {
         continue;
       }
-      const bind = match(template, ground, new Map<number, TokenNode>());
-      if (bind === null) {
+      const bind = MATCHER.match(template, ground);
+      if (!bind) {
         continue;
       }
 
@@ -612,14 +618,13 @@ export class ServiceProviderClass<S extends string = string> implements IService
       //
       // Substitution can fail when a mis-authored template references a hole the
       // service token never binds (e.g. `IX<$1,$3>` carrying a dep on `$2`) —
-      // `substituteSignaturesByLabel` throws `RangeError` then. #lookup must NEVER
-      // throw (so `#isResolvable` can probe safely and greedy selection can fall
-      // back), so treat a substitution failure as a plain miss: no synthesis, no
-      // memo entry.
+      // `closeSignatures` throws `RangeError` then. #lookup must NEVER throw (so
+      // `#isResolvable` can probe safely and greedy selection can fall back), so
+      // treat a substitution failure as a plain miss: no synthesis, no memo entry.
       let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
       if (open.signatures !== undefined) {
         try {
-          signatures = substituteSignaturesByLabel(open.signatures, bind);
+          signatures = closeSignatures(open.signatures, bind);
         } catch (err) {
           if (err instanceof RangeError) {
             return undefined;
@@ -1023,7 +1028,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
       resolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] => {
         if (depToken === undefined) {
           throw new TypeError(
-            'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+            'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
               + 'runtime).',
           );
         }
@@ -1036,7 +1041,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
         if (depToken === undefined) {
           throw new TypeError(
-            'resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no '
+            'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no '
               + 'token at runtime).',
           );
         }
@@ -1045,7 +1050,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
       tryResolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] | undefined => {
         if (depToken === undefined) {
           throw new TypeError(
-            'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token '
+            'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token '
               + 'at runtime).',
           );
         }

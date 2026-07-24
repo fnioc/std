@@ -1,0 +1,11 @@
+{
+  // The config authoring package's own program: the `withType<T>()` inline sugar
+  // body (src/inline.ts) and the `schemaof<T>()` primitive stub (src/schemaof.ts).
+  // Both are authoring-only substitution/marker source — never bundled, never
+  // shipped — but the §15 phantom-typing guard still typechecks them here so the
+  // sugar's shape stays honest. The body is self-contained (a local receiver
+  // interface + the relative schemaof primitive + a bare type parameter), so it
+  // needs no @rhombus-std type dependency.
+  "extends": "../../tsconfig.lib.json",
+  "include": ["src/**/*"]
+}

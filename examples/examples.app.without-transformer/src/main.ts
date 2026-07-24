@@ -1,7 +1,7 @@
 // The without-transformer composition root — the SAME integrated scenario as
 // ../examples.app.with-transformer, wired by hand with plain `tsc`. Every
 // registration and resolution names an explicit string token; the token strings
-// are spelled exactly as `@rhombus-std/di.transformer` derives them for the
+// are spelled exactly as `@rhombus-std/di.extras` derives them for the
 // package-public contracts, which is what lets THIS app resolve the built
 // with-transformer library's lowered factory (its baked-in tokens agree with
 // these). Diff this file against the with-transformer app's main.ts and the only
@@ -191,31 +191,38 @@ const config = buildConfig();
 const serverOptions = makeServerOptions(config);
 
 const builder = Host.createApplicationBuilder();
-const services = builder.services;
+let services = builder.services;
 
 // The with-transformer library's greeting at the shared token, plus the
 // without-transformer library's greeting + health check via its manual function.
-services.add(GREETING_TOKEN, FormalGreeting, [[]]).as('singleton');
-addCasualServices(services);
+// The manifest is immutable, so every registration call is threaded back into
+// `services` — a bare `services.addClass(...)` statement would silently register
+// nothing.
+services = services.addClass(GREETING_TOKEN, FormalGreeting, [[]], 'singleton');
+services = addCasualServices(services);
 
 // The async banner and the report factory, both from the built with-transformer
 // library — the report factory takes the injected provider (RESOLVER_TOKEN slot).
-services.addFactory(BANNER_TOKEN, fetchBanner, [[]]).as('singleton');
-services.addFactory(REPORT_TOKEN, makeServerReport, [[RESOLVER_TOKEN]]).as('singleton');
+services = services.addFactory(BANNER_TOKEN, fetchBanner, [[]], 'singleton');
+services = services.addFactory(REPORT_TOKEN, makeServerReport, [[RESOLVER_TOKEN]], 'singleton');
 
 // The reactive server options — one shared live instance.
-services.addValue(SERVER_OPTIONS_TOKEN, serverOptions);
+services = services.addValue(SERVER_OPTIONS_TOKEN, serverOptions);
 
 // A config-independent policy, wrapped as a static IOptions<GreetingPolicy> via
 // the augmentation's explicit addOptions(token, tToken) verb.
-services.addValue(POLICY_TOKEN, { excitement: '!' } satisfies GreetingPolicy);
-services.addOptions(POLICY_OPTIONS_TOKEN, POLICY_TOKEN).as('singleton');
+services = services.addValue(POLICY_TOKEN, { excitement: '!' } satisfies GreetingPolicy);
+services = services.addOptions(POLICY_OPTIONS_TOKEN, POLICY_TOKEN).as('singleton');
 
 // The live config root, so the hosted worker can drive the reload demo.
-services.addValue(CONFIG_TOKEN, config);
+services = services.addValue(CONFIG_TOKEN, config);
 
 // The hosted worker — explicit-token signature (no hosting transformer exists).
-services.addHostedService(InteropWorker, [
+//
+// The composed chain goes BACK onto the builder. `builder.services` is a live
+// slot over an immutable chain, so everything registered into the local
+// `services` above is invisible to `build()` until it is handed back here.
+builder.services = services.addHostedService(InteropWorker, [
   [RESOLVER_TOKEN, HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, CONFIG_TOKEN],
 ]);
 

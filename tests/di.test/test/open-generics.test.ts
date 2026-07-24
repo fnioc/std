@@ -22,9 +22,9 @@ class ZeroRepo {
 
 describe('open-table matching', () => {
   test('a closed token resolves against an open template, dep substituted', () => {
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add(G.RepoTemplate, SqlRepo, [['$1']]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass(G.RepoTemplate, SqlRepo, [['$1']]);
 
     const sp = services.build();
     const repo = sp.resolve<SqlRepo>(G.RepoOfA);
@@ -34,9 +34,9 @@ describe('open-table matching', () => {
   });
 
   test('arity dispatch: <$1> and <$1,$2> are distinct registrations', () => {
-    const services = new ServiceManifest();
-    services.add('app/IR<$1>', ZeroRepo);
-    services.add('app/IR<$1,$2>', MemRepo, [[{ value: 'pair' }]]);
+    let services = new ServiceManifest();
+    services = services.addClass('app/IR<$1>', ZeroRepo, [[]]);
+    services = services.addClass('app/IR<$1,$2>', MemRepo, [[{ value: 'pair' }]]);
 
     const sp = services.build();
 
@@ -48,19 +48,19 @@ describe('open-table matching', () => {
   });
 
   test('a non-canonical (whitespace) template base resolves its canonical closing', () => {
-    const services = new ServiceManifest();
+    let services = new ServiceManifest();
     // Stray whitespace in the base: the engine keys the open table by the
     // canonical baseKey, so a canonically-spelled closing still finds it — a
     // raw-base key would strand it under a spelling the closing never derives.
-    services.add('app/IR <$1>', ZeroRepo);
+    services = services.addClass('app/IR <$1>', ZeroRepo, [[]]);
     const sp = services.build();
 
     expect(sp.resolve('app/IR<pkg:IA>')).toBeInstanceOf(ZeroRepo);
   });
 
   test('repeated holes match only equal args', () => {
-    const services = new ServiceManifest();
-    services.add('app/IPair<$1,$1>', ZeroRepo);
+    let services = new ServiceManifest();
+    services = services.addClass('app/IPair<$1,$1>', ZeroRepo, [[]]);
 
     const sp = services.build();
 
@@ -71,9 +71,9 @@ describe('open-table matching', () => {
   });
 
   test('repeated-hole template registered later wins for equal args; general template still matches unequal', () => {
-    const services = new ServiceManifest();
-    services.add('app/IPair<$1,$2>', MemRepo, [[{ value: 'any' }]]);
-    services.add('app/IPair<$1,$1>', ZeroRepo);
+    let services = new ServiceManifest();
+    services = services.addClass('app/IPair<$1,$2>', MemRepo, [[{ value: 'any' }]]);
+    services = services.addClass('app/IPair<$1,$1>', ZeroRepo, [[]]);
 
     const sp = services.build();
 
@@ -82,10 +82,10 @@ describe('open-table matching', () => {
   });
 
   test('last-wins among identical templates', () => {
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add(G.RepoTemplate, SqlRepo, [['$1']]);
-    services.add(G.RepoTemplate, MemRepo, [['$1']]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass(G.RepoTemplate, SqlRepo, [['$1']]);
+    services = services.addClass(G.RepoTemplate, MemRepo, [['$1']]);
 
     const sp = services.build();
 
@@ -93,11 +93,11 @@ describe('open-table matching', () => {
   });
 
   test('an exact closed registration beats the open fallback', () => {
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.addValue(T.B, 'B!');
-    services.add(G.RepoTemplate, SqlRepo, [['$1']]);
-    services.add(G.RepoOfA, MemRepo, [[T.A]]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass(G.RepoTemplate, SqlRepo, [['$1']]);
+    services = services.addClass(G.RepoOfA, MemRepo, [[T.A]]);
 
     const sp = services.build();
 
@@ -109,10 +109,10 @@ describe('open-table matching', () => {
     class Box {
       public constructor(public readonly inner: unknown) {}
     }
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add('app/IBox<$1>', Box, [['$1']]);
-    services.add(G.RepoTemplate, SqlRepo, [['$1']]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IBox<$1>', Box, [['$1']]);
+    services = services.addClass(G.RepoTemplate, SqlRepo, [['$1']]);
 
     const sp = services.build();
     const repo = sp.resolve<SqlRepo>('pkg:IRepo<app/IBox<pkg:IA>>');
@@ -122,8 +122,8 @@ describe('open-table matching', () => {
   });
 
   test('non-generic misses are untouched by the fallback', () => {
-    const services = new ServiceManifest();
-    services.add(G.RepoTemplate, ZeroRepo);
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]]);
 
     const sp = services.build();
 
@@ -142,9 +142,9 @@ describe('substitution across slot kinds', () => {
         public readonly viaUnion: unknown,
       ) {}
     }
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add('app/IKitchen<$1>', KitchenSink, [[
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IKitchen<$1>', KitchenSink, [[
       RESOLVER_TOKEN,
       { value: 42 },
       typeArg(1),
@@ -172,9 +172,9 @@ describe('substitution across slot kinds', () => {
         public readonly makeThing: Func<[p: unknown], Thing>,
       ) {}
     }
-    const services = new ServiceManifest();
-    services.add('app/IThing<$1>', Thing, [['app/IParam<$1>']]);
-    services.add('app/IConsumer<$1>', Consumer, [[
+    let services = new ServiceManifest();
+    services = services.addClass('app/IThing<$1>', Thing, [['app/IParam<$1>']]);
+    services = services.addClass('app/IConsumer<$1>', Consumer, [[
       { type: 'app/IThing<$1>', params: ['app/IParam<$1>'] },
     ]]);
 
@@ -193,8 +193,8 @@ describe('substitution across slot kinds', () => {
         public readonly second: unknown,
       ) {}
     }
-    const services = new ServiceManifest();
-    services.add('app/IInv<$2,$1>', Inverted, [[typeArg(1), typeArg(2)]]);
+    let services = new ServiceManifest();
+    services = services.addClass('app/IInv<$2,$1>', Inverted, [[typeArg(1), typeArg(2)]]);
 
     const sp = services.build();
     // Template <$2,$1> closed as <pkg:IA,pkg:IB>: $2 = pkg:IA, $1 = pkg:IB.
@@ -266,8 +266,8 @@ describe('memoization', () => {
 
 describe('per-closing scoping', () => {
   test('distinct closings cache distinct singletons; same closing is cached', () => {
-    const services = new ServiceManifest();
-    services.add(G.RepoTemplate, ZeroRepo).as('singleton');
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]], 'singleton');
 
     const app = services.build().createScope('singleton');
     const a1 = app.resolve(G.RepoOfA);
@@ -280,8 +280,8 @@ describe('per-closing scoping', () => {
   });
 
   test('an open registration without .as() is transient per closing', () => {
-    const services = new ServiceManifest();
-    services.add(G.RepoTemplate, ZeroRepo);
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]]);
 
     const app = services.build().createScope('singleton');
 
@@ -289,9 +289,9 @@ describe('per-closing scoping', () => {
   });
 
   test('.as() appends a scoped COPY — a later transient re-registration wins', () => {
-    const services = new ServiceManifest();
-    services.add(G.RepoTemplate, ZeroRepo).as('singleton');
-    services.add(G.RepoTemplate, MemRepo, [[{ value: 'm' }]]);
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]], 'singleton');
+    services = services.addClass(G.RepoTemplate, MemRepo, [[{ value: 'm' }]]);
 
     const app = services.build().createScope('singleton');
     const r1 = app.resolve(G.RepoOfA);
@@ -306,9 +306,9 @@ describe('per-closing scoping', () => {
     class Repo {
       public constructor(public readonly dep: Dep) {}
     }
-    const services = new ServiceManifest<'singleton' | 'request'>();
-    services.add('app/Dep', Dep).as('request');
-    services.add(G.RepoTemplate, Repo, [['app/Dep']]).as('singleton');
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.addClass('app/Dep', Dep, [[]], 'request');
+    services = services.addClass(G.RepoTemplate, Repo, [['app/Dep']], 'singleton');
 
     const app = services.build().createScope('singleton');
     const req = app.createScope('request');
@@ -332,16 +332,18 @@ describe('registration-carried signatures', () => {
     }
     defineDeps(Impl, [[T.A]]);
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.addValue(T.B, 'B!');
-    services.add('app/S1', Impl, [[T.B]]);
-    services.add('app/S2', Impl);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass('app/S1', Impl, [[T.B]]);
+    // No carried signature — pass the same signature `defineDeps` stashed above,
+    // now required explicitly rather than read from the ctor-keyed store.
+    services = services.addClass('app/S2', Impl, [[T.A]]);
 
     const sp = services.build();
 
     expect(sp.resolve<Impl>('app/S1').dep).toBe('B!'); // carried wins
-    expect(sp.resolve<Impl>('app/S2').dep).toBe('A!'); // store still serves 2-arg
+    expect(sp.resolve<Impl>('app/S2').dep).toBe('A!'); // its own explicit signature
   });
 
   test("an open registration's carried template beats the ctor-keyed store", () => {
@@ -350,10 +352,10 @@ describe('registration-carried signatures', () => {
     }
     defineDeps(GenImpl, [[T.A]]);
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.addValue(T.B, 'B!');
-    services.add('app/IG<$1>', GenImpl, [['$1']]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass('app/IG<$1>', GenImpl, [['$1']]);
 
     const sp = services.build();
 
@@ -368,11 +370,11 @@ describe('registration-carried signatures', () => {
       ) {}
     }
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
     // Signatures ride on the registration (the global store is retired): the
     // open template's `$1` / typeArg(1) slots substitute per closing.
-    services.add('app/IM<$1>', ManualImpl, [['$1', typeArg(1)]]);
+    services = services.addClass('app/IM<$1>', ManualImpl, [['$1', typeArg(1)]]);
 
     const sp = services.build();
     const m = sp.resolve<ManualImpl>('app/IM<pkg:IA>');
@@ -384,8 +386,8 @@ describe('registration-carried signatures', () => {
 
 describe('errors', () => {
   test('resolving a token that still contains holes throws OpenTokenResolutionError', () => {
-    const services = new ServiceManifest();
-    services.add(G.RepoTemplate, ZeroRepo);
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]]);
 
     const sp = services.build();
 
@@ -404,7 +406,7 @@ describe('errors', () => {
   test('addFactory with an open token throws OpenTokenRegistrationError', () => {
     const services = new ServiceManifest();
 
-    expect(() => services.addFactory(G.RepoTemplate, () => 'x')).toThrow(
+    expect(() => services.addFactory(G.RepoTemplate, () => 'x', [[]])).toThrow(
       OpenTokenRegistrationError,
     );
   });
@@ -412,15 +414,15 @@ describe('errors', () => {
   test('mixing concrete args and holes in the service token throws', () => {
     const services = new ServiceManifest();
 
-    expect(() => services.add('app/IR<pkg:IA,$1>', ZeroRepo)).toThrow(
+    expect(() => services.addClass('app/IR<pkg:IA,$1>', ZeroRepo, [[]])).toThrow(
       OpenTokenRegistrationError,
     );
     // Nested holes are not top-level hole nodes either.
-    expect(() => services.add('app/IR<app/IBox<$1>>', ZeroRepo)).toThrow(
+    expect(() => services.addClass('app/IR<app/IBox<$1>>', ZeroRepo, [[]])).toThrow(
       OpenTokenRegistrationError,
     );
     // A bare hole has no base at all.
-    expect(() => services.add('$1', ZeroRepo)).toThrow(
+    expect(() => services.addClass('$1', ZeroRepo, [[]])).toThrow(
       OpenTokenRegistrationError,
     );
   });
@@ -433,9 +435,9 @@ describe('holey slots in normal resolution', () => {
     }
     defineDeps(WithUnion, [[union('app/IX<$1>', T.A)]]);
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add(T.Service, WithUnion);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass(T.Service, WithUnion, [[union('app/IX<$1>', T.A)]]);
 
     const sp = services.build();
 
@@ -454,9 +456,12 @@ describe('holey slots in normal resolution', () => {
       [T.A],
     ]);
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add(T.Service, Overloaded);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass(T.Service, Overloaded, [
+      ['app/IX<$1>', T.A],
+      [T.A],
+    ]);
 
     const sp = services.build();
 
@@ -469,8 +474,8 @@ describe('holey slots in normal resolution', () => {
     }
     defineDeps(RawArg, [[typeArg(1)]]);
 
-    const services = new ServiceManifest();
-    services.add(T.Service, RawArg);
+    let services = new ServiceManifest();
+    services = services.addClass(T.Service, RawArg, [[typeArg(1)]]);
 
     const sp = services.build();
 
@@ -479,15 +484,15 @@ describe('holey slots in normal resolution', () => {
 });
 
 describe('gappy open template whose signature references an unbound hole', () => {
-  // A mis-authored hand-written open template: the service token binds holes
-  // $1 and $3, but a carried signature references $2 — which no closing ever
-  // binds (the transformer's 990010 diagnostic prevents this on the plugin
-  // path; the manual path has no such guard). Synthesis must NOT crash with a
-  // RangeError out of #lookup — it must miss cleanly so resolution raises a
-  // DiError and greedy selection can fall back.
+  // A mis-authored open template: the service token binds holes $1 and $3, but
+  // a carried signature references $2 — which no closing ever binds. The
+  // transform does not police this (it is not transform's job to validate); it
+  // surfaces at first resolve. Synthesis must NOT crash with a RangeError out of
+  // #lookup — it must miss cleanly so resolution raises a DiError and greedy
+  // selection can fall back.
   test('resolving such a closing raises a DiError, not an opaque RangeError', () => {
-    const services = new ServiceManifest();
-    services.add('app/IX<$1,$3>', ZeroRepo, [[typeArg(2)]]);
+    let services = new ServiceManifest();
+    services = services.addClass('app/IX<$1,$3>', ZeroRepo, [[typeArg(2)]]);
 
     const sp = services.build();
 
@@ -507,9 +512,9 @@ describe('gappy open template whose signature references an unbound hole', () =>
     // shorter (empty) signature is a valid fallback.
     defineDeps(Host, [['app/IX<pkg:IA,pkg:IB>'], []]);
 
-    const services = new ServiceManifest();
-    services.add('app/IX<$1,$3>', ZeroRepo, [[typeArg(2)]]);
-    services.add(T.Service, Host);
+    let services = new ServiceManifest();
+    services = services.addClass('app/IX<$1,$3>', ZeroRepo, [[typeArg(2)]]);
+    services = services.addClass(T.Service, Host, [['app/IX<pkg:IA,pkg:IB>'], []]);
 
     const sp = services.build();
 
@@ -524,10 +529,13 @@ describe('disposal of open-synthesized instances (green guard)', () => {
   // reverse construction order, both sync and async.
   test('distinct closings dispose in reverse construction order (sync)', () => {
     const log = new DisposeLog();
-    const services = new ServiceManifest<'singleton'>();
-    services
-      .add(G.RepoTemplate, SyncDisposable, [[typeArg(1), { value: log }]])
-      .as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(
+      G.RepoTemplate,
+      SyncDisposable,
+      [[typeArg(1), { value: log }]],
+      'singleton',
+    );
 
     const app = services.build().createScope('singleton');
     app.resolve(G.RepoOfA); // label pkg:IA, constructed first
@@ -540,10 +548,13 @@ describe('disposal of open-synthesized instances (green guard)', () => {
 
   test('distinct closings dispose in reverse construction order (async)', async () => {
     const log = new DisposeLog();
-    const services = new ServiceManifest<'singleton'>();
-    services
-      .add(G.RepoTemplate, AsyncDisposableThing, [[typeArg(1), { value: log }]])
-      .as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(
+      G.RepoTemplate,
+      AsyncDisposableThing,
+      [[typeArg(1), { value: log }]],
+      'singleton',
+    );
 
     const app = services.build().createScope('singleton');
     app.resolve(G.RepoOfA);
@@ -566,10 +577,10 @@ describe('resolveFactory against an open template — top-level public API (gree
     }
     defineDeps(GenSvc, [[T.A]]); // ctor-keyed store — must lose to the carried template
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.addValue(T.B, 'B!');
-    services.add('app/IG<$1>', GenSvc, [['$1']]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass('app/IG<$1>', GenSvc, [['$1']]);
 
     const sp = services.build();
     const make = sp.resolveFactory(closeToken('app/IG' as Token, T.B)) as Func<[], GenSvc>;
@@ -588,9 +599,9 @@ describe('resolveFactory against an open template — top-level public API (gree
     }
     defineDeps(Widget, [['app/WRONG', 'app/WRONG2']]); // ctor store must not win
 
-    const services = new ServiceManifest();
-    services.addValue(T.A, 'A!');
-    services.add('app/IW<$1>', Widget, [['$1', 'app/IParam']]);
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IW<$1>', Widget, [['$1', 'app/IParam']]);
 
     const sp = services.build();
     const make = sp.resolveFactory('app/IW<pkg:IA>', ['app/IParam']) as Func<[p: unknown], Widget>;
@@ -604,8 +615,8 @@ describe('resolveFactory against an open template — top-level public API (gree
 
 describe('build() twice with open registrations (green guard)', () => {
   test('each build() yields an independent provider — no synthesized-closing leak', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(G.RepoTemplate, ZeroRepo).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]], 'singleton');
 
     const p1 = services.build().createScope('singleton');
     const p2 = services.build().createScope('singleton');

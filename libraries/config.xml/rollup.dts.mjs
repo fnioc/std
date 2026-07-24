@@ -18,7 +18,7 @@ export default {
     /^@rhombus-std\/config\.file$/,
     /^@rhombus-std\/fileproviders\.core$/,
     /^@rhombus-std\/primitives$/,
-    /^@rhombus-std\/primitives\.transformer(\/|$)/,
+    /^@rhombus-std\/primitives\.extras(\/|$)/,
   ],
   plugins: [
     dts({

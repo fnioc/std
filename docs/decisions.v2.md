@@ -14,7 +14,7 @@ An inline-stage primitive that is ONLY ever called inside inline bodies (never i
 
 - `signatureof` (DI dependency-signature extraction) → `di.transformer`, which peers on `di.core`, so it returns di.core's real `DepSignatures` / `DepSlot` directly. The former primitives-side mirror (`DepSlotLike` / `FactoryRefLike` / `UnionLike` / `LiteralRefLike` / `TypeArgRefLike`) is deleted.
 - `schemaof` (config `Schema` from a type) → `config.transformer`, which peers on `config` and already owns the `ts.Type`→`Schema` codegen + the `OPTIONAL` import injection.
-- `nameof` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(nameof<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
+- `tokenfor` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(tokenfor<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
 
 Consequences: the inline BODIES and their `rhombus.inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
 
@@ -66,15 +66,15 @@ A library's `.` export resolves its type-facing conditions and `bun` to the roll
 
 ---
 
-## §74 — `nameof` and token derivation
+## §74 — `tokenfor` and token derivation
 
-`nameof<T>()` is declared in `@rhombus-std/primitives` with a throwing body (a call reaching runtime means the transformer wasn't wired). The transformer lowers it to a token identifying where `T` sits in the exports graph — the package barrel for a publicly-exported type (`pkg:Type`), the `_` subpath for a tests-only one (`pkg/_/file:Type`). It keys on export **membership**, not on-disk path, so a package's own build and an external consumer derive the identical token. _Owner-approved._
+`tokenfor<T>()` is declared in `@rhombus-std/primitives` with a throwing body (a call reaching runtime means the transformer wasn't wired). The transformer lowers it to a token identifying where `T` sits in the exports graph — the package barrel for a publicly-exported type (`pkg:Type`), the `_` subpath for a tests-only one (`pkg/_/file:Type`). It keys on export **membership**, not on-disk path, so a package's own build and an external consumer derive the identical token. The primitive `nameof<T>()` was renamed to `tokenfor<T>()`; the pipeline stage id `nameof` is unchanged. _Owner-approved._
 
 ---
 
-## §83 — The `_` export is for tests and `nameof` only
+## §83 — The `_` export is for tests and `tokenfor` only
 
-Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `nameof`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
+Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `tokenfor`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
 
 ## §24 — No pluggable containers
 
@@ -232,10 +232,10 @@ through the generic inline stage with plain certified bodies. Type-directed disp
 in the engine.
 
 Two authoring-only primitives live in `primitives.transformer` (per §92's homing rule), shipped as
-throwing stubs like `nameof`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
+throwing stubs like `tokenfor`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
 the token grammar's term for a type with exactly one value: a literal, `null`, `undefined`, or
-`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(nameof<T>())`.
-Resolving a singular type IS its value: a hand-written `tryResolve(nameof<'dev'>())` folds
+`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>())`.
+Resolving a singular type IS its value: a hand-written `tryResolve(tokenfor<'dev'>())` folds
 identically, so the sugar and the explicit form share one semantics.
 
 The inline engine constant-folds after primitive lowering — boolean-ternary dead-branch pruning,
@@ -255,10 +255,10 @@ verbs. The compile-time guard stands: without the satellite in the program, the 
 typecheck — no compiles-then-throws.
 
 The bespoke di-options lowering stage retires into the generic inline path: the body lowers to a
-dot-call of the explicit verb (`this.addOptions(nameof<IOptions<T>>(), nameof<T>())`), so the
+dot-call of the explicit verb (`this.addOptions(tokenfor<IOptions<T>>(), tokenfor<T>())`), so the
 augmentation prototype wrapper and any merge dispatcher execute exactly as they would for
 hand-written code. This requires the inline engine to support nested closed-generic type-argument
-instantiation (`nameof<IOptions<T>>()`).
+instantiation (`tokenfor<IOptions<T>>()`).
 
 Token derivation is one function, not two: the non-hole-aware derivation collapses into the
 hole-aware `DeriveTokenF`, mirroring the reference's single `deriveToken`.
@@ -313,10 +313,10 @@ _Owner-directed 2026-07-18._
 ## §98 — Keyed sugar composes through `keyof` and a tail key parameter
 
 A single authoring-only primitive, `keyof<T>()`, lives in `di.transformer` (lowercase — reserved
-only in type positions, family-consistent with `nameof`/`signatureof`/`schemaof`, per §92's homing
+only in type positions, family-consistent with `tokenfor`/`signatureof`/`schemaof`, per §92's homing
 rule). It lowers to the key of a `Keyed<T, K>` type argument (`'audit'`) and to `undefined` for a
-non-keyed type. `nameof` over `Keyed<T, K>` derives the BASE token unchanged — base extraction, not
-key loss — so `keyof` and `nameof` are two independent readings of the same phantom brand.
+non-keyed type. `tokenfor` over `Keyed<T, K>` derives the BASE token unchanged — base extraction, not
+key loss — so `keyof` and `tokenfor` are two independent readings of the same phantom brand.
 
 The explicit registration verbs each carry ONE signature with an optional TAIL parameter —
 `add(token, impl, signatures, key?)`, `addFactory(token, fn, signatures, key?)`,
@@ -470,7 +470,7 @@ di.transformer.options, config.transformer) owns only its per-family sugar: the 
 records where the STAGE machinery lives.
 
 The honest dep edge falls out: because a family transformer's inline bodies call the neutral
-primitives (`nameof`/`signatureof`), that transformer genuinely requires the primitive stages, so
+primitives (`tokenfor`/`signatureof`), that transformer genuinely requires the primitive stages, so
 di.transformer, di.transformer.options, and config.transformer each declare
 `@rhombus-std/primitives.transformer` as a `dependency`. That edge is what lets §103's host scan
 reach the primitive stages for a family-sugar consumer: a library depending on di.transformer's
@@ -486,7 +486,7 @@ the implementation._
 
 Cross-package IDE rename / find-references needs the editor's TypeScript program to see one unified symbol identity across packages, which means resolving `@rhombus-std/*` to **source** — dist-ref (§72) resolves the rolled `.d.ts`, dead-ending navigation at each package boundary. This is served without disturbing the runtime. Each package's `tsconfig.json` becomes an editor-only whole-repo program (`include: ["../*/src/**/*"]`, `customConditions: ["source"]`); the strict CI/build config moves verbatim to `tsconfig.ci.json`, and `tsconfig.ttsc.json`, the per-package `lint` scripts, and `build-lib.ts`'s typecheck repoint to it.
 
-Each package's `.` export gains a `source` condition → `./src/index.ts` (first key), scrubbed from `publishConfig` so it never ships. Only tsserver activates it (via the editor `customConditions`); **bun ignores tsconfig `customConditions`** — it resolves the `bun` condition → dist — so the build and every `bun test` run the distributable byte-for-byte as before. `paths`-based src-refs were tried and rejected: bun DOES honor tsconfig `paths` at runtime, poisoning module resolution so library source executes with an un-lowered `nameof`.
+Each package's `.` export gains a `source` condition → `./src/index.ts` (first key), scrubbed from `publishConfig` so it never ships. Only tsserver activates it (via the editor `customConditions`); **bun ignores tsconfig `customConditions`** — it resolves the `bun` condition → dist — so the build and every `bun test` run the distributable byte-for-byte as before. `paths`-based src-refs were tried and rejected: bun DOES honor tsconfig `paths` at runtime, poisoning module resolution so library source executes with an un-lowered `tokenfor`.
 
 This is a SHARED `source` condition, which §78 (v1) considered and rejected — but §78's concern was a downstream consumer's BUILD/GATE co-compiling a core's src; here `source` is set ONLY by the editor program, and neither the build nor the gate sets `customConditions`, so that harm cannot arise, and the whole-repo over-pull §78 avoided is precisely what the editor wants. src-refs stay internal-only (this editor program, the `<pkg>-source` self-compile condition, and the `./_/*` white-box subpath); dist-ref remains the sole runtime and publish primary.
 
@@ -542,3 +542,214 @@ double-caching (~3 GB reclaimed) and a cold sidecar build against a gate-warmed 
 re-linking; `~/.cache/fnioc-ttsc/cache` shrinks to the keyed sidecar binaries.
 
 _Owner-directed 2026-07-21; GOCACHE refinement owner-approved 2026-07-23._
+
+---
+
+## §114 — A mutable-slot holder is the seam between an immutable manifest and a stateful builder
+
+`ServiceManifest` is immutable (an iterable decorator chain; every verb returns a NEW manifest). Everything that _wraps_ a manifest and is configured by a caller-supplied delegate — `ILoggingBuilder`, `IMetricsBuilder`/`ITracingBuilder`, `IHostApplicationBuilder` — therefore cannot register "into" the manifest it was handed. The seam is a single MUTABLE SLOT: di.core exports `IServiceManifestHolder` (`{ services: IServiceManifest }`), a builder's `services` is that writable slot, and every builder augmentation does `builder.services = builder.services.addX(...)` and returns the same builder. Mutation-shaped ergonomics survive; the chain underneath stays immutable.
+
+Two consequences are load-bearing:
+
+- **Long-lived sibling builders SHARE one holder.** `HostApplicationBuilder` passes `this` as the holder to its `LoggingBuilder` and `MetricsBuilder`, so `builder.logging.addConsole()`, `builder.metrics.enableMetrics(…)`, and `builder.services = builder.services.add(…)` all land on one chain. Constructing them over a manifest VALUE forks the chain three ways and `build()` silently drops two of them. `LoggingBuilder`/`MetricsBuilder` therefore take `IServiceManifest | IServiceManifestHolder` and expose `services` as an accessor pair, not a field.
+- **A short-lived builder is read back.** `addLogging(configure)` / `addMetrics(configure)` / `configureLogging` allocate a builder, run the delegate, and return `builder.services` — never the manifest they were given.
+- **Per-configuration dedup keys on the BUILDER, not on `builder.services`.** The console sinks' `TryAddEnumerable`-idempotence `WeakMap` would otherwise see a fresh key on every call, since the manifest object changes with each registration.
+
+`IHostBuilder.configureServices` / `configureContainer` become RETURNING delegates (`Func<[HostBuilderContext, IServiceManifest], IServiceManifest>`): a delegate is the one place with no builder to write through, so the manifest has to come back out. A void `Action` there is a silent-drop trap — it typechecks and registers nothing.
+
+Build-config corollary: a package whose rolled `.d.ts` INLINES di.core forks `IServiceManifestBase` — the inlined copy carries di.core's own `declare module` self-augmentation, whose return types bind to the inlined interface, so `services = services.removeAll(t)` stops typechecking downstream. Every package that depends on di.core must keep it external in `rollup.dts.mjs` (this bit `@rhombus-std/options`).
+
+_Claude's call (holder shape, shared-slot wiring, returning delegates), forced by the owner-directed immutable-manifest change; renumbered §107→§114 (#270/#271 took §107 on main)._
+
+---
+
+## §108 — Immutable decorator-chain manifest; `addClass`/`addFactory`/`addValue` replace `add`
+
+`ServiceManifest` becomes an immutable, iterable decorator chain: every registration verb wraps its receiver in a new frozen node carrying exactly one entry (`yield* inner` then its own, so iteration order is authoring order), and NOTHING mutates — a call whose result is discarded registers nothing. The single ambiguous `add()` (discriminating class vs. factory by argument inspection) is replaced by three explicit verbs — `addClass` / `addFactory` / `addValue` — so the method name carries the discrimination instead of runtime arg inspection. `AddChain`'s slot algebra (`signature` / `signatures` / `scope` / `key`, order-free, each fillable at most once except the repeatable append slot) is the type machinery threading which chain face a call returns; see `docs/libraries/di.md` divergence 11 for the authoring picture and `libraries/di.core/src/authoring.ts` for the implementation. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via the `IServiceManifestHolder` mutable-slot seam (§107). _Owner-directed (the immutable-chain + verb-split direction); the `AddChain` slot mechanics are Claude's._
+
+---
+
+## §109 — Gated fluent signature builder: `withSignature` appends, `withSignatures` replaces, sugar overrides
+
+The plugin-less 2-arg `addClass(token, ctor)` / `addFactory(token, factory)` forms withhold the manifest face (`build` / `addClass` / `seal` absent from the returned type) until a dependency signature arrives — a mandatory-signature compile-time gate, not a runtime check. `withSignature(...slots)` opens the gate and is repeatable (APPENDS one more overload each call, strikes only the bulk `signatures` slot); `withSignatures(...sigs)` opens the gate as a once-only BULK replace (strikes both slots). Supplying a signature positionally (the 3+-arg overloads) starts the chain already ungated, and a positional signature can still take a `withSignature` append afterward (`addClass(t, c, [[…]]).withSignature('a')` is hand-writable — this is what keeps the di-direct Go lowering byte-parity, §113). `.as()` / `.withKey()` refine without opening the gate. Under the transformer's type-driven sugar (`addClass<I>(C)`), the signature is derived from the constructor so the chain is never gated — `withSignature<T>()` / `withSignatures<T>()` there are OVERRIDES onto the derived signature, not gate-openers, distinguished by the `Gated` type parameter on `AddChain`. Full mechanics: `libraries/di.core/src/authoring.ts`, `docs/libraries/di.md` divergence 11. _Owner-directed (the gate / append / bulk semantics settled in conversation); Claude's implementation._
+
+---
+
+## §110 — Primitive naming: `-for` mints an identity, `-of` observes an existing one
+
+`nameof<T>()` is renamed `tokenfor<T>()` (it MINTS a token identity for `T`, never observed anywhere), and the two new derivation primitives introduced for the fluent signature builder follow the same rule: `signaturefor<T>()` (1-D, mints one overload's dependency slots) and `signaturesfor<T>()` (2-D, mints the whole signature set) mirror `withSignature` / `withSignatures`. `-of` stays for primitives that OBSERVE a property that already exists on the target: `signatureof(ctor)` (observes a constructor's own param types), `keyof<T>()` (observes a `Keyed<T,K>` brand), `valueof<T>()` (observes a literal type's value — the `.as<Scope>()` sugar's scope half). The pipeline STAGE id `nameof` is unchanged (the stage name, not the function — e.g. `primitives.transformer`'s `"stages": [..., "nameof", ...]`); only the authored function it lowers was renamed. Full mapping: `docs/features/transformer-architecture.md`. _Owner-directed (the -for/-of convention itself); the `tokenfor` rename and the two new primitives' placement are Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
+
+---
+
+## §111 — One `TokenNode` tree serves both the resolve side and the signature side
+
+A resolve argument and a signature slot are the SAME expression shape, so `substitute` / `validate` / `stringify` / `match` are written ONCE over a single plain-data discriminated-union tree (`concrete | hole | provider | union | literal | factory`, `libraries/di.core/src/token/`) instead of the five parallel string-substitution routines the pre-immutable-manifest branch had. Nodes stay plain data (never classed) so the established immutable-update idiom (`{ ...n, args }` spread) keeps working; operations are a typed visitor base (`TokenRewriter` for rewrites, `TokenWalker<T>` for queries) dispatching one `assertNever`-closed `switch(kind)`, not `accept`-on-node. The wire format is UNCHANGED: parsing happens at the edges (`parse` / `stringify`) and the stored/emitted `DepSlot` keeps its original compact array-literal shape — the tree is a transient parsed view, never the ABI. Landed as the wire-stable slice of the redesign; `FactoryRef` staying flat (not yet every position a `TokenNode`) and the union-blow-up wiring are the deferred wire-changing remainder (§112). _Owner-directed (the unification + parse-at-edges direction); the visitor shape and node-as-plain-data reasoning are Claude's._
+
+---
+
+## §112 — Union blow-up to static overloads: abandoned, not deferred
+
+An earlier plan blew a union dependency slot into cartesian overloads at registration time (`[[union(A,B),C]] → [[A,C],[B,C]]`) so union resolution could fold into ordinary overload selection and the per-param runtime union resolver could be deleted. This is ABANDONED, not merely deferred: the equivalence argument was wrong. Per-param `#resolveUnion` has a runtime fall-through a static overload set cannot express — a union member that IS registered but THROWS while building (or whose `Promise` rejects) falls through to the next member at RESOLVE time, while presence-based overload selection can only see registration-time shape. Keeping per-param resolution is therefore load-bearing (`union.test`'s GAP2/GAP4 and the async-reject case). `blowUpSignatures` (`token/slot.ts`) stays implemented and exported but is dead code, to be removed in a vestigial sweep; `Validator` does not reject `union` on the resolve side. _Flagged for owner review — this reverses an earlier "yes" on the blow-up given mid-session; Claude's finding, made while gating the token-tree-unification PR._
+
+---
+
+## §113 — Chain sugars (`.as` / `withSignature` / `withSignatures`) need di-direct Go recognizers, not just inline bodies
+
+The general single-expression inline stage is not sufficient to lower the three chain-modifier sugars on its own, for two independent reasons: it substitutes only the OUTERMOST call in a chain, so inner modifiers (`.withSignature` / `.withSignatures`, and a `.as` preceding them) are never reached; and it is INERT once `di.core` ships dist-referenced (the real consumer mode has no `di.core`-source witness for the inline substitution to match against). The `di` Go stage therefore owns DI-DIRECT lowering for all three (the `.as`, `withSignature`, and `withSignatures` recognizers), routed through the same factored `valueof` / `signaturefor` extraction the inline path uses, so both paths emit byte-identical output. This reverses an earlier "general-inline-only, avoid bespoke Go" steer for these three sugars specifically — the di-direct recognizers are load-bearing and must not be deleted in a vestigial-code sweep. _Claude's finding (made while gating the fluent-signature-builder PR); flagged for owner review since it reverses the inline-only steer._ **Superseded by §115** — the fixed-point rewrite deleted the `di` Go stage and its recognizers; the loop reaches inner chain positions and the transitive-witness module-resolution fix makes the inline path active for di-direct consumers, so the chain sugars lower through inline bodies for both paths.
+
+---
+
+## §115 — Fixed-point loop replaces stage-order dependence; the enabling invariant is disjoint match sets
+
+The transform engine runs one ordered set of primitive stages repeatedly, per file, until a pass
+changes nothing (max 16 passes, loud `FIXED_POINT_EXHAUSTED` on exhaustion — never a silent cap),
+instead of a single top-to-bottom sweep. Each stage matches only the OUTERMOST construct it
+recognizes and does not descend into what it produced; a chain (`addClass<T>(C).withSignature<S>()
+.as<Scope>()`) peels one call per pass. This is receiver-recursion-free by construction — no stage
+author ever writes a visitor that walks into its own output — because the loop supplies the
+recursion.
+
+Correctness under repeated, unordered running rests on one invariant: **every stage owns matches
+no other stage can claim** (inline: sugar declarations; each primitive stage: its own callee
+symbol; mergesynth: `registerAugmentations`/`applyAugmentations` installs). A new stage must be
+checked against this invariant before joining the set. In-pass order (documented in
+`transformer-architecture.md`) is a reproducibility choice, never a correctness dependency — no
+stage may require running before/after another within one pass. This supersedes §113's holding
+that the chain sugars needed bespoke di-direct Go recognizers: with the loop reaching inner chain
+positions and the transitive-witness module-resolution fix (§119) making inline active for
+di-direct consumers, the di Go stage and its recognizers were deleted. _Owner ruling: "a few extra
+iterations doesn't hurt anything. it's milliseconds."_
+
+---
+
+## §116 — No-type-arg registration derives the token from the VALUE, never from TS inference
+
+`addClass(SqlUserRepo)` / `addFactory(fn)` / `addValue(v)` (self-registration, no explicit `<T>`)
+derive their token from the argument's own type: constructable → its construct-signature return
+type (`tokenfor(value)`); callable → its call-signature return type (`tokenfor(value)`); an
+already-built value → its own raw type, never unwrapped (`tokenof(value)`). `RecoverTypeArguments`
+is never extended to nested/value-based inference to cover this — the derivation is a distinct
+primitive pair (`tokenfor`/`tokenof`, value-arg forms), not a smarter type-argument recovery.
+Interface registration stays explicit (`addClass<ILogger>(ConsoleLogger)`) — there is no
+self-registration path for a type other than the value's own. The `tokenof`/`tokenfor` split
+exists specifically because a single value-arg primitive that branched on "which verb called me"
+would put domain knowledge (which verb wants which derivation) inside the domain-neutral
+primitive; the verb-side sugar body picks the primitive instead. _Owner ruling: "no-type-arg
+registration binds from the VALUE, not from TS inference."_
+
+---
+
+## §117 — No domain names in Go transform source; domain arrives as data
+
+No primitive stage's Go source may compare a callee name against a hardcoded domain string
+(`if calleeName == "addClass"`, `"@rhombus-std/options:IOptions"`, etc.). Domain knowledge reaches
+the engine only as DATA carried by the checker or the artifacts hand-off: a side-parsed sugar
+body's own text, a checker-resolved symbol/type, a structurally-detected brand shape (the
+`Keyed`/`Inject`/`Hole`/`$N` token grammar stays engine-owned naming language, detected
+structurally, not by name-matching a specific package's export). Two illustrative cases: the
+`schemaof<T>()` primitive threads config's `OPTIONAL` marker identity through a generic
+`valueimport.Ref` value, never a branch on "is this config's marker"; `mergesynth`'s per-member
+merge-strategy guards are generated from the member's own parameter types via an in-process typia
+call, with no family/augmentation identity named anywhere in the stage. This is why there is no
+bespoke per-family Go stage left — a per-family stage would necessarily encode domain in Go
+source. _Owner ruling: domain in TRANSFORM SOURCE is banned; domain in runtime memory (checker
+state, artifacts) is fine._
+
+---
+
+## §118 — Transforms never validate user code; they only report their own lowering failures
+
+No transform in the engine polices a user's design choices (there is no re-implementation of the
+old domain stages' open-generic-registration completeness checks, formerly diagnostics
+990008/990009/990010). Runtime already enforces the equivalent invariants at
+registration/resolve time; duplicating that policing at compile time was never the transform
+layer's job. The one thing a transform DOES still report is its own inability to lower a specific
+call — an underivable token, a non-tuple `signaturefor<T>()`, an unsupported `schemaof<T>()` field
+shape — which is failure reporting about the transform's own mechanism, not validation of the
+user's design. _Owner ruling: "it's not transform's job to validate. don't do it. leave runtime
+as-is."_
+
+---
+
+## §119 — Stage SELECTION retired; one always-on primitive set
+
+The two-layer selection model (a workspace dependency scan choosing which stage ids activate for
+a given consumer, `ttsc.stages` package.json markers, `BaseBundles` preset expansion,
+`selectStages`) is retired. Depending on any `*.extras` package's `./ttsc`
+descriptor spawns the ONE host, which always runs its full stage table — there is no second
+question of "which stages" left to answer. `*.extras` packages survive as sugar
+homes (declarations + bodies + one spawn descriptor each); the inline stage's referenced-check
+(witness → inert when a target module is genuinely absent from the consumer's program) survives
+as the mechanism that makes an unrelated consumer's build a no-op, not stage selection. What a
+dependency still governs is spawning + which inline BODIES are in play: the transitive-witness
+module-resolution fix resolves a sugar target reached only transitively (e.g. a di-direct consumer
+importing `@rhombus-std/di` but not `di.core`), so the inline path activates for exactly the
+di-direct consumers whose bespoke Go stages were deleted.
+
+---
+
+## §120 — Mergesynth is a one-shot pre-pass, not a fixed-point loop member
+
+`mergesynth` (the augmentation default-merge-strategy synthesizer, #213) runs once per file BEFORE
+the fixed-point loop starts, not inside it. Rationale: its matches
+(`registerAugmentations`/`applyAugmentations` installs) are always source-written — no sugar body
+or primitive stage ever mints a fresh one — so the loop can never generate new work for it, and a
+pre-pass placement makes the termination story trivially explainable without reasoning about
+whether it could re-fire. A landed defect motivated this explicitly: an earlier loop-member
+version re-wrapped its own hand-authored merge spreads every pass, because its strategy-name
+detector had no case for a `KindSpreadAssignment` and so couldn't see inside the spread it had
+just emitted. Rejoin condition (documented in code, not yet triggered): if a sugar body is ever
+added that emits an install call, `mergesynth` must rejoin the loop and gain spread-recursing
+detection.
+
+---
+
+## §121 — `*.transformer` → `*.extras` rename; transformables move out of the runtime `primitives` leaf
+
+Every sugar-only authoring package (declare-module typings + inline bodies + one spawn descriptor,
+no other toolchain artifact) is renamed `<family>.extras`. The landed set is total: all four
+former `*.transformer` packages renamed — `primitives.transformer` → `primitives.extras`,
+`di.transformer` → `di.extras`, `di.transformer.options` → `di.extras.options` (the direct
+`transformer`→`extras` substitution, chosen as cleaner than `di.options.extras`), and
+`config.transformer` → `config.extras`; none kept the `.transformer` name (the `.transformer`
+qualifier is reserved for a package that carries a real toolchain artifact beyond the descriptor,
+of which there are now none). Separately, the transformable authoring stubs (`tokenfor`/`tokenof`)
+move OUT of the runtime `@rhombus-std/primitives` leaf into `primitives.extras`: the prior reason
+for keeping them in the runtime leaf — "runtime source imports it directly" — dissolves once the
+nameof stage's import elision leaves no reference in any shipped bundle (verified: zero
+`tokenfor`/`tokenof`/`primitives.extras` references survive in any consuming lib's `dist/bundle`),
+so every runtime library depends on the authoring package dev-scoped only. Brand TYPES
+(`Keyed`/`Inject`/`Typeof`/`Hole`) stayed put — moving them is byte-parity-gated (token text
+embeds home package specifiers) and was not required.
+
+---
+
+## §122 — Keyed resolve/isService semantics complete the §98 design; `keyedtokenfor` is the composed-lookup primitive
+
+Every single-token consumer of a possibly-keyed type (`resolveAsync<Keyed<T,K>>()`,
+`isService<Keyed<T,K>>()`) derives its token via `keyedtokenfor<T>()` — the composed-lookup
+primitive that emits the SINGLE `base#key` string for a `Keyed<T,K>`, or the plain base for an
+unkeyed `T` (unkeyed output stays byte-identical to the pre-existing form by construction). The
+split-argument consumers (`resolve`/`tryResolve`, which carry a runtime key parameter) instead
+derive `tokenfor<T>() + keyof<T>()` onto that existing parameter. This corrects a real gap: an
+earlier form derived the single-token consumers' key via the raw alias-preserving `tokenof<T>()`,
+which never matched a `base#key` registration — a keyed `isService`/`resolveAsync` silently
+answered false / threw for every keyed type. di-direct's own `lowerResolveCall`/
+`lowerIsServiceCall` carried the identical latent gap and are corrected by the same bodies. A
+runtime round-trip test (a keyed resolve actually matching a keyed registration) backs the fix,
+since the prior byte-parity-only nets couldn't have caught it — they proved inline matched
+di-direct's output, not that di-direct's output was itself correct.
+
+---
+
+## §123 — Failure semantics unified: a token-shaped primitive never emits a silent empty result
+
+Every token-deriving primitive follows one rule: an underivable derivation never falls through to
+an empty string, `null`, or other silent placeholder. A SYNTHETIC (substituted) use that's still
+underivable when its stage runs is left un-lowered with no diagnostic yet — because a dead ternary
+branch's primitive call may still be pruned by the `fold` stage before anyone needs its value, and
+erroring before that prune would fail builds that are actually fine — and the emit sweep is the
+backstop that catches one that never got pruned or lowered. A SOURCE-WRITTEN use (a human wrote the
+call directly) has no later rescue, so it emits a targeted diagnostic naming the problem
+immediately. This retires the prior split behavior where different code paths independently chose
+`""` vs `null` vs no diagnostic for the same underlying "can't derive this" condition.

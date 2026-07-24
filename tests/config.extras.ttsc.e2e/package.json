@@ -1,0 +1,17 @@
+{
+  "name": "@rhombus-std/config.extras.ttsc.e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "End-to-end parity harness driving the Go ttsc config withType->withSchema plugin. Not published.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "bun test"
+  },
+  "devDependencies": {
+    "@rhombus-std/config.extras": "workspace:*",
+    "@ttsc/unplugin": "^0.18.1",
+    "ttsc": "^0.18.1",
+    "typescript": "^7.0.2"
+  }
+}

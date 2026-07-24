@@ -10,9 +10,9 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
 // syntheticSignatureofCall builds a factory-minted `signatureof(arg)` call whose
@@ -60,7 +60,7 @@ func TestSourceWrittenArgSyntheticCalleeGuard(t *testing.T) {
 // fire — while its `Parent` link is unset, because the inline stage's
 // substitution rebuilt the wrapping node over a changed child without
 // re-linking it. This stage's visitor walks every call expression exactly like
-// nameof's, so it reaches the same shape. Detach a parsed (real-position)
+// tokenfor's, so it reaches the same shape. Detach a parsed (real-position)
 // callee's Parent to reproduce the unlinked-but-positioned node directly, and
 // assert the guard returns cleanly with a nil checker — a real checker call
 // here would panic.
@@ -105,7 +105,7 @@ func TestSignatureofArgArtifacts(t *testing.T) {
 
 	// Recorded under a different primitive name -> falls through (no match).
 	mismatch := inlinetransform.NewArtifacts()
-	mismatch.PrimitiveCalls[node] = inlinetransform.PrimitiveUse{Name: "nameof", ValueArg: valueArg}
+	mismatch.PrimitiveCalls[node] = inlinetransform.PrimitiveUse{Name: "tokenfor", ValueArg: valueArg}
 	if arg, ok := signatureofArg(nil, mismatch, node); ok || arg != nil {
 		t.Fatalf("name-mismatch use: got (%v, %t), want (nil, false)", arg, ok)
 	}
@@ -126,7 +126,7 @@ func TestSignatureofArgArtifacts(t *testing.T) {
 // --- program-backed cases ---------------------------------------------------
 
 // buildSigWorkspace lays out a two-package workspace: a `@scope/prims` package
-// declaring `signatureof` (and `nameof`, `keep`), and a consumer `main.ts` whose
+// declaring `signatureof` (and `tokenfor`, `keep`), and a consumer `main.ts` whose
 // body is supplied by the caller. It returns the loaded program and the app dir.
 func buildSigWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
@@ -140,7 +140,7 @@ func buildSigWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export declare function signatureof(value: unknown): unknown;
-export declare function nameof<T>(): string;
+export declare function tokenfor<T>(): string;
 export declare const keep: number;
 `)
 
@@ -231,7 +231,7 @@ func findCallByCallee(sf *shimast.SourceFile, name string) *shimast.Node {
 // source-written `signatureof(Foo)` resolves its callee to the `signatureof`
 // symbol and returns the value argument; an aliased import (`signatureof as sig`)
 // resolves through GetAliasedSymbol; a same-shape call to a DIFFERENT function
-// (`nameof`-like `other(Foo)`) is rejected on the name mismatch.
+// (`tokenfor`-like `other(Foo)`) is rejected on the name mismatch.
 func TestSourceWrittenArgResolvesSymbol(t *testing.T) {
 	mainSrc := `import { signatureof as sig, keep } from '@scope/prims';
 declare function other(value: unknown): unknown;
@@ -270,11 +270,11 @@ export const c = keep;
 
 // lowerMain runs the New transform over main.ts and returns the reprinted output
 // plus any diagnostics raised.
-func lowerMain(t *testing.T, prog *driver.Program, app string) (string, []ditransform.Diagnostic) {
+func lowerMain(t *testing.T, prog *driver.Program, app string) (string, []signatures.Diagnostic) {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
-	var diags []ditransform.Diagnostic
-	transform := New(prog, ctx, nil, func(d ditransform.Diagnostic) { diags = append(diags, d) })
+	var diags []signatures.Diagnostic
+	transform := New(prog, ctx, nil, func(d signatures.Diagnostic) { diags = append(diags, d) })
 	ec := shimprinter.NewEmitContext()
 	sf := mainSourceFile(t, prog)
 	out := transform(ec, sf)
@@ -329,11 +329,10 @@ export const s3 = signatureof(NoDep);
 }
 
 // TestNewUnderivableParamStillErrors keeps the pre-existing 990006 behavior on the
-// standalone signatureof path: a constructor param whose type has no derivable
-// token (an anonymous object type) lowers to the `??unresolvable??` sentinel AND
-// raises codeUnderivableToken — this is the value's own signature concern, present
-// with or without a service token, and is distinct from the dep-HOLE check (990010)
-// the registration path adds.
+// signatureof path: a constructor param whose type has no derivable token (an
+// anonymous object type) lowers to the `??unresolvable??` sentinel AND raises
+// codeUnderivableToken — the value's own signature concern (the transform's own
+// inability to lower), reported with or without a surrounding registration.
 func TestNewUnderivableParamStillErrors(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 class Bad { constructor(dep: { readonly a: number }) { void dep; } }
@@ -348,7 +347,7 @@ export const s = signatureof(Bad);
 	}
 	found := false
 	for _, d := range diags {
-		if d.Code == "990006" && d.Category == ditransform.Error {
+		if d.Code == "990006" && d.Category == signatures.Error {
 			found = true
 		}
 	}

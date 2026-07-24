@@ -7,8 +7,8 @@ import { defineDeps, G, OneDep, T, ZeroArg } from './fixtures.js';
 // whether a token WOULD resolve, without attempting construction.
 
 test('isService is true for a registered token, false for an unregistered one', () => {
-  const services = new ServiceManifest<'singleton'>();
-  services.add(T.Service, ZeroArg);
+  let services = new ServiceManifest<'singleton'>();
+  services = services.addClass(T.Service, ZeroArg, [[]]);
   const provider = services.build();
 
   expect(provider.isService(T.Service)).toBe(true);
@@ -18,9 +18,9 @@ test('isService is true for a registered token, false for an unregistered one', 
 test('isService is true for a registered token even when its dependency is unregistered', () => {
   // The probe never constructs — a service with a missing dependency IS still a
   // registered service. (resolve would throw; isService reports true.)
-  const services = new ServiceManifest<'singleton'>();
+  let services = new ServiceManifest<'singleton'>();
   defineDeps(OneDep, [[T.Db]]);
-  services.add(T.Service, OneDep);
+  services = services.addClass(T.Service, OneDep, [[T.Db]]);
   const provider = services.build();
 
   expect(provider.isService(T.Service)).toBe(true);
@@ -28,8 +28,8 @@ test('isService is true for a registered token even when its dependency is unreg
 });
 
 test('isService closes an open-generic template — true for a resolvable closing', () => {
-  const services = new ServiceManifest<'singleton'>();
-  services.add(G.RepoTemplate, ZeroArg);
+  let services = new ServiceManifest<'singleton'>();
+  services = services.addClass(G.RepoTemplate, ZeroArg, [[]]);
   const provider = services.build();
 
   expect(provider.isService(G.RepoOfA)).toBe(true);

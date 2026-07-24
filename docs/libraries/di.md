@@ -15,7 +15,9 @@ then goes further in several directions the reference container has no equivalen
 below assumes you already know constructor injection and the reference container's three
 lifetimes; it only covers what's new. Snippets assume an ambient `services` (a `ServiceManifest`
 being built, the `IServiceCollection` analog) and a `resolver`/`provider` obtained from
-`services.build()` (the `IServiceProvider` analog).
+`services.build()` (the `IServiceProvider` analog). `ServiceManifest` is IMMUTABLE — every
+registration verb and chain modifier returns a NEW manifest, so every snippet below reassigns
+`services = services.addClass(...)` rather than calling it as a bare statement (see divergence 11).
 
 ### 1. Open-ended named scopes
 
@@ -27,12 +29,12 @@ absence of `.as(...)`. A tag whose frame is never opened anywhere still resolves
 transiently instead of throwing.
 
 ```ts
-const services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
+let services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
 
-services.add<ILogger>(ConsoleLogger).as<'singleton'>();
-services.add<IRepo>(SqlRepo).as<'request'>();
-services.add<IUnitOfWork>(UnitOfWork).as<'transaction'>(); // nests deeper than "request"
-services.add<IAuditor>(Auditor); // no .as() at all — transient, never cached
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
+services = services.addClass<IRepo>(SqlRepo).as<'request'>();
+services = services.addClass<IUnitOfWork>(UnitOfWork).as<'transaction'>(); // nests deeper than "request"
+services = services.addClass<IAuditor>(Auditor); // no .as() at all — transient, never cached
 
 const app = services.build().createScope('singleton');
 const req = app.createScope('request');
@@ -52,7 +54,7 @@ composes like anything else. Plain `resolve()` never awaits anything — asking 
 matching split.
 
 ```ts
-services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
+services = services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
 
 const banner = await resolver.resolveAsync<IBanner>(); // awaits the Promise<T> registration
 const pending = resolver.resolve<Promise<IBanner>>(); // same registration, un-awaited
@@ -69,8 +71,8 @@ registration's lifetime. An unregistered element type aggregates to an empty col
 element token still throws.
 
 ```ts
-services.add<IGreeting>(FormalGreeting).as<'singleton'>();
-services.add<IGreeting>(CasualGreeting).as<'singleton'>();
+services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>();
+services = services.addClass<IGreeting>(CasualGreeting).as<'singleton'>();
 
 resolver.resolve<IGreeting[]>(); // [formal, casual] — registration order
 resolver.resolve<Iterable<IGreeting>>(); // distinct wrapper, re-iterable, same elements
@@ -90,12 +92,12 @@ building; exhausting every member throws.
 class CacheConsumer {
   constructor(private readonly cache: IRedisCache | IMemoryCache) {}
 }
-services.add<IRedisCache>(RedisCache).as<'singleton'>();
-services.add<CacheConsumer>(CacheConsumer).as<'singleton'>();
+services = services.addClass<IRedisCache>(RedisCache).as<'singleton'>();
+services = services.addClass<CacheConsumer>(CacheConsumer).as<'singleton'>();
 // IMemoryCache is never registered — falls through to RedisCache, no error
 
 // manual dialect — the same signature, hand-written:
-services.add('pkg:CacheConsumer', CacheConsumer, [[
+services = services.addClass('pkg:CacheConsumer', CacheConsumer, [[
   union('pkg:IRedisCache', 'pkg:IMemoryCache'),
 ]]);
 ```
@@ -112,7 +114,7 @@ so a genuinely absent dependency needs no `!` casts.
 class Environment {
   constructor(public readonly stage: 'prod') {}
 }
-services.add<Environment>(Environment).as<'singleton'>();
+services = services.addClass<Environment>(Environment).as<'singleton'>();
 // "prod" is supplied directly — no token for it exists anywhere
 ```
 
@@ -127,14 +129,18 @@ positionally with `{ typeArg: n }`.
 class Repository<T> {
   constructor(public readonly entityToken: Typeof<T>) {}
 }
-services.add<IRepository<$<1>>>(Repository<$<1>>).as<'request'>();
+services = services.addClass<IRepository<$<1>>>(Repository<$<1>>).as<
+  'request'
+>();
 
 // closing IRepository<User> builds a Repository whose entityToken is the
 // literal string "pkg:User" — no reflection, no MakeGenericType
 resolver.resolve<IRepository<User>>().entityToken; // "pkg:User"
 
 // manual dialect:
-services.add('pkg:IRepository<$1>', Repository, [[{ typeArg: 1 }]]).as(
+services = services.addClass('pkg:IRepository<$1>', Repository, [[{
+  typeArg: 1,
+}]]).as(
   'request',
 );
 ```
@@ -157,9 +163,9 @@ class Report {
 class Printer {
   constructor(private readonly makeReport: (customer: string) => Report) {}
 }
-services.add<ILogger>(ConsoleLogger).as<'singleton'>();
-services.add<Report>(Report).as<'singleton'>();
-services.add<Printer>(Printer).as<'singleton'>();
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
+services = services.addClass<Report>(Report).as<'singleton'>();
+services = services.addClass<Printer>(Printer).as<'singleton'>();
 // makeReport("acme") resolves `log` from the container, threads "acme" straight
 // through to the ctor
 
@@ -184,8 +190,8 @@ class RequestContext {
 class Cache {
   constructor(private readonly ctx: RequestContext) {}
 }
-services.add<RequestContext>(RequestContext).as<'request'>();
-services.add<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
+services = services.addClass<RequestContext>(RequestContext).as<'request'>();
+services = services.addClass<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
 
 const req = app.createScope('request');
 const cache = req.resolve<Cache>();
@@ -204,10 +210,12 @@ plugin-less author would have written, never adding a capability.
 
 ```ts
 // tokenless — the transformer expands this at build time
-services.add<ILogger>(ConsoleLogger).as<'singleton'>();
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
 
 // exactly what it lowers to, and what a plugin-less author writes by hand
-services.add('pkg:ILogger', ConsoleLogger, [[]]).as('singleton');
+services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).as(
+  'singleton',
+);
 ```
 
 Every feature above has this same relationship: `union(...)`, `{ value }`, `{ typeArg }`, and
@@ -226,9 +234,9 @@ some key" and `/.*/` means "keyed or not", a distinction the reference can't exp
 / `Iterable<T>` stay non-keyed-only, so the two aggregate forms never overlap.
 
 ```ts
-services.add<IStore>(RedisStore).as<'singleton'>(); // key '' — the plain registration
-services.add<IStore>(SqlStore, 'sql').as<'singleton'>();
-services.add<IStore>(MemStore, 'mem').as<'singleton'>();
+services = services.addClass<IStore>(RedisStore).as<'singleton'>(); // key '' — the plain registration
+services = services.addClass<Keyed<IStore, 'sql'>>(SqlStore).as<'singleton'>();
+services = services.addClass<Keyed<IStore, 'mem'>>(MemStore).as<'singleton'>();
 
 resolver.resolve<IStore>(); // RedisStore — the unkeyed one
 resolver.resolve<IStore>('sql'); // SqlStore — exact key
@@ -248,6 +256,57 @@ class Audit {
 
 // manual dialect — what Keyed<IStore, 'sql'> lowers to:
 resolver.resolve('pkg:IStore#sql');
+```
+
+### 11. Immutable registration + gated fluent signature builder
+
+The reference container's `IServiceCollection` is a mutable `List<ServiceDescriptor>` — every
+`services.AddSingleton<T>()` call appends in place and hands back the SAME reference, so chaining is
+just repeated mutation of one object. Here, `ServiceManifest` is an immutable, iterable decorator
+chain: every registration verb (`addClass` / `addFactory` / `addValue`) and every chain modifier
+(`.as` / `.withKey` / `.withSignature` / `.withSignatures`) returns a NEW manifest wrapping the one
+it was called on, and the receiver itself is untouched. A call whose result is discarded registers
+nothing — there is no implicit "current collection" to have mutated.
+
+```ts
+let services = new ServiceManifest();
+services = services.addClass<ILogger>(ConsoleLogger); // ← must be kept
+services.addClass<IClock>(SystemClock); // ← LOST: result discarded, SystemClock never registered
+```
+
+The plugin-less, no-sugar `addClass(token, ctor)` / `addFactory(token, factory)` forms go one step
+further: dependency signatures are mandatory, and the bare 2-arg call **withholds the manifest
+face** — `build` / `addClass` / `seal` are compile-time absent from what it returns — until
+`.withSignature(...)` or `.withSignatures(...)` supplies one. `.as(...)` / `.withKey(...)` may still
+be applied first; they refine the pending registration without opening the gate. Passing a signature
+positionally (the 3+-arg overloads) starts the chain already ungated.
+
+```ts
+const pending = services.addClass('pkg:IRepo', SqlRepo); // gated — no signature yet
+pending.build(); // compile error: `build` isn't on `pending`'s type until a signature arrives
+
+services = pending.withSignature('pkg:IConnection').as('singleton'); // opens the gate
+
+// withSignature APPENDS and is repeatable — each call adds one more injectable overload:
+services = services.addClass('pkg:ICache', RedisOrMemCache)
+  .withSignature('pkg:IRedisClient')
+  .withSignature('pkg:IMemoryStore');
+
+// withSignatures REPLACES the whole signature set in bulk, once — it cannot follow
+// a withSignature append, and (like withSignature) it opens the gate:
+services = services.addClass('pkg:ICache', RedisOrMemCache)
+  .withSignatures(['pkg:IRedisClient'], ['pkg:IMemoryStore']);
+```
+
+Under the transformer's type-driven sugar (`addClass<I>(C)`), the signature is derived from the
+constructor automatically, so the chain is never gated — `withSignature<T>()`/`withSignatures<T>()`
+there are OVERRIDES of the derived signature, not gate-openers:
+
+```ts
+services = services.addClass<ICache>(RedisCache).as<'singleton'>(); // manifest present immediately
+services = services.addClass<ICache>(RedisCache).withSignature<
+  [IRedisClient]
+>(); // overrides the derived signature
 ```
 
 ---
@@ -314,7 +373,7 @@ not appear anywhere in `libraries/di*`):
 
 The PRD's exact token-derivation grammar (package-public vs. app-internal path rules, nested-type
 qualification, the `<source>:<exportName>` format) plausibly still holds in spirit — the same
-concept names (`nameof`, app-internal fallback) exist in `libraries/primitives.transformer/src` —
+concept names (`tokenfor`, app-internal fallback) exist in `libraries/primitives.transformer/src` —
 but wasn't diffed rule-by-rule against the current implementation here. Same caveat for the exact
 factory-signature diagnostic rules and the full token-derivation edge-case table. Verify against
 `libraries/primitives.transformer/src` before citing exact behavior.

@@ -8,23 +8,82 @@ import (
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
+
+	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
 // knownPrimitives maps each compile-time primitive an inlineable body may call to
 // its HOME module — the module an inline body is allowed to import it from.
-// `nameof<T>()` binds a TYPE argument and lives in the universal
-// `@rhombus-std/primitives` leaf (runtime source imports it directly, so it must
-// stay universally importable). `signatureof(ctor)` binds a VALUE argument (a
+// The token-derivation pair binds a TYPE or VALUE argument and homes in the
+// authoring package `@rhombus-std/primitives.extras` (constraint 11: pure
+// transformables, moved out of the runtime `@rhombus-std/primitives` leaf — every
+// call is elided from the shipped output after lowering, so nothing ships a
+// reference and a consumer deps the authoring package build-time only).
+// `tokenfor<T>()` / `tokenfor(value)` derives from a TYPE or the value's PRODUCED
+// type (construct/call-sig return; the `addClass` / `addFactory` self forms), and
+// `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
+// no unwrap (the `addValue` self form, which registers an already-built value
+// under its own type — matching the di engine's raw-type `addValue` derivation).
+// `signatureof(ctor)` binds a VALUE argument (a
 // class / factory) whose dependency signature the signatureof stage extracts, and
 // `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
 // KEY; both are authoring-time-only constructs, so they live in
-// `@rhombus-std/di.transformer` and a body imports them via a package-relative
-// specifier from within that package (see primitiveImports). A hardcoded map
-// suffices — the declare-by-marker generalization is a future enhancement.
+// `@rhombus-std/di.extras` and a body imports them via a package-relative
+// specifier from within that package (see primitiveImports).
+//
+// `signaturefor<T>()` / `signaturesfor<T>()` bind a TYPE argument (a dependency
+// tuple / tuple-of-tuples) and MINT one overload's / the whole set's `DepSlot`s
+// from it — the type-argument siblings of the value-argument `signatureof`. They
+// produce di.core's `DepSlot` shape and are called from runtime source too, so
+// they home in `@rhombus-std/di.core` and a body imports them by that package name
+// (the peered core). `valueof<T>()` binds a literal TYPE argument and lowers to its
+// VALUE (`valueof<"scoped">()` → `"scoped"`) — the authoring-only half of the
+// `.as<Scope>()` sugar, homed in `@rhombus-std/di.extras` beside signatureof /
+// keyof and imported via a package-relative specifier. A hardcoded map suffices —
+// the declare-by-marker generalization is a future enhancement.
+// `isSingular<T>()` / `singularValue<T>()` bind a TYPE argument and are the
+// resolve-family sugar's compile-time SINGULAR-type predicate / value (§94):
+// `isSingular<T>()` lowers to a boolean literal and `singularValue<T>()` to the
+// singular type's value literal, so a resolve body can branch
+// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())` and the
+// engine constant-folds the dead branch away. Both are authoring-time-only
+// (never in runtime source), so they home in the token-grammar transformer
+// `@rhombus-std/primitives.extras` beside `tokenfor` / `tokenof` (the §92 homing
+// rule; constraint 11 reunited the whole family there).
+// `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
+// schema object literal — the engine half of the `.withType<T>()` sugar body
+// `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
+// family's `@rhombus-std/config.extras` (a body imports it via a
+// package-relative specifier from within that package).
 var knownPrimitives = map[string]string{
-	"nameof":      "@rhombus-std/primitives",
-	"signatureof": "@rhombus-std/di.transformer",
-	"keyof":       "@rhombus-std/di.transformer",
+	"tokenfor":       "@rhombus-std/primitives.extras",
+	"tokenof":        "@rhombus-std/primitives.extras",
+	"keyedtokenfor":  "@rhombus-std/di.extras",
+	"signatureof":    "@rhombus-std/di.extras",
+	"keyof":          "@rhombus-std/di.extras",
+	"signaturefor":   "@rhombus-std/di.core",
+	"signaturesfor":  "@rhombus-std/di.core",
+	"valueof":        "@rhombus-std/di.extras",
+	"isSingular":     "@rhombus-std/primitives.extras",
+	"singularValue":  "@rhombus-std/primitives.extras",
+	"isFactory":      "@rhombus-std/primitives.extras",
+	"returntokenfor": "@rhombus-std/primitives.extras",
+	"paramtokensfor": "@rhombus-std/primitives.extras",
+	"schemaof":       "@rhombus-std/config.extras",
+}
+
+// knownRuntimeCallees maps each RUNTIME helper a certified body may CALL — as
+// opposed to a compile-time primitive it composes — to its HOME module. Unlike a
+// primitive (which the token/signatureof/… stages LOWER away), a runtime callee
+// SURVIVES lowering as an ordinary function call in the shipped output, and the
+// inline stage MATERIALIZES its import into the consumer file (via the valueimport
+// engine). It is the one bounded escape from §101's "primitives + verbs only" body
+// grammar (§99, option B): a body may call an imported value, but ONLY in callee
+// position and ONLY a value on this allowlist — never an arbitrary expression, a
+// global, or an arrow. `overrideSignatures` (di.core, §99) merges a sparse
+// registration-override array at runtime.
+var knownRuntimeCallees = map[string]string{
+	"overrideSignatures": "@rhombus-std/di.core",
 }
 
 // Discriminator is the structural overload key: (type-parameter count, value
@@ -53,15 +112,36 @@ func (d Discriminator) Equal(o Discriminator) bool {
 
 // ResolvedBody is the side-parsed impl body plus the metadata substitution and
 // classification need: the single return expression, the impl's type-parameter
-// and value-parameter names in order, its structural discriminator, and the
-// impl file's primitive-import map (local name -> canonical primitive name).
+// and value-parameter names in order, its structural discriminator, the impl
+// file's primitive-import map (local name -> canonical primitive name), and its
+// body-external TYPE-import map (local name -> imported reference) for
+// composed-generic derivation.
 type ResolvedBody struct {
 	Body             *shimast.Node
 	TypeParams       []string
 	Params           []string
 	Discriminator    Discriminator
 	PrimitiveImports map[string]string
-	File             string
+	TypeImports      map[string]TypeImportRef
+	// RuntimeCallees maps each body-local name of a RUNTIME callee import
+	// (knownRuntimeCallees) to the (module, export) its import materializes to. A
+	// body may call these; they survive lowering and the inline stage injects their
+	// imports into the consumer file.
+	RuntimeCallees map[string]valueimport.Ref
+	File           string
+}
+
+// TypeImportRef is a body-external TYPE import a sugar body references in a
+// type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
+// used as the base of `tokenfor<IOptions<T>>()`). The inline stage records it on
+// the composed-generic use so the lowering stage can resolve the base symbol
+// against the consumer program (side-parsed bodies carry no checker).
+type TypeImportRef struct {
+	// Module is the bare package specifier the type is imported from.
+	Module string
+	// Export is the imported type's exported name (its property name when the
+	// specifier is aliased).
+	Export string
 }
 
 // bodyExtractor side-parses declaring packages, caching each parsed file by its
@@ -124,6 +204,12 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
 	primImports := primitiveImports(implSF, packageName(packageDir))
+	typeImports := bodyTypeImports(implSF)
+	// The impl file's runtime-callee imports are file-wide (every body in inline.ts
+	// shares them), so keep only the ones THIS body's expression actually calls —
+	// otherwise a body that never references `overrideSignatures` would still
+	// materialize its import at its call sites.
+	runtimeCallees := usedRuntimeCallees(expr, runtimeCalleeImports(implSF))
 
 	rb := &ResolvedBody{
 		Body:             expr,
@@ -131,6 +217,8 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 		Params:           params,
 		Discriminator:    disc,
 		PrimitiveImports: primImports,
+		TypeImports:      typeImports,
+		RuntimeCallees:   runtimeCallees,
 		File:             implFile,
 	}
 	if err := b.checkFreeIdentifiers(rb, e); err != nil {
@@ -204,6 +292,14 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 	for local := range rb.PrimitiveImports {
 		allowed[local] = true
 	}
+	// Runtime-callee imports (§99, option B) are allowed ONLY in callee position —
+	// a body may CALL them, never reference them as a bare value — so they are kept
+	// OUT of `allowed` (which would permit any position) and checked at the call
+	// site below.
+	runtimeCallees := map[string]bool{}
+	for local := range rb.RuntimeCallees {
+		runtimeCallees[local] = true
+	}
 	// A dedicated value-position walk. It flags any identifier that is not an
 	// allowed value reference, descending into every VALUE child so a free
 	// identifier ANYWHERE is reached — including a call argument that follows a
@@ -231,7 +327,13 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 			return
 		case shimast.KindCallExpression:
 			call := n.AsCallExpression()
-			check(call.Expression)
+			// A runtime-callee import is valid HERE (callee position) and nowhere
+			// else: skip checking such a callee, but still check every argument.
+			if callee := call.Expression; callee.Kind == shimast.KindIdentifier && runtimeCallees[callee.Text()] {
+				// valid runtime callee — fall through to the argument walk
+			} else {
+				check(call.Expression)
+			}
 			if call.Arguments != nil {
 				for _, arg := range call.Arguments.Nodes {
 					check(arg)
@@ -371,7 +473,7 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 // A primitive is accepted from its home module directly (`nameof` from
 // `@rhombus-std/primitives`), OR — when the primitive's home IS the declaring
 // package — via a package-relative specifier (`signatureof` from `./signatureof`,
-// authored inside `@rhombus-std/di.transformer`), so a same-package authoring
+// authored inside `@rhombus-std/di.extras`), so a same-package authoring
 // primitive need not be self-imported by package name. A primitive imported from
 // any OTHER module (e.g. a stale `signatureof` from primitives) is rejected.
 func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]string {
@@ -412,6 +514,122 @@ func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]st
 		}
 	}
 	return out
+}
+
+// bodyTypeImports reads sf's top-level named imports from BARE package specifiers
+// and returns a local-name -> imported-reference map for every binding that is NOT
+// a known primitive — the body-external TYPE imports a sugar body may reference in
+// a type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
+// used as `tokenfor<IOptions<T>>()`). Primitives are excluded (they are recorded
+// separately by primitiveImports as CALLEES, never composed-generic bases), and
+// relative specifiers are excluded (a body-external base is always a package the
+// consumer program can resolve by name). Aliasing is honored: the recorded Export
+// is the specifier's property name.
+func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
+	out := map[string]TypeImportRef{}
+	if sf == nil {
+		return out
+	}
+	for _, stmt := range sf.Statements.Nodes {
+		if stmt.Kind != shimast.KindImportDeclaration {
+			continue
+		}
+		decl := stmt.AsImportDeclaration()
+		spec := decl.ModuleSpecifier
+		if spec == nil || spec.Kind != shimast.KindStringLiteral {
+			continue
+		}
+		module := spec.Text()
+		if isRelativeSpecifier(module) {
+			continue
+		}
+		clause := decl.ImportClause
+		if clause == nil {
+			continue
+		}
+		bindings := clause.AsImportClause().NamedBindings
+		if bindings == nil || bindings.Kind != shimast.KindNamedImports {
+			continue
+		}
+		for _, el := range bindings.AsNamedImports().Elements.Nodes {
+			exported := importSpecifierExportedName(el)
+			if _, isPrimitive := knownPrimitives[exported]; isPrimitive {
+				continue
+			}
+			if _, isRuntimeCallee := knownRuntimeCallees[exported]; isRuntimeCallee {
+				continue
+			}
+			out[el.Name().Text()] = TypeImportRef{Module: module, Export: exported}
+		}
+	}
+	return out
+}
+
+// runtimeCalleeImports reads sf's top-level named imports and returns a local-name
+// -> (module, export) map for every binding that is a known RUNTIME callee
+// (knownRuntimeCallees) imported unaliased from its HOME module. A body may CALL
+// these — they survive lowering and the inline stage materializes their import
+// into the consumer via the valueimport engine. Aliasing is rejected (the local
+// name must equal the export, mirroring primitiveImports), and a callee imported
+// from any other module is ignored.
+func runtimeCalleeImports(sf *shimast.SourceFile) map[string]valueimport.Ref {
+	out := map[string]valueimport.Ref{}
+	if sf == nil {
+		return out
+	}
+	for _, stmt := range sf.Statements.Nodes {
+		if stmt.Kind != shimast.KindImportDeclaration {
+			continue
+		}
+		decl := stmt.AsImportDeclaration()
+		spec := decl.ModuleSpecifier
+		if spec == nil || spec.Kind != shimast.KindStringLiteral {
+			continue
+		}
+		module := spec.Text()
+		clause := decl.ImportClause
+		if clause == nil {
+			continue
+		}
+		bindings := clause.AsImportClause().NamedBindings
+		if bindings == nil || bindings.Kind != shimast.KindNamedImports {
+			continue
+		}
+		for _, el := range bindings.AsNamedImports().Elements.Nodes {
+			exported := importSpecifierExportedName(el)
+			local := el.Name().Text()
+			home, known := knownRuntimeCallees[exported]
+			if !known || exported != local || module != home {
+				continue
+			}
+			out[local] = valueimport.Ref{Module: home, Export: exported}
+		}
+	}
+	return out
+}
+
+// usedRuntimeCallees narrows the impl file's runtime-callee imports to the subset
+// THIS body's return expression actually calls (an identifier callee that is one of
+// fileCallees). Since every body in a shared impl file (inline.ts) sees the same
+// file-wide imports, this per-body walk is what stops a body from materializing an
+// import for a callee it never uses.
+func usedRuntimeCallees(expr *shimast.Node, fileCallees map[string]valueimport.Ref) map[string]valueimport.Ref {
+	used := map[string]valueimport.Ref{}
+	if expr == nil || len(fileCallees) == 0 {
+		return used
+	}
+	walk(expr, func(n *shimast.Node) bool {
+		if n.Kind == shimast.KindCallExpression {
+			callee := n.AsCallExpression().Expression
+			if callee.Kind == shimast.KindIdentifier {
+				if ref, ok := fileCallees[callee.Text()]; ok {
+					used[callee.Text()] = ref
+				}
+			}
+		}
+		return false
+	})
+	return used
 }
 
 // isRelativeSpecifier reports whether an import specifier is package-relative

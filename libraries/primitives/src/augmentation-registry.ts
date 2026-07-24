@@ -34,7 +34,7 @@
 // DELTA INSTALL (docs §79) is the core of the design. The old listener
 // re-installed the ENTIRE accumulated bag on every dispatch, so a member on a
 // heavily-shared token (eight config providers all register onto
-// `nameof<IConfigBuilder>()`) was re-installed once per later
+// `tokenfor<IConfigBuilder>()`) was re-installed once per later
 // registration. Now a member reaches a given prototype exactly ONCE: the
 // catch-up pull covers members registered before decoration, and each
 // registration installs only its own set. Double-installs are impossible by

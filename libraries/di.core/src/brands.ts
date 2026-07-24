@@ -33,8 +33,9 @@ export type Inject<T, K extends Token> = T & { readonly [TOK]?: K; };
 
 /**
  * Compile-time skolem standing in for the `N`th type argument of an open
- * template (1-based). Writing `add<IRepository<$<1>>>(SqlRepository<$<1>>)` binds
- * the hole; the transformer derives `$N` wherever a Hole-branded type appears.
+ * template (1-based). Writing `addClass<IRepository<$<1>>>(SqlRepository<$<1>>)`
+ * binds the hole; the transformer derives `$N` wherever a Hole-branded type
+ * appears.
  *
  * `C` is the constraint carrier: `Hole<1, Entity>` IS an `Entity` (the brand
  * property is optional, so the intersection stays assignable to `C`), which
@@ -101,9 +102,17 @@ export type Typeof<T> = Token & { readonly [ARG]?: T; };
 /**
  * Compile-time phantom brand that pins a resolution KEY for one constructor or
  * factory parameter. A key is not a parallel resolution subsystem — it is a
- * `"#<key>"` suffix on the token the transformer would otherwise derive, so
- * `Keyed<ICache, "redis">` lowers to `resolve("caching.core:ICache#redis")`,
- * an ordinary token that hits the existing exact lookup.
+ * `"#<key>"` suffix on the token the transformer would otherwise derive, so a
+ * keyed service registers and resolves under the ordinary composed token
+ * `caching.core:ICache#redis`, which hits the existing exact lookup (§98).
+ *
+ * How that composed token is spelled at a call site depends on the verb's shape:
+ *   - a DEPENDENCY slot (a keyed ctor / factory parameter) and the key-less query
+ *     verbs (`isService`, `resolveAsync`) carry the SINGLE composed token —
+ *     `Keyed<ICache, "redis">` derives `"caching.core:ICache#redis"` directly;
+ *   - `resolve` / `tryResolve` take a tail key parameter, so a keyed call lowers to
+ *     the split pair `resolve("caching.core:ICache", "redis")` and di.core composes
+ *     `base#key` for the lookup — the same token identity, reached two ways.
  *
  * The value type stays `T` — a plain `T` is assignable because the brand
  * property is optional. Zero runtime footprint.
@@ -119,7 +128,7 @@ export type Typeof<T> = Token & { readonly [ARG]?: T; };
  * ```ts
  * class Handler {
  *   constructor(
- *     redis: Keyed<ICache, "redis">,  // resolve("caching.core:ICache#redis")
+ *     redis: Keyed<ICache, "redis">,  // dep slot: "caching.core:ICache#redis"
  *   ) {}
  * }
  * ```

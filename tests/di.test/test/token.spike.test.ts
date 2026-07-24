@@ -1,13 +1,45 @@
-// SPIKE unit battery for the typed-token redesign (additive; exercises the new
-// `libraries/di.core/src/token.ts` + `token-manifest.ts`, touches nothing in the
-// live engine). A hand-written REFERENCE ORACLE — an independent, split-based
-// canonicaliser + unifier — cross-checks the module's parse/canon/match against
-// ground truth, so the tests aren't self-confirming.
+// Unit battery for the unified token module (exercises `libraries/di.core/src/token/`,
+// touches nothing in the live engine). A hand-written REFERENCE ORACLE — an
+// independent, split-based canonicaliser + unifier — cross-checks the module's
+// parse/canon/match against ground truth, so the tests aren't self-confirming.
 
 import { describe, expect, test } from 'bun:test';
-import { type Descriptor, TokenManifest, TokenProvider } from '../../../libraries/di.core/src/token-manifest.ts';
-import { baseKey, canonicalise, isOpen, match, parse, RESOLVER_TOKEN_STRING, specificity, stringify, substitute,
-  substituteSignature, type TokenNode } from '../../../libraries/di.core/src/token.ts';
+import { type Descriptor, Matcher, RESOLVER_TOKEN_STRING, Specificity, Substituter, TokenManifest, TokenNode,
+  TokenProvider } from '../../../libraries/di.core/src/token/index.ts';
+
+// The module's former free-function surface was folded into the `TokenNode` static
+// companion + the visitor ops. These thin adapters re-expose the old names so this
+// oracle-checked battery keeps exercising the same behaviour through the new API.
+// `match` coerces the `Matcher`'s `undefined` miss back to `null` — the value this
+// suite's assertions were written against.
+function parse(raw: string): TokenNode {
+  return TokenNode.parse(raw);
+}
+function stringify(node: TokenNode): string {
+  return TokenNode.toString(node);
+}
+function canonicalise(raw: string): string {
+  return TokenNode.canonicalise(raw);
+}
+function baseKey(node: TokenNode): string {
+  return TokenNode.baseKey(node);
+}
+function isOpen(node: TokenNode): boolean {
+  return TokenNode.isOpen(node);
+}
+function specificity(node: TokenNode): number {
+  return new Specificity().measure(node);
+}
+function match(template: TokenNode, ground: TokenNode): Map<number, TokenNode> | null {
+  return new Matcher().match(template, ground) ?? null;
+}
+function substitute(node: TokenNode, bind: ReadonlyMap<number, TokenNode>): TokenNode {
+  return new Substituter(bind).rewrite(node);
+}
+function substituteSignature(signature: TokenNode[], bind: ReadonlyMap<number, TokenNode>): TokenNode[] {
+  const sub = new Substituter(bind);
+  return signature.map((slot) => sub.rewrite(slot));
+}
 
 // ── Reference oracle (independent of the module under test) ───────────────────
 

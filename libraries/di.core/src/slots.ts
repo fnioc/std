@@ -12,7 +12,7 @@ import type { DepSlot, TypeArgRef, Union } from './types.js';
  *
  * @example
  * ```ts
- * services.add("pkg:IHandler", Handler, [[
+ * services.addClass("pkg:IHandler", Handler, [[
  *   union("pkg:IRedis", "pkg:IMemoryCache"),
  *   "pkg:ILogger",
  * ]]);
@@ -30,7 +30,7 @@ export function union(...slots: DepSlot[]): Union {
  *
  * @example
  * ```ts
- * services.add("app/IRepo<$1>", SqlRepository, [[typeArg(1), "app/IDb"]]);
+ * services.addClass("app/IRepo<$1>", SqlRepository, [[typeArg(1), "app/IDb"]]);
  * ```
  */
 export function typeArg(n: number): TypeArgRef {

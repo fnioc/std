@@ -54,17 +54,17 @@ Other docs cite a divergence as **`MED-4.2.3.1`** (config family → area 2 → 
 
 Mirrors the order of the `## Architecture` section in the root `CLAUDE.md`.
 
-| F | Family          | ME packages that map here                                                                                                                 |
-| - | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 | `primitives`    | ME.Primitives (change-token subset only)                                                                                                  |
-| 2 | `di`            | ME.DependencyInjection.Abstractions, ME.DependencyInjection (+ our `.transformer` areas, no analog)                                       |
-| 3 | `options`       | ME.Options, ME.Options.ConfigExtensions, ME.Options.DataAnnotations                                                                       |
-| 4 | `config`        | ME.Configuration(.Abstractions/.Binder/.FileExtensions) + providers (.Json/.EnvironmentVariables/.CommandLine) + our `config.transformer` |
-| 5 | `hosting`       | ME.Hosting, ME.Hosting.Abstractions                                                                                                       |
-| 6 | `diagnostics`   | ME.Diagnostics, ME.Diagnostics.Abstractions                                                                                               |
-| 7 | `logging`       | ME.Logging, ME.Logging.Abstractions, ME.Logging.Configuration                                                                             |
-| 8 | `caching`       | ME.Caching.Abstractions, ME.Caching.Memory                                                                                                |
-| 9 | `fileproviders` | ME.FileProviders.Abstractions, ME.FileProviders.Composite                                                                                 |
+| F | Family          | ME packages that map here                                                                                                            |
+| - | --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 | `primitives`    | ME.Primitives (change-token subset only)                                                                                             |
+| 2 | `di`            | ME.DependencyInjection.Abstractions, ME.DependencyInjection (+ our `.transformer` areas, no analog)                                  |
+| 3 | `options`       | ME.Options, ME.Options.ConfigExtensions, ME.Options.DataAnnotations                                                                  |
+| 4 | `config`        | ME.Configuration(.Abstractions/.Binder/.FileExtensions) + providers (.Json/.EnvironmentVariables/.CommandLine) + our `config.extras` |
+| 5 | `hosting`       | ME.Hosting, ME.Hosting.Abstractions                                                                                                  |
+| 6 | `diagnostics`   | ME.Diagnostics, ME.Diagnostics.Abstractions                                                                                          |
+| 7 | `logging`       | ME.Logging, ME.Logging.Abstractions, ME.Logging.Configuration                                                                        |
+| 8 | `caching`       | ME.Caching.Abstractions, ME.Caching.Memory                                                                                           |
+| 9 | `fileproviders` | ME.FileProviders.Abstractions, ME.FileProviders.Composite                                                                            |
 
 ## The stability contract — append-only, never renumber
 

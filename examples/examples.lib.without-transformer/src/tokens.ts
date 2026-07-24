@@ -1,5 +1,5 @@
 // The token strings the manual dialect hand-writes, spelled EXACTLY as
-// `@rhombus-std/di.transformer` derives them for the package-public
+// `@rhombus-std/di.extras` derives them for the package-public
 // `@rhombus-std/examples.contracts` types (`<import-specifier>:<exported-name>`).
 // Writing the derived form by hand is what lets this library's registrations
 // land under the same tokens the with-transformer library and apps resolve —

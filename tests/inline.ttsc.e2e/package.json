@@ -9,10 +9,14 @@
     "test:e2e": "bun test"
   },
   "devDependencies": {
+    "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/di.transformer": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
+    "@rhombus-std/di.extras.options": "workspace:*",
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
     "typescript": "^7.0.2"

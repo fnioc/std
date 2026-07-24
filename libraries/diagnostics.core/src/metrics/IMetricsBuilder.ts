@@ -4,6 +4,11 @@
 // @rhombus-std analog of `IServiceCollection` is di.core's registration builder
 // surface `IServiceManifestBase`. Extension methods (AddListener/EnableMetrics)
 // register services against `services`.
+//
+// `services` is WRITABLE (not `readonly`): di.core's `ServiceManifest` chain is
+// immutable (§di-core-immutable-manifest) -- every registration verb returns a
+// NEW manifest -- so an extension function that registers something reassigns
+// `builder.services = builder.services.addClass(...)` rather than mutating in place.
 
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 
@@ -14,5 +19,5 @@ import type { IServiceManifestBase } from '@rhombus-std/di.core';
  */
 export interface IMetricsBuilder {
   /** The registration builder that extension functions register services against. */
-  readonly services: IServiceManifestBase;
+  services: IServiceManifestBase;
 }

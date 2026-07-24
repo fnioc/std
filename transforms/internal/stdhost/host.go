@@ -1,9 +1,15 @@
 // Package stdhost is the shared single-owner ttsc transform-host scaffolding
 // behind the @rhombus-std owner binary. The command (cmd/ttsc-std) is a thin
-// main that composes a Host value — a name, an ordered stage table, and the
-// preset bundles — and hands it to Run; everything else (manifest parsing,
-// runtime stage selection, the linked-plugin handoff, the per-file transform
-// loop, and the JSON envelope) lives here once.
+// main that composes a Host value — a name and an ordered stage table — and
+// hands it to Run; everything else (the linked-plugin handoff, the per-file
+// transform loop, and the JSON envelope) lives here once.
+//
+// Every stage is ALWAYS on (W7): there is no stage selection. A consumer that
+// reaches any @rhombus-std/*.extras dependency spawns this one host through
+// ttsc's auto-discovery, and the host runs its whole stage table over every
+// file — the stages own disjoint match sets, so a stage with nothing to match is
+// a cheap no-op. WHICH sugar bodies are substituted still comes from the §100
+// dependency scan (CollectProject), but WHICH stages run no longer does.
 //
 // There is ONE host. It links typia through the merge-synthesis stage
 // (internal/mergesynthtransform, #213), which the base stage table now carries;
@@ -27,9 +33,9 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -43,13 +49,12 @@ var (
 	stderr io.Writer = os.Stderr
 )
 
-// Host is one owner binary's identity: its diagnostic name, its ordered stage
-// table (the slice order IS the canonical execution order), and the preset
-// bundle expansions it accepts.
+// Host is one owner binary's identity: its diagnostic name and its ordered stage
+// table (the slice order IS the canonical execution order). Every stage in the
+// table runs on every file — the host performs no selection (W7).
 type Host struct {
-	Name    string
-	Stages  []Stage
-	Bundles map[string][]string
+	Name   string
+	Stages []Stage
 }
 
 // Stage pairs a descriptor name with its transform builder.
@@ -94,12 +99,13 @@ func DiagFromPlugin(d plugin.Diagnostic) Diag {
 	}
 }
 
-// DiagFromDi converts a ditransform.Diagnostic, honoring its advisory Warning
-// vs hard Error category so a warning does not fail emit.
-func DiagFromDi(d ditransform.Diagnostic) Diag {
+// DiagFromDi converts a signatures.Diagnostic, honoring its advisory Warning
+// vs hard Error category so a warning does not fail emit. It carries the shared
+// signature-extraction engine's §4.5 advisory the signatureof stage surfaces.
+func DiagFromDi(d signatures.Diagnostic) Diag {
 	return Diag{
 		File:    d.File,
-		Warning: d.Category == ditransform.Warning,
+		Warning: d.Category == signatures.Warning,
 		Code:    d.Code,
 		Message: d.Message,
 	}
@@ -141,25 +147,14 @@ func runTransform(host Host, args []string) int {
 	_ = fs.String("out", "", "unused: single-file output path")
 	_ = fs.String("rewrite-mode", "", "unused: native rewrite backend id")
 	_ = fs.String("output", "ts", "unused: single-file output kind")
-	pluginsJSON := fs.String("plugins-json", "", "ordered ttsc plugin manifest")
+	// The --plugins-json manifest ttsc fills from a tsconfig `plugins` list no
+	// longer drives selection (W7: the whole stage table is always on). It is
+	// still accepted (and ignored) so ttsc's forwarded flag parses cleanly.
+	_ = fs.String("plugins-json", "", "ttsc plugin manifest (accepted, unused: every stage is always on)")
 	if err := fs.Parse(filterKnownArgs(args)); err != nil {
 		return 2
 	}
 
-	// Selection: the manifest names which stages the consumer declared. Every
-	// rhombusstd_* entry resolves to one of this host's stages (an unknown one is
-	// a hard error); a foreign entry is left to ttsc's linked machinery when it
-	// is linked into this host, else rejected.
-	entries, err := parsePluginEntries(*pluginsJSON)
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
-		return 2
-	}
-	linked, err := parsePluginEntries(os.Getenv(driver.LinkedPluginsEnv))
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: linked manifest: %v\n", host.Name, err)
-		return 2
-	}
 	cwd := *cwdOverride
 	if cwd == "" {
 		var derr error
@@ -170,33 +165,21 @@ func runTransform(host Host, args []string) int {
 		}
 	}
 
-	// §100 declare-by-depending: ONE workspace dependency scan yields BOTH the
-	// stage set to activate AND the inline bodies to substitute. ttsc's own
-	// auto-discovery is direct-only (it spawns this host from the consumer's
-	// direct *.transformer dep); this scan supplies the transitive stage union — a
-	// di.transformer consumer reaches primitives' stages through di.transformer ->
-	// primitives.transformer — and the bodies, threaded into the inline stage so
-	// the walk runs exactly once.
+	// §100 declare-by-depending: ONE workspace dependency scan yields the inline
+	// BODIES to substitute at this consumer's call sites. It no longer selects
+	// stages — every stage is always on — but it still decides which sugar bodies
+	// are in play, threaded into the inline stage so the walk runs exactly once.
 	scan, scanErr := inlinetransform.CollectProject(cwd)
 	if scanErr != nil {
 		fmt.Fprintf(stderr, "%s: dependency scan: %v\n", host.Name, scanErr)
 		return 2
 	}
 
-	selected, err := selectStages(host, entries, namesOf(linked), scan.Stages)
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
-		return 2
-	}
-
-	// Zero-stage guard: with no stage selected (empty manifest AND empty scan) and
-	// no linked plugin, this run would load the program and emit it unchanged,
-	// which a lowering build never intends. Fail loud rather than silently no-op.
-	// A real lowering package always reaches a *.transformer, so this rarely fires.
-	if len(selected) == 0 && len(linked) == 0 {
-		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected (empty manifest + empty dependency scan) and no linked plugins present — this run would load the program and emit it unchanged; check that the package reaches a @rhombus-std/*.transformer dependency\n", host.Name)
-		return 2
-	}
+	// No selection: the whole stage table runs on every file. A stage that matches
+	// nothing in this program is a cheap no-op (disjoint match sets), and a program
+	// with no sugar and no matching source simply emits unchanged — a legitimate
+	// outcome, never a NO_STAGES error (the old selection premise is gone, W7).
+	selected := host.Stages
 
 	prog, diags, err := driver.LoadProgram(cwd, *tsconfigPath, driver.LoadProgramOptions{ForceEmit: true})
 	if err != nil {
@@ -239,9 +222,19 @@ func runTransform(host Host, args []string) int {
 
 	artifacts := inlinetransform.NewArtifacts()
 	env := &Env{Cwd: cwd, Artifacts: artifacts, Bodies: scan.Bodies}
-	transforms := make([]plugin.FileTransform, 0, len(selected))
-	for _, stage := range selected {
-		transforms = append(transforms, stage.Build(prog, ctx, env, emit))
+
+	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
+	// LOOPED set (everything else), then build each into its FileTransform — see
+	// partitionStages for the why. The prePass runs once before the loop; the loop
+	// runs the rest to a fixed point.
+	prePassStages, loopStages := partitionStages(selected)
+	prePass := make([]plugin.FileTransform, 0, len(prePassStages))
+	for _, stage := range prePassStages {
+		prePass = append(prePass, stage.Build(prog, ctx, env, emit))
+	}
+	loop := make([]plugin.FileTransform, 0, len(loopStages))
+	for _, stage := range loopStages {
+		loop = append(loop, stage.Build(prog, ctx, env, emit))
 	}
 
 	for _, sf := range prog.SourceFiles() {
@@ -252,7 +245,7 @@ func runTransform(host Host, args []string) int {
 		if filepath.IsAbs(key) || key == ".." || strings.HasPrefix(key, "../") {
 			continue
 		}
-		out.TypeScript[key] = transformFileToTypeScript(prog, transforms, sf, artifacts, emit)
+		out.TypeScript[key] = transformFileToTypeScript(prog, prePass, loop, sf, artifacts, emit)
 	}
 
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
@@ -263,6 +256,26 @@ func runTransform(host Host, args []string) int {
 		return 3
 	}
 	return 0
+}
+
+// partitionStages splits the selected stages into the one-shot PRE-PASS
+// (mergesynth) and the LOOPED set (everything else). Mergesynth is
+// augmentation-side: its matches are source-written
+// registerAugmentations/applyAugmentations installs, and NO sugar body mints one,
+// so the loop can never produce fresh work for it — running it exactly once before
+// the loop keeps termination trivially explainable (Open issue 2). The rest run
+// repeatedly to a fixed point, since each sugar chain peels one layer per pass. The
+// relative order within each group is preserved from selection; the loop's
+// correctness does not depend on it (disjoint match sets).
+func partitionStages(selected []Stage) (prePass, loop []Stage) {
+	for _, stage := range selected {
+		if stage.Name == stagePrefix+"mergesynth" {
+			prePass = append(prePass, stage)
+		} else {
+			loop = append(loop, stage)
+		}
+	}
+	return prePass, loop
 }
 
 // knownValueFlags names the flags this host reads, each of which takes a value.
@@ -318,112 +331,62 @@ func flagBase(arg string) (string, bool) {
 	return before, found
 }
 
-// pluginEntry is the manifest shape ttsc serializes into --plugins-json (and the
-// TTSC_LINKED_PLUGINS_JSON env). Only the descriptor name drives selection here.
-type pluginEntry struct {
-	Config json.RawMessage `json:"config"`
-	Name   string          `json:"name"`
-	Stage  string          `json:"stage"`
-}
+// maxLoopPasses bounds the fixed-point loop. Each sugar chain peels one layer per
+// pass, so a real file settles in a handful of passes (a 3-deep registration chain
+// takes 3); 16 is a generous ceiling far above any legitimate chain depth. Hitting
+// it means a stage is NOT identity-preserving on a no-op (it rebuilds the tree
+// every pass, so the loop can never observe a fixed point) or two stages are
+// rewriting the same node back and forth — either way an engine bug, surfaced
+// LOUDLY as a per-file FIXED_POINT_EXHAUSTED error rather than a silent cap or an
+// infinite spin.
+const maxLoopPasses = 16
 
-// parsePluginEntries decodes a --plugins-json / linked-manifest value. An empty
-// or whitespace-only string is "no plugins", not an error.
-func parsePluginEntries(input string) ([]pluginEntry, error) {
-	if strings.TrimSpace(input) == "" {
-		return nil, nil
-	}
-	var entries []pluginEntry
-	if err := json.Unmarshal([]byte(input), &entries); err != nil {
-		return nil, fmt.Errorf("invalid plugin manifest: %w", err)
-	}
-	return entries, nil
-}
-
-// namesOf collects the descriptor names present in a manifest.
-func namesOf(entries []pluginEntry) map[string]bool {
-	names := make(map[string]bool, len(entries))
-	for _, e := range entries {
-		names[e.Name] = true
-	}
-	return names
-}
-
-// selectStages resolves the stages to run: the UNION of the host's own dependency
-// scan (§100 declare-by-depending — the transitive stage superset) and the
-// manifest (ttsc's direct-discovery spawn set plus any explicit tsconfig
-// override/opt-in). Each scan id maps to its rhombusstd_<id> stage name.
+// transformFileToTypeScript lowers one file to its fixed point in a single
+// EmitContext and prints the result back as TypeScript for the ttsc host to
+// type-strip.
 //
-// Error contract (every failure loud):
-//   - a scan id or rhombusstd_* manifest name with no matching stage ->
-//     UNKNOWN_STAGE, naming it.
-//   - a non-prefixed entry present in the linked manifest -> left to ttsc's
-//     linked machinery (ApplyLinkedPlugins), skipped here.
-//   - a non-prefixed entry NOT linked -> hard error naming it (this host composes
-//     no foreign transforms yet).
+// Mergesynth is a ONE-SHOT PRE-PASS, run once before the loop (Open issue 2): it
+// is augmentation-side, its matches are only ever the SOURCE-WRITTEN
+// registerAugmentations/applyAugmentations installs, and no sugar body mints one,
+// so the loop can never create fresh work for it — and one-shot placement makes
+// termination trivially explainable. (In the loop it also misbehaves: its
+// strategyNames has no spread-assignment case, so it re-wraps a hand-merge install
+// every pass and never settles — mergesynth.go.) REJOIN CONDITION, if a future
+// sugar body ever EMITS an install call: mergesynth must move back INTO the loop
+// AND gain a spread-recursing strategyNames (recurse through resolveObjectLiteral)
+// so the loop's newly-minted installs are re-seen.
 //
-// The returned slice follows the host's stage-table order regardless of scan or
-// manifest order.
-func selectStages(host Host, entries []pluginEntry, linkedNames map[string]bool, scanStages []string) ([]Stage, error) {
-	index := make(map[string]bool, len(host.Stages))
-	for _, s := range host.Stages {
-		index[s.Name] = true
-	}
-	chosen := map[string]bool{}
-	// Seed from the dependency scan: the transitive stage union (§100), the
-	// superset of what ttsc's direct-only discovery placed in the manifest.
-	for _, id := range scanStages {
-		name := stagePrefix + id
-		if !index[name] {
-			return nil, fmt.Errorf("UNKNOWN_STAGE: dependency scan requested %q which is not a stage of this host", name)
-		}
-		chosen[name] = true
-	}
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name, stagePrefix) {
-			if index[e.Name] {
-				chosen[e.Name] = true
-				continue
-			}
-			// A preset bundle name expands into its ordered constituent stages;
-			// the host's stage-table order below then sorts and dedups the union.
-			if constituents, ok := host.Bundles[e.Name]; ok {
-				for _, name := range constituents {
-					chosen[name] = true
-				}
-				continue
-			}
-			return nil, fmt.Errorf("UNKNOWN_STAGE: %q is not a stage or bundle of this host", e.Name)
-		}
-		if linkedNames[e.Name] {
-			continue
-		}
-		return nil, fmt.Errorf("plugin %q is neither a rhombusstd_* stage nor a linked plugin — this host composes no foreign transforms", e.Name)
-	}
-	out := make([]Stage, 0, len(chosen))
-	for _, stage := range host.Stages {
-		if chosen[stage.Name] {
-			out = append(out, stage)
-		}
-	}
-	return out, nil
-}
-
-// transformFileToTypeScript lowers one file through every selected stage in a
-// single EmitContext — canonical order, back-to-back — and prints the result
-// back as TypeScript for the ttsc host to type-strip. When the inline stage was
-// active it runs the emit sweep (tripwire 2) over the fully-lowered output after
-// parent pointers are fixed up, so a synthetic node can walk to a positioned
-// ancestor, before printing.
-func transformFileToTypeScript(prog *driver.Program, transforms []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit Sink) string {
+// The remaining stages run under RunToFixedPoint — the whole set, back to back,
+// until a full pass changes nothing. Change detection is pointer identity (every
+// stage returns the identical *SourceFile on a no-op). Only after the loop settles
+// does the emit sweep run (tripwire 2) — once, over the fully-lowered, fully-
+// parented output — so a synthetic node can walk to a positioned ancestor.
+func transformFileToTypeScript(prog *driver.Program, prePass, loop []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit Sink) string {
 	options := prog.TSProgram.Options()
 	ec := shimprinter.NewEmitContext()
 	result := sf
-	for _, transform := range transforms {
-		if next := transform(ec, result); next != nil {
+
+	prePassChanged := false
+	for _, transform := range prePass {
+		if next := transform(ec, result); next != nil && next != result {
 			result = next
+			prePassChanged = true
 		}
 	}
-	shimast.SetParentInChildrenUnset(result.AsNode())
+	if prePassChanged {
+		shimast.SetParentInChildrenUnset(result.AsNode())
+	}
+
+	var exhausted bool
+	result, _, exhausted = plugin.RunToFixedPoint(ec, loop, result, maxLoopPasses)
+	if exhausted {
+		emit(Diag{
+			File:    filepath.ToSlash(sf.FileName()),
+			Code:    "FIXED_POINT_EXHAUSTED",
+			Message: fmt.Sprintf("the transform loop did not reach a fixed point after %d passes — the file still changes on every pass. A stage is likely not identity-preserving on a no-op (it rebuilds the tree each pass), or two stages are rewriting the same node back and forth. This is an engine bug, not a user error.", maxLoopPasses),
+		})
+	}
+
 	if artifacts != nil && artifacts.Active {
 		for _, d := range inlinetransform.Sweep(result, artifacts) {
 			emit(DiagFromPlugin(d))

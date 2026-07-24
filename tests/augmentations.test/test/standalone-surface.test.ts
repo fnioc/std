@@ -4,16 +4,16 @@
 // deliberate, version-bump-gated change, so this test must be updated in the same
 // commit that changes the surface.
 
-import { MemoryCacheServiceCollectionExtensions } from '@rhombus-std/caching.memory';
+import { MemoryCacheServiceManifestAugmentations } from '@rhombus-std/caching.memory';
 import { MemoryConfigBuilderExtensions } from '@rhombus-std/config';
 import { CommandLineConfigAugmentations } from '@rhombus-std/config.commandline';
 import { EnvironmentVariablesExtensions } from '@rhombus-std/config.env';
 import { JsonConfigAugmentations } from '@rhombus-std/config.json';
 import { MetricsServiceExtensions, TracingServiceExtensions } from '@rhombus-std/diagnostics';
 import { MetricsOptionsExtensions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
-import { LoggerFilterOptionsExtensions, LoggingServiceCollectionExtensions } from '@rhombus-std/logging';
-import { OptionsConfigServiceCollectionExtensions,
-  OptionsServiceCollectionExtensions } from '@rhombus-std/options.augmentations';
+import { LoggerFilterOptionsExtensions, LoggingServiceManifestAugmentations } from '@rhombus-std/logging';
+import { OptionsConfigServiceManifestAugmentations,
+  OptionsServiceManifestAugmentations } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 const keys = (set: object): string[] => Object.keys(set).sort();
@@ -29,10 +29,10 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
   test('IServiceManifest augmentations', () => {
     expect(keys(MetricsServiceExtensions)).toEqual(['addMetrics']);
     expect(keys(TracingServiceExtensions)).toEqual(['addTracing']);
-    expect(keys(LoggingServiceCollectionExtensions)).toEqual(['addLogging']);
-    expect(keys(MemoryCacheServiceCollectionExtensions)).toEqual(['addDistributedMemoryCache', 'addMemoryCache']);
-    expect(keys(OptionsServiceCollectionExtensions)).toEqual(['addOptions', 'postConfigure', 'validate']);
-    expect(keys(OptionsConfigServiceCollectionExtensions)).toEqual(['configure']);
+    expect(keys(LoggingServiceManifestAugmentations)).toEqual(['addLogging']);
+    expect(keys(MemoryCacheServiceManifestAugmentations)).toEqual(['addDistributedMemoryCache', 'addMemoryCache']);
+    expect(keys(OptionsServiceManifestAugmentations)).toEqual(['addOptions', 'postConfigure', 'validate']);
+    expect(keys(OptionsConfigServiceManifestAugmentations)).toEqual(['configure']);
   });
 
   test('value-object augmentations (§29/#105)', () => {
@@ -50,10 +50,10 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
         MemoryConfigBuilderExtensions,
         MetricsServiceExtensions,
         TracingServiceExtensions,
-        LoggingServiceCollectionExtensions,
-        MemoryCacheServiceCollectionExtensions,
-        OptionsServiceCollectionExtensions,
-        OptionsConfigServiceCollectionExtensions,
+        LoggingServiceManifestAugmentations,
+        MemoryCacheServiceManifestAugmentations,
+        OptionsServiceManifestAugmentations,
+        OptionsConfigServiceManifestAugmentations,
         LoggerFilterOptionsExtensions,
         MetricsOptionsExtensions,
         TracingOptionsExtensions,

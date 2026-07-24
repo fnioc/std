@@ -1,13 +1,13 @@
 // The with-transformer composition root — ONE integrated story, authored in the
-// tokenless dialect with the @rhombus-std/di.transformer + di.transformer.options
+// tokenless dialect with the @rhombus-std/di.extras + di.extras.options
 // plugins. Registration lowering is confined to a module's top level, which is
 // exactly here (the app's composition root), so every `add`/`addValue`/
 // `addOptions` in the CONTAINER SETUP below is authored tokenlessly and lowered
 // during the build. The ONE exception is the hosted-worker wiring at the very
-// bottom: there is no `@rhombus-std/di.transformer` plugin for the hosting
+// bottom: there is no `@rhombus-std/di.extras` plugin for the hosting
 // family yet, so `addHostedService(...)` and the small `ConfigRoot` value
 // it needs are registered with EXPLICIT, hand-written tokens — the guard test in
-// di.transformer.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
+// di.extras.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
 // `tryResolve<T>()` CALL to stay tokenless (see below), which the hosted worker
 // still honors.
 //
@@ -207,34 +207,40 @@ const config = buildConfig();
 const serverOptions = makeServerOptions(config);
 
 const builder = Host.createApplicationBuilder();
-const services = builder.services;
+let services = builder.services;
 
 // The with-transformer library's greeting, plus the without-transformer
 // library's greeting + health check via its manual registration function. Both
-// greetings land in the one IGreeting collection.
-services.add<IGreeting>(FormalGreeting).as<'singleton'>();
-addCasualServices(services);
+// greetings land in the one IGreeting collection. The manifest is immutable, so
+// every registration call is threaded back into `services` — a bare
+// `services.addClass(...)` statement would silently register nothing.
+services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>();
+services = addCasualServices(services);
 
 // The async banner (Promise<IBanner>) and the report factory, both from the
 // built with-transformer library.
-services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
-services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
+services = services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
+services = services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
 
 // The reactive server options — registered as a value so every consumer shares
 // the one live instance.
-services.addValue<IOptions<ServerOptions>>(serverOptions);
+services = services.addValue<IOptions<ServerOptions>>(serverOptions);
 
 // A config-independent policy, delivered as a static IOptions<GreetingPolicy>
 // through the explicit-wrap addOptions<T>() sugar (#34). The satellite lowers
 // `addOptions<T>()` but not the trailing `.as<>()`, so the lifetime is named in
 // the value form (`"singleton"` is a scope name, not a token).
-services.addValue<GreetingPolicy>({ excitement: '!' });
-services.addOptions<GreetingPolicy>().as('singleton');
+services = services.addValue<GreetingPolicy>({ excitement: '!' });
+services = services.addOptions<GreetingPolicy>().as('singleton');
 
 // The live config root + the hosted worker — the file's one explicit-token
 // island (see the header note): no hosting transformer exists yet.
-services.addValue(CONFIG_TOKEN, config);
-services.addHostedService(InteropWorker, [
+services = services.addValue(CONFIG_TOKEN, config);
+
+// The composed chain goes BACK onto the builder. `builder.services` is a live
+// slot over an immutable chain, so everything registered into the local
+// `services` above is invisible to `build()` until it is handed back here.
+builder.services = services.addHostedService(InteropWorker, [
   [RESOLVER_TOKEN, HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, CONFIG_TOKEN],
 ]);
 

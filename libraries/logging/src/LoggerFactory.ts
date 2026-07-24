@@ -26,7 +26,7 @@ import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type IL
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
@@ -43,10 +43,10 @@ interface ProviderRegistration {
   shouldDispose: boolean;
 }
 
-// `@augment(nameof<ILoggerFactory>())` installs the registry's `createLogger(type)`
+// `@augment(tokenfor<ILoggerFactory>())` installs the registry's `createLogger(type)`
 // dispatcher over this factory's primitive (runtime dot-callable — see
 // logging.core's logger-factory-augmentations.ts; not statically typed, §36 + TS2430).
-@augment(nameof<ILoggerFactory>())
+@augment(tokenfor<ILoggerFactory>())
 export class LoggerFactory implements ILoggerFactory {
   readonly #loggers = new Map<string, Logger>();
   readonly #providerRegistrations: ProviderRegistration[] = [];
@@ -193,8 +193,7 @@ export class LoggerFactory implements ILoggerFactory {
    * (and everything it built, the factory included).
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = new ServiceManifest();
-    services.addLogging(configure);
+    const services = new ServiceManifest().addLogging(configure);
     const provider = services.build();
     const singletonScope = provider.createScope('singleton');
     const factory = singletonScope.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN);
@@ -206,7 +205,7 @@ export class LoggerFactory implements ILoggerFactory {
  * Wraps a container-resolved {@link ILoggerFactory} so disposing the factory
  * disposes the owning container scope — the reference's `DisposingLoggerFactory`.
  */
-@augment(nameof<ILoggerFactory>())
+@augment(tokenfor<ILoggerFactory>())
 class DisposingLoggerFactory implements ILoggerFactory {
   public constructor(
     private readonly factory: ILoggerFactory,

@@ -16,8 +16,8 @@ export * from '@rhombus-std/logging.core';
 
 // Side-effect + standalone surface: registers the `addLogging` augmentation against
 // the di.core ServiceManifest token, merges the method onto the IServiceManifestBase
-// interface, and exports the `LoggingServiceCollectionExtensions` set (docs §28/§38).
-export { LoggingServiceCollectionExtensions } from './LoggingServiceCollectionExtensions';
+// interface, and exports the `LoggingServiceManifestAugmentations` set (docs §28/§38).
+export { LoggingServiceManifestAugmentations } from './LoggingServiceManifestAugmentations';
 // Side-effect + standalone surface: registers the ILoggingBuilder augmentations
 // (addProvider/…) against the logging-builder token so the @augment-decorated
 // LoggingBuilder pulls them onto its prototype, and exports the set (docs §38).

@@ -19,7 +19,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { CommandLineConfigSource, type CommandLineConfigSourceOptions } from './CommandLineConfigSource';
 
 // Augmenting the barrel ("@rhombus-std/config"). Config is dist-referenced, so
@@ -78,7 +78,7 @@ export const CommandLineConfigAugmentations = {
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;
 
-registerAugmentations(nameof<IConfigBuilder>(), CommandLineConfigAugmentations);
+registerAugmentations(tokenfor<IConfigBuilder>(), CommandLineConfigAugmentations);
 
 export { CommandLineConfigProvider } from './CommandLineConfigProvider';
 export { CommandLineConfigSource } from './CommandLineConfigSource';

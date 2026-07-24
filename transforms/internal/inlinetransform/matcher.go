@@ -238,12 +238,37 @@ func splitTypeToken(token string) (pkg, typeName string, ok bool) {
 }
 
 // resolveModuleSymbol resolves a bare module specifier to its (merged) module
-// symbol by finding any module-specifier node in the program that names it —
-// an import, an export, or a `declare module` block — and resolving through the
-// checker. Scanning for the specifier keeps this decoupled from whether the
-// consumer imports the package: an augmentation's `declare module` block anchors
-// it just as well as a value import.
+// symbol. It tries two anchors in order:
+//
+//  1. A module-specifier node in the program that names it — an import, an
+//     export, or a `declare module` block — resolved through the checker. This
+//     succeeds whenever some SCANNED file carries a specifier that resolves from
+//     ITS location.
+//
+//  2. Real module RESOLUTION from a consumer source file (the transitive-witness
+//     fix, §94's W5 scope addition). A dist-referenced re-export
+//     (`@rhombus-std/di`'s bundle `export … from '@rhombus-std/di.core'`) carries
+//     the specifier but does NOT resolve from di's OWN dist location under the
+//     isolated linker, so (1) returns nil for a consumer that reaches the target
+//     only through that re-export. The target IS a (dev)dependency of the
+//     CONSUMER, though, so resolving the specifier from a consumer source file
+//     finds the module the checker actually loaded (and merged the sugar
+//     `declare module` augmentation into). Empirically this is the exact failure
+//     mode examples.app.with-transformer hit: di.core absent from (1), present in
+//     the program, resolvable from the app's own files.
 func resolveModuleSymbol(prog *driver.Program, checker *shimchecker.Checker, specifier string) *shimast.Symbol {
+	if sym := resolveModuleSymbolByScan(prog, checker, specifier); sym != nil {
+		return sym
+	}
+	return resolveModuleByResolution(prog, checker, specifier)
+}
+
+// resolveModuleSymbolByScan is the specifier-scan anchor (resolveModuleSymbol path
+// 1): it finds a module-specifier node naming specifier and resolves it through the
+// checker. It succeeds whenever some scanned file carries a specifier that resolves
+// from ITS location, and returns nil otherwise (leaving the module-resolution
+// fallback to try).
+func resolveModuleSymbolByScan(prog *driver.Program, checker *shimchecker.Checker, specifier string) *shimast.Symbol {
 	for _, sf := range prog.SourceFiles() {
 		node := findModuleSpecifierNode(sf, specifier)
 		if node == nil {
@@ -255,6 +280,38 @@ func resolveModuleSymbol(prog *driver.Program, checker *shimchecker.Checker, spe
 		}
 		if resolved := checker.ResolveExternalModuleSymbol(sym); resolved != nil {
 			sym = resolved
+		}
+		return checker.GetMergedSymbol(sym)
+	}
+	return nil
+}
+
+// resolveModuleByResolution resolves specifier through the program's real module
+// resolver from a consumer source file, then returns the module symbol of the
+// resolved file when that file is loaded in the program. It is the fallback anchor
+// for a target reached only transitively (no directly-resolvable specifier node);
+// see resolveModuleSymbol. It walks non-declaration source files (the consumer's
+// own code, which sits where the target is a resolvable dependency) and returns
+// the first module symbol it recovers.
+func resolveModuleByResolution(prog *driver.Program, checker *shimchecker.Checker, specifier string) *shimast.Symbol {
+	for _, sf := range prog.SourceFiles() {
+		if sf.IsDeclarationFile {
+			continue
+		}
+		resolved := prog.TSProgram.ResolveModuleName(specifier, sf.FileName(), 0)
+		if resolved == nil || !resolved.IsResolved() {
+			continue
+		}
+		target := prog.TSProgram.GetSourceFileForResolvedModule(resolved.ResolvedFileName)
+		if target == nil {
+			continue
+		}
+		sym := checker.GetSymbolAtLocation(target.AsNode())
+		if sym == nil {
+			continue
+		}
+		if unwrapped := checker.ResolveExternalModuleSymbol(sym); unwrapped != nil {
+			sym = unwrapped
 		}
 		return checker.GetMergedSymbol(sym)
 	}

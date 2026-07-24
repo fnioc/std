@@ -9,7 +9,7 @@
 // interface-side merge for THIS const's members lives here beside it (rule 0.6);
 // the class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
-// class itself is decorated with `@augment(nameof<IHostBuilder>())`.
+// class itself is decorated with `@augment(tokenfor<IHostBuilder>())`.
 //
 // The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
 // collapse into their async forms -- JS cannot block a thread.
@@ -22,7 +22,7 @@ import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults,
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
@@ -129,7 +129,7 @@ export const HostingHostBuilderAugmentations = {
     hostBuilder: IHostBuilder,
     configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>,
   ): IHostBuilder {
-    return hostBuilder.configureServices((context, services) => {
+    return hostBuilder.configureServices((context, services) =>
       services.addValue(
         HOST_OPTIONS_CONFIGURE_TOKEN,
         (options: HostOptions) => {
@@ -139,8 +139,8 @@ export const HostingHostBuilderAugmentations = {
             (configureOptions as Func<[HostOptions], void>)(options);
           }
         },
-      );
-    });
+      )
+    );
   },
 
   /**
@@ -159,6 +159,9 @@ export const HostingHostBuilderAugmentations = {
       } else {
         (configureLoggingDelegate as Func<[ILoggingBuilder], void>)(builder);
       }
+      // The builder holds whatever the delegate registered -- the chain is
+      // immutable, so `services` itself is unchanged.
+      return builder.services;
     });
   },
 
@@ -178,6 +181,9 @@ export const HostingHostBuilderAugmentations = {
       } else {
         (configureMetricsDelegate as Func<[IMetricsBuilder], void>)(builder);
       }
+      // The builder holds whatever the delegate registered -- the chain is
+      // immutable, so `services` itself is unchanged.
+      return builder.services;
     });
   },
 
@@ -210,8 +216,8 @@ export const HostingHostBuilderAugmentations = {
     const options = new ConsoleLifetimeOptions();
     configureOptions?.(options);
     return hostBuilder.configureServices((_context, services) => {
-      services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
-      services.addFactory(
+      const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
+      return withOptions.addFactory(
         HOST_LIFETIME_TOKEN,
         (resolver: IResolver) =>
           new ConsoleLifetime(
@@ -253,4 +259,4 @@ export const HostingHostBuilderAugmentations = {
   },
 } satisfies AugmentationSet<IHostBuilder>;
 
-registerAugmentations(nameof<IHostBuilder>(), HostingHostBuilderAugmentations);
+registerAugmentations(tokenfor<IHostBuilder>(), HostingHostBuilderAugmentations);

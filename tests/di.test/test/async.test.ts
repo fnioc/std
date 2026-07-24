@@ -25,8 +25,8 @@ function promiseOf(token: Token): Token {
 
 describe('resolveAsync — honest Promise<T> fallback', () => {
   test('a manual Promise<T> registration resolves via resolveAsync to the awaited T', async () => {
-    const services = new ServiceManifest();
-    services.addValue(promiseOf(T.Config), Promise.resolve({ url: 'db://x' }));
+    let services = new ServiceManifest();
+    services = services.addValue(promiseOf(T.Config), Promise.resolve({ url: 'db://x' }));
 
     const provider = services.build();
     const config = await provider.resolveAsync<{ url: string; }>(T.Config);
@@ -35,8 +35,8 @@ describe('resolveAsync — honest Promise<T> fallback', () => {
   });
 
   test('a sync resolve of an async-only token is an honest UnregisteredTokenError', () => {
-    const services = new ServiceManifest();
-    services.addValue(promiseOf(T.Config), Promise.resolve({ url: 'db://x' }));
+    let services = new ServiceManifest();
+    services = services.addValue(promiseOf(T.Config), Promise.resolve({ url: 'db://x' }));
 
     const provider = services.build();
 
@@ -46,9 +46,9 @@ describe('resolveAsync — honest Promise<T> fallback', () => {
 
   test('resolve(Promise<X>) returns the RAW promise as a value, synchronously', async () => {
     const promise = Promise.resolve(42);
-    const services = new ServiceManifest();
+    let services = new ServiceManifest();
     // Registered at its TRUE Promise<X> type — a raw promise IS the instance.
-    services.addValue(T.Raw, promise);
+    services = services.addValue(T.Raw, promise);
 
     const value = services.build().resolve(T.Raw);
 
@@ -63,9 +63,9 @@ describe('resolveAsync — honest Promise<T> fallback', () => {
     }
     defineDeps(Widget, [[T.Config]]);
 
-    const services = new ServiceManifest();
-    services.add(T.Widget, Widget);
-    services.addFactory(promiseOf(T.Config), () => Promise.resolve({ url: 'db://transitive' }));
+    let services = new ServiceManifest();
+    services = services.addClass(T.Widget, Widget, [[T.Config]]);
+    services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ url: 'db://transitive' }), [[]]);
 
     const provider = services.build();
 
@@ -92,12 +92,12 @@ describe('resolveAsync — single-flight + cached-Pending semantics', () => {
     }
     defineDeps(AsyncScoped, [[T.Config]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Scoped, AsyncScoped).as('singleton');
-    services.addFactory(promiseOf(T.Config), () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addFactory(promiseOf(T.Config), () => {
       factoryRuns += 1;
       return Promise.resolve({ n: 7 });
-    });
+    }, [[]]);
 
     const scope = services.build().createScope('singleton');
 
@@ -120,9 +120,9 @@ describe('resolveAsync — single-flight + cached-Pending semantics', () => {
     }
     defineDeps(AsyncScoped, [[T.Config]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Scoped, AsyncScoped).as('singleton');
-    services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }));
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }), [[]]);
 
     const scope = services.build().createScope('singleton');
 
@@ -143,12 +143,12 @@ describe('resolveAsync — union async-reject fall-through', () => {
     }
     defineDeps(UnionHolder, [[union(T.A, T.B)]]);
 
-    const services = new ServiceManifest();
-    services.add(T.UnionHolder, UnionHolder);
+    let services = new ServiceManifest();
+    services = services.addClass(T.UnionHolder, UnionHolder, [[union(T.A, T.B)]]);
     // Member A resolves only via the async fallback — and rejects.
-    services.addFactory(promiseOf(T.A), () => Promise.reject(new Error('A is down')));
+    services = services.addFactory(promiseOf(T.A), () => Promise.reject(new Error('A is down')), [[]]);
     // Member B is a plain value — the fall-through winner.
-    services.addValue(T.B, { source: 'B' });
+    services = services.addValue(T.B, { source: 'B' });
 
     const holder = await services
       .build()
@@ -165,9 +165,9 @@ describe('disposal of async-owned instances', () => {
     }
     defineDeps(AsyncScoped, [[T.Config]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Scoped, AsyncScoped).as('singleton');
-    services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }));
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }), [[]]);
 
     const scope = services.build().createScope('singleton');
     await scope.resolveAsync<AsyncScoped>(T.Scoped); // owns a Pending
@@ -187,9 +187,9 @@ describe('disposal of async-owned instances', () => {
     }
     defineDeps(AsyncScoped, [[T.Config]]);
 
-    const services = new ServiceManifest<'singleton'>();
-    services.add(T.Scoped, AsyncScoped).as('singleton');
-    services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }));
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Scoped, AsyncScoped, [[T.Config]], 'singleton');
+    services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 1 }), [[]]);
 
     const scope = services.build().createScope('singleton');
     const instance = await scope.resolveAsync<AsyncScoped>(T.Scoped);

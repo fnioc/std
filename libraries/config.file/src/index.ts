@@ -24,7 +24,7 @@ import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import { type AugmentationSet, process, registerAugmentations } from '@rhombus-std/primitives';
-import { nameof } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 
@@ -114,7 +114,7 @@ export const FileConfigAugmentations = {
   },
 } satisfies AugmentationSet<IConfigBuilder>;
 
-registerAugmentations(nameof<IConfigBuilder>(), FileConfigAugmentations);
+registerAugmentations(tokenfor<IConfigBuilder>(), FileConfigAugmentations);
 
 export { FormatError, InvalidDataError } from './errors';
 export { FileConfigProvider } from './FileConfigProvider';

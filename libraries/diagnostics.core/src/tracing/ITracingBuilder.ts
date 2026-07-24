@@ -1,6 +1,11 @@
 // ITracingBuilder -- ported from MED.Tracing's `ITracingBuilder`. The tracing
 // analog of IMetricsBuilder; `services` maps the reference `IServiceCollection`
 // to di.core's registration surface.
+//
+// `services` is WRITABLE (not `readonly`): di.core's `ServiceManifest` chain is
+// immutable (§di-core-immutable-manifest) -- every registration verb returns a
+// NEW manifest -- so an extension function that registers something reassigns
+// `builder.services = builder.services.addClass(...)` rather than mutating in place.
 
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 
@@ -10,5 +15,5 @@ import type { IServiceManifestBase } from '@rhombus-std/di.core';
  */
 export interface ITracingBuilder {
   /** The registration builder that extension functions register services against. */
-  readonly services: IServiceManifestBase;
+  services: IServiceManifestBase;
 }

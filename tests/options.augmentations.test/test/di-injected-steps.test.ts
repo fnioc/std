@@ -31,10 +31,10 @@ function baseOptions(): WidgetOptions {
 
 describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(URL_PROVIDER_TOKEN, UrlProvider).as('singleton');
-    services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
-    services.configure<WidgetOptions, [UrlProvider]>(
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.configure<WidgetOptions, [UrlProvider]>(
       OPTIONS_TOKEN,
       [URL_PROVIDER_TOKEN],
       (options, urls) => {
@@ -49,11 +49,11 @@ describe('configure — DI-injected', () => {
   });
 
   test('resolves several deps, injected positionally in token order', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(URL_PROVIDER_TOKEN, UrlProvider).as('singleton');
-    services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
-    services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
-    services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
+    services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(
       OPTIONS_TOKEN,
       [URL_PROVIDER_TOKEN, RETRY_POLICY_TOKEN],
       (options, urls, policy) => {
@@ -69,13 +69,13 @@ describe('configure — DI-injected', () => {
   });
 
   test('a DI configure composes with a plain configure delegate', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.add(URL_PROVIDER_TOKEN, UrlProvider).as('singleton');
-    services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
-    services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'plain';
     });
-    services.configure<WidgetOptions, [UrlProvider]>(
+    services = services.configure<WidgetOptions, [UrlProvider]>(
       OPTIONS_TOKEN,
       [URL_PROVIDER_TOKEN],
       (options, urls) => {
@@ -93,13 +93,13 @@ describe('configure — DI-injected', () => {
 
 describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(SUFFIX_TOKEN, { text: '!' });
-    services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
-    services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(SUFFIX_TOKEN, { text: '!' });
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'base';
     });
-    services.postConfigure<WidgetOptions, [{ text: string; }]>(
+    services = services.postConfigure<WidgetOptions, [{ text: string; }]>(
       OPTIONS_TOKEN,
       [SUFFIX_TOKEN],
       (options, suffix) => {
@@ -118,15 +118,17 @@ describe('validate — DI-injected', () => {
   const LIMIT_TOKEN = 'test:Limit';
 
   function servicesWithLimit(size: number, max: number): IServiceManifest<'singleton'> {
-    const services = new ServiceManifest<'singleton'>();
-    services.addValue(LIMIT_TOKEN, { max });
-    services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size })).as('singleton');
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(LIMIT_TOKEN, { max });
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size })).as(
+      'singleton',
+    );
     return services;
   }
 
   test('a passing predicate resolves the options without throwing', () => {
-    const services = servicesWithLimit(3, 10);
-    services.validate<WidgetOptions, [{ max: number; }]>(
+    let services = servicesWithLimit(3, 10);
+    services = services.validate<WidgetOptions, [{ max: number; }]>(
       OPTIONS_TOKEN,
       [LIMIT_TOKEN],
       (options, limit) => options.retries <= limit.max,
@@ -139,8 +141,8 @@ describe('validate — DI-injected', () => {
   });
 
   test('a failing predicate surfaces the failure message', () => {
-    const services = servicesWithLimit(50, 10);
-    services.validate<WidgetOptions, [{ max: number; }]>(
+    let services = servicesWithLimit(50, 10);
+    services = services.validate<WidgetOptions, [{ max: number; }]>(
       OPTIONS_TOKEN,
       [LIMIT_TOKEN],
       (options, limit) => options.retries <= limit.max,
@@ -154,8 +156,8 @@ describe('validate — DI-injected', () => {
   });
 
   test('a failing predicate with no message uses the default', () => {
-    const services = servicesWithLimit(50, 10);
-    services.validate<WidgetOptions, [{ max: number; }]>(
+    let services = servicesWithLimit(50, 10);
+    services = services.validate<WidgetOptions, [{ max: number; }]>(
       OPTIONS_TOKEN,
       [LIMIT_TOKEN],
       (options, limit) => options.retries <= limit.max,

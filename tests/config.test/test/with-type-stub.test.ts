@@ -2,7 +2,7 @@
 //
 // Importing "@rhombus-std/config/with-type-augment" brings the withType()
 // declaration (and its throwing prototype stub) into scope. Without the real
-// @rhombus-std/config.transformer compile-time transform, calling it must fail loud
+// @rhombus-std/config.extras compile-time transform, calling it must fail loud
 // rather than silently returning an un-coerced builder.
 //
 // This exercises the source module. The published-dist behavior (that the stub
@@ -20,6 +20,6 @@ describe('withType() Tier 2 stub', () => {
 
   test("throws the 'transform did not run' error when called without the transformer", () => {
     expect(() => new ConfigBuilder().withType<{ Port: number; }>())
-      .toThrow(/@rhombus-std\/config.transformer/);
+      .toThrow(/@rhombus-std\/config.extras/);
   });
 });
