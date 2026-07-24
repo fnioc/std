@@ -25,6 +25,7 @@ import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQ
   Token } from '@rhombus-std/di.core';
 import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
 import { tokenfor, tokenof } from '@rhombus-std/primitives';
+import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
 import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
 import { valueof } from './valueof.js';
@@ -76,6 +77,67 @@ interface IInlineRegistrationTarget {
 export const ServiceQueryInline = {
   isService<T>(this: IServiceQuery): boolean {
     return this.isService(tokenfor<T>());
+  },
+};
+
+/**
+ * The POSITIONAL-TAIL view of the resolve-family verbs the resolve sugar bodies
+ * lower against — the receiver type their `this` parameter carries. The verbs
+ * return `any` (not the precise `T` / `Promise<T>` / `T | undefined` the public
+ * overloads spell) purely so the body's `isSingular<T>() ? singularValue<T>() : …`
+ * ternary type-checks: the SINGULAR true arm returns `T` (or the value, for an
+ * async form's Rule-2 literal), so a precise `Promise<T>` receiver return would
+ * fight the union. The inline stage substitutes only the body's return EXPRESSION
+ * and drops the `this` parameter, so the receiver return type is immaterial to the
+ * emitted output — it is byte-identical to di.core's own resolve lowering either way.
+ */
+interface IInlineResolveTarget {
+  resolve(token: Token): any;
+  resolveAsync(token: Token): any;
+  tryResolve(token: Token): any;
+}
+
+/**
+ * The tokenless resolve-family sugar bodies — `resolve<T>()`, `resolveAsync<T>()`,
+ * and `tryResolve<T>()`. Each is the EXACT form a no-transformer consumer would
+ * hand-write, expressed through the `isSingular` / `singularValue` compile-time
+ * predicate (§94):
+ *
+ *   resolve<T>()      → isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())
+ *   resolveAsync<T>() → isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenfor<T>())
+ *   tryResolve<T>()   → isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>())
+ *
+ * Type-directed dispatch lives INSIDE the body, never in the engine (§94): when `T`
+ * is SINGULAR (a literal / null / undefined / void), `isSingular<T>()` lowers to
+ * `true` and the engine constant-folds the ternary to `singularValue<T>()` — the
+ * value itself, matching di.core's Rule-2 singular short-circuit (a hand-written
+ * `resolve(tokenfor<'dev'>())` folds identically, so the sugar and the explicit
+ * form share one semantics). Otherwise `isSingular<T>()` lowers to `false` and the
+ * ternary folds to the token form `this.resolve(tokenfor<T>())`, byte-identical to
+ * the explicit-token lowering. Each verb calls ITSELF with the derived token, so the
+ * method name is preserved (`resolveAsync` stays `resolveAsync`).
+ *
+ * FACTORY form residual: `resolve<F>()` where `F` is a function type shares this
+ * body's discriminator (one type parameter, no value parameters) and so is claimed
+ * here too, but the di-direct oracle lowers it to a RENAMED `resolveFactory("token",
+ * [params])` — a rename this straight body cannot express. It is not yet handled
+ * here: a function-typed `F` is not singular, so the body folds to
+ * `this.resolve(tokenfor<F>())`, and `tokenfor<F>()` over an anonymous function type
+ * derives no token — a loud lowering failure (never a silent mislowering). No
+ * inline-built consumer authors a factory resolve today (the example uses only
+ * interface/promise resolves); the di registration stage keeps lowering the factory
+ * form for the di-direct path until W6 re-expresses it via a function-type predicate
+ * + signatureof-shaped param extraction.
+ */
+export const ResolverInline = {
+  resolve<T>(this: IInlineResolveTarget): T {
+    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>());
+  },
+  resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
+    return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenfor<T>());
+  },
+  tryResolve<T>(this: IInlineResolveTarget): T | undefined {
+    return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>());
   },
 };
 

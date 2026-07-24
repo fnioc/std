@@ -56,6 +56,21 @@
         "member": "addValue"
       },
       {
+        "type": "@rhombus-std/di.core:IRequiredResolver",
+        "impl": "ResolverInline",
+        "member": "resolve"
+      },
+      {
+        "type": "@rhombus-std/di.core:IResolver",
+        "impl": "ResolverInline",
+        "member": "resolveAsync"
+      },
+      {
+        "type": "@rhombus-std/di.core:IResolver",
+        "impl": "ResolverInline",
+        "member": "tryResolve"
+      },
+      {
         "type": "@rhombus-std/di.core:IWithSignatureBuilder",
         "impl": "ManifestChainInline",
         "member": "withSignature"
