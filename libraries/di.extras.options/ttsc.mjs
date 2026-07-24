@@ -6,9 +6,9 @@
 //
 // Every @rhombus-std descriptor resolves to the SAME owner host under the SAME
 // name, so ttsc dedupes them to one cache key and one spawn. There is no stage
-// selection (W7): a consumer that depends on this authoring package spawns the
-// host, which runs its whole stage table; the sugar bodies in play come from the
-// dependency scan, not the descriptor.
+// selection (W7): the host runs its whole stage table, and the addOptions<T>()
+// sugar body in play comes from this package's rhombus.inline entry via the
+// dependency scan — not from the descriptor.
 //
 // This is the Go/ttsc emit path — the sole lowering engine — wired through the
 // `./ttsc` subpath.
@@ -21,7 +21,7 @@ import path from 'node:path';
  */
 export function createTtscPlugin(context) {
   // context.dirname is the load-mode-independent __dirname of THIS descriptor
-  // (libraries/di.transformer); the owner host lives at the repo root.
+  // (libraries/di.extras.options); the owner host lives at the repo root.
   const source = path.resolve(
     context.dirname,
     '..',

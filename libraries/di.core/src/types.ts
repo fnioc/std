@@ -92,7 +92,7 @@ export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
  * a `FactoryRef`, a `Union`, a `LiteralRef`, or a `TypeArgRef`) for parameter `j`
  * of overload `i`. This is the shape `signatureof(ctor)` derives and the third
  * argument `addClass(token, ctor, signatures)` carries, named so authoring-time
- * machinery (the `di.transformer` `signatureof` primitive) can refer to it
+ * machinery (the `di.extras` `signatureof` primitive) can refer to it
  * directly.
  *
  * It is required, never optional, on the positional plugin-less registration

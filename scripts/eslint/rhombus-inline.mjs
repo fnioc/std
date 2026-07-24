@@ -23,7 +23,7 @@ import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 // lowering). `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
 // and are called from runtime source too, so they live in @rhombus-std/di.core
 // (every caller already depends on it). `signatureof`, `keyof`, and `valueof` are
-// authoring-time-only and live in @rhombus-std/di.transformer, imported by that
+// authoring-time-only and live in @rhombus-std/di.extras, imported by that
 // package's own bodies via a package-relative specifier. Mirrors the Go scanner's
 // knownPrimitives map.
 const PRIMITIVE_HOMES = {
@@ -31,10 +31,10 @@ const PRIMITIVE_HOMES = {
   tokenof: '@rhombus-std/primitives.extras',
   signaturefor: '@rhombus-std/di.core',
   signaturesfor: '@rhombus-std/di.core',
-  signatureof: '@rhombus-std/di.transformer',
-  keyof: '@rhombus-std/di.transformer',
-  keyedtokenfor: '@rhombus-std/di.transformer',
-  valueof: '@rhombus-std/di.transformer',
+  signatureof: '@rhombus-std/di.extras',
+  keyof: '@rhombus-std/di.extras',
+  keyedtokenfor: '@rhombus-std/di.extras',
+  valueof: '@rhombus-std/di.extras',
   isSingular: '@rhombus-std/primitives.extras',
   singularValue: '@rhombus-std/primitives.extras',
   isFactory: '@rhombus-std/primitives.extras',

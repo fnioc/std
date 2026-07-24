@@ -19,10 +19,10 @@ var loweredPrimitiveNames = map[string]bool{
 // After the rewrite there is no runtime reference left, but the toolchain's import
 // elision consults the ORIGINAL reference marks (where the primitive WAS
 // value-referenced), so without this pass the emit keeps a dangling
-// `import { signatureof } from "@rhombus-std/di.transformer"` — a value import with
+// `import { signatureof } from "@rhombus-std/di.extras"` — a value import with
 // no remaining runtime reference (the array has been inlined). The specifier is
 // matched by exported name, not module, so it elides regardless of where the
-// primitive was imported from (signatureof from di.transformer, signaturefor /
+// primitive was imported from (signatureof from di.extras, signaturefor /
 // signaturesfor from di.core). The inline path emits no such import (the sugar
 // body's callee is synthetic and the consumer never imports the primitive), so
 // this only fires for a source-written call; it mirrors the nameof stage's elision.

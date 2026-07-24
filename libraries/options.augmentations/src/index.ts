@@ -54,7 +54,7 @@ type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Token; };
 // surface the public `ServiceManifest` (`= IServiceManifestBase<…>`) a consumer
 // holds resolves to -- AND onto the concrete `ServiceManifestClass`, so the
 // class still SATISFIES `implements IServiceManifestBase` once these NEW method
-// names are on the interface. (di.transformer only merges OVERLOADS of existing
+// names are on the interface. (di.extras only merges OVERLOADS of existing
 // methods, so it needs no class-side merge; a brand-new name does.) `Provider`
 // is defaulted so each merge matches its target's type-parameter list (TS2428
 // requires identical parameters).
@@ -65,7 +65,7 @@ declare module '@rhombus-std/di.core' {
      * `tToken`. The explicit, complete, transformer-free verb (#34): internally
      * just `addFactory(token, (t) => Options.of(t), [[tToken]])`, so di gains no
      * new primitive. The type-driven `addOptions<T>()` sugar
-     * (`@rhombus-std/di.transformer.options`) lowers to exactly this call,
+     * (`@rhombus-std/di.extras.options`) lowers to exactly this call,
      * deriving `token` = `token(IOptions<T>)` and `tToken` = `token(T)`.
      *
      * Distinct from the pipeline overload below by its second argument's type: a

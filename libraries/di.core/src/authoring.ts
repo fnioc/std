@@ -164,7 +164,7 @@ export interface IWithKeyBuilder<S extends string, Slots extends Slot, Gated ext
  * It is also the interface-first public surface a di consumer holds: di's public
  * `ServiceManifest` type is `IServiceManifestBase<S, IServiceProvider<S>>` (not the
  * impl class), so the type-driven authoring forms (`addClass<I>(C)`,
- * `addFactory<I>(fn)`, `addValue<I>(v)`) the `@rhombus-std/di.transformer`
+ * `addFactory<I>(fn)`, `addValue<I>(v)`) the `@rhombus-std/di.extras`
  * DECLARATION-MERGES onto this interface surface on a consumer's
  * `services.addClass<I>(...)`. An interface picks up those merged overloads; the
  * impl class would not — the same reason the provider surface is an interface.

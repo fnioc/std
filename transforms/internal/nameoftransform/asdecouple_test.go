@@ -54,14 +54,14 @@ export type $<N extends number> = Hole<N>;
 declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 `)
-	// The real add-sugar body — see di.transformer's own src/inline.ts — now typed
+	// The real add-sugar body — see di.extras's own src/inline.ts — now typed
 	// to return IAsBuilder (rather than buildInlinePresetWorkspace's bare unknown)
 	// so the returned builder's `.as` chain type-checks against a real continuation.
-	// signatureof / valueof are imported from their home (di.transformer), tokenfor
+	// signatureof / valueof are imported from their home (di.extras), tokenfor
 	// from primitives. The `.as<Scope>()` body lowers via valueof — the #269 decouple
 	// makes `.as` a plain inline body (`this.as(valueof<Scope>())`), not a di-stage form.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import { signatureof, valueof } from '@rhombus-std/di.transformer';
+import { signatureof, valueof } from '@rhombus-std/di.extras';
 import type { IAsBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): IAsBuilder<'singleton'> {
@@ -81,7 +81,7 @@ export const ManifestInline = {
 }`)
 	linkPkg(t, app, "@rhombus-std/di.core", core)
 
-	// The standard consumer augmentation (mirroring di.transformer's real
+	// The standard consumer augmentation (mirroring di.extras's real
 	// declare-module) — both the `addClass<T>()` sugar overload AND the authored
 	// `.as<S>()` type-arg form merge onto their respective di.core interfaces.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {

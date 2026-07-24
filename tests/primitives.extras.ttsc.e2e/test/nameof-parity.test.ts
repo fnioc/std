@@ -9,7 +9,7 @@ import { basename, join, resolve } from 'node:path';
 // primitives.extras/ttsc` descriptor, then asserts the emitted JS carries
 // the SAME byte-identical token strings the hand-written TypeScript tokenfor
 // transformer produces (the parity corpus lives in
-// tests/di.transformer.test/test/{tokens,tokenfor}.test.ts).
+// tests/di.extras.test/test/{tokens,tokenfor}.test.ts).
 //
 // The throwaway project lives OUTSIDE the repo tree, per-worktree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>: it must sit outside any

@@ -84,7 +84,7 @@ This package sits at the same leaf level as
 design — it's a pure Go/`ttsc` engine descriptor with nothing beyond the
 TypeScript compiler API underneath it.
 
-Downstream, `di.transformer` and `di.transformer.options` declare it as a
+Downstream, `di.extras` and `di.extras.options` declare it as a
 dependency so `ttsc` activates its `nameof`/`inline`/`signatureof` stages
 alongside their own; a dependency-injection consumer usually doesn't need to
 reference this package directly. A library author minting their own
@@ -99,6 +99,6 @@ the same way and call `tokenfor<T>()` (from
   [`@rhombus-std/primitives`](../primitives/README.md), which owns the runtime stub.
 - `tokenfor<T>()`'s runtime body only ever executes if the transformer isn't
   wired up; a correctly configured build never reaches it.
-- `tokenfor<T>()` calls are rewritten in the same pass as `di.transformer`'s own stages — the
+- `tokenfor<T>()` calls are rewritten in the same pass as `di.extras`'s own stages — the
   build-time engine runs every activated stage together in one hardcoded order, not as separate
   plugins racing to rewrite the same call.

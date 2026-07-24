@@ -20,7 +20,7 @@ import type { Token } from './types.js';
  *
  * `resolve` has two published shapes; the tokenless authoring form `resolve<T>()`
  * (and the factory form `resolve<F>()`) is a PURE TYPING the
- * `@rhombus-std/di.transformer` DECLARATION-MERGES onto THIS interface (via
+ * `@rhombus-std/di.extras` DECLARATION-MERGES onto THIS interface (via
  * `declare module "@rhombus-std/di.core"`), so it lights up only when the transformer
  * is in the TypeScript program. Merging onto the interface that DECLARES `resolve`
  * (rather than a separate carrier) is what lets a factory parameter typed `IResolver`
@@ -65,7 +65,7 @@ export interface IRequiredResolver {
  * service; building it is a separate concern).
  *
  * The tokenless authoring form `isService<T>()` is the pure typing the
- * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
+ * `@rhombus-std/di.extras` DECLARATION-MERGES onto this interface.
  */
 export interface IServiceQuery {
   isService(token: Token): boolean;
@@ -104,7 +104,7 @@ export interface IResolver extends IRequiredResolver, IServiceQuery {
    * softens the "is it registered?" miss, nothing else.
    *
    * The tokenless authoring form `tryResolve<T>()` is the pure typing the
-   * `@rhombus-std/di.transformer` DECLARATION-MERGES onto this interface.
+   * `@rhombus-std/di.extras` DECLARATION-MERGES onto this interface.
    *   - `tryResolve<T>(token)` — explicit token, typed nullable return.
    *   - `tryResolve(token)`    — explicit token, `unknown` return (dynamic).
    */

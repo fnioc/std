@@ -6,7 +6,7 @@
 // calls in server-report.ts. The Go engine runs during the Bun.build emit:
 //
 //   - dist/*.js  — Bun.build bundles the barrel, with @ttsc/unplugin/bun running
-//     the di.transformer Go plugin as an onLoad transform so each tokenless call
+//     the di.extras Go plugin as an onLoad transform so each tokenless call
 //     is lowered to its string token as Bun emits. The workspace runtime deps
 //     stay EXTERNAL — a consumer resolves the same @rhombus-std/di identity at
 //     runtime, never a bundled copy.
@@ -34,8 +34,8 @@ if (dts.status !== 0) {
 
 // Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
 // tsconfig.ttsc.json plugins array, auto-discovery spawns the one owner host from
-// this lib's direct di.transformer devDep, and the host self-selects the full
-// stage set (the di stage plus the primitive stages via di.transformer's
+// this lib's direct di.extras devDep, and the host self-selects the full
+// stage set (the di stage plus the primitive stages via di.extras's
 // primitives.extras dep) from its own dependency scan. Pass `undefined`
 // (NEVER []) so discovery is not suppressed; a non-empty manual plugins array
 // would override.

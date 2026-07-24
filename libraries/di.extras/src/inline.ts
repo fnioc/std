@@ -9,7 +9,7 @@
 // here — with no type to bind, that lowering would rewrite them to the empty
 // token `this.isService("")` and an empty signature array.
 //
-// This package protects them for free: `@rhombus-std/di.transformer` bundles from
+// This package protects them for free: `@rhombus-std/di.extras` bundles from
 // its barrel (`src/index.ts`), which deliberately does NOT re-export this file, so
 // `bun build` never pulls it into `dist`, and the package has no per-file
 // emit at all. This file therefore exists purely as SUBSTITUTION SOURCE the inline
@@ -17,7 +17,7 @@
 // the program), but nothing lowers or ships it. `signatureof` (the authoring-time
 // dependency-signature primitive) and `keyof` (the authoring-time
 // keyed-registration-key primitive) live alongside these bodies here in
-// di.transformer (`./signatureof.js`, `./keyof.js`), not in the runtime
+// di.extras (`./signatureof.js`, `./keyof.js`), not in the runtime
 // `@rhombus-std/primitives` leaf; `tokenfor` stays in that leaf, since runtime source
 // imports it directly.
 
@@ -360,7 +360,7 @@ interface IInlineChainTarget {
  * `signaturefor` / `signaturesfor` are di.core primitives (they produce di.core's
  * `DepSlot` shape and are called from runtime source too), imported from the
  * peered `@rhombus-std/di.core`; `valueof` is the authoring-only literal-value
- * primitive homed here in di.transformer (`./valueof.js`), sibling to
+ * primitive homed here in di.extras (`./valueof.js`), sibling to
  * `signatureof` / `keyof`.
  */
 export const ManifestChainInline = {

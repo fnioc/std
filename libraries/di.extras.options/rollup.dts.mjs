@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/di.transformer.options into a
+// Rolls the public type surface of @rhombus-std/di.extras.options into a
 // single dist/bundle/index.d.ts. `typescript` and the sibling @rhombus-std packages stay
 // EXTERNAL (respectExternal: true) -- they are peer dependencies a consumer
 // already has, not something to inline into the declaration output.

@@ -22,7 +22,7 @@
 // `tokenfor` and `keyof`. The name is lowercase for family consistency with
 // `tokenfor` / `keyof` / `signatureof`.
 //
-// It lives here in `@rhombus-std/di.transformer` (the authoring-time DI package),
+// It lives here in `@rhombus-std/di.extras` (the authoring-time DI package),
 // NOT in the `@rhombus-std/primitives` leaf, because it is ONLY ever called inside
 // the inline-sugar bodies (`./inline.ts`) — never in runtime source — so it is an
 // authoring-time construct that belongs with the domain transformer, mirroring
@@ -44,7 +44,7 @@
 export function keyedtokenfor<T>(): string {
   void (0 as unknown as T);
   throw new Error(
-    'keyedtokenfor<T>() requires the @rhombus-std/di.transformer build-time '
+    'keyedtokenfor<T>() requires the @rhombus-std/di.extras build-time '
       + 'transformer. Without it, resolve with an explicit composed token: '
       + 'isService("pkg:IFoo#key").',
   );

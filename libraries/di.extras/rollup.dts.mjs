@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/di.transformer into a single
+// Rolls the public type surface of @rhombus-std/di.extras into a single
 // dist/bundle/index.d.ts. `typescript` stays external (a peer dep — consumers have it).
 // The transformer's own source carries no @rhombus-std/di.core runtime import; this guards
 // the type surface against one leaking in.

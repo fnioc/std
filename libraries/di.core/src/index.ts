@@ -58,7 +58,7 @@ export { typeArg, union } from './slots.js';
 // overload set from a tuple-of-tuples (`signaturesfor<...>()`), the type-driven
 // siblings of `signatureof(value)`'s observe-from-a-value form. They live here
 // (not `@rhombus-std/primitives`) because they produce di.core's `DepSlot` shape
-// and every caller — di runtime libs and `di.transformer` — already depends on
+// and every caller — di runtime libs and `di.extras` — already depends on
 // di.core. The runtime bodies throw without the transformer, like `tokenfor`.
 export { overrideSignatures } from './overrideSignatures.js';
 export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } from './signaturefor.js';

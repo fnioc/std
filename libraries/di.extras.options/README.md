@@ -1,9 +1,9 @@
-# @rhombus-std/di.transformer.options
+# @rhombus-std/di.extras.options
 
 **A compile-time plugin that turns `addOptions<T>()` into a fully-typed
 options registration — no manual tokens to write.**
 
-It's a small satellite of [`@rhombus-std/di.transformer`](../di.transformer):
+It's a small satellite of [`@rhombus-std/di.extras`](../di.extras):
 where that plugin lowers `add<T>()` and friends, this one lowers the
 options-specific sugar `addOptions<T>()` to the explicit registration verb
 that [`@rhombus-std/options.augmentations`](../options.augmentations)
@@ -12,8 +12,8 @@ installs at runtime.
 ## Install
 
 ```sh
-bun add @rhombus-std/di.transformer.options
-bun add @rhombus-std/di.core @rhombus-std/di.transformer @rhombus-std/options.augmentations
+bun add @rhombus-std/di.extras.options
+bun add @rhombus-std/di.core @rhombus-std/di.extras @rhombus-std/options.augmentations
 ```
 
 ## Usage
@@ -31,8 +31,8 @@ services = services.addOptions(
 ```
 
 Writing that wrapper token out by hand is what this plugin exists to remove. Importing
-`@rhombus-std/di.transformer.options` (or listing it in your `tsconfig.json`'s `types` array)
-brings the 0-argument sugar into scope for typechecking, alongside `@rhombus-std/di.transformer`
+`@rhombus-std/di.extras.options` (or listing it in your `tsconfig.json`'s `types` array)
+brings the 0-argument sugar into scope for typechecking, alongside `@rhombus-std/di.extras`
 (the two compose; order doesn't matter). With both in scope, you write:
 
 ```ts
@@ -62,7 +62,7 @@ silent no-op form waiting to compile-but-misbehave under plain `tsc`.
 ## How it fits
 
 - Depends on [`@rhombus-std/primitives.extras`](../primitives.extras) for its token
-  derivation, the same engine [`@rhombus-std/di.transformer`](../di.transformer) depends on — this
+  derivation, the same engine [`@rhombus-std/di.extras`](../di.extras) depends on — this
   plugin never touches the DI runtime directly, only types and tokens.
 - Targets the explicit registration verb that
   [`@rhombus-std/options.augmentations`](../options.augmentations) installs

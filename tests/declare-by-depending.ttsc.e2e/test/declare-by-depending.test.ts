@@ -10,10 +10,10 @@ import { basename, join, resolve } from 'node:path';
 // self-selects the full stage set from its own transitive dependency scan. Two
 // fixtures, neither with an explicit tsconfig `plugins` array:
 //
-//   1. transitivity — a consumer that DIRECTLY devDeps di.transformer (whose only
+//   1. transitivity — a consumer that DIRECTLY devDeps di.extras (whose only
 //      declared stage is `di`) and calls tokenfor<T>(). Auto-discovery spawns the
-//      host off di.transformer; the host's scan then reaches primitives.extras
-//      THROUGH di.transformer's honest dependency edge and activates the tokenfor
+//      host off di.extras; the host's scan then reaches primitives.extras
+//      THROUGH di.extras's honest dependency edge and activates the tokenfor
 //      stage, so tokenfor<T>() lowers to its token. ttsc's own direct-only discovery
 //      could never reach that transitive stage — this is what the host scan adds.
 //   2. cores don't force-activate — a consumer that deps ONLY di.core (a core, no
@@ -44,7 +44,7 @@ const lib = (name: string): string => join(REPO_ROOT, 'libraries', name);
 // Outside the repo tree (see the header: an enclosing package.json re-roots token
 // derivation), keyed by the worktree dir name so concurrent sessions don't collide.
 const ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'dbd');
-const CONSUMER = join(ROOT, 'consumer'); // fixture 1: devDeps di.transformer
+const CONSUMER = join(ROOT, 'consumer'); // fixture 1: devDeps di.extras
 const CORE_ONLY = join(ROOT, 'core-only'); // fixture 2: deps only di.core
 // The plugin cache (keyed sidecar binaries) and the Go build scratch/object cache
 // are content-keyed, so one machine-wide location is shared across every suite,
@@ -160,7 +160,7 @@ beforeAll(async () => {
   mkdirSync(CONSUMER, { recursive: true });
   mkdirSync(CORE_ONLY, { recursive: true });
 
-  // Fixture 1: devDeps di.transformer (the transitivity proof). di.transformer's
+  // Fixture 1: devDeps di.extras (the transitivity proof). di.extras's
   // own primitives.extras dependency is what carries the tokenfor stage; the
   // host reaches it through the scan. The transitive @rhombus-std packages are
   // linked so the host's walk resolves them from the fixture's node_modules.
@@ -169,12 +169,12 @@ beforeAll(async () => {
     JSON.stringify({
       name: '@fixture/consumer',
       private: true,
-      devDependencies: { '@rhombus-std/di.transformer': '*' },
+      devDependencies: { '@rhombus-std/di.extras': '*' },
     }),
   );
   linkToolchain(CONSUMER);
   const cScoped = join(CONSUMER, 'node_modules', '@rhombus-std');
-  link(lib('di.transformer'), join(cScoped, 'di.transformer'));
+  link(lib('di.extras'), join(cScoped, 'di.extras'));
   link(lib('di.core'), join(cScoped, 'di.core'));
   link(lib('primitives'), join(cScoped, 'primitives'));
   link(lib('primitives.extras'), join(cScoped, 'primitives.extras'));
@@ -210,8 +210,8 @@ beforeAll(async () => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () => {
-  test('a di.transformer dep transitively activates the tokenfor stage', () => {
-    // The host reached primitives.extras through di.transformer's honest
+  test('a di.extras dep transitively activates the tokenfor stage', () => {
+    // The host reached primitives.extras through di.extras's honest
     // dependency edge and lowered tokenfor<IWidget>() to its token.
     expect(consumerApp).toContain('"@fixture/consumer/tokens/app:IWidget"');
     expect(consumerApp).not.toContain('tokenfor');

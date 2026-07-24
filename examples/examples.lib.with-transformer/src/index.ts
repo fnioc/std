@@ -7,7 +7,7 @@
 // + a clean d.ts and never need the transformer.
 //
 // The library exports its impl classes and its report factory; a consuming app
-// performs the container REGISTRATION (di.transformer lowers registration calls
+// performs the container REGISTRATION (di.extras lowers registration calls
 // only at a module's top level, which is the application's composition root, not
 // a library function body). This is the interop matrix's producer half: whatever
 // dialect an app is authored in, it registers these building blocks and the

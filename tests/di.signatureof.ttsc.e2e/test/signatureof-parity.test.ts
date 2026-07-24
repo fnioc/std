@@ -10,7 +10,7 @@ import { basename, join, resolve } from 'node:path';
 // they emit byte-identical output:
 //
 //   inline path   — inline + tokenfor + signatureof + di. The type-driven
-//     `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.transformer's
+//     `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies (di.extras's
 //     rhombus.inline entries) substitute to `this.addClass(tokenfor<I>(), C,
 //     signatureof(C))`; tokenfor
 //     lowers the token, signatureof lowers the dependency-signature array, and
@@ -40,7 +40,7 @@ const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js'
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const DI_CORE = join(REPO_ROOT, 'libraries', 'di.core');
-const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
+const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.extras');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.extras');
 
@@ -176,12 +176,12 @@ function setupWorkspace(): void {
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
-  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.extras'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
   // The consumer must depend on di.core (the type ANCHOR the inline entries name)
-  // AND di.transformer (which now owns the rhombus.inline publish list + the
+  // AND di.extras (which now owns the rhombus.inline publish list + the
   // signatureof primitive), so the inline collector walks to both.
   writeFileSync(
     join(projDir, 'package.json'),
@@ -191,7 +191,7 @@ function setupWorkspace(): void {
     JSON.stringify({
       name: 'di-sig-app',
       version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.transformer': 'workspace:*' },
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' },
     }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
@@ -200,11 +200,11 @@ function setupWorkspace(): void {
     { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
     { transform: '@rhombus-std/primitives.extras/ttsc' },
     { transform: '@rhombus-std/primitives.extras/signatureof-ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
+    { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
   writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
     { transform: '@rhombus-std/primitives.extras/ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
+    { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
   // The PRESET path: ONE descriptor — di.core's `./ttsc` bundle — instead of the
   // four primitive-stage transforms the inline tsconfig enumerates. The owner

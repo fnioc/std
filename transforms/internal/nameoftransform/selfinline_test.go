@@ -59,14 +59,14 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 export declare function keyof<T>(): string | undefined;
 `)
 	// The real sugar bodies, authored over the compile-time primitives (tokenfor /
-	// tokenof from primitives, signatureof from di.transformer). The self bodies omit
+	// tokenof from primitives, signatureof from di.extras). The self bodies omit
 	// the scope/key slots entirely and derive the token from the VALUE — addClass /
 	// addFactory via the produced-type `tokenfor(value)`, addValue via the raw-type
 	// `tokenof(value)` (an already-built value registers under its own type, matching
 	// the di engine's raw-type addValue path); the generic body is present only so a
 	// no-type-arg call has an alternative overload to (correctly) NOT bind to.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
-import { signatureof, keyof } from '@rhombus-std/di.transformer';
+import { signatureof, keyof } from '@rhombus-std/di.extras';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {

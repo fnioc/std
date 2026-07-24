@@ -1,4 +1,4 @@
-# @rhombus-std/di.transformer
+# @rhombus-std/di.extras
 
 **The compile-time companion for `@rhombus-std/di` — it writes your dependency signatures for you.**
 
@@ -7,11 +7,11 @@ Hand-writing a dependency-injection registration means typing out a token string
 ## Install
 
 ```sh
-bun add @rhombus-std/di.transformer
+bun add @rhombus-std/di.extras
 bun add @rhombus-std/di.core
 ```
 
-Importing `@rhombus-std/di.transformer` (or listing it in your `tsconfig.json`'s `types` array) brings the type-driven authoring forms below — `add<I>(C)`, `.as<"x">()`, and friends — into scope for typechecking, no build plugin required. The package itself ships only that type-only `declare module` augmentation plus the brand types it re-exports; the actual lowering of those calls into plain, tokenized JavaScript is done by an optional build-time Go/`ttsc` engine, the same one this repo builds its own packages with.
+Importing `@rhombus-std/di.extras` (or listing it in your `tsconfig.json`'s `types` array) brings the type-driven authoring forms below — `add<I>(C)`, `.as<"x">()`, and friends — into scope for typechecking, no build plugin required. The package itself ships only that type-only `declare module` augmentation plus the brand types it re-exports; the actual lowering of those calls into plain, tokenized JavaScript is done by an optional build-time Go/`ttsc` engine, the same one this repo builds its own packages with.
 
 ## Usage
 
@@ -101,11 +101,11 @@ If the transformer can't statically inspect a constructor at all (a class refere
 
 ## How it fits
 
-`@rhombus-std/di.transformer` depends on [`@rhombus-std/primitives.extras`](../primitives.extras/README.md) so `ttsc` activates its `nameof`/`inline`/`signatureof` stages alongside this package's own registration-lowering stage — the two run together, in one build-time pass. Its `declare module` augmentation extends the authoring surface of [`@rhombus-std/di.core`](../di.core/README.md), which is why installing `@rhombus-std/di.transformer` is what makes `add<IFoo>(Foo)` and `.as<"scope">()` available on a `ServiceManifest` in the first place — a side-effect import (`import '@rhombus-std/di.transformer'`, done automatically when you import anything else from the package) is what wires it in.
+`@rhombus-std/di.extras` depends on [`@rhombus-std/primitives.extras`](../primitives.extras/README.md) so `ttsc` activates its `nameof`/`inline`/`signatureof` stages alongside this package's own registration-lowering stage — the two run together, in one build-time pass. Its `declare module` augmentation extends the authoring surface of [`@rhombus-std/di.core`](../di.core/README.md), which is why installing `@rhombus-std/di.extras` is what makes `add<IFoo>(Foo)` and `.as<"scope">()` available on a `ServiceManifest` in the first place — a side-effect import (`import '@rhombus-std/di.extras'`, done automatically when you import anything else from the package) is what wires it in.
 
-At runtime, everything this transformer lowers is consumed by [`@rhombus-std/di`](../di/README.md) — the actual resolution engine, scopes, and open-generic closing. `@rhombus-std/di.transformer.options` is a satellite that lowers the `addOptions<T>()` sugar the same way, activated by the same build-time engine so both agree on the same tokens for the same program.
+At runtime, everything this transformer lowers is consumed by [`@rhombus-std/di`](../di/README.md) — the actual resolution engine, scopes, and open-generic closing. `@rhombus-std/di.extras.options` is a satellite that lowers the `addOptions<T>()` sugar the same way, activated by the same build-time engine so both agree on the same tokens for the same program.
 
-You never need this package to _consume_ a library that was compiled with it — a library built with the transformer publishes plain, already-lowered JavaScript, so its registrations work in any consumer, transformer or not. Install `@rhombus-std/di.transformer` only in the project whose own classes you want auto-tokenized.
+You never need this package to _consume_ a library that was compiled with it — a library built with the transformer publishes plain, already-lowered JavaScript, so its registrations work in any consumer, transformer or not. Install `@rhombus-std/di.extras` only in the project whose own classes you want auto-tokenized.
 
 ## Notes
 

@@ -8,7 +8,7 @@ import (
 // top-level imports. After the rewrite there is no runtime reference left, but the
 // toolchain's import elision consults the ORIGINAL reference marks (where `valueof`
 // WAS value-referenced), so without this pass the emit keeps a dangling
-// `import { valueof } from "@rhombus-std/di.transformer"` — a value import with no
+// `import { valueof } from "@rhombus-std/di.extras"` — a value import with no
 // remaining runtime reference (the value has been inlined). The inline path emits
 // no such import (the sugar body's callee is synthetic and the consumer never
 // imports the primitive), so this only fires for a source-written valueof; it

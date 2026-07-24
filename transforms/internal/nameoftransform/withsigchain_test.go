@@ -55,11 +55,11 @@ export interface IServiceManifestBase {
 export declare const services: IServiceManifestBase;
 export declare function signaturefor<T extends readonly any[]>(): readonly unknown[];
 `)
-	// The inline bodies, mirroring the real di.transformer ManifestChainInline:
+	// The inline bodies, mirroring the real di.extras ManifestChainInline:
 	// addClass derives token + dep-array; withSignature mints ONE overload's slots
 	// from the tuple and spreads them; as mints the scope literal value.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import { signatureof, valueof } from '@rhombus-std/di.transformer';
+import { signatureof, valueof } from '@rhombus-std/di.extras';
 import { signaturefor } from '@rhombus-std/di.core';
 import type { IAsBuilder, IChain, IServiceManifestBase, IWithSignatureBuilder } from './index';
 export const ChainInline = {
@@ -83,7 +83,7 @@ export const ChainInline = {
 }`)
 	linkPkg(t, app, "@rhombus-std/di.core", core)
 
-	// The consumer augmentation mirroring di.transformer's real declare-module: the
+	// The consumer augmentation mirroring di.extras's real declare-module: the
 	// type-driven addClass<T>() / withSignature<T>() / as<S>() overloads merge onto
 	// their respective di.core faces.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {

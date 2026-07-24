@@ -52,11 +52,11 @@ export declare function keyof<T>(): string | undefined;
 `)
 	// The real add-sugar body, authored over the three compile-time primitives, each
 	// imported from its home module (tokenfor from primitives, signatureof + keyof from
-	// di.transformer). keyof<T>() is the §98 keyed-registration key half, in the KEY
+	// di.extras). keyof<T>() is the §98 keyed-registration key half, in the KEY
 	// slot (argument 5) behind the `void 0` filling the scope slot; an UNKEYED
 	// registration elides both in the inline stage (byte-parity with the plain form).
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import { signatureof, keyof } from '@rhombus-std/di.transformer';
+import { signatureof, keyof } from '@rhombus-std/di.extras';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {

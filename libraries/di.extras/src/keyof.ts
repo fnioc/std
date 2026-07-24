@@ -17,7 +17,7 @@
 // `tokenfor` / `signatureof`; `keyof` is reserved only in TYPE positions, so a
 // value-position declaration and call compile under strict tsc.
 //
-// It lives here in `@rhombus-std/di.transformer` (the authoring-time DI package),
+// It lives here in `@rhombus-std/di.extras` (the authoring-time DI package),
 // NOT in the `@rhombus-std/primitives` leaf, because it is ONLY ever called inside
 // the inline-sugar bodies (`./inline.ts`) — never in runtime source — so it is an
 // authoring-time construct that belongs with the domain transformer, mirroring
@@ -38,8 +38,8 @@
 export function keyof<T>(): string | undefined {
   void (0 as unknown as T);
   throw new Error(
-    'keyof<T>() requires the @rhombus-std/di.transformer authoring transform. '
-      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+    'keyof<T>() requires the @rhombus-std/di.extras authoring transform. '
+      + 'Depend on @rhombus-std/di.extras so ttsc spawns the @rhombus-std transform '
       + 'host (which lowers keyof), or pass the registration key explicitly as the trailing '
       + 'argument to addClass(token, ctor, signatures, scope, key).',
   );

@@ -27,7 +27,7 @@ import { ServiceProviderClass } from './ServiceProviderClass.js';
  * The public authoring INTERFACE a `@rhombus-std/di` consumer holds — di.core's
  * `ServiceManifest<S>`, re-declared locally so it merges with the constructible
  * VALUE of the same name below (one name carrying both type and value through the
- * barrel). The `@rhombus-std/di.transformer` augmentation surfaces through it: it
+ * barrel). The `@rhombus-std/di.extras` augmentation surfaces through it: it
  * merges onto `IServiceManifestBase`, which this resolves to.
  */
 export type IServiceManifest<S extends string = 'singleton'> = ServiceManifestInterface<S>;

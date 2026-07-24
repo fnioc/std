@@ -7,7 +7,7 @@
 // the result. The body contains `schemaof<T>()` over an UNBOUND generic, so it must
 // never go through a per-file primitive lowering here — with no type to bind, that
 // lowering has nothing to derive. This file is therefore protected exactly like
-// `@rhombus-std/di.transformer`'s `src/inline.ts`: the barrel (`src/index.ts`) does
+// `@rhombus-std/di.extras`'s `src/inline.ts`: the barrel (`src/index.ts`) does
 // NOT re-export it, so `bun build` never pulls it into `dist` and it ships nowhere.
 // It exists purely as SUBSTITUTION SOURCE the inline stage side-parses out of `src/`;
 // the typecheck gate still sees it (§15 phantom-typing guard: the `withType<T>()`

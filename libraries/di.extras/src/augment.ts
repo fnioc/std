@@ -2,7 +2,7 @@
 //
 // These generic, token-free forms (`addClass<I>(C)`, `addFactory<I>(fn)`,
 // `addValue<I>(v)`, `.as<"scope">()`, `resolve<T>()`, `resolveAsync<T>()`) NEVER
-// execute: the @rhombus-std/di.transformer rewrites every such call to its
+// execute: the @rhombus-std/di.extras rewrites every such call to its
 // explicit-token / value-arg form before runtime. They are therefore PURE TYPINGS,
 // and they live here rather than in core's published types so that the authoring
 // surface lights up only when the transformer is in the TypeScript program. Without
@@ -27,9 +27,9 @@
 // is why the transformer depends on `@rhombus-std/di.core` ALONE — it never
 // references di's runtime classes.
 //
-// This module must be reachable from @rhombus-std/di.transformer's published types entry
+// This module must be reachable from @rhombus-std/di.extras's published types entry
 // (it is `import`ed for its side effect from `./index.ts`) so that a consumer
-// referencing `@rhombus-std/di.transformer` pulls the augmentation into its program.
+// referencing `@rhombus-std/di.extras` pulls the augmentation into its program.
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 // The `AddChain<Scopes, Slots, Gated>` continuation type the registration forms
@@ -44,7 +44,7 @@ import type { AddChain, IServiceManifest, Slot } from '@rhombus-std/di.core';
 // Re-export the authoring brand types so transformer consumers can use
 // `Inject<T, "tok">`, the open-generics placeholders (`Hole<N, C>`, `$<N>`)
 // and the `Typeof<T>` witness without importing from `@rhombus-std/di.core`
-// directly. A single import of `@rhombus-std/di.transformer` brings both the
+// directly. A single import of `@rhombus-std/di.extras` brings both the
 // transformer plugin and these types into scope.
 export type { $, Hole, Inject, Typeof } from '@rhombus-std/di.core';
 

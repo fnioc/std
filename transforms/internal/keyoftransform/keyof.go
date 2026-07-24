@@ -133,7 +133,7 @@ func sourceWrittenType(checker *shimchecker.Checker, node *shimast.Node) (*shimc
 // top-level imports, mirroring nameoftransform's import elision: after the rewrite
 // there is no runtime reference left, but the toolchain's import elision consults
 // the ORIGINAL reference marks, so without this pass a dangling
-// `import { keyof } from "@rhombus-std/di.transformer"` survives.
+// `import { keyof } from "@rhombus-std/di.extras"` survives.
 func elideKeyofImports(factory *shimast.NodeFactory, sf *shimast.SourceFile) *shimast.SourceFile {
 	statements := sf.Statements.Nodes
 	kept := make([]*shimast.Node, 0, len(statements))

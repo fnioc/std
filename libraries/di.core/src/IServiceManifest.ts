@@ -382,7 +382,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     // legitimate — it passes the guard and links with `signatures: undefined`.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        'addClass<I>(ctor) requires the @rhombus-std/di.transformer plugin. '
+        'addClass<I>(ctor) requires the @rhombus-std/di.extras plugin. '
           + 'Without it, register with an explicit token: addClass("my:token", MyClass, [[]]) '
           + 'or addFactory("my:token", (scope) => ..., [["pkg:IResolver"]]).',
       );
@@ -441,7 +441,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     // form (a real token, no signatures) is legitimate.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        'addFactory<I>(fn) requires the @rhombus-std/di.transformer plugin. Without it, '
+        'addFactory<I>(fn) requires the @rhombus-std/di.extras plugin. Without it, '
           + 'register with an explicit token: addFactory("my:token", (scope) => ..., [["pkg:IResolver"]]).',
       );
     }
@@ -463,7 +463,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * neither `signatures` nor `scope`; the optional trailing `key` composes the
    * keyed token `base#key` (§98). The authoring form `addValue<I>(v)` (which
    * lowers to `addValue("token", v)`) is a PURE TYPING contributed by the
-   * `@rhombus-std/di.transformer` augmentation, not part of di's published
+   * `@rhombus-std/di.extras` augmentation, not part of di's published
    * surface.
    *
    * Returns a NEW manifest — this one is unchanged. There is no chain to
@@ -474,7 +474,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   public addValue(...args: any[]): IServiceManifest<Scopes> {
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
-        'addValue<I>(value) requires the @rhombus-std/di.transformer plugin. Without it, '
+        'addValue<I>(value) requires the @rhombus-std/di.extras plugin. Without it, '
           + 'register with an explicit token: addValue("my:token", value).',
       );
     }
@@ -714,7 +714,7 @@ class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Sco
  * The public registration-builder INTERFACE a di consumer holds — the
  * `IServiceManifestBase` interface bound to the concrete provider `build()`
  * returns (the reference registration-collection analog). Interface-first (not the
- * impl class) so the `@rhombus-std/di.transformer` augmentation — which merges the
+ * impl class) so the `@rhombus-std/di.extras` augmentation — which merges the
  * authored `addClass<I>()` / `addFactory<I>()` / `addValue<I>()` forms onto
  * `IServiceManifestBase` — surfaces on a consumer typing against
  * `ServiceManifest<S>`. A class would not inherit those augmented overloads; the

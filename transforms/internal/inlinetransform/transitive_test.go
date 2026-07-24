@@ -12,7 +12,7 @@ import (
 // blocker hit: a core package (`@scope/core`) owning the inline entry, a middle
 // `@scope/di` package that RE-EXPORTS the core (exactly as `@rhombus-std/di`
 // re-exports `@rhombus-std/di.core`), a sugar package (`@scope/sugar`, the
-// di.transformer analog) whose `declare module '@scope/core'` overload merges onto
+// di.extras analog) whose `declare module '@scope/core'` overload merges onto
 // the core (sugar depends on the core, so its augmentation target resolves), and an
 // app that depends on and imports `@scope/di` ONLY.
 //
@@ -61,7 +61,7 @@ export declare const provider: IQuery;
 export declare const provider: import('@scope/core').IQuery;
 `)
 
-	// The sugar (di.transformer analog): the declare-module overload only. It
+	// The sugar (di.extras analog): the declare-module overload only. It
 	// depends on the core so its augmentation target resolves and merges.
 	sugar := filepath.Join(root, "packages", "sugar")
 	writeT(t, filepath.Join(sugar, "package.json"), `{

@@ -40,7 +40,7 @@ export class MissingMetadataError extends DiError {
       `No dep metadata found for ${ctorName} (resolving "${token}"). The `
         + `constructor has parameters but no dep signature was found on its `
         + `registration. Pass the signature as the third addClass argument `
-        + `(addClass(token, ctor, [[...]])), compile with @rhombus-std/di.transformer, or `
+        + `(addClass(token, ctor, [[...]])), compile with @rhombus-std/di.extras, or `
         + `register it with a factory.`,
     );
   }

@@ -1,6 +1,6 @@
 // @rhombus-std/di — the ioc runtime engine.
 //
-// Consumes the plain-data ABI emitted by @rhombus-std/di.transformer (or hand-fed via
+// Consumes the plain-data ABI emitted by @rhombus-std/di.extras (or hand-fed via
 // @rhombus-std/di.core's authoring surfaces) and resolves the dependency graph. Never
 // touches a TypeScript type — works purely on string tokens and the positional
 // dependency signatures in the global-symbol Map.

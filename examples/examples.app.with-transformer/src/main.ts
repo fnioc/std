@@ -1,13 +1,13 @@
 // The with-transformer composition root — ONE integrated story, authored in the
-// tokenless dialect with the @rhombus-std/di.transformer + di.transformer.options
+// tokenless dialect with the @rhombus-std/di.extras + di.extras.options
 // plugins. Registration lowering is confined to a module's top level, which is
 // exactly here (the app's composition root), so every `add`/`addValue`/
 // `addOptions` in the CONTAINER SETUP below is authored tokenlessly and lowered
 // during the build. The ONE exception is the hosted-worker wiring at the very
-// bottom: there is no `@rhombus-std/di.transformer` plugin for the hosting
+// bottom: there is no `@rhombus-std/di.extras` plugin for the hosting
 // family yet, so `addHostedService(...)` and the small `ConfigRoot` value
 // it needs are registered with EXPLICIT, hand-written tokens — the guard test in
-// di.transformer.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
+// di.extras.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
 // `tryResolve<T>()` CALL to stay tokenless (see below), which the hosted worker
 // still honors.
 //

@@ -38,7 +38,7 @@ const provider = services.build();
 
 Note the reassignment. **A manifest is immutable**: `addClass` / `addFactory` / `addValue` return a _new_ manifest and leave the receiver untouched, so a call whose result is discarded registers nothing. A service with no dependencies states that explicitly as `[[]]` — an empty signature list, never an omitted argument.
 
-There is no global metadata store and no decorator: the dependency signature travels with the registration itself, as the third argument. `@rhombus-std/di.transformer` emits this array automatically for every registration it can statically read a signature from, rewriting the type-driven `addClass<IHandler>(Handler)` into exactly the explicit-token call above — nothing is hoisted, and nothing works differently with or without the transformer wired in.
+There is no global metadata store and no decorator: the dependency signature travels with the registration itself, as the third argument. `@rhombus-std/di.extras` emits this array automatically for every registration it can statically read a signature from, rewriting the type-driven `addClass<IHandler>(Handler)` into exactly the explicit-token call above — nothing is hoisted, and nothing works differently with or without the transformer wired in.
 
 ## Key exports
 
@@ -172,7 +172,7 @@ services = services.addClass<IRepository<$1>>(SqlRepository<$1>);
 
 This mirrors how shell/regex backreference syntax treats `$1`-`$9` as directly usable bare identifiers while reserving a bracketed/braced form (`${10}`, `$<10>`, etc.) for everything beyond. `$<N>` stays exactly as it is — the only spelling for `N ≥ 10`, and still usable at any `N` for anyone who prefers the generic form.
 
-Zero runtime footprint — these are pure compile-time brands read structurally by `@rhombus-std/di.transformer`.
+Zero runtime footprint — these are pure compile-time brands read structurally by `@rhombus-std/di.extras`.
 
 ### `Typeof<T>`
 
@@ -248,7 +248,7 @@ Because the array is keyed on the **registration record**, not on the constructo
 
 ## Open-generic token grammar
 
-Closing a generic is token algebra, not runtime type machinery — TypeScript generics are erased, so there's exactly one JS class per generic implementation. `@rhombus-std/di.transformer` renders this grammar at build time; the functions below are how a resolve-time fallback (or any hand-written manual registration) works with it directly.
+Closing a generic is token algebra, not runtime type machinery — TypeScript generics are erased, so there's exactly one JS class per generic implementation. `@rhombus-std/di.extras` renders this grammar at build time; the functions below are how a resolve-time fallback (or any hand-written manual registration) works with it directly.
 
 **Closed-generic grammar:** `base<arg1,arg2>` — no whitespace around `<` `>` `,`. Each arg is itself a token, so nesting recurses (`pkg:IFoo<pkg:IBar<./src/Baz>>`). A **hole** is an arg that is exactly `$N` (decimal, `N ≥ 1`); a token containing a hole at any depth is an _open template_. Literal-type args keep their interior spaces/quotes (`"a" | "b"`) — the parser is quote-aware, so commas and angle brackets inside double quotes never count as separators.
 
@@ -374,8 +374,8 @@ The class/factory verbs mirror `addClass`'s positional shape (`signatures`, then
 
 - [`@rhombus-std/primitives`](../primitives/README.md) — the zero-dependency leaf `di.core` depends on for the augmentation registry that installs cross-package registration verbs.
 - [`@rhombus-std/di`](../di/README.md) — the runtime resolution engine. Depends on `di.core`, re-exports its authoring surface, and adds `build()` plus scopes, captive-dependency protection, and disposal. Install this alongside `di.core` for an actual application.
-- [`@rhombus-std/di.transformer`](../di.transformer/README.md) — the optional compile-time plugin that lowers the type-driven authoring forms (`addClass<I>(C)`, `addValue<I>(v)`, `resolve<T>()`) into the explicit-token calls this package documents. Depends on `di.core`'s types only, never the runtime engine.
-- [`@rhombus-std/di.transformer.options`](../di.transformer.options/README.md) — a satellite of the transformer above, lowering the `addOptions<T>()` sugar.
+- [`@rhombus-std/di.extras`](../di.extras/README.md) — the optional compile-time plugin that lowers the type-driven authoring forms (`addClass<I>(C)`, `addValue<I>(v)`, `resolve<T>()`) into the explicit-token calls this package documents. Depends on `di.core`'s types only, never the runtime engine.
+- [`@rhombus-std/di.extras.options`](../di.extras.options/README.md) — a satellite of the transformer above, lowering the `addOptions<T>()` sugar.
 
 Many other packages in the family (options, logging, caching, hosting, and more) register their own fluent methods onto `ServiceManifest` the same way this package's descriptor verbs do — install them and they show up on the same collection you're already building.
 

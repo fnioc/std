@@ -1,7 +1,7 @@
 // Type-only authoring surface contributed to `@rhombus-std/di.core` by this
 // satellite: the type-driven `addOptions<T>()` sugar.
 //
-// Like every `@rhombus-std/di.transformer` authored form, `addOptions<T>()` NEVER
+// Like every `@rhombus-std/di.extras` authored form, `addOptions<T>()` NEVER
 // executes — the transformer rewrites it to the explicit verb
 // `addOptions(token(IOptions<T>), token(T))` before runtime. It is therefore a
 // PURE TYPING, living here (not in `@rhombus-std/options.augmentations`'s runtime
@@ -17,7 +17,7 @@
 //
 // This module must be reachable from the published types entry (it is `import`ed
 // for its side effect from `./index.ts`) so a consumer referencing
-// `@rhombus-std/di.transformer.options` pulls the augmentation into its program.
+// `@rhombus-std/di.extras.options` pulls the augmentation into its program.
 
 // A named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.

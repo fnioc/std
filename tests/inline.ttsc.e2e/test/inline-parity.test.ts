@@ -88,7 +88,7 @@ const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js'
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const DI_CORE = join(REPO_ROOT, 'libraries', 'di.core');
-const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
+const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.extras');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.extras');
 
@@ -151,7 +151,7 @@ function goEnv(): NodeJS.ProcessEnv {
 const APP_SOURCE = `
 import type { IServiceProvider } from "@rhombus-std/di.core";
 
-// The sugar overload the di.transformer declaration-merges onto IServiceQuery —
+// The sugar overload the di.extras declaration-merges onto IServiceQuery —
 // hand-declared here so the program carries it without wiring the transformer's
 // own types (the merge target is the real di.core IServiceQuery).
 declare module "@rhombus-std/di.core" {
@@ -201,25 +201,25 @@ function setupWorkspace(): void {
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
-  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.extras'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
-  // The consumer must depend on di.transformer so the collector reaches its
+  // The consumer must depend on di.extras so the collector reaches its
   // rhombus.inline ServiceQueryInline entry (the isService<T>() body) — with the
   // di stage deleted (W6p3), that inline body is the ONLY path that lowers the
   // tokenless isService, so it must be collected. di.core carries the receiver type.
   writeFileSync(
     join(projDir, 'package.json'),
     JSON.stringify({ name: 'inline-e2e-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.transformer': 'workspace:*' } }),
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
   writeTsconfig('tsconfig.inline.json', 'dist-inline', [
     { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
     { transform: '@rhombus-std/primitives.extras/ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
+    { transform: '@rhombus-std/di.extras/ttsc' },
   ]);
 }
 
@@ -295,25 +295,25 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 // The chain needs the `valueof` stage (`.as<Scope>()` → `this.as(valueof<Scope>())`
 // in the sugar body). `valueof` has NO explicit descriptor: it activates ONLY
 // through the host's declare-by-depending dependency scan, which reads
-// di.transformer's package.json `ttsc.stages` (["di","valueof"]). But the host
+// di.extras's package.json `ttsc.stages` (["di","valueof"]). But the host
 // UNIONs that scan with the tsconfig plugin list, and the scan walks the WHOLE
-// transitive dep graph — so a di.transformer dependency drags in primitives.
+// transitive dep graph — so a di.extras dependency drags in primitives.
 // transformer's stages too (inline + nameof + signatureof + keyof + mergesynth).
 // A single shared package.json would therefore force `inline` onto BOTH tsconfigs
 // and collapse the di-direct oracle. Splitting the dep graphs keeps them distinct:
 //
-//   inline/   deps {di.core, di.transformer} → scan activates the FULL set,
+//   inline/   deps {di.core, di.extras} → scan activates the FULL set,
 //             INCLUDING the `di` stage.
 //   semantic/ deps {di.core} only → di.core declares no stages so the scan is
-//             empty; tsconfig plugins [nameof, di.transformer/ttsc] pick the
-//             di-DIRECT lowering with NO inline stage. di.transformer is symlinked
+//             empty; tsconfig plugins [nameof, di.extras/ttsc] pick the
+//             di-DIRECT lowering with NO inline stage. di.extras is symlinked
 //             for its descriptor but kept OUT of package.json so the scan ignores
 //             its stages.
 //
 // ISOLATION GAP — read before trusting the closed-chain / open-template parity.
 // The `di` stage is CO-ACTIVE in the inline/ dir (the scan drags it in alongside
 // valueof, and there is no way to keep valueof without it: valueof has no
-// standalone descriptor, and the collector reads di.transformer's sugar BODIES and
+// standalone descriptor, and the collector reads di.extras's sugar BODIES and
 // its di/valueof STAGES from the ONE dep walk — CollectProject — so a dir that has
 // the bodies inline needs to peel necessarily also has the di stage). In practice
 // inline runs first in the host's stage-table order and strips the type-args before
@@ -343,9 +343,9 @@ const chainInlineDir = join(CHAIN_ROOT, 'inline');
 
 // The token-free authoring overloads, hand-declared as a di.core module
 // augmentation — mirroring how the isService pilot hand-declares `isService<T>()`,
-// so the program carries the sugar surface without pulling di.transformer's rolled
+// so the program carries the sugar surface without pulling di.extras's rolled
 // declare-module types (which risk issue #225's INLINE_ROGUE_DUPLICATE). The
-// generic signatures are copied verbatim from di.transformer's `src/augment.ts`
+// generic signatures are copied verbatim from di.extras's `src/augment.ts`
 // so the merged member symbols the transforms anchor on are the real faces.
 const AUTHORING_SOURCE = `
 import type { AddChain, Ctor, IServiceManifest, Slot } from '@rhombus-std/di.core';
@@ -556,11 +556,11 @@ function linkChainDeps(dir: string): void {
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
-  // di.core + di.transformer + the primitives packages are symlinked in EVERY dir
-  // (the di.transformer descriptor the semantic tsconfig references must resolve
-  // even though di.transformer is absent from the semantic package.json deps).
+  // di.core + di.extras + the primitives packages are symlinked in EVERY dir
+  // (the di.extras descriptor the semantic tsconfig references must resolve
+  // even though di.extras is absent from the semantic package.json deps).
   link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
-  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.extras'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 }
@@ -568,7 +568,7 @@ function linkChainDeps(dir: string): void {
 function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
-  // Inline path: di.transformer IN deps → the host scan activates the full stage
+  // Inline path: di.extras IN deps → the host scan activates the full stage
   // set (inline + nameof + signatureof + keyof + valueof + the resolve-family
   // primitives). The tsconfig spells the primitives descriptors explicitly so ttsc
   // has direct-discovery entries to spawn the host with; the rest arrive through
@@ -582,7 +582,7 @@ function setupChainWorkspaces(): void {
       version: '0.0.0',
       dependencies: {
         '@rhombus-std/di.core': 'workspace:*',
-        '@rhombus-std/di.transformer': 'workspace:*',
+        '@rhombus-std/di.extras': 'workspace:*',
       },
     }),
   );
@@ -1002,7 +1002,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
 // W4 — addOptions<T>() options witness.
 //
 // The addOptions<T>() sugar is no longer a bespoke stage: it is a
-// di.transformer.options rhombus.inline body substituted by the inline stage, its
+// di.extras.options rhombus.inline body substituted by the inline stage, its
 // composed `IOptions<T>` wrapper token + bare `T` element token lowered by the
 // tokenfor (nameof) stage's composed-generic derivation. This witness compiles a
 // lone `addOptions<UserOptions>()` through the REAL ttsc and asserts the two-token
@@ -1016,19 +1016,19 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
 //
 // Single sandbox (no split dep graphs): with no oracle path there is nothing to
 // keep the inline stage out of, so the one dir wires the primitives descriptors
-// to spawn the host and lists di.transformer + di.transformer.options in deps —
+// to spawn the host and lists di.extras + di.extras.options in deps —
 // the host's own scan activates inline + nameof + di + valueof and collects the
 // addOptions body, and @rhombus-std/options is loaded so the wrapper base resolves.
 
-const DI_OPTIONS = join(REPO_ROOT, 'libraries', 'di.transformer.options');
+const DI_OPTIONS = join(REPO_ROOT, 'libraries', 'di.extras.options');
 const OPTIONS = join(REPO_ROOT, 'libraries', 'options');
 
 const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'options');
 
 // The addOptions<T>() sugar overload + the explicit two-token verb, hand-declared
 // as a di.core module augmentation (like the chain's AUTHORING_SOURCE), so the
-// program carries the sugar surface without pulling di.transformer.options's rolled
-// declare-module types. The generic signatures mirror di.transformer.options's
+// program carries the sugar surface without pulling di.extras.options's rolled
+// declare-module types. The generic signatures mirror di.extras.options's
 // src/augment.ts + options.augmentations so the merged member symbol the inline
 // resolver anchors on is the real face.
 const OPTIONS_AUTHORING = `
@@ -1069,8 +1069,8 @@ function linkOptionsDeps(dir: string): void {
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
-  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
-  link(DI_OPTIONS, join(nm, '@rhombus-std', 'di.transformer.options'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.extras'));
+  link(DI_OPTIONS, join(nm, '@rhombus-std', 'di.extras.options'));
   link(OPTIONS, join(nm, '@rhombus-std', 'options'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
@@ -1086,8 +1086,8 @@ function setupOptionsWorkspace(): void {
       version: '0.0.0',
       dependencies: {
         '@rhombus-std/di.core': 'workspace:*',
-        '@rhombus-std/di.transformer': 'workspace:*',
-        '@rhombus-std/di.transformer.options': 'workspace:*',
+        '@rhombus-std/di.extras': 'workspace:*',
+        '@rhombus-std/di.extras.options': 'workspace:*',
       },
     }),
   );

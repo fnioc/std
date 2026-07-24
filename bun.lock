@@ -32,8 +32,8 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/di.transformer.options": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
+        "@rhombus-std/di.extras.options": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "@types/bun": "^1.3.0",
@@ -72,7 +72,7 @@
       },
       "devDependencies": {
         "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
@@ -309,8 +309,8 @@
         "typescript": "^5.9.0",
       },
     },
-    "libraries/di.transformer": {
-      "name": "@rhombus-std/di.transformer",
+    "libraries/di.extras": {
+      "name": "@rhombus-std/di.extras",
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:*",
@@ -325,8 +325,8 @@
         "typescript": ">=5.2",
       },
     },
-    "libraries/di.transformer.options": {
-      "name": "@rhombus-std/di.transformer.options",
+    "libraries/di.extras.options": {
+      "name": "@rhombus-std/di.extras.options",
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:*",
@@ -334,12 +334,12 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
       },
       "peerDependencies": {
         "@rhombus-std/di.core": "workspace:^",
-        "@rhombus-std/di.transformer": "workspace:^",
+        "@rhombus-std/di.extras": "workspace:^",
         "@rhombus-std/options": "workspace:^",
         "typescript": ">=5.2",
       },
@@ -755,7 +755,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
@@ -768,7 +768,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
@@ -879,8 +879,8 @@
       "devDependencies": {
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/di.transformer": "workspace:*",
-        "@rhombus-std/di.transformer.options": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
+        "@rhombus-std/di.extras.options": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
@@ -1363,13 +1363,13 @@
 
     "@rhombus-std/di.core": ["@rhombus-std/di.core@workspace:libraries/di.core"],
 
+    "@rhombus-std/di.extras": ["@rhombus-std/di.extras@workspace:libraries/di.extras"],
+
+    "@rhombus-std/di.extras.options": ["@rhombus-std/di.extras.options@workspace:libraries/di.extras.options"],
+
     "@rhombus-std/di.signatureof.ttsc.e2e": ["@rhombus-std/di.signatureof.ttsc.e2e@workspace:tests/di.signatureof.ttsc.e2e"],
 
     "@rhombus-std/di.test": ["@rhombus-std/di.test@workspace:tests/di.test"],
-
-    "@rhombus-std/di.transformer": ["@rhombus-std/di.transformer@workspace:libraries/di.transformer"],
-
-    "@rhombus-std/di.transformer.options": ["@rhombus-std/di.transformer.options@workspace:libraries/di.transformer.options"],
 
     "@rhombus-std/diagnostics": ["@rhombus-std/diagnostics@workspace:libraries/diagnostics"],
 

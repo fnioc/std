@@ -4,7 +4,7 @@
 // tokenless dialect and needs BOTH the di.core preset bundle (registration sugar
 // via inline -> tokenfor -> signatureof -> di — add/addFactory/addValue inline
 // substituted, plus the di stage's tokenless resolve/resolveAsync + `.as<>`
-// lowering) and its di.transformer.options
+// lowering) and its di.extras.options
 // (addOptions<T>) plugin to lower. This is the ttsc/Go analog of the former
 // per-file transformer build: @ttsc/unplugin/bun runs the Go plugins as onLoad
 // transforms while Bun.build emits dist/main.js.
@@ -24,8 +24,8 @@ rmSync(dist, { recursive: true, force: true });
 
 // Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
 // tsconfig.ttsc.json plugins array, @ttsc/unplugin/bun's auto-discovery spawns the
-// one owner host from this app's direct *.transformer devDeps (di.transformer +
-// di.transformer.options), and the host self-selects the full transitive stage set
+// one owner host from this app's direct *.transformer devDeps (di.extras +
+// di.extras.options), and the host self-selects the full transitive stage set
 // — the di + di_options stages plus the primitive stages reached through their
 // primitives.extras dep — from its own dependency scan. Compute the override:
 // a non-empty manual plugins array wins; otherwise `undefined` (NEVER [], which

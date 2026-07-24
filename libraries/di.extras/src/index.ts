@@ -1,4 +1,4 @@
-// @rhombus-std/di.transformer — the type-only authoring surface + inline sugar
+// @rhombus-std/di.extras — the type-only authoring surface + inline sugar
 // bodies for the di registration forms.
 //
 // Build-time only, and no longer a TS-plugin transformer: the lowering runs on the
@@ -14,7 +14,7 @@
 //   - `./signatureof.ts` — the authoring-time dependency-signature primitive the
 //     inline bodies call; its runtime body throws so un-transformed code fails loud.
 //
-// A single import of `@rhombus-std/di.transformer` (or listing it in `types`)
+// A single import of `@rhombus-std/di.extras` (or listing it in `types`)
 // brings the authoring augmentation into scope.
 import './augment.js';
 

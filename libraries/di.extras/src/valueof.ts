@@ -18,7 +18,7 @@
 // consistency; `valueof` is not a reserved word in either type or value
 // positions, so a value-position declaration and call compile under strict tsc.
 //
-// It lives here in `@rhombus-std/di.transformer` (the authoring-time DI package),
+// It lives here in `@rhombus-std/di.extras` (the authoring-time DI package),
 // NOT in the `@rhombus-std/primitives` leaf, because it is ONLY ever called
 // inside the inline-sugar bodies (`./inline.ts`) — never in runtime source — so
 // it is an authoring-time construct that belongs with the domain transformer
@@ -38,8 +38,8 @@
 export function valueof<T>(): T {
   void (0 as unknown as T);
   throw new Error(
-    'valueof<T>() requires the @rhombus-std/di.transformer valueof plugin. Add '
-      + 'the di.transformer sugar plugin to your tsconfig "plugins", or pass the '
+    'valueof<T>() requires the @rhombus-std/di.extras valueof plugin. Add '
+      + 'the di.extras sugar plugin to your tsconfig "plugins", or pass the '
       + 'scope value explicitly to as(scope).',
   );
 }

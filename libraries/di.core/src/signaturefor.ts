@@ -16,12 +16,12 @@
 // `withSignature<T>()` / `withSignatures<T>()` sugar bodies) express structured
 // non-token slots from types alone.
 //
-// HOME — di.core, NOT `@rhombus-std/primitives` and NOT `di.transformer`. These
+// HOME — di.core, NOT `@rhombus-std/primitives` and NOT `di.extras`. These
 // produce `DepSlot`s (a DI-domain shape di.core OWNS) and are called from BOTH
 // runtime library source (a hardcoded `[["pkg:IA"]]` literal becomes
 // `signaturefor<[IA]>()`) AND the sugar inline bodies. The only package every
 // such caller already depends on — di.runtime libs depend on di.core;
-// `di.transformer` peers it — is di.core. `tokenfor` stays in `@rhombus-std/primitives`
+// `di.extras` peers it — is di.core. `tokenfor` stays in `@rhombus-std/primitives`
 // because `Token` is a primitives type; `DepSlot` is not, so that precedent does
 // NOT carry the slot ABI up into the zero-dependency leaf.
 //
@@ -45,8 +45,8 @@ import type { DepSignatures, DepSlot } from './types.js';
 export function signaturefor<T extends readonly any[]>(): readonly DepSlot[] {
   void (0 as unknown as T);
   throw new Error(
-    'signaturefor<T>() requires the @rhombus-std/di.transformer authoring transform. '
-      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+    'signaturefor<T>() requires the @rhombus-std/di.extras authoring transform. '
+      + 'Depend on @rhombus-std/di.extras so ttsc spawns the @rhombus-std transform '
       + 'host (which lowers signaturefor), or pass the dependency slots explicitly.',
   );
 }
@@ -64,8 +64,8 @@ export function signaturefor<T extends readonly any[]>(): readonly DepSlot[] {
 export function signaturesfor<T extends ReadonlyArray<readonly any[]>>(): DepSignatures {
   void (0 as unknown as T);
   throw new Error(
-    'signaturesfor<T>() requires the @rhombus-std/di.transformer authoring transform. '
-      + 'Depend on @rhombus-std/di.transformer so ttsc spawns the @rhombus-std transform '
+    'signaturesfor<T>() requires the @rhombus-std/di.extras authoring transform. '
+      + 'Depend on @rhombus-std/di.extras so ttsc spawns the @rhombus-std transform '
       + 'host (which lowers signaturesfor), or pass the dependency signatures explicitly.',
   );
 }

@@ -426,7 +426,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolve<T>(token?: Token, key: string | RegExp = ''): T | T[] {
     if (token === undefined) {
       throw new TypeError(
-        'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+        'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
           + 'runtime). Without it, resolve with an explicit token: '
           + 'resolve<T>("my:token").',
       );
@@ -453,7 +453,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public async resolveAsync<T>(token?: Token): Promise<T> {
     if (token === undefined) {
       throw new TypeError(
-        'resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no token '
+        'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no token '
           + 'at runtime). Without it, resolve with an explicit token: '
           + 'resolveAsync<T>("my:token").',
       );
@@ -477,7 +477,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public tryResolve<T>(token?: Token, key: string | RegExp = ''): T | T[] | undefined {
     if (token === undefined) {
       throw new TypeError(
-        'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+        'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
           + 'runtime). Without it, resolve with an explicit token: '
           + 'tryResolve<T>("my:token").',
       );
@@ -1028,7 +1028,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
       resolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] => {
         if (depToken === undefined) {
           throw new TypeError(
-            'resolve<T>() requires the @rhombus-std/di.transformer plugin (no token at '
+            'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
               + 'runtime).',
           );
         }
@@ -1041,7 +1041,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
         if (depToken === undefined) {
           throw new TypeError(
-            'resolveAsync<T>() requires the @rhombus-std/di.transformer plugin (no '
+            'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no '
               + 'token at runtime).',
           );
         }
@@ -1050,7 +1050,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
       tryResolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] | undefined => {
         if (depToken === undefined) {
           throw new TypeError(
-            'tryResolve<T>() requires the @rhombus-std/di.transformer plugin (no token '
+            'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token '
               + 'at runtime).',
           );
         }

@@ -10,7 +10,7 @@ Register classes, factories, and values against tokens; resolve a graph of insta
 bun add @rhombus-std/di @rhombus-std/di.core @rhombus-std/primitives
 ```
 
-`@rhombus-std/di.core` carries the registration-builder types this package re-exports; `@rhombus-std/primitives` is the shared runtime dependency both packages build on. Add `@rhombus-std/di.transformer` alongside if you want the type-driven `addClass<IFoo>(Foo)` sugar — it's optional, and everything below works without it.
+`@rhombus-std/di.core` carries the registration-builder types this package re-exports; `@rhombus-std/primitives` is the shared runtime dependency both packages build on. Add `@rhombus-std/di.extras` alongside if you want the type-driven `addClass<IFoo>(Foo)` sugar — it's optional, and everything below works without it.
 
 ## Usage
 
@@ -134,7 +134,7 @@ addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes, key
 // addFactory takes the identical four overloads with `factory: Factory` in place of `ctor`.
 ```
 
-There is no global, constructor-keyed metadata store — this array **is** the sole signature channel, for both classes (`addClass`) and factories (`addFactory`). Keying it on the registration rather than the constructor function is what lets one JS class back **any number of independent registrations** with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template (see [Open generics](#open-generics) below). `@rhombus-std/di.transformer` emits this array inline for every registration it can statically extract a signature from — `addClass<IFoo>(Foo)` lowers to `addClass("pkg:IFoo", Foo, [[...]])`, with no separate prelude call and nothing hoisted. Hand-write it directly for the plugin-less path.
+There is no global, constructor-keyed metadata store — this array **is** the sole signature channel, for both classes (`addClass`) and factories (`addFactory`). Keying it on the registration rather than the constructor function is what lets one JS class back **any number of independent registrations** with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template (see [Open generics](#open-generics) below). `@rhombus-std/di.extras` emits this array inline for every registration it can statically extract a signature from — `addClass<IFoo>(Foo)` lowers to `addClass("pkg:IFoo", Foo, [[...]])`, with no separate prelude call and nothing hoisted. Hand-write it directly for the plugin-less path.
 
 A service with no dependencies states that explicitly with `signatures: [[]]`, never by omitting the argument (omitting it gates the chain instead — see above). A constructor that does take parameters but is registered with `[[]]` throws `MissingMetadataError` at resolve time.
 
@@ -380,7 +380,7 @@ const repo = await root.resolveAsync<UserRepo>('pkg:UserRepo');
 
 The container caches whatever a factory returns, verbatim — for an async factory, that's the `Promise` itself. Every resolve of the same cached token gets the same `Promise`; the factory runs exactly once. Single-flight applies across overlapping `resolveAsync` calls: the in-flight promise lands in the cache before it settles, so concurrent resolves for the same singleton share one construction instead of racing to build it twice.
 
-`@rhombus-std/di.transformer` derives tokens just as honestly: a constructor parameter or factory return typed `Promise<IDb>` derives the token `Promise<pkg:IDb>`, at any depth, never unwrapped. See [`@rhombus-std/di.transformer`](../di.transformer/README.md#async-dependencies) for the token-derivation side.
+`@rhombus-std/di.extras` derives tokens just as honestly: a constructor parameter or factory return typed `Promise<IDb>` derives the token `Promise<pkg:IDb>`, at any depth, never unwrapped. See [`@rhombus-std/di.extras`](../di.extras/README.md#async-dependencies) for the token-derivation side.
 
 ## Factory injection
 
@@ -492,7 +492,7 @@ services = services.addClass('pkg:IHandler', Handler, [[
 ]]);
 ```
 
-Token users construct `Union` slots with `union(...)`. Transformer users write an inline `A | B` annotation and the transformer lowers it automatically. See [`@rhombus-std/di.transformer`](../di.transformer/README.md) for the named-vs-inline distinction.
+Token users construct `Union` slots with `union(...)`. Transformer users write an inline `A | B` annotation and the transformer lowers it automatically. See [`@rhombus-std/di.extras`](../di.extras/README.md) for the named-vs-inline distinction.
 
 ## API reference
 
@@ -546,8 +546,8 @@ Disposal support requires `"ESNext.Disposable"` in your `lib` array. `"ES2022"` 
 `@rhombus-std/di` is the resolution engine on top of `@rhombus-std/di.core`, which owns the abstractions and the `ServiceManifest` registration builder itself — a library author can depend on `di.core` alone to declare registrations without pulling in the resolution engine. `@rhombus-std/di` re-exports `di.core`'s authoring surface so a consumer reaches everything through one import.
 
 - **`@rhombus-std/di.core`** — the abstractions and the registration builder this package resolves against. See [`../di.core/README.md`](../di.core/README.md).
-- **`@rhombus-std/di.transformer`** — the optional compile-time plugin that lowers `addClass<IFoo>(Foo)` and inline `A | B` annotations into the explicit token form shown throughout this README. See [`../di.transformer/README.md`](../di.transformer/README.md).
-- **`@rhombus-std/di.transformer.options`** — a `di.transformer` satellite that lowers `addOptions<T>()` sugar.
+- **`@rhombus-std/di.extras`** — the optional compile-time plugin that lowers `addClass<IFoo>(Foo)` and inline `A | B` annotations into the explicit token form shown throughout this README. See [`../di.extras/README.md`](../di.extras/README.md).
+- **`@rhombus-std/di.extras.options`** — a `di.extras` satellite that lowers `addOptions<T>()` sugar.
 - **`@rhombus-std/options`** and **`@rhombus-std/options.augmentations`** — build an `IOptions<T>` accessor and configuration-binding pipeline on top of a `ServiceManifest`.
 - **`@rhombus-std/hosting`** — composes `di` with configuration and logging into a full application host.
 

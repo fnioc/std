@@ -104,7 +104,7 @@ export const MetricsBuilderExtensions = {
    * dependencies are injected). Mirrors the generic
    * `MetricsBuilderExtensions.AddListener<T>()`. `signatures` carries the ctor's
    * positional dependency slots (as a plugin-less author supplies them, or as the
-   * di.transformer would emit) -- required, like every di.core `addClass`: a
+   * di.extras would emit) -- required, like every di.core `addClass`: a
    * dependency-free ctor states `[[]]` explicitly.
    */
   addMetricsListenerType(

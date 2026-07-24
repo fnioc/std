@@ -1,5 +1,5 @@
-// @rhombus-std/di.transformer.options — the type-only authoring surface for the
-// `addOptions<T>()` sugar (a di.transformer satellite).
+// @rhombus-std/di.extras.options — the type-only authoring surface for the
+// `addOptions<T>()` sugar (a di.extras satellite).
 //
 // Build-time only, and no longer a TS-plugin transformer: the lowering runs on the
 // Go/ttsc engine, wired through the `./ttsc` descriptor. This barrel pulls the

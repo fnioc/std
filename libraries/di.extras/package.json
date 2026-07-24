@@ -1,5 +1,5 @@
 {
-  "name": "@rhombus-std/di.transformer",
+  "name": "@rhombus-std/di.extras",
   "version": "10.1.0",
   "description": "The ioc authoring surface: the type-only declare-module for the token-free registration forms, the inline sugar bodies, and the signatureof primitive. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
   "keywords": [
@@ -14,7 +14,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/fnioc/std.git",
-    "directory": "libraries/di.transformer"
+    "directory": "libraries/di.extras"
   },
   "type": "module",
   "//rhombus.inline": "The type-driven registration sugar's inline publish list. The bodies live in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses them and substitutes at consumer call sites. The `type` ANCHORS stay @rhombus-std/di.core interfaces (the augmentation targets), while `impl` (ServiceQueryInline / ServiceManifestInline / ManifestChainInline) resolves in THIS package — the authoring-time home of the signatureof / valueof primitives those bodies call (signaturefor / signaturesfor are di.core primitives, imported from the peered core).",
@@ -110,7 +110,7 @@
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/di.transformer/ttsc"
+      "transform": "@rhombus-std/di.extras/ttsc"
     }
   },
   "files": [

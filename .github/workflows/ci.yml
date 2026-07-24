@@ -132,7 +132,7 @@ jobs:
           ALPHA_VERSION: ${{ inputs.alpha_version }}
         run: |
           set -euo pipefail
-          ORDER=(primitives config.core options di.core config config.env config.json config.commandline options.augmentations di di.transformer config.transformer di.transformer.options)
+          ORDER=(primitives config.core options di.core config config.env config.json config.commandline options.augmentations di di.extras config.transformer di.extras.options)
           for pkg in "${ORDER[@]}"; do
             (
               cd "libraries/$pkg"

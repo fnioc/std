@@ -28,7 +28,7 @@ import (
 // class / factory) whose dependency signature the signatureof stage extracts, and
 // `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
 // KEY; both are authoring-time-only constructs, so they live in
-// `@rhombus-std/di.transformer` and a body imports them via a package-relative
+// `@rhombus-std/di.extras` and a body imports them via a package-relative
 // specifier from within that package (see primitiveImports).
 //
 // `signaturefor<T>()` / `signaturesfor<T>()` bind a TYPE argument (a dependency
@@ -38,7 +38,7 @@ import (
 // they home in `@rhombus-std/di.core` and a body imports them by that package name
 // (the peered core). `valueof<T>()` binds a literal TYPE argument and lowers to its
 // VALUE (`valueof<"scoped">()` → `"scoped"`) — the authoring-only half of the
-// `.as<Scope>()` sugar, homed in `@rhombus-std/di.transformer` beside signatureof /
+// `.as<Scope>()` sugar, homed in `@rhombus-std/di.extras` beside signatureof /
 // keyof and imported via a package-relative specifier. A hardcoded map suffices —
 // the declare-by-marker generalization is a future enhancement.
 // `isSingular<T>()` / `singularValue<T>()` bind a TYPE argument and are the
@@ -58,12 +58,12 @@ import (
 var knownPrimitives = map[string]string{
 	"tokenfor":       "@rhombus-std/primitives.extras",
 	"tokenof":        "@rhombus-std/primitives.extras",
-	"keyedtokenfor":  "@rhombus-std/di.transformer",
-	"signatureof":    "@rhombus-std/di.transformer",
-	"keyof":          "@rhombus-std/di.transformer",
+	"keyedtokenfor":  "@rhombus-std/di.extras",
+	"signatureof":    "@rhombus-std/di.extras",
+	"keyof":          "@rhombus-std/di.extras",
 	"signaturefor":   "@rhombus-std/di.core",
 	"signaturesfor":  "@rhombus-std/di.core",
-	"valueof":        "@rhombus-std/di.transformer",
+	"valueof":        "@rhombus-std/di.extras",
 	"isSingular":     "@rhombus-std/primitives.extras",
 	"singularValue":  "@rhombus-std/primitives.extras",
 	"isFactory":      "@rhombus-std/primitives.extras",
@@ -473,7 +473,7 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 // A primitive is accepted from its home module directly (`nameof` from
 // `@rhombus-std/primitives`), OR — when the primitive's home IS the declaring
 // package — via a package-relative specifier (`signatureof` from `./signatureof`,
-// authored inside `@rhombus-std/di.transformer`), so a same-package authoring
+// authored inside `@rhombus-std/di.extras`), so a same-package authoring
 // primitive need not be self-imported by package name. A primitive imported from
 // any OTHER module (e.g. a stale `signatureof` from primitives) is rejected.
 func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]string {

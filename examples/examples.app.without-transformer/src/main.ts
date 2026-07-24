@@ -1,7 +1,7 @@
 // The without-transformer composition root — the SAME integrated scenario as
 // ../examples.app.with-transformer, wired by hand with plain `tsc`. Every
 // registration and resolution names an explicit string token; the token strings
-// are spelled exactly as `@rhombus-std/di.transformer` derives them for the
+// are spelled exactly as `@rhombus-std/di.extras` derives them for the
 // package-public contracts, which is what lets THIS app resolve the built
 // with-transformer library's lowered factory (its baked-in tokens agree with
 // these). Diff this file against the with-transformer app's main.ts and the only
