@@ -19,7 +19,7 @@ export { TokenRewriter, TokenWalker } from './visitor.js';
 
 // The parse-at-edges boundary + the two DepSlot-level signature transforms
 // (closing against a binding; union blow-up to concrete overloads at reg time).
-export { blowUpSignatures, closeSignatures, parseSlot, serialiseSlot } from './slot.js';
+export { closeSignatures, parseSlot, serialiseSlot } from './slot.js';
 
 // The shallow string-grammar classification/compose edge.
 export { closeToken, HOLE_PATTERN, isOpenToken, parseToken } from './edges.js';

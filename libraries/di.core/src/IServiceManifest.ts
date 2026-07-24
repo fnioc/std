@@ -123,15 +123,13 @@ type PendingProducer =
  */
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
-  // NOTE: `blowUpSignatures` (docs TODO §0 — cartesian union-to-overloads at
-  // registration) is NOT wired here yet, deliberately. It stays exported for the
-  // later PR that deletes the engine's per-param union resolution. That deletion
-  // is the precondition for blowing up: per-param `#resolveUnion` falls through on
-  // a member's RUNTIME failure (a ctor that throws at build, a Promise that
-  // rejects — union.test's GAP2 / async-reject pins), whereas blown static
-  // overloads select purely on registration-presence and cannot express that
-  // fall-through. While per-param resolution is retained, the signatures must
-  // reach the engine union-bearing, so materialise threads them through untouched.
+  // Union slots reach the engine union-bearing: per-param `#resolveUnion` resolves
+  // each union at RESOLVE time and falls through on a member's runtime failure (a
+  // ctor that throws at build, a Promise that rejects — union.test's GAP2 /
+  // async-reject pins). Registration-time cartesian blow-up to static overloads was
+  // abandoned (§112) precisely because it selects on registration-presence and
+  // cannot express that fall-through — so materialise threads signatures through
+  // untouched.
   const signatures = pending.signatures;
   const producer = pending.producer;
   switch (producer.kind) {
