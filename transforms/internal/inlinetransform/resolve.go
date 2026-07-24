@@ -22,11 +22,6 @@ type Resolved struct {
 	MemberSet map[*shimast.Node]bool          // full merged declaration set
 }
 
-// nameForCall is the identifier a call site's callee carries when it targets
-// this entry: the member name for member sugar, the function name for a free
-// function.
-func (r *Resolved) nameForCall() string { return r.Member }
-
 // Resolve resolves one owned entry against the consumer program. The outcome is
 // three-way: an active *Resolved (inline it), inert (the sugar surface is not in
 // this program — skip silently), or a hard error (manifest vs src disagree).

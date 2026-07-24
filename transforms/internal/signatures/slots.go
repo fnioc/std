@@ -108,13 +108,6 @@ func (c *context) propAssign(name string, init *shimast.Node) *shimast.Node {
 	return c.factory.NewPropertyAssignment(nil, c.factory.NewIdentifier(name), nil, nil, init)
 }
 
-// undefinedLit renders `void 0` — the package's spelling of undefined, shared
-// with literalExpression's LiteralUndefined branch. It fills a positional slot
-// the transformer must emit but has no value for.
-func (c *context) undefinedLit() *shimast.Node {
-	return c.factory.NewVoidExpression(c.factory.NewNumericLiteral("0", shimast.TokenFlagsNone))
-}
-
 // literalExpression renders a Rule-2 value as its TS literal expression:
 // `void 0` for undefined, `null`, string / boolean keyword, or a numeric /
 // bigint literal (negative rendered as a unary minus over the magnitude).

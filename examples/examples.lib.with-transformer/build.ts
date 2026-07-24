@@ -35,7 +35,7 @@ if (dts.status !== 0) {
 // Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
 // tsconfig.ttsc.json plugins array, auto-discovery spawns the one owner host from
 // this lib's direct di.extras devDep, and the host self-selects the full
-// stage set (the di stage plus the primitive stages via di.extras's
+// stage set (the generic inline stage plus the primitive stages via di.extras's
 // primitives.extras dep) from its own dependency scan. Pass `undefined`
 // (NEVER []) so discovery is not suppressed; a non-empty manual plugins array
 // would override.

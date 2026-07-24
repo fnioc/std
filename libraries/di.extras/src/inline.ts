@@ -209,7 +209,7 @@ export const ResolverInline = {
  * for, so the body writes an explicit `void 0` placeholder there. For an UNKEYED
  * type the keyof lowers to `undefined` and the transformer ELIDES it AND the
  * placeholder it strands, so the emitted call is byte-identical to the plain
- * 3-argument form and matches the di stage's direct lowering. `addValue` carries
+ * hand-written 3-argument form. `addValue` carries
  * neither deps nor a lifetime, so its key is argument 3 and its body composes
  * `tokenfor` + `keyof` — no `signatureof`, no placeholder.
  *
