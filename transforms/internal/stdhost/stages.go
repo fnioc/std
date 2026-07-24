@@ -93,6 +93,8 @@ func BaseBundles() map[string][]string {
 			stagePrefix + "signatureof",
 			stagePrefix + "keyof",
 			stagePrefix + "valueof",
+			stagePrefix + "singular",
+			stagePrefix + "fold",
 			stagePrefix + "di",
 		},
 	}
