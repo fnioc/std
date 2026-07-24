@@ -9,7 +9,7 @@
 // logging.config's addConfig, logging.console's addConsole), so the
 // install goes through the augmentation registry (docs §38): register the set
 // against the `ILoggingBuilder` token — derived inline by `tokenfor<ILoggingBuilder>()`
-// and lowered to its string literal by the primitives.transformer build stage —
+// and lowered to its string literal by the primitives.extras build stage —
 // and the `@augment`-decorated LoggingBuilder pulls it (plus every later
 // registrant) onto its prototype. The exported const IS the standalone call surface.
 //

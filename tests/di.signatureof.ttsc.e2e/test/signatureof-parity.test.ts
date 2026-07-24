@@ -42,7 +42,7 @@ const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const DI_CORE = join(REPO_ROOT, 'libraries', 'di.core');
 const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.transformer');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
-const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
+const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.extras');
 
 // Outside the repo tree — the sandbox must sit outside any enclosing package.json
 // or ttsc re-roots its token derivation to that package; keyed by the worktree dir
@@ -178,7 +178,7 @@ function setupWorkspace(): void {
   link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
   link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.transformer'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
-  link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
+  link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
   // The consumer must depend on di.core (the type ANCHOR the inline entries name)
   // AND di.transformer (which now owns the rhombus.inline publish list + the
@@ -197,13 +197,13 @@ function setupWorkspace(): void {
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
   writeTsconfig('tsconfig.inline.json', 'dist-inline', [
-    { transform: '@rhombus-std/primitives.transformer/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.transformer/ttsc' },
-    { transform: '@rhombus-std/primitives.transformer/signatureof-ttsc' },
+    { transform: '@rhombus-std/primitives.extras/inline-ttsc' },
+    { transform: '@rhombus-std/primitives.extras/ttsc' },
+    { transform: '@rhombus-std/primitives.extras/signatureof-ttsc' },
     { transform: '@rhombus-std/di.transformer/ttsc' },
   ]);
   writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
-    { transform: '@rhombus-std/primitives.transformer/ttsc' },
+    { transform: '@rhombus-std/primitives.extras/ttsc' },
     { transform: '@rhombus-std/di.transformer/ttsc' },
   ]);
   // The PRESET path: ONE descriptor — di.core's `./ttsc` bundle — instead of the

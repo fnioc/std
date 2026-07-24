@@ -1,4 +1,4 @@
-// @rhombus-std/primitives.transformer — the standalone token-derivation authoring
+// @rhombus-std/primitives.extras — the standalone token-derivation authoring
 // transformer.
 //
 // Its primary role is the Go/ttsc descriptor package (the single `./ttsc`

@@ -2,7 +2,7 @@
 // dist/bundle/index.d.ts. @rhombus-std/di.core and @rhombus-std/primitives stay
 // EXTERNAL (respectExternal) so the published declaration imports their types
 // rather than inlining private copies; @rhombus-toolkit/func is inlined.
-// @rhombus-std/primitives.transformer is external too -- its `nameof` import is
+// @rhombus-std/primitives.extras is external too -- its `nameof` import is
 // value-only (lowered out of the JS emit) and contributes nothing to the types.
 
 import { dirname, join } from 'node:path';

@@ -11,12 +11,12 @@
 //
 // It lives in `@rhombus-std/primitives` (the zero-dep leaf) rather than in the
 // transformer package so every library imports the single `tokenfor` symbol from
-// one home; `@rhombus-std/primitives.transformer` is the base plugin that lowers
+// one home; `@rhombus-std/primitives.extras` is the base plugin that lowers
 // the calls.
 
 /**
  * Compile-time token for a TYPE — `tokenfor<IUserRepo>()`. Rewritten by the
- * @rhombus-std/primitives.transformer build-time transformer to a string
+ * @rhombus-std/primitives.extras build-time transformer to a string
  * literal; the runtime body only runs when the transformer is absent.
  *
  * @example
@@ -42,7 +42,7 @@ export function tokenfor<T>(): string;
 export function tokenfor(value: unknown): string;
 export function tokenfor(_value?: unknown): string {
   throw new Error(
-    'tokenfor() requires the @rhombus-std/primitives.transformer build-time transformer, '
+    'tokenfor() requires the @rhombus-std/primitives.extras build-time transformer, '
       + 'or pass an explicit token string.',
   );
 }

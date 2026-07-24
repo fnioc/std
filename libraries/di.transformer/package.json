@@ -123,7 +123,7 @@
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*",
     "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {

@@ -27,7 +27,7 @@ rmSync(dist, { recursive: true, force: true });
 // one owner host from this app's direct *.transformer devDeps (di.transformer +
 // di.transformer.options), and the host self-selects the full transitive stage set
 // — the di + di_options stages plus the primitive stages reached through their
-// primitives.transformer dep — from its own dependency scan. Compute the override:
+// primitives.extras dep — from its own dependency scan. Compute the override:
 // a non-empty manual plugins array wins; otherwise `undefined` (NEVER [], which
 // would suppress discovery and never spawn the host).
 const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');

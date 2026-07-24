@@ -2,7 +2,7 @@
   "name": "@rhombus-std/mergesynth.ttsc.e2e",
   "private": true,
   "version": "0.0.0",
-  "description": "End-to-end harness for the #213 merge-strategy synthesis stage: drives the real ttsc over a fixture wiring the single owner host through the primitives.transformer bundle (which now carries mergesynth), then asserts the emitted JS (inlined typia guards, threaded merge map, no typia trace) and the runtime dispatch (argument-shape routing, hand-authored-wins, no collision throw). Not published.",
+  "description": "End-to-end harness for the #213 merge-strategy synthesis stage: drives the real ttsc over a fixture wiring the single owner host through the primitives.extras bundle (which now carries mergesynth), then asserts the emitted JS (inlined typia guards, threaded merge map, no typia trace) and the runtime dispatch (argument-shape routing, hand-authored-wins, no collision throw). Not published.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
     "typescript": "^7.0.2"

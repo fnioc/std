@@ -12,7 +12,7 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.transformer": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.transformer": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
     "typescript": "^7.0.2"

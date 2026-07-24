@@ -10,7 +10,7 @@
 //
 // It is an AUTHORING-ONLY construct: it appears only inside the inline-sugar
 // bodies, never in runtime source, so it lives here in the token-grammar
-// transformer (`@rhombus-std/primitives.transformer`) rather than the runtime
+// transformer (`@rhombus-std/primitives.extras`) rather than the runtime
 // `@rhombus-std/primitives` leaf — the §92 homing rule, which for a
 // runtime-imported primitive like `tokenfor` keeps it in the leaf, but for a
 // body-only predicate homes it in the domain transformer. The runtime body only
@@ -30,7 +30,7 @@
 export function isSingular<T>(): boolean {
   void (0 as unknown as T);
   throw new Error(
-    'isSingular<T>() requires the @rhombus-std/primitives.transformer isSingular plugin. '
+    'isSingular<T>() requires the @rhombus-std/primitives.extras isSingular plugin. '
       + 'Add the transformer sugar plugin to your tsconfig "plugins".',
   );
 }

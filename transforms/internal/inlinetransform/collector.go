@@ -38,22 +38,21 @@ type ProjectScan struct {
 //     dependencies ∪ peerDependencies at every node, PLUS devDependencies at the
 //     ROOT consumer only. A transitive dependency's devDeps are its own build
 //     tooling, never inherited (standard dependency semantics) — this keeps a
-//     core that devDeps its own transformer (di.core -> primitives.transformer)
-//     from force-activating that stage on every di.core consumer.
+//     core that devDeps its own authoring package (di.core -> primitives.extras)
+//     from dragging that package's sugar onto every di.core consumer.
 //
 // The consumer package itself is visited too, so a consumer that declares its own
-// inline entries or stages is honored. Output order is deterministic (walk order
-// with dependency names sorted; stages sorted), for stable diagnostics and parity.
+// inline entries is honored. Output order is deterministic (walk order with
+// dependency names sorted), for stable diagnostics and parity.
 func CollectProject(consumerCwd string) (ProjectScan, error) {
 	consumerRoot, err := findPackageRoot(consumerCwd)
 	if err != nil {
 		// Best-effort: outside any workspace — no package.json in cwd or above it —
-		// there is nothing to scan. A bare non-workspace ttsc project that declares
-		// its plugins EXPLICITLY (the manifest-only parity fixtures) must not be
-		// forced to have a scannable package.json, so return an empty scan and let
-		// the host fall back to the manifest. Nothing silently skips lowering: the
-		// zero-stage guard (empty scan AND empty manifest) and the inline emit-sweep
-		// still fire loudly on a genuine misconfig.
+		// there is nothing to scan. A bare non-workspace ttsc project (the parity
+		// fixtures) must not be forced to have a scannable package.json, so return an
+		// empty scan. With stage selection retired (W7) an empty scan is a legitimate
+		// no-op: the host runs its always-on stage table and emits an unmatched file
+		// unchanged; the inline emit-sweep still fires loudly on a genuine misconfig.
 		return ProjectScan{}, nil
 	}
 	wsMap := workspaceMap(consumerRoot)

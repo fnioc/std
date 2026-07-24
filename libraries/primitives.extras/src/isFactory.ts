@@ -30,7 +30,7 @@
 export function isFactory<T>(): boolean {
   void (0 as unknown as T);
   throw new Error(
-    'isFactory<T>() requires the @rhombus-std/primitives.transformer isFactory plugin. '
+    'isFactory<T>() requires the @rhombus-std/primitives.extras isFactory plugin. '
       + 'Add the transformer sugar plugin to your tsconfig "plugins".',
   );
 }

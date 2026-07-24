@@ -53,7 +53,7 @@ plugin's.
 ## Key exports
 
 This package has no JavaScript API of its own — like `@rhombus-std/config.transformer` and
-`@rhombus-std/primitives.transformer`, it's a build-time-only Go/`ttsc` engine descriptor.
+`@rhombus-std/primitives.extras`, it's a build-time-only Go/`ttsc` engine descriptor.
 Importing it (or listing it in your `tsconfig.json`'s `types` array) carries a type-only side
 effect instead: it declares the `addOptions<T>()` overload on the registration builder. Without
 this package in your program, `addOptions<T>()` simply doesn't exist as a method — there's no
@@ -61,7 +61,7 @@ silent no-op form waiting to compile-but-misbehave under plain `tsc`.
 
 ## How it fits
 
-- Depends on [`@rhombus-std/primitives.transformer`](../primitives.transformer) for its token
+- Depends on [`@rhombus-std/primitives.extras`](../primitives.extras) for its token
   derivation, the same engine [`@rhombus-std/di.transformer`](../di.transformer) depends on — this
   plugin never touches the DI runtime directly, only types and tokens.
 - Targets the explicit registration verb that

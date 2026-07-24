@@ -32,7 +32,7 @@
 export function paramtokensfor<T>(): readonly string[] {
   void (0 as unknown as T);
   throw new Error(
-    'paramtokensfor<T>() requires the @rhombus-std/primitives.transformer paramtokensfor plugin. '
+    'paramtokensfor<T>() requires the @rhombus-std/primitives.extras paramtokensfor plugin. '
       + 'Add the transformer sugar plugin to your tsconfig "plugins".',
   );
 }

@@ -1,4 +1,4 @@
-// Rolls the public type surface of @rhombus-std/primitives.transformer into a
+// Rolls the public type surface of @rhombus-std/primitives.extras into a
 // single dist/bundle/index.d.ts — the authoring-only token-grammar predicate
 // stubs (isSingular / singularValue, §94). The per-primitive source files carry
 // no external type imports, so the rolled declaration is self-contained.

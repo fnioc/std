@@ -59,7 +59,7 @@ export function tokenof<T>(): string;
 export function tokenof(value: unknown): string;
 export function tokenof(_value?: unknown): string {
   throw new Error(
-    'tokenof() requires the @rhombus-std/primitives.transformer build-time transformer, '
+    'tokenof() requires the @rhombus-std/primitives.extras build-time transformer, '
       + 'or pass an explicit token string.',
   );
 }

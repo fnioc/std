@@ -63,7 +63,7 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 	// singularValue from the token-grammar transformer. Each verb calls ITSELF with the
 	// derived token; a SINGULAR T folds to its value.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenof } from '@rhombus-std/primitives';
-import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.transformer';
+import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.extras';
 interface IInlineResolveTarget {
   resolve(token: string): any;
   resolveAsync(token: string): any;
@@ -433,9 +433,9 @@ func buildSourceWrittenSingularWorkspace(t *testing.T, mainSrc string) (*driver.
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
 
-	prims := filepath.Join(root, "packages", "primitives.transformer")
+	prims := filepath.Join(root, "packages", "primitives.extras")
 	writeFile(t, filepath.Join(prims, "package.json"), `{
-  "name": "@rhombus-std/primitives.transformer",
+  "name": "@rhombus-std/primitives.extras",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
@@ -447,16 +447,16 @@ export declare function singularValue<T>(): T;
 	writeFile(t, filepath.Join(app, "package.json"), `{
   "name": "@scope/app",
   "version": "1.0.0",
-  "dependencies": { "@rhombus-std/primitives.transformer": "workspace:*" }
+  "dependencies": { "@rhombus-std/primitives.extras": "workspace:*" }
 }`)
-	linkPkg(t, app, "@rhombus-std/primitives.transformer", prims)
+	linkPkg(t, app, "@rhombus-std/primitives.extras", prims)
 	writeFile(t, filepath.Join(app, "main.ts"), mainSrc)
 	writeFile(t, filepath.Join(app, "tsconfig.json"), `{
   "compilerOptions": {
     "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
     "strict": true, "noEmit": true, "skipLibCheck": true
   },
-  "files": ["main.ts", "node_modules/@rhombus-std/primitives.transformer/src/index.ts"]
+  "files": ["main.ts", "node_modules/@rhombus-std/primitives.extras/src/index.ts"]
 }`)
 
 	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
@@ -476,7 +476,7 @@ export declare function singularValue<T>(): T;
 // `isSingular<T>()` lowers to `false`, and a non-singular `singularValue<T>()` is
 // left UN-LOWERED (the survivor the emit sweep would flag).
 func TestSingularSourceWrittenAnchor(t *testing.T) {
-	src := `import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
+	src := `import { isSingular, singularValue } from '@rhombus-std/primitives.extras';
 interface IThing { id: number }
 export const a = isSingular<'dev'>();
 export const b = singularValue<'dev'>();

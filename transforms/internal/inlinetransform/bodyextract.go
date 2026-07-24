@@ -45,7 +45,7 @@ import (
 // `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())` and the
 // engine constant-folds the dead branch away. Both are authoring-time-only
 // (never in runtime source), so they home in the token-grammar transformer
-// `@rhombus-std/primitives.transformer` — the §92 homing rule, distinct from
+// `@rhombus-std/primitives.extras` — the §92 homing rule, distinct from
 // `tokenfor`/`tokenof` (which stay in the runtime leaf because runtime source
 // imports them).
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
@@ -62,11 +62,11 @@ var knownPrimitives = map[string]string{
 	"signaturefor":   "@rhombus-std/di.core",
 	"signaturesfor":  "@rhombus-std/di.core",
 	"valueof":        "@rhombus-std/di.transformer",
-	"isSingular":     "@rhombus-std/primitives.transformer",
-	"singularValue":  "@rhombus-std/primitives.transformer",
-	"isFactory":      "@rhombus-std/primitives.transformer",
-	"returntokenfor": "@rhombus-std/primitives.transformer",
-	"paramtokensfor": "@rhombus-std/primitives.transformer",
+	"isSingular":     "@rhombus-std/primitives.extras",
+	"singularValue":  "@rhombus-std/primitives.extras",
+	"isFactory":      "@rhombus-std/primitives.extras",
+	"returntokenfor": "@rhombus-std/primitives.extras",
+	"paramtokensfor": "@rhombus-std/primitives.extras",
 	"schemaof":       "@rhombus-std/config.transformer",
 }
 

@@ -6,7 +6,7 @@ import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e parity: drives the REAL ttsc (typescript-go toolchain) over
 // a temp project that wires the Go tokenfor plugin through the `@rhombus-std/
-// primitives.transformer/ttsc` descriptor, then asserts the emitted JS carries
+// primitives.extras/ttsc` descriptor, then asserts the emitted JS carries
 // the SAME byte-identical token strings the hand-written TypeScript tokenfor
 // transformer produces (the parity corpus lives in
 // tests/di.transformer.test/test/{tokens,tokenfor}.test.ts).
@@ -39,7 +39,7 @@ const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
 const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
-const PRIM = join(REPO_ROOT, 'libraries', 'primitives.transformer');
+const PRIM = join(REPO_ROOT, 'libraries', 'primitives.extras');
 
 // Outside the repo tree (see the header: an enclosing package.json re-roots token
 // derivation), keyed by the worktree dir name so concurrent sessions don't collide.
@@ -111,7 +111,7 @@ beforeAll(() => {
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
-  link(PRIM, join(nm, '@rhombus-std', 'primitives.transformer'));
+  link(PRIM, join(nm, '@rhombus-std', 'primitives.extras'));
 
   // A package-public library with an exports subpath map AND a root re-export of
   // a deeply-declared interface — the release-critical augmentation-token shape.
@@ -171,7 +171,7 @@ export const publicExplicitAlias = tokenfor<Scoped<"request">>();
         rootDir: 'src',
         skipLibCheck: true,
         noEmitOnError: false,
-        plugins: [{ transform: '@rhombus-std/primitives.transformer/ttsc' }],
+        plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }],
       },
       include: ['src/**/*'],
     }),

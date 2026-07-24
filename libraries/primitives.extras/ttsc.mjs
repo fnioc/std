@@ -20,7 +20,7 @@ import path from 'node:path';
  */
 export function createTtscPlugin(context) {
   // context.dirname is the load-mode-independent __dirname of THIS descriptor
-  // (libraries/primitives.transformer); the owner host lives at the repo root.
+  // (libraries/primitives.extras); the owner host lives at the repo root.
   const source = path.resolve(
     context.dirname,
     '..',

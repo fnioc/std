@@ -10,7 +10,7 @@ import (
 
 // entrySourceFile is the load-bearing half of the build-state-independent token
 // fix (mirrors the TS engine's entrySourceFile in
-// libraries/primitives.transformer/src/tokens.ts): it maps an export entry's
+// libraries/primitives.extras/src/tokens.ts): it maps an export entry's
 // on-disk target to the source file the program actually loaded, trying the
 // LITERAL target stem first and the `dist/<X> -> src/<X>` twin only when the
 // literal is absent. These are pure stem-selection assertions; the alias /

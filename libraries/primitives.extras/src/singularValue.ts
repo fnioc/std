@@ -31,7 +31,7 @@
  */
 export function singularValue<T>(): T {
   throw new Error(
-    'singularValue<T>() requires the @rhombus-std/primitives.transformer singularValue plugin. '
+    'singularValue<T>() requires the @rhombus-std/primitives.extras singularValue plugin. '
       + 'Add the transformer sugar plugin to your tsconfig "plugins".',
   );
 }

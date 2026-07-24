@@ -42,7 +42,7 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
-    "@rhombus-std/primitives.transformer": "workspace:*"
+    "@rhombus-std/primitives.extras": "workspace:*"
   },
   "peerDependencies": {
     "@rhombus-std/config": "workspace:^"

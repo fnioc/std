@@ -26,7 +26,7 @@
 export function returntokenfor<T>(): string {
   void (0 as unknown as T);
   throw new Error(
-    'returntokenfor<T>() requires the @rhombus-std/primitives.transformer returntokenfor plugin. '
+    'returntokenfor<T>() requires the @rhombus-std/primitives.extras returntokenfor plugin. '
       + 'Add the transformer sugar plugin to your tsconfig "plugins".',
   );
 }

@@ -36,7 +36,7 @@ if (dts.status !== 0) {
 // tsconfig.ttsc.json plugins array, auto-discovery spawns the one owner host from
 // this lib's direct di.transformer devDep, and the host self-selects the full
 // stage set (the di stage plus the primitive stages via di.transformer's
-// primitives.transformer dep) from its own dependency scan. Pass `undefined`
+// primitives.extras dep) from its own dependency scan. Pass `undefined`
 // (NEVER []) so discovery is not suppressed; a non-empty manual plugins array
 // would override.
 const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');

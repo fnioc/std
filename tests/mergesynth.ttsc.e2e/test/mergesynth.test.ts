@@ -5,10 +5,10 @@ import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the #213 merge-strategy synthesis stage: drives the
-// REAL ttsc over a temp project that DEPENDS ON @rhombus-std/primitives.transformer
+// REAL ttsc over a temp project that DEPENDS ON @rhombus-std/primitives.extras
 // (no explicit tsconfig plugins). ttsc's auto-discovery spawns the single owner
 // host (transforms/cmd/ttsc-std) from that dep, and the host self-selects its
-// stages from its own dependency scan — primitives.transformer's ttsc.stages
+// stages from its own dependency scan — primitives.extras's ttsc.stages
 // carries mergesynth alongside inline/tokenfor/signatureof — exactly as a real
 // augmentation package activates it. It then proves the feature three ways:
 //
@@ -44,7 +44,7 @@ const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
 const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
-const PRIM_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.transformer');
+const PRIM_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.extras');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 
 // Outside the repo tree (see the header: an enclosing package.json re-roots token
@@ -199,15 +199,15 @@ beforeAll(async () => {
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
-  link(PRIM_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
+  link(PRIM_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
 
   writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
-  // A fixture package.json declaring the primitives.transformer devDep: ttsc's
+  // A fixture package.json declaring the primitives.extras devDep: ttsc's
   // auto-discovery reads it, finds the ttsc.plugin marker, and spawns the one
   // owner host. The host then self-selects its stages from its own dependency
-  // scan — primitives.transformer's ttsc.stages carries mergesynth — exactly as a
+  // scan — primitives.extras's ttsc.stages carries mergesynth — exactly as a
   // real augmentation package does. No tsconfig `plugins` array (an explicit list
   // would suppress discovery and never spawn the host).
   writeFileSync(
@@ -216,7 +216,7 @@ beforeAll(async () => {
       name: '@fixture/mergesynth-consumer',
       private: true,
       devDependencies: {
-        '@rhombus-std/primitives.transformer': '*',
+        '@rhombus-std/primitives.extras': '*',
         '@rhombus-std/primitives': '*',
       },
     }),

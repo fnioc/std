@@ -33,11 +33,11 @@ const PRIMITIVE_HOMES = {
   keyof: '@rhombus-std/di.transformer',
   keyedtokenfor: '@rhombus-std/di.transformer',
   valueof: '@rhombus-std/di.transformer',
-  isSingular: '@rhombus-std/primitives.transformer',
-  singularValue: '@rhombus-std/primitives.transformer',
-  isFactory: '@rhombus-std/primitives.transformer',
-  returntokenfor: '@rhombus-std/primitives.transformer',
-  paramtokensfor: '@rhombus-std/primitives.transformer',
+  isSingular: '@rhombus-std/primitives.extras',
+  singularValue: '@rhombus-std/primitives.extras',
+  isFactory: '@rhombus-std/primitives.extras',
+  returntokenfor: '@rhombus-std/primitives.extras',
+  paramtokensfor: '@rhombus-std/primitives.extras',
   schemaof: '@rhombus-std/config.transformer',
 };
 

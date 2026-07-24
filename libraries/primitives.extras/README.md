@@ -1,4 +1,4 @@
-# @rhombus-std/primitives.transformer
+# @rhombus-std/primitives.extras
 
 **A compile-time transformer that turns `tokenfor<T>()` into a stable string
 token for a TypeScript type — no reflection, no decorators, no runtime cost.**
@@ -19,10 +19,10 @@ from types.
 ## Install
 
 ```sh
-bun add @rhombus-std/primitives.transformer @rhombus-std/primitives
+bun add @rhombus-std/primitives.extras @rhombus-std/primitives
 ```
 
-`primitives.transformer` supplies the build-time engine; `tokenfor<T>()` itself is an ordinary
+`primitives.extras` supplies the build-time engine; `tokenfor<T>()` itself is an ordinary
 import from `@rhombus-std/primitives` (below) — you need both packages.
 
 ## Usage

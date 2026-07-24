@@ -12,12 +12,12 @@ import { basename, join, resolve } from 'node:path';
 //
 //   1. transitivity — a consumer that DIRECTLY devDeps di.transformer (whose only
 //      declared stage is `di`) and calls tokenfor<T>(). Auto-discovery spawns the
-//      host off di.transformer; the host's scan then reaches primitives.transformer
+//      host off di.transformer; the host's scan then reaches primitives.extras
 //      THROUGH di.transformer's honest dependency edge and activates the tokenfor
 //      stage, so tokenfor<T>() lowers to its token. ttsc's own direct-only discovery
 //      could never reach that transitive stage — this is what the host scan adds.
 //   2. cores don't force-activate — a consumer that deps ONLY di.core (a core, no
-//      ttsc.plugin marker, though di.core itself devDeps primitives.transformer to
+//      ttsc.plugin marker, though di.core itself devDeps primitives.extras to
 //      build ITSELF). Auto-discovery finds no marker, so no host spawns and
 //      tokenfor<T>() is emitted UNTOUCHED. di.core's own devDep must not leak.
 //
@@ -161,7 +161,7 @@ beforeAll(async () => {
   mkdirSync(CORE_ONLY, { recursive: true });
 
   // Fixture 1: devDeps di.transformer (the transitivity proof). di.transformer's
-  // own primitives.transformer dependency is what carries the tokenfor stage; the
+  // own primitives.extras dependency is what carries the tokenfor stage; the
   // host reaches it through the scan. The transitive @rhombus-std packages are
   // linked so the host's walk resolves them from the fixture's node_modules.
   writeFileSync(
@@ -177,12 +177,12 @@ beforeAll(async () => {
   link(lib('di.transformer'), join(cScoped, 'di.transformer'));
   link(lib('di.core'), join(cScoped, 'di.core'));
   link(lib('primitives'), join(cScoped, 'primitives'));
-  link(lib('primitives.transformer'), join(cScoped, 'primitives.transformer'));
+  link(lib('primitives.extras'), join(cScoped, 'primitives.extras'));
   writeProject(CONSUMER);
 
   // Fixture 2: deps ONLY di.core. di.core carries no ttsc.plugin marker, so
   // auto-discovery spawns no host — even though di.core devDeps
-  // primitives.transformer to lower its OWN source (a transitive devDep that must
+  // primitives.extras to lower its OWN source (a transitive devDep that must
   // not leak).
   writeFileSync(
     join(CORE_ONLY, 'package.json'),
@@ -211,7 +211,7 @@ beforeAll(async () => {
 
 describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () => {
   test('a di.transformer dep transitively activates the tokenfor stage', () => {
-    // The host reached primitives.transformer through di.transformer's honest
+    // The host reached primitives.extras through di.transformer's honest
     // dependency edge and lowered tokenfor<IWidget>() to its token.
     expect(consumerApp).toContain('"@fixture/consumer/tokens/app:IWidget"');
     expect(consumerApp).not.toContain('tokenfor');
@@ -219,7 +219,7 @@ describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () =>
 
   test("a di.core-only consumer is left untouched (cores don't force-activate)", () => {
     // No *.transformer dep → auto-discovery spawns no host → tokenfor<IWidget>()
-    // survives unlowered. di.core's own primitives.transformer devDep did not leak.
+    // survives unlowered. di.core's own primitives.extras devDep did not leak.
     expect(coreOnlyApp).toContain('tokenfor');
     expect(coreOnlyApp).not.toContain('"@fixture/consumer/tokens/app:IWidget"');
   });
