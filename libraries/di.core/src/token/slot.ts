@@ -1,6 +1,6 @@
 // The parse-at-edges boundary between the wire `DepSlot` and the transient
-// `TokenNode` tree, plus the two DepSlot-level signature transforms the engine
-// and the registration builder need:
+// `TokenNode` tree, plus the DepSlot-level signature transform the engine and the
+// registration builder need:
 //
 //   - `parseSlot` / `serialiseSlot` — one DepSlot ⇄ one TokenNode. A string slot
 //     parses to a `concrete | hole | provider` tree; the object slots map to the
@@ -11,14 +11,6 @@
 //     hole substitution now runs through the ONE `Substituter`. Kept
 //     kind-for-kind so an unparseable string slot passes through untouched
 //     (matching the old `tryParse`-undefined passthrough).
-//   - `blowUpSignatures` — materialises every param-level `union` slot into
-//     cartesian concrete OVERLOADS (odometer order, rightmost-fastest). Called at
-//     REGISTRATION time (`ServiceManifestClass`), so the stored/emitted DepSlot
-//     keeps `union(...)` (the transformer and wire are unchanged) while the
-//     resolve side never sees a union. Odometer order makes it observationally
-//     identical to per-param union resolution: params resolve independently, so
-//     "first fully-resolvable overload in order" == "leftmost-resolvable per
-//     param". Nested unions flatten; a `[[]]` no-deps overload stays `[[]]`.
 
 import { isFactoryRef, isTypeArgRef, isUnionSlot } from '../guards.js';
 import type { DepSignatures, DepSlot } from '../types.js';
@@ -130,31 +122,4 @@ function boundLabel(label: number, bind: ReadonlyMap<number, TokenNode>): string
     throw new RangeError(`Hole $${label} has no matching type argument.`);
   }
   return Tree.toString(bound);
-}
-
-/** Materialises every param-level `union` slot into cartesian concrete overloads,
- * expanding each authored overload in place and preserving inter-overload order.
- * Union-free signatures pass through unchanged. */
-export function blowUpSignatures(signatures: DepSignatures): DepSignatures {
-  return signatures.flatMap(expandOverload);
-}
-
-/** One authored overload → its cartesian expansion over each slot's alternatives,
- * in odometer order (rightmost slot varies fastest). */
-function expandOverload(overload: readonly DepSlot[]): Array<readonly DepSlot[]> {
-  return overload
-    .map(slotAlternatives)
-    .reduce<Array<readonly DepSlot[]>>(
-      (rows, alternatives) => rows.flatMap((prefix) => alternatives.map((item) => [...prefix, item])),
-      [[]],
-    );
-}
-
-/** The alternatives a slot contributes to the cartesian: a union yields its
- * members (nested unions flattened); every other slot yields itself. */
-function slotAlternatives(slot: DepSlot): DepSlot[] {
-  if (isUnionSlot(slot)) {
-    return slot.union.flatMap(slotAlternatives);
-  }
-  return [slot];
 }

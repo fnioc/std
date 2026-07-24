@@ -24,9 +24,9 @@
 //                   substitution it reifies to a LITERAL of the bound node's
 //                   token string rather than to the bound node itself.
 //   - `provider`  — the resolver intrinsic sentinel (`RESOLVER_TOKEN_STRING`).
-//   - `union`     — the wire `Union`; members tried in order (blown to concrete
-//                   overloads at registration, so it never reaches the resolve
-//                   side — see `blowUpSignatures`).
+//   - `union`     — the wire `Union`; members tried in order at resolve time by
+//                   per-param resolution (§112 — the registration-time blow-up to
+//                   concrete overloads was abandoned).
 //   - `literal`   — the wire `LiteralRef`; supplies its value directly.
 //   - `factory`   — the wire `FactoryRef`; `type` is the produced token, `params`
 //                   the caller-supplied param tokens (absent when the wire form

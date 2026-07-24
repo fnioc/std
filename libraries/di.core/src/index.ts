@@ -74,7 +74,7 @@ export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } fr
 export type { ConcreteNode, FactoryNode, HoleNode, LiteralNode, ProviderNode, UnionNode } from './token/index.js';
 export { TokenNode } from './token/index.js';
 export { Matcher, Specificity, Substituter, TokenRewriter, TokenWalker, Validator } from './token/index.js';
-export { blowUpSignatures, closeSignatures, parseSlot, serialiseSlot } from './token/index.js';
+export { closeSignatures, parseSlot, serialiseSlot } from './token/index.js';
 export { closeToken, isOpenToken, parseToken } from './token/index.js';
 
 // The intrinsic provider token — a `IResolver`-typed parameter derives it, and
