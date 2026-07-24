@@ -104,8 +104,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger`, and `di`'s
   `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
-  `primitives.transformer` hosts the `tokenfor<T>()`/token-derivation machinery extracted from
-  di.transformer (which depends on it and re-exports the old surface). It also owns the structural
+  `primitives.extras` (the sugar-only authoring package, née `primitives.transformer`) hosts the
+  `tokenfor<T>()`/`tokenof()` token primitives — moved here out of this runtime leaf (W7,
+  constraint 11: pure transformables, elided after lowering) — and the token-derivation machinery,
+  di-independent so any family can mint augmentation tokens from types. The runtime leaf itself owns
+  the structural
   platform typings (§39/§44): `AbortSignal`/`AbortController` (+ the inert `neverSignal`
   singleton), `ProcessLike`/`process`, `TimeoutHandle`/`setTimeout`/`clearTimeout`, and
   `ReadableStream<R>` — typed `globalThis` lookups, so libraries never need
@@ -119,9 +122,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `EmptyServiceProvider` null-object singleton, §56) ← `di` (the resolution engine: scopes,
   resolution, captive-dependency protection, `ServiceProviderOptions`-gated `validateScopes` /
   `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57).
-  `di.transformer` (the Go/ttsc authoring surface: the `declare module` for the tokenless
+  `di.extras` (the Go/ttsc authoring surface: the `declare module` for the tokenless
   registration forms, the inline sugar bodies, and the `signatureof` primitive) depends on
-  **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.transformer.options` is a satellite lowering the `addOptions<T>()`
+  **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.extras.options` is a satellite lowering the `addOptions<T>()`
   sugar (§15). di.core's public type surface also ships `IServiceProviderFactory` — the reference
   `IServiceProviderFactory` analog, shared by the hosting builders (§24) — and the capability
   interfaces `IRequiredResolver` / `IServiceQuery` that `IResolver` composes (the reference
@@ -170,7 +173,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (`IniStreamParser` grammar), and `config.xml` (a self-contained tokenizer, NO XML-parser dep;
   encrypted-config decryptor and `KeyPerFile` out of scope). Hosting's default `reloadOnChange` stays
   OFF pending file-provider-watcher disposal ownership (§75, the #182 disposal question).
-  `config.transformer` rewrites `.withType<T>()` and is standalone — di-independent (§15).
+  `config.extras` rewrites `.withType<T>()` and is standalone — di-independent (§15).
 - **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
   `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/
   `HostBuilderContext`/`IHostEnvironment`/`IHostApplicationBuilder` + the `addHostedService`
@@ -317,7 +320,12 @@ Architecture section above. `decisions.md` is the full record; this file is the 
 - **Qualifiers:**
   - `.core` — the abstractions/contracts layer for a family.
   - `.augmentations` — a side-effect declaration-merging extension package.
-  - `.transformer` — an authoring-time transformer for a family.
+  - `.extras` — a sugar-only authoring package for a family (declare-module typings +
+    `rhombus.inline` bodies + one ttsc spawn descriptor). The old `.transformer` qualifier
+    was renamed to `.extras` (W7, constraint 11): `primitives.extras`, `di.extras`,
+    `di.extras.options`, `config.extras`. `primitives.extras` also homes the shared
+    authoring-time token primitives (`tokenfor`/`tokenof` moved out of the runtime
+    `primitives` leaf, plus `isSingular`/`singularValue`/`isFactory`/etc.).
   - Config providers keep their own name instead of a generic qualifier:
     `config.json`, `config.env`, `config.commandline`. Concrete providers in other families
     follow the same pattern — `logging.console` and `logging.browserconsole` are the console
@@ -367,7 +375,7 @@ fix) while every external consumer resolves the built dist; `hosting.core.test`'
 program needs the same condition in its own tsconfig, since it pulls hosting.core's src through
 `./private/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's `.`
 export and from `customConditions` in all nine downstream consumer tsconfigs that used to force
-dist-resolution with it (the `di.transformer` pair, the example/app programs, and the di + config
+dist-resolution with it (the `di.extras` pair, the example/app programs, and the di + config
 transformer test programs) — the per-core `-source` conditions above are its narrower replacement.
 
 **`config` is converted — #68 complete.** Its `.` export resolves `bun`/`import`/`default` → dist
@@ -416,23 +424,28 @@ invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (res
 `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only** (`mise.toml`
 pin), never system-wide.
 
-- **Descriptor wiring** — every transformer's `./ttsc` subpath descriptor resolves to the SAME
-  `cmd/ttsc-std` source dir (so `ttsc` dedupes every consumer to one cache key). Stage selection is
-  **declare-by-depending** (§100/§103): the host's own workspace dependency scan (`CollectProject`,
-  the single walk that also gathers inline bodies) activates the stages of every reachable
-  `*.transformer` dependency — each names them in its `ttsc.stages` marker — and `ttsc-std` runs them
-  in the hardcoded canonical order (inline → mergesynth → nameof → signatureof → di → di-options →
-  config) regardless of declaration order. `build-lib.ts` passes no explicit plugin list, so `ttsc`'s
-  own (direct-only) auto-discovery merely spawns the one host; an explicit `tsconfig.ttsc.json`
-  `plugins` array is the override. The one binary links typia to run the `mergesynth` base stage
-  (§103); di.core's `./ttsc` PRESET expands to the ordered di sugar bundle (inline → nameof →
-  signatureof → di, no mergesynth).
-- **Descriptor-only transformer packages** — `config.transformer` and `primitives.transformer`
-  collapsed to their `./ttsc` (+ `inline-ttsc`/`signatureof-ttsc`) descriptors, no barrel to build.
-  `di.transformer` / `di.transformer.options` keep a barrel that ships only the `declare module`
-  authoring augmentation; di.transformer also holds the single-expression `inline.ts` sugar bodies
-  (side-parsed from src, never bundled) + the `rhombus.inline` markers + the `signatureof` throwing
-  stub.
+- **Descriptor wiring — one always-on stage table, NO selection (W7).** Every `*.extras` package's
+  `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
+  dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
+  the host runs its WHOLE stage table on every file in a fixed canonical order (inline → mergesynth →
+  nameof → signatureof → keyof → valueof → singular → factory → fold → schemaof), looped to a fixed
+  point; a stage that matches nothing is a cheap no-op (disjoint match sets). The bespoke di /
+  di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
+  di.core's preset `./ttsc` descriptor are all GONE — the authoring forms (`add`/`addOptions`/
+  `withType`/resolve-family) lower as `rhombus.inline` sugar bodies the inline stage substitutes and
+  the primitives lower. What a dependency governs is **spawning + which bodies are in play**: ttsc's
+  direct-only auto-discovery spawns the one host from a consumer's direct `*.extras` dep (its
+  `ttsc.plugin` marker), and the host's single `CollectProject` scan gathers the inline BODIES from
+  the transitive graph (§100). `build-lib.ts` passes no explicit plugin list; an explicit
+  `tsconfig.ttsc.json` `plugins` array is the only override. The one binary links typia to run
+  `mergesynth` (§103) as a one-shot pre-pass ahead of the loop.
+- **`*.extras` package shapes** — `config.extras` collapses to its single `./ttsc` descriptor (no
+  barrel). `primitives.extras` carries a barrel (the token primitives `tokenfor`/`tokenof` + the
+  resolve-family stubs `isSingular`/`singularValue`/`isFactory`/`returntokenfor`/`paramtokensfor`)
+  plus its `./ttsc` descriptor. `di.extras` / `di.extras.options` keep a barrel shipping only the
+  `declare module` authoring augmentation; di.extras also holds the single-expression `inline.ts`
+  sugar bodies (side-parsed from src, never bundled) + the `rhombus.inline` markers + the
+  `signatureof`/`keyof`/`valueof`/`keyedtokenfor` throwing stubs.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`
