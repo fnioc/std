@@ -9,39 +9,53 @@ import { basename, join, resolve } from 'node:path';
 // through the OPEN augmentation registry — the same production path a consumer uses.
 import '@rhombus-std/options.augmentations';
 
-// Production-path e2e for the generic single-expression inline stage. It drives
-// the REAL ttsc over a temp project wiring the inline + tokenfor + di descriptors
-// (all three resolve to the one owner Go host), then asserts:
+// Production-path e2e for the generic single-expression inline stage — the sole
+// registration/resolution lowering path now that the bespoke di / di_options /
+// config stages are deleted (W6p3). It drives the REAL ttsc over temp projects
+// wiring the inline + primitive descriptors (all resolve to the one owner Go
+// host), then asserts every authoring form lowers to the hand-writable output and
+// reproduces the FROZEN di-direct oracle byte-for-byte.
 //
 //   1. the isService<T>() sugar is inlined and lowered to isService("<token>"),
 //      with no tokenfor and no authoring-form generics surviving; and
-//   2. BYTE PARITY — the same source compiled with the inline stage present vs
-//      absent (tokenfor+di only, where the di semantic stage lowers isService
-//      itself) emits the identical isService line. The pilot changes the path,
-//      never the output.
+//   2. BYTE PARITY against the FROZEN di-direct golden. The two bespoke domain
+//      stages that used to serve as a live oracle are gone; their pre-deletion
+//      output was captured into the checked-in testdata/*.di-direct.js goldens
+//      (never self-blessed from the inline path), and the inline pipeline must
+//      reproduce them exactly. The deliberately-divergent keyed forms (§98) read
+//      the divergent field from the golden and reunite it.
 //
-// The two compilations run in ONE per-worktree project dir OUTSIDE the repo tree
+// The compilations run in per-worktree project dirs OUTSIDE the repo tree
 // (~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>, off the per-user-quota tmpfs
 // /tmp; it must sit outside any enclosing package.json or ttsc re-roots the
-// fixture's token derivation to that package) with two tsconfigs
-// (tsconfig.inline.json / tsconfig.semantic.json), and BOTH point ttsc at the
-// single shared plugin cache (TTSC_CACHE_DIR, see goEnv). This matters: ttsc's
-// plugin cache is resolved per project root, so an unpinned cache that lands
-// under each project's own node_modules would build the SAME Go sidecar afresh
-// (multi-minute cold compile, and a timeout-kill then abandons a build lock the
-// next run must reclaim). One shared, content-keyed cache → the sidecar builds
-// once cold per machine and every later compilation is warm. This mirrors the
-// di.transformer.ttsc.e2e harness.
+// fixture's token derivation to that package), all pointing ttsc at the single
+// shared plugin cache (TTSC_CACHE_DIR, see goEnv). This matters: ttsc's plugin
+// cache is resolved per project root, so an unpinned cache that lands under each
+// project's own node_modules would build the SAME Go sidecar afresh (multi-minute
+// cold compile, and a timeout-kill then abandons a build lock the next run must
+// reclaim). One shared, content-keyed cache → the sidecar builds once cold per
+// machine and every later compilation is warm.
 //
 // The inline stage reads di.core's REAL src (its rhombus.inline entry + the
-// out-of-barrel src/inline.ts body), so the real di.core is symlinked, not
-// mocked. Toolchain pinning mirrors that sibling harness.
+// out-of-barrel src/inline.ts body), so the real di.core is symlinked, not mocked.
 
 const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
 const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().length > 0;
 
 const PKG_ROOT = resolve(import.meta.dir, '..');
 const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
+
+// The di-direct oracle (the deleted di / di_options / config stages, plus the
+// pre-§98 keyed forms) no longer runs: its byte-output was FROZEN into these
+// checked-in goldens BEFORE the W6p3 deletion, captured from the semantic sandbox
+// while it still existed (never self-blessed from the inline path). The inline
+// pipeline is then proven to reproduce them here. For a golden the two paths
+// deliberately diverge on (keyed), the assertions below read the divergent field
+// from the golden and reunite it, exactly as the live semantic sandbox did.
+const TESTDATA = join(import.meta.dir, 'testdata');
+function golden(name: string): string {
+  return readFileSync(join(TESTDATA, name), 'utf8');
+}
 const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
@@ -154,7 +168,6 @@ function setupWorkspace(): void {
   mkdirSync(join(nm, '@ttsc'), { recursive: true });
   mkdirSync(join(projDir, 'src'), { recursive: true });
   rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
-  rmSync(join(projDir, 'dist-semantic'), { recursive: true, force: true });
 
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
@@ -164,21 +177,19 @@ function setupWorkspace(): void {
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.transformer'));
 
-  // The consumer must depend on di.core so the collector reaches its
-  // rhombus.inline entry.
+  // The consumer must depend on di.transformer so the collector reaches its
+  // rhombus.inline ServiceQueryInline entry (the isService<T>() body) — with the
+  // di stage deleted (W6p3), that inline body is the ONLY path that lowers the
+  // tokenless isService, so it must be collected. di.core carries the receiver type.
   writeFileSync(
     join(projDir, 'package.json'),
     JSON.stringify({ name: 'inline-e2e-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*' } }),
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.transformer': 'workspace:*' } }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
   writeTsconfig('tsconfig.inline.json', 'dist-inline', [
     { transform: '@rhombus-std/primitives.transformer/inline-ttsc' },
-    { transform: '@rhombus-std/primitives.transformer/ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
-  ]);
-  writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
     { transform: '@rhombus-std/primitives.transformer/ttsc' },
     { transform: '@rhombus-std/di.transformer/ttsc' },
   ]);
@@ -207,10 +218,10 @@ beforeAll(() => {
     return;
   }
   setupWorkspace();
-  // First compilation pays the one cold sidecar build; the second reuses it warm
-  // through the shared project-local plugin cache.
   withInline = lower('tsconfig.inline.json', 'dist-inline');
-  withoutInline = lower('tsconfig.semantic.json', 'dist-semantic');
+  // The di-direct oracle output is frozen (the semantic sandbox is gone with the di
+  // stage). The inline pipeline must reproduce it byte-for-byte.
+  withoutInline = golden('pilot.di-direct.js');
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () => {
@@ -301,7 +312,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 
 const CHAIN_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'chain');
 const chainInlineDir = join(CHAIN_ROOT, 'inline');
-const chainSemanticDir = join(CHAIN_ROOT, 'semantic');
 
 // The token-free authoring overloads, hand-declared as a di.core module
 // augmentation — mirroring how the isService pilot hand-declares `isService<T>()`,
@@ -529,12 +539,13 @@ function linkChainDeps(dir: string): void {
 
 function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
-  rmSync(join(chainSemanticDir, 'dist'), { recursive: true, force: true });
 
   // Inline path: di.transformer IN deps → the host scan activates the full stage
-  // set (inline + nameof + signatureof + keyof + valueof + di). The tsconfig
-  // spells the primitives descriptors explicitly so ttsc has direct-discovery
-  // entries to spawn the host with; di + valueof arrive through the scan.
+  // set (inline + nameof + signatureof + keyof + valueof + the resolve-family
+  // primitives). The tsconfig spells the primitives descriptors explicitly so ttsc
+  // has direct-discovery entries to spawn the host with; the rest arrive through
+  // the scan. There is no longer a semantic (di-direct) sandbox — that stage was
+  // deleted (W6p3); its output is the frozen `*.di-direct.js` golden.
   linkChainDeps(chainInlineDir);
   writeFileSync(
     join(chainInlineDir, 'package.json'),
@@ -553,24 +564,6 @@ function setupChainWorkspaces(): void {
     { transform: '@rhombus-std/primitives.transformer/ttsc' },
     { transform: '@rhombus-std/primitives.transformer/signatureof-ttsc' },
     { transform: '@rhombus-std/primitives.transformer/keyof-ttsc' },
-  ]);
-
-  // Semantic (di-direct) path: di.core ONLY in deps → empty scan → NO inline. The
-  // tsconfig selects the di-direct lowering explicitly. di.transformer is linked
-  // for the descriptor but withheld from package.json so its stages stay unscanned.
-  linkChainDeps(chainSemanticDir);
-  writeFileSync(
-    join(chainSemanticDir, 'package.json'),
-    JSON.stringify({
-      name: 'chain-app',
-      version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*' },
-    }),
-  );
-  writeChainSrc(chainSemanticDir);
-  writeChainTsconfig(chainSemanticDir, [
-    { transform: '@rhombus-std/primitives.transformer/ttsc' },
-    { transform: '@rhombus-std/di.transformer/ttsc' },
   ]);
 }
 
@@ -610,16 +603,16 @@ beforeAll(() => {
   }
   setupChainWorkspaces();
   const inlineRun = runChainTtsc(chainInlineDir);
-  const semanticRun = runChainTtsc(chainSemanticDir);
   chainInline = readChainFile(chainInlineDir, inlineRun, 'src/chain.ts');
-  chainSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/chain.ts');
   keyedInline = readChainFile(chainInlineDir, inlineRun, 'src/keyed.ts');
-  keyedSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/keyed.ts');
   valueInline = readChainFile(chainInlineDir, inlineRun, 'src/value.ts');
-  valueSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/value.ts');
   resolveInline = readChainFile(chainInlineDir, inlineRun, 'src/resolve.ts');
-  resolveSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/resolve.ts');
   overrideInline = readChainFile(chainInlineDir, inlineRun, 'src/override.ts');
+  // The di-direct oracle output for each source is frozen (semantic sandbox gone).
+  chainSemantic = golden('chain.di-direct.js');
+  keyedSemantic = golden('keyed.di-direct.js');
+  valueSemantic = golden('value.di-direct.js');
+  resolveSemantic = golden('resolve.di-direct.js');
 }, COLD_BUILD_MS);
 
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
