@@ -35,11 +35,6 @@ const (
 	// unbound type parameter (a bare generic class registered without an
 	// instantiation expression).
 	codeUnboundTypeParameter = "990007"
-	// codeDepHoleNotInServiceTemplate: a dependency slot references a hole the
-	// service template does not bind. Fires only for the dep-hole-CHECKED
-	// extractor variant, where a lowered registration's sibling service token is
-	// in scope.
-	codeDepHoleNotInServiceTemplate = "990010"
 )
 
 // Category distinguishes a hard error (fails emit) from an advisory warning.

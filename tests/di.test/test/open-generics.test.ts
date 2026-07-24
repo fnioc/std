@@ -484,12 +484,12 @@ describe('holey slots in normal resolution', () => {
 });
 
 describe('gappy open template whose signature references an unbound hole', () => {
-  // A mis-authored hand-written open template: the service token binds holes
-  // $1 and $3, but a carried signature references $2 — which no closing ever
-  // binds (the transformer's 990010 diagnostic prevents this on the plugin
-  // path; the manual path has no such guard). Synthesis must NOT crash with a
-  // RangeError out of #lookup — it must miss cleanly so resolution raises a
-  // DiError and greedy selection can fall back.
+  // A mis-authored open template: the service token binds holes $1 and $3, but
+  // a carried signature references $2 — which no closing ever binds. The
+  // transform does not police this (it is not transform's job to validate); it
+  // surfaces at first resolve. Synthesis must NOT crash with a RangeError out of
+  // #lookup — it must miss cleanly so resolution raises a DiError and greedy
+  // selection can fall back.
   test('resolving such a closing raises a DiError, not an opaque RangeError', () => {
     let services = new ServiceManifest();
     services = services.addClass('app/IX<$1,$3>', ZeroRepo, [[typeArg(2)]]);

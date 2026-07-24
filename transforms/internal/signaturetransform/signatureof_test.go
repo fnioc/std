@@ -329,11 +329,10 @@ export const s3 = signatureof(NoDep);
 }
 
 // TestNewUnderivableParamStillErrors keeps the pre-existing 990006 behavior on the
-// standalone signatureof path: a constructor param whose type has no derivable
-// token (an anonymous object type) lowers to the `??unresolvable??` sentinel AND
-// raises codeUnderivableToken — this is the value's own signature concern, present
-// with or without a service token, and is distinct from the dep-HOLE check (990010)
-// the registration path adds.
+// signatureof path: a constructor param whose type has no derivable token (an
+// anonymous object type) lowers to the `??unresolvable??` sentinel AND raises
+// codeUnderivableToken — the value's own signature concern (the transform's own
+// inability to lower), reported with or without a surrounding registration.
 func TestNewUnderivableParamStillErrors(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 class Bad { constructor(dep: { readonly a: number }) { void dep; } }

@@ -234,3 +234,27 @@ export const s = signatureof(factory);
 		t.Fatalf("concrete factory param dropped from %s", arr)
 	}
 }
+
+// depArray extracts the `[[...]]` dependency-signature array literal from a lowered
+// output (the only doubly-bracketed literal the signatureof stage emits).
+func depArray(t *testing.T, out string) string {
+	t.Helper()
+	start := strings.Index(out, "[[")
+	if start < 0 {
+		t.Fatalf("no dependency array in output:\n%s", out)
+	}
+	depth := 0
+	for i := start; i < len(out); i++ {
+		switch out[i] {
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				return out[start : i+1]
+			}
+		}
+	}
+	t.Fatalf("unterminated dependency array in output:\n%s", out)
+	return ""
+}
