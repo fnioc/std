@@ -22,8 +22,8 @@
 // resolves transiently (a fresh instance) instead.
 
 import { closeSignatures, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken,
-  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, type ServiceProviderOptions, type Token,
-  TokenNode, type TypeArgRef, type Union } from '@rhombus-std/di.core';
+  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, type ServiceProviderOptions, Specificity,
+  type Token, TokenNode, type TypeArgRef, type Union } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
@@ -37,6 +37,46 @@ import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Regi
  * serves every provider — the tree-op replacement for the former free `match`.
  */
 const MATCHER = new Matcher();
+
+/**
+ * The most-specific-wins metric behind `rankTemplates`. Stateful only WITHIN one
+ * `measure` call (it resets its own hole tally), so one module-level instance
+ * serves every provider, exactly like `MATCHER`.
+ */
+const SPECIFICITY = new Specificity();
+
+/** One ranked open-template candidate — its parsed tree paired with the
+ * registration it came from, so the caller never re-derives either. */
+interface RankedTemplate {
+  readonly template: TokenNode;
+  readonly open: OpenRegistration;
+}
+
+/**
+ * Orders the open templates bucketed under one base MOST-SPECIFIC FIRST, ties
+ * broken by LATEST registration (bucket order is registration order), and drops
+ * any whose template does not parse. The rule di.core's reference
+ * `TokenProvider.#rankTemplates` states — see §125 for why the engine needs it
+ * once a template may mix concrete args and holes.
+ *
+ * The tree comes off the registration when present; a hand-built
+ * `OpenRegistration` literal that omitted `node` is reparsed here (an
+ * unparseable one is simply not a candidate, matching the old `continue`).
+ * `#lookup` memoizes its result per closed token, so this runs once per closing.
+ */
+function rankTemplates(candidates: readonly OpenRegistration[]): RankedTemplate[] {
+  const ranked: Array<RankedTemplate & { readonly index: number; readonly score: number; }> = [];
+  for (let i = 0; i < candidates.length; i++) {
+    const open = candidates[i]!;
+    const template = open.node ?? TokenNode.tryParse(open.template);
+    if (template === undefined) {
+      continue;
+    }
+    ranked.push({ template, open, index: i, score: SPECIFICITY.measure(template) });
+  }
+  ranked.sort((a, b) => b.score - a.score || b.index - a.index);
+  return ranked;
+}
 
 /** True when a value implements the native synchronous `Disposable`. */
 function isDisposable(value: unknown): value is Disposable {
@@ -551,11 +591,12 @@ export class ServiceProviderClass<S extends string = string> implements IService
    *
    * The single lookup funnel — instance resolution, factory injection, and
    * satisfiability all come through here. On an exact miss the open-generic
-   * fallback chain runs: memo hit → parse as closed-generic → open-table match
-   * → substitute → synthesize a class `Registration` → memoize. Exact beats
-   * open (this order IS the precedence rule). Never throws: a holey token
-   * simply misses (so `#isResolvable` is false for it); the dedicated error is
-   * raised by `#resolve`.
+   * fallback chain runs: memo hit → parse as closed-generic → open-table
+   * candidates ranked most-specific-first → match → substitute → synthesize a
+   * class `Registration` → memoize. Exact beats open (this order IS the
+   * precedence rule). Never throws: a holey token simply misses (so
+   * `#isResolvable` is false for it); the dedicated error is raised by
+   * `#resolve`.
    */
   #lookup(token: Token): Registration | undefined {
     const list = this.#registrations.get(token);
@@ -593,19 +634,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
       return undefined;
     }
 
-    // Scan from the END so the most-recently-registered matching template wins,
-    // mirroring the exact map's last-wins list semantics. Pure recency — NO
-    // specificity ranking / most-specific-wins (gated; downstream open
-    // registrations are all single-hole, so this is exactly today's behavior).
-    for (let i = candidates.length - 1; i >= 0; i--) {
-      const open = candidates[i]!;
-      // The parsed template tree — carried on the registration, or reparsed for a
-      // hand-built `OpenRegistration` literal that omitted `node`. `match` gates
-      // arity positionally and binds holes with repeated-hole equality.
-      const template = open.node ?? TokenNode.tryParse(open.template);
-      if (template === undefined) {
-        continue;
-      }
+    // MOST-SPECIFIC-FIRST, ties to the latest registration (§125). Since a
+    // template may mix concrete args and holes (§124), overlap on one base is
+    // normal — `IRepo<IUser,$1>` and `IRepo<$1,$2>` both live under `IRepo` —
+    // and pure recency would silently serve the general template to an author
+    // who registered the specific one first. Identical templates score equally
+    // and fall through to the latest index, so the exact map's last-wins list
+    // semantics are preserved where they were the only rule in play.
+    for (const { template, open } of rankTemplates(candidates)) {
       const bind = MATCHER.match(template, ground);
       if (!bind) {
         continue;

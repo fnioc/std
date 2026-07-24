@@ -502,7 +502,7 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 - **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
 - **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
-- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **PARTLY SUPERSEDED:** the all-holes registration guard is retired, so partial closing is live (§124). Template selection is still pure-recency. The rest of this entry stands: the string grammar remains `materialise`'s and `#lookup`'s open-vs-closed classifier.
+- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **SUPERSEDED:** both are now live — the all-holes registration guard is retired so partial closing works (§124), and template selection is most-specific-first (§125). The rest of this entry stands: the string grammar remains `materialise`'s and `#lookup`'s open-vs-closed classifier.
 
 Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
 
@@ -788,3 +788,25 @@ fix that and drop the string grammar's second parser, but it also flips `$0` fro
 
 _Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
 guard's shape (reject only what can never match, on the typed tree) is Claude's.
+
+---
+
+## §125 — Overlapping open templates are selected most-specific-first, not by recency
+
+`ServiceProviderClass.#lookup` scanned the open-template bucket from the end — pure recency, which
+§106 gated deliberately because under the all-holes rule the only possible overlap was
+repeated-hole vs distinct-hole. §124 makes overlap the normal case: `IRepo<User,$1>` and
+`IRepo<$1,$2>` share the `IRepo` bucket, and under recency an author who registers the specific
+template first and the general one second silently resolves through the general one — a wrong
+instance, not an error, and not discoverable. So the ranking §106 named as "a one-guard-removal,
+ME-divergent follow-up" lands with the guard removal.
+
+Candidates are ordered by `Specificity.measure` descending, ties broken by descending registration
+index — the exact rule `TokenProvider.#rankTemplates` (di.core's gated reference manifest) already
+implemented and unit-tested. Ranking is per closing and its result memoizes into `#closedMemo`, so
+the sort is paid once per distinct closed token. Every pre-existing open-generic behaviour survives
+by construction: identical templates score equally and fall to the latest index (last-wins, and
+`.as()`'s scoped copy with it), `IPair<$1,$1>` (score 2) already outranked `IPair<$1,$2>` (1) by
+registration order and now does so regardless of order, and distinct arities never share a bucket
+slot to contend for. _ME-divergent: the reference DI has no most-specific-wins rule (its open
+generics cannot carry a concrete arg at all, so nothing overlaps)._

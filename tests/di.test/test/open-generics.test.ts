@@ -70,13 +70,26 @@ describe('open-table matching', () => {
     );
   });
 
-  test('repeated-hole template registered later wins for equal args; general template still matches unequal', () => {
+  test('repeated-hole template wins for equal args; general template still matches unequal', () => {
     let services = new ServiceManifest();
     services = services.addClass('app/IPair<$1,$2>', MemRepo, [[{ value: 'any' }]]);
     services = services.addClass('app/IPair<$1,$1>', ZeroRepo, [[]]);
 
     const sp = services.build();
 
+    expect(sp.resolve('app/IPair<pkg:IA,pkg:IA>')).toBeInstanceOf(ZeroRepo);
+    expect(sp.resolve('app/IPair<pkg:IA,pkg:IB>')).toBeInstanceOf(MemRepo);
+  });
+
+  test('...and it wins registered FIRST too — selection is specificity, not recency', () => {
+    let services = new ServiceManifest();
+    services = services.addClass('app/IPair<$1,$1>', ZeroRepo, [[]]);
+    services = services.addClass('app/IPair<$1,$2>', MemRepo, [[{ value: 'any' }]]);
+
+    const sp = services.build();
+
+    // `<$1,$1>` scores 2 (one concrete node + one repeated label) against
+    // `<$1,$2>`'s 1, so it is tried first however the two were ordered.
     expect(sp.resolve('app/IPair<pkg:IA,pkg:IA>')).toBeInstanceOf(ZeroRepo);
     expect(sp.resolve('app/IPair<pkg:IA,pkg:IB>')).toBeInstanceOf(MemRepo);
   });
@@ -223,6 +236,20 @@ describe('partially-closed templates', () => {
 
     // The specific template serves the closings it covers; the general one
     // serves the rest.
+    expect(sp.resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(SqlRepo);
+    expect(sp.resolve('app/IR<pkg:IZ,pkg:IB>')).toBeInstanceOf(MemRepo);
+  });
+
+  test('...and the split holds with the SPECIFIC template registered FIRST', () => {
+    // The inverse registration order of the test above. Selection is
+    // most-specific-first, not recency, so the order does not matter.
+    let services = new ServiceManifest();
+    services = services.addValue(T.B, 'B!');
+    services = services.addClass('app/IR<pkg:IA,$1>', SqlRepo, [['$1']]);
+    services = services.addClass('app/IR<$1,$2>', MemRepo, [[{ value: 'general' }]]);
+
+    const sp = services.build();
+
     expect(sp.resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(SqlRepo);
     expect(sp.resolve('app/IR<pkg:IZ,pkg:IB>')).toBeInstanceOf(MemRepo);
   });

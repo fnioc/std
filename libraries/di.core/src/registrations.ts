@@ -83,7 +83,9 @@ export interface Registration {
  * these (base + key + arity, then per-arg: a concrete arg must match exactly, a
  * hole binds, a repeated hole label must bind equal), substitutes the binding
  * through the carried signatures, and synthesizes an ordinary class
- * `Registration` (a ctor-wrapping producer) memoized per closed token.
+ * `Registration` (a ctor-wrapping producer) memoized per closed token. Templates
+ * overlapping on one base are tried MOST-SPECIFIC-FIRST, ties to the latest
+ * registered (§125).
  */
 export interface OpenRegistration {
   /** The full template token as registered (`pkg:IRepo<$1>`). */
