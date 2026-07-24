@@ -320,6 +320,16 @@ declare module '@rhombus-std/di.core' {
   interface IAsBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
     as<Scope extends S>(): AddChain<S, Exclude<Slots, 'scope'>, Gated>;
   }
+  // The tokenless resolve family (W5): resolve on IRequiredResolver,
+  // resolveAsync/tryResolve on IResolver — the faces di-direct anchors on and the
+  // inline ResolverInline bodies target.
+  interface IRequiredResolver {
+    resolve<T>(): T;
+  }
+  interface IResolver {
+    resolveAsync<T>(): Promise<T>;
+    tryResolve<T>(): T | undefined;
+  }
 }
 
 export {};
@@ -403,6 +413,26 @@ export const valueFn = services.addValue(makeThing);
 export const valueClass = services.addValue(ValueRepo);
 `;
 
+// Resolve-family source (W5). The tokenless resolve / resolveAsync / tryResolve
+// forms lower through the inline ResolverInline bodies (isSingular / singularValue
+// / tokenfor) OR the di-direct rewriteResolve, which must agree: a NON-singular T
+// resolves to the token form `provider.resolve("<token>")`, and a SINGULAR T
+// short-circuits to the value literal itself (di.core's Rule-2), the dead token arm
+// pruned by the fold. Own file so the resolve compare is isolated from the
+// registration whole-file compare.
+const RESOLVE_SOURCE = `
+import type { IResolver } from '@rhombus-std/di.core';
+
+interface IThing {}
+
+declare const provider: IResolver;
+
+export const tokenful = provider.resolve<IThing>();
+export const asyncTok = provider.resolveAsync<IThing>();
+export const tryTok = provider.tryResolve<IThing>();
+export const singular = provider.resolve<'dev'>();
+`;
+
 function writeChainSrc(dir: string): void {
   const src = join(dir, 'src');
   mkdirSync(src, { recursive: true });
@@ -410,6 +440,7 @@ function writeChainSrc(dir: string): void {
   writeFileSync(join(src, 'chain.ts'), CHAIN_SOURCE);
   writeFileSync(join(src, 'keyed.ts'), KEYED_SOURCE);
   writeFileSync(join(src, 'value.ts'), VALUE_SOURCE);
+  writeFileSync(join(src, 'resolve.ts'), RESOLVE_SOURCE);
 }
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
@@ -522,6 +553,8 @@ let keyedInline = '';
 let keyedSemantic = '';
 let valueInline = '';
 let valueSemantic = '';
+let resolveInline = '';
+let resolveSemantic = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -536,6 +569,8 @@ beforeAll(() => {
   keyedSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/keyed.ts');
   valueInline = readChainFile(chainInlineDir, inlineRun, 'src/value.ts');
   valueSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/value.ts');
+  resolveInline = readChainFile(chainInlineDir, inlineRun, 'src/resolve.ts');
+  resolveSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/resolve.ts');
 }, COLD_BUILD_MS);
 
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
@@ -550,6 +585,8 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('signaturefor');
   expect(out).not.toContain('valueof');
   expect(out).not.toContain('keyof');
+  expect(out).not.toContain('isSingular');
+  expect(out).not.toContain('singularValue');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
@@ -720,6 +757,44 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     assertNoAuthoringSurvivors(chainInline);
     // Byte parity with the di-direct lowering of the same empty-tuple chain.
     expect(lineWith(chainSemantic, 'emptySig =')).toEqual(line);
+  });
+});
+
+describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity (W5)', () => {
+  test('tokenful resolve<I>() lowers to resolve("<token>"), inline ≡ di-direct', () => {
+    const line = lineWith(resolveInline, 'tokenful =');
+    expect(line).toBeDefined();
+    expect(line).toContain('.resolve("');
+    expect(line).toContain('IThing');
+    expect(line).not.toContain('resolve<');
+    // Byte parity with the di-direct rewriteResolve lowering of the same call.
+    expect(lineWith(resolveSemantic, 'tokenful =')).toEqual(line);
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('resolveAsync<I>() / tryResolve<I>() keep their method name, inline ≡ di-direct', () => {
+    const asyncLine = lineWith(resolveInline, 'asyncTok =');
+    expect(asyncLine).toBeDefined();
+    expect(asyncLine).toContain('.resolveAsync("');
+    expect(lineWith(resolveSemantic, 'asyncTok =')).toEqual(asyncLine);
+
+    const tryLine = lineWith(resolveInline, 'tryTok =');
+    expect(tryLine).toBeDefined();
+    expect(tryLine).toContain('.tryResolve("');
+    expect(lineWith(resolveSemantic, 'tryTok =')).toEqual(tryLine);
+  });
+
+  test('singular resolve<"dev">() short-circuits to the value literal (Rule-2), inline ≡ di-direct', () => {
+    const line = lineWith(resolveInline, 'singular =');
+    expect(line).toBeDefined();
+    // The whole resolve call collapses to the value itself — no resolve call, no
+    // token — proving the fold pruned the tokenful dead branch AND its tokenfor.
+    expect(line).toContain('"dev"');
+    expect(line).not.toContain('.resolve(');
+    expect(line).not.toContain('isSingular');
+    expect(line).not.toContain('singularValue');
+    // Byte parity with di-direct's Rule-2 singular short-circuit.
+    expect(lineWith(resolveSemantic, 'singular =')).toEqual(line);
   });
 });
 
