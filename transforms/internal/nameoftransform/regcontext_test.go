@@ -12,7 +12,7 @@ import (
 // verb RETURNS the manifest itself (`IServiceManifestBase`), so a registration
 // can be threaded through an assignment, a `const` initializer, or a `return`
 // and still type-check. It is the fixture for the immutable-manifest
-// generalization (#269): registration sugar is almost never a bare top-level
+// generalization (#272): registration sugar is almost never a bare top-level
 // expression statement any more, so the di stage must recognize it in every
 // expression context, not only a top-level `ExpressionStatement`.
 func buildRegContextWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {

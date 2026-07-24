@@ -58,8 +58,9 @@ export type Typeof<T> = { readonly [ARG]?: T };
 	// to return IAsBuilder (rather than buildInlinePresetWorkspace's bare unknown)
 	// so the returned builder's `.as` chain type-checks against a real continuation.
 	// signatureof / valueof are imported from their home (di.extras), tokenfor
-	// from primitives. The `.as<Scope>()` body lowers via valueof — the #269 decouple
-	// makes `.as` a plain inline body (`this.as(valueof<Scope>())`), not a di-stage form.
+	// from primitives. The `.as<Scope>()` body lowers via valueof — the
+	// immutable-manifest decouple (#272) makes `.as` a plain inline body
+	// (`this.as(valueof<Scope>())`), not a di-stage form.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
 import { signatureof, valueof } from '@rhombus-std/di.extras';
 import type { IAsBuilder, IServiceManifestBase } from './index';
@@ -187,8 +188,9 @@ services.addClass<IFoo>(Foo).as<'singleton'>();
 	}
 }
 
-// TestAsDecoupleInlinePipelineMatchesDiDirect is the byte-parity half of the #269
-// decouple fixture: the SAME `addClass<I>(C).as<"scope">()` registration, lowered
+// TestAsDecoupleInlinePipelineMatchesDiDirect is the byte-parity half of the
+// immutable-manifest decouple fixture (#272): the SAME
+// `addClass<I>(C).as<"scope">()` registration, lowered
 // once through the inline pipeline and once through the di stage's direct
 // (non-inline) recognition, must carry the same service token AND the same `.as`
 // lowering. `.as<Scope>()` keeps BOTH lowering paths (mirroring addClass): the
