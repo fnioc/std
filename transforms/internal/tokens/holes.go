@@ -52,12 +52,13 @@ type Failure struct {
 	UnboundTypeParameter *shimchecker.Type
 }
 
-// DeriveTokenF derives the token for a type with open-generic hole support and
-// the unbound-type-parameter failure channel — the derivation the registration
-// transformer uses. It mirrors DeriveToken exactly, adding the hole render (`$N`)
-// before the symbol lookup and reporting an unbound type parameter through
-// failure. ok=false marks a nameless anonymous structure or an unbound type
-// parameter (the caller turns that into a hard diagnostic).
+// DeriveTokenF is the ONE token derivation the engine uses: the token for a type,
+// with open-generic hole support (the `$N` render) and the unbound-type-parameter
+// failure channel. It composes the shared intrinsic / literal / base / generic
+// helpers in derive.go; for a closed (hole-free) type it is byte-identical to the
+// plain derivation the deleted di_options stage once used (its `DeriveToken`,
+// removed in W6p3). ok=false marks a nameless anonymous structure or an unbound
+// type parameter (the caller turns that into a hard diagnostic).
 func DeriveTokenF(ctx *Context, t *shimchecker.Type, failure *Failure) (string, bool) {
 	if t == nil {
 		return "", false
@@ -255,9 +256,9 @@ func KeyLiteralFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, b
 //  2. Otherwise the base derives structurally from T with the phantom-brand
 //     members stripped off the intersection (stripBrandMembers), since the raw
 //     `T & { [KEY]?: K }` intersection has no symbol of its own. Hole-aware
-//     derivation (DeriveTokenF, not DeriveToken): a keyed base that itself
+//     derivation (DeriveTokenF's `$N` render): a keyed base that itself
 //     contains an open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render
-//     `IThing<$1>` — DeriveToken has no hole branch and would bail.
+//     `IThing<$1>` — a derivation without the hole branch would bail here.
 //
 // Returns ok=false when no base is derivable.
 func keyedBaseTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {

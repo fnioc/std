@@ -5,11 +5,10 @@
 // identical tokens from the shared token core. The single owner host
 // (cmd/ttsc-std) composes it as the `rhombusstd_nameof` stage.
 //
-// Derivation runs through DeriveTokenF (the open-generic-aware variant), NOT the
-// bare DeriveToken: the reference transformer's ONE deriveToken renders a
-// `Hole<N>` type argument as the literal `$N`, so `nameof<IRepository<$<1>>>()`
-// must lower to `…:IRepository<$1>` — byte-identical to the token the di
-// registration stage derives for the matching direct `addClass<IRepository<$<1>>>(…)`.
+// Derivation runs through DeriveTokenF, the engine's ONE (open-generic-aware)
+// token derivation: it renders a `Hole<N>` type argument as the literal `$N`, so
+// `nameof<IRepository<$<1>>>()` must lower to `…:IRepository<$1>` — byte-identical
+// to the token a hand-written direct `addClass("…:IRepository<$1>", …)` carries.
 // Without the hole branch the inline registration path (`addClass<T>()` sugar →
 // `nameof<T>()`) could never produce the open-template service token. DeriveTokenF
 // also rejects the typescript-go internal-symbol name family (the `0xFE`-prefixed
