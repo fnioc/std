@@ -11,7 +11,7 @@
 // caching.core (as ME has it), so the helper is here rather than downstream.
 
 import { type AugmentationSet, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { CacheItemPriority } from './CacheItemPriority';
 import type { ICacheEntry } from './ICacheEntry';
 import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';

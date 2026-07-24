@@ -31,7 +31,7 @@
 import type { ConfigObject, IConfigBuilder, IConfigManager, IConfigProvider, IConfigRoot, IConfigSection,
   IConfigSource } from '@rhombus-std/config.core';
 import { augment, ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigRoot } from './ConfigRoot';

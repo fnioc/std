@@ -21,8 +21,10 @@
 // The transformer rewrites each `tokenof(v)` CALL in source to the derived
 // string token at compile time; the runtime body exists only so un-transformed
 // code fails loudly instead of silently returning `undefined`. It lives in
-// `@rhombus-std/primitives` (the zero-dep leaf) beside `tokenfor` so every
-// library imports it from one home.
+// `@rhombus-std/primitives.extras` beside `tokenfor` (the authoring package whose
+// ttsc descriptor lowers both); a consumer deps it build-time only, since every
+// call elides after lowering (constraint 11 moved the pair out of the runtime
+// `@rhombus-std/primitives` leaf).
 
 /**
  * Compile-time token for a TYPE, derived RAW — `tokenof<IOptions<T>>()`. The

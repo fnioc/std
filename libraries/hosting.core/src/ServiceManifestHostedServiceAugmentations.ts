@@ -27,7 +27,7 @@
 import { type DepSlot, type IResolver, type IServiceManifest, RESOLVER_TOKEN,
   type ServiceManifestClass } from '@rhombus-std/di.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TOKEN } from './tokens';

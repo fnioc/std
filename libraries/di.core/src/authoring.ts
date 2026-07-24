@@ -17,7 +17,7 @@
 //   import type { ServiceManifest, ServiceManifestClass } from "@rhombus-std/di.core";
 //   import { registerAugmentations } from "@rhombus-std/primitives";
 //   import type { AugmentationSet } from "@rhombus-std/primitives";
-//   import { tokenfor } from "@rhombus-std/primitives";
+//   import { tokenfor } from "@rhombus-std/primitives.extras";
 //   declare module "@rhombus-std/di.core" {
 //     interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
 //       addMyThing(): IServiceManifest<Scopes>;

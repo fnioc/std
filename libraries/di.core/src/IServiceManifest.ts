@@ -28,7 +28,7 @@
 //   const provider = services.build();
 
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import type { AddChain, IServiceManifestBase } from './authoring.js';
 import { OpenTokenRegistrationError } from './errors.js';

@@ -5,7 +5,7 @@
 // imported from their owning packages — never restated.
 
 import type { Token } from '@rhombus-std/di.core';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageLifecycleEvents } from './PageLifecycleEvents';
 

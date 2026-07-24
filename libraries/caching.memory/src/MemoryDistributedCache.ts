@@ -15,7 +15,7 @@ import type { DistributedCacheEntryOptions, IDistributedCache } from '@rhombus-s
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { MemoryCache } from './MemoryCache';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 

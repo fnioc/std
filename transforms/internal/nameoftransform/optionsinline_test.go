@@ -74,7 +74,7 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 	// primitive (from primitives) and the body-external IOptions type (from the
 	// peered options package). Side-parsed substitution source — never in the app's
 	// typecheck program, so its imports need not resolve on disk here.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 import type { IOptions } from '@rhombus-std/options';
 import type { IServiceManifestBase } from './index';
 export const ManifestOptionsInline = {

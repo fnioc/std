@@ -42,7 +42,7 @@ import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 // The runtime install is the registry path (docs §38): caching.core registers
 // CacheExtensions/CacheEntryExtensions against the `IMemoryCache`/`ICacheEntry`

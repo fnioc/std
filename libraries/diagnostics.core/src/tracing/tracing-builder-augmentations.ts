@@ -28,7 +28,7 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';

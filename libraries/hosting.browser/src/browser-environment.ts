@@ -12,7 +12,7 @@
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { Environments, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 /** The name/application settings the browser environment reads. */
 export interface BrowserEnvironmentSettings {

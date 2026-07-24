@@ -8,7 +8,7 @@ import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIG
   TRACING_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { TracingConfig } from './TracingConfig';
 import { TracingConfigureOptions } from './TracingConfigureOptions';

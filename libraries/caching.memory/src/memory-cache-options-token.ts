@@ -6,7 +6,7 @@
 // e.g. `services.configure(MEMORY_CACHE_OPTIONS_TOKEN, section)` to bind a
 // configuration section.
 
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { MemoryCacheOptions } from './MemoryCacheOptions';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 

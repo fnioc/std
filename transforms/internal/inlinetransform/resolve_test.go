@@ -26,7 +26,7 @@ const pilotCoreIndex = `export interface IQuery {
 export declare const provider: IQuery;
 `
 
-const pilotInlineBody = `import { tokenfor } from '@rhombus-std/primitives';
+const pilotInlineBody = `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
@@ -93,7 +93,7 @@ export const y = provider.isService('x');
 func TestResolveUnresolvedTypeAndMember(t *testing.T) {
 	// The impl carries BOTH isService and a `missing` member, so Extract of the
 	// `missing` member succeeds and resolution reaches the interface-member check.
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {

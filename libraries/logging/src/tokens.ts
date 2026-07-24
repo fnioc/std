@@ -3,7 +3,7 @@
 
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { LoggerFilterOptions } from './LoggerFilterOptions';
 
 /**

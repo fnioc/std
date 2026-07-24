@@ -5,7 +5,7 @@
 // tokens, so they live here in the abstractions substrate that both depend on.
 
 import type { Token } from '@rhombus-std/di.core';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import type { IHostedService } from './IHostedService';
 

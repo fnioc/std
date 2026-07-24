@@ -38,7 +38,7 @@ import { CacheItemPriority, EvictionReason, type ICacheEntry,
   type PostEvictionCallbackRegistration } from '@rhombus-std/caching.core';
 import { type ILogger, logError } from '@rhombus-std/logging.core';
 import { augment, type IChangeToken } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 /**
  * The owning-cache surface a {@link CacheEntry} needs. {@link MemoryCache}

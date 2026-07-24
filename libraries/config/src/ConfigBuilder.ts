@@ -24,7 +24,7 @@
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { coerceBySchema } from './coerce';
 import { ConfigRoot } from './ConfigRoot';
 import type { Infer, ObjectSchema, Schema } from './schema';

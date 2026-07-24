@@ -148,7 +148,7 @@ func TestStageHoistsEffectfulReceiverTemp(t *testing.T) {
 }
 export declare function makeProvider(): IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
@@ -198,7 +198,7 @@ func TestStageUnrecoverableTypeArgIsHardError(t *testing.T) {
 }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
@@ -260,7 +260,7 @@ func TestBodyWithConcreteNameofTypeArg(t *testing.T) {
 export interface Marker { readonly m: 'marker'; }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives';
+	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery, Marker } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
@@ -441,7 +441,7 @@ func setupWorkspace(t *testing.T) (*driver.Program, string) {
 export declare const provider: IQuery;
 `)
 	// The impl body — authored over the tokenfor primitive, kept out of the barrel.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
@@ -567,7 +567,7 @@ func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {}
 export declare const provider: IQuery;
 `)
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {

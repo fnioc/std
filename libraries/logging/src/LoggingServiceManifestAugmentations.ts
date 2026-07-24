@@ -37,7 +37,7 @@ import { closeToken, type IServiceManifest, type ServiceManifestClass, typeArg }
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';

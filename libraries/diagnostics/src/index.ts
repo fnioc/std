@@ -43,7 +43,7 @@ import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CH
   TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, TRACING_OPTIONS_TOKEN,
   TracingOptions } from '@rhombus-std/diagnostics.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';

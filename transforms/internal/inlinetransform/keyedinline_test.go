@@ -45,7 +45,7 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 	// keyof from di.transformer). keyof<T>() is the §98 key half, sitting in the
 	// KEY slot (argument 5) behind the `void 0` that fills the scope slot the
 	// type-driven sugar has no value for.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {

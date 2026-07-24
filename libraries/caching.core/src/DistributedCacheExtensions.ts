@@ -22,7 +22,7 @@
 // class gains the method form on its prototype at runtime.
 
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor } from '@rhombus-toolkit/func';
 import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 import type { IDistributedCache } from './IDistributedCache';

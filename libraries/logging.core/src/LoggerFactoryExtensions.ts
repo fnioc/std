@@ -30,7 +30,7 @@
 // stays the standalone `LoggerFactoryExtensions.createLogger(factory, MyService)`.
 
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor } from '@rhombus-toolkit/func';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';

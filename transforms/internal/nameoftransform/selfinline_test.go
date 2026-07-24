@@ -65,7 +65,7 @@ export declare function keyof<T>(): string | undefined;
 	// `tokenof(value)` (an already-built value registers under its own type, matching
 	// the di engine's raw-type addValue path); the generic body is present only so a
 	// no-type-arg call has an alternative overload to (correctly) NOT bind to.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 import { signatureof, keyof } from '@rhombus-std/di.transformer';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {

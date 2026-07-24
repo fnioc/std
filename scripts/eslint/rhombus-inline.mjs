@@ -17,16 +17,18 @@ import { dirname, join } from 'node:path';
 import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
-// may import it from. `tokenfor` lives in the universal @rhombus-std/primitives leaf
-// (runtime source imports it directly). `signaturefor` / `signaturesfor` produce
-// di.core's `DepSlot` shape and are called from runtime source too, so they live
-// in @rhombus-std/di.core (every caller already depends on it). `signatureof`,
-// `keyof`, and `valueof` are authoring-time-only and live in
-// @rhombus-std/di.transformer, imported by that package's own bodies via a
-// package-relative specifier. Mirrors the Go scanner's knownPrimitives map.
+// may import it from. `tokenfor` / `tokenof` are pure transformables that home in
+// the authoring package @rhombus-std/primitives.extras (constraint 11 moved them
+// out of the runtime @rhombus-std/primitives leaf — every call elides after
+// lowering). `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
+// and are called from runtime source too, so they live in @rhombus-std/di.core
+// (every caller already depends on it). `signatureof`, `keyof`, and `valueof` are
+// authoring-time-only and live in @rhombus-std/di.transformer, imported by that
+// package's own bodies via a package-relative specifier. Mirrors the Go scanner's
+// knownPrimitives map.
 const PRIMITIVE_HOMES = {
-  tokenfor: '@rhombus-std/primitives',
-  tokenof: '@rhombus-std/primitives',
+  tokenfor: '@rhombus-std/primitives.extras',
+  tokenof: '@rhombus-std/primitives.extras',
   signaturefor: '@rhombus-std/di.core',
   signaturesfor: '@rhombus-std/di.core',
   signatureof: '@rhombus-std/di.transformer',

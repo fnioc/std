@@ -30,7 +30,7 @@ import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheE
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { CacheEntry, type IMemoryCacheHost } from './CacheEntry';

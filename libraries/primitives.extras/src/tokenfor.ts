@@ -9,10 +9,11 @@
 // of silently returning `undefined` — if you call `tokenfor` without the
 // transformer wired up, you get a clear error pointing at the missing plugin.
 //
-// It lives in `@rhombus-std/primitives` (the zero-dep leaf) rather than in the
-// transformer package so every library imports the single `tokenfor` symbol from
-// one home; `@rhombus-std/primitives.extras` is the base plugin that lowers
-// the calls.
+// It lives in `@rhombus-std/primitives.extras` (the token-derivation authoring
+// package that also carries the ttsc descriptor lowering the call). A consumer
+// deps it build-time only: every `tokenfor` call elides from the shipped output
+// after lowering, so no runtime reference survives (constraint 11 moved it out of
+// the runtime `@rhombus-std/primitives` leaf on exactly that basis).
 
 /**
  * Compile-time token for a TYPE — `tokenfor<IUserRepo>()`. Rewritten by the

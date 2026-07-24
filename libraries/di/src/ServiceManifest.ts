@@ -19,7 +19,7 @@
 import { type IServiceManifest as ServiceManifestInterface, type IServiceProvider, type OpenRegistration,
   type Registration, ServiceManifestClass, type ServiceProviderOptions, type Token } from '@rhombus-std/di.core';
 import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { ServiceProviderClass } from './ServiceProviderClass.js';
 

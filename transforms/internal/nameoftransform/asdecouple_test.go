@@ -60,7 +60,7 @@ export type Typeof<T> = { readonly [ARG]?: T };
 	// signatureof / valueof are imported from their home (di.transformer), tokenfor
 	// from primitives. The `.as<Scope>()` body lowers via valueof — the #269 decouple
 	// makes `.as` a plain inline body (`this.as(valueof<Scope>())`), not a di-stage form.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
 import { signatureof, valueof } from '@rhombus-std/di.transformer';
 import type { IAsBuilder, IServiceManifestBase } from './index';
 export const ManifestInline = {

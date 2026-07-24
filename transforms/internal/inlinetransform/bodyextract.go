@@ -14,14 +14,17 @@ import (
 
 // knownPrimitives maps each compile-time primitive an inlineable body may call to
 // its HOME module — the module an inline body is allowed to import it from.
-// `nameof<T>()` binds a TYPE argument and lives in the universal
-// `@rhombus-std/primitives` leaf (runtime source imports it directly, so it must
-// stay universally importable). Its value-argument twins live there too:
-// `tokenfor(value)` derives from the value's PRODUCED type (construct/call-sig
-// return; the `addClass` / `addFactory` self forms), and `tokenof(value)` from
-// the value's OWN type with no unwrap (the `addValue` self form, which registers
-// an already-built value under its own type — matching the di engine's raw-type
-// `addValue` derivation). `signatureof(ctor)` binds a VALUE argument (a
+// The token-derivation pair binds a TYPE or VALUE argument and homes in the
+// authoring package `@rhombus-std/primitives.extras` (constraint 11: pure
+// transformables, moved out of the runtime `@rhombus-std/primitives` leaf — every
+// call is elided from the shipped output after lowering, so nothing ships a
+// reference and a consumer deps the authoring package build-time only).
+// `tokenfor<T>()` / `tokenfor(value)` derives from a TYPE or the value's PRODUCED
+// type (construct/call-sig return; the `addClass` / `addFactory` self forms), and
+// `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
+// no unwrap (the `addValue` self form, which registers an already-built value
+// under its own type — matching the di engine's raw-type `addValue` derivation).
+// `signatureof(ctor)` binds a VALUE argument (a
 // class / factory) whose dependency signature the signatureof stage extracts, and
 // `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
 // KEY; both are authoring-time-only constructs, so they live in
@@ -45,17 +48,16 @@ import (
 // `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())` and the
 // engine constant-folds the dead branch away. Both are authoring-time-only
 // (never in runtime source), so they home in the token-grammar transformer
-// `@rhombus-std/primitives.extras` — the §92 homing rule, distinct from
-// `tokenfor`/`tokenof` (which stay in the runtime leaf because runtime source
-// imports them).
+// `@rhombus-std/primitives.extras` beside `tokenfor` / `tokenof` (the §92 homing
+// rule; constraint 11 reunited the whole family there).
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
 // family's `@rhombus-std/config.transformer` (a body imports it via a
 // package-relative specifier from within that package).
 var knownPrimitives = map[string]string{
-	"tokenfor":       "@rhombus-std/primitives",
-	"tokenof":        "@rhombus-std/primitives",
+	"tokenfor":       "@rhombus-std/primitives.extras",
+	"tokenof":        "@rhombus-std/primitives.extras",
 	"keyedtokenfor":  "@rhombus-std/di.transformer",
 	"signatureof":    "@rhombus-std/di.transformer",
 	"keyof":          "@rhombus-std/di.transformer",

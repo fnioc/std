@@ -21,5 +21,3 @@ export type { ReadableStream } from './ReadableStream.js';
 export { clearTimeout, setTimeout } from './TimeoutHandle.js';
 export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';
-export { tokenfor, TOKENFOR_NAME } from './tokenfor.js';
-export { tokenof, TOKENOF_NAME } from './tokenof.js';

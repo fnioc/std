@@ -26,7 +26,7 @@
 
 import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { tokenfor, tokenof } from '@rhombus-std/primitives';
+import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 
 /**
  * The two-token view of the `addOptions` verb the sugar body lowers against — the

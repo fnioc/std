@@ -8,7 +8,7 @@
 
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleLike } from './ConsoleLike';
 

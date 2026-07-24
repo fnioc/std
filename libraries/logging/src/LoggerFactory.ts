@@ -26,7 +26,7 @@ import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type IL
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';

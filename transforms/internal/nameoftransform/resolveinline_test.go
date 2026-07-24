@@ -62,7 +62,7 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 	// keeps its Keyed<...> brand rather than stripping to the bare base), isSingular /
 	// singularValue from the token-grammar transformer. Each verb calls ITSELF with the
 	// derived token; a SINGULAR T folds to its value.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenof } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenof } from '@rhombus-std/primitives.extras';
 import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.extras';
 interface IInlineResolveTarget {
   resolve(token: string): any;

@@ -18,7 +18,7 @@ import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.c
 import type { IServiceProviderFactory } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Action, Func } from '@rhombus-toolkit/func';
 import { resolveContentRootPath } from '../host-composition';
 

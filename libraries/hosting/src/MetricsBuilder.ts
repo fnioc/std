@@ -15,7 +15,7 @@
 import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 // Interface-extends merge (augmentation doctrine): the metrics augmentation
 // members reach `IMetricsBuilder` via diagnostics.core's interface-side merge;

@@ -46,7 +46,7 @@ import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigChangeTokenSource,
   configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { loggerProviderConfigToken } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';

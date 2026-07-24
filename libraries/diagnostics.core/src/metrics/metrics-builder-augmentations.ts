@@ -27,7 +27,7 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from '../tokens';
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { InstrumentRule } from './InstrumentRule';

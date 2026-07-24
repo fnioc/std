@@ -9,7 +9,7 @@
 // interface exported from this package's root (`<source>:<exportName>`), so a
 // param typed `IResolver` and this constant unify on the same string.
 
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IResolver, IResolveScope } from './provider.js';
 import type { Token } from './types.js';
 

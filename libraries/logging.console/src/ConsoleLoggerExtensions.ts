@@ -42,7 +42,7 @@
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';

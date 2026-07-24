@@ -31,7 +31,7 @@ import { type AddChain, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestCl
 import { type IConfigureOptions, type IPostConfigureOptions, type IValidateOptions, Options,
   ValidateOptionsResult } from '@rhombus-std/options';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleOptions } from './assemble-options.js';

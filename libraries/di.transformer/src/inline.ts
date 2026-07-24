@@ -24,7 +24,7 @@
 import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
   Token } from '@rhombus-std/di.core';
 import { overrideSignatures, signaturefor, signaturesfor } from '@rhombus-std/di.core';
-import { tokenfor, tokenof } from '@rhombus-std/primitives';
+import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.extras';
 import { keyedtokenfor } from './keyedtokenfor.js';
 import { keyof } from './keyof.js';

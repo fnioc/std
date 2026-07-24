@@ -23,7 +23,7 @@
 
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import { registerBrowserLifetime } from './register-browser-lifetime';

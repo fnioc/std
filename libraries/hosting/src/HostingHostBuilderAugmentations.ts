@@ -22,7 +22,7 @@ import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults,
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AbortSignal, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,

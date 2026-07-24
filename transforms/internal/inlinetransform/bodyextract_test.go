@@ -79,7 +79,7 @@ func TestExtractRejects(t *testing.T) {
 			// alias in the body is a free identifier. The alias is the outer callee
 			// here so the free-identifier walk reaches it directly.
 			name: "aliased primitive reference fails the free-identifier walk",
-			inline: `import { tokenfor as n } from '@rhombus-std/primitives';
+			inline: `import { tokenfor as n } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
   bar<T>(this: any): string { return n<T>(); },
 };
@@ -94,7 +94,7 @@ export const QueryInline = {
 			// callee halted the sibling walk before the argument was ever checked.
 			// The skip-set fix keeps siblings walking, so `n` is caught here too.
 			name: "free identifier as an argument after a property-access callee",
-			inline: `import { tokenfor as n } from '@rhombus-std/primitives';
+			inline: `import { tokenfor as n } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
   bar<T>(this: any): boolean { return this.isService(n<T>()); },
 };
@@ -149,7 +149,7 @@ func TestLocateImplFollowsReExports(t *testing.T) {
 // BLOCK body both extract; an arrow with an EXPRESSION body is rejected
 // INLINE_BODY_SHAPE — pinning the current rejection as intended.
 func TestExtractPropertyAssignmentAndArrowForms(t *testing.T) {
-	inline := `import { tokenfor } from '@rhombus-std/primitives';
+	inline := `import { tokenfor } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
   bar: function<T>(this: any): boolean { return this.isService(tokenfor<T>()); },
   baz: <T>(): boolean => { return this.isService(tokenfor<T>()); },

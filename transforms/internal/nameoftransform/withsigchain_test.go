@@ -58,7 +58,7 @@ export declare function signaturefor<T extends readonly any[]>(): readonly unkno
 	// The inline bodies, mirroring the real di.transformer ManifestChainInline:
 	// addClass derives token + dep-array; withSignature mints ONE overload's slots
 	// from the tuple and spreads them; as mints the scope literal value.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
 import { signatureof, valueof } from '@rhombus-std/di.transformer';
 import { signaturefor } from '@rhombus-std/di.core';
 import type { IAsBuilder, IChain, IServiceManifestBase, IWithSignatureBuilder } from './index';

@@ -10,7 +10,7 @@
 import type { IConfig } from '@rhombus-std/config.core';
 import type { Token } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHostEnvironment, IHostLifetime } from '@rhombus-std/hosting.core';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import type { HostOptions } from './HostOptions';
 

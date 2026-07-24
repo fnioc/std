@@ -20,7 +20,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig, IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import { ChainedConfigSource } from './ChainedConfigSource';
 
 export { ChainedConfigProvider } from './ChainedConfigProvider';

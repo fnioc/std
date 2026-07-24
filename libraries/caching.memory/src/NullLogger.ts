@@ -6,7 +6,7 @@
 
 import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged

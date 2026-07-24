@@ -8,7 +8,7 @@
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 // Interface-extends merge (augmentation doctrine): binding the IMetricsBuilder
 // SYMBOL flows every in-program augmentation of the interface (the listener/rule
