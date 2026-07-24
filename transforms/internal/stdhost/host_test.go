@@ -140,6 +140,8 @@ func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 		stagePrefix + "signatureof",
 		stagePrefix + "keyof",
 		stagePrefix + "valueof",
+		stagePrefix + "singular",
+		stagePrefix + "fold",
 		stagePrefix + "di",
 	}
 	names := stageNames(got)
@@ -172,6 +174,8 @@ func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 		stagePrefix + "signatureof",
 		stagePrefix + "keyof",
 		stagePrefix + "valueof",
+		stagePrefix + "singular",
+		stagePrefix + "fold",
 		stagePrefix + "di",
 		stagePrefix + "di_options",
 	}
