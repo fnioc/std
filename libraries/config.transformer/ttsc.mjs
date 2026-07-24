@@ -28,7 +28,7 @@ export function createTtscPlugin(context) {
     'cmd',
     'ttsc-std',
   );
-  return { name: 'rhombusstd_config', source };
+  return { name: 'rhombusstd_schemaof', source };
 }
 
 export default createTtscPlugin;

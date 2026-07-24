@@ -28,7 +28,7 @@ export function createTtscPlugin(context) {
     'cmd',
     'ttsc-std',
   );
-  return { name: 'rhombusstd_di', source };
+  return { name: 'rhombusstd_di_bundle', source };
 }
 
 export default createTtscPlugin;
