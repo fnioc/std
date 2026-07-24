@@ -19,6 +19,7 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/schema"
 
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
@@ -296,8 +297,8 @@ export const r = new ConfigBuilder().withType<C>();
 			if len(diags) == 0 {
 				t.Fatalf("expected a diagnostic for %s, got none:\n%s", tc.name, out)
 			}
-			if diags[0].Code != codeUnsupportedType {
-				t.Errorf("code = %q, want %q (992001)", diags[0].Code, codeUnsupportedType)
+			if diags[0].Code != schema.CodeUnsupportedType {
+				t.Errorf("code = %q, want %q (992001)", diags[0].Code, schema.CodeUnsupportedType)
 			}
 			if !strings.Contains(out, ".withType<C>()") {
 				t.Errorf("unsupported shape must leave the call un-rewritten:\n%s", out)
@@ -321,72 +322,10 @@ export const r = new ConfigBuilder().withType<string>();
 	if len(diags) == 0 {
 		t.Fatalf("expected a diagnostic, got none:\n%s", out)
 	}
-	if diags[0].Code != codeNonObjectRoot {
-		t.Errorf("code = %q, want %q (992002)", diags[0].Code, codeNonObjectRoot)
+	if diags[0].Code != schema.CodeNonObjectRoot {
+		t.Errorf("code = %q, want %q (992002)", diags[0].Code, schema.CodeNonObjectRoot)
 	}
 	if !strings.Contains(out, ".withType<string>()") {
 		t.Errorf("non-object root must leave the call un-rewritten:\n%s", out)
-	}
-}
-
-// ── pure helpers (no checker / no factory) ──────────────────────────────────
-
-func TestIsUnderNodeModules(t *testing.T) {
-	cases := []struct {
-		fileName string
-		want     bool
-	}{
-		{"/proj/node_modules/pkg/index.d.ts", true},
-		{"/home/x/node_modules/@scope/p/lib.d.ts", true},
-		{"/proj/src/main.ts", false},
-		{"/proj/node_modulesish/x.ts", false},
-		{"", false},
-	}
-	for _, tc := range cases {
-		if got := isUnderNodeModules(tc.fileName); got != tc.want {
-			t.Errorf("isUnderNodeModules(%q) = %v, want %v", tc.fileName, got, tc.want)
-		}
-	}
-}
-
-func TestJsIdentifierRegex(t *testing.T) {
-	cases := []struct {
-		name string
-		want bool
-	}{
-		{"Host", true},
-		{"_x", true},
-		{"$a", true},
-		{"a1", true},
-		{"1a", false},
-		{"a-b", false},
-		{"", false},
-		{"a.b", false},
-	}
-	for _, tc := range cases {
-		if got := jsIdentifier.MatchString(tc.name); got != tc.want {
-			t.Errorf("jsIdentifier.MatchString(%q) = %v, want %v", tc.name, got, tc.want)
-		}
-	}
-}
-
-// TestPropertyKey: a valid JS identifier becomes an Identifier (casing preserved),
-// an invalid one a StringLiteral.
-func TestPropertyKey(t *testing.T) {
-	f := newConfigFactory()
-
-	host := propertyKey(f, "Host")
-	if host.Kind != shimast.KindIdentifier {
-		t.Errorf("propertyKey(Host).Kind = %v, want Identifier", host.Kind)
-	}
-	if host.Text() != "Host" {
-		t.Errorf("propertyKey casing not preserved: %q, want Host", host.Text())
-	}
-
-	for _, name := range []string{"kebab-case", "123"} {
-		key := propertyKey(f, name)
-		if key.Kind != shimast.KindStringLiteral {
-			t.Errorf("propertyKey(%q).Kind = %v, want StringLiteral", name, key.Kind)
-		}
 	}
 }

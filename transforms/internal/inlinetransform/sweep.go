@@ -12,6 +12,14 @@ import (
 // targeted diagnostic (§94) rather than the generic unlowered-primitive one.
 const singularValuePrimitive = "singularValue"
 
+// schemaofPrimitive is the config-schema primitive whose OWN stage reports its
+// lowering failures (the targeted 992001/992002) and leaves the call un-lowered.
+// A surviving `schemaof<T>()` is therefore already accompanied by that precise
+// diagnostic, so the sweep defers to it rather than adding the generic
+// "primitive survived" error — the owner ruling that a schemaof failure surfaces
+// the targeted schema diagnostic, not the generic sweep one.
+const schemaofPrimitive = "schemaof"
+
 // Sweep is emit tripwire 2: a syntactic walk of a fully-lowered output file that
 // hard-errors on any surviving primitive or listed-sugar call. It runs after all
 // selected stages, only when the inline stage was active. It turns the inert
@@ -47,6 +55,13 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 			if use.Name == singularValuePrimitive {
 				diags = append(diags, sweepDiag("SINGULAR_VALUE_NON_SINGULAR", n,
 					"singularValue<T>() resolved a non-singular type — it is only valid in the true arm of an isSingular<T>() guard, over a type with exactly one value (a literal, null, undefined, or void)"))
+				return false
+			}
+			// A surviving `schemaof<T>()` is an un-lowerable schema (unsupported field
+			// type / non-object root); its own stage already reported the targeted
+			// 992001/992002 and left the call in place. Defer to that — don't add the
+			// generic "primitive survived" error on top.
+			if use.Name == schemaofPrimitive {
 				return false
 			}
 			diags = append(diags, sweepDiag("INLINE_UNLOWERED_PRIMITIVE", n,

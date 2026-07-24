@@ -12,6 +12,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/schemaoftransform"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
@@ -66,6 +67,7 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "fold", Build: buildFold},
 		{Name: stagePrefix + "di", Build: buildDi},
 		{Name: stagePrefix + "di_options", Build: buildDiOptions},
+		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 		{Name: stagePrefix + "config", Build: buildConfig},
 	}
 }
@@ -212,6 +214,20 @@ func buildDi(prog *driver.Program, ctx *tokens.Context, _ *Env, emit Sink) plugi
 // diagnostic it raises is a hard error.
 func buildDiOptions(prog *driver.Program, ctx *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
 	return dioptionstransform.AddOptionsTransform(prog, ctx, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildSchemaof activates the generic `schemaof<T>()` primitive stage. It lowers
+// each schemaof call — the inline `.withType<T>()` body's synthetic schema call
+// and any source-written one — to T's runtime config-schema object literal,
+// materializing the OPTIONAL value-import a wrapped field needs. It runs the SAME
+// schema walk the config stage drives, so the inline path and the config-stage
+// oracle emit byte-identical literals. On an unsupported field type / non-object
+// root it reports the targeted 992001/992002 (a hard error) and leaves the call
+// un-lowered — the sweep defers the surviving-primitive diagnostic to it.
+func buildSchemaof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return schemaoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

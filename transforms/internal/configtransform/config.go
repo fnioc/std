@@ -1,8 +1,12 @@
 // Package configtransform is the Go port of the config transformer: it lowers
 // each `<builder>.withType<T>()` call into a generated `<builder>.withSchema({...})`
 // runtime schema literal over the ttsc-shipped typescript-go checker. It is the
-// emit-path twin of the hand-written TypeScript transformer. The single owner
-// host (cmd/ttsc-std) composes it as the `rhombusstd_config` stage.
+// emit-path twin of the hand-written TypeScript transformer, and — until its
+// phase-3 deletion — the byte-parity ORACLE the generic `schemaof<T>()` primitive
+// is proven against: both drive the SAME schema walk (internal/schema) and the
+// SAME value-import materialization (internal/valueimport), so the two paths emit
+// identical output by construction. The single owner host (cmd/ttsc-std) composes
+// this as the `rhombusstd_config` stage.
 package configtransform
 
 // The config transform factory.
@@ -22,24 +26,26 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/schema"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
 // New builds the per-file transform. The shared token core is unused —
-// config schema derivation is self-contained.
+// config schema derivation is self-contained (the schema walk owns its own type
+// classification).
 func New(prog *driver.Program, _ *tokens.Context, addDiagnostic func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
-		optionalRef := resolveOptionalBinding(factory, sf)
+		optional := valueimport.Resolve(sf, schema.OptionalMarker)
 
-		ctx := &codegenContext{
-			checker:     checker,
-			program:     prog,
-			factory:     factory,
-			sourceFile:  sf,
-			optionalRef: optionalRef,
-			addDiagnostic: func(code, message string, anchor *shimast.Node) {
+		ctx := &schema.Context{
+			Checker:  checker,
+			Program:  prog,
+			Factory:  factory,
+			Optional: optional,
+			AddDiagnostic: func(code, message string, anchor *shimast.Node) {
 				addDiagnostic(plugin.Diagnostic{
 					File:    sf.FileName(),
 					Start:   anchor.Pos(),
@@ -70,19 +76,20 @@ func New(prog *driver.Program, _ *tokens.Context, addDiagnostic func(plugin.Diag
 		if output == nil {
 			return sf
 		}
-		return ensureOptionalImport(factory, output.AsSourceFile(), optionalRef)
+		return valueimport.Ensure(factory, output.AsSourceFile(), optional)
 	}
 }
 
 // rewriteWithType rewrites `<builder>.withType<T>()` -> `<builder>.withSchema({...})`.
 // On codegen failure it returns the original call node unchanged (the diagnostic
 // already fired).
-func rewriteWithType(ctx *codegenContext, call *shimast.CallExpression, original *shimast.Node) *shimast.Node {
-	f := ctx.factory
+func rewriteWithType(ctx *schema.Context, call *shimast.CallExpression, original *shimast.Node) *shimast.Node {
+	f := ctx.Factory
 	callee := call.Expression.AsPropertyAccessExpression()
 	typeArg := call.TypeArguments.Nodes[0]
 
-	literal, ok := schemaLiteralForTypeNode(ctx, typeArg)
+	t := ctx.Checker.GetTypeFromTypeNode(typeArg)
+	literal, ok := schema.LiteralForType(ctx, t, typeArg)
 	if !ok {
 		return original
 	}

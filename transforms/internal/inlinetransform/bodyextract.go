@@ -46,6 +46,11 @@ import (
 // `@rhombus-std/primitives.transformer` — the §92 homing rule, distinct from
 // `tokenfor`/`tokenof` (which stay in the runtime leaf because runtime source
 // imports them).
+// `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
+// schema object literal — the engine half of the `.withType<T>()` sugar body
+// `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
+// family's `@rhombus-std/config.transformer` (a body imports it via a
+// package-relative specifier from within that package).
 var knownPrimitives = map[string]string{
 	"tokenfor":      "@rhombus-std/primitives",
 	"tokenof":       "@rhombus-std/primitives",
@@ -56,6 +61,7 @@ var knownPrimitives = map[string]string{
 	"valueof":       "@rhombus-std/di.transformer",
 	"isSingular":    "@rhombus-std/primitives.transformer",
 	"singularValue": "@rhombus-std/primitives.transformer",
+	"schemaof":      "@rhombus-std/config.transformer",
 }
 
 // Discriminator is the structural overload key: (type-parameter count, value
