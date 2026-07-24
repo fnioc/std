@@ -202,7 +202,13 @@ func (c *context) rewriteNameof(node *shimast.Node) *shimast.Node {
 			typeArg := callTypeArgs(n)[0]
 			token, ok := tokens.DeriveTokenF(c.tokens, c.checker.GetTypeFromTypeNode(typeArg), nil)
 			if !ok {
-				return c.stringLit("")
+				// Failure-semantics unification (§94/Open issue 4): a nameof whose type
+				// derives no token reports a targeted diagnostic and is left UN-LOWERED,
+				// never rewritten to the silent empty token `""` a downstream reader
+				// could mistake for a real token. The un-lowered call fails the build loud.
+				c.emitError(n, codeUnderivableToken,
+					"cannot derive a token for this type — name the type (an anonymous / structural type has no stable token)")
+				return n
 			}
 			return c.stringLit(token)
 		}

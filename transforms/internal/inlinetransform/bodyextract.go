@@ -36,6 +36,16 @@ import (
 // `.as<Scope>()` sugar, homed in `@rhombus-std/di.transformer` beside signatureof /
 // keyof and imported via a package-relative specifier. A hardcoded map suffices —
 // the declare-by-marker generalization is a future enhancement.
+// `isSingular<T>()` / `singularValue<T>()` bind a TYPE argument and are the
+// resolve-family sugar's compile-time SINGULAR-type predicate / value (§94):
+// `isSingular<T>()` lowers to a boolean literal and `singularValue<T>()` to the
+// singular type's value literal, so a resolve body can branch
+// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())` and the
+// engine constant-folds the dead branch away. Both are authoring-time-only
+// (never in runtime source), so they home in the token-grammar transformer
+// `@rhombus-std/primitives.transformer` — the §92 homing rule, distinct from
+// `tokenfor`/`tokenof` (which stay in the runtime leaf because runtime source
+// imports them).
 var knownPrimitives = map[string]string{
 	"tokenfor":      "@rhombus-std/primitives",
 	"tokenof":       "@rhombus-std/primitives",
@@ -44,6 +54,8 @@ var knownPrimitives = map[string]string{
 	"signaturefor":  "@rhombus-std/di.core",
 	"signaturesfor": "@rhombus-std/di.core",
 	"valueof":       "@rhombus-std/di.transformer",
+	"isSingular":    "@rhombus-std/primitives.transformer",
+	"singularValue": "@rhombus-std/primitives.transformer",
 }
 
 // Discriminator is the structural overload key: (type-parameter count, value

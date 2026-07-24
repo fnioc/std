@@ -279,15 +279,33 @@ export const e = tokenfor<IBar[]>();
 // whole internal-symbol family, yielding the empty token — matching how the di stage
 // already treats an anonymous type. Anonymous types are not legitimate tokenfor
 // targets, so no real call site regresses.
-func TestNameofAnonymousTypeDerivesEmpty(t *testing.T) {
+// TestNameofAnonymousTypeReportsUnderivable pins the failure-semantics unification
+// (§94/Open issue 4): a SOURCE-WRITTEN `tokenfor<{anonymous}>()` whose type derives
+// no token is no longer silently lowered to the empty token `""` (which a downstream
+// reader could mistake for a real token) — it emits a targeted
+// TYPE_ARG_TOKEN_UNDERIVABLE diagnostic and is left UN-LOWERED, so the build fails
+// loud.
+func TestNameofAnonymousTypeReportsUnderivable(t *testing.T) {
 	src := `import { tokenfor } from '@rhombus-std/di.core';
 export const anon = tokenfor<{ readonly a: number }>();
 `
 	prog, app := buildNameofWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
-	out := lowerNameof(t, prog, app)
-	if !strings.Contains(out, `const anon = ""`) {
-		t.Fatalf("anonymous tokenfor target should derive the empty token:\n%s", out)
+
+	ctx := plugin.NewContext(prog, app)
+	var diags []plugin.Diagnostic
+	transform := New(prog, ctx, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	ec := shimprinter.NewEmitContext()
+	out := reprint(ec, transform(ec, mainSF(t, prog)))
+
+	if strings.Contains(out, `const anon = ""`) {
+		t.Fatalf("anonymous tokenfor must NOT lower to the silent empty token:\n%s", out)
+	}
+	if !strings.Contains(out, "tokenfor<") {
+		t.Fatalf("anonymous tokenfor must be left un-lowered:\n%s", out)
+	}
+	if len(diags) != 1 || diags[0].Code != "TYPE_ARG_TOKEN_UNDERIVABLE" {
+		t.Fatalf("expected one TYPE_ARG_TOKEN_UNDERIVABLE diagnostic, got %+v", diags)
 	}
 }
 

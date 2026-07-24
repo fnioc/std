@@ -6,12 +6,14 @@ import (
 	"github.com/fnioc/std/transforms/internal/configtransform"
 	"github.com/fnioc/std/transforms/internal/dioptionstransform"
 	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
+	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
@@ -60,6 +62,8 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "keyof", Build: buildKeyof},
 		{Name: stagePrefix + "valueof", Build: buildValueof},
+		{Name: stagePrefix + "singular", Build: buildSingular},
+		{Name: stagePrefix + "fold", Build: buildFold},
 		{Name: stagePrefix + "di", Build: buildDi},
 		{Name: stagePrefix + "di_options", Build: buildDiOptions},
 		{Name: stagePrefix + "config", Build: buildConfig},
@@ -162,6 +166,32 @@ func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) 
 // diagnostics of its own; any it did raise would be hard errors.
 func buildValueof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return valueoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildSingular activates the resolve-family SINGULAR predicate/value primitive
+// stage (§94). It lowers each `isSingular<T>()` — the inline resolve body's
+// compile-time singular-type test — to a boolean literal, and each
+// `singularValue<T>()` over a singular T to that type's value literal (leaving a
+// non-singular one un-lowered for the fold to prune or the sweep to flag). It runs
+// after the token/keyof/valueof primitives and before the fold, whose
+// boolean-ternary pruning consumes the `isSingular` literals it produces. It
+// raises no diagnostics of its own.
+func buildSingular(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return singulartransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildFold activates the generic constant-fold / dead-branch-prune stage. It is
+// a domain-agnostic AST simplification: a conditional (ternary) expression whose
+// condition is a boolean literal folds to the taken branch (`true ? A : B` -> A,
+// `false ? A : B` -> B), so a dead branch's primitives are removed before the emit
+// sweep sees them. It runs after the singular stage produces the boolean-literal
+// conditions the resolve sugar branches on. It raises no diagnostics of its own.
+func buildFold(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
+	return foldtransform.New(prog, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

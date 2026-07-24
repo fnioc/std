@@ -55,6 +55,14 @@ const tokenofName = "tokenof"
 // silent empty token (constraint 9: failure reporting, not validation).
 const valueArgUnderivableCode = "VALUE_ARG_TOKEN_UNDERIVABLE"
 
+// typeArgUnderivableCode is the diagnostic a TYPE-argument token derivation raises
+// when the type argument yields no derivable token (an anonymous / structural type,
+// or a function type that must instead be resolved as a factory) — a lowering
+// failure the stage reports rather than emitting a silent empty token (the
+// failure-semantics unification, §94/Open issue 4). It leaves the call un-lowered,
+// so the emit sweep also backstops it.
+const typeArgUnderivableCode = "TYPE_ARG_TOKEN_UNDERIVABLE"
+
 // composedUnlowerableCode is the diagnostic a COMPOSED-generic token derivation
 // raises when it cannot lower `tokenfor<Wrapper<T>>()`: the wrapper base type is
 // absent from the program, or an argument (`T`) yields no token. It is the exact
@@ -94,20 +102,20 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				if isNameofCall(checker, call) {
 					typeNode := call.TypeArguments.Nodes[0]
 					t := checker.GetTypeFromTypeNode(typeNode)
-					token, _ := tokens.ServiceBaseTokenFor(ctx, t)
-					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+					token, ok := tokens.ServiceBaseTokenFor(ctx, t)
+					return lowerTypeArgToken(ec, emit, node, token, ok, true)
 				}
 				// TYPE-argument tokenof<T>() — RAW derivation, source-written. The
 				// checker-anchored twin of the synthetic path above: derives the token
 				// exactly as spelled (DeriveTokenF, no keyed strip).
 				if t, ok := tokenofTypeCall(checker, call); ok {
-					token, _ := tokens.DeriveTokenF(ctx, t, nil)
-					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+					token, derived := tokens.DeriveTokenF(ctx, t, nil)
+					return lowerTypeArgToken(ec, emit, node, token, derived, true)
 				}
 				// TYPE-argument tokenfor<T>() — synthetic (inline-substituted).
 				if use, ok := registeredNameof(artifacts, node); ok {
-					token, _ := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
-					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+					token, derived := tokens.ServiceBaseTokenFor(ctx, use.TypeArgs[0])
+					return lowerTypeArgToken(ec, emit, node, token, derived, false)
 				}
 				// TYPE-argument tokenof<T>() — RAW derivation, synthetic
 				// (inline-substituted). Unlike tokenfor's ServiceBaseTokenFor above,
@@ -117,8 +125,8 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				// body (`tokenof<T>()`) and derives the SAME way the composed wrapper's
 				// inner leaf does, keeping the wrapper/element pair relationally locked.
 				if use, ok := registeredTokenofType(artifacts, node); ok {
-					token, _ := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
-					return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
+					token, derived := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
+					return lowerTypeArgToken(ec, emit, node, token, derived, false)
 				}
 				// TYPE-argument tokenfor<Wrapper<T>>() — COMPOSED generic, synthetic
 				// (the inline addOptions body's `tokenfor<IOptions<T>>()`, where the
@@ -298,6 +306,36 @@ func registeredValueArg(artifacts *inlinetransform.Artifacts, node *shimast.Node
 		return nil, false
 	}
 	return use.ValueArg, true
+}
+
+// lowerTypeArgToken returns the string-literal replacement for a TYPE-argument
+// token primitive when its derivation succeeded (derived), else leaves the ORIGINAL
+// call UN-LOWERED — never the silent empty token `""` a downstream reader could
+// mistake for a real token (§94/Open issue 4 failure-semantics unification).
+//
+// Why un-lowered rather than an immediate diagnostic for the SYNTHETIC
+// (inline-substituted) case: a substituted call may sit in a DEAD ternary branch
+// the fold has not pruned yet (the resolve body's `… : this.resolve(tokenfor<T>())`
+// when T is singular, so the token arm is dead). Emitting during the loop would make
+// the failure ORDER-DEPENDENT — it fires only if the token stage runs before the
+// fold — which the loop forbids. So a synthetic underivable token is left in place,
+// silently, for the fold to prune (dead branch) or the emit SWEEP to flag once, AFTER
+// the loop settles (a surviving live one). A SOURCE-WRITTEN call is real user code
+// that never sits in a fold-pruned branch and runs even when the inline sweep is
+// inactive, so it emits the targeted diagnostic here.
+func lowerTypeArgToken(ec *shimprinter.EmitContext, emit func(plugin.Diagnostic), node *shimast.Node, token string, derived, sourceWritten bool) *shimast.Node {
+	if !derived {
+		if sourceWritten {
+			emit(plugin.Diagnostic{
+				Code:    typeArgUnderivableCode,
+				File:    valueArgFile(node),
+				Start:   node.Pos(),
+				Message: "cannot derive a token for this type — name the type (an anonymous / structural type has no stable token; a function type must be resolved as a factory)",
+			})
+		}
+		return node
+	}
+	return ec.Factory.AsNodeFactory().NewStringLiteral(token, shimast.TokenFlagsNone)
 }
 
 // lowerValueArg derives the service token for a value-argument primitive from t

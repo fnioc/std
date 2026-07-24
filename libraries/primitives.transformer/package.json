@@ -16,7 +16,16 @@
     "directory": "libraries/primitives.transformer"
   },
   "type": "module",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
   "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
+    },
     "./ttsc": "./ttsc.mjs",
     "./inline-ttsc": "./ttsc-inline.mjs",
     "./signatureof-ttsc": "./ttsc-signatureof.mjs",
@@ -29,15 +38,27 @@
     "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth"]
   },
   "files": [
+    "dist",
     "ttsc.mjs",
     "ttsc-inline.mjs",
     "ttsc-signatureof.mjs",
     "ttsc-keyof.mjs"
   ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
+  },
   "publishConfig": {
     "access": "public",
     "provenance": true,
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
     "exports": {
+      ".": {
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
+      },
       "./ttsc": "./ttsc.mjs",
       "./inline-ttsc": "./ttsc-inline.mjs",
       "./signatureof-ttsc": "./ttsc-signatureof.mjs",

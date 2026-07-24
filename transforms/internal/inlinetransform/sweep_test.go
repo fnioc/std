@@ -118,3 +118,25 @@ const b = x.isService<Foo>('token');
 		}
 	})
 }
+
+// TestSweepFlagsSurvivingSingularValue covers the §94 targeted-diagnostic branch: a
+// registered `singularValue<T>()` that SURVIVED lowering (the singular stage left it
+// un-lowered over a non-singular type, and no fold pruned it) is flagged with the
+// specific SINGULAR_VALUE_NON_SINGULAR code — naming the failure — not the generic
+// INLINE_UNLOWERED_PRIMITIVE. A guarded singularValue is pruned before the sweep, so
+// one that reaches here is unguarded over a non-singular type.
+func TestSweepFlagsSurvivingSingularValue(t *testing.T) {
+	sf := parse(t, "/sweep/singular.ts", `const s = singularValue<Foo>();
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	registered := callContaining(t, sf, "singularValue<")
+	artifacts := NewArtifacts()
+	artifacts.Active = true
+	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "singularValue"}
+
+	diags := Sweep(sf, artifacts)
+	if len(diags) != 1 || diags[0].Code != "SINGULAR_VALUE_NON_SINGULAR" {
+		t.Fatalf("expected 1 SINGULAR_VALUE_NON_SINGULAR from the surviving-singularValue branch, got %+v", diags)
+	}
+}
