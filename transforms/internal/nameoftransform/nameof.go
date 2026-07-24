@@ -49,6 +49,23 @@ const nameofName = "tokenfor"
 // difference is the ProducedTypeOf unwrap tokenfor applies and tokenof skips.
 const tokenofName = "tokenof"
 
+// keyedTokenforName is the exported identifier the transformer recognizes as
+// keyedtokenfor — the COMPOSED keyed-lookup twin of tokenfor. Where
+// `tokenfor<T>()` derives the bare BASE token (ServiceBaseTokenFor strips a
+// `Keyed<T, K>` brand) so a registration body can compose `base` + a separate
+// `keyof<T>()` key, `keyedtokenfor<T>()` derives the SINGLE composed `base#key`
+// string di.core registers a keyed service under — the exact token the di-direct
+// registration path mints via KeyedTokenFor. It is the token the keyed forms of
+// `isService<T>()` / `resolveAsync<T>()` need: those verbs take one token
+// argument and no key parameter (§98), so a keyed query must arrive already
+// composed. For an UNKEYED T it derives identically to `tokenfor<T>()`
+// (KeyedTokenFor misses, so it falls through to DeriveTokenF, which equals
+// ServiceBaseTokenFor for a non-keyed type), keeping unkeyed lowering
+// byte-identical with no elision. It lowers in THIS stage; the composition is
+// pure token grammar (KeyedTokenFor || DeriveTokenF), the same two-way choice
+// di-direct's tokenForReg makes.
+const keyedTokenforName = "keyedtokenfor"
+
 // valueArgUnderivableCode is the diagnostic a value-argument token derivation
 // raises when the argument's type yields no derivable token (an anonymous /
 // unnameable type) — a lowering failure the stage reports rather than emitting a
@@ -126,6 +143,22 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				// inner leaf does, keeping the wrapper/element pair relationally locked.
 				if use, ok := registeredTokenofType(artifacts, node); ok {
 					token, derived := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
+					return lowerTypeArgToken(ec, emit, node, token, derived, false)
+				}
+				// TYPE-argument keyedtokenfor<T>() — COMPOSED keyed lookup token,
+				// source-written. Derives the single `base#key` string a keyed service
+				// registers under (KeyedTokenFor), falling through to the plain base for
+				// an unkeyed T (DeriveTokenF) so it is byte-identical to tokenfor<T>()
+				// there. It is the token the keyed `isService` / `resolveAsync` bodies
+				// need, since those verbs take one token and no key parameter (§98).
+				if t, ok := keyedTokenforTypeCall(checker, call); ok {
+					token, derived := keyedOrRawTokenFor(ctx, t)
+					return lowerTypeArgToken(ec, emit, node, token, derived, true)
+				}
+				// TYPE-argument keyedtokenfor<T>() — COMPOSED keyed lookup token,
+				// synthetic (inline-substituted). The synthetic twin of the branch above.
+				if use, ok := registeredKeyedTokenforType(artifacts, node); ok {
+					token, derived := keyedOrRawTokenFor(ctx, use.TypeArgs[0])
 					return lowerTypeArgToken(ec, emit, node, token, derived, false)
 				}
 				// TYPE-argument tokenfor<Wrapper<T>>() — COMPOSED generic, synthetic
@@ -214,6 +247,34 @@ func registeredTokenofType(artifacts *inlinetransform.Artifacts, node *shimast.N
 		return inlinetransform.PrimitiveUse{}, false
 	}
 	return use, true
+}
+
+// registeredKeyedTokenforType reports whether node is a synthetic `keyedtokenfor`
+// call the inline stage registered with a resolved TYPE argument
+// (`keyedtokenfor<T>()`). It is the composed-keyed twin of registeredTokenofType,
+// disjoint from every other type-arg primitive by callee symbol.
+func registeredKeyedTokenforType(artifacts *inlinetransform.Artifacts, node *shimast.Node) (inlinetransform.PrimitiveUse, bool) {
+	if artifacts == nil {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	use, ok := artifacts.PrimitiveCalls[node]
+	if !ok || use.Name != keyedTokenforName || len(use.TypeArgs) == 0 {
+		return inlinetransform.PrimitiveUse{}, false
+	}
+	return use, true
+}
+
+// keyedOrRawTokenFor derives the COMPOSED keyed lookup token for a service type —
+// `base#key` when T carries the `Keyed<T, K>` brand, else the plain base token. It
+// is the same two-way choice di-direct's tokenForReg makes (KeyedTokenFor first,
+// DeriveTokenF as the fallthrough), so a keyedtokenfor<T>() and a di-direct keyed
+// registration mint the same token. For an unkeyed T it equals ServiceBaseTokenFor
+// (tokenfor<T>()), keeping unkeyed isService/resolveAsync byte-identical.
+func keyedOrRawTokenFor(ctx *tokens.Context, t *shimchecker.Type) (string, bool) {
+	if token, ok := tokens.KeyedTokenFor(ctx, t); ok {
+		return token, true
+	}
+	return tokens.DeriveTokenF(ctx, t, nil)
 }
 
 // composedBase memoizes one base-symbol resolution: the symbol (nil when the
@@ -447,11 +508,11 @@ func elideNameofImport(factory *shimast.NodeFactory, statement *shimast.Node) *s
 	return factory.UpdateImportDeclaration(decl, decl.Modifiers(), newClause, decl.ModuleSpecifier, decl.Attributes)
 }
 
-// isLoweredPrimitiveName reports whether name is a value-token primitive THIS
-// stage lowers to an inline literal (`tokenfor` / `tokenof`), leaving its import
-// unreferenced and elidable.
+// isLoweredPrimitiveName reports whether name is a token primitive THIS stage
+// lowers to an inline literal (`tokenfor` / `tokenof` / `keyedtokenfor`), leaving
+// its import unreferenced and elidable.
 func isLoweredPrimitiveName(name string) bool {
-	return name == nameofName || name == tokenofName
+	return name == nameofName || name == tokenofName || name == keyedTokenforName
 }
 
 // exportedName is a named import specifier's exported name — its property name
@@ -529,6 +590,34 @@ func tokenofTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression)
 		}
 	}
 	if symbol.Name != tokenofName {
+		return nil, false
+	}
+	return checker.GetTypeFromTypeNode(call.TypeArguments.Nodes[0]), true
+}
+
+// keyedTokenforTypeCall reports whether call is a source-written single-TYPE-argument
+// call whose callee resolves (following an import alias) to the `keyedtokenfor`
+// symbol, and returns the type argument's checker type. It shares isNameofCall's
+// synthetic-node guard (a synthetic keyedtokenfor is handled via
+// registeredKeyedTokenforType) and is disjoint from the other type-arg primitives
+// by callee symbol.
+func keyedTokenforTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression) (*shimchecker.Type, bool) {
+	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+		return nil, false
+	}
+	if call.Expression.Pos() < 0 || call.Expression.Parent == nil {
+		return nil, false
+	}
+	symbol := checker.GetSymbolAtLocation(call.Expression)
+	if symbol == nil {
+		return nil, false
+	}
+	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
+		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
+			symbol = aliased
+		}
+	}
+	if symbol.Name != keyedTokenforName {
 		return nil, false
 	}
 	return checker.GetTypeFromTypeNode(call.TypeArguments.Nodes[0]), true

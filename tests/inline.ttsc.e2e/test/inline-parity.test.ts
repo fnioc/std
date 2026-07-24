@@ -107,7 +107,7 @@ function goEnv(): NodeJS.ProcessEnv {
 }
 
 const APP_SOURCE = `
-import type { IServiceProvider, Keyed } from "@rhombus-std/di.core";
+import type { IServiceProvider } from "@rhombus-std/di.core";
 
 // The sugar overload the di.transformer declaration-merges onto IServiceQuery —
 // hand-declared here so the program carries it without wiring the transformer's
@@ -119,15 +119,9 @@ declare module "@rhombus-std/di.core" {
 }
 
 interface ILogger {}
-interface ICache {}
 declare const provider: IServiceProvider<string>;
 
 export const known = provider.isService<ILogger>();
-// Keyed query: the isService body derives its single token with tokenof<T>() (raw,
-// alias-preserving), so a keyed predicate carries the raw Keyed<...> token both the
-// inline path and the di semantic path mint — never the brand-stripped base that
-// would silently answer for an unkeyed registration.
-export const keyedKnown = provider.isService<Keyed<ICache, 'redis'>>();
 `;
 
 // Both compilations live in ONE project dir under ONE node_modules, so they
@@ -236,22 +230,13 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
     // Readable failure hint first: the load-bearing line.
     expect(line(withInline)).toBeDefined();
     expect(line(withInline)).toEqual(line(withoutInline));
-    // The full byte-parity guarantee the pilot advertises.
+    // The full byte-parity guarantee the pilot advertises. Only the NON-keyed
+    // isService is exercised here: under §98 the keyed query form deliberately
+    // DIVERGES from the di-direct oracle (inline composes the single base#key token;
+    // di-direct still emits the raw Keyed<...> alias — the port gap §98 fixes), so
+    // keyed isService moves to the resolve-family suite with documented-semantics
+    // and runtime-round-trip assertions rather than di-direct byte parity.
     expect(withInline).toEqual(withoutInline);
-  });
-
-  test('keyed isService<Keyed<ICache, "redis">>() carries the RAW keyed token, inline ≡ di semantic', () => {
-    // The keyed predicate must carry the raw Keyed<...> token (tokenof / DeriveTokenF,
-    // alias-preserving), not the brand-stripped bare base — the base would silently
-    // match an unkeyed registration of ICache. The whole-output byte-parity test
-    // above already pins inline ≡ semantic; this isolates the keyed line so a
-    // regression names the keyed case directly.
-    const keyedLine = (src: string) =>
-      src.split('\n').find((l) => l.includes('keyedKnown') && l.includes('isService('))?.trim();
-    expect(keyedLine(withInline)).toBeDefined();
-    expect(keyedLine(withInline)).toContain('Keyed<');
-    expect(keyedLine(withInline)).toContain('redis');
-    expect(keyedLine(withInline)).toEqual(keyedLine(withoutInline));
   });
 });
 
@@ -349,6 +334,11 @@ declare module '@rhombus-std/di.core' {
   interface IResolver {
     resolveAsync<T>(): Promise<T>;
     tryResolve<T>(): T | undefined;
+  }
+  // The tokenless query predicate (§98 keyed form): isService on IServiceQuery,
+  // the face the inline ServiceQueryInline body targets.
+  interface IServiceQuery {
+    isService<T>(): boolean;
   }
 }
 
@@ -452,7 +442,11 @@ export const tokenful = provider.resolve<IThing>();
 export const asyncTok = provider.resolveAsync<IThing>();
 export const tryTok = provider.tryResolve<IThing>();
 export const singular = provider.resolve<'dev'>();
+// §98 keyed forms. resolve/tryResolve carry a tail key parameter → split base + key;
+// isService/resolveAsync are key-less → the single composed base#key token.
 export const keyedTok = provider.resolve<Keyed<ICache, 'redis'>>();
+export const keyedKnown = provider.isService<Keyed<ICache, 'redis'>>();
+export const keyedAsync = provider.resolveAsync<Keyed<ICache, 'redis'>>();
 `;
 
 function writeChainSrc(dir: string): void {
@@ -603,6 +597,7 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('.as<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
+  expect(out).not.toContain('keyedtokenfor');
   expect(out).not.toContain('signatureof');
   expect(out).not.toContain('signaturefor');
   expect(out).not.toContain('valueof');
@@ -819,27 +814,80 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(lineWith(resolveSemantic, 'singular =')).toEqual(line);
   });
 
-  test('keyed resolve<Keyed<ICache, "redis">>() carries the RAW keyed token, inline ≡ di-direct', () => {
-    // The resolve body derives its single token with tokenof<T>() (raw
-    // DeriveTokenF, alias-preserving), NOT tokenfor<T>() (which strips the Keyed
-    // brand to the bare base). So a keyed resolve carries the raw Keyed<...>
-    // reference both di-direct and the inline body mint — byte-identical across
-    // paths — rather than the brand-stripped base that would SILENTLY match an
-    // unkeyed registration of ICache. Unlike keyed REGISTRATION (where inline
-    // splits base + keyof and di composes base#key, a legitimate divergence), the
-    // single-token resolve form does NOT diverge: it agrees byte-for-byte.
+  test('keyed resolve<Keyed<ICache, "redis">>() splits into base token + key arg (§98)', () => {
+    // §98 keyed resolve: `resolve` carries a tail key parameter, so the body passes
+    // the bare BASE token `tokenfor<T>()` plus `keyof<T>()`, lowering to the split
+    // pair `resolve("<base>", "redis")` — di.core composes `base#key` at runtime.
+    // This DELIBERATELY diverges from the di-direct oracle, whose lowerResolveCall
+    // still emits the raw `Keyed<...>` alias token (the port gap §98 fixes — that
+    // token never matched a keyed registration). So this asserts the documented
+    // split form, NOT byte parity with the semantic path; the runtime round-trip
+    // below proves it actually resolves a keyed registration.
     const line = lineWith(resolveInline, 'keyedTok =');
     expect(line).toBeDefined();
-    // Bun.Transpiler emits the outer string with single quotes here because the
-    // keyed token embeds a double-quoted key (`"redis"`); assert the call + the raw
-    // brand rather than a specific quote char.
-    expect(line).toContain('.resolve(');
-    expect(line).toContain('Keyed<');
-    expect(line).toContain('redis');
     expect(line).not.toContain('resolve<');
-    // Byte parity with the di-direct rewriteResolve lowering of the same keyed call.
-    expect(lineWith(resolveSemantic, 'keyedTok =')).toEqual(line);
+    expect(line).not.toContain('Keyed<');
+    const m = /\.resolve\("([^"]*)", "redis"\)/.exec(line as string);
+    expect(m).not.toBeNull();
+    const base = (m as RegExpExecArray)[1];
+    expect(base).toContain('ICache');
+    expect(base).not.toContain('#');
     assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('keyed isService / resolveAsync carry the single composed base#key token (§98)', () => {
+    // §98 key-less query verbs: `isService` and `resolveAsync` take one token and no
+    // key parameter, so the body derives the SINGLE composed `base#key` token via
+    // `keyedtokenfor<T>()`. Both diverge from the di-direct oracle (raw alias), so
+    // this asserts the composed form; the round-trip below proves it round-trips.
+    const knownLine = lineWith(resolveInline, 'keyedKnown =');
+    expect(knownLine).toBeDefined();
+    expect(knownLine).not.toContain('isService<');
+    expect(knownLine).not.toContain('Keyed<');
+    const km = /\.isService\("([^"]*)"\)/.exec(knownLine as string);
+    expect(km).not.toBeNull();
+    expect((km as RegExpExecArray)[1]).toContain('ICache#redis');
+
+    const asyncLine = lineWith(resolveInline, 'keyedAsync =');
+    expect(asyncLine).toBeDefined();
+    expect(asyncLine).not.toContain('resolveAsync<');
+    expect(asyncLine).not.toContain('Keyed<');
+    const am = /\.resolveAsync\("([^"]*)"\)/.exec(asyncLine as string);
+    expect(am).not.toBeNull();
+    expect((am as RegExpExecArray)[1]).toContain('ICache#redis');
+  });
+
+  test('runtime round-trip: keyed resolve / isService / resolveAsync hit a keyed registration, miss an unkeyed one', async () => {
+    // Runtime-EXECUTION witness (the text tests above only prove the emitted bytes,
+    // per the §98 decision: round-trip tests must EXECUTE the lowered JS). The base
+    // token comes from the keyed resolve line's arg0, the composed token from the
+    // keyed isService line — the transformer's ACTUAL emitted tokens. A keyed
+    // service registered under the composed token must: answer `isService(composed)`
+    // true, `resolve(base, "redis")` (which di.core composes to `base#key`) the
+    // registered value, and `resolveAsync(composed)` the same value. An UNKEYED-only
+    // registration of the same base must answer the keyed probe FALSE — the exact
+    // mismatch §98 fixes (the pre-§98 raw-alias / brand-stripped forms could not).
+    const base =
+      (/\.resolve\("([^"]*)", "redis"\)/.exec(lineWith(resolveInline, 'keyedTok =') as string) as RegExpExecArray)[1];
+    const composed =
+      (/\.isService\("([^"]*)"\)/.exec(lineWith(resolveInline, 'keyedKnown =') as string) as RegExpExecArray)[1];
+    expect(composed).toBe(`${base}#redis`);
+
+    const marker = { tag: 'redis-cache' };
+
+    // Keyed registration lands under the composed base#key token.
+    let keyed = new ServiceManifest<'singleton'>();
+    keyed = keyed.addValue(composed, marker);
+    const keyedProvider = keyed.build().createScope('singleton');
+    expect(keyedProvider.isService(composed)).toBe(true);
+    expect(keyedProvider.resolve(base, 'redis')).toBe(marker);
+    expect(await keyedProvider.resolveAsync(composed)).toBe(marker);
+
+    // Unkeyed-only registration of the same base: the keyed probe misses.
+    let unkeyed = new ServiceManifest<'singleton'>();
+    unkeyed = unkeyed.addValue(base, marker);
+    const unkeyedProvider = unkeyed.build().createScope('singleton');
+    expect(unkeyedProvider.isService(composed)).toBe(false);
   });
 });
 

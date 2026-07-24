@@ -54,6 +54,7 @@ import (
 var knownPrimitives = map[string]string{
 	"tokenfor":      "@rhombus-std/primitives",
 	"tokenof":       "@rhombus-std/primitives",
+	"keyedtokenfor": "@rhombus-std/di.transformer",
 	"signatureof":   "@rhombus-std/di.transformer",
 	"keyof":         "@rhombus-std/di.transformer",
 	"signaturefor":  "@rhombus-std/di.core",

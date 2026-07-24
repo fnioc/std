@@ -254,6 +254,15 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 		st.temps = append(st.temps, res.Temp)
 	}
 
+	// Instantiation-expression VALUE parity: an open-template impl argument
+	// (`addClass<IRepo<$<1>>>(ThingRepo<$<1>>)`) is an ExpressionWithTypeArguments the
+	// body splices into the value slot verbatim. The di direct stage registers the
+	// BARE constructor expression (`ThingRepo`) — an instantiation expression's type
+	// arguments are type-level and carry no runtime value — so strip them here too,
+	// keeping the lowered call byte-identical to the oracle at the TS level (not only
+	// after a downstream TS->JS type-strip).
+	res.Expr = st.normalizeInstantiationArgs(res.Expr)
+
 	// Byte-parity elision: an UNKEYED registration drops the `keyof<T>()` argument
 	// (and the placeholder slots it leaves trailing) so the lowered call is
 	// identical to the plain 3-argument registration form. Done BEFORE
@@ -263,6 +272,42 @@ func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shima
 
 	st.registerPrimitives(res.Expr, body, env)
 	return wrapForPrecedence(st.ec, res.Expr), true
+}
+
+// normalizeInstantiationArgs strips the type arguments from an
+// ExpressionWithTypeArguments argument of a substituted registration call
+// (`ThingRepo<$<1>>` → `ThingRepo`), matching the di direct stage which registers
+// the BARE constructor expression via `arg.AsExpressionWithTypeArguments().Expression`.
+// An instantiation expression used as a value carries no runtime type arguments, so
+// this is a domain-free TS→value normalization, applied only to the OUTER call's
+// arguments — the value slot is the only place a registration body splices a
+// user-authored expression; the derived token / signature arguments are literals a
+// body never spells as an instantiation expression. A substituted resolve body is a
+// conditional (not a call) and is left untouched.
+func (st *fileState) normalizeInstantiationArgs(expr *shimast.Node) *shimast.Node {
+	if expr.Kind != shimast.KindCallExpression {
+		return expr
+	}
+	call := expr.AsCallExpression()
+	if call.Arguments == nil {
+		return expr
+	}
+	args := call.Arguments.Nodes
+	changed := false
+	kept := make([]*shimast.Node, len(args))
+	for i, arg := range args {
+		if arg.Kind == shimast.KindExpressionWithTypeArguments {
+			kept[i] = arg.AsExpressionWithTypeArguments().Expression
+			changed = true
+			continue
+		}
+		kept[i] = arg
+	}
+	if !changed {
+		return expr
+	}
+	factory := st.ec.Factory.AsNodeFactory()
+	return factory.NewCallExpression(call.Expression, nil, nil, factory.NewNodeList(kept), 0)
 }
 
 // keyofPrimitiveName is the canonical primitive name a `keyof<T>()` import maps to
@@ -299,6 +344,20 @@ const keyofPrimitiveName = "keyof"
 // Substitute returns the bare outer call; a non-call root (defensive) is left
 // untouched, keeping the keyof arg for the stage to lower to `void 0`.
 func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) *shimast.Node {
+	// The resolve-family bodies (§94) are a CONDITIONAL, not a bare call:
+	// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())`.
+	// The keyof argument lives in the whenFalse branch (the token-resolve arm the
+	// fold keeps for a non-singular T), so descend there and elide from it. The
+	// singular whenTrue arm never carries a keyof, and the fold prunes it anyway.
+	if expr.Kind == shimast.KindConditionalExpression {
+		cond := expr.AsConditionalExpression()
+		newWhenFalse := st.elideUnkeyedKeyArg(cond.WhenFalse, body, env)
+		if newWhenFalse == cond.WhenFalse {
+			return expr
+		}
+		factory := st.ec.Factory.AsNodeFactory()
+		return factory.UpdateConditionalExpression(cond, cond.Condition, cond.QuestionToken, cond.WhenTrue, cond.ColonToken, newWhenFalse)
+	}
 	if expr.Kind != shimast.KindCallExpression {
 		return expr
 	}

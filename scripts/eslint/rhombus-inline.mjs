@@ -31,6 +31,7 @@ const PRIMITIVE_HOMES = {
   signaturesfor: '@rhombus-std/di.core',
   signatureof: '@rhombus-std/di.transformer',
   keyof: '@rhombus-std/di.transformer',
+  keyedtokenfor: '@rhombus-std/di.transformer',
   valueof: '@rhombus-std/di.transformer',
   isSingular: '@rhombus-std/primitives.transformer',
   singularValue: '@rhombus-std/primitives.transformer',

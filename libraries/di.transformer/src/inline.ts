@@ -26,6 +26,7 @@ import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQ
 import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
 import { tokenfor, tokenof } from '@rhombus-std/primitives';
 import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
+import { keyedtokenfor } from './keyedtokenfor.js';
 import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
 import { valueof } from './valueof.js';
@@ -72,24 +73,30 @@ interface IInlineRegistrationTarget {
 /**
  * `isService<T>()` sugar body — the tokenless registration predicate. It is the
  * exact hand-written form a no-transformer consumer would author:
- * `this.isService(tokenof<T>())`.
+ * `this.isService(keyedtokenfor<T>())`.
  *
- * It derives the query token with `tokenof<T>()` (raw `DeriveTokenF`,
- * alias-preserving), NOT `tokenfor<T>()` (which strips a `Keyed<T, K>` brand to the
- * bare base): a single-token consumer must mint byte-identically what di.core's own
- * `isService` lowering mints (also `DeriveTokenF`), so a keyed query
- * `isService<Keyed<IFoo, "k">>()` carries the raw `Keyed<...>` token rather than the
- * brand-stripped base. The stripped base is the dangerous one — it would silently
- * match an unkeyed registration of the same interface and answer for the wrong
- * service. For an unkeyed type `tokenof` and `tokenfor` derive the identical token,
- * so this stays byte-identical to the plain form there. (The split base + `keyof`
- * token pair is for the REGISTRATION bodies, where the runtime composes `base#key`;
- * a query has a single token slot and no such composition, so it derives the whole
- * token in one go.)
+ * `isService` takes ONE token argument and no key parameter — being token-based it
+ * "covers the keyed case in one method" (§98) by receiving the FULLY COMPOSED
+ * `base#key` token a keyed service registers under. So the body derives with
+ * `keyedtokenfor<T>()`, which composes that single `base#key` string for a
+ * `Keyed<T, K>` query (`isService<Keyed<ICache, "redis">>()` →
+ * `isService("caching.core:ICache#redis")`) — the exact token the keyed
+ * registration lands on, so the probe actually round-trips. For an UNKEYED type
+ * `keyedtokenfor` derives the plain base token identically to `tokenfor<T>()`, so
+ * the unkeyed form stays byte-identical to the pre-key output.
+ *
+ * This DELIBERATELY changes the lowered output from the pre-§98 form (which used
+ * `tokenof<T>()`, the raw alias-preserving `Keyed<...>` token) — that token never
+ * matched any registration, so keyed `isService` always answered `false`. The old
+ * form matched di.core's own `lowerIsServiceCall`, which has the same latent gap;
+ * this body fixes both. (The split base + `keyof` token pair is for the
+ * REGISTRATION bodies, where the runtime composes `base#key` from a tail key
+ * argument; the query verbs take no key parameter, so they compose the whole token
+ * up front via `keyedtokenfor`.)
  */
 export const ServiceQueryInline = {
   isService<T>(this: IServiceQuery): boolean {
-    return this.isService(tokenof<T>());
+    return this.isService(keyedtokenfor<T>());
   },
 };
 
@@ -105,9 +112,9 @@ export const ServiceQueryInline = {
  * emitted output — it is byte-identical to di.core's own resolve lowering either way.
  */
 interface IInlineResolveTarget {
-  resolve(token: Token): any;
+  resolve(token: Token, key?: string): any;
   resolveAsync(token: Token): any;
-  tryResolve(token: Token): any;
+  tryResolve(token: Token, key?: string): any;
 }
 
 /**
@@ -116,59 +123,59 @@ interface IInlineResolveTarget {
  * hand-write, expressed through the `isSingular` / `singularValue` compile-time
  * predicate (§94):
  *
- *   resolve<T>()      → isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>())
- *   resolveAsync<T>() → isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenof<T>())
- *   tryResolve<T>()   → isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenof<T>())
+ *   resolve<T>()      → isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())
+ *   resolveAsync<T>() → isSingular<T>() ? singularValue<T>() : this.resolveAsync(keyedtokenfor<T>())
+ *   tryResolve<T>()   → isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>())
  *
- * The token is `tokenof<T>()` (raw `DeriveTokenF`, alias-preserving), NOT
- * `tokenfor<T>()` (which strips a `Keyed<T, K>` brand to the bare base): a single
- * `resolve(token)` slot must mint byte-identically what di.core's own resolve
- * lowering mints (also `DeriveTokenF`), so a keyed resolve
- * `resolve<Keyed<ICache, "redis">>()` carries the raw `Keyed<...>` token rather than
- * the brand-stripped base — the base would SILENTLY match an unkeyed registration of
- * `ICache` and return the wrong instance. For an unkeyed type `tokenof` and
- * `tokenfor` derive the identical token, so this is byte-identical to the plain form
- * there. (The base + `keyof` split is for the REGISTRATION bodies, where the runtime
- * composes `base#key`; the single-token resolve/isService/addOptions-element forms
- * derive the whole token raw in one go, matching di-direct.)
+ * KEYED resolution composes through the SAME `keyof` split as registration (§98),
+ * but each verb's shape follows what the runtime accepts:
+ *
+ *   - `resolve` / `tryResolve` carry a tail KEY parameter (`resolve(token, key?)`,
+ *     defaulting `key = ""`), so the body passes the base token `tokenfor<T>()`
+ *     plus `keyof<T>()`, and di.core composes `key === "" ? token : token + "#" +
+ *     key` at runtime. An UNKEYED `keyof<T>()` lowers to `undefined`, which the
+ *     inline stage ELIDES (trailing), so the unkeyed call is byte-identical to the
+ *     plain `this.resolve("token")` form. A keyed `resolve<Keyed<ICache, "redis">>()`
+ *     therefore lowers to `resolve("caching.core:ICache", "redis")`, which
+ *     round-trips a keyed registration.
+ *   - `resolveAsync` has NO key parameter (`resolveAsync(token)` only), so its keyed
+ *     form must arrive already composed. The body derives the single composed
+ *     `base#key` token with `keyedtokenfor<T>()` (which equals `tokenfor<T>()` for an
+ *     unkeyed type, keeping the unkeyed output byte-identical).
+ *
+ * This DELIBERATELY changes the lowered output from the pre-§98 form (which used
+ * `tokenof<T>()`, the raw alias-preserving `Keyed<...>` token) for KEYED types only:
+ * that token never matched any registration, so a keyed resolve returned nothing /
+ * threw. The old form matched di.core's own `lowerResolveCall`, which has the same
+ * latent gap; these bodies fix both. Unkeyed output is unchanged.
  *
  * Type-directed dispatch lives INSIDE the body, never in the engine (§94): when `T`
  * is SINGULAR (a literal / null / undefined / void), `isSingular<T>()` lowers to
  * `true` and the engine constant-folds the ternary to `singularValue<T>()` — the
- * value itself, matching di.core's Rule-2 singular short-circuit (a hand-written
- * `resolve(tokenof<'dev'>())` folds identically, so the sugar and the explicit
- * form share one semantics). Otherwise `isSingular<T>()` lowers to `false` and the
- * ternary folds to the token form `this.resolve(tokenof<T>())`, byte-identical to
- * the explicit-token lowering. Each verb calls ITSELF with the derived token, so the
- * method name is preserved (`resolveAsync` stays `resolveAsync`).
+ * value itself, matching di.core's Rule-2 singular short-circuit. Otherwise
+ * `isSingular<T>()` lowers to `false` and the ternary folds to the token form. Each
+ * verb calls ITSELF with the derived token, so the method name is preserved
+ * (`resolveAsync` stays `resolveAsync`).
  *
  * FACTORY form residual: `resolve<F>()` where `F` is a function type shares this
  * body's discriminator (one type parameter, no value parameters) and so is claimed
- * HERE. Because the inline stage now activates for every consumer whose program
- * reaches di.core (the W5 transitive-witness fix) and runs AHEAD of the di
- * registration stage, it claims the factory form EVERYWHERE — the di stage never
- * sees an un-substituted factory resolve, so it does not (and cannot) rescue it. The
- * body lowers it as a non-singular tokenful resolve: a function-typed `F` is not
- * singular, so the ternary folds to `this.resolve(tokenof<F>())`, and `tokenof<F>()`
- * over an anonymous function type derives no token — a LOUD lowering failure (an
- * underivable-token diagnostic), never a silent mislowering. Net: an authored factory
- * resolve is a hard build error in every consumer, not a form the di stage lowers.
- * No in-repo consumer authors a factory resolve today (the example uses only
- * interface/promise resolves), so the gate stays green. The renamed
- * `resolveFactory("token", [params])` lowering — a method rename plus an Inject-brand
- * aware param-token array this straight return-expression body cannot express — is
- * deferred to W6, which will add a function-type predicate + signatureof-shaped param
- * extraction in a dedicated body.
+ * HERE. A function-typed `F` is not singular, so the ternary folds to
+ * `this.resolve(tokenfor<F>(), keyof<F>())`, and `tokenfor<F>()` over an anonymous
+ * function type derives no token — a LOUD lowering failure (an underivable-token
+ * diagnostic), never a silent mislowering. The renamed `resolveFactory("token",
+ * [params])` lowering — a method rename plus an Inject-brand aware param-token array
+ * this straight return-expression body cannot express — needs a dedicated body with
+ * a function-type predicate + signatureof-shaped param extraction.
  */
 export const ResolverInline = {
   resolve<T>(this: IInlineResolveTarget): T {
-    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>());
+    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>());
   },
   resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-    return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenof<T>());
+    return isSingular<T>() ? singularValue<T>() : this.resolveAsync(keyedtokenfor<T>());
   },
   tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-    return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenof<T>());
+    return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>());
   },
 };
 
