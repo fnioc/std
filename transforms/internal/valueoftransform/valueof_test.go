@@ -128,6 +128,41 @@ export const k = keep;
 	}
 }
 
+// TestValueofLowersRemainingLiteralKinds covers the literalExpression branches the
+// `.as<Scope>()` sugar never reaches (a scope is always a string), which the
+// pipeline/e2e coverage left unexercised: the null / undefined singletons, the
+// false boolean, a bigint, and negative number / bigint magnitudes (a unary minus
+// over the unsigned literal). Byte-checked against the source-written lowering.
+func TestValueofLowersRemainingLiteralKinds(t *testing.T) {
+	mainSrc := `import { valueof } from '@scope/prims';
+export const nul = valueof<null>();
+export const und = valueof<undefined>();
+export const f = valueof<false>();
+export const bi = valueof<7n>();
+export const nn = valueof<-42>();
+export const nbi = valueof<-9n>();
+`
+	prog, app := buildValueofWorkspace(t, mainSrc)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerMain(t, prog, app)
+	for _, want := range []string{
+		`nul = null`,
+		`und = void 0`,
+		`f = false`,
+		`bi = 7n`,
+		`nn = -42`,
+		`nbi = -9n`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in the lowered output:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "valueof") {
+		t.Errorf("a valueof reference / import survived lowering:\n%s", out)
+	}
+}
+
 // TestValueofNonSingletonLeftInPlace covers the guard: a non-singular type
 // argument (a wide union) yields no value, so the call is left in place for the
 // emit sweep.
