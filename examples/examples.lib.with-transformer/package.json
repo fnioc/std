@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",

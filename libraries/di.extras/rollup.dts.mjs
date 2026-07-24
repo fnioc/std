@@ -23,7 +23,7 @@ export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
   output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   external: [/^typescript$/, /^@rhombus-std\/di\.core$/, /^@rhombus-std\/primitives$/,
-    /^@rhombus-std\/primitives\.transformer(\/|$)/, /^@rhombus-toolkit\/func$/],
+    /^@rhombus-std\/primitives\.extras(\/|$)/, /^@rhombus-toolkit\/func$/],
   plugins: [
     dts({
       tsconfig: join(PKG_ROOT, 'tsconfig.json'),

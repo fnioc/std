@@ -43,6 +43,6 @@ test('tryResolve without a token throws the transformer-plugin hint', () => {
   const provider = services.build();
 
   expect(() => (provider as { tryResolve: () => unknown; }).tryResolve()).toThrow(
-    /requires the @rhombus-std\/di\.transformer plugin/,
+    /requires the @rhombus-std\/di\.extras plugin/,
   );
 });

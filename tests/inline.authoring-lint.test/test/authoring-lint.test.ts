@@ -43,7 +43,7 @@ function lintInline(source: string, inlineConfig: unknown = DEFAULT_ENTRIES): st
   return messages.map((m) => m.messageId ?? '').filter(Boolean);
 }
 
-const PRIMITIVE_IMPORT = `import { tokenfor } from '@rhombus-std/primitives';\n`;
+const PRIMITIVE_IMPORT = `import { tokenfor } from '@rhombus-std/primitives.extras';\n`;
 
 describe('inline-authoring rule', () => {
   test('valid pilot body reports nothing', () => {
@@ -89,7 +89,7 @@ describe('inline-authoring rule', () => {
   });
 
   test('aliased primitive import → noAlias', () => {
-    const src = `import { tokenfor as n } from '@rhombus-std/primitives';\n`
+    const src = `import { tokenfor as n } from '@rhombus-std/primitives.extras';\n`
       + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(n<T>()); },\n};\n`;
     expect(lintInline(src)).toContain('noAlias');
   });
