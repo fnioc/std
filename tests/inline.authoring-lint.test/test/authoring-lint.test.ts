@@ -73,10 +73,14 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toContain('singleReturn');
   });
 
-  test('banned conditional → bannedSyntax', () => {
+  test('conditional (?:) is PERMITTED — the §94 resolve-family shape', () => {
+    // The resolve-family sugar branches `isSingular<T>() ? singularValue<T>() :
+    // this.resolve(tokenfor<T>())`, a single compile-time expression the engine
+    // constant-folds. A conditional over otherwise-clean operands is no longer a
+    // bannedSyntax violation.
     const src = PRIMITIVE_IMPORT
       + `export const Foo = {\n  bar<T>(this: any): boolean { return this.a ? this.b(tokenfor<T>()) : false; },\n};\n`;
-    expect(lintInline(src)).toContain('bannedSyntax');
+    expect(lintInline(src)).toEqual([]);
   });
 
   test('free identifier → freeIdentifier', () => {
@@ -136,9 +140,9 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toEqual([]);
   });
 
-  // One fixture per remaining banned construct (conditional is covered above).
-  // Each is a single return expression whose only issue is the banned form, so
-  // the rule reports bannedSyntax.
+  // One fixture per remaining banned construct (a conditional is now PERMITTED,
+  // §94, covered above). Each is a single return expression whose only issue is the
+  // banned form, so the rule reports bannedSyntax.
   const bannedFixtures: Array<{ name: string; member: string; }> = [
     { name: 'logical', member: `bar<T>(this: any): boolean { return this.a && this.b; }` },
     { name: 'assignment', member: `bar<T>(this: any): boolean { return this.x = true; }` },

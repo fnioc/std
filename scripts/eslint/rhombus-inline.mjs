@@ -26,11 +26,14 @@ import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 // package-relative specifier. Mirrors the Go scanner's knownPrimitives map.
 const PRIMITIVE_HOMES = {
   tokenfor: '@rhombus-std/primitives',
+  tokenof: '@rhombus-std/primitives',
   signaturefor: '@rhombus-std/di.core',
   signaturesfor: '@rhombus-std/di.core',
   signatureof: '@rhombus-std/di.transformer',
   keyof: '@rhombus-std/di.transformer',
   valueof: '@rhombus-std/di.transformer',
+  isSingular: '@rhombus-std/primitives.transformer',
+  singularValue: '@rhombus-std/primitives.transformer',
 };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
@@ -192,7 +195,10 @@ const rule = {
 };
 
 const BANNED = {
-  ConditionalExpression: 'a conditional (?:)',
+  // A conditional (?:) is PERMITTED (§94): the resolve-family sugar bodies branch
+  // `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())`, a single
+  // compile-time expression the engine constant-folds. The other control forms stay
+  // banned — a body is still one side-effect-free expression.
   LogicalExpression: 'a logical operator (&&/||/??)',
   AssignmentExpression: 'assignment',
   SequenceExpression: 'a comma sequence',
