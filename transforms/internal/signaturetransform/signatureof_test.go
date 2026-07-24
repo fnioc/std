@@ -10,9 +10,9 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
 // syntheticSignatureofCall builds a factory-minted `signatureof(arg)` call whose
@@ -270,11 +270,11 @@ export const c = keep;
 
 // lowerMain runs the New transform over main.ts and returns the reprinted output
 // plus any diagnostics raised.
-func lowerMain(t *testing.T, prog *driver.Program, app string) (string, []ditransform.Diagnostic) {
+func lowerMain(t *testing.T, prog *driver.Program, app string) (string, []signatures.Diagnostic) {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
-	var diags []ditransform.Diagnostic
-	transform := New(prog, ctx, nil, func(d ditransform.Diagnostic) { diags = append(diags, d) })
+	var diags []signatures.Diagnostic
+	transform := New(prog, ctx, nil, func(d signatures.Diagnostic) { diags = append(diags, d) })
 	ec := shimprinter.NewEmitContext()
 	sf := mainSourceFile(t, prog)
 	out := transform(ec, sf)
@@ -348,7 +348,7 @@ export const s = signatureof(Bad);
 	}
 	found := false
 	for _, d := range diags {
-		if d.Code == "990006" && d.Category == ditransform.Error {
+		if d.Code == "990006" && d.Category == signatures.Error {
 			found = true
 		}
 	}

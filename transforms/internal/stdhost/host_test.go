@@ -23,15 +23,15 @@ func testHost() Host {
 
 func TestSelectStagesCanonicalOrderRegardlessOfManifestOrder(t *testing.T) {
 	// Manifest lists the stages out of order (and inline LAST); selection must
-	// still run in the hardcoded canonical order inline -> nameof -> di ->
-	// di-options -> config. inline running first is load-bearing: it substitutes
+	// still run in the hardcoded canonical order inline -> nameof -> signatureof ->
+	// keyof -> schemaof. inline running first is load-bearing: it substitutes
 	// sugar bodies before any primitive stage (nameof especially) runs, so the
 	// synthetic nameof calls it mints are in place for the nameof handoff.
 	entries := []pluginEntry{
-		{Name: stagePrefix + "config"},
-		{Name: stagePrefix + "di_options"},
+		{Name: stagePrefix + "schemaof"},
+		{Name: stagePrefix + "keyof"},
 		{Name: stagePrefix + "nameof"},
-		{Name: stagePrefix + "di"},
+		{Name: stagePrefix + "signatureof"},
 		{Name: stagePrefix + "inline"},
 	}
 	got, err := selectStages(testHost(), entries, nil, nil)
@@ -41,9 +41,9 @@ func TestSelectStagesCanonicalOrderRegardlessOfManifestOrder(t *testing.T) {
 	want := []string{
 		stagePrefix + "inline",
 		stagePrefix + "nameof",
-		stagePrefix + "di",
-		stagePrefix + "di_options",
-		stagePrefix + "config",
+		stagePrefix + "signatureof",
+		stagePrefix + "keyof",
+		stagePrefix + "schemaof",
 	}
 	names := stageNames(got)
 	if len(names) != len(want) {
@@ -56,18 +56,18 @@ func TestSelectStagesCanonicalOrderRegardlessOfManifestOrder(t *testing.T) {
 	}
 }
 
-func TestSelectStagesInlinePrecedesDi(t *testing.T) {
-	// A consumer selecting only inline + di (manifest order di-then-inline): the
-	// inline stage must still be emitted before the di stage, since its output is
-	// what di lowers.
-	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di"}, {Name: stagePrefix + "inline"}}, nil, nil)
+func TestSelectStagesInlinePrecedesNameof(t *testing.T) {
+	// A consumer selecting only inline + nameof (manifest order nameof-then-inline):
+	// the inline stage must still be emitted before the nameof stage, since the
+	// synthetic nameof calls inline mints are what nameof lowers.
+	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "nameof"}, {Name: stagePrefix + "inline"}}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	names := stageNames(got)
-	want := []string{stagePrefix + "inline", stagePrefix + "di"}
+	want := []string{stagePrefix + "inline", stagePrefix + "nameof"}
 	if len(names) != len(want) || names[0] != want[0] || names[1] != want[1] {
-		t.Fatalf("inline+di selection = %v, want %v (inline first)", names, want)
+		t.Fatalf("inline+nameof selection = %v, want %v (inline first)", names, want)
 	}
 }
 
@@ -127,8 +127,8 @@ func swapStreams(out, err *bytes.Buffer) func() {
 // TestSelectStagesBundleExpandsToOrderedSet is the preset core: a consumer that
 // declares ONLY the di.core bundle descriptor (rhombusstd_di_bundle) must get its
 // constituent stages selected in canonical order — inline -> nameof ->
-// signatureof -> keyof -> valueof -> di — without ever listing them by hand. The
-// binary owns both the membership and the order.
+// signatureof -> keyof -> valueof -> singular -> factory -> fold — without ever
+// listing them by hand. The binary owns both the membership and the order.
 func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "di_bundle"}}, nil, nil)
 	if err != nil {
@@ -143,7 +143,6 @@ func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 		stagePrefix + "singular",
 		stagePrefix + "factory",
 		stagePrefix + "fold",
-		stagePrefix + "di",
 	}
 	names := stageNames(got)
 	if len(names) != len(want) {
@@ -159,12 +158,12 @@ func TestSelectStagesBundleExpandsToOrderedSet(t *testing.T) {
 // TestSelectStagesBundlePlusExtraStageDedups: declaring the bundle AND one of its
 // own constituents (or a stage outside it) must not double-run any stage, and the
 // result stays in canonical order. Here the manifest carries the bundle plus an
-// explicit `di` (already in the bundle) and `di_options` (outside it).
+// explicit `nameof` (already in the bundle) and `schemaof` (outside it).
 func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 	got, err := selectStages(testHost(), []pluginEntry{
-		{Name: stagePrefix + "di_options"},
+		{Name: stagePrefix + "schemaof"},
 		{Name: stagePrefix + "di_bundle"},
-		{Name: stagePrefix + "di"},
+		{Name: stagePrefix + "nameof"},
 	}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -178,8 +177,7 @@ func TestSelectStagesBundlePlusExtraStageDedups(t *testing.T) {
 		stagePrefix + "singular",
 		stagePrefix + "factory",
 		stagePrefix + "fold",
-		stagePrefix + "di",
-		stagePrefix + "di_options",
+		stagePrefix + "schemaof",
 	}
 	names := stageNames(got)
 	if len(names) != len(want) {
@@ -205,7 +203,7 @@ func TestSelectStagesUnknownBundleIsHardError(t *testing.T) {
 }
 
 func TestSelectStagesScopesToDeclaredStages(t *testing.T) {
-	// A nameof-only consumer activates ONLY the nameof stage — di must not run.
+	// A nameof-only consumer activates ONLY the nameof stage — no other stage runs.
 	got, err := selectStages(testHost(), []pluginEntry{{Name: stagePrefix + "nameof"}}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -225,7 +223,7 @@ func TestSelectStagesUnionsDependencyScan(t *testing.T) {
 		testHost(),
 		[]pluginEntry{{Name: stagePrefix + "nameof"}},
 		nil,
-		[]string{"di", "nameof", "signatureof", "inline"},
+		[]string{"schemaof", "nameof", "signatureof", "inline"},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -234,7 +232,7 @@ func TestSelectStagesUnionsDependencyScan(t *testing.T) {
 		stagePrefix + "inline",
 		stagePrefix + "nameof",
 		stagePrefix + "signatureof",
-		stagePrefix + "di",
+		stagePrefix + "schemaof",
 	}
 	names := stageNames(got)
 	if len(names) != len(want) {

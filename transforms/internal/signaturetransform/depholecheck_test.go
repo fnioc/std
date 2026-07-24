@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
 // holeBrands declares the `$<N>` hole brand the open-generic registration grammar
@@ -36,7 +36,7 @@ services.addClass("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>));
 	_, diags := lowerMain(t, prog, app)
 	found := false
 	for _, d := range diags {
-		if d.Code == "990010" && d.Category == ditransform.Error {
+		if d.Code == "990010" && d.Category == signatures.Error {
 			found = true
 			if !strings.Contains(d.Message, "$2") {
 				t.Errorf("990010 message should name the orphan hole $2, got %q", d.Message)
@@ -70,7 +70,7 @@ services.addClass("m:IRepo<$1>", SqlRepo<$<2>>, signatureof(SqlRepo<$<2>>), void
 
 	_, diags := lowerMain(t, prog, app)
 	for _, d := range diags {
-		if d.Code == "990010" && d.Category == ditransform.Error {
+		if d.Code == "990010" && d.Category == signatures.Error {
 			return
 		}
 	}

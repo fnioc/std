@@ -7,15 +7,13 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/configtransform"
-	"github.com/fnioc/std/transforms/internal/dioptionstransform"
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/factorytransform"
 	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
@@ -29,9 +27,9 @@ const loopMaxPasses = 16
 // buildLoopedStages constructs every looped-set stage over prog, sharing ONE
 // artifacts bag exactly as the owner host composes them, and returns them in the
 // canonical order. Mergesynth is deliberately excluded — it is the host's one-shot
-// pre-pass, not a loop member (Open issue 2). The di / di_options / config stages
-// are included so the no-op identity contract is pinned across the WHOLE looped
-// set, not just the primitives.
+// pre-pass, not a loop member (Open issue 2). Every stage is now a domain-agnostic
+// primitive — the bespoke di / di_options / config stages were deleted (W6p3) — so
+// the no-op identity contract is pinned across the whole primitive looped set.
 func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts *inlinetransform.Artifacts) []plugin.FileTransform {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
@@ -41,17 +39,14 @@ func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts
 	}
 	inlineT := inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
+	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
 	keyofT := keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	valueofT := valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	singularT := singulartransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	factoryT := factorytransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	foldT := foldtransform.New(prog, func(plugin.Diagnostic) {})
-	diT := plugin.FileTransform(ditransform.New(prog, ctx, func(ditransform.Diagnostic) {}))
-	diOptionsT := dioptionstransform.AddOptionsTransform(prog, ctx, func(plugin.Diagnostic) {})
 	schemaofT := schemaoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	configT := configtransform.New(prog, ctx, func(plugin.Diagnostic) {})
-	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, factoryT, foldT, diT, diOptionsT, schemaofT, configT}
+	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, factoryT, foldT, schemaofT}
 }
 
 // TestLoopCanaryZeroMatchPreservesPointer is the CENTRAL identity canary: a file
@@ -72,7 +67,7 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "di", "di_options", "schemaof", "config"}
+	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
@@ -93,15 +88,12 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 // (fixed-point-detecting) pass hands every stage. A stage that re-fired on the
 // settled tree would spin the loop to FIXED_POINT_EXHAUSTED.
 //
-// Settling through the whole set (not just the primitive stages) is what makes
-// this table cover the di / di_options / config stages too: they are looped
-// members per stages.go, so a regression in their identity-preservation on the
-// settled tree must be caught HERE, not left to the weaker zero-match canary. The
-// di stage participates in settling the addClass chain, so its inertness check is
-// against output it itself helped lower; di_options and config find no sugar of
-// their own in this fixture and so are pinned inert on the settled tree — their
-// idempotence on output THEY lowered is pinned in their own packages
-// (dioptionstransform / configtransform own-output idempotence tests).
+// The whole looped set is now domain-agnostic primitives (the bespoke di /
+// di_options / config stages were deleted in W6p3): the inline stage peels the
+// addClass chain and the primitives lower each layer, so every stage's inertness
+// check here is against the fully-settled output the loop's terminating pass hands
+// it. schemaof finds no `.withType` sugar in this fixture and is pinned inert on
+// the settled tree.
 func TestLoopNoOpIdentityTable(t *testing.T) {
 	// The full chain, lowered ONCE through the whole set to its fixed point, is the
 	// "already settled" input every looped stage is then re-run over.
@@ -116,7 +108,7 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "di", "di_options", "schemaof", "config"}
+	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
@@ -191,7 +183,7 @@ func buildSelfInlineLoop(t *testing.T, prog *driver.Program, app string, artifac
 	return []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
 		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
@@ -301,7 +293,7 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 	loop := []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
 		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}

@@ -9,10 +9,10 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 )
 
@@ -115,7 +115,7 @@ func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string 
 	}
 	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
+	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
 	keyofT := keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the add preset entry did not resolve")

@@ -1,4 +1,4 @@
-package ditransform
+package signatures
 
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -8,22 +8,20 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
-// Extractor exposes ditransform's constructor / factory dependency-signature
-// extraction as a standalone primitive for the signatureof stage. It shares the
-// di registration stage's EXACT extraction + rendering path — the array literal
-// it returns is byte-identical to the third argument the di stage synthesizes
-// for the same class / factory value — so the inline `addClass<T>()` / `addFactory<T>()`
-// sugar lowering (nameof + signatureof) and the di stage's direct `addClass<I>(C)`
-// lowering never diverge. Sharing the code (not duplicating it) is what makes
-// that parity structural rather than coincidental.
+// Extractor is the constructor / factory dependency-signature extraction engine
+// the signatureof stage drives. The `[[...]]` array literal it returns is exactly
+// the third argument a hand-written `addClass("token", ctor, [[...]])` registration
+// carries, so the inline `addClass<T>()` / `addFactory<T>()` sugar lowering (nameof +
+// signatureof) emits what a no-transformer author would write by hand. This was
+// the shared extraction path the deleted di registration stage also used; it now
+// lives here as the sole owner.
 type Extractor struct {
 	c *context
 }
 
 // NewExtractor builds a signature Extractor over a loaded program's checker and
 // token core, emitting through the given diagnostic sink. The EmitContext
-// supplies the node factory the rendered literal is built with — the same
-// factory the di stage prints from, so the emitted literal matches byte-for-byte.
+// supplies the node factory the rendered literal is built with.
 func NewExtractor(
 	ctx *tokens.Context,
 	checker *shimchecker.Checker,

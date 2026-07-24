@@ -1,6 +1,8 @@
 package nameoftransform
 
 import (
+	_ "embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,7 +13,6 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
@@ -132,14 +133,36 @@ func lowerNameof(t *testing.T, prog *driver.Program, app string) string {
 	return reprint(ec, out)
 }
 
-// lowerDi runs the di registration stage over main.ts and returns its output.
+//go:embed testdata/di_direct_golden.json
+var diDirectGoldenRaw []byte
+
+// diDirectGolden maps a main.ts source (reprinted from its untransformed tree) to
+// the registration stage's lowered output. It is the FROZEN di-direct oracle: the
+// bespoke di stage was deleted in W6p3, so its byte-output was captured into this
+// checked-in golden BEFORE the deletion (never self-blessed from the new inline
+// path). The `*MatchesDiDirect` tests then prove the inline pipeline reproduces
+// exactly these bytes. Regenerate by restoring the di stage and re-running the
+// capture; a plain edit here would defeat the parity guarantee.
+var diDirectGolden = func() map[string]string {
+	m := map[string]string{}
+	if err := json.Unmarshal(diDirectGoldenRaw, &m); err != nil {
+		panic(err)
+	}
+	return m
+}()
+
+// lowerDi returns the frozen di-direct registration-stage output for main.ts,
+// keyed by the reprinted (untransformed) source — the byte-reference the inline
+// pipeline must match, standing in for the deleted live di stage.
 func lowerDi(t *testing.T, prog *driver.Program, app string) string {
 	t.Helper()
-	ctx := plugin.NewContext(prog, app)
-	transform := ditransform.New(prog, ctx, func(ditransform.Diagnostic) {})
-	ec := shimprinter.NewEmitContext()
-	out := transform(ec, mainSF(t, prog))
-	return reprint(ec, out)
+	_ = app
+	key := reprint(shimprinter.NewEmitContext(), mainSF(t, prog))
+	out, ok := diDirectGolden[key]
+	if !ok {
+		t.Fatalf("no di-direct golden for this main.ts source — regenerate testdata/di_direct_golden.json from the pre-deletion oracle for:\n%s", key)
+	}
+	return out
 }
 
 // stringLiteralAt reads the double-quoted string literal that begins at out[open]

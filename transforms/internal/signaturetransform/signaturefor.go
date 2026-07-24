@@ -4,14 +4,14 @@ import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
 // The TYPE-argument minting siblings of the value-argument `signatureof`:
 // `signaturefor<T>()` mints ONE overload's slots from the dependency tuple `T`,
 // `signaturesfor<T>()` mints the whole overload set from a tuple-of-tuples. They
-// share signatureof's ditransform.Extractor over the EXPLICIT type argument, so
+// share signatureof's signatures.Extractor over the EXPLICIT type argument, so
 // the emitted array is byte-identical to what the di stage / a hand author writes
 // for the same slots. Both lower in THIS stage (after nameof, before di) beside
 // signatureof; the sugar bodies spread them into a `withSignature` /
@@ -28,7 +28,7 @@ const (
 // (its bound tuple type read from the inline artifacts, since the synthetic callee
 // carries no symbol) and a source-written one (anchored by resolving the callee to
 // the primitive symbol). ok=false leaves the call in place for the emit sweep.
-func lowerSignatureFor(extractor *ditransform.Extractor, checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimast.Node, bool) {
+func lowerSignatureFor(extractor *signatures.Extractor, checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimast.Node, bool) {
 	t, name, ok := signatureForCall(checker, artifacts, node)
 	if !ok || t == nil {
 		return nil, false

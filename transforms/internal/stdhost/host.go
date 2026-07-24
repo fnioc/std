@@ -27,9 +27,9 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -94,12 +94,13 @@ func DiagFromPlugin(d plugin.Diagnostic) Diag {
 	}
 }
 
-// DiagFromDi converts a ditransform.Diagnostic, honoring its advisory Warning
-// vs hard Error category so a warning does not fail emit.
-func DiagFromDi(d ditransform.Diagnostic) Diag {
+// DiagFromDi converts a signatures.Diagnostic, honoring its advisory Warning
+// vs hard Error category so a warning does not fail emit. It carries the shared
+// signature-extraction engine's §4.5 advisory the signatureof stage surfaces.
+func DiagFromDi(d signatures.Diagnostic) Diag {
 	return Diag{
 		File:    d.File,
-		Warning: d.Category == ditransform.Warning,
+		Warning: d.Category == signatures.Warning,
 		Code:    d.Code,
 		Message: d.Message,
 	}

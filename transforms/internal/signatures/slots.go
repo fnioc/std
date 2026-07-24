@@ -1,4 +1,4 @@
-package ditransform
+package signatures
 
 import (
 	"strconv"

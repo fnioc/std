@@ -5,12 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
@@ -111,12 +113,17 @@ export {};
 	return prog, app
 }
 
-// lowerAsDecoupleInlinePipeline runs the full bundle over main.ts — inline
-// substitution, tokenfor token lowering, signatureof dependency-array lowering,
-// valueof scope-value lowering (which owns the trailing `.as<Scope>()` scope
-// half), THEN the di stage — sharing one artifacts bag exactly as the owner host
-// composes them. The di stage no longer touches `.as`: the inline body
-// `this.as(valueof<Scope>())` plus the valueof stage lower it (#269 decouple).
+// lowerAsDecoupleInlinePipeline runs the inline + primitive stages over main.ts
+// under the fixed-point loop — inline substitution, tokenfor token lowering,
+// signatureof dependency-array lowering, keyof key lowering, valueof scope-value
+// lowering (which owns the trailing `.as<Scope>()` scope half) — sharing one
+// artifacts bag exactly as the owner host composes them. The di stage was deleted
+// (W6p3): the inline body `this.as(valueof<Scope>())` plus the valueof stage lower
+// `.as<>` entirely, and the LOOP is what makes the inner chain positions (the
+// registration and any `.withSignature`) reachable — the inline visitor peels only
+// the outermost layer per pass, so a single pass would leave the inner sugar
+// un-lowered (previously masked by the co-active di stage's one-pass deep walk).
+// The byte-reference is the frozen di-direct golden (lowerDi).
 func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app string) string {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
@@ -125,17 +132,23 @@ func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app strin
 	if cerr != nil {
 		t.Fatalf("collect: %v", cerr)
 	}
-	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
-	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
-	valueofT := valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	diT := ditransform.New(prog, ctx, func(ditransform.Diagnostic) {})
+	stages := []plugin.FileTransform{
+		inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {}),
+		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
+		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+	}
+	ec := shimprinter.NewEmitContext()
+	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
+	if exhausted {
+		t.Fatal("as-decouple inline pipeline exhausted maxPasses — did not settle")
+	}
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the add preset entry did not resolve")
 	}
-	ec := shimprinter.NewEmitContext()
-	sf := mainSF(t, prog)
-	return reprint(ec, diT(ec, valueofT(ec, sigT(ec, nameofT(ec, inlineT(ec, sf))))))
+	shimast.SetParentInChildrenUnset(settled.AsNode())
+	return reprint(ec, settled)
 }
 
 // TestAsDecoupleInlinePipelineLowersCleanly is the #240 `.as<>`-decouple's own

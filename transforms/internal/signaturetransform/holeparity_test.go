@@ -1,6 +1,8 @@
 package signaturetransform
 
 import (
+	_ "embed"
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -8,8 +10,7 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
-	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
 // buildDiParityWorkspace lays out a workspace whose core package is literally
@@ -73,18 +74,37 @@ declare module '@rhombus-std/di.core' {
 	return prog, app
 }
 
-// lowerDiMain runs the di registration stage over main.ts and returns the
-// reprinted output plus diagnostics — the direct `addClass<I<$1>>(C<$1>)` lowering the
-// signatureof path must byte-match.
-func lowerDiMain(t *testing.T, prog *driver.Program, app string) (string, []ditransform.Diagnostic) {
+//go:embed testdata/di_direct_golden.json
+var diDirectGoldenRaw []byte
+
+// diDirectGolden maps a main.ts source (reprinted from its untransformed tree) to
+// the deleted di registration stage's lowered output. It is the FROZEN di-direct
+// oracle: the bespoke di stage was deleted in W6p3, so its byte-output was captured
+// into this checked-in golden BEFORE the deletion (never self-blessed from the new
+// signatureof path). TestSignatureofHoleParityWithDiDirect proves the signatureof
+// stage's `[[...]]` array reproduces exactly the third argument these frozen
+// registrations carry.
+var diDirectGolden = func() map[string]string {
+	m := map[string]string{}
+	if err := json.Unmarshal(diDirectGoldenRaw, &m); err != nil {
+		panic(err)
+	}
+	return m
+}()
+
+// lowerDiMain returns the FROZEN di-direct registration-stage output for main.ts —
+// the direct `addClass<I<$1>>(C<$1>)` lowering the signatureof path must byte-match —
+// keyed by the reprinted (untransformed) source. The frozen registrations raised
+// no diagnostics, so it returns none.
+func lowerDiMain(t *testing.T, prog *driver.Program, app string) (string, []signatures.Diagnostic) {
 	t.Helper()
-	ctx := plugin.NewContext(prog, app)
-	var diags []ditransform.Diagnostic
-	transform := ditransform.New(prog, ctx, func(d ditransform.Diagnostic) { diags = append(diags, d) })
-	ec := shimprinter.NewEmitContext()
-	sf := mainSourceFile(t, prog)
-	out := transform(ec, sf)
-	return reprintSF(ec, out), diags
+	_ = app
+	key := reprintSF(shimprinter.NewEmitContext(), mainSourceFile(t, prog))
+	out, ok := diDirectGolden[key]
+	if !ok {
+		t.Fatalf("no di-direct golden for this main.ts source — regenerate testdata/di_direct_golden.json from the pre-deletion oracle for:\n%s", key)
+	}
+	return out, nil
 }
 
 // TestSignatureofHoleParityWithDiDirect is the load-bearing proof of the

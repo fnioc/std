@@ -185,11 +185,11 @@ func TestRunLowersSourceNameofFromManifestInProcess(t *testing.T) {
 // TestRunSelectsNameofStageFromDependencyScanInProcess pins the OTHER selection
 // channel: with an EMPTY manifest, the tokenfor stage must be activated purely by
 // the host's transitive dependency scan (§100 declare-by-depending). The consumer
-// devDeps di.transformer (whose ttsc.stages names `di`, and whose own
-// primitives.transformer dependency carries the tokenfor stage); CollectProject
-// walks those real @rhombus-std packages — read as package.json only, no build —
-// unions their stages, and the host lowers tokenfor<IWidget>() with no plugin
-// manifest at all. The @rhombus-std packages are symlinked into the fixture's
+// devDeps di.transformer (whose ttsc.stages names `valueof`, and whose own
+// primitives.transformer dependency carries the tokenfor/nameof stage);
+// CollectProject walks those real @rhombus-std packages — read as package.json
+// only, no build — unions their stages, and the host lowers tokenfor<IWidget>()
+// with no plugin manifest at all. The @rhombus-std packages are symlinked into the fixture's
 // node_modules (mirroring the declare-by-depending e2e) purely so the scan's walk
 // resolves them; the compiled program still imports only the local ./tokenfor.
 func TestRunSelectsNameofStageFromDependencyScanInProcess(t *testing.T) {

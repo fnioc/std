@@ -9,6 +9,8 @@ package schemaoftransform
 // failure diagnostics, and loop stability.
 
 import (
+	_ "embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +21,6 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/configtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schema"
@@ -106,14 +107,36 @@ func lowerSchemaof(t *testing.T, prog *driver.Program, sf *shimast.SourceFile) (
 	return reprint(ec, transform(ec, sf)), diags
 }
 
-// lowerWithType runs the config oracle stage over main.ts and returns the
-// reprinted output plus diagnostics.
+//go:embed testdata/config_direct_golden.json
+var configGoldenRaw []byte
+
+// configGolden maps a main.ts source (reprinted from its untransformed tree) to the
+// deleted config `.withType` stage's lowered output. It is the FROZEN oracle: the
+// bespoke config stage was deleted in W6p3, so its byte-output was captured into
+// this checked-in golden BEFORE the deletion (never self-blessed from the schemaof
+// path). TestSchemaofMatchesWithTypeOracle proves the schemaof stage reproduces the
+// same schema literal these frozen `.withSchema({...})` forms carry — both drove the
+// SAME internal/schema walk, so the parity is structural.
+var configGolden = func() map[string]string {
+	m := map[string]string{}
+	if err := json.Unmarshal(configGoldenRaw, &m); err != nil {
+		panic(err)
+	}
+	return m
+}()
+
+// lowerWithType returns the FROZEN config `.withType`-stage output for main.ts,
+// keyed by the reprinted (untransformed) source — the `.withSchema({...})`
+// byte-reference the schemaof stage must match. The frozen success cases raised no
+// diagnostics, so it returns none.
 func lowerWithType(t *testing.T, prog *driver.Program, sf *shimast.SourceFile) (string, []plugin.Diagnostic) {
 	t.Helper()
-	var diags []plugin.Diagnostic
-	transform := configtransform.New(prog, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
-	ec := shimprinter.NewEmitContext()
-	return reprint(ec, transform(ec, sf)), diags
+	key := reprint(shimprinter.NewEmitContext(), sf)
+	out, ok := configGolden[key]
+	if !ok {
+		t.Fatalf("no config .withType golden for this main.ts source — regenerate testdata/config_direct_golden.json from the pre-deletion oracle for:\n%s", key)
+	}
+	return out, nil
 }
 
 // bracedAfter extracts the balanced `{...}` object literal that follows marker in

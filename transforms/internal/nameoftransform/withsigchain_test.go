@@ -9,10 +9,10 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
@@ -190,7 +190,7 @@ services.addClass<IFoo>(Foo).withSignature<[]>();
 	loop := []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, captureInline),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {}),
+		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
 		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}

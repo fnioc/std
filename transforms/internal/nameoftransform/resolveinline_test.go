@@ -8,12 +8,12 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/factorytransform"
 	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
@@ -143,7 +143,7 @@ func lowerResolveInlinePipeline(t *testing.T, prog *driver.Program, app string) 
 	sink := func(d plugin.Diagnostic) { diags = append(diags, d) }
 	inlineT := inlinetransform.Build(prog, bodies, artifacts, sink)
 	nameofT := New(prog, ctx, artifacts, sink)
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
+	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
 	keyofT := keyoftransform.New(prog, ctx, artifacts, sink)
 	valueofT := valueoftransform.New(prog, ctx, artifacts, sink)
 	singularT := singulartransform.New(prog, ctx, artifacts, sink)
@@ -347,76 +347,6 @@ export const c = provider.tryResolve<Keyed<ICache, 'redis'>>();
 		if !strings.Contains(inlineVal, "Keyed<") || !strings.Contains(inlineVal, "redis") {
 			t.Fatalf("keyed resolve `%s`: expected a raw Keyed<...> token carrying the key, got %q", name, inlineVal)
 		}
-	}
-}
-
-// lowerResolveCoActivePipeline runs the resolve-family pipeline with the di DIRECT
-// stage CO-ACTIVE alongside inline — the real host arrangement (inline ahead of di
-// in the pass order) — so a test can prove that a form inline claims is never
-// rescued by di. It shares one artifacts bag, folds di's diagnostics into the same
-// sink, and surfaces surviving primitives through the inline sweep exactly as the
-// host does.
-func lowerResolveCoActivePipeline(t *testing.T, prog *driver.Program, app string) (string, []plugin.Diagnostic) {
-	t.Helper()
-	ctx := plugin.NewContext(prog, app)
-	artifacts := inlinetransform.NewArtifacts()
-	bodies, cerr := inlinetransform.Collect(app)
-	if cerr != nil {
-		t.Fatalf("collect: %v", cerr)
-	}
-	var diags []plugin.Diagnostic
-	sink := func(d plugin.Diagnostic) { diags = append(diags, d) }
-	inlineT := inlinetransform.Build(prog, bodies, artifacts, sink)
-	nameofT := New(prog, ctx, artifacts, sink)
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
-	keyofT := keyoftransform.New(prog, ctx, artifacts, sink)
-	valueofT := valueoftransform.New(prog, ctx, artifacts, sink)
-	diRaw := ditransform.New(prog, ctx, func(d ditransform.Diagnostic) {
-		diags = append(diags, plugin.Diagnostic{File: d.File, Start: d.Start, Code: d.Code, Message: d.Message})
-	})
-	// ditransform.FileTransform has the same signature as plugin.FileTransform but is
-	// a distinct named type — adapt it so the loop can hold di co-active.
-	diT := plugin.FileTransform(diRaw)
-	singularT := singulartransform.New(prog, ctx, artifacts, sink)
-	factoryT := factorytransform.New(prog, ctx, artifacts, sink)
-	foldT := foldtransform.New(prog, sink)
-	if !artifacts.Active {
-		t.Fatal("inline artifacts not active — the resolve entries did not resolve")
-	}
-	// Host order: inline first, then the primitives, then di, then singular/factory/fold.
-	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, diT, singularT, factoryT, foldT}
-	ec := shimprinter.NewEmitContext()
-	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
-	if exhausted {
-		t.Fatal("co-active resolve pipeline exhausted maxPasses — did not settle")
-	}
-	for _, d := range inlinetransform.Sweep(settled, artifacts) {
-		diags = append(diags, d)
-	}
-	return reprint(ec, settled), diags
-}
-
-// TestResolveInlineFactoryFormCoActive pins the factory form under the real host
-// arrangement (inline AHEAD of di in the loop): inline claims `resolve<F>()` and
-// lowers it through its own body to `resolveFactory("<returnToken>")` — the inline
-// factory primitives own the lowering, and di, seeing an already-substituted call
-// with no type argument, leaves it untouched. No loud diagnostic; the output carries
-// the inline-produced resolveFactory, proving the two paths agree and do not
-// double-fire.
-func TestResolveInlineFactoryFormCoActive(t *testing.T) {
-	src := `import { provider } from '@rhombus-std/di.core';
-interface IThing { id: number }
-export const f = provider.resolve<() => IThing>();
-`
-	prog, app := buildResolveInlineWorkspace(t, src)
-	defer func() { _ = prog.Close() }()
-
-	out, diags := lowerResolveCoActivePipeline(t, prog, app)
-	if len(diags) != 0 {
-		t.Fatalf("unexpected diagnostics from the co-active factory lowering: %+v", diags)
-	}
-	if !strings.Contains(out, "resolveFactory(") {
-		t.Fatalf("the factory form must lower to resolveFactory co-active with di:\n%s", out)
 	}
 }
 

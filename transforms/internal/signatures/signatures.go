@@ -1,11 +1,18 @@
-// Package ditransform is the Go port of the registration transformer: it lowers
-// the type-driven authoring forms (`addClass<I>(C)`, `.as<"x">()`, tokenless
-// `resolve<I>()` / `isService<I>()`, and `nameof<T>()`) to their string-token
-// runtime forms over the ttsc-shipped typescript-go checker, carrying the
-// derived dependency signature inline on each registration. It is the emit-path
-// twin of the hand-written TypeScript transformer; both derive identical tokens
-// from the shared token core.
-package ditransform
+// Package signatures is the shared constructor/factory dependency-signature
+// extraction engine. It derives the `[[...]]` dependency-signature array a class
+// or factory VALUE lowers to — the value-inspection half of a registration —
+// over the ttsc-shipped typescript-go checker, and the type-argument minting
+// twins (`signaturefor<T>()` / `signaturesfor<T>()`) that observe an explicit
+// dependency tuple. The signatureof primitive stage drives it; the emitted
+// literal is byte-identical to the third argument a hand-written
+// `addClass("token", ctor, [[...]])` registration carries.
+//
+// It carries no service-token / registration-verb knowledge (token derivation,
+// override merging, open-template classification) — those belonged to the deleted
+// registration stage. Only the value-signature extraction, the §4.5 factory-param
+// check, and the dependency-hole check a fully-lowered registration's sibling
+// token enables live here.
+package signatures
 
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -19,7 +26,7 @@ import (
 // rather than message text. Kept byte-identical to the reference transformer.
 const (
 	// codeFactorySignatureMismatch: a factory param's call signature does not
-	// cover the produced constructor's caller-supplied holes.
+	// cover the produced constructor's caller-supplied holes (§4.5).
 	codeFactorySignatureMismatch = "990003"
 	// codeUnderivableToken: a parameter type has no derivable token and no
 	// `Inject<T,"tok">` brand.
@@ -28,18 +35,11 @@ const (
 	// unbound type parameter (a bare generic class registered without an
 	// instantiation expression).
 	codeUnboundTypeParameter = "990007"
-	// codeMixedServiceTokenArgs: an open service token mixes concrete args and
-	// holes.
-	codeMixedServiceTokenArgs = "990008"
-	// codeOpenTokenOnValueOrFactory: an open template token on an addValue /
-	// factory registration.
-	codeOpenTokenOnValueOrFactory = "990009"
 	// codeDepHoleNotInServiceTemplate: a dependency slot references a hole the
-	// service template does not bind.
+	// service template does not bind. Fires only for the dep-hole-CHECKED
+	// extractor variant, where a lowered registration's sibling service token is
+	// in scope.
 	codeDepHoleNotInServiceTemplate = "990010"
-	// codeUnresolvableOverrideElement: a registration-time override element is
-	// neither a string-literal token nor an undefined/elision gap.
-	codeUnresolvableOverrideElement = "990011"
 )
 
 // Category distinguishes a hard error (fails emit) from an advisory warning.
@@ -52,7 +52,7 @@ const (
 	Warning
 )
 
-// Diagnostic is one transformer-raised diagnostic destined for the sidecar
+// Diagnostic is one extractor-raised diagnostic destined for the sidecar
 // envelope. File is the absolute declaring path; Start is the anchor node's
 // position (informational — the envelope carries code + message, not position).
 type Diagnostic struct {
@@ -65,7 +65,7 @@ type Diagnostic struct {
 
 // context is the per-file lowering context: the program-wide token derivation
 // context plus the per-file checker, node factory, source file, and diagnostic
-// sink. It is the Go analog of the reference LowerContext.
+// sink.
 type context struct {
 	tokens  *tokens.Context
 	checker *shimchecker.Checker

@@ -1,7 +1,7 @@
 // Package signaturetransform is the Go port of the signatureof primitive: it
 // lowers each `signatureof(ctor)` / `signatureof(factory)` call to the derived
 // dependency-signature array literal (`[[...]]`) over the ttsc-shipped
-// typescript-go checker, reusing ditransform's exact extraction path so the
+// typescript-go checker, reusing the shared signatures extraction engine so the
 // emitted literal is byte-identical to the third argument the di registration
 // stage synthesizes for the same value. It is a VALUE-argument primitive (unlike
 // the type-argument nameof): `signatureof(ctor)` binds a constructor / factory
@@ -22,9 +22,9 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/ditransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -35,7 +35,7 @@ const signatureofName = "signatureof"
 
 // New builds the per-file transform. It visits every call expression and
 // replaces each `signatureof(value)` with the `[[...]]` dependency-signature
-// array literal ditransform derives from that value, then elides the now-unused
+// array literal the signatures engine derives from that value, then elides the now-unused
 // `signatureof` import.
 //
 // artifacts is the inline stage's per-run state (nil when the inline stage did
@@ -43,11 +43,11 @@ const signatureofName = "signatureof"
 // callee is a side-parsed clone), so it is anchored via the recorded value
 // argument the inline stage captured at the original call site; a source-written
 // call is anchored by resolving its callee to the `signatureof` symbol.
-func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(ditransform.Diagnostic)) plugin.FileTransform {
+func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(signatures.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
-		extractor := ditransform.NewExtractor(ctx, checker, ec, sf, emit)
+		extractor := signatures.NewExtractor(ctx, checker, ec, sf, emit)
 		// minted records the slot-array literals this stage produced from a
 		// signaturefor / signaturesfor lowering, so a spread of one inside a
 		// `withSignature` / `withSignatures` call is flattened positionally (and only
