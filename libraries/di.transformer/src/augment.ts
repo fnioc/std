@@ -106,12 +106,15 @@ declare module '@rhombus-std/di.core' {
     ): AddChain<Scopes, 'signature' | 'signatures', false>;
     /**
      * Registration-time override form — a sparse positional override array for a
-     * class whose ctor you can't edit (third-party / generic). Each element
-     * overrides the transformer-derived token at that position; `undefined` (or
-     * an array hole) keeps the derived token. Lowers to
-     * `addClass("token", C, [[...merged...]])`. Never runs post-transform.
+     * class whose ctor you can't edit (third-party / generic). Each string element
+     * overrides the transformer-derived token at that position; an array HOLE keeps
+     * the derived token; an explicit `undefined` OVERWRITES the slot with
+     * `undefined` (§99). The merge is at RUNTIME, so `overrides` need not be a
+     * literal — any expression producing the array is legal. Lowers to
+     * `addClass("token", C, overrideSignatures(signatureof(C), overrides))`, where
+     * `overrideSignatures` is a di.core runtime helper. Never runs post-transform.
      *
-     *   addClass<ICache>(RedisCache, ["pkg:IRedisClient", undefined, "pkg:ILogger"])
+     *   addClass<ICache>(RedisCache, ["pkg:IRedisClient", , "pkg:ILogger"]) // hole keeps arg 1
      */
     addClass<I>(
       ctor: Ctor<any[], I>,

@@ -316,6 +316,7 @@ declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
     addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     addClass<I>(ctor: Ctor<any[], I>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
+    addClass<I>(ctor: Ctor<any[], I>, overrides: ReadonlyArray<string | undefined>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     addValue(value: unknown): IServiceManifest<Scopes>;
     addValue<I>(value: I): IServiceManifest<Scopes>;
   }
@@ -454,6 +455,30 @@ export const keyedKnown = provider.isService<Keyed<ICache, 'redis'>>();
 export const keyedAsync = provider.resolveAsync<Keyed<ICache, 'redis'>>();
 `;
 
+// Registration OVERRIDE source (§99). `addClass<I>(Class, overrides)` lowers
+// through the inline path to `addClass(token, Class, overrideSignatures(
+// signatureof(Class), overrides))` — a RUNTIME merge helper the inline stage
+// materializes an import for — DELIBERATELY diverging from di-direct's compile-time
+// merge (a `[[...]]` literal). Own file so its runtime-callee shape is asserted in
+// isolation; the overrideSignatures merge semantics are unit-tested in di.test.
+const OVERRIDE_SOURCE = `
+import type { IServiceManifest } from '@rhombus-std/di.core';
+
+interface IReq {}
+interface ILog {}
+interface IHandler {}
+class Handler implements IHandler {
+  constructor(req: IReq, log: ILog) {
+    void req;
+    void log;
+  }
+}
+
+declare const services: IServiceManifest<'singleton'>;
+
+export const overridden = services.addClass<IHandler>(Handler, ['pkg:IReqAlt']);
+`;
+
 function writeChainSrc(dir: string): void {
   const src = join(dir, 'src');
   mkdirSync(src, { recursive: true });
@@ -462,6 +487,7 @@ function writeChainSrc(dir: string): void {
   writeFileSync(join(src, 'keyed.ts'), KEYED_SOURCE);
   writeFileSync(join(src, 'value.ts'), VALUE_SOURCE);
   writeFileSync(join(src, 'resolve.ts'), RESOLVE_SOURCE);
+  writeFileSync(join(src, 'override.ts'), OVERRIDE_SOURCE);
 }
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
@@ -576,6 +602,7 @@ let valueInline = '';
 let valueSemantic = '';
 let resolveInline = '';
 let resolveSemantic = '';
+let overrideInline = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -592,6 +619,7 @@ beforeAll(() => {
   valueSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/value.ts');
   resolveInline = readChainFile(chainInlineDir, inlineRun, 'src/resolve.ts');
   resolveSemantic = readChainFile(chainSemanticDir, semanticRun, 'src/resolve.ts');
+  overrideInline = readChainFile(chainInlineDir, inlineRun, 'src/override.ts');
 }, COLD_BUILD_MS);
 
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
@@ -760,6 +788,34 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // Whole-file byte parity: the inline tokenof path equals the di-direct raw-type
     // addValue lowering for both the callable and the class-reference value.
     expect(valueSemantic).toEqual(valueInline);
+  });
+
+  test('override registration: addClass<I>(C, overrides) lowers to a runtime overrideSignatures merge (§99)', () => {
+    // §99: `addClass<I>(C, overrides)` merges the sparse overrides over the derived
+    // signature at RUNTIME, inside the body, via the di.core `overrideSignatures`
+    // helper — DELIBERATELY diverging from di-direct's compile-time `[[...]]` merge.
+    // The helper is a body-imported RUNTIME callee: it SURVIVES lowering as an
+    // ordinary call, and the inline stage MATERIALIZES its di.core import.
+    const line = lineWith(overrideInline, 'overridden =');
+    expect(line).toBeDefined();
+    expect(line).toContain('.addClass("');
+    // The runtime merge helper survives, applied to the derived signature array and
+    // the authored overrides array (quote/spacing normalized by Bun.Transpiler).
+    expect(line).toContain('overrideSignatures(');
+    expect(line).toContain('pkg:IReqAlt');
+    expect(line).toContain('[[');
+    // The derived signature carries the ctor's two dependency tokens.
+    expect(overrideInline).toContain('IReq');
+    expect(overrideInline).toContain('ILog');
+    // The inline stage materialized the runtime helper's di.core value import.
+    const importLine = overrideInline.split('\n').find((l) =>
+      l.includes('import') && l.includes('overrideSignatures') && l.includes('@rhombus-std/di.core')
+    );
+    expect(importLine).toBeDefined();
+    // No authoring-form primitive survives (overrideSignatures is a runtime callee,
+    // not a lowered primitive, so it is expected to remain).
+    assertNoAuthoringSurvivors(overrideInline);
+    expect(overrideInline).not.toContain('addClass<');
   });
 
   test('empty-tuple withSignature<[]>() is loop-idempotent (lowers to zero-arg .withSignature())', () => {

@@ -60,6 +60,7 @@ export { typeArg, union } from './slots.js';
 // (not `@rhombus-std/primitives`) because they produce di.core's `DepSlot` shape
 // and every caller — di runtime libs and `di.transformer` — already depends on
 // di.core. The runtime bodies throw without the transformer, like `tokenfor`.
+export { overrideSignatures } from './overrideSignatures.js';
 export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } from './signaturefor.js';
 
 // The unified token/slot expression tree — ONE plain-data `TokenNode` tree every

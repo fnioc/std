@@ -23,7 +23,7 @@
 
 import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
   Token } from '@rhombus-std/di.core';
-import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
+import { overrideSignatures, signaturefor, signaturesfor } from '@rhombus-std/di.core';
 import { tokenfor, tokenof } from '@rhombus-std/primitives';
 import { isFactory, isSingular, paramtokensfor, returntokenfor,
   singularValue } from '@rhombus-std/primitives.transformer';
@@ -238,6 +238,40 @@ export const ServiceManifestInline = {
   },
   addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
     return this.addValue(tokenfor<I>(), value, keyof<I>());
+  },
+};
+
+/**
+ * The registration-time OVERRIDE sugar body — the `addClass<I>(ctor, overrides)`
+ * form for a class whose constructor you cannot edit (third-party / generic). It
+ * is the EXACT hand-written form a no-transformer consumer would author:
+ *
+ *   addClass<I>(ctor, overrides) → this.addClass(
+ *     tokenfor<I>(), ctor, overrideSignatures(signatureof(ctor), overrides), void 0, keyof<I>())
+ *
+ * `signatureof(ctor)` derives the dependency signatures as usual, and
+ * `overrideSignatures(...)` — a di.core RUNTIME helper (§99) — overlays the sparse
+ * `overrides` array over each: a hole keeps the derived token, a string overrides
+ * it, an explicit `undefined` clears it. The merge is at RUNTIME, so `overrides`
+ * need not be a literal array — any expression producing it is legal, for
+ * transformer and no-transformer callers alike (the no-transformer-first rule).
+ *
+ * `overrideSignatures` is a body-imported RUNTIME callee (not a compile-time
+ * primitive): it SURVIVES lowering as an ordinary function call, and the inline
+ * stage materializes its `@rhombus-std/di.core` import into the consumer file.
+ *
+ * This is a SEPARATE object-literal member from `ServiceManifestInline` because an
+ * object literal cannot carry two `addClass` members; the inline stage
+ * discriminates it from the one-argument `addClass<T>(ctor)` and from the
+ * positional-scope `addClass<I>(ctor, scope)` by value-parameter NAMES — so this
+ * body's second parameter MUST be named `overrides` to match the overload it is
+ * claimed against (the positional-scope form, named `scope`, stays on di-direct).
+ */
+export const ServiceManifestOverrideInline = {
+  addClass<I>(this: IInlineRegistrationTarget, ctor: Ctor,
+    overrides: ReadonlyArray<string | undefined>): IServiceManifest
+  {
+    return this.addClass(tokenfor<I>(), ctor, overrideSignatures(signatureof(ctor), overrides), void 0, keyof<I>());
   },
 };
 

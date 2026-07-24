@@ -41,6 +41,16 @@ const PRIMITIVE_HOMES = {
   schemaof: '@rhombus-std/config.transformer',
 };
 
+// Body-imported RUNTIME callees (§99, option B) — a bounded category distinct from
+// the compile-time primitives above: a body may CALL these, they SURVIVE lowering
+// as ordinary function calls, and the inline stage materializes their import. They
+// are allowed ONLY in callee position (never a bare value reference, no globals, no
+// arrows). Mirrors the Go scanner's knownRuntimeCallees map. `overrideSignatures`
+// (di.core) merges a sparse registration-override array at runtime.
+const RUNTIME_CALLEE_HOMES = {
+  overrideSignatures: '@rhombus-std/di.core',
+};
+
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
   let dir = dirname(file);
@@ -136,6 +146,9 @@ const rule = {
     // Local names bound to a known primitive, and whether each is aliased.
     /** @type {Set<string>} */
     const primitiveLocals = new Set();
+    // Local names bound to a known body-imported RUNTIME callee (§99).
+    /** @type {Set<string>} */
+    const runtimeCalleeLocals = new Set();
 
     return {
       ImportDeclaration(node) {
@@ -146,6 +159,17 @@ const rule = {
             continue;
           }
           const imported = spec.imported.type === 'Identifier' ? spec.imported.name : String(spec.imported.value);
+          // A body-imported RUNTIME callee (unaliased, from its home module) — a
+          // value the body may CALL, distinct from the compile-time primitives.
+          const calleeHome = RUNTIME_CALLEE_HOMES[imported];
+          if (calleeHome !== undefined && module === calleeHome) {
+            if (spec.local.name !== imported) {
+              context.report({ node: spec, messageId: 'noAlias', data: { name: imported } });
+              continue;
+            }
+            runtimeCalleeLocals.add(spec.local.name);
+            continue;
+          }
           const home = PRIMITIVE_HOMES[imported];
           // Accept a primitive only from its home module directly, or — when its
           // home IS the declaring package — via a package-relative specifier. Any
@@ -183,7 +207,7 @@ const rule = {
           }
           const fn = prop.value;
           if (fn && (fn.type === 'FunctionExpression' || fn.type === 'ArrowFunctionExpression')) {
-            checkBody(context, fn, primitiveLocals, listedNames, listedMembers);
+            checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers);
           }
         }
       },
@@ -193,7 +217,7 @@ const rule = {
         if (!node.id || !freeFns.has(node.id.name)) {
           return;
         }
-        checkBody(context, node, primitiveLocals, listedNames, listedMembers);
+        checkBody(context, node, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers);
       },
     };
   },
@@ -218,7 +242,7 @@ const BANNED = {
 /**
  * Enforces the single-return-expression hygiene on one function-like body.
  */
-function checkBody(context, fn, primitiveLocals, listedNames, listedMembers) {
+function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers) {
   const body = fn.body;
   if (!body || body.type !== 'BlockStatement' || body.body.length !== 1 || body.body[0].type !== 'ReturnStatement'
     || !body.body[0].argument)
@@ -278,6 +302,7 @@ function checkBody(context, fn, primitiveLocals, listedNames, listedMembers) {
       context.report({ node, messageId: 'noNesting', data: { name } });
     },
     primitiveLocals,
+    runtimeCalleeLocals,
     listedMembers,
   });
 
@@ -343,6 +368,10 @@ function walkExpression(root, cb) {
     if (node.type === 'CallExpression') {
       const callee = node.callee;
       const isPrimitive = callee.type === 'Identifier' && cb.primitiveLocals.has(callee.name);
+      // A body-imported RUNTIME callee (§99) is valid in callee position — its
+      // arguments are ordinary runtime positions (NOT primitive args), so it does
+      // not set the insidePrimitiveArgs flag; only its callee identifier is skipped.
+      const isRuntimeCallee = callee.type === 'Identifier' && cb.runtimeCalleeLocals.has(callee.name);
       // A this.<member> call to another listed member is nesting (unless it is
       // the primitive-form call, which the stage handles).
       if (callee.type === 'MemberExpression' && callee.object.type === 'ThisExpression'
@@ -358,9 +387,9 @@ function walkExpression(root, cb) {
       for (const ta of typeArgs) {
         cb.onTypeArg(ta, isPrimitive);
       }
-      // Callee: skip a primitive callee identifier (it is a primitive ref, fine);
-      // otherwise walk it.
-      if (!(callee.type === 'Identifier' && isPrimitive)) {
+      // Callee: skip a primitive OR runtime-callee callee identifier (both are
+      // recognized call targets, not free identifiers); otherwise walk it.
+      if (!(callee.type === 'Identifier' && (isPrimitive || isRuntimeCallee))) {
         visit(callee, insidePrimitiveArgs);
       }
       for (const arg of node.arguments) {

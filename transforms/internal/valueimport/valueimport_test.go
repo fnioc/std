@@ -5,13 +5,15 @@ package valueimport
 // mirroring the config OPTIONAL marker the schema walk threads in.
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
+	shimcore "github.com/microsoft/typescript-go/shim/core"
+	shimparser "github.com/microsoft/typescript-go/shim/parser"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
-
-	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	shimtspath "github.com/microsoft/typescript-go/shim/tspath"
 )
 
 // optionalRef is the (module, export) identity these tests materialize — the same
@@ -24,12 +26,19 @@ func newFactory() *shimast.NodeFactory {
 }
 
 // sideParse side-parses standalone TS (no checker) into a SourceFile through an
-// absolute virtual name (a non-absolute name panics NewSourceFile).
+// absolute virtual name (a non-absolute name panics NewSourceFile). It parses via
+// the shim directly rather than through inlinetransform.SideParse — valueimport is
+// a lower engine layer than inlinetransform, so it must not import back into it.
 func sideParse(t *testing.T, text string) *shimast.SourceFile {
 	t.Helper()
-	sf := inlinetransform.SideParse("/virtual/x.ts", text)
+	const fileName = "/virtual/x.ts"
+	opts := shimast.SourceFileParseOptions{
+		FileName: fileName,
+		Path:     shimtspath.ToPath(fileName, filepath.Dir(fileName), true),
+	}
+	sf := shimparser.ParseSourceFile(opts, text, shimcore.ScriptKindTS)
 	if sf == nil {
-		t.Fatal("SideParse returned nil")
+		t.Fatal("ParseSourceFile returned nil")
 	}
 	return sf
 }

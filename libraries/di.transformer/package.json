@@ -56,6 +56,11 @@
         "member": "addValue"
       },
       {
+        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "impl": "ServiceManifestOverrideInline",
+        "member": "addClass"
+      },
+      {
         "type": "@rhombus-std/di.core:IRequiredResolver",
         "impl": "ResolverInline",
         "member": "resolve"
