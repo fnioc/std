@@ -93,6 +93,12 @@ const TRANSFORMS = join(REPO_ROOT, 'transforms');
 const WORK_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'config');
 const projHappy = join(WORK_ROOT, 'happy');
 const projDiag = join(WORK_ROOT, 'diag');
+// The inline-path consumer: a REAL resolvable @rhombus-std/config package + a
+// consumer package.json, so the host's declare-by-depending scan activates the
+// full stage set (inline + schemaof + config) and the config.transformer inline
+// body substitutes `.withType<T>()` -> `this.withSchema(schemaof<T>())`, which the
+// schemaof stage lowers to the SAME literal the config-stage oracle emits.
+const projInline = join(WORK_ROOT, 'inline');
 const sidecarBin = join(WORK_ROOT, 'sidecar', 'ttsc-std');
 const goTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
@@ -173,6 +179,68 @@ const CONFIG_AMBIENT = `declare module "@rhombus-std/config" {
 
 const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";\n`;
 
+// A REAL resolvable @rhombus-std/config package (a .d.ts module + a stub .js), so
+// the consumer import resolves AND the inline stage's witness resolves the module —
+// unlike the ambient-only happy/diag projects, where an empty dependency scan
+// leaves inline inert. `withType<U>()` merges onto the class via a TOP-LEVEL
+// interface (NOT a `declare module` block), so the config-stage matcher — which
+// requires the member declared inside `declare module '@rhombus-std/config'` —
+// deliberately IGNORES it, while the config.transformer inline body still resolves
+// it off the merged ConfigBuilder symbol. Any lowering here is therefore PROVABLY
+// the inline + schemaof path, not the config-stage oracle.
+const REAL_CONFIG_DTS = `export const OPTIONAL: unique symbol;
+export class ConfigBuilder<T = unknown> {
+  add(source: unknown): this;
+  withSchema(schema: unknown): ConfigBuilder<unknown>;
+}
+export interface ConfigBuilder<T = unknown> {
+  withType<U>(): ConfigBuilder<U>;
+}
+`;
+const REAL_CONFIG_JS = `export class ConfigBuilder {}
+export const OPTIONAL = Symbol("OPTIONAL");
+`;
+const REAL_CONFIG_PKG = JSON.stringify({
+  name: '@rhombus-std/config',
+  version: '0.0.0',
+  type: 'module',
+  types: './index.d.ts',
+  main: './index.js',
+  exports: { '.': { types: './index.d.ts', import: './index.js', default: './index.js' } },
+});
+const INLINE_CONSUMER_PKG = JSON.stringify({
+  name: 'config-inline-consumer',
+  version: '0.0.0',
+  type: 'module',
+  dependencies: {
+    '@rhombus-std/config': '*',
+    '@rhombus-std/config.transformer': '*',
+  },
+});
+
+/** Wire the inline-path consumer: shared toolchain + a real @rhombus-std/config. */
+function setupInlineProject(dir: string): void {
+  const nm = join(dir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std', 'config'), { recursive: true });
+  mkdirSync(join(nm, '@ttsc'), { recursive: true });
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  rmSync(join(dir, 'dist'), { recursive: true, force: true });
+
+  link(TS7, join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
+  link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
+  link(CONFIG_TR, join(nm, '@rhombus-std', 'config.transformer'));
+
+  // The real @rhombus-std/config package (written, not linked): a consumer import
+  // and the inline witness both resolve it.
+  writeFileSync(join(nm, '@rhombus-std', 'config', 'package.json'), REAL_CONFIG_PKG);
+  writeFileSync(join(nm, '@rhombus-std', 'config', 'index.d.ts'), REAL_CONFIG_DTS);
+  writeFileSync(join(nm, '@rhombus-std', 'config', 'index.js'), REAL_CONFIG_JS);
+  // A consumer package.json so CollectProject scans deps and activates inline +
+  // schemaof (the ambient-only projects have no package.json -> empty scan).
+  writeFileSync(join(dir, 'package.json'), INLINE_CONSUMER_PKG);
+}
+
 function tsconfig(withPlugin: boolean): string {
   return JSON.stringify({
     compilerOptions: {
@@ -220,6 +288,7 @@ function runSidecar(dir: string): Envelope {
 
 let happyEnv: Envelope = { typescript: {} };
 let diagEnv: Envelope = { typescript: {} };
+let inlineEnv: Envelope = { typescript: {} };
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -399,6 +468,50 @@ export const b = new ConfigBuilder().withType<Bad>();
   );
   writeFileSync(join(projDiag, 'tsconfig.json'), tsconfig(false));
   diagEnv = runSidecar(projDiag);
+
+  // 4. INLINE project — the config consumer shape, driven through the real ttsc
+  //    host so the dependency scan activates inline + schemaof and the
+  //    config.transformer body lowers `.withType<T>()` via the primitive path.
+  setupInlineProject(projInline);
+  const isrc = join(projInline, 'src');
+  writeFileSync(
+    join(isrc, 'server.ts'),
+    `${APP_HEADER}interface ServerConfig { host: string; port: number; ssl?: boolean }
+export const b = new ConfigBuilder().withType<ServerConfig>();
+`,
+  );
+  writeFileSync(
+    join(isrc, 'nested.ts'),
+    `${APP_HEADER}interface AppConfig {
+  Server: { Host: string; Port: number };
+  Database: { Primary: { Host: string; PoolSize: number } };
+}
+export const b = new ConfigBuilder().withType<AppConfig>();
+`,
+  );
+  writeFileSync(
+    join(isrc, 'flags.ts'),
+    `${APP_HEADER}interface Flags { flag: boolean }
+export const b = new ConfigBuilder().withType<Flags>();
+`,
+  );
+  writeFileSync(join(projInline, 'tsconfig.json'), tsconfig(true));
+
+  const inlineHost = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
+    cwd: projInline,
+    encoding: 'utf8',
+    env: goEnv(),
+  });
+  if (inlineHost.status !== 0) {
+    throw new Error(
+      `inline ttsc host failed (status ${inlineHost.status}):\n${inlineHost.stdout}\n${inlineHost.stderr}`,
+    );
+  }
+  try {
+    inlineEnv = JSON.parse(inlineHost.stdout) as Envelope;
+  } catch {
+    throw new Error(`inline ttsc host envelope parse failed:\n${inlineHost.stdout}\n${inlineHost.stderr}`);
+  }
 }, COLD_BUILD_MS);
 
 function happy(name: string): string {
@@ -407,6 +520,10 @@ function happy(name: string): string {
 
 function diag(name: string): string {
   return diagEnv.typescript[`src/${name}.ts`] ?? '';
+}
+
+function inlined(name: string): string {
+  return inlineEnv.typescript[`src/${name}.ts`] ?? '';
 }
 
 describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parity', () => {
@@ -513,5 +630,40 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     const bare = diag('bareleaf');
     expect(bare).toContain('.withType<string>()');
     expect(bare).not.toContain('.withSchema(');
+  });
+
+  // ── the inline + schemaof consumer path (real ttsc host, real config package) ──
+  // The scan activates inline + schemaof; the config.transformer body substitutes
+  // `.withType<T>()` -> `this.withSchema(schemaof<T>())` and the schemaof stage
+  // lowers it to the SAME literal the config-stage oracle emits above. No
+  // `schemaof(` survives the emit (the sweep would fail the build otherwise).
+  test('inline: flat interface lowers through inline + schemaof to the schema literal', () => {
+    const server = inlined('server');
+    expect(server).toContain(`host: "string"`);
+    expect(server).toContain(`port: "number"`);
+    expect(server).toContain(`ssl: { [OPTIONAL]: "boolean" }`);
+    expect(server).toContain('.withSchema(');
+    expect(server).not.toContain('.withType');
+    expect(server).not.toContain('schemaof');
+  });
+
+  test('inline: injects the named OPTIONAL import for a wrapped field', () => {
+    expect(inlined('server')).toContain(`import { OPTIONAL } from "@rhombus-std/config"`);
+  });
+
+  test('inline: nested objects recurse, casing preserved', () => {
+    const nested = inlined('nested');
+    expect(nested).toContain(`Host: "string"`);
+    expect(nested).toContain(`PoolSize: "number"`);
+    expect(nested).toMatch(/Database:\s*\{\s*Primary:\s*\{/);
+    expect(nested).not.toContain('schemaof');
+  });
+
+  test('inline: a required boolean lowers to "boolean", no injected import', () => {
+    const flags = inlined('flags');
+    expect(flags).toContain(`flag: "boolean"`);
+    expect(flags).not.toContain(`import { OPTIONAL }`);
+    expect(flags).toContain('.withSchema(');
+    expect(flags).not.toContain('schemaof');
   });
 });
