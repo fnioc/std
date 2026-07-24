@@ -34,6 +34,7 @@ const PRIMITIVE_HOMES = {
   valueof: '@rhombus-std/di.transformer',
   isSingular: '@rhombus-std/primitives.transformer',
   singularValue: '@rhombus-std/primitives.transformer',
+  schemaof: '@rhombus-std/config.transformer',
 };
 
 /** Walks up from a file to the nearest directory containing a package.json. */

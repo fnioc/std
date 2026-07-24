@@ -17,6 +17,16 @@
     "directory": "libraries/config.transformer"
   },
   "type": "module",
+  "//rhombus.inline": "The .withType<T>() config-schema sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of any barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the schemaof stage lowers the schemaof<T>() it mints into the runtime schema literal. The `type` ANCHOR is @rhombus-std/config's ConfigBuilder interface (the withType<U>() augmentation target, declared in config's with-type-augment.ts); `impl` (ConfigBuilderInline) resolves in THIS package — schemaof is the authoring-time config-schema primitive homed here (src/schemaof.ts), imported package-relative.",
+  "rhombus.inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/config:ConfigBuilder",
+        "impl": "ConfigBuilderInline",
+        "member": "withType"
+      }
+    ]
+  },
   "exports": {
     "./ttsc": "./ttsc.mjs"
   },
@@ -24,11 +34,14 @@
     "plugin": {
       "transform": "@rhombus-std/config.transformer/ttsc"
     },
-    "stages": ["config"]
+    "stages": ["config", "schemaof"]
   },
   "files": [
     "ttsc.mjs"
   ],
+  "scripts": {
+    "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
+  },
   "dependencies": {
     "@rhombus-std/primitives.transformer": "workspace:*"
   },
