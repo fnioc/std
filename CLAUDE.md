@@ -414,15 +414,14 @@ tsconfigs extend the shared root fragment `tsconfig.lib.json` (typecheck profile
 config is the leaf `tsconfig.ttsc.json`, and a self-augmenting core's
 `customConditions: ["<pkg>-source"]` (§78) stays leaf-side too.
 
-### The transformer engine (Go/`ttsc`, §41/§90)
+### The transformer engine (Go/`ttsc`, §41/§90, rewritten §TBD)
 
-The four authoring-time transformers lower on ONE engine: a Go/`ttsc` port under the root
-`transforms/` module (`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std`
-linking all stages, shared `internal/`). It lowers `tokenfor`/`add`/`addOptions`/`withType` into the
-shipped JS, and the lowered output equals what a no-transformer author would hand-write (the parity
-invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (restore tag
-`pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only** (`mise.toml`
-pin), never system-wide.
+<!-- ASSUMPTION (whole subsection): describes the TARGET end state of the fixed-point rewrite
+     (see docs/features/transformer-architecture.md and transforms-rewrite-design.md, W1-W8). As
+     of writing, stage selection (ttsc.stages markers, BaseBundles, selectStages) and the three
+     bespoke domain Go stages (ditransform/dioptionstransform/configtransform) still exist
+     alongside the new primitive set — W6's final deletions and W7's selection retirement have
+     not landed. Reconcile this subsection against the finished code once they do. -->
 
 - **Descriptor wiring — one always-on stage table, NO selection (W7).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
