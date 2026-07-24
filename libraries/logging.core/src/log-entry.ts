@@ -1,12 +1,6 @@
-// LogEntry — the information for a single log entry, ported from
-// ME.Logging.Abstractions' `LogEntry<TState>` readonly struct.
-//
-// The reference struct bundles exactly the arguments a provider's `ILogger.log`
-// receives, so a provider-side sink (a console formatter, a buffered writer) can
-// pass one value around instead of six. It is structural, so the concrete
-// classes that build entries do so via object literals; a class analog would add
-// no value over the interface. Adapted like the rest of the logging surface:
-// the reference `Exception? exception` becomes `error: Error | undefined`.
+// LogEntry bundles the arguments of a provider's `ILogger.log` call, so a
+// provider-side sink (a console formatter, a buffered writer) can pass one value
+// around instead of six.
 
 import type { Func } from '@rhombus-toolkit/func';
 import type { EventId } from './EventId';
@@ -27,7 +21,7 @@ export interface LogEntry<TState> {
   /** The deferred state — an arbitrary value rendered by {@link formatter}. */
   readonly state: TState;
 
-  /** The error related to this entry, if any (the reference `Exception`). */
+  /** The error related to this entry, if any. */
   readonly error: Error | undefined;
 
   /** Renders `state` (and `error`) into the message string. */

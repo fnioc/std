@@ -1,36 +1,8 @@
-// PageLifecycleEvents — the injectable page-lifecycle bridge a hosted service
-// (or UI code) consumes instead of touching document/window itself. Listeners
-// attach EAGERLY at construction, so no transition is missed between host
-// build and a subscriber's arrival; the current state replays to late
-// subscribers (see `subscribe`).
-//
-// Three surfaces:
-//
-//   - `phase` + `subscribe` — a snapshot/subscribe pair shaped for React's
-//     `useSyncExternalStore(subscribe, () => bridge.phase)`: `phase` is a
-//     stable primitive string (identical value until an actual transition),
-//     `subscribe` returns its unsubscriber and replays the current state by
-//     invoking the listener once immediately (harmless under
-//     useSyncExternalStore — it just re-reads an unchanged snapshot).
-//   - `onFlush` — the RECURRING, NON-TERMINAL persistence point: fired every
-//     time visibility changes to hidden (this — not the lifetime's stop — is
-//     where state should be persisted: a hidden page may be frozen, discarded,
-//     or never come back, and pagehide is not guaranteed on all discard
-//     paths).
-//   - `onRestore` — the bfcache-restore signal (`pageshow` with
-//     persisted === true), exposed as an EVENT, never a boolean flag: "was
-//     restored" is a moment, not a state, and a flag would go stale the
-//     moment the page froze again.
-//
-// NEVER `unload`/`beforeunload` (bfcache disqualifiers) — the page-context
-// typings cannot even name them.
-
 import type { Func } from '@rhombus-toolkit/func';
 import { defaultPageContext, type PageContext, type PageTransitionEventLike } from './page-context';
 
-// The `console` global, typed the §39/§44 way (this program carries no lib.dom):
-// a structural `globalThis` lookup for the one method the reliability guard in
-// `#notify` needs. Every host (browser/node/bun) supplies it.
+// Structural globalThis lookup for the one console method #notify needs (this
+// program carries no lib.dom); every host environment supplies it.
 const { console } = globalThis as unknown as { console: { error(...args: unknown[]): void; }; };
 
 /**
@@ -42,12 +14,11 @@ const { console } = globalThis as unknown as { console: { error(...args: unknown
 export type PageLifecyclePhase = 'visible' | 'hidden' | 'frozen' | 'terminated';
 
 /**
- * The injectable page-lifecycle bridge. Constructed (and its listeners
- * attached) eagerly by `registerBrowserLifetime` — the seam both the facade and
- * the classic `useBrowserLifetime` path share — and registered under
- * {@link import("./tokens").PAGE_LIFECYCLE_EVENTS_TOKEN}. Because a value
- * registration is unowned, the container never disposes it; the BrowserLifetime
- * it is handed to detaches it on `stop`/dispose.
+ * The injectable page-lifecycle bridge, registered under
+ * {@link import("./tokens").PAGE_LIFECYCLE_EVENTS_TOKEN}. Its listeners attach
+ * eagerly at construction, so no transition is missed before a subscriber
+ * arrives. Registered as an unowned value — the container never disposes it,
+ * so the {@link BrowserLifetime} it is handed to detaches it on `stop`/dispose.
  */
 export class PageLifecycleEvents implements Disposable {
   readonly #context: PageContext;
@@ -71,8 +42,6 @@ export class PageLifecycleEvents implements Disposable {
     this.#onVisibilityChange = () => {
       this.#setPhase(document.visibilityState);
       if (document.visibilityState === 'hidden') {
-        // The recurring persistence point — every transition to hidden, not
-        // just the first.
         this.#notify(this.#flushListeners);
       }
     };
@@ -167,9 +136,9 @@ export class PageLifecycleEvents implements Disposable {
   }
 
   #notify(listeners: ReadonlySet<Func<[], void>>): void {
-    // This is the "one reliable point" — a single throwing subscriber must not
-    // starve the rest (or, for the flush signal, cost another subscriber its
-    // last chance to persist). Isolate each listener.
+    // Isolate each listener: one throwing subscriber must not starve the rest
+    // — for the flush signal in particular, it would cost another subscriber
+    // its last chance to persist.
     for (const listener of listeners) {
       try {
         listener();

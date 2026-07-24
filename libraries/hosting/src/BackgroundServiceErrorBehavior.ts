@@ -1,7 +1,3 @@
-// BackgroundServiceErrorBehavior -- ported from the reference hosting
-// runtime's BackgroundServiceExceptionBehavior enum. Selects what the host does
-// when one of its `BackgroundService` instances throws an unhandled error.
-
 import type { BackgroundService, IHost } from '@rhombus-std/hosting.core';
 
 /**

@@ -1,25 +1,3 @@
-// ConsoleLoggerProcessor — the background message-queue writer, ported from
-// the reference internal `ConsoleLoggerProcessor` with its dedicated writer
-// THREAD adapted to an async queue. Internal: not exported from the package
-// barrel.
-//
-// Write-path semantics kept faithful:
-//   - `enqueueMessage` → `enqueue`; when the queue has completed adding, the
-//     message is written synchronously inline instead (same fallback).
-//   - A write failure completes the queue (subsequent messages write inline).
-//   - `DropWrite` drops new messages at the limit and, on the next successful
-//     enqueue, prepends a warning naming the dropped count.
-//   - Dispose flushes: the reference joins its writer thread (with timeout);
-//     here dispose drains the queue synchronously — nothing pending is lost.
-//
-// The thread adaptation: the drain runs as a microtask (`Promise.resolve`
-// scheduling — available in the bare §44 program, unlike `queueMicrotask`),
-// so messages rendered in one synchronous burst are written in one later
-// drain, exactly the decoupling the reference thread provides. `Wait` mode
-// cannot block the producer — blocking the only thread would also block the
-// drain — so it admits messages past the limit (no-loss preserved); see
-// ConsoleLoggerQueueFullMode.
-//
 import { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';
 import type { IConsole } from './IConsole';
 import type { LogMessageEntry } from './LogMessageEntry';
@@ -47,12 +25,9 @@ export class ConsoleLoggerProcessor implements Disposable {
   /** The console error-routed messages ({@link LogMessageEntry.logAsError}) are written to. */
   public readonly errorConsole: IConsole;
 
-  public constructor(
-    console: IConsole,
-    errorConsole: IConsole,
-    fullMode: ConsoleLoggerQueueFullMode,
-    maxQueueLength: number,
-  ) {
+  public constructor(console: IConsole, errorConsole: IConsole, fullMode: ConsoleLoggerQueueFullMode,
+    maxQueueLength: number)
+  {
     this.console = console;
     this.errorConsole = errorConsole;
     this.#fullMode = ConsoleLoggerProcessor.#validateFullMode(fullMode);
@@ -111,20 +86,14 @@ export class ConsoleLoggerProcessor implements Disposable {
       return false;
     }
 
-    if (
-      this.#messageQueue.length >= this.#maxQueueLength
-      && this.#fullMode === ConsoleLoggerQueueFullMode.DropWrite
-    ) {
+    if (this.#messageQueue.length >= this.#maxQueueLength && this.#fullMode === ConsoleLoggerQueueFullMode.DropWrite) {
       this.#messagesDropped += 1;
       return true;
     }
 
     if (this.#messagesDropped > 0) {
       // The warning precedes the new item — the drops happened before it.
-      this.#messageQueue.push({
-        message: droppedMessagesWarning(this.#messagesDropped),
-        logAsError: true,
-      });
+      this.#messageQueue.push({ message: droppedMessagesWarning(this.#messagesDropped), logAsError: true });
       this.#messagesDropped = 0;
     }
     this.#messageQueue.push(item);
@@ -137,6 +106,7 @@ export class ConsoleLoggerProcessor implements Disposable {
       return;
     }
     this.#drainScheduled = true;
+    // Promise.resolve rather than queueMicrotask, which isn't available everywhere this runs.
     void Promise.resolve().then(() => {
       this.#drainScheduled = false;
       this.#drain();

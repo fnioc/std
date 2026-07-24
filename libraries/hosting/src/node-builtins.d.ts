@@ -1,7 +1,7 @@
 // Minimal compile-scope typings for the real node builtin imports in this
-// package's program -- libraries carry no @types/node (docs/decisions.md
-// §39/§44), so the modules are declared here with exactly the signatures the
-// call sites use. None of these is imported by hosting itself any longer:
+// package's program -- libraries carry no @types/node, so the modules are
+// declared here with exactly the signatures the call sites use. None of
+// these is imported by hosting itself any longer:
 // `node:fs` and `node:path` come in because hosting is still src-referenced
 // onto config.json (see #68), whose `JsonConfigProvider` source
 // co-compiles in this program and imports both; likewise `node:async_hooks`

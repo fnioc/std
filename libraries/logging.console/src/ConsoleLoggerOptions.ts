@@ -1,7 +1,3 @@
-// ConsoleLoggerOptions — options for a ConsoleLogger, ported from the
-// reference `ConsoleLoggerOptions` (including its deprecated members, whose
-// upstream `[Obsolete]` markers are preserved as `@deprecated`).
-
 import { LogLevel } from '@rhombus-std/logging.core';
 import { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
 import { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';

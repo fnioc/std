@@ -16,10 +16,9 @@ export function equalsIgnoreCase(a: string, b: string): boolean {
 }
 
 /**
- * Parses a configuration leaf as a boolean, matching the reference's
- * `bool.TryParse`: case-insensitive `"true"`/`"false"` (surrounding whitespace
- * trimmed). Any other value -- including `undefined` -- yields `undefined`
- * ("not a bool"), so the caller skips it.
+ * Parses a configuration leaf as a boolean: case-insensitive `"true"`/`"false"`
+ * (surrounding whitespace trimmed). Any other value — including `undefined` —
+ * yields `undefined`, so the caller skips it.
  */
 export function parseBool(value: string | undefined): boolean | undefined {
   if (value === undefined) {
@@ -44,10 +43,9 @@ export function hasChildren(section: IConfig): boolean {
 }
 
 /**
- * Whether `section` exists -- it has a value or at least one child. The
+ * Whether `section` exists — it has a value or at least one child. The
  * @rhombus-std config surface returns an empty section (never `null`) for an
  * absent key, so "exists" is this presence test rather than a null check.
- * Mirrors the reference `ConfigExtensions.Exists()`.
  */
 export function sectionExists(section: IConfigSection): boolean {
   return section.value !== undefined || hasChildren(section);
@@ -56,8 +54,7 @@ export function sectionExists(section: IConfigSection): boolean {
 /**
  * Yields every descendant leaf of `section` as `[relativePath, value]`, where
  * `relativePath` is the colon-joined key path below `section` and `value` is the
- * leaf's string value. Mirrors the reference `IConfigSection.AsEnumerable(makePathsRelative: true)`
- * restricted to leaves (the only entries the rule parser consumes).
+ * leaf's string value (the only entries the rule parser consumes).
  */
 export function* flattenLeaves(section: IConfigSection): Generator<[string, string]> {
   for (const child of section.getChildren()) {

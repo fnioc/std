@@ -1,14 +1,3 @@
-// CompositeChangeToken -- ported from ME.Primitives.CompositeChangeToken.
-//
-// ME backs the composite's one-shot latch with a CancellationTokenSource;
-// this port uses the platform analog, `AbortController`, and reuses
-// `CancellationChangeToken` for the callback registrations on it (the
-// analog of `_cancellationTokenSource.Token.Register`). The reference's
-// lock-based double-checked initialization collapses to a plain lazy check
-// (JS is single-threaded), and its `try { Cancel() } catch {}` guard has no
-// analog here -- `AbortController.abort()` never rethrows listener
-// errors (EventTarget dispatch isolates them).
-
 import type { Func } from '@rhombus-toolkit/func';
 
 import { AbortController } from './abort.js';

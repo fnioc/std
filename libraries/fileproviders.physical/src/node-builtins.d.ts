@@ -1,10 +1,8 @@
-// Minimal compile-scope typings for the real node builtin imports used across
-// this package -- libraries carry no @types/node (docs/decisions.md §39/§44),
-// so the two modules this package genuinely imports are declared here with
-// exactly the signatures the call sites use. Compile-scope only: nothing
-// imports this file, so rollup-plugin-dts never reaches it and the
-// declarations are NOT shipped. When @types/node happens to be in a consumer
-// program the declarations merge as extra overloads -- legal and inert.
+// Compile-scope typings for the two `node:` modules this package imports,
+// declared with exactly the signatures the call sites use (no @types/node
+// dependency). Nothing imports this file, so it's never shipped; if a
+// consumer's own program has @types/node, these merely merge in as extra
+// overloads.
 
 declare module 'node:fs' {
   export interface Stats {
@@ -25,19 +23,11 @@ declare module 'node:fs' {
   export function statSync(path: string, options: { throwIfNoEntry: false; }): Stats | undefined;
   export function readdirSync(path: string, options: { withFileTypes: true; }): Dirent[];
   export function openSync(path: string, flags: string): number;
-  export function readSync(
-    fd: number,
-    buffer: Uint8Array,
-    offset: number,
-    length: number,
-    position: number | null,
-  ): number;
+  export function readSync(fd: number, buffer: Uint8Array, offset: number, length: number,
+    position: number | null): number;
   export function closeSync(fd: number): void;
-  export function watch(
-    path: string,
-    options: { recursive?: boolean; },
-    listener: (eventType: string, filename: string | null) => void,
-  ): FSWatcher;
+  export function watch(path: string, options: { recursive?: boolean; },
+    listener: (eventType: string, filename: string | null) => void): FSWatcher;
 }
 declare module 'node:path' {
   export function resolve(...paths: string[]): string;

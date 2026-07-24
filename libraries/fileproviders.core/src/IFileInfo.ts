@@ -1,13 +1,3 @@
-// IFileInfo -- ported from ME.FileProviders.IFileInfo.
-//
-// Two type mappings differ from the reference runtime:
-//   - `DateTimeOffset LastModified` maps to the built-in `Date`, the idiomatic
-//     TS instant type.
-//   - `System.IO.Stream CreateReadStream()` maps to `ReadableStream<Uint8Array>`
-//     -- the web/ESNext analog of a read-only byte stream. The caller is
-//     responsible for consuming/cancelling it (mirroring "the caller should
-//     dispose the stream when complete").
-
 import type { ReadableStream } from '@rhombus-std/primitives';
 
 /**
@@ -37,21 +27,13 @@ export interface IFileInfo {
    */
   readonly name: string;
 
-  /**
-   * The time when the file was last modified.
-   */
   readonly lastModified: Date;
 
-  /**
-   * A value that indicates whether this info represents a directory.
-   */
   readonly isDirectory: boolean;
 
   /**
-   * Returns the file contents as a read-only stream.
-   *
-   * @returns The file stream. The caller should cancel/consume the stream when
-   * complete.
+   * @remarks
+   * The caller is responsible for cancelling/consuming the returned stream.
    */
   createReadStream(): ReadableStream<Uint8Array>;
 }

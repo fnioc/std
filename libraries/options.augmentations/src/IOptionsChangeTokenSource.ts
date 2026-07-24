@@ -1,8 +1,3 @@
-// IOptionsChangeTokenSource -- ported from MEO's IOptionsChangeTokenSource<T>
-// (the `I` prefix dropped, and the name parameter dropped: named options are
-// distinct registrations here, so a source is tied to the one options
-// registration it was added for -- see docs/decisions.md §4.2).
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 
 /**

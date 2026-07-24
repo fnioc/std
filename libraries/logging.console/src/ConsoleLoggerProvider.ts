@@ -1,22 +1,3 @@
-// ConsoleLoggerProvider — a provider of ConsoleLogger instances, ported from
-// the reference `ConsoleLoggerProvider`: owns the options monitor, the
-// formatter registry (built-ins seeded when none are supplied), and the
-// background queue processor it flushes on dispose.
-//
-// Adaptations, each argued at its site:
-//   - `IOptionsMonitor<ConsoleLoggerOptions>` → the repo's collapsed
-//     `IOptions<ConsoleLoggerOptions>`, and OPTIONAL: a bare
-//     `new ConsoleLoggerProvider()` (hosting's default services) gets default
-//     options — the reference reaches the same defaults through DI.
-//   - The reference picks an ANSI-passthrough vs ANSI-parsing console by
-//     probing the platform (`DoesConsoleSupportAnsi`). On this platform ANSI
-//     IS the console color mechanism, so the passthrough `AnsiLogConsole` is
-//     always used and the probe (a legacy-console concern) is not ported.
-//   - `ISupportExternalScope` doesn't exist in @rhombus-std/logging.core yet
-//     (residual); its `setScopeProvider` member is ported directly. The
-//     `NullExternalScopeProvider` default collapses to `undefined` (the
-//     loggers and formatters accept an absent scope provider).
-
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
@@ -35,7 +16,7 @@ import { SimpleConsoleFormatter } from './SimpleConsoleFormatter';
 import { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
 import { SystemdConsoleFormatter } from './SystemdConsoleFormatter';
 
-/** The reference formatter registry is name-keyed case-insensitively. */
+/** The formatter registry is name-keyed case-insensitively. */
 function normalizeName(name: string): string {
   return name.toLowerCase();
 }
@@ -56,20 +37,13 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
    * instances; when none are supplied the three built-ins (simple, systemd,
    * json) are seeded with default options.
    */
-  public constructor(
-    options?: IOptions<ConsoleLoggerOptions>,
-    formatters?: Iterable<ConsoleFormatter>,
-  ) {
+  public constructor(options?: IOptions<ConsoleLoggerOptions>, formatters?: Iterable<ConsoleFormatter>) {
     this.#options = options ?? Options.of(new ConsoleLoggerOptions());
     this.#setFormatters(formatters);
 
     const current = this.#options.value;
-    this.#messageQueue = new ConsoleLoggerProcessor(
-      new AnsiLogConsole(),
-      new AnsiLogConsole(true),
-      current.queueFullMode,
-      current.maxQueueLength,
-    );
+    this.#messageQueue = new ConsoleLoggerProcessor(new AnsiLogConsole(), new AnsiLogConsole(true),
+      current.queueFullMode, current.maxQueueLength);
 
     this.#reloadLoggerOptions(current);
     this.#optionsReloadToken = this.#options.subscribe?.((reloaded) => {
@@ -93,11 +67,9 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
   }
 
   /**
-   * Adds `formatter` to the registry unless its name is already taken (the
-   * reference `TryAdd` — first registration of a name wins). Internal seam:
-   * the console registration uses it to deliver a formatter registered after
-   * the provider was constructed, which the reference's DI laziness gets for
-   * free.
+   * Adds `formatter` to the registry unless its name is already taken — first
+   * registration of a name wins. Lets a formatter be registered after the
+   * provider itself was constructed.
    */
   public addFormatter(formatter: ConsoleFormatter): void {
     const key = normalizeName(formatter.name);
@@ -111,9 +83,7 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
       ? this.#formatters.get(normalizeName(options.formatterName))
       : undefined;
     if (formatter === undefined) {
-      // Deprecated-path fallback, kept for parity with the reference:
-      // no/unknown formatterName resolves through the obsolete `format`.
-
+      // No/unknown formatterName falls back through the deprecated `format`.
       formatter = options.format === ConsoleLoggerFormat.Systemd
         ? this.#formatters.get(ConsoleFormatterNames.systemd)!
         : this.#formatters.get(ConsoleFormatterNames.simple)!;
@@ -171,7 +141,7 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
     }
   }
 
-  /** Sets the scope provider all current and future loggers use — the `ISupportExternalScope` member. */
+  /** Sets the scope provider all current and future loggers use. */
   public setScopeProvider(scopeProvider: IExternalScopeProvider): void {
     this.#scopeProvider = scopeProvider;
     for (const logger of this.#loggers.values()) {

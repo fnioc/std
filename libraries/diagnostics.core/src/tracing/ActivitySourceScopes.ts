@@ -1,15 +1,12 @@
-// ActivitySourceScopes -- ported from MED.Tracing's `ActivitySourceScopes`
-// `[Flags]` enum.
-//
 // The tracing analog of MeterScope: distinguishes activity sources created
-// "globally" (via an ActivitySource constructor) from those created "locally"
+// globally (via an ActivitySource constructor) from those created locally
 // (via a DI activity-source factory). Used by TracingRule. No tracing runtime
 // backs it -- pure data.
 
 /**
  * Scopes used by {@link TracingRule} to distinguish global activity sources
  * (created via an activity-source constructor) from local ones (created via a
- * DI activity-source factory). A `[Flags]`-style enum. {@link ACTIVITY_SOURCE_SCOPES_ALL}
+ * DI activity-source factory). A bitflag enum; {@link ACTIVITY_SOURCE_SCOPES_ALL}
  * is both.
  */
 export enum ActivitySourceScopes {

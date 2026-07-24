@@ -1,13 +1,3 @@
-// CompositeChangeToken -- a minimal port of ME.Primitives.CompositeChangeToken,
-// kept internal to this package (primitives ships the change-token trio #35 but
-// not the composite yet; porting the composite into primitives is out of scope
-// for #40 -- YAGNI until a second consumer needs it).
-//
-// An assembled reactive `IOptions<T>` may watch MULTIPLE change-token sources
-// (two `configure` calls binding two sections). `Options.watch` takes ONE
-// producer, so the sources' tokens compose into one token that has changed when
-// any child has, and registers a callback against every child.
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -40,12 +30,10 @@ export class CompositeChangeToken implements IChangeToken {
    */
   public registerChangeCallback(callback: Func<[state: unknown], void>, state?: unknown): Disposable {
     const registrations = this.#tokens.map((token) => token.registerChangeCallback(callback, state));
-    return {
-      [Symbol.dispose](): void {
-        for (const registration of registrations) {
-          registration[Symbol.dispose]();
-        }
-      },
-    };
+    return { [Symbol.dispose](): void {
+      for (const registration of registrations) {
+        registration[Symbol.dispose]();
+      }
+    } };
   }
 }

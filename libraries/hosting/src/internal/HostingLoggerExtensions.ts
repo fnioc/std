@@ -1,18 +1,9 @@
-// Internal structured log messages for the host runtime -- port of the
-// reference hosting runtime's internal `HostingLoggerExtensions` static class.
+// Internal structured log messages for the host runtime. Not exported from
+// the package barrel; call sites use `HostingLoggerExtensions.member(logger,
+// ...)` directly.
 //
-// Authored in the §28/§42 object-literal shape (one const per reference static
-// class, receiver-first members, `satisfies AugmentationSet<ILogger>`), but the
-// reference class is INTERNAL, so the const stays module-scoped: it is not
-// exported from the package barrel and there is no registry/prototype install.
-// Call sites use `HostingLoggerExtensions.member(logger, ...)` directly.
-//
-// Written against `ILogger.log` directly (rather than the `logInformation`-style
-// convenience wrappers) so each message keeps its stable event id, mirroring the
-// reference. A disabled sink never pays the formatting cost -- `write` guards on
-// `isEnabled` first, exactly as the reference helpers do. The one exception is
-// `applicationError`, which the reference leaves unguarded; it is unguarded here
-// too.
+// Written against `ILogger.log` directly (rather than the `logInformation`-
+// style convenience wrappers) so each message keeps its stable event id.
 
 import { type EventId, formatLogValues, FormattedLogValues, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import type { AugmentationSet } from '@rhombus-std/primitives';
@@ -26,7 +17,7 @@ function toError(value: unknown): Error | undefined {
   return value instanceof Error ? value : new Error(String(value));
 }
 
-/** Writes a fixed message at `level`/`eventId`, guarding on `isEnabled` first. */
+/** Writes a fixed message at `level`/`eventId`. */
 function write(logger: ILogger, level: LogLevel, eventId: EventId, message: string, error?: unknown): void {
   if (!logger.isEnabled(level)) {
     return;
@@ -40,11 +31,10 @@ function write(logger: ILogger, level: LogLevel, eventId: EventId, message: stri
  */
 export const HostingLoggerExtensions = {
   /**
-   * Logs an application-lifecycle callback error at critical severity. The
-   * reference appends each inner loader-exception message when the exception is
-   * a reflection type-load failure; the analog here is an `AggregateError`,
-   * whose inner error messages are appended the same way. Unlike the other
-   * members, the reference does not `isEnabled`-guard this write.
+   * Logs an application-lifecycle callback error at critical severity. When
+   * `error` is an `AggregateError`, each inner error's message is appended to
+   * the log message. Unlike the other members here, this write is not
+   * `isEnabled`-guarded.
    */
   applicationError(logger: ILogger, eventId: EventId, message: string, error: unknown): void {
     let text = message;
@@ -77,13 +67,8 @@ export const HostingLoggerExtensions = {
     write(logger, LogLevel.Error, LoggerEventIds.backgroundServiceFaulted, 'BackgroundService failed', error);
   },
   backgroundServiceStoppingHost(logger: ILogger, error: unknown): void {
-    write(
-      logger,
-      LogLevel.Critical,
-      LoggerEventIds.backgroundServiceStoppingHost,
-      'A BackgroundService has thrown an unhandled error, and the host is stopping.',
-      error,
-    );
+    write(logger, LogLevel.Critical, LoggerEventIds.backgroundServiceStoppingHost,
+      'A BackgroundService has thrown an unhandled error, and the host is stopping.', error);
   },
   hostedServiceStartupFaulted(logger: ILogger, error: unknown): void {
     write(logger, LogLevel.Error, LoggerEventIds.hostedServiceStartupFaulted, 'Hosting failed to start', error);

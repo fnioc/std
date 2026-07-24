@@ -1,15 +1,7 @@
-// Owned `process` typing -- the §39 recipe (see ./abort.ts) extended to the
-// process global: library programs carry zero ambient platform types, so the
-// packages that touch the process (config.env, config.json, hosting,
-// logging.console) import this typed re-export from the zero-dep leaf instead
-// of naming an ambient global only @types/node could supply.
-//
-// `ProcessLike` is exactly the member set this repo calls -- `env`, `cwd`,
-// `stdout.write`, the signal `on`/`off` pair -- not a platform-complete
-// surface; extend it when a consumer actually calls something new. One-way
-// assignability is all that is required (platform process -> ProcessLike; we
-// never hand ours back to a platform API), asserted by a type test in
-// tests/primitives.test.
+// Owned `process` typing (like ./abort.ts): a typed re-export off `globalThis`
+// so libraries can touch the process without an ambient platform type only
+// @types/node would supply. `ProcessLike` covers only the members this repo
+// calls — extend it when a consumer needs another.
 
 import type { Func } from '@rhombus-toolkit/func';
 

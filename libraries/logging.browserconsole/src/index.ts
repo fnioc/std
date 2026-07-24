@@ -1,9 +1,6 @@
 // Public entry point for @rhombus-std/logging.browserconsole — the browser
-// console sink for @rhombus-std/logging.core's ILogger/ILoggerProvider
-// contracts. Writes through the platform `console` global with each LogLevel
-// mapped onto its console method (Trace/Debug -> console.debug, Information ->
-// console.info, Warning -> console.warn, Error/Critical -> console.error);
-// plain formatting, no ANSI — the browser devtools style each channel.
+// console sink for logging.core's ILogger/ILoggerProvider. Plain formatting,
+// no ANSI: the browser devtools style each severity channel.
 //
 // IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it registers the
 // `BrowserConsoleLoggerExtensions` set (the `addBrowserConsole` member) against

@@ -1,16 +1,12 @@
-// Owned structural typing for the browser `console` global — the §39/§44
-// recipe (see @rhombus-std/primitives' abort.ts/process.ts): library programs
-// carry ZERO ambient platform types (`types: []`), so naming the console
-// requires an owned structural interface plus a typed `globalThis` lookup —
-// never lib.dom.
+// Structural stand-in for the browser `console` global — library programs
+// carry no ambient platform types, so this owns a minimal interface plus a
+// typed `globalThis` lookup instead of pulling in lib.dom.
 //
-// `ConsoleLike` is exactly the member set this package calls — the four
-// level-mapped write methods — not a platform-complete surface; extend it when
-// a consumer actually calls something new. One-way assignability is all that
-// is required (platform console -> ConsoleLike; we never hand ours back to a
-// platform API).
+// Covers only the four level-mapped write methods this package calls; extend
+// it when a consumer needs another one. Only needs one-way assignability
+// (platform console -> ConsoleLike), since we never hand ours back to a
+// platform API.
 
-/** The console-global surface this provider writes through. */
 export interface ConsoleLike {
   /** Writes an error-severity message ({@link LogLevel.Error}/{@link LogLevel.Critical}). */
   error(...args: unknown[]): void;

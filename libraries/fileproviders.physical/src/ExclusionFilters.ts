@@ -1,15 +1,6 @@
-// ExclusionFilters -- ported from ME.FileProviders.Physical.ExclusionFilters.
-//
-// The reference is a `[Flags]` enum; TS has no flags enum, so this is a const
-// bitflag object plus a `number` type alias (the idiomatic TS mapping for a
-// `[Flags]` enum -- callers combine with `|` and test with `&`, exactly as in
-// the reference).
-//
-// DEVIATION (flagged): POSIX file systems have no `Hidden`/`System` file
-// attributes, so on the repo's target platform (Linux) only `DotPrefixed` is
-// enforceable. The `Hidden`/`System` bits are retained for surface parity and
-// honored only where a platform exposes those attributes; on POSIX they are a
-// documented no-op (see FileSystemInfoHelper).
+// `number`-valued bitflags: combine with `|`, test membership with `&`. The
+// type alias below shares this name with the const object, so a combined
+// value type-checks under the same identifier as the individual flags.
 
 /**
  * Specifies filtering behavior for files or directories. Combine values with

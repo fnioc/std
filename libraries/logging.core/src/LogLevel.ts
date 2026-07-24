@@ -1,10 +1,6 @@
-// The logging severity levels, ported verbatim from ME.Logging.Abstractions'
-// LogLevel. The numeric ordering is load-bearing: `IsEnabled` / filter checks
-// compare a message's level against a configured minimum, so Trace=0 … None=6
-// must stay in ascending severity order.
-//
-// This is byte-for-byte the same enum the hosting.core logging stand-in
-// declared locally; the integration phase points hosting.core here instead.
+// The logging severity levels. The numeric ordering is load-bearing: a filter
+// compares a message's level against a configured minimum, so the values must
+// stay in ascending severity order (Trace=0 … None=6).
 
 /** Defines logging severity levels. */
 export enum LogLevel {

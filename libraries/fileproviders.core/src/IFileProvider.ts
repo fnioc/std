@@ -1,5 +1,3 @@
-// IFileProvider -- ported from ME.FileProviders.IFileProvider.
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { IDirectoryContents } from './IDirectoryContents.js';
 import type { IFileInfo } from './IFileInfo.js';
@@ -9,19 +7,14 @@ import type { IFileInfo } from './IFileInfo.js';
  */
 export interface IFileProvider {
   /**
-   * Locates a file at the given path.
-   *
-   * @param subpath The relative path that identifies the file.
-   * @returns The file information. The caller must check the
-   * {@link IFileInfo.exists} property.
+   * @param subpath A path relative to this provider's root.
+   * @returns The caller must check the returned {@link IFileInfo.exists}
+   * property — a miss is a value, not an error.
    */
   getFileInfo(subpath: string): IFileInfo;
 
   /**
-   * Enumerates a directory at the given path, if any.
-   *
-   * @param subpath The relative path that identifies the directory.
-   * @returns The contents of the directory.
+   * @param subpath A path relative to this provider's root.
    */
   getDirectoryContents(subpath: string): IDirectoryContents;
 

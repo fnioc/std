@@ -1,7 +1,3 @@
-// ConsoleLoggerFormat — the deprecated pre-formatter format selector, ported
-// from the reference `ConsoleLoggerFormat` enum (marked obsolete upstream; the
-// deprecation is preserved).
-
 /**
  * Describes the format of console logger messages.
  *

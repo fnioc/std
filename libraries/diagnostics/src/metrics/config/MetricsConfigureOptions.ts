@@ -1,9 +1,4 @@
-// MetricsConfigureOptions -- ported from MED.Metrics's internal
-// `MetricsConfigureOptions`. A IConfigureOptions<MetricsOptions> step that reads
-// the metrics enablement schema from an IConfig and appends the matching
-// InstrumentRules.
-//
-// Schema (case-insensitive section keys): `EnabledMetrics` (both scopes),
+// Metrics enablement schema (case-insensitive section keys): `EnabledMetrics` (both scopes),
 // `EnabledGlobalMetrics`, `EnabledLocalMetrics`, plus a listener-specific form
 // `{ListenerName}:{Enabled...Metrics}:...`. Within a scope section, each child is
 // either a bool leaf (`{MeterName} = true`, enabling all its instruments) or an
@@ -23,12 +18,9 @@ const ENABLED_GLOBAL_METRICS_KEY = 'EnabledGlobalMetrics';
 const ENABLED_LOCAL_METRICS_KEY = 'EnabledLocalMetrics';
 
 /** Appends per-instrument rules from an object of `{InstrumentName} = bool` leaves. */
-function loadInstrumentRules(
-  options: MetricsOptions,
-  meterSection: IConfigSection,
-  scopes: MeterScope,
-  listenerName: string | undefined,
-): void {
+function loadInstrumentRules(options: MetricsOptions, meterSection: IConfigSection, scopes: MeterScope,
+  listenerName: string | undefined): void
+{
   for (const [relativePath, rawValue] of flattenLeaves(meterSection)) {
     const enabled = parseBool(rawValue);
     if (enabled === undefined) {
@@ -40,12 +32,9 @@ function loadInstrumentRules(
 }
 
 /** Appends per-meter rules (bool leaf) or recurses into per-instrument rules (object). */
-function loadMeterRules(
-  options: MetricsOptions,
-  scopeSection: IConfigSection,
-  scopes: MeterScope,
-  listenerName: string | undefined,
-): void {
+function loadMeterRules(options: MetricsOptions, scopeSection: IConfigSection, scopes: MeterScope,
+  listenerName: string | undefined): void
+{
   for (const meterSection of scopeSection.getChildren()) {
     if (hasChildren(meterSection)) {
       loadInstrumentRules(options, meterSection, scopes, listenerName);
@@ -62,13 +51,11 @@ function loadMeterRules(
 
 /**
  * A {@link IConfigureOptions} step that binds the metrics enablement schema of an
- * {@link IConfig} into a {@link MetricsOptions}. Mirrors MED.Metrics's
- * `MetricsConfigureOptions`.
+ * {@link IConfig} into a {@link MetricsOptions}.
  */
 export class MetricsConfigureOptions implements IConfigureOptions<MetricsOptions> {
   readonly #config: IConfig;
 
-  /** @param config The configuration section to read metrics rules from. */
   public constructor(config: IConfig) {
     this.#config = config;
   }

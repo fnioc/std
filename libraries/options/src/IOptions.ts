@@ -1,27 +1,9 @@
-// IOptions<T> -- the collapsed accessor described in docs/decisions.md §4.2.
-//
-// MEO splits this into three: IOptions<T> (singleton snapshot),
-// IOptionsSnapshot<T> (scoped snapshot), and IOptionsMonitor<T> (reactive,
-// CurrentValue + OnChange). The singleton-vs-scoped split is a fixed-lifetime
-// reference-DI artifact; this repo's open-ended scopes + registration-time
-// lifetime (§3) erase it, so lifetime becomes a registration concern, not a
-// distinct accessor type -- IOptions and IOptionsSnapshot collapse into one
-// `value` getter. The reactive capability (IOptionsMonitor.OnChange) is
-// orthogonal to lifetime and survives as `subscribe` -- present only when the
-// source backing this IOptions<T> is reload-capable.
-//
-// NOT built here (see README): named options (MEO's `.Get(name)` -- §4.2
-// treats named options as distinct registrations instead). The
-// configure/validate/OptionsFactory pipeline IS now built -- in its own
-// files (`options-factory.ts` and the step interfaces), adopted per §4.5.
-
 import { ChangeToken, type ChangeTokenProducer } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 /**
- * The current value of a bound options object -- collapses MEO's
- * `IOptions<T>` / `IOptionsSnapshot<T>` / `IOptionsMonitor<T>.CurrentValue`
- * into one accessor. See the module doc for why.
+ * A bound options object of type `T`: `value` reads the current value, and the
+ * optional `subscribe` observes changes when the backing source is reload-capable.
  */
 export interface IOptions<T> {
   /**
@@ -43,37 +25,31 @@ export interface IOptions<T> {
 }
 
 /**
- * A static `IOptions<T>` snapshot: `value` never changes and `subscribe` is
- * absent. Mirrors MEO's `Options.Create`.
+ * A static `IOptions<T>` snapshot: `value` never changes and `subscribe` is absent.
  */
 function of<T>(value: T): IOptions<T> {
   return { value };
 }
 
 /**
- * A reactive `IOptions<T>` backed by a change-token producer. `value`
- * re-reads `getValue()` on every access -- so it always reflects the latest
- * state, mirroring `IOptionsMonitor<T>.CurrentValue`. `subscribe` wires
- * `listener` through {@link ChangeToken.onChange}, which re-subscribes to
- * the next token after every fire so later changes keep being observed.
+ * A reactive `IOptions<T>` backed by a change-token producer: `value` re-reads
+ * `getValue()` on every access, and `subscribe` observes changes through
+ * {@link ChangeToken.onChange}.
  *
- * @param getValue Reads the current value. Called on every `.value` access
- * and once per fire, before `listener` runs.
- * @param produceToken Produces the change token to watch next -- see
- * {@link ChangeTokenProducer}.
+ * @param getValue Reads the current value. Called on every `.value` access and
+ * once per fire, before `listener` runs.
+ * @param produceToken Produces the change token to watch next.
  */
 function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): IOptions<T> {
-  return {
-    get value(): T {
-      return getValue();
-    },
-    subscribe(listener: Func<[T], void>): Disposable {
-      return ChangeToken.onChange(produceToken, () => listener(getValue()));
-    },
-  };
+  return { get value(): T {
+    return getValue();
+  }, subscribe(listener: Func<[T], void>): Disposable {
+    return ChangeToken.onChange(produceToken, () => listener(getValue()));
+  } };
 }
 
 /**
- * Constructs an {@link Options}. Mirrors MEO's `Options` static class.
+ * Factory for {@link IOptions} values: {@link of} for a static snapshot,
+ * {@link watch} for a reactive one.
  */
 export const Options = { of, watch };

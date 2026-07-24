@@ -1,7 +1,3 @@
-// LoggerFilterConfigureOptions, ported from the reference logging
-// configuration project's internal `LoggerFilterConfigureOptions`
-// (`Configure` / `LoadDefaultConfigValues` / `LoadRules` / `TryGetSwitch`).
-//
 // A LAZY configure step (a `IConfigureOptions<LoggerFilterOptions>` pipeline
 // participant): nothing is read until the `IOptions<LoggerFilterOptions>`
 // assembly materializes the value, and every re-run (a configuration reload)
@@ -26,20 +22,13 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 const LOG_LEVEL_KEY = 'loglevel';
 const DEFAULT_CATEGORY = 'default';
 
-const LEVEL_BY_NAME: Record<string, LogLevel> = {
-  trace: LogLevel.Trace,
-  debug: LogLevel.Debug,
-  information: LogLevel.Information,
-  warning: LogLevel.Warning,
-  error: LogLevel.Error,
-  critical: LogLevel.Critical,
-  none: LogLevel.None,
-};
+const LEVEL_BY_NAME: Record<string, LogLevel> = { trace: LogLevel.Trace, debug: LogLevel.Debug,
+  information: LogLevel.Information, warning: LogLevel.Warning, error: LogLevel.Error, critical: LogLevel.Critical,
+  none: LogLevel.None };
 
 /**
  * Parses a configured level value (a level name, case-insensitive, or its
- * numeric ordinal). Throws on a non-empty unrecognized value, mirroring the
- * reference `TryGetSwitch`.
+ * numeric ordinal). Throws on a non-empty unrecognized value.
  */
 export function parseLogLevel(value: string): LogLevel {
   const named = LEVEL_BY_NAME[value.trim().toLowerCase()];
@@ -53,11 +42,7 @@ export function parseLogLevel(value: string): LogLevel {
   throw new Error(`The log level value '${value}' is not supported.`);
 }
 
-function loadRules(
-  options: LoggerFilterOptions,
-  levelSection: IConfig,
-  provider: string | undefined,
-): void {
+function loadRules(options: LoggerFilterOptions, levelSection: IConfig, provider: string | undefined): void {
   for (const entry of levelSection.getChildren()) {
     const value = entry.value;
     if (value === undefined || value === '') {
@@ -84,18 +69,15 @@ export class LoggerFilterConfigureOptions implements IConfigureOptions<LoggerFil
     this.#config = config;
   }
 
-  /** Populates `options` from the configuration, mutating it in place. */
   public configure(options: LoggerFilterOptions): void {
     options.captureScopes = this.#config.getBool('CaptureScopes', options.captureScopes);
 
     for (const section of this.#config.getChildren()) {
       if (section.key.toLowerCase() === LOG_LEVEL_KEY) {
-        // Global category defaults.
         loadRules(options, section, undefined);
       } else {
-        // Provider-specific rules under `<provider>:LogLevel`. A missing
-        // section is an empty IConfig (never null), so this is a safe
-        // no-op.
+        // A missing section is an empty IConfig (never null), so this is a
+        // safe no-op rather than an error.
         loadRules(options, section.getSection('LogLevel'), section.key);
       }
     }

@@ -1,19 +1,10 @@
-// JsonConsoleFormatterOptions — options for the JSON console formatter, ported
-// from the reference `JsonConsoleFormatterOptions`.
-//
-// The reference `JsonWriterOptions` is the platform JSON-writer struct; this
-// platform serializes with `JSON.stringify`, so the local `JsonWriterOptions`
-// carries the members that map onto it: `indented`, `indentCharacter`, and
-// `indentSize`. The reference struct's `Encoder`, `MaxDepth`, and
-// `SkipValidation` have no `JSON.stringify` analog and are left out.
+// Only the members JSON.stringify can actually express are offered here
+// (indentation); writer-level knobs with no JSON.stringify equivalent
+// (encoding, max depth, validation-skipping) are left out.
 
 import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
 
-/**
- * Controls how the JSON console formatter serializes each entry — the
- * `JSON.stringify`-shaped analog of the reference platform's JSON writer
- * options struct.
- */
+/** Controls how the JSON console formatter serializes each entry. */
 export interface JsonWriterOptions {
   /** Whether the JSON should be pretty-printed. Defaults to `false` (compact). */
   indented?: boolean;

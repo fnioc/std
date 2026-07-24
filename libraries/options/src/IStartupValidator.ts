@@ -1,14 +1,3 @@
-// IStartupValidator -- ported from the reference Options project's
-// IStartupValidator: the host-facing seam that forces eager validation of the
-// options marked for startup validation (see StartupValidator and the
-// `validateOnStart` augmentation in @rhombus-std/options.augmentations).
-//
-// The reference splits this into IStartupValidator (sync) and
-// IAsyncStartupValidator (async). This port keeps only the SYNC surface: the
-// options pipeline (OptionsFactory) here is synchronous and there is no
-// `IAsyncValidateOptions` analog, so an async startup-validator would have
-// nothing to run -- YAGNI, stated so it is not later "restored."
-
 /**
  * Used by hosts to validate options during startup. A host resolves this
  * (optionally -- it is registered only when `validateOnStart` was called for at

@@ -1,8 +1,3 @@
-// IDirectoryContents -- ported from ME.FileProviders.IDirectoryContents.
-//
-// ME's `IDirectoryContents : IEnumerable<IFileInfo>` maps to extending the
-// built-in `Iterable<IFileInfo>` -- the idiomatic TS analog of IEnumerable.
-
 import type { IFileInfo } from './IFileInfo.js';
 
 /**

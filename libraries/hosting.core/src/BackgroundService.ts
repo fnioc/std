@@ -23,10 +23,10 @@ function whenAborted(signal: AbortSignal): Promise<void> {
 /**
  * Base class for implementing a long-running {@link IHostedService}.
  *
- * Mirrors the reference `BackgroundService`: {@link start} kicks {@link execute}
- * WITHOUT awaiting, retaining the promise so {@link stop} can await it; a
- * per-instance {@link AbortController} carries the stopping signal, aborted by
- * {@link stop} (graceful) and {@link Symbol.dispose} (unconditional).
+ * @remarks
+ * A per-instance {@link AbortController} carries the stopping signal to
+ * {@link execute}, aborted by {@link stop} (graceful) or
+ * {@link Symbol.dispose} (unconditional).
  */
 export abstract class BackgroundService implements IHostedService, Disposable {
   #executeTask?: Promise<void>;
@@ -49,9 +49,8 @@ export abstract class BackgroundService implements IHostedService, Disposable {
   protected abstract execute(stoppingSignal: AbortSignal): Promise<void>;
 
   /**
-   * Triggered when the application host is ready to start the service. Kicks
-   * {@link execute} without awaiting and returns immediately; any result from
-   * {@link execute} is observed by {@link stop}.
+   * Kicks {@link execute} without awaiting and returns immediately; any result
+   * from {@link execute} is observed by {@link stop}.
    *
    * @param abortSignal Aborting it also aborts the executing operation.
    */
@@ -60,16 +59,14 @@ export abstract class BackgroundService implements IHostedService, Disposable {
     this.#stoppingController = controller;
     propagateAbort(abortSignal, controller);
 
-    // Kick execute() without awaiting; retain the promise so stop() can await it.
-    // Deferred through Promise.resolve() so a synchronous throw surfaces as a
-    // rejection on the retained promise rather than escaping start().
+    // Deferred through Promise.resolve() so a synchronous throw from execute()
+    // surfaces as a rejection on the retained promise, not a throw out of start().
     this.#executeTask = Promise.resolve().then(() => this.execute(controller.signal));
 
     return Promise.resolve();
   }
 
   /**
-   * Triggered when the application host is performing a graceful shutdown.
    * Signals cancellation to {@link execute} and waits until it completes or the
    * stop signal triggers, whichever comes first.
    *
@@ -82,12 +79,9 @@ export abstract class BackgroundService implements IHostedService, Disposable {
     try {
       this.#stoppingController?.abort();
     } finally {
-      // Suppress a throw from the executing task -- cancelling it may reject; the
-      // host explicitly ignores that here (mirrors ConfigureAwaitOptions.SuppressThrowing).
-      await Promise.race([
-        this.#executeTask.catch(() => undefined),
-        whenAborted(abortSignal),
-      ]);
+      // Cancelling execute() may reject it; that rejection is intentionally
+      // swallowed here rather than surfaced from stop().
+      await Promise.race([this.#executeTask.catch(() => undefined), whenAborted(abortSignal)]);
     }
   }
 

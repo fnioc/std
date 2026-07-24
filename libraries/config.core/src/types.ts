@@ -1,9 +1,3 @@
-// The TS-only helper types with no per-file ME equivalent: the plain
-// object codomain of `toObject()`, the index-navigable section shape, and the
-// try-get tuple that replaces ME's `bool TryGet(out string?)` out-param
-// pattern. Grouped here (rather than split further) because none of these has
-// its own ME source file to mirror -- see docs/decisions.md's split-oracle note.
-
 import type { IConfigSection } from './IConfigSection';
 
 /**
@@ -29,13 +23,10 @@ export type ConfigObject = { readonly [key: string]: string | ConfigObject; };
  * (`ConfigBuilder.withSchema`), whose result has named keys and no
  * index signature.
  */
-export type IndexedSection = IConfigSection & {
-  readonly [key: string]: IndexedSection;
-};
+export type IndexedSection = IConfigSection & { readonly [key: string]: IndexedSection; };
 
 /**
  * The result of a try-get lookup: `[false]` on a miss, `[true, value]` on a
- * hit. Replaces ME's `bool TryGet(out string?)` out-param pattern, which has
- * no direct TS equivalent.
+ * hit.
  */
 export type ITryGetResult<T> = [success: false] | [success: true, value: T];

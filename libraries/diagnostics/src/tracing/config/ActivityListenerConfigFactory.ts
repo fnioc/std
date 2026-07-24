@@ -1,24 +1,16 @@
-// ActivityListenerConfigFactory -- ported from MED.Tracing's
-// `ActivityListenerConfigFactory`. The tracing twin of
-// IMetricListenerConfigFactory, except the reference shapes it as a
-// public ABSTRACT CLASS (not an interface) -- mirrored faithfully, so a
-// consumer resolves and extends the same shape the reference exposes.
-
 import type { IConfig } from '@rhombus-std/config.core';
 
 /**
- * Resolves an {@link IConfig} view for a named activity listener.
+ * Resolves a merged {@link IConfig} view for a named activity listener.
  *
- * Implementations merge every configuration section registered through
- * `addTracingConfig` that targets the supplied listener name, returning
- * a single merged {@link IConfig} instance per call.
+ * @remarks
+ * An abstract class rather than an interface, so a consumer can extend it directly.
  */
 export abstract class ActivityListenerConfigFactory {
   /**
-   * Gets the merged {@link IConfig} for the listener identified by
-   * `listenerName` -- the aggregate of every section registered for it.
-   *
-   * @param listenerName The name of the listener whose configuration is requested.
+   * @remarks
+   * Merges every configuration section registered through `addTracingConfig`
+   * that targets `listenerName` into one view.
    */
   public abstract getConfig(listenerName: string): IConfig;
 }

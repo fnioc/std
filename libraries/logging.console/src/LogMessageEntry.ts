@@ -1,6 +1,4 @@
-// LogMessageEntry — one fully-rendered message queued for writing, ported from
-// the reference internal `LogMessageEntry` struct. Internal: not exported from
-// the package barrel.
+// Internal: not exported from the package barrel.
 
 /** A rendered log message plus its output-stream routing flag. */
 export interface LogMessageEntry {

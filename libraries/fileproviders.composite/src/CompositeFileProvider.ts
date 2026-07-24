@@ -1,11 +1,3 @@
-// CompositeFileProvider -- ported from
-// ME.FileProviders.Composite.CompositeFileProvider.
-//
-// Looks up files/directories across a collection of IFileProvider, trying each
-// in registration order. ME exposes two constructors (params array + IEnumerable);
-// a single rest-parameter constructor covers both, since an existing collection
-// is passed with spread (`new CompositeFileProvider(...providers)`).
-
 import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundFileInfo,
   NullChangeToken } from '@rhombus-std/fileproviders.core';
 import { CompositeChangeToken, type IChangeToken } from '@rhombus-std/primitives';
@@ -17,21 +9,14 @@ import { CompositeDirectoryContents } from './CompositeDirectoryContents.js';
 export class CompositeFileProvider implements IFileProvider {
   readonly #fileProviders: readonly IFileProvider[];
 
-  /**
-   * Initializes a new instance of the {@link CompositeFileProvider} class.
-   *
-   * @param fileProviders The providers to compose, tried in the order given.
-   */
+  /** Composes `fileProviders`, tried in the order given. */
   public constructor(...fileProviders: IFileProvider[]) {
     this.#fileProviders = fileProviders;
   }
 
   /**
-   * Locates a file at the given path.
-   *
-   * @param subpath The path that identifies the file.
-   * @returns The first existing {@link IFileInfo} returned by the composed
-   * providers, or a {@link NotFoundFileInfo} if none exists.
+   * @returns The first existing {@link IFileInfo} among the composed providers,
+   * or a {@link NotFoundFileInfo} if none exists.
    */
   public getFileInfo(subpath: string): IFileInfo {
     for (const fileProvider of this.#fileProviders) {
@@ -44,22 +29,16 @@ export class CompositeFileProvider implements IFileProvider {
   }
 
   /**
-   * Enumerates a directory at the given path. The result merges the contents of
-   * all composed providers; where several expose a file of the same name, only
-   * the first is included.
-   *
-   * @param subpath The path that identifies the directory.
+   * Merges directory contents across all composed providers; where several
+   * expose a file of the same name, only the first is included.
    */
   public getDirectoryContents(subpath: string): IDirectoryContents {
     return new CompositeDirectoryContents(this.#fileProviders, subpath);
   }
 
   /**
-   * Creates a change token for the specified `pattern`, notified when any
-   * composed provider's token for that pattern fires.
-   *
-   * @param pattern A filter string used to determine what files or folders to
-   * monitor.
+   * A change token for `pattern`, notified when any composed provider's token
+   * for that pattern fires.
    */
   public watch(pattern: string): IChangeToken {
     const changeTokens: IChangeToken[] = [];

@@ -1,18 +1,6 @@
-// AnsiParser — the ANSI color escape-code tables, ported from the reference
-// internal `AnsiParser`. Internal: not exported from the package barrel.
-//
-// Only the code-EMITTING half is ported (the color → escape-code getters the
-// formatters and TextWriterExtensions consume). The reference's `Parse` half —
-// which strips codes back out for its `AnsiParsingLogConsole` — is not: on
-// this platform ANSI escape sequences are the native console color mechanism,
-// so nothing needs them parsed away (see ./AnsiLogConsole).
-
 import { assertNever } from '@rhombus-toolkit/type-guards';
 
-/**
- * The 16 console colors of the reference platform's console color model. The
- * "dark" names are the ANSI base intensities; the plain names are bright/bold.
- */
+/** The 16 console colors. The "dark" names are the ANSI base intensities; the plain names are bright/bold. */
 export enum ConsoleColor {
   Black = 0,
   DarkBlue = 1,
@@ -87,7 +75,7 @@ export function getForegroundColorEscapeCode(color: ConsoleColor): string {
       return '\x1b[1m\x1b[37m';
     }
     case ConsoleColor.DarkGray: {
-      // No dedicated code in the reference table either — fall back to default.
+      // No distinct ANSI code for dark gray — falls back to the default.
       return DEFAULT_FOREGROUND_COLOR;
     }
     default: {
@@ -131,8 +119,7 @@ export function getBackgroundColorEscapeCode(color: ConsoleColor): string {
     case ConsoleColor.Magenta:
     case ConsoleColor.Yellow:
     case ConsoleColor.White: {
-      // The reference emits only the 8 base background codes; bright
-      // backgrounds fall back to the default, exactly as upstream.
+      // Only 8 base background codes exist; bright backgrounds fall back to the default.
       return DEFAULT_BACKGROUND_COLOR;
     }
     default: {

@@ -1,12 +1,8 @@
-// PhysicalDirectoryInfo -- ported from
-// ME.FileProviders.Physical.PhysicalDirectoryInfo.
-//
-// Represents a directory on the physical file system. It is both an IFileInfo
-// (describing the directory entry itself: length -1, isDirectory true,
-// createReadStream throws) and an IDirectoryContents (its lazily-enumerated,
-// exclusion-filtered children). Enumeration swallows a missing/inaccessible
-// directory into an empty result, mirroring the reference's catch of
-// DirectoryNotFoundException/IOException.
+// Both an IFileInfo (describing the directory entry itself: length -1,
+// isDirectory true, createReadStream throws) and an IDirectoryContents (its
+// lazily-enumerated, exclusion-filtered children). Enumeration swallows a
+// missing or inaccessible directory into an empty result rather than
+// throwing.
 
 import { readdirSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -101,11 +97,8 @@ export class PhysicalDirectoryInfo implements IFileInfo, IDirectoryContents {
           }
           const childPath = join(this.#fullPath, dirent.name);
           entries.push(
-            // DEVIATION (flagged): the reference constructs child directories
-            // through its filters-less public constructor, dropping exclusion
-            // filters one level down; this port propagates `this.#filters`
-            // through the subtree -- the consistent, more correct behavior when
-            // a consumer recursively walks the returned tree.
+            // Exclusion filters propagate to child directories, so a full
+            // subtree walk stays consistently filtered.
             dirent.isDirectory()
               ? new PhysicalDirectoryInfo(childPath, this.#filters)
               : new PhysicalFileInfo(childPath),

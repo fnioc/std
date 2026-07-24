@@ -1,12 +1,9 @@
-// The `IConfigProvider` interface -- mirrors MECA's
-// `IConfigProvider.cs` one-type-per-file layout (see docs/decisions.md #46).
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { ITryGetResult } from './types';
 
 /** Provides configuration key/values for an application. */
 export interface IConfigProvider {
-  /** Tries to get a configuration value for the specified key. */
+  /** Looks up `key`; a miss returns `[false]` rather than throwing. */
   tryGet(key: string): ITryGetResult<string>;
 
   /** Sets a configuration value for the specified key. */
@@ -22,12 +19,8 @@ export interface IConfigProvider {
   load(): void;
 
   /**
-   * Returns the immediate descendant configuration keys for a given parent
-   * path based on the data of this provider and the set of keys returned by
-   * all the preceding providers.
-   *
-   * @param earlierKeys The child keys returned by the preceding providers for the same parent path.
-   * @param parentPath The parent path.
+   * The immediate descendant keys for `parentPath`, given the keys the
+   * preceding providers already returned for that same path.
    */
   getChildKeys(earlierKeys: Iterable<string>, parentPath?: string): Iterable<string>;
 }

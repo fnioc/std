@@ -1,17 +1,7 @@
-// The MemoryCacheEntryOptions fluent wrappers, ported from ME.Caching.Abstractions'
-// static `MemoryCacheEntryExtensions` class -- authored as the named
-// `MemoryCacheEntryExtensions` augmentation object literal (docs §28), one member
-// per reference static method, receiver-first. Each returns the options bag for
-// chaining, so a caller can build one reusable bag fluently and apply it to many
-// entries via `CacheEntryExtensions.setOptions`.
-//
-// Reverse-direction dual-export: the receiver is a value object whose concrete
-// class lives in THIS package, so this is a CLOSED set (docs §38) -- the
-// declaration merge onto the class AND the direct `applyAugmentations` install
-// both live here, no registry involved. `SetAbsoluteExpiration`'s two overloads
-// (TimeSpan relative / DateTimeOffset absolute) collapse into one
-// `setAbsoluteExpiration` discriminated by `number` (ms relative) vs `Date`
-// (absolute), exactly as `CacheEntryExtensions` collapses the same pair.
+// Fluent methods on MemoryCacheEntryOptions -- set priority/size/expiration and
+// register post-eviction callbacks -- dot-callable on any options bag. Each
+// returns it for chaining, so one reusable bag can be built fluently and applied
+// to many entries via `CacheEntryExtensions.setOptions`.
 
 import { applyAugmentations, type AugmentationSet, type IChangeToken } from '@rhombus-std/primitives';
 import type { CacheItemPriority } from './CacheItemPriority';
@@ -19,7 +9,7 @@ import { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 import { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
 import type { PostEvictionDelegate } from './PostEvictionDelegate';
 
-/** The `MemoryCacheEntryExtensions` augmentation set for {@link MemoryCacheEntryOptions} (docs §28). */
+/** The fluent methods added to {@link MemoryCacheEntryOptions}. */
 export const MemoryCacheEntryExtensions = {
   /** Sets the compaction {@link CacheItemPriority} the bag applies to an entry. */
   setPriority(options: MemoryCacheEntryOptions, priority: CacheItemPriority): MemoryCacheEntryOptions {
@@ -40,12 +30,9 @@ export const MemoryCacheEntryExtensions = {
   },
 
   /** Sets an absolute expiration -- `relativeToNowMs` milliseconds from now, or an absolute `Date`. */
-  setAbsoluteExpiration(
-    options: MemoryCacheEntryOptions,
-    ...rest:
-      | [relativeToNowMs: number]
-      | [absolute: Date]
-  ): MemoryCacheEntryOptions {
+  setAbsoluteExpiration(options: MemoryCacheEntryOptions,
+    ...rest: [relativeToNowMs: number] | [absolute: Date]): MemoryCacheEntryOptions
+  {
     const [value] = rest;
     if (value instanceof Date) {
       options.absoluteExpiration = value;
@@ -62,11 +49,9 @@ export const MemoryCacheEntryExtensions = {
   },
 
   /** Registers a callback fired after the entry the bag is applied to is evicted. */
-  registerPostEvictionCallback(
-    options: MemoryCacheEntryOptions,
-    callback: PostEvictionDelegate,
-    state?: unknown,
-  ): MemoryCacheEntryOptions {
+  registerPostEvictionCallback(options: MemoryCacheEntryOptions, callback: PostEvictionDelegate,
+    state?: unknown): MemoryCacheEntryOptions
+  {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;
@@ -75,7 +60,6 @@ export const MemoryCacheEntryExtensions = {
   },
 } satisfies AugmentationSet<MemoryCacheEntryOptions>;
 
-// The method-form surface merged onto the MemoryCacheEntryOptions class (docs §28).
 declare module './MemoryCacheEntryOptions' {
   interface MemoryCacheEntryOptions {
     setPriority(priority: CacheItemPriority): this;
@@ -88,5 +72,4 @@ declare module './MemoryCacheEntryOptions' {
   }
 }
 
-// Direct CLOSED-set install (docs §38) -- the concrete class lives in-package.
 applyAugmentations(MemoryCacheEntryOptions, MemoryCacheEntryExtensions);

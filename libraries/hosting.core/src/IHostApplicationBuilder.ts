@@ -45,12 +45,11 @@ export interface IHostApplicationBuilder {
    * delegate runs after all other services have been registered. Multiple calls
    * replace the previously stored factory and delegate.
    *
-   * As on {@link IHostBuilder.useServiceProviderFactory}, the single-container
-   * model accepts di.core's shared {@link IServiceProviderFactory} but always uses
-   * the one real container. See diNotes.
+   * @remarks
+   * `factory`'s type matches {@link IHostBuilder.useServiceProviderFactory}, but
+   * `TContainerBuilder` has no effect here — this always builds through the one
+   * real service provider.
    */
-  configureContainer<TContainerBuilder>(
-    factory: IServiceProviderFactory<TContainerBuilder>,
-    configure?: Action<[TContainerBuilder]>,
-  ): void;
+  configureContainer<TContainerBuilder>(factory: IServiceProviderFactory<TContainerBuilder>,
+    configure?: Action<[TContainerBuilder]>): void;
 }

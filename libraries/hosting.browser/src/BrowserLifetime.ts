@@ -1,26 +1,3 @@
-// BrowserLifetime — the browser analog of hosting's ConsoleLifetime: instead
-// of POSIX signals, the shutdown trigger is the Page Lifecycle API. The
-// lifetime does NOT touch document/window itself; the single DOM-listening
-// component is PageLifecycleEvents, and this lifetime consumes it as its event
-// SOURCE — subscribing to its phase snapshot in `waitForStart`, which then
-// resolves immediately (browser applications, like console ones, start at once).
-//
-// The `terminated` phase (a non-persisted `pagehide` — the page is being
-// DISCARDED) is the shutdown trigger: with `stopOnPagehide` (the default) the
-// lifetime calls `IHostApplicationLifetime.stopApplication()`, whose synchronous
-// abort dispatch runs every `applicationStopping` listener before the event
-// handler returns (the last-chance flush backstop — sendBeacon / keepalive
-// fetch live there). The async stop pipeline that runs hosted services' `stop`
-// is driven by `runAsync` (see `BrowserHost.run()`), not this lifetime.
-//
-// A `frozen` phase (an explicit `freeze`, or a persisted `pagehide` entering the
-// back/forward cache) NEVER stops: the page may be restored and the host is
-// non-restartable. suspend ≠ stop.
-//
-// The RECURRING persistence point is visibilitychange -> hidden (surfaced as
-// PageLifecycleEvents' `onFlush` signal), not this lifetime's stop — see
-// PageLifecycleEvents.
-
 import type { IHostApplicationLifetime, IHostLifetime } from '@rhombus-std/hosting.core';
 import { type ILogger, type ILoggerFactory, logDebug, logInformation } from '@rhombus-std/logging.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
@@ -53,12 +30,9 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
    *   disposes it on `stop`/dispose, preventing a listener leak across host
    *   cycles over a shared document.
    */
-  public constructor(
-    options: BrowserLifetimeOptions,
-    applicationLifetime: IHostApplicationLifetime,
-    loggerFactory: ILoggerFactory,
-    pageLifecycleEvents: PageLifecycleEvents,
-  ) {
+  public constructor(options: BrowserLifetimeOptions, applicationLifetime: IHostApplicationLifetime,
+    loggerFactory: ILoggerFactory, pageLifecycleEvents: PageLifecycleEvents)
+  {
     this.#options = options;
     this.#applicationLifetime = applicationLifetime;
     this.#logger = loggerFactory.createLogger(BROWSER_LIFETIME_CATEGORY);
@@ -74,7 +48,6 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
       logInformation(this.#logger, 'Page restored from the back/forward cache; host continues.');
     });
 
-    // Browser applications start immediately.
     return Promise.resolve();
   }
 
@@ -97,8 +70,7 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
         break;
       }
       case 'frozen': {
-        // Entering the bfcache (or an explicit freeze): the page may be
-        // restored, and the host is non-restartable — bridge only, never stop.
+        // The page may be restored from the bfcache — never stops the host.
         logInformation(this.#logger, 'Page entering the back/forward cache; host continues.');
         break;
       }
@@ -114,10 +86,6 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
       return;
     }
     logInformation(this.#logger, 'Page terminating; application is shutting down...');
-    // The synchronous abort dispatch inside stopApplication runs every
-    // applicationStopping listener before this handler returns — the flush
-    // backstop. Driving the async stop pipeline is runAsync's job (see
-    // BrowserHost.run()).
     this.#applicationLifetime.stopApplication();
   }
 

@@ -1,13 +1,9 @@
-// The token grammar that wires the OptionsFactory pipeline through the container.
-//
-// `addOptions`/`configure` key each pipeline slot (configure steps,
-// post-configure steps, validate steps, change-token sources) at a token
-// DERIVED from the options token the consumer resolves. Every slot is a
-// collection: a step is appended with `addValue(<slot>, step)`, and the
-// assembly resolves the whole list via the `Array<slot>` wrapper (#48 collection
-// resolution). Deriving the slot tokens deterministically here is what lets
-// `configure` (which appends) and `assembleOptions` (which reads) agree without
-// sharing state — they travel through the container.
+// The token grammar wiring the OptionsFactory pipeline through the container.
+// Each function derives a slot token from the options token; a step is appended
+// with `addValue(<slot>, step)` and the assembly reads the whole list back
+// through the collection wrapper. Deriving these deterministically is what lets
+// the append side (`configure`) and the read side (`assembleOptions`) agree
+// without sharing state.
 
 import type { Token } from '@rhombus-std/di.core';
 
@@ -38,19 +34,16 @@ export function changeTokenSourceToken(optionsToken: Token): Token {
 /**
  * The single collection slot token holding every options token marked for
  * startup validation. `validateOnStart(token)` appends `token` here, and the
- * StartupValidator resolves the whole list via the `Array<…>` wrapper (#48) to
- * force each. Unlike the per-options slots above this takes NO argument -- one
- * flat list serves the whole container, mirroring the reference's single
- * `StartupValidatorOptions._validators` dictionary.
+ * StartupValidator resolves the whole list to force each. Unlike the per-options
+ * slots above this takes NO argument -- one flat list serves the whole container.
  */
 export function startupValidationTargetToken(): Token {
   return `${NAMESPACE}/startup-validation-target`;
 }
 
 /**
- * The collection wrapper token for `elementToken` — the string the engine
- * recognizes as a collection request and aggregates every registration of the
- * element into (the same `Array<T>` derivation the transformer emits).
+ * The collection wrapper token for `elementToken` — the string the resolver
+ * recognizes as a request to aggregate every registration of the element.
  */
 export function collectionToken(elementToken: Token): Token {
   return `Array<${elementToken}>`;

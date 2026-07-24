@@ -1,15 +1,3 @@
-// DistributedCacheEntryOptions -- ported from ME.Caching.Abstractions'
-// DistributedCacheEntryOptions. Durations are milliseconds; the absolute
-// expiration is a `Date` (the same mapping as MemoryCacheEntryOptions).
-//
-// The reference's internal `Freeze()` (guarding the shared default-options
-// singleton in DistributedCacheExtensions against mutation) is ported as the
-// module-scoped `freezeDistributedCacheEntryOptions` below -- exported from
-// this module for the family's own use and for white-box tests via the
-// `internal/*` subpath, but NOT from the package barrel, mirroring the
-// reference's `internal` visibility.
-
-/** The frozen instances -- the analog of the reference's private `_frozen` flag. */
 const frozenInstances = new WeakSet<DistributedCacheEntryOptions>();
 
 /** Provides the cache options for an entry in an `IDistributedCache`. */
@@ -70,9 +58,8 @@ export class DistributedCacheEntryOptions {
 }
 
 /**
- * Freezes `options`: every later setter call throws. The port of the
- * reference's internal `Freeze()`; deliberately absent from the package
- * barrel (see the module doc comment).
+ * Freezes `options`: every later setter call throws. Not exported from the
+ * package barrel.
  */
 export function freezeDistributedCacheEntryOptions(
   options: DistributedCacheEntryOptions,

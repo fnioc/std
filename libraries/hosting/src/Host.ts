@@ -1,7 +1,3 @@
-// The static `Host` facade -- ported from the reference hosting runtime's static
-// `Host` class. Convenience factory methods that hand back a builder with the
-// pre-configured defaults already applied.
-
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
 import { HostApplicationBuilder } from './HostApplicationBuilder';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';

@@ -1,38 +1,15 @@
-// CacheEntry -- the internal ICacheEntry implementation, ported from
-// ME.Caching.Memory's internal `CacheEntry` (+ CacheEntry.CacheEntryTokens).
+// CacheEntry -- the ICacheEntry implementation. Disposing an entry COMMITS it to
+// the owning cache. Internal: not re-exported from the package barrel.
 //
-// Disposing the entry COMMITS it to the owning cache (via the host's
-// `setEntry`). Simplifications vs the reference runtime (JS is single-threaded,
-// so the Interlocked machinery is unnecessary):
-//   - Eviction callbacks and token-expiry run SYNCHRONOUSLY, not on a
-//     background Task.
-//   - Durations are milliseconds; the absolute expiration is an epoch-ms
-//     number internally (`-1` = unset), surfaced as a `Date` on the interface.
-//
-// LINKED-ENTRY TRACKING (`MemoryCacheOptions.trackLinkedCacheEntries`). The
-// reference keeps the "entry currently being created" in a static
-// `AsyncLocal<CacheEntry>` slot: constructing an entry pushes it, disposing
-// pops back to the remembered previous, and reads/commits inside that window
-// propagate expiration tokens and earlier absolute expirations to the pending
-// parent. Here the slot is a MODULE-SCOPED variable (the `static` analog) with
-// the same push/pop chain -- equivalent to the reference for every
-// synchronous create->...->dispose window, which single-threaded JS executes
-// without interleaving. It is NOT an async-context slot: this platform's
-// `AsyncLocalStorage` cannot reproduce the reference semantics. The only
-// mutate-in-place API, `enterWith`, (a) segfaults the pinned bun runtime
-// (1.3.14) when called after any `await` (bun.report id la10d9b296, verified
-// 2026-07-11), and (b) even under correct engine semantics cannot express the
-// dispose-time POP: a store replaced after an `await` never restores the
-// awaiting caller's context (the platform lacks the reference's
-// restore-context-on-async-method-exit), so sequential async flows chain onto
-// each other's already-committed entries -- strictly WORSE than the plain
-// module variable, which pops correctly for every non-interleaved flow. The
-// residual divergence: cache operations interleaved from OTHER async flows
-// while a tracking entry is pending across an `await` see (and propagate to)
-// that pending entry, where the reference isolates per async flow.
-//
-// This class is internal -- reachable only through the `internal/*` export
-// subpath, not the package barrel.
+// Linked-entry tracking (`MemoryCacheOptions.trackLinkedCacheEntries`) keeps the
+// "entry currently being created" in a module-scoped variable
+// (`ambientCurrentEntry`), pushed on construction and popped on dispose; reads and
+// commits inside that window propagate expiration tokens and earlier absolute
+// expirations to the pending parent. It must NOT become AsyncLocalStorage:
+// `enterWith` segfaults the pinned bun runtime after an `await` and cannot express
+// the dispose-time pop. The tradeoff of the plain variable: a cache operation
+// interleaved from another async flow, while a tracking entry is pending across an
+// `await`, sees (and propagates to) that pending entry.
 
 import { CacheItemPriority, EvictionReason, type ICacheEntry,
   type PostEvictionCallbackRegistration } from '@rhombus-std/caching.core';
@@ -61,21 +38,18 @@ export interface IMemoryCacheHost {
 }
 
 /**
- * The ambient "entry currently being created" -- the module-scoped analog of
- * the reference's static async-local slot (see the module doc for why it is a
- * plain variable). `undefined` when no tracking entry is pending.
+ * The "entry currently being created" (module-scoped; see the header), or
+ * `undefined` when none is pending.
  */
 let ambientCurrentEntry: CacheEntry | undefined = undefined;
 
-/** The pending ambient entry, exposed for white-box tests (the reference's internal `Current`). */
+/** The pending ambient entry, exposed for white-box tests. */
 export function currentCacheEntry(): CacheEntry | undefined {
   return ambientCurrentEntry;
 }
 
-// Interface-extends merge (augmentation doctrine): binding the ICacheEntry SYMBOL
-// flows every in-program augmentation of the interface (caching.core's
-// setPriority/setAbsoluteExpiration/… fluent wrappers) onto this concrete holder,
-// so it satisfies `implements ICacheEntry` without restating any member.
+// Declaration-merge so the class inherits the convenience methods added to
+// ICacheEntry (setPriority/setAbsoluteExpiration/…) without restating them.
 export interface CacheEntry extends ICacheEntry {}
 
 /** The concrete cache entry. Committed to its cache on dispose. */
@@ -211,8 +185,8 @@ export class CacheEntry implements ICacheEntry {
   }
 
   #commitWithTracking(): void {
-    // Pop the ambient slot back to the remembered previous. The reference
-    // asserts LIFO dispose order and pops unconditionally; mirrored here.
+    // Pop the ambient slot back to the remembered previous (LIFO dispose order,
+    // popped unconditionally).
     ambientCurrentEntry = this.#previous;
 
     // Don't commit or propagate options if the value was never set -- we
@@ -342,11 +316,9 @@ export class CacheEntry implements ICacheEntry {
    */
   public propagateOptionsToCurrent(): void {
     // Nothing to propagate, or no pending parent.
-    if (
-      ((this.#expirationTokens === undefined || this.#expirationTokens.length === 0)
-        && this.#absoluteMs < 0)
-      || ambientCurrentEntry === undefined
-    ) {
+    if (((this.#expirationTokens === undefined || this.#expirationTokens.length === 0) && this.#absoluteMs < 0)
+      || ambientCurrentEntry === undefined)
+    {
       return;
     }
     // Copy regardless of whether the parent ends up cached: the tokens are
@@ -377,11 +349,8 @@ export class CacheEntry implements ICacheEntry {
       try {
         registration.evictionCallback?.(this.#key, this.#value, this.#evictionReason, registration.state);
       } catch (error) {
-        logError(
-          this.#host.logger,
-          error instanceof Error ? error : new Error(String(error)),
-          'EvictionCallback invoked failed',
-        );
+        logError(this.#host.logger, error instanceof Error ? error : new Error(String(error)),
+          'EvictionCallback invoked failed');
       }
     }
   }

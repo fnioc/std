@@ -1,11 +1,6 @@
-// ApplicationLifetime -- ported from the reference hosting runtime's
-// `ApplicationLifetime` (the `IHostApplicationLifetime` implementation).
-//
-// The reference backs the three lifecycle signals with `CancellationTokenSource`
-// instances; here each is an `AbortController`, and a signal is its
-// `AbortController.signal`. Triggering a signal aborts its controller once
-// (idempotent). Errors thrown by abort listeners are caught and logged at
-// critical severity, mirroring the reference's try/catch around `Cancel()`.
+// Each lifecycle signal is backed by an `AbortController`; triggering it
+// aborts the controller once (idempotent). Errors thrown by abort listeners
+// are caught and logged at critical severity rather than propagating.
 
 import type { IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
@@ -47,12 +42,8 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#stoppingController.abort();
     } catch (error) {
-      HostingLoggerExtensions.applicationError(
-        this.#logger,
-        LoggerEventIds.applicationStoppingError,
-        'An error occurred stopping the application',
-        error,
-      );
+      HostingLoggerExtensions.applicationError(this.#logger, LoggerEventIds.applicationStoppingError,
+        'An error occurred stopping the application', error);
     }
   }
 
@@ -61,12 +52,8 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#startedController.abort();
     } catch (error) {
-      HostingLoggerExtensions.applicationError(
-        this.#logger,
-        LoggerEventIds.applicationStartupError,
-        'An error occurred starting the application',
-        error,
-      );
+      HostingLoggerExtensions.applicationError(this.#logger, LoggerEventIds.applicationStartupError,
+        'An error occurred starting the application', error);
     }
   }
 
@@ -75,12 +62,8 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#stoppedController.abort();
     } catch (error) {
-      HostingLoggerExtensions.applicationError(
-        this.#logger,
-        LoggerEventIds.applicationStoppedError,
-        'An error occurred stopping the application',
-        error,
-      );
+      HostingLoggerExtensions.applicationError(this.#logger, LoggerEventIds.applicationStoppedError,
+        'An error occurred stopping the application', error);
     }
   }
 }

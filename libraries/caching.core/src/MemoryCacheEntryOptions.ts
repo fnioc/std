@@ -1,10 +1,3 @@
-// MemoryCacheEntryOptions -- ported from ME.Caching.Abstractions'
-// MemoryCacheEntryOptions, and (as ME has it) placed in caching.core alongside
-// the ICacheEntry contract it mirrors. It carries the same per-entry knobs an
-// ICacheEntry exposes, so a caller can build one options bag and apply it to
-// many entries via `CacheEntryExtensions.setOptions`. Durations are
-// milliseconds; the absolute expiration is a `Date`.
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 import { type CacheItemPriority, CacheItemPriority as Priority } from './CacheItemPriority';
 import type { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';

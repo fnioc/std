@@ -1,9 +1,3 @@
-// PhysicalDirectoryContents -- ported from
-// ME.FileProviders.Physical.Internal.PhysicalDirectoryContents.
-//
-// A thin IDirectoryContents wrapper that delegates existence and enumeration
-// to a PhysicalDirectoryInfo (exactly as the reference does).
-
 import type { IDirectoryContents, IFileInfo } from '@rhombus-std/fileproviders.core';
 
 import type { ExclusionFilters } from './ExclusionFilters.js';

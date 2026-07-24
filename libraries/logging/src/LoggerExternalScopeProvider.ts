@@ -1,22 +1,7 @@
-// LoggerExternalScopeProvider — the default IExternalScopeProvider, ported from
-// ME.Logging.Abstractions' `LoggerExternalScopeProvider`.
-//
-// DIVERGENCE: the reference houses this in Logging.Abstractions. Here it lives in
-// the `logging` impl package, not `logging.core`, because it needs
-// `AsyncLocalStorage` (node:async_hooks) — a node builtin. Keeping that import
-// out of the abstractions package avoids leaking a `node:async_hooks` compile-
-// scope requirement onto every downstream package that src-compiles
-// logging.core's barrel. The `ISupportExternalScope` interface (no node dep)
-// stays in logging.core.
-//
-// The reference keeps the current scope in an `AsyncLocal<Scope?>`: pushing a
-// scope threads a new node onto the ambient stack, and disposing it restores the
-// parent. `AsyncLocal.Value = x` flows the value into subsequently-scheduled
-// async work while staying isolated across concurrent async flows. This
-// platform's equivalent is `AsyncLocalStorage` (node:async_hooks — present on
-// bun/node): `enterWith(store)` is the `.Value` setter and `getStore()` the
-// getter (§44 — a real node builtin, typed by the compile-scope
-// `node-builtins.d.ts`).
+// The default IExternalScopeProvider. Keeps the current scope in an
+// `AsyncLocalStorage` (node:async_hooks), so pushing a scope threads a new node
+// onto the ambient stack and it stays isolated across concurrent async flows;
+// disposing a scope restores its parent.
 
 import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
 import type { Func } from '@rhombus-toolkit/func';
@@ -30,11 +15,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 class Scope implements Disposable {
   #isDisposed = false;
 
-  public constructor(
-    public readonly state: unknown,
-    public readonly parent: Scope | undefined,
-    private readonly restore: Func<[Scope | undefined], void>,
-  ) {}
+  public constructor(public readonly state: unknown, public readonly parent: Scope | undefined,
+    private readonly restore: Func<[Scope | undefined], void>)
+  {}
 
   public toString(): string {
     return this.state === undefined || this.state === null ? '' : String(this.state);

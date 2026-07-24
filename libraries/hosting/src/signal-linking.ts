@@ -1,12 +1,3 @@
-// AbortSignal composition helpers for the host runtime.
-//
-// The reference links a caller's `CancellationToken` with the host's
-// `ApplicationStopping` token (and an optional timeout) into one linked source
-// via `CancellationTokenSource.CreateLinkedTokenSource`. `linkSignals` is the
-// TS analog: an `AbortController` that aborts as soon as any source aborts, or
-// once `timeoutMs` elapses. `dispose` detaches the listeners and clears the
-// timer.
-
 import { AbortController, type AbortSignal, clearTimeout, setTimeout } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -45,14 +36,11 @@ export function linkSignals(sources: readonly AbortSignal[], timeoutMs?: number)
     cleanups.push(() => clearTimeout(timer));
   }
 
-  return {
-    signal: controller.signal,
-    [Symbol.dispose](): void {
-      for (const cleanup of cleanups) {
-        cleanup();
-      }
-    },
-  };
+  return { signal: controller.signal, [Symbol.dispose](): void {
+    for (const cleanup of cleanups) {
+      cleanup();
+    }
+  } };
 }
 
 /** A promise that settles when `signal` aborts (or immediately, if already aborted). */

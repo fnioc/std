@@ -1,31 +1,17 @@
-// PhysicalFilesWatcher -- ported (as a faithful subset) from
-// ME.FileProviders.Physical.PhysicalFilesWatcher.
-//
-// Hands out an IChangeToken for a watched target and fires it when the target
-// changes. Two modes, selected per provider (mirroring the reference's
-// FileSystemWatcher-vs-polling split):
+// Hands out an IChangeToken for a watched target and fires it once the target
+// changes. Two modes, selected per provider:
 //
 //   - ACTIVE (default): one `fs.watch` per target backs an AbortSignal-driven
 //     CancellationChangeToken. On a matching event the token is cancelled,
 //     removed from the lookup, and its watcher closed -- so the next `watch`
-//     of the same target hands back a fresh token (the reference removes a
-//     fired token from its lookup for the same reason). DEVIATION (flagged):
-//     Node/Bun recursive `fs.watch` is unreliable on Linux (the repo's target
-//     platform), so active recursive directory watching is best-effort; the
-//     deterministic path for directories is polling.
+//     of the same target hands back a fresh token. Recursive `fs.watch` is
+//     unreliable on Linux, so active watching of a directory subtree is
+//     best-effort; polling is the deterministic path for directories.
 //
 //   - POLLING: a PollingFileChangeToken per target. Passive by default (the
 //     consumer polls `hasChanged`); when active-polling is enabled, a single
-//     shared timer periodically fires any token whose `hasChanged` has flipped.
-//
-// DEVIATIONS from the reference watcher (flagged): this subset does NOT
-// composite a cancellation token WITH a polling token (the reference always
-// does, using polling as an FSW backstop) -- it picks one mechanism per
-// provider, which is behaviorally equivalent for the supported exact-file and
-// directory-prefix targets and materially simpler. It also omits the
-// not-yet-existent-root (PendingCreationWatcher), renamed-descendant recursion,
-// and subdirectory-descriptor-count optimizations (follow-up); polling covers
-// correctness meanwhile.
+//     shared timer periodically fires any token whose `hasChanged` has
+//     flipped.
 
 import { type FSWatcher, watch } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
@@ -81,12 +67,7 @@ export class PhysicalFilesWatcher {
    * @param filters The exclusion filters applied when polling a directory
    * subtree.
    */
-  public constructor(
-    root: string,
-    pollForChanges: boolean,
-    useActivePolling: boolean,
-    filters: ExclusionFilters,
-  ) {
+  public constructor(root: string, pollForChanges: boolean, useActivePolling: boolean, filters: ExclusionFilters) {
     this.#root = root;
     this.#pollForChanges = pollForChanges;
     this.#useActivePolling = useActivePolling;
@@ -151,9 +132,8 @@ export class PhysicalFilesWatcher {
         this.#fsWatchers.set(pattern, watcher);
       }
     } catch {
-      // The target directory may not exist yet; leave the token passive. It
-      // never fires -- a limitation covered by the polling mode and the
-      // deferred pending-creation watcher.
+      // The target directory may not exist yet; leave the token passive -- it
+      // never fires. Polling mode covers this case.
     }
   }
 
@@ -210,11 +190,10 @@ export class PhysicalFilesWatcher {
 
   /**
    * Disposes the watcher: closes every `fs.watch` and stops the polling timer.
-   * Outstanding active tokens are abandoned, NOT cancelled -- mirroring the
-   * reference's `Dispose`, which disposes the watcher/timer but never signals
-   * the live token sources. Firing them here would trigger consumer callbacks
-   * (config-reload, options-monitor) during teardown and contradict this type's
-   * "change tokens may not trigger after disposal" contract. Idempotent.
+   * Outstanding active tokens are abandoned, not cancelled -- firing them here
+   * would trigger consumer callbacks (config-reload, options-monitor) during
+   * teardown, contradicting "change tokens may not trigger after disposal".
+   * Idempotent.
    */
   public [Symbol.dispose](): void {
     if (this.#disposed) {

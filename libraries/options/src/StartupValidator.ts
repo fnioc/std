@@ -1,23 +1,3 @@
-// StartupValidator -- ported from the reference Options project's StartupValidator
-// (which the reference houses in ValidateOnStart.cs). The built-in
-// IStartupValidator the `validateOnStart` augmentation registers.
-//
-// Divergence from the reference shape (recorded): the reference StartupValidator
-// is injected with `IOptions<StartupValidatorOptions>`, whose `_validators`
-// dictionary each `ValidateOnStart<T>` call fills with a thunk that forces
-// evaluation via `IOptionsMonitor<T>.Get(name)`. That indirection exists because
-// the reference DI has no ergonomic "collection of things" primitive and because
-// its configure step captures the monitor by dependency injection. Neither
-// constraint holds here: collection resolution (`Array<T>`, docs/decisions.md
-// §12) is the idiomatic accumulator, so `validateOnStart` appends the target
-// token to a collection slot and this validator is injected with the live
-// {@link IResolver} plus that resolved list. Forcing evaluation is
-// `resolver.resolve<IOptions<unknown>>(token).value`: resolving assembles the
-// value through the OptionsFactory pipeline (running validate steps, §4.5), and
-// reading `.value` additionally re-runs the pipeline for a reactive
-// (`Options.watch`) registration -- either shape throws OptionsValidationError on
-// a failed validate step, which is exactly what forcing is for.
-
 import type { IResolver, Token } from '@rhombus-std/di.core';
 
 import type { IOptions } from './IOptions.js';
@@ -26,11 +6,10 @@ import { OptionsValidationError } from './OptionsValidationError.js';
 
 /**
  * The built-in {@link IStartupValidator}: forces evaluation of every options
- * token collected by `validateOnStart`, aggregating validation failures the way
- * the reference StartupValidator does -- a single failure rethrows as-is, many
- * throw as one {@link AggregateError}. A non-validation error (e.g. an
- * unresolvable token -- a wiring bug, not a validation result) propagates
- * immediately, matching the reference's catch of only `OptionsValidationException`.
+ * token collected by `validateOnStart`, aggregating validation failures -- a
+ * single failure rethrows as-is, many throw as one {@link AggregateError}. A
+ * non-validation error (e.g. an unresolvable token -- a wiring bug, not a
+ * validation result) propagates immediately.
  */
 export class StartupValidator implements IStartupValidator {
   readonly #resolver: IResolver;
@@ -48,9 +27,7 @@ export class StartupValidator implements IStartupValidator {
   public validate(): void {
     const failures: OptionsValidationError[] = [];
 
-    // A Set collapses duplicate `validateOnStart(token)` calls to a single force
-    // -- the reference dedups the same way through its `(type, name)` dictionary
-    // key ("duplicates are not important").
+    // A Set collapses duplicate `validateOnStart(token)` registrations to a single force.
     for (const token of new Set(this.#targets)) {
       try {
         // Resolving assembles the value (running validate steps); reading

@@ -1,24 +1,12 @@
-// PhysicalFileProvider -- ported from
-// ME.FileProviders.Physical.PhysicalFileProvider.
+// Serves IFileInfo/IDirectoryContents off the on-disk file system rooted at
+// an absolute directory, and watches exact files / directory prefixes for
+// changes via a lazily-created PhysicalFilesWatcher. Every lookup is guarded
+// against escaping the root -- empty, invalid, absolute, or `..`-traversing
+// subpaths all resolve to the not-found singletons.
 //
-// Serves IFileInfo/IDirectoryContents off the on-disk file system rooted at an
-// absolute directory, and watches exact files / directory prefixes for changes
-// via a lazily-created PhysicalFilesWatcher. Every lookup is guarded against
-// escaping the root (empty or invalid subpaths, absolute subpaths, and `..`
-// traversal above the root all resolve to the not-found singletons).
-//
-// DEVIATIONS (flagged):
-//   - The reference's under-root guard compares with OrdinalIgnoreCase
-//     (reflecting Windows' case-insensitive file system). On the repo's target
-//     platform (Linux) paths are case-sensitive, so the guard here uses a
-//     case-sensitive prefix check -- the more correct behavior for POSIX.
-//   - `watch` supports exact-file and directory-prefix filters only; a filter
-//     containing a wildcard throws (see the NAMING/`watch` notes below). The
-//     reference routes wildcards to a glob Matcher, deferred here (no wildcard
-//     consumer exists; a fileproviders.globbing package would restore it).
-//   - NAMING TABOO: the reference's polling env var name embeds the vendor
-//     product name and cannot appear in a checked-in file, so it is renamed to
-//     RHOMBUS_STD_USE_POLLING_FILE_WATCHER (same "1"/"true" semantics).
+// `watch` supports exact-file and directory-prefix filters only; a filter
+// containing a wildcard throws (a future fileproviders.globbing package would
+// add glob support).
 
 import { statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -35,10 +23,7 @@ import { PhysicalDirectoryContents } from './PhysicalDirectoryContents.js';
 import { PhysicalFileInfo } from './PhysicalFileInfo.js';
 import { PhysicalFilesWatcher } from './PhysicalFilesWatcher.js';
 
-// The reference's polling env var, whose name embeds the vendor product name
-// and so cannot be written verbatim in a checked-in file (NAMING TABOO); it is
-// renamed here to strip that name. "1" or a case-insensitive "true" enables
-// polling.
+// "1" or a case-insensitive "true" enables polling.
 const POLLING_ENVIRONMENT_KEY = 'RHOMBUS_STD_USE_POLLING_FILE_WATCHER';
 
 /**
@@ -90,9 +75,8 @@ export class PhysicalFileProvider implements IFileProvider {
    */
   public get usePollingFileWatcher(): boolean {
     if (this.#fileWatcher !== undefined) {
-      // DEVIATION (flagged): once the watcher exists the reference returns
-      // `false` unconditionally -- misreporting a provider that is in fact
-      // polling. Returning the locked-in value is the more truthful behavior.
+      // Once the watcher exists, return the locked-in value rather than
+      // re-reading -- the setting cannot change after this point.
       return this.#usePollingFileWatcher ?? false;
     }
     if (this.#usePollingFileWatcher === undefined) {
@@ -126,12 +110,8 @@ export class PhysicalFileProvider implements IFileProvider {
 
   #getFileWatcher(): PhysicalFilesWatcher {
     if (this.#fileWatcher === undefined) {
-      this.#fileWatcher = new PhysicalFilesWatcher(
-        this.#root,
-        this.usePollingFileWatcher,
-        this.useActivePolling,
-        this.#filters,
-      );
+      this.#fileWatcher = new PhysicalFilesWatcher(this.#root, this.usePollingFileWatcher, this.useActivePolling,
+        this.#filters);
     }
     return this.#fileWatcher;
   }
@@ -168,9 +148,8 @@ export class PhysicalFileProvider implements IFileProvider {
    * empty, invalid, absolute, out-of-root, or excluded path.
    */
   public getFileInfo(subpath: string): IFileInfo {
-    // Guard nullish defensively -- a hand-written (no-transformer) JS caller
-    // could pass null/undefined despite the `string` type; mirrors the
-    // reference's `IsNullOrEmpty` guard (and this type's own `watch`).
+    // A caller not using TypeScript could pass null/undefined despite the
+    // `string` type, so guard defensively.
     if (!subpath || hasInvalidPathChars(subpath)) {
       return new NotFoundFileInfo(subpath);
     }
@@ -241,9 +220,8 @@ export class PhysicalFileProvider implements IFileProvider {
    * supported (deferred to a future fileproviders.globbing package).
    */
   public watch(filter: string): IChangeToken {
-    // A hand-written (no-transformer) JS caller could still pass a nullish
-    // filter despite the `string` type, so guard defensively -- mirroring the
-    // reference's null check.
+    // A caller not using TypeScript could still pass a nullish filter despite
+    // the `string` type, so guard defensively.
     const nullableFilter = filter as string | null | undefined;
     if (nullableFilter === null || nullableFilter === undefined || hasInvalidFilterChars(filter)) {
       return NullChangeToken.singleton;

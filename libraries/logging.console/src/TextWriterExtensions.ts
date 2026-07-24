@@ -1,8 +1,6 @@
-// TextWriterExtensions — writes a message wrapped in ANSI color set/reset
-// sequences, ported from the reference internal static `TextWriterExtensions`.
-// An INTERNAL reference static class: module-scoped const, no registry
-// install; call sites use `TextWriterExtensions.writeColoredMessage(writer, …)`.
-// Not exported from the package barrel.
+// Internal: not exported from the package barrel. A module-scoped const, no
+// registry install — call sites use
+// `TextWriterExtensions.writeColoredMessage(writer, …)`.
 
 import { type ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
   getForegroundColorEscapeCode } from './ConsoleColor';
@@ -14,12 +12,9 @@ export const TextWriterExtensions = {
    * background code, foreground code, message, foreground reset, background
    * reset — omitting each pair when its color is `undefined`.
    */
-  writeColoredMessage(
-    textWriter: TextWriter,
-    message: string,
-    background: ConsoleColor | undefined,
-    foreground: ConsoleColor | undefined,
-  ): void {
+  writeColoredMessage(textWriter: TextWriter, message: string, background: ConsoleColor | undefined,
+    foreground: ConsoleColor | undefined): void
+  {
     if (background !== undefined) {
       textWriter.write(getBackgroundColorEscapeCode(background));
     }

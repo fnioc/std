@@ -1,7 +1,3 @@
-// EvictionReason -- ported verbatim from ME.Caching.Abstractions'
-// EvictionReason. Passed to a PostEvictionDelegate so a callback can tell why
-// its entry left the cache.
-
 /** Specifies the reasons why an entry was evicted from the cache. */
 export enum EvictionReason {
   /** The item was not removed from the cache. */

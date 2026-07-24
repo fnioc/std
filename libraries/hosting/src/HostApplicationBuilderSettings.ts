@@ -1,7 +1,3 @@
-// HostApplicationBuilderSettings -- ported from the reference hosting runtime's
-// `HostApplicationBuilderSettings`. Controls the initial configuration and
-// whether the modern builder applies its pre-configured defaults.
-
 import type { IConfigManager } from '@rhombus-std/config.core';
 
 /** Settings for constructing a {@link import("./HostApplicationBuilder").HostApplicationBuilder}. */
@@ -25,12 +21,9 @@ export class HostApplicationBuilderSettings {
    */
   public config?: IConfigManager;
 
-  /** The environment name. */
   public environmentName?: string;
 
-  /** The application name. */
   public applicationName?: string;
 
-  /** The content root path. */
   public contentRootPath?: string;
 }

@@ -1,12 +1,3 @@
-// Multimap -- a keyed collection where each key maps to an ORDERED list of
-// values. Immutable-by-composition: it does NOT extend `Map`, the value groups
-// are hard-private, and reads hand back read-only views -- so a caller can
-// enumerate the contents but never splice a group behind the map's back.
-//
-// Backed by one array per key (`Map<Key, Value[]>`), so `add` is O(1) amortized
-// and insertion order is preserved BOTH within a key's group and -- via the
-// underlying `Map` -- across keys.
-
 /**
  * A collection mapping each key to an ordered list of values. A second
  * {@link add} under an existing key APPENDS: values are never de-duplicated and

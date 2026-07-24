@@ -1,20 +1,11 @@
-// IMetricListenerConfigFactory -- ported from MED.Metrics's
-// `IMetricListenerConfigFactory`. Lives in this package (not
-// diagnostics.core) because it speaks `IConfig` and diagnostics.core is
-// config-unaware -- same placement as the reference, whose interface sits in
-// the implementation project, not the abstractions one.
-
 import type { IConfig } from '@rhombus-std/config.core';
 
-/** Retrieves the metrics configuration for any listener name. */
+/** Retrieves the merged {@link IConfig} for a named metrics listener. */
 export interface IMetricListenerConfigFactory {
   /**
-   * Gets the configuration for the given listener -- the merge of every
-   * `{listenerName}` section across the configurations registered through
-   * `addMetricsConfig`, later registrations winning on key conflicts.
-   *
-   * @param listenerName The name of the listener.
-   * @returns The configuration for this listener type.
+   * @remarks
+   * Merges every `{listenerName}` section across configurations registered
+   * through `addMetricsConfig`, later registrations winning on conflicts.
    */
   getConfig(listenerName: string): IConfig;
 }

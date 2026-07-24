@@ -1,16 +1,3 @@
-// ValidateOptionsResultBuilder -- ported from MEO's ValidateOptionsResultBuilder.
-//
-// Accumulates validation failures across several sources into a single
-// ValidateOptionsResult. A validate step that checks many things builds up its
-// errors here and calls `build()` once at the end, instead of stopping at the
-// first failure.
-//
-// One divergence from the reference: it has no DataAnnotations `ValidationResult`
-// overloads of `addResult`/`addResults` -- this stack does not port
-// DataAnnotations, so there is no per-member `ValidationResult` to consume. Both
-// verbs operate on this family's own {@link ValidateOptionsResult} (the reference
-// has that overload too, alongside the DataAnnotations ones this drops).
-
 import { ValidateOptionsResult } from './ValidateOptionsResult.js';
 
 /**
@@ -34,9 +21,7 @@ export class ValidateOptionsResultBuilder {
    */
   addError(error: string, propertyName?: string): void {
     this.#errors.push(
-      propertyName === undefined
-        ? error
-        : `${ValidateOptionsResultBuilder.#propertyPrefix}${propertyName}: ${error}`,
+      propertyName === undefined ? error : `${ValidateOptionsResultBuilder.#propertyPrefix}${propertyName}: ${error}`,
     );
   }
 
@@ -73,9 +58,7 @@ export class ValidateOptionsResultBuilder {
    * carrying every accumulated message.
    */
   build(): ValidateOptionsResult {
-    return this.#errors.length > 0
-      ? ValidateOptionsResult.fail(this.#errors)
-      : ValidateOptionsResult.success;
+    return this.#errors.length > 0 ? ValidateOptionsResult.fail(this.#errors) : ValidateOptionsResult.success;
   }
 
   /** Resets the builder to the empty state. */
