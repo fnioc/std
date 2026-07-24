@@ -22,9 +22,9 @@ import (
 // package literally named `@rhombus-std/di.core` carrying the runtime resolve
 // surface plus the `rhombus.inline` resolve / resolveAsync / tryResolve entries and
 // the real `ResolverInline` body
-// (`resolve<T>() => isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())`),
+// (`resolve<T>() => isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>())`),
 // so the SAME tokenless resolve call can be lowered two ways — through the INLINE
-// pipeline (inline -> tokenfor -> singular -> fold) and through the di DIRECT stage
+// pipeline (inline -> tokenof -> singular -> fold) and through the di DIRECT stage
 // (lowerResolveCall). The declare-module sugar overloads arrive through the app's
 // augmentation, exactly as a consumer wires them.
 func buildResolveInlineWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
@@ -53,12 +53,15 @@ export interface IResolver extends IRequiredResolver {
   tryResolve<T>(token: string): T | undefined;
 }
 export declare const provider: IResolver;
+declare const KEY: unique symbol;
+export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
 	// The real ResolverInline body, authored over the compile-time primitives —
-	// tokenfor from the runtime leaf, isSingular / singularValue from the token-grammar
-	// transformer. Each verb calls ITSELF with the derived token; a SINGULAR T folds
-	// to its value.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives';
+	// tokenof from the runtime leaf (raw DeriveTokenF, alias-preserving so a keyed T
+	// keeps its Keyed<...> brand rather than stripping to the bare base), isSingular /
+	// singularValue from the token-grammar transformer. Each verb calls ITSELF with the
+	// derived token; a SINGULAR T folds to its value.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenof } from '@rhombus-std/primitives';
 import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
 interface IInlineResolveTarget {
   resolve(token: string): any;
@@ -67,13 +70,13 @@ interface IInlineResolveTarget {
 }
 export const ResolverInline = {
   resolve<T>(this: IInlineResolveTarget): T {
-    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>());
+    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>());
   },
   resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-    return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenfor<T>());
+    return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenof<T>());
   },
   tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-    return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>());
+    return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenof<T>());
   },
 };
 `)
@@ -287,5 +290,275 @@ export const f = provider.resolve<() => IThing>();
 	_, diags := lowerResolveInlinePipeline(t, prog, app)
 	if len(diags) == 0 {
 		t.Fatal("expected a loud lowering diagnostic for the factory-form resolve under inline (the residual is loud, not silent)")
+	}
+}
+
+// TestResolveInlineKeyedMatchesDiDirect is the KEYED resolve-family parity net (the
+// finding this test was added for): a tokenless `resolve<Keyed<ICache, "redis">>()`
+// lowered through the INLINE pipeline must be byte-identical to the di DIRECT
+// stage's `resolve("<token>")`. The resolve body derives the single token with
+// `tokenof<T>()` (raw DeriveTokenF, alias-preserving), NOT `tokenfor<T>()` (which
+// strips the Keyed<T, K> brand to the bare base) — so the emitted token carries the
+// raw `Keyed<...>` reference both di-direct's DeriveTokenF and the inline body mint,
+// rather than the brand-stripped base that would SILENTLY match an unkeyed
+// registration of the same interface. resolveAsync / tryResolve share the shape.
+// Unlike keyed REGISTRATION (where inline splits base + keyof and di composes
+// base#key, so the two paths legitimately diverge), the single-token resolve form
+// is byte-identical across paths, which is what this test pins.
+func TestResolveInlineKeyedMatchesDiDirect(t *testing.T) {
+	src := `import { provider } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/di.core';
+interface ICache { id: number }
+export const a = provider.resolve<Keyed<ICache, 'redis'>>();
+export const b = provider.resolveAsync<Keyed<ICache, 'redis'>>();
+export const c = provider.tryResolve<Keyed<ICache, 'redis'>>();
+`
+	prog, app := buildResolveInlineWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	inlineOut, diags := lowerResolveInlinePipeline(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics from the inline pipeline: %+v", diags)
+	}
+	diOut := lowerDi(t, prog, app)
+
+	for _, name := range []string{"a", "b", "c"} {
+		inlineVal := exportConstValue(t, inlineOut, name)
+		diVal := exportConstValue(t, diOut, name)
+		if inlineVal != diVal {
+			t.Fatalf("keyed resolve `%s` divergence:\n inline = %q\n di     = %q", name, inlineVal, diVal)
+		}
+		// The token must carry the RAW Keyed<...> reference (alias-preserving), never
+		// the brand-stripped bare base an unkeyed registration would answer.
+		if !strings.Contains(inlineVal, "Keyed<") || !strings.Contains(inlineVal, "redis") {
+			t.Fatalf("keyed resolve `%s`: expected a raw Keyed<...> token carrying the key, got %q", name, inlineVal)
+		}
+	}
+}
+
+// lowerResolveCoActivePipeline runs the resolve-family pipeline with the di DIRECT
+// stage CO-ACTIVE alongside inline — the real host arrangement (inline ahead of di
+// in the pass order) — so a test can prove that a form inline claims is never
+// rescued by di. It shares one artifacts bag, folds di's diagnostics into the same
+// sink, and surfaces surviving primitives through the inline sweep exactly as the
+// host does.
+func lowerResolveCoActivePipeline(t *testing.T, prog *driver.Program, app string) (string, []plugin.Diagnostic) {
+	t.Helper()
+	ctx := plugin.NewContext(prog, app)
+	artifacts := inlinetransform.NewArtifacts()
+	bodies, cerr := inlinetransform.Collect(app)
+	if cerr != nil {
+		t.Fatalf("collect: %v", cerr)
+	}
+	var diags []plugin.Diagnostic
+	sink := func(d plugin.Diagnostic) { diags = append(diags, d) }
+	inlineT := inlinetransform.Build(prog, bodies, artifacts, sink)
+	nameofT := New(prog, ctx, artifacts, sink)
+	sigT := signaturetransform.New(prog, ctx, artifacts, func(ditransform.Diagnostic) {})
+	keyofT := keyoftransform.New(prog, ctx, artifacts, sink)
+	valueofT := valueoftransform.New(prog, ctx, artifacts, sink)
+	diRaw := ditransform.New(prog, ctx, func(d ditransform.Diagnostic) {
+		diags = append(diags, plugin.Diagnostic{File: d.File, Start: d.Start, Code: d.Code, Message: d.Message})
+	})
+	// ditransform.FileTransform has the same signature as plugin.FileTransform but is
+	// a distinct named type — adapt it so the loop can hold di co-active.
+	diT := plugin.FileTransform(diRaw)
+	singularT := singulartransform.New(prog, ctx, artifacts, sink)
+	foldT := foldtransform.New(prog, sink)
+	if !artifacts.Active {
+		t.Fatal("inline artifacts not active — the resolve entries did not resolve")
+	}
+	// Host order: inline first, then the primitives, then di, then singular/fold.
+	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, diT, singularT, foldT}
+	ec := shimprinter.NewEmitContext()
+	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
+	if exhausted {
+		t.Fatal("co-active resolve pipeline exhausted maxPasses — did not settle")
+	}
+	for _, d := range inlinetransform.Sweep(settled, artifacts) {
+		diags = append(diags, d)
+	}
+	return reprint(ec, settled), diags
+}
+
+// TestResolveInlineFactoryFormResidualCoActive pins the CORRECTED factory-residual
+// documentation (the finding): with the transitive-witness fix inline is active in
+// every di consumer and runs AHEAD of di, so it claims `resolve<F>()` (a function
+// type) EVERYWHERE — the di stage never sees an un-substituted factory resolve and
+// therefore does NOT rescue it to `resolveFactory(...)`. This is the co-active proof
+// the isolated TestResolveInlineFactoryFormResidual could not give (that one runs
+// the di stage ALONE): even with di co-active in the loop, the output carries no
+// `resolveFactory(` and the pipeline reports a LOUD diagnostic (the surviving
+// tokenof over an underivable function type), never a silent mislowering.
+func TestResolveInlineFactoryFormResidualCoActive(t *testing.T) {
+	src := `import { provider } from '@rhombus-std/di.core';
+interface IThing { id: number }
+export const f = provider.resolve<() => IThing>();
+`
+	prog, app := buildResolveInlineWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out, diags := lowerResolveCoActivePipeline(t, prog, app)
+	if strings.Contains(out, "resolveFactory(") {
+		t.Fatalf("di must NOT rescue the factory form when co-active with inline (inline claims it first):\n%s", out)
+	}
+	if len(diags) == 0 {
+		t.Fatal("expected a loud lowering diagnostic for the factory-form resolve co-active with di (loud, not silent)")
+	}
+}
+
+// TestResolveInlineSingularGrammar exercises the FULL Rule-2 singular grammar
+// through the inline resolve pipeline — boolean literals, a negative number, a
+// bigint (positive + negative), and the void/undefined singleton — the branches of
+// singular.go's literalExpression the earlier `'dev'`/42/null cases never reached.
+// Each `resolve<Lit>()` short-circuits (isSingular true → the fold prunes the token
+// arm) to the value literal itself, byte-identical to the di-direct Rule-2 emit.
+func TestResolveInlineSingularGrammar(t *testing.T) {
+	src := `import { provider } from '@rhombus-std/di.core';
+export const bt = provider.resolve<true>();
+export const bf = provider.resolve<false>();
+export const neg = provider.resolve<-5>();
+export const big = provider.resolve<7n>();
+export const bigNeg = provider.resolve<-9n>();
+export const undef = provider.resolve<undefined>();
+export const vd = provider.resolve<void>();
+`
+	prog, app := buildResolveInlineWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	inlineOut, diags := lowerResolveInlinePipeline(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics from the inline pipeline: %+v", diags)
+	}
+	diOut := lowerDi(t, prog, app)
+
+	want := map[string]string{
+		"bt": "true", "bf": "false", "neg": "-5", "big": "7n", "bigNeg": "-9n",
+		"undef": "void 0", "vd": "void 0",
+	}
+	for name, expect := range want {
+		inlineVal := exportConstValue(t, inlineOut, name)
+		diVal := exportConstValue(t, diOut, name)
+		if inlineVal != diVal {
+			t.Fatalf("singular `%s` divergence:\n inline = %q\n di     = %q", name, inlineVal, diVal)
+		}
+		if inlineVal != expect {
+			t.Fatalf("singular `%s`: expected value literal %q, got %q", name, expect, inlineVal)
+		}
+	}
+}
+
+// TestResolveInlineLiteralUnionIsNotSingular pins the NOT-singular union case: a
+// `resolve<'a' | 'b'>()` over a pure literal union is NOT singular (SingletonValue
+// returns ok=false for a union), so isSingular folds FALSE and the resolve lowers to
+// the tokenful form carrying the sorted literal-union token — never a value
+// short-circuit. Byte-identical to di-direct, which classifies the same way.
+func TestResolveInlineLiteralUnionIsNotSingular(t *testing.T) {
+	src := `import { provider } from '@rhombus-std/di.core';
+export const u = provider.resolve<'a' | 'b'>();
+`
+	prog, app := buildResolveInlineWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	inlineOut, diags := lowerResolveInlinePipeline(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics from the inline pipeline: %+v", diags)
+	}
+	diOut := lowerDi(t, prog, app)
+
+	inlineVal := exportConstValue(t, inlineOut, "u")
+	diVal := exportConstValue(t, diOut, "u")
+	if inlineVal != diVal {
+		t.Fatalf("literal-union resolve divergence:\n inline = %q\n di     = %q", inlineVal, diVal)
+	}
+	// A union is not singular: it stays a tokenful resolve call, no value collapse.
+	if !strings.Contains(inlineVal, ".resolve(\"") {
+		t.Fatalf("literal-union resolve should stay a tokenful resolve call, got %q", inlineVal)
+	}
+	if !strings.Contains(inlineVal, "a") || !strings.Contains(inlineVal, "b") {
+		t.Fatalf("literal-union token should carry both members, got %q", inlineVal)
+	}
+}
+
+// buildSourceWrittenSingularWorkspace lays out a workspace whose main.ts HAND-WRITES
+// `isSingular<T>()` / `singularValue<T>()` calls (imported from a stub package),
+// with NO inline substitution in play — so the singular stage anchors each call
+// through `sourceWrittenType` (the checker-resolved callee path), the branch the
+// inline-substituted (artifacts) tests never reach.
+func buildSourceWrittenSingularWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+
+	prims := filepath.Join(root, "packages", "primitives.transformer")
+	writeFile(t, filepath.Join(prims, "package.json"), `{
+  "name": "@rhombus-std/primitives.transformer",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
+}`)
+	writeFile(t, filepath.Join(prims, "src", "index.ts"), `export declare function isSingular<T>(): boolean;
+export declare function singularValue<T>(): T;
+`)
+
+	app := filepath.Join(root, "packages", "app")
+	writeFile(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@rhombus-std/primitives.transformer": "workspace:*" }
+}`)
+	linkPkg(t, app, "@rhombus-std/primitives.transformer", prims)
+	writeFile(t, filepath.Join(app, "main.ts"), mainSrc)
+	writeFile(t, filepath.Join(app, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true
+  },
+  "files": ["main.ts", "node_modules/@rhombus-std/primitives.transformer/src/index.ts"]
+}`)
+
+	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatalf("LoadProgram: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	return prog, app
+}
+
+// TestSingularSourceWrittenAnchor exercises singular.go's sourceWrittenType branch:
+// with artifacts=nil (no inline stage), a hand-written `isSingular<T>()` lowers to a
+// boolean literal and a hand-written `singularValue<T>()` over a singular T lowers to
+// the value — anchored purely through the checker-resolved callee. A non-singular
+// `isSingular<T>()` lowers to `false`, and a non-singular `singularValue<T>()` is
+// left UN-LOWERED (the survivor the emit sweep would flag).
+func TestSingularSourceWrittenAnchor(t *testing.T) {
+	src := `import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
+interface IThing { id: number }
+export const a = isSingular<'dev'>();
+export const b = singularValue<'dev'>();
+export const c = isSingular<IThing>();
+export const d = singularValue<IThing>();
+`
+	prog, app := buildSourceWrittenSingularWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	ctx := plugin.NewContext(prog, app)
+	transform := singulartransform.New(prog, ctx, nil, func(plugin.Diagnostic) {})
+	ec := shimprinter.NewEmitContext()
+	out := reprint(ec, transform(ec, mainSF(t, prog)))
+
+	if got := exportConstValue(t, out, "a"); got != "true" {
+		t.Fatalf("source-written isSingular<'dev'>(): got %q, want true", got)
+	}
+	if got := exportConstValue(t, out, "b"); got != `"dev"` {
+		t.Fatalf("source-written singularValue<'dev'>(): got %q, want \"dev\"", got)
+	}
+	if got := exportConstValue(t, out, "c"); got != "false" {
+		t.Fatalf("source-written isSingular<IThing>(): got %q, want false", got)
+	}
+	// A non-singular singularValue is left un-lowered — the call survives verbatim.
+	if got := exportConstValue(t, out, "d"); !strings.Contains(got, "singularValue") {
+		t.Fatalf("source-written singularValue<IThing>() should survive un-lowered, got %q", got)
 	}
 }

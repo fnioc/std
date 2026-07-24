@@ -107,7 +107,7 @@ function goEnv(): NodeJS.ProcessEnv {
 }
 
 const APP_SOURCE = `
-import type { IServiceProvider } from "@rhombus-std/di.core";
+import type { IServiceProvider, Keyed } from "@rhombus-std/di.core";
 
 // The sugar overload the di.transformer declaration-merges onto IServiceQuery —
 // hand-declared here so the program carries it without wiring the transformer's
@@ -119,9 +119,15 @@ declare module "@rhombus-std/di.core" {
 }
 
 interface ILogger {}
+interface ICache {}
 declare const provider: IServiceProvider<string>;
 
 export const known = provider.isService<ILogger>();
+// Keyed query: the isService body derives its single token with tokenof<T>() (raw,
+// alias-preserving), so a keyed predicate carries the raw Keyed<...> token both the
+// inline path and the di semantic path mint — never the brand-stripped base that
+// would silently answer for an unkeyed registration.
+export const keyedKnown = provider.isService<Keyed<ICache, 'redis'>>();
 `;
 
 // Both compilations live in ONE project dir under ONE node_modules, so they
@@ -222,7 +228,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 
   test('byte parity: inline path vs di semantic path emit the identical output', () => {
     // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
-    // PATH (inline stage → synthetic tokenfor → di) but never the emitted bytes, so
+    // PATH (inline stage → synthetic tokenof → di) but never the emitted bytes, so
     // the two whole transpiled outputs must be identical. Whole-output equality is
     // strictly stronger than comparing only the isService line — it also pins
     // import elision, declare-module handling, and surrounding whitespace.
@@ -232,6 +238,20 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
     expect(line(withInline)).toEqual(line(withoutInline));
     // The full byte-parity guarantee the pilot advertises.
     expect(withInline).toEqual(withoutInline);
+  });
+
+  test('keyed isService<Keyed<ICache, "redis">>() carries the RAW keyed token, inline ≡ di semantic', () => {
+    // The keyed predicate must carry the raw Keyed<...> token (tokenof / DeriveTokenF,
+    // alias-preserving), not the brand-stripped bare base — the base would silently
+    // match an unkeyed registration of ICache. The whole-output byte-parity test
+    // above already pins inline ≡ semantic; this isolates the keyed line so a
+    // regression names the keyed case directly.
+    const keyedLine = (src: string) =>
+      src.split('\n').find((l) => l.includes('keyedKnown') && l.includes('isService('))?.trim();
+    expect(keyedLine(withInline)).toBeDefined();
+    expect(keyedLine(withInline)).toContain('Keyed<');
+    expect(keyedLine(withInline)).toContain('redis');
+    expect(keyedLine(withInline)).toEqual(keyedLine(withoutInline));
   });
 });
 
@@ -421,9 +441,10 @@ export const valueClass = services.addValue(ValueRepo);
 // pruned by the fold. Own file so the resolve compare is isolated from the
 // registration whole-file compare.
 const RESOLVE_SOURCE = `
-import type { IResolver } from '@rhombus-std/di.core';
+import type { IResolver, Keyed } from '@rhombus-std/di.core';
 
 interface IThing {}
+interface ICache {}
 
 declare const provider: IResolver;
 
@@ -431,6 +452,7 @@ export const tokenful = provider.resolve<IThing>();
 export const asyncTok = provider.resolveAsync<IThing>();
 export const tryTok = provider.tryResolve<IThing>();
 export const singular = provider.resolve<'dev'>();
+export const keyedTok = provider.resolve<Keyed<ICache, 'redis'>>();
 `;
 
 function writeChainSrc(dir: string): void {
@@ -795,6 +817,29 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(line).not.toContain('singularValue');
     // Byte parity with di-direct's Rule-2 singular short-circuit.
     expect(lineWith(resolveSemantic, 'singular =')).toEqual(line);
+  });
+
+  test('keyed resolve<Keyed<ICache, "redis">>() carries the RAW keyed token, inline ≡ di-direct', () => {
+    // The resolve body derives its single token with tokenof<T>() (raw
+    // DeriveTokenF, alias-preserving), NOT tokenfor<T>() (which strips the Keyed
+    // brand to the bare base). So a keyed resolve carries the raw Keyed<...>
+    // reference both di-direct and the inline body mint — byte-identical across
+    // paths — rather than the brand-stripped base that would SILENTLY match an
+    // unkeyed registration of ICache. Unlike keyed REGISTRATION (where inline
+    // splits base + keyof and di composes base#key, a legitimate divergence), the
+    // single-token resolve form does NOT diverge: it agrees byte-for-byte.
+    const line = lineWith(resolveInline, 'keyedTok =');
+    expect(line).toBeDefined();
+    // Bun.Transpiler emits the outer string with single quotes here because the
+    // keyed token embeds a double-quoted key (`"redis"`); assert the call + the raw
+    // brand rather than a specific quote char.
+    expect(line).toContain('.resolve(');
+    expect(line).toContain('Keyed<');
+    expect(line).toContain('redis');
+    expect(line).not.toContain('resolve<');
+    // Byte parity with the di-direct rewriteResolve lowering of the same keyed call.
+    expect(lineWith(resolveSemantic, 'keyedTok =')).toEqual(line);
+    assertNoAuthoringSurvivors(resolveInline);
   });
 });
 
