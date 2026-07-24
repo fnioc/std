@@ -18,15 +18,103 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 jobs:
-  verify:
-    name: verify
+  # ---------------------------------------------------------------------------
+  # Gate: did anything in the transform-input set change on this PR/merge?
+  # The heavy ttsc e2e suites + Go gates only need to run when the engine, a
+  # transformer package, an e2e/authoring harness, or a runtime package those
+  # harnesses lower actually changed. On main pushes we always run everything.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: changes
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    # A cold ttsc plugin cache compiles the typescript-go sidecar from scratch
-    # (~5 min). The gate now also runs the ttsc e2e suites (each compiles the
-    # sidecar into its own cache dir), so give the whole job room to survive a
-    # cold run on top of the normal gate; warm-cache runs finish in a few minutes.
-    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      transform: ${{ steps.filter.outputs.transform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute transform-input change flag
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        run: |
+          set -euo pipefail
+
+          # The transform-input predicate: any changed path matching this set
+          # forces the ttsc e2e suites + Go gates to run. Anchored at repo root.
+          #   - transforms/**                         the Go/ttsc engine itself
+          #   - libraries/*transformer* / *extras*    the transformer packages
+          #                                           (*.extras is the in-flight
+          #                                           rename of *.transformer)
+          #   - libraries/{di.core,primitives,        runtime packages the e2e
+          #     options,config,config.core}           harnesses lower
+          #   - tests/*.ttsc.e2e/**                    every ttsc parity suite
+          #   - tests/inline.authoring-lint.test/**    the authoring-lint suite
+          #   - examples/**                            the app output-diff corpus
+          #   - mise.toml                              toolchain pins (Go/bun)
+          #   - package.json / bun.lock                workspace + ttsc version
+          #   - scripts/**                             build/ttsc driver scripts
+          #   - .github/workflows/ci.yml               this workflow
+          PREDICATE='^(transforms/|libraries/[^/]*(transformer|extras)[^/]*/|libraries/(di\.core|primitives|options|config|config\.core)/|tests/[^/]*\.ttsc\.e2e/|tests/inline\.authoring-lint\.test/|examples/|mise\.toml$|package\.json$|bun\.lock$|scripts/|\.github/workflows/ci\.yml$)'
+
+          if [ "$EVENT" = "push" ]; then
+            echo "push to main: running the full transform gate."
+            echo "transform=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT" = "merge_group" ]; then
+            BASE="$MERGE_BASE_SHA"
+            HEAD="$GITHUB_SHA"
+          else
+            # pull_request: diff the merge-base of the target branch and the PR
+            # head, so only paths the PR itself introduced are considered.
+            git fetch --no-tags --prune --depth=200 \
+              origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+            BASE="$(git merge-base "refs/remotes/origin/${BASE_REF}" "$PR_HEAD")"
+            HEAD="$PR_HEAD"
+          fi
+
+          # A failure to resolve either endpoint is a safety net -> run everything.
+          if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "could not resolve diff base ('${BASE:-}'); running the full gate."
+            echo "transform=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "diff base: $BASE"
+          echo "diff head: $HEAD"
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD")"
+          echo "--- changed files ---"
+          echo "$CHANGED"
+          echo "---------------------"
+
+          if echo "$CHANGED" | grep -Eq "$PREDICATE"; then
+            echo "transform inputs changed: running the ttsc e2e suites + Go gates."
+            echo "transform=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "no transform inputs changed: skipping the ttsc e2e suites + Go gates."
+            echo "transform=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Prewarm: compile the ttsc sidecar ONCE and populate the shared, content-keyed
+  # cache so the transform shards restore a warm binary instead of each paying the
+  # ~5-minute cold Go compile. Only runs when the transform gate is hot.
+  # ---------------------------------------------------------------------------
+  prewarm:
+    name: prewarm ttsc sidecar
+    needs: changes
+    if: ${{ github.event_name != 'workflow_dispatch' && needs.changes.outputs.transform == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -36,21 +124,14 @@ jobs:
         with:
           bun-version: latest
 
-      # The ttsc/Go lowering engine (transforms/) compiles a native sidecar with
-      # the mise-pinned Go; `bun run build`/`bun run test` resolve it via
-      # `mise which go`. Install the mise.toml toolchain so Go is on PATH.
       - uses: jdx/mise-action@v2
 
-      - name: Install dependencies
-        run: bun install
-
-      # The compiled ttsc sidecars + ttsc's own Go object cache live at the shared,
-      # content-keyed ~/.cache/fnioc-ttsc/cache (~30 MB per sidecar binary plus a few
-      # GB of Go objects). Cache that — plus the general Go build cache and whatever
-      # else lands under node_modules/.cache — keyed on the Go sources + toolchain
-      # manifest + ttsc version (bun.lock) so only a genuine transform change forces
-      # a cold rebuild. Scoped to .../cache so the throwaway per-worktree e2e
-      # sandboxes (~/.cache/fnioc-ttsc/sandboxes, rebuilt each run) ride outside it.
+      # The compiled ttsc sidecars + ttsc's Go object cache live at the shared,
+      # content-keyed ~/.cache/fnioc-ttsc/cache (~30 MB per sidecar) plus the
+      # general Go build cache. Key on the whole engine source + toolchain pins so
+      # only a genuine engine/toolchain change forces a cold rebuild; the restore
+      # key lets an unchanged-engine run reuse a prior binary. Scoped to .../cache
+      # so the per-worktree e2e sandboxes ride outside it.
       - name: Cache ttsc plugin sidecars
         uses: actions/cache@v4
         with:
@@ -58,15 +139,63 @@ jobs:
             ~/.cache/fnioc-ttsc/cache
             ~/.cache/go-build
             node_modules/.cache
-          key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
+          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
           restore-keys: |
-            ttsc-plugins-${{ runner.os }}-
+            ttsc-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install
+
+      # Lowering during the build compiles/links the sidecar into the cache; the
+      # actions/cache post step then saves it for the shards to restore.
+      - name: Build (warms the ttsc sidecar cache)
+        run: bun run build
+
+  # ---------------------------------------------------------------------------
+  # Always-on gate: the non-transform-sensitive checks. Build, the full unit-test
+  # sweep (every package's `test`, which includes the examples.app output-diff),
+  # lint, and format:check. Runs on every PR/merge regardless of the change gate.
+  # Depends on prewarm only to reuse its warm sidecar cache when the gate is hot;
+  # when the gate is cold prewarm is skipped and this restores a prior warm cache.
+  # ---------------------------------------------------------------------------
+  main-gate:
+    name: build, unit tests, lint, format
+    needs: [changes, prewarm]
+    if: ${{ always() && github.event_name != 'workflow_dispatch' && needs.changes.result == 'success' && needs.prewarm.result != 'failure' && needs.prewarm.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: jdx/mise-action@v2
+
+      - name: Cache ttsc plugin sidecars
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/fnioc-ttsc/cache
+            ~/.cache/go-build
+            node_modules/.cache
+          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          restore-keys: |
+            ttsc-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install
 
       - name: Build
         run: bun run build
 
-      - name: Test
-        run: bun run test
+      # Every package's `test` script (bun unit tests + the examples.app output
+      # diff); the ttsc parity e2es have only `test:e2e` and run in the shards.
+      - name: Unit tests
+        run: bun --filter '*' test
 
       - name: Lint
         run: bun run lint
@@ -74,9 +203,76 @@ jobs:
       - name: Format
         run: bun run format:check
 
-      # The Go/ttsc engine's own gates. transforms/go.work is machine-specific and
-      # gitignored, so generate it against the installed ttsc shim modules first.
+  # ---------------------------------------------------------------------------
+  # Transform shards: the ttsc e2e parity suites + the Go engine gates, split into
+  # balanced legs so they run in parallel off the prewarmed sidecar cache. Skipped
+  # entirely when the change gate is cold.
+  # ---------------------------------------------------------------------------
+  transform-shards:
+    name: transform shard (${{ matrix.name }})
+    needs: [changes, prewarm]
+    if: ${{ always() && needs.changes.outputs.transform == 'true' && needs.prewarm.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Balanced by suite weight: inline and config are the heaviest lowering
+          # corpora, so they sit in separate legs.
+          - name: e2e-inline
+            suites: inline.ttsc.e2e mergesynth.ttsc.e2e
+          - name: e2e-config
+            suites: config.extras.ttsc.e2e declare-by-depending.ttsc.e2e
+          - name: e2e-derive
+            suites: primitives.extras.ttsc.e2e di.signatureof.ttsc.e2e
+          - name: go-gates
+            suites: ""
+            go: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: jdx/mise-action@v2
+
+      - name: Cache ttsc plugin sidecars
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/fnioc-ttsc/cache
+            ~/.cache/go-build
+            node_modules/.cache
+          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          restore-keys: |
+            ttsc-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install
+
+      # The e2e suites lower runtime packages resolved through their rolled dist
+      # (some assert dist/index.js exists), so the topological build must run first.
+      - name: Build
+        if: matrix.suites != ''
+        run: bun run build
+
+      - name: Run e2e suites
+        if: matrix.suites != ''
+        run: |
+          set -euo pipefail
+          for suite in ${{ matrix.suites }}; do
+            echo "▶ e2e shard suite: $suite"
+            ( cd "tests/$suite" && bun run test:e2e )
+          done
+
+      # transforms/go.work is machine-specific and gitignored, so regenerate it
+      # against the installed ttsc shim modules before the Go gates run.
       - name: Go gates (transforms)
+        if: matrix.go
         run: |
           node scripts/gen-go-work.mjs
           cd transforms
@@ -85,6 +281,43 @@ jobs:
           go vet ./...
           go test ./...
           test -z "$(gofmt -l .)"
+
+  # ---------------------------------------------------------------------------
+  # The required status check. Named `verify` so the merge-queue ruleset stays
+  # untouched. Aggregates every gated job: succeeds when they passed OR were
+  # correctly skipped by the change gate, fails if any actually failed/cancelled.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: verify
+    needs: [changes, prewarm, main-gate, transform-shards]
+    if: ${{ always() && github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Aggregate gated job results
+        env:
+          R_CHANGES: ${{ needs.changes.result }}
+          R_PREWARM: ${{ needs.prewarm.result }}
+          R_MAIN: ${{ needs.main-gate.result }}
+          R_SHARDS: ${{ needs.transform-shards.result }}
+        run: |
+          set -euo pipefail
+          echo "changes:          $R_CHANGES"
+          echo "prewarm:          $R_PREWARM"
+          echo "main-gate:        $R_MAIN"
+          echo "transform-shards: $R_SHARDS"
+          fail=0
+          for r in "$R_CHANGES" "$R_PREWARM" "$R_MAIN" "$R_SHARDS"; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::a required job failed or was cancelled."
+            exit 1
+          fi
+          echo "all required jobs passed or were correctly skipped."
 
   publish-alpha-verify:
     if: github.event_name == 'workflow_dispatch'
@@ -111,9 +344,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/fnioc-ttsc/cache
-          key: ttsc-plugins-${{ runner.os }}-${{ hashFiles('transforms/**/*.go', 'transforms/go.mod', 'bun.lock') }}
+          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
           restore-keys: |
-            ttsc-plugins-${{ runner.os }}-
+            ttsc-${{ runner.os }}-
 
       - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
         run: npm install -g npm@latest
