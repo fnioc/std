@@ -1,9 +1,15 @@
 // Package stdhost is the shared single-owner ttsc transform-host scaffolding
 // behind the @rhombus-std owner binary. The command (cmd/ttsc-std) is a thin
-// main that composes a Host value — a name, an ordered stage table, and the
-// preset bundles — and hands it to Run; everything else (manifest parsing,
-// runtime stage selection, the linked-plugin handoff, the per-file transform
-// loop, and the JSON envelope) lives here once.
+// main that composes a Host value — a name and an ordered stage table — and
+// hands it to Run; everything else (the linked-plugin handoff, the per-file
+// transform loop, and the JSON envelope) lives here once.
+//
+// Every stage is ALWAYS on (W7): there is no stage selection. A consumer that
+// reaches any @rhombus-std/*.extras dependency spawns this one host through
+// ttsc's auto-discovery, and the host runs its whole stage table over every
+// file — the stages own disjoint match sets, so a stage with nothing to match is
+// a cheap no-op. WHICH sugar bodies are substituted still comes from the §100
+// dependency scan (CollectProject), but WHICH stages run no longer does.
 //
 // There is ONE host. It links typia through the merge-synthesis stage
 // (internal/mergesynthtransform, #213), which the base stage table now carries;
@@ -43,13 +49,12 @@ var (
 	stderr io.Writer = os.Stderr
 )
 
-// Host is one owner binary's identity: its diagnostic name, its ordered stage
-// table (the slice order IS the canonical execution order), and the preset
-// bundle expansions it accepts.
+// Host is one owner binary's identity: its diagnostic name and its ordered stage
+// table (the slice order IS the canonical execution order). Every stage in the
+// table runs on every file — the host performs no selection (W7).
 type Host struct {
-	Name    string
-	Stages  []Stage
-	Bundles map[string][]string
+	Name   string
+	Stages []Stage
 }
 
 // Stage pairs a descriptor name with its transform builder.
@@ -142,25 +147,14 @@ func runTransform(host Host, args []string) int {
 	_ = fs.String("out", "", "unused: single-file output path")
 	_ = fs.String("rewrite-mode", "", "unused: native rewrite backend id")
 	_ = fs.String("output", "ts", "unused: single-file output kind")
-	pluginsJSON := fs.String("plugins-json", "", "ordered ttsc plugin manifest")
+	// The --plugins-json manifest ttsc fills from a tsconfig `plugins` list no
+	// longer drives selection (W7: the whole stage table is always on). It is
+	// still accepted (and ignored) so ttsc's forwarded flag parses cleanly.
+	_ = fs.String("plugins-json", "", "ttsc plugin manifest (accepted, unused: every stage is always on)")
 	if err := fs.Parse(filterKnownArgs(args)); err != nil {
 		return 2
 	}
 
-	// Selection: the manifest names which stages the consumer declared. Every
-	// rhombusstd_* entry resolves to one of this host's stages (an unknown one is
-	// a hard error); a foreign entry is left to ttsc's linked machinery when it
-	// is linked into this host, else rejected.
-	entries, err := parsePluginEntries(*pluginsJSON)
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
-		return 2
-	}
-	linked, err := parsePluginEntries(os.Getenv(driver.LinkedPluginsEnv))
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: linked manifest: %v\n", host.Name, err)
-		return 2
-	}
 	cwd := *cwdOverride
 	if cwd == "" {
 		var derr error
@@ -171,33 +165,21 @@ func runTransform(host Host, args []string) int {
 		}
 	}
 
-	// §100 declare-by-depending: ONE workspace dependency scan yields BOTH the
-	// stage set to activate AND the inline bodies to substitute. ttsc's own
-	// auto-discovery is direct-only (it spawns this host from the consumer's
-	// direct *.transformer dep); this scan supplies the transitive stage union — a
-	// di.transformer consumer reaches primitives' stages through di.transformer ->
-	// primitives.transformer — and the bodies, threaded into the inline stage so
-	// the walk runs exactly once.
+	// §100 declare-by-depending: ONE workspace dependency scan yields the inline
+	// BODIES to substitute at this consumer's call sites. It no longer selects
+	// stages — every stage is always on — but it still decides which sugar bodies
+	// are in play, threaded into the inline stage so the walk runs exactly once.
 	scan, scanErr := inlinetransform.CollectProject(cwd)
 	if scanErr != nil {
 		fmt.Fprintf(stderr, "%s: dependency scan: %v\n", host.Name, scanErr)
 		return 2
 	}
 
-	selected, err := selectStages(host, entries, namesOf(linked), scan.Stages)
-	if err != nil {
-		fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
-		return 2
-	}
-
-	// Zero-stage guard: with no stage selected (empty manifest AND empty scan) and
-	// no linked plugin, this run would load the program and emit it unchanged,
-	// which a lowering build never intends. Fail loud rather than silently no-op.
-	// A real lowering package always reaches a *.transformer, so this rarely fires.
-	if len(selected) == 0 && len(linked) == 0 {
-		fmt.Fprintf(stderr, "%s: NO_STAGES: no rhombusstd_* stage selected (empty manifest + empty dependency scan) and no linked plugins present — this run would load the program and emit it unchanged; check that the package reaches a @rhombus-std/*.transformer dependency\n", host.Name)
-		return 2
-	}
+	// No selection: the whole stage table runs on every file. A stage that matches
+	// nothing in this program is a cheap no-op (disjoint match sets), and a program
+	// with no sugar and no matching source simply emits unchanged — a legitimate
+	// outcome, never a NO_STAGES error (the old selection premise is gone, W7).
+	selected := host.Stages
 
 	prog, diags, err := driver.LoadProgram(cwd, *tsconfigPath, driver.LoadProgramOptions{ForceEmit: true})
 	if err != nil {
@@ -347,96 +329,6 @@ func flagBase(arg string) (string, bool) {
 	name := strings.TrimLeft(arg, "-")
 	before, _, found := strings.Cut(name, "=")
 	return before, found
-}
-
-// pluginEntry is the manifest shape ttsc serializes into --plugins-json (and the
-// TTSC_LINKED_PLUGINS_JSON env). Only the descriptor name drives selection here.
-type pluginEntry struct {
-	Config json.RawMessage `json:"config"`
-	Name   string          `json:"name"`
-	Stage  string          `json:"stage"`
-}
-
-// parsePluginEntries decodes a --plugins-json / linked-manifest value. An empty
-// or whitespace-only string is "no plugins", not an error.
-func parsePluginEntries(input string) ([]pluginEntry, error) {
-	if strings.TrimSpace(input) == "" {
-		return nil, nil
-	}
-	var entries []pluginEntry
-	if err := json.Unmarshal([]byte(input), &entries); err != nil {
-		return nil, fmt.Errorf("invalid plugin manifest: %w", err)
-	}
-	return entries, nil
-}
-
-// namesOf collects the descriptor names present in a manifest.
-func namesOf(entries []pluginEntry) map[string]bool {
-	names := make(map[string]bool, len(entries))
-	for _, e := range entries {
-		names[e.Name] = true
-	}
-	return names
-}
-
-// selectStages resolves the stages to run: the UNION of the host's own dependency
-// scan (§100 declare-by-depending — the transitive stage superset) and the
-// manifest (ttsc's direct-discovery spawn set plus any explicit tsconfig
-// override/opt-in). Each scan id maps to its rhombusstd_<id> stage name.
-//
-// Error contract (every failure loud):
-//   - a scan id or rhombusstd_* manifest name with no matching stage ->
-//     UNKNOWN_STAGE, naming it.
-//   - a non-prefixed entry present in the linked manifest -> left to ttsc's
-//     linked machinery (ApplyLinkedPlugins), skipped here.
-//   - a non-prefixed entry NOT linked -> hard error naming it (this host composes
-//     no foreign transforms yet).
-//
-// The returned slice follows the host's stage-table order regardless of scan or
-// manifest order.
-func selectStages(host Host, entries []pluginEntry, linkedNames map[string]bool, scanStages []string) ([]Stage, error) {
-	index := make(map[string]bool, len(host.Stages))
-	for _, s := range host.Stages {
-		index[s.Name] = true
-	}
-	chosen := map[string]bool{}
-	// Seed from the dependency scan: the transitive stage union (§100), the
-	// superset of what ttsc's direct-only discovery placed in the manifest.
-	for _, id := range scanStages {
-		name := stagePrefix + id
-		if !index[name] {
-			return nil, fmt.Errorf("UNKNOWN_STAGE: dependency scan requested %q which is not a stage of this host", name)
-		}
-		chosen[name] = true
-	}
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name, stagePrefix) {
-			if index[e.Name] {
-				chosen[e.Name] = true
-				continue
-			}
-			// A preset bundle name expands into its ordered constituent stages;
-			// the host's stage-table order below then sorts and dedups the union.
-			if constituents, ok := host.Bundles[e.Name]; ok {
-				for _, name := range constituents {
-					chosen[name] = true
-				}
-				continue
-			}
-			return nil, fmt.Errorf("UNKNOWN_STAGE: %q is not a stage or bundle of this host", e.Name)
-		}
-		if linkedNames[e.Name] {
-			continue
-		}
-		return nil, fmt.Errorf("plugin %q is neither a rhombusstd_* stage nor a linked plugin — this host composes no foreign transforms", e.Name)
-	}
-	out := make([]Stage, 0, len(chosen))
-	for _, stage := range host.Stages {
-		if chosen[stage.Name] {
-			out = append(out, stage)
-		}
-	}
-	return out, nil
 }
 
 // maxLoopPasses bounds the fixed-point loop. Each sugar chain peels one layer per

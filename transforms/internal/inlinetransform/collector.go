@@ -18,18 +18,16 @@ type OwnedEntry struct {
 	PackageDir string
 }
 
-// ProjectScan is the result of ONE workspace dependency walk (§100): the transform
-// STAGES every reachable *.transformer declares (its package.json "ttsc.stages")
-// and the inline BODIES every reachable package declares (its "rhombus.inline").
-// The host runs this single scan and uses both faces — stage selection and body
-// substitution.
+// ProjectScan is the result of ONE workspace dependency walk (§100): the inline
+// BODIES every reachable package declares (its package.json "rhombus.inline").
+// Stage selection is retired (W7 — every stage is always on), so the scan no
+// longer collects stage ids; body substitution is its sole remaining face.
 type ProjectScan struct {
-	Stages []string // bare stage ids ("nameof", "di", …), sorted + deduped
 	Bodies []OwnedEntry
 }
 
 // CollectProject walks the consumer package's workspace dependency graph and
-// returns both faces of the scan. The walk is:
+// returns the inline bodies to substitute. The walk is:
 //
 //   - consumer root = the nearest package.json above consumerCwd;
 //   - workspace map = name -> dir, from the repo-root package.json "workspaces"
@@ -61,7 +59,6 @@ func CollectProject(consumerCwd string) (ProjectScan, error) {
 	wsMap := workspaceMap(consumerRoot)
 
 	var bodies []OwnedEntry
-	stageSet := map[string]bool{}
 	visited := map[string]bool{}
 	var walk func(dir string, isRoot bool) error
 	walk = func(dir string, isRoot bool) error {
@@ -77,9 +74,6 @@ func CollectProject(consumerCwd string) (ProjectScan, error) {
 		}
 		for _, e := range entries {
 			bodies = append(bodies, OwnedEntry{Entry: e, PackageDir: dir})
-		}
-		for _, id := range stageIDs(dir) {
-			stageSet[id] = true
 		}
 
 		deps, derr := dependencyNames(dir, isRoot)
@@ -100,13 +94,7 @@ func CollectProject(consumerCwd string) (ProjectScan, error) {
 	if err := walk(consumerRoot, true); err != nil {
 		return ProjectScan{}, err
 	}
-
-	stages := make([]string, 0, len(stageSet))
-	for id := range stageSet {
-		stages = append(stages, id)
-	}
-	sort.Strings(stages)
-	return ProjectScan{Stages: stages, Bodies: bodies}, nil
+	return ProjectScan{Bodies: bodies}, nil
 }
 
 // Collect is the body-only face of CollectProject, retained for callers (and
@@ -287,26 +275,6 @@ func dependencyNames(dir string, isRoot bool) ([]string, error) {
 	}
 	sort.Strings(names)
 	return names, nil
-}
-
-// stageIDs reads dir/package.json's "ttsc.stages" — the bare stage ids a
-// *.transformer package declares it provides (a core declares none). A missing or
-// malformed field yields no ids, so a package carrying a ttsc.plugin marker but no
-// stages contributes nothing (defensive).
-func stageIDs(dir string) []string {
-	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
-	if err != nil {
-		return nil
-	}
-	var pkg struct {
-		Ttsc struct {
-			Stages []string `json:"stages"`
-		} `json:"ttsc"`
-	}
-	if err := json.Unmarshal(data, &pkg); err != nil {
-		return nil
-	}
-	return pkg.Ttsc.Stages
 }
 
 // packageName reads the "name" field of dir/package.json.

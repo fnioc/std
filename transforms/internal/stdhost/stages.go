@@ -18,21 +18,15 @@ import (
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
-// stagePrefix marks a manifest entry as one of a host's own stages. A
-// descriptor name carrying it (e.g. "rhombusstd_nameof") selects the matching
-// FileTransform; a prefixed name with no matching stage is a hard UNKNOWN_STAGE
-// error, and a NON-prefixed entry is a foreign plugin handled by the linked
-// machinery (or rejected when it is not linked) — see host.go.
+// stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_nameof").
+// The names are host-internal identifiers now — used to single out mergesynth for
+// the pre-pass split (partitionStages) and to label diagnostics — not selectors:
+// the whole stage table always runs (W7).
 const stagePrefix = "rhombusstd_"
 
-// StageName returns the manifest descriptor name for a bare stage id
-// ("nameof" -> "rhombusstd_nameof"), so a sibling host composes extra stages
-// without restating the prefix convention.
-func StageName(id string) string {
-	return stagePrefix + id
-}
-
-// BaseStages is the fixed execution order every activated base stage runs in.
+// BaseStages is the fixed execution order every base stage runs in. There is no
+// selection — the host runs this whole table on every file (W7); a stage that
+// matches nothing is a cheap no-op (disjoint match sets).
 // Every stage is now a DOMAIN-AGNOSTIC primitive: the bespoke di / di_options /
 // config registration stages were deleted (W6p3), their authoring forms
 // re-expressed as inline sugar bodies the primitives lower under the fixed-point
@@ -55,10 +49,10 @@ func StageName(id string) string {
 // (dead-branch pruning of the boolean-literal ternaries singular/factory produce),
 // then schemaof (the config `.withType<T>()` sugar's schema-literal lowering). All
 // stages own DISJOINT match sets, so correctness never depends on this order — it
-// is fixed only for reproducible output. Manifest entry order does not affect it.
+// is fixed only for reproducible output.
 //
-// Returned as a fresh slice each call so selection can filter it without
-// mutating shared state.
+// Returned as a fresh slice each call so a caller can reorder or extend it
+// without mutating shared state.
 func BaseStages() []Stage {
 	return []Stage{
 		{Name: stagePrefix + "inline", Build: buildInline},
@@ -71,36 +65,6 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "factory", Build: buildFactory},
 		{Name: stagePrefix + "fold", Build: buildFold},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
-	}
-}
-
-// BaseBundles maps a PRESET descriptor name to the ordered set of stage names it
-// expands into. A bundle lets a library declare its primitive-stage "package" once
-// (di.core's `add<T>()` / `addFactory<T>()` sugar needs inline -> nameof ->
-// signatureof -> keyof plus the resolve-family primitives) so a consumer wires ONE transform instead of
-// enumerating them in the right order: selectStages replaces a bundle name with its
-// constituents, which the host's stage table then sorts and dedups. The single
-// owner binary owns both the membership AND the order, so no consumer ever
-// hand-lists the primitive stages — the whole point of the preset. Discovery
-// (stock ttsc's marker -> single transform string) is untouched: the one string
-// a bundle descriptor yields resolves to a name WE choose here, and expansion
-// is ours.
-//
-// Bundles are the EXPLICIT opt-in channel (di.core's `./ttsc`); the default path
-// needs none — the host self-selects the full stage union from its own dependency
-// scan (§100 declare-by-depending, see runTransform), not from a bundle name.
-func BaseBundles() map[string][]string {
-	return map[string][]string{
-		stagePrefix + "di_bundle": {
-			stagePrefix + "inline",
-			stagePrefix + "nameof",
-			stagePrefix + "signatureof",
-			stagePrefix + "keyof",
-			stagePrefix + "valueof",
-			stagePrefix + "singular",
-			stagePrefix + "factory",
-			stagePrefix + "fold",
-		},
 	}
 }
 
