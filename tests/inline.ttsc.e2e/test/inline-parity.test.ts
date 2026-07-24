@@ -330,6 +330,7 @@ declare module '@rhombus-std/di.core' {
   // inline ResolverInline bodies target.
   interface IRequiredResolver {
     resolve<T>(): T;
+    resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
   }
   interface IResolver {
     resolveAsync<T>(): Promise<T>;
@@ -442,6 +443,10 @@ export const tokenful = provider.resolve<IThing>();
 export const asyncTok = provider.resolveAsync<IThing>();
 export const tryTok = provider.tryResolve<IThing>();
 export const singular = provider.resolve<'dev'>();
+// §94 factory forms. resolve<F>() with F a function type lowers to
+// resolveFactory(returnToken, [paramTokens]); a no-arg factory drops the array.
+export const factoryTok = provider.resolve<(a: IThing) => ICache>();
+export const factoryNoArg = provider.resolve<() => IThing>();
 // §98 keyed forms. resolve/tryResolve carry a tail key parameter → split base + key;
 // isService/resolveAsync are key-less → the single composed base#key token.
 export const keyedTok = provider.resolve<Keyed<ICache, 'redis'>>();
@@ -604,6 +609,9 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('keyof');
   expect(out).not.toContain('isSingular');
   expect(out).not.toContain('singularValue');
+  expect(out).not.toContain('isFactory');
+  expect(out).not.toContain('returntokenfor');
+  expect(out).not.toContain('paramtokensfor');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
@@ -812,6 +820,28 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(line).not.toContain('singularValue');
     // Byte parity with di-direct's Rule-2 singular short-circuit.
     expect(lineWith(resolveSemantic, 'singular =')).toEqual(line);
+  });
+
+  test('factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]), inline ≡ di-direct (§94)', () => {
+    // A function-type argument is not singular and IS a factory, so the nested body
+    // ternary folds to `this.resolveFactory(returntokenfor<F>(), paramtokensfor<F>())`.
+    // The param-carrying factory keeps the param-token array; the no-arg factory
+    // elides it (di.core's bare `resolveFactory(token)` form). Byte-identical to the
+    // di-direct rename + param-token array.
+    const withParam = lineWith(resolveInline, 'factoryTok =');
+    expect(withParam).toBeDefined();
+    expect(withParam).toContain('.resolveFactory(');
+    expect(withParam).toContain('[');
+    expect(withParam).not.toContain('resolve<');
+    expect(lineWith(resolveSemantic, 'factoryTok =')).toEqual(withParam);
+
+    const noArg = lineWith(resolveInline, 'factoryNoArg =');
+    expect(noArg).toBeDefined();
+    expect(noArg).toContain('.resolveFactory(');
+    // No-arg factory: the trailing param-token array is elided.
+    expect(noArg).not.toContain('[');
+    expect(lineWith(resolveSemantic, 'factoryNoArg =')).toEqual(noArg);
+    assertNoAuthoringSurvivors(resolveInline);
   });
 
   test('keyed resolve<Keyed<ICache, "redis">>() splits into base token + key arg (§98)', () => {

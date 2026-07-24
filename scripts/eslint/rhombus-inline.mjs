@@ -35,6 +35,9 @@ const PRIMITIVE_HOMES = {
   valueof: '@rhombus-std/di.transformer',
   isSingular: '@rhombus-std/primitives.transformer',
   singularValue: '@rhombus-std/primitives.transformer',
+  isFactory: '@rhombus-std/primitives.transformer',
+  returntokenfor: '@rhombus-std/primitives.transformer',
+  paramtokensfor: '@rhombus-std/primitives.transformer',
   schemaof: '@rhombus-std/config.transformer',
 };
 

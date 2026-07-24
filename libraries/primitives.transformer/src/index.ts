@@ -11,5 +11,8 @@
 // runtime `@rhombus-std/primitives` leaf, because they are never called from
 // runtime source (§92's homing rule).
 
+export { IS_FACTORY_NAME, isFactory } from './isFactory.js';
 export { IS_SINGULAR_NAME, isSingular } from './isSingular.js';
+export { PARAM_TOKENSFOR_NAME, paramtokensfor } from './paramtokensfor.js';
+export { RETURN_TOKENFOR_NAME, returntokenfor } from './returntokenfor.js';
 export { SINGULAR_VALUE_NAME, singularValue } from './singularValue.js';

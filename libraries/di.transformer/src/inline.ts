@@ -25,7 +25,8 @@ import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQ
   Token } from '@rhombus-std/di.core';
 import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
 import { tokenfor, tokenof } from '@rhombus-std/primitives';
-import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
+import { isFactory, isSingular, paramtokensfor, returntokenfor,
+  singularValue } from '@rhombus-std/primitives.transformer';
 import { keyedtokenfor } from './keyedtokenfor.js';
 import { keyof } from './keyof.js';
 import { signatureof } from './signatureof.js';
@@ -115,6 +116,7 @@ interface IInlineResolveTarget {
   resolve(token: Token, key?: string): any;
   resolveAsync(token: Token): any;
   tryResolve(token: Token, key?: string): any;
+  resolveFactory(type: Token, params?: readonly Token[]): any;
 }
 
 /**
@@ -157,22 +159,33 @@ interface IInlineResolveTarget {
  * verb calls ITSELF with the derived token, so the method name is preserved
  * (`resolveAsync` stays `resolveAsync`).
  *
- * FACTORY form residual: `resolve<F>()` where `F` is a function type shares this
- * body's discriminator (one type parameter, no value parameters) and so is claimed
- * HERE. A function-typed `F` is not singular, so the ternary folds to
- * `this.resolve(tokenfor<F>(), keyof<F>())`, and `tokenfor<F>()` over an anonymous
- * function type derives no token — a LOUD lowering failure (an underivable-token
- * diagnostic), never a silent mislowering. The renamed `resolveFactory("token",
- * [params])` lowering — a method rename plus an Inject-brand aware param-token array
- * this straight return-expression body cannot express — needs a dedicated body with
- * a function-type predicate + signatureof-shaped param extraction.
+ * FACTORY form (§94, factory half): `resolve<F>()` / `resolveAsync<F>()` where `F`
+ * is a function type lower to `resolveFactory(returnToken, [paramTokens])` — the
+ * factory's RETURN-type token plus the array of its parameter tokens. The body
+ * expresses this with a second compile-time predicate `isFactory<T>()` nested in
+ * the non-singular arm: a function-typed `F` is not singular, so the outer ternary
+ * takes the `isFactory<T>()` branch, which folds to
+ * `this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())` — `returntokenfor`
+ * derives the product token, `paramtokensfor` the `Inject`-brand aware parameter
+ * tokens (elided as the trailing argument for a no-arg factory, matching di.core's
+ * `resolveFactory(token)` form). A non-function `F` folds `isFactory<T>()` to
+ * `false` and continues to the plain token resolve. `tryResolve` carries no public
+ * factory overload, so it keeps the two-arm body.
  */
 export const ResolverInline = {
   resolve<T>(this: IInlineResolveTarget): T {
-    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>());
+    return isSingular<T>()
+      ? singularValue<T>()
+      : isFactory<T>()
+      ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
+      : this.resolve(tokenfor<T>(), keyof<T>());
   },
   resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-    return isSingular<T>() ? singularValue<T>() : this.resolveAsync(keyedtokenfor<T>());
+    return isSingular<T>()
+      ? singularValue<T>()
+      : isFactory<T>()
+      ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
+      : this.resolveAsync(keyedtokenfor<T>());
   },
   tryResolve<T>(this: IInlineResolveTarget): T | undefined {
     return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>());

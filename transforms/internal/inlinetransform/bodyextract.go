@@ -52,17 +52,20 @@ import (
 // family's `@rhombus-std/config.transformer` (a body imports it via a
 // package-relative specifier from within that package).
 var knownPrimitives = map[string]string{
-	"tokenfor":      "@rhombus-std/primitives",
-	"tokenof":       "@rhombus-std/primitives",
-	"keyedtokenfor": "@rhombus-std/di.transformer",
-	"signatureof":   "@rhombus-std/di.transformer",
-	"keyof":         "@rhombus-std/di.transformer",
-	"signaturefor":  "@rhombus-std/di.core",
-	"signaturesfor": "@rhombus-std/di.core",
-	"valueof":       "@rhombus-std/di.transformer",
-	"isSingular":    "@rhombus-std/primitives.transformer",
-	"singularValue": "@rhombus-std/primitives.transformer",
-	"schemaof":      "@rhombus-std/config.transformer",
+	"tokenfor":       "@rhombus-std/primitives",
+	"tokenof":        "@rhombus-std/primitives",
+	"keyedtokenfor":  "@rhombus-std/di.transformer",
+	"signatureof":    "@rhombus-std/di.transformer",
+	"keyof":          "@rhombus-std/di.transformer",
+	"signaturefor":   "@rhombus-std/di.core",
+	"signaturesfor":  "@rhombus-std/di.core",
+	"valueof":        "@rhombus-std/di.transformer",
+	"isSingular":     "@rhombus-std/primitives.transformer",
+	"singularValue":  "@rhombus-std/primitives.transformer",
+	"isFactory":      "@rhombus-std/primitives.transformer",
+	"returntokenfor": "@rhombus-std/primitives.transformer",
+	"paramtokensfor": "@rhombus-std/primitives.transformer",
+	"schemaof":       "@rhombus-std/config.transformer",
 }
 
 // Discriminator is the structural overload key: (type-parameter count, value

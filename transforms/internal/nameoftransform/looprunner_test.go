@@ -10,6 +10,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/configtransform"
 	"github.com/fnioc/std/transforms/internal/dioptionstransform"
 	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/factorytransform"
 	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
@@ -44,12 +45,13 @@ func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts
 	keyofT := keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	valueofT := valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	singularT := singulartransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
+	factoryT := factorytransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	foldT := foldtransform.New(prog, func(plugin.Diagnostic) {})
 	diT := plugin.FileTransform(ditransform.New(prog, ctx, func(ditransform.Diagnostic) {}))
 	diOptionsT := dioptionstransform.AddOptionsTransform(prog, ctx, func(plugin.Diagnostic) {})
 	schemaofT := schemaoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	configT := configtransform.New(prog, ctx, func(plugin.Diagnostic) {})
-	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, foldT, diT, diOptionsT, schemaofT, configT}
+	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, factoryT, foldT, diT, diOptionsT, schemaofT, configT}
 }
 
 // TestLoopCanaryZeroMatchPreservesPointer is the CENTRAL identity canary: a file
@@ -70,7 +72,7 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "fold", "di", "di_options", "schemaof", "config"}
+	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "di", "di_options", "schemaof", "config"}
 
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
@@ -114,7 +116,7 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "fold", "di", "di_options", "schemaof", "config"}
+	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "di", "di_options", "schemaof", "config"}
 
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)

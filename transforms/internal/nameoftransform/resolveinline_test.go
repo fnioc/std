@@ -9,6 +9,7 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/ditransform"
+	"github.com/fnioc/std/transforms/internal/factorytransform"
 	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
@@ -62,15 +63,16 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 	// singularValue from the token-grammar transformer. Each verb calls ITSELF with the
 	// derived token; a SINGULAR T folds to its value.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenof } from '@rhombus-std/primitives';
-import { isSingular, singularValue } from '@rhombus-std/primitives.transformer';
+import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.transformer';
 interface IInlineResolveTarget {
   resolve(token: string): any;
   resolveAsync(token: string): any;
   tryResolve(token: string): any;
+  resolveFactory(type: string, params?: readonly string[]): any;
 }
 export const ResolverInline = {
   resolve<T>(this: IInlineResolveTarget): T {
-    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>());
+    return isSingular<T>() ? singularValue<T>() : isFactory<T>() ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>()) : this.resolve(tokenof<T>());
   },
   resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
     return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenof<T>());
@@ -145,11 +147,12 @@ func lowerResolveInlinePipeline(t *testing.T, prog *driver.Program, app string) 
 	keyofT := keyoftransform.New(prog, ctx, artifacts, sink)
 	valueofT := valueoftransform.New(prog, ctx, artifacts, sink)
 	singularT := singulartransform.New(prog, ctx, artifacts, sink)
+	factoryT := factorytransform.New(prog, ctx, artifacts, sink)
 	foldT := foldtransform.New(prog, sink)
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the resolve entries did not resolve")
 	}
-	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, foldT}
+	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, factoryT, foldT}
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
 	if exhausted {
@@ -263,33 +266,44 @@ export const b = provider.resolve<'dev'>();
 	}
 }
 
-// TestResolveInlineFactoryFormResidual documents the FACTORY-form residual (§94, W6):
-// a `resolve<() => IThing>()` shares the resolve body's discriminator (one type
-// parameter, no value parameters) and so is claimed by the inline body, which lowers
-// it as a non-singular tokenful resolve — but a function type derives no token, so
-// the inline pipeline reports a LOUD lowering failure (never a silent mislowering),
-// while the di DIRECT stage still lowers it to the renamed `resolveFactory(...)`.
-// The rename is deferred to W6; until then the di stage keeps handling the factory
-// form for di-direct consumers. This test pins BOTH sides of that residual.
-func TestResolveInlineFactoryFormResidual(t *testing.T) {
+// TestResolveInlineFactoryFormLowers pins the FACTORY form (§94 factory half, W6p2
+// item 3): a `resolve<(a: IA) => IThing>()` lowers through the inline pipeline —
+// isSingular false, isFactory TRUE, the fold keeps the factory arm — to
+// `resolveFactory("<returnToken>", ["<paramToken>", ...])`, byte-identical to the di
+// DIRECT stage's `resolveFactory` rename + param-token array. A ZERO-parameter
+// factory drops the trailing array, matching di-direct's bare `resolveFactory(token)`.
+func TestResolveInlineFactoryFormLowers(t *testing.T) {
 	src := `import { provider } from '@rhombus-std/di.core';
+interface IA { id: number }
 interface IThing { id: number }
-export const f = provider.resolve<() => IThing>();
+export const withParam = provider.resolve<(a: IA) => IThing>();
+export const noParam = provider.resolve<() => IThing>();
 `
 	prog, app := buildResolveInlineWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
-	// di direct: the oracle renames to resolveFactory.
-	diOut := lowerDi(t, prog, app)
-	if !strings.Contains(diOut, ".resolveFactory(") {
-		t.Fatalf("di direct must lower the factory form to resolveFactory:\n%s", diOut)
+	inlineOut, diags := lowerResolveInlinePipeline(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics from the inline pipeline: %+v", diags)
 	}
+	diOut := lowerDi(t, prog, app)
 
-	// inline: a loud lowering failure (an underivable-token or surviving-primitive
-	// diagnostic), never a silent wrong resolve.
-	_, diags := lowerResolveInlinePipeline(t, prog, app)
-	if len(diags) == 0 {
-		t.Fatal("expected a loud lowering diagnostic for the factory-form resolve under inline (the residual is loud, not silent)")
+	for _, name := range []string{"withParam", "noParam"} {
+		inlineVal := exportConstValue(t, inlineOut, name)
+		diVal := exportConstValue(t, diOut, name)
+		if inlineVal != diVal {
+			t.Fatalf("factory resolve `%s` divergence:\n inline = %q\n di     = %q", name, inlineVal, diVal)
+		}
+		if !strings.Contains(inlineVal, "resolveFactory(") {
+			t.Fatalf("factory resolve `%s` must lower to resolveFactory, got %q", name, inlineVal)
+		}
+	}
+	// The param-carrying factory keeps the param-token array; the no-arg one drops it.
+	if v := exportConstValue(t, inlineOut, "withParam"); !strings.Contains(v, "[") {
+		t.Fatalf("param-carrying factory must carry a param-token array, got %q", v)
+	}
+	if v := exportConstValue(t, inlineOut, "noParam"); strings.Contains(v, "[") {
+		t.Fatalf("no-arg factory must ELIDE the param-token array, got %q", v)
 	}
 }
 
@@ -364,12 +378,13 @@ func lowerResolveCoActivePipeline(t *testing.T, prog *driver.Program, app string
 	// a distinct named type — adapt it so the loop can hold di co-active.
 	diT := plugin.FileTransform(diRaw)
 	singularT := singulartransform.New(prog, ctx, artifacts, sink)
+	factoryT := factorytransform.New(prog, ctx, artifacts, sink)
 	foldT := foldtransform.New(prog, sink)
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the resolve entries did not resolve")
 	}
-	// Host order: inline first, then the primitives, then di, then singular/fold.
-	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, diT, singularT, foldT}
+	// Host order: inline first, then the primitives, then di, then singular/factory/fold.
+	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, diT, singularT, factoryT, foldT}
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
 	if exhausted {
@@ -381,16 +396,14 @@ func lowerResolveCoActivePipeline(t *testing.T, prog *driver.Program, app string
 	return reprint(ec, settled), diags
 }
 
-// TestResolveInlineFactoryFormResidualCoActive pins the CORRECTED factory-residual
-// documentation (the finding): with the transitive-witness fix inline is active in
-// every di consumer and runs AHEAD of di, so it claims `resolve<F>()` (a function
-// type) EVERYWHERE — the di stage never sees an un-substituted factory resolve and
-// therefore does NOT rescue it to `resolveFactory(...)`. This is the co-active proof
-// the isolated TestResolveInlineFactoryFormResidual could not give (that one runs
-// the di stage ALONE): even with di co-active in the loop, the output carries no
-// `resolveFactory(` and the pipeline reports a LOUD diagnostic (the surviving
-// tokenof over an underivable function type), never a silent mislowering.
-func TestResolveInlineFactoryFormResidualCoActive(t *testing.T) {
+// TestResolveInlineFactoryFormCoActive pins the factory form under the real host
+// arrangement (inline AHEAD of di in the loop): inline claims `resolve<F>()` and
+// lowers it through its own body to `resolveFactory("<returnToken>")` — the inline
+// factory primitives own the lowering, and di, seeing an already-substituted call
+// with no type argument, leaves it untouched. No loud diagnostic; the output carries
+// the inline-produced resolveFactory, proving the two paths agree and do not
+// double-fire.
+func TestResolveInlineFactoryFormCoActive(t *testing.T) {
 	src := `import { provider } from '@rhombus-std/di.core';
 interface IThing { id: number }
 export const f = provider.resolve<() => IThing>();
@@ -399,11 +412,11 @@ export const f = provider.resolve<() => IThing>();
 	defer func() { _ = prog.Close() }()
 
 	out, diags := lowerResolveCoActivePipeline(t, prog, app)
-	if strings.Contains(out, "resolveFactory(") {
-		t.Fatalf("di must NOT rescue the factory form when co-active with inline (inline claims it first):\n%s", out)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics from the co-active factory lowering: %+v", diags)
 	}
-	if len(diags) == 0 {
-		t.Fatal("expected a loud lowering diagnostic for the factory-form resolve co-active with di (loud, not silent)")
+	if !strings.Contains(out, "resolveFactory(") {
+		t.Fatalf("the factory form must lower to resolveFactory co-active with di:\n%s", out)
 	}
 }
 

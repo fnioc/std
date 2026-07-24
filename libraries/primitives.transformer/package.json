@@ -35,7 +35,7 @@
     "plugin": {
       "transform": "@rhombus-std/primitives.transformer/ttsc"
     },
-    "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth", "singular", "fold"]
+    "stages": ["inline", "nameof", "signatureof", "keyof", "mergesynth", "singular", "factory", "fold"]
   },
   "files": [
     "dist",
