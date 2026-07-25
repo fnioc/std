@@ -51,8 +51,8 @@ export { makeServerReport } from './server-report.js';
 //
 // The chapter's container-building half lives in each app's own
 // `src/infrastructure-demo.ts`; what this package exports is the pieces it
-// registers, the no-container demonstration, and the error classifier they share.
-export { demonstrateNullProvider, describeDiError } from './infrastructure-demo.js';
+// registers and the no-container demonstration.
+export { demonstrateNullProvider } from './infrastructure-demo.js';
 export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LocatorGreetingWorkshop,
   PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
 export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';

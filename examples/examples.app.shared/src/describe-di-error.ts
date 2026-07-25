@@ -8,7 +8,12 @@
 // other a built provider — so this is the arm of the taxonomy a composition root
 // meets, and it belongs beside the code that provokes it.
 
-import { DiError } from '@rhombus-std/di';
+// From di.core rather than from the engine, deliberately: the paragraph below
+// claims the taxonomy's root is an ABSTRACTIONS export, and the import line is
+// where that claim is either true or decoration. This package could reach it
+// through `@rhombus-std/di` — it depends on the engine anyway — and a library
+// could not.
+import { DiError } from '@rhombus-std/di.core';
 
 /**
  * Reports whether a caught value belongs to the di taxonomy.

@@ -6,8 +6,7 @@
 // resolution-time failure) is composition-root work: it constructs manifests and
 // builds providers, so it lives in the example applications, in each app's own
 // `src/infrastructure-demo.ts`. What is left here is the piece that could never
-// have moved — a demonstration whose entire point is that there is no container —
-// plus the error-classification helper the app chapter shares.
+// have moved — a demonstration whose entire point is that there is no container.
 //
 // That split is not an accident of tidying. It is the same rule the whole package
 // follows, applied to a demo: a library contributes and classifies, an application
@@ -81,33 +80,4 @@ export function demonstrateNullProvider(): readonly string[] {
   }
 
   return lines;
-}
-
-/**
- * Reports whether a caught value belongs to the di taxonomy — the check a library
- * writes when it wants to handle the container's failures and rethrow everything
- * else.
- *
- * `DiError` is shared by di.core (registration time) and the resolution engine,
- * so ONE `instanceof DiError` covers a consumer's whole container lifecycle: a
- * rejected registration and an unresolvable token are the same family, and a
- * library that only depends on di.core can still catch both.
- *
- * Deliberately does NOT print the message. Messages name tokens, and the two
- * example dialects spell those differently (hand-written against
- * transformer-derived), while the shapes are identical in both — so the apps can
- * print this and still byte-diff against each other.
- *
- * Exported because the composition-root half of the chapter needs it: the two
- * failures it provokes live at the app (one needs a manifest, the other a built
- * provider), but classifying them is library work and belongs beside the
- * taxonomy, not duplicated into two `main.ts` files.
- *
- * @param error The caught value.
- */
-export function describeDiError(error: unknown): string {
-  if (error instanceof DiError) {
-    return `caught a DiError (${error.name})`;
-  }
-  return 'not a DiError — this library would rethrow';
 }
