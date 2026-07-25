@@ -5,9 +5,7 @@ import { ConfigBuilder, ConfigRoot, ConfigSection, type IndexedSection } from '@
 import { describe, expect, test } from 'bun:test';
 
 function navRoot(): IndexedSection {
-  return new ConfigBuilder()
-    .addInMemoryCollection({ 'Server:Host': 'localhost', 'Server:Port': '8080' })
-    .build();
+  return new ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'localhost', 'Server:Port': '8080' }).build();
 }
 
 describe('proxy navigation', () => {
@@ -68,9 +66,7 @@ describe('proxy navigation', () => {
   });
 
   test('a config key named like a member is shadowed but reachable via getSection', () => {
-    const config = new ConfigBuilder()
-      .addInMemoryCollection({ value: 'shadowed' })
-      .build();
+    const config = new ConfigBuilder().addInMemoryCollection({ value: 'shadowed' }).build();
     // `config.value` returns the member (undefined on the root), not the key.
     expect(config.value).toBeUndefined();
     // The escape hatch reaches the real key.

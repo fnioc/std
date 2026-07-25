@@ -1,15 +1,3 @@
-// The ICacheEntry convenience wrappers, ported from ME.Caching.Abstractions'
-// static `CacheEntryExtensions` class -- authored as the named
-// `CacheEntryExtensions` augmentation object literal (docs §28/§38), one member
-// per reference static method, receiver-first. Each returns the entry for
-// chaining.
-//
-// `SetAbsoluteExpiration`'s two overloads (TimeSpan relative / DateTimeOffset
-// absolute) collapse into one `setAbsoluteExpiration` discriminated by
-// `number` (ms relative) vs `Date` (absolute). `setOptions` (ME `SetOptions`)
-// applies a whole `MemoryCacheEntryOptions` bag -- that TYPE now lives in
-// caching.core (as ME has it), so the helper is here rather than downstream.
-
 import { type AugmentationSet, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { CacheItemPriority } from './CacheItemPriority';
@@ -18,7 +6,7 @@ import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 import { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
 import type { PostEvictionDelegate } from './PostEvictionDelegate';
 
-/** The `CacheEntryExtensions` augmentation set for {@link ICacheEntry} (docs §28/§38). */
+/** The `CacheEntryExtensions` augmentation set for {@link ICacheEntry}. */
 export const CacheEntryExtensions = {
   /** Sets the entry's compaction {@link CacheItemPriority}. */
   setPriority(entry: ICacheEntry, priority: CacheItemPriority): ICacheEntry {
@@ -33,12 +21,7 @@ export const CacheEntryExtensions = {
   },
 
   /** Sets an absolute expiration -- `relativeToNowMs` milliseconds from now, or an absolute `Date`. */
-  setAbsoluteExpiration(
-    entry: ICacheEntry,
-    ...rest:
-      | [relativeToNowMs: number]
-      | [absolute: Date]
-  ): ICacheEntry {
+  setAbsoluteExpiration(entry: ICacheEntry, ...rest: [relativeToNowMs: number] | [absolute: Date]): ICacheEntry {
     const [value] = rest;
     if (value instanceof Date) {
       entry.absoluteExpiration = value;
@@ -55,11 +38,7 @@ export const CacheEntryExtensions = {
   },
 
   /** Registers a callback fired after the entry is evicted. */
-  registerPostEvictionCallback(
-    entry: ICacheEntry,
-    callback: PostEvictionDelegate,
-    state?: unknown,
-  ): ICacheEntry {
+  registerPostEvictionCallback(entry: ICacheEntry, callback: PostEvictionDelegate, state?: unknown): ICacheEntry {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;
@@ -82,10 +61,7 @@ export const CacheEntryExtensions = {
     return entry;
   },
 
-  /**
-   * Applies every value of `options` to `entry` (the `SetOptions` port). Throws
-   * if `options` carries a post-eviction registration with no callback.
-   */
+  /** Applies every value of `options` to `entry`. Throws if `options` carries a post-eviction registration with no callback. */
   setOptions(entry: ICacheEntry, options: MemoryCacheEntryOptions): ICacheEntry {
     entry.absoluteExpiration = options.absoluteExpiration;
     entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
@@ -117,9 +93,6 @@ export const CacheEntryExtensions = {
   },
 } satisfies AugmentationSet<ICacheEntry>;
 
-// The method-form surface merged onto ICacheEntry (docs §28/§38): the concrete
-// CacheEntry downstream is decorated `@augment(tokenfor<ICacheEntry>())` and pulls
-// these onto its prototype.
 declare module './ICacheEntry' {
   interface ICacheEntry {
     setPriority(priority: CacheItemPriority): this;
@@ -134,5 +107,4 @@ declare module './ICacheEntry' {
   }
 }
 
-// Self-registration for the OPEN `ICacheEntry` receiver (docs §38).
 registerAugmentations(tokenfor<ICacheEntry>(), CacheEntryExtensions);

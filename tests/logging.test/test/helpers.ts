@@ -22,13 +22,9 @@ export class RecordingLogger implements ILogger {
 
   public constructor(public readonly category: string) {}
 
-  public log<TState>(
-    logLevel: LogLevel,
-    _eventId: EventId,
-    state: TState,
-    error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>,
-  ): void {
+  public log<TState>(logLevel: LogLevel, _eventId: EventId, state: TState, error: Error | undefined,
+    formatter: Func<[TState, Error | undefined], string>): void
+  {
     this.records.push({ level: logLevel, message: formatter(state, error) });
   }
 
@@ -86,15 +82,11 @@ export class ScopeAwareProvider implements ILoggerProvider, ISupportExternalScop
     const providerRef = this;
     // Partial ILogger double — only the primitives this provider exercises; cast
     // past the merged wrapper members (§80) it never calls.
-    return {
-      log: () => {
-        const active: unknown[] = [];
-        providerRef.scopeProvider?.forEachScope((scope: unknown) => active.push(scope), undefined);
-        seenScopes.push(active);
-      },
-      isEnabled: () => true,
-      beginScope: () => ({ [Symbol.dispose]() {} }),
-    } as unknown as ILogger;
+    return { log: () => {
+      const active: unknown[] = [];
+      providerRef.scopeProvider?.forEachScope((scope: unknown) => active.push(scope), undefined);
+      seenScopes.push(active);
+    }, isEnabled: () => true, beginScope: () => ({ [Symbol.dispose]() {} }) } as unknown as ILogger;
   }
 
   public [Symbol.dispose](): void {}

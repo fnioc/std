@@ -67,9 +67,7 @@ const js = await Bun.build({
   // auto-discovery — spawning the one owner host from the app's direct
   // *.extras deps, which ttsc dedupes to a single spawn. The host then
   // self-selects the transitive stage union from its own dependency scan.
-  plugins: [
-    await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms),
-  ],
+  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],
 });
 if (!js.success) {
   for (const log of js.logs) {

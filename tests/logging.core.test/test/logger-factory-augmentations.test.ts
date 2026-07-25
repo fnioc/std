@@ -18,14 +18,10 @@ abstract class PaymentGateway {}
 describe('LoggerFactoryExtensions.createLogger', () => {
   test("derives the category from the constructor's name", () => {
     const categories: string[] = [];
-    const recording: ILoggerFactory = {
-      createLogger(categoryName: string): ILogger {
-        categories.push(categoryName);
-        return NullLogger.instance;
-      },
-      addProvider(): void {},
-      [Symbol.dispose](): void {},
-    };
+    const recording: ILoggerFactory = { createLogger(categoryName: string): ILogger {
+      categories.push(categoryName);
+      return NullLogger.instance;
+    }, addProvider(): void {}, [Symbol.dispose](): void {} };
 
     LoggerFactoryExtensions.createLogger(recording, OrderProcessor);
     // Abstract constructors are accepted — only the name is read.

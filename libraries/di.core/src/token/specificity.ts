@@ -5,10 +5,6 @@
 // repeat) scores 2 over `IPair<$1,$2>` (concrete=1) — because the former's match
 // set is a strict subset of the latter's. Without the repeat term the two tie and
 // selection degrades to add-order.
-//
-// A `TokenWalker<number>`: `__fold` sums the concrete-node count over the tree,
-// and `__visitHole` also tallies each label's occurrences into `#holeCounts` so
-// `measure` can add the repeat term the fold cannot compute compositionally.
 
 import type { HoleNode, TokenNode } from './node.js';
 import { TokenWalker } from './visitor.js';

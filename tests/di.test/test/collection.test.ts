@@ -151,9 +151,7 @@ describe('build() frameless provider + opened scopes', () => {
     const reqB = root.createScope('request');
 
     expect(reqA.name).toBe('request');
-    expect(reqA.resolve<Req>(T.Service)).not.toBe(
-      reqB.resolve<Req>(T.Service),
-    );
+    expect(reqA.resolve<Req>(T.Service)).not.toBe(reqB.resolve<Req>(T.Service));
   });
 
   test("an opened 'singleton' scope is a usable .as() target (singletons bind to it)", () => {
@@ -166,9 +164,7 @@ describe('build() frameless provider + opened scopes', () => {
     const root = services.build().createScope('singleton');
     const deep = root.createScope('request').createScope('request');
     // Owned by the open "singleton" scope, shared across the whole subtree.
-    expect(deep.resolve<Shared>(T.Service)).toBe(
-      root.resolve<Shared>(T.Service),
-    );
+    expect(deep.resolve<Shared>(T.Service)).toBe(root.resolve<Shared>(T.Service));
   });
 
   test("a 'singleton'-tagged registration resolved off the FRAMELESS provider is transient", () => {
@@ -180,9 +176,7 @@ describe('build() frameless provider + opened scopes', () => {
 
     const provider = services.build(); // no scope opened
     // No "singleton" frame is open ⇒ fresh instance per resolve, never cached.
-    expect(provider.resolve<Shared>(T.Service)).not.toBe(
-      provider.resolve<Shared>(T.Service),
-    );
+    expect(provider.resolve<Shared>(T.Service)).not.toBe(provider.resolve<Shared>(T.Service));
   });
 });
 
@@ -197,14 +191,9 @@ describe('ServiceManifest type + construction surface', () => {
     // One generic param `Scopes`; both `.as(...)` and `createScope(...)` accept
     // exactly its members. This compiles only because the surface is single-param.
     let services = new ServiceManifest<'singleton' | 'request'>();
-    services = services.addClass(
-      T.Service,
-      class S {
-        public readonly id = Math.random();
-      },
-      [[]],
-      'request',
-    );
+    services = services.addClass(T.Service, class S {
+      public readonly id = Math.random();
+    }, [[]], 'request');
 
     const provider = services.build();
     const req = provider.createScope('request');

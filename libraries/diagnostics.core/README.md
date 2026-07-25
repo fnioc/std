@@ -36,11 +36,8 @@ const rules = [
     true), // re-enable this meter
 ];
 
-const rule = getMostSpecificInstrumentRule(rules, {
-  meterName: 'MyApp.Orders',
-  instrumentName: 'orders-created',
-  isLocalScope: false,
-});
+const rule = getMostSpecificInstrumentRule(rules, { meterName: 'MyApp.Orders',
+  instrumentName: 'orders-created', isLocalScope: false });
 
 rule?.enable ?? false; // true — the meter-specific rule beats the blanket disable
 ```

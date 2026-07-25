@@ -1,17 +1,8 @@
-// TracingRule -- ported from MED.Tracing's `TracingRule`.
-//
-// A pure-data record mirroring InstrumentRule for tracing: which source /
-// operation / listener a rule targets, the scope(s), and enable/disable. The
-// reference validates the source-name wildcard eagerly (at most one `*`) so a
-// malformed rule surfaces at construction rather than on the hot path -- ported
-// verbatim.
-
 import { ActivitySourceScopes } from './ActivitySourceScopes';
 
 /**
  * A single tracing enablement rule: determines which activities are enabled for
- * which listeners. An unspecified/empty name field matches anything. Mirrors
- * MED.Tracing's `TracingRule`.
+ * which listeners. An unspecified/empty name field matches anything.
  */
 export class TracingRule {
   /** The activity-source name -- exact, longest-prefix, or a single-`*` wildcard. Empty/`undefined` matches all sources. */
@@ -33,17 +24,11 @@ export class TracingRule {
    * @param enable `true` to enable matched activities for the listener; otherwise `false`.
    * @throws {@link Error} if `sourceName` contains more than one `*` wildcard.
    */
-  public constructor(
-    sourceName: string | undefined,
-    operationName: string | undefined,
-    listenerName: string | undefined,
-    scopes: ActivitySourceScopes,
-    enable: boolean,
-  ) {
-    // Validate the wildcard pattern eagerly so a configuration mistake surfaces
-    // at bind time (or the programmatic call site) rather than reaching any
-    // future StartActivity hot path -- matches the reference's deliberate choice
-    // to diverge from the metrics rule's deferred validation.
+  public constructor(sourceName: string | undefined, operationName: string | undefined,
+    listenerName: string | undefined, scopes: ActivitySourceScopes, enable: boolean)
+  {
+    // Validated here (not lazily at match time) so a malformed pattern
+    // surfaces at construction.
     if (sourceName) {
       const firstWildcard = sourceName.indexOf('*');
       if (firstWildcard >= 0 && sourceName.indexOf('*', firstWildcard + 1) >= 0) {

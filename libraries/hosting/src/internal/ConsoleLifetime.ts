@@ -1,13 +1,3 @@
-// ConsoleLifetime -- ported from the reference hosting runtime's
-// `ConsoleLifetime` (+ its POSIX-signal partial). Listens for Ctrl+C / SIGTERM /
-// SIGQUIT and initiates a graceful shutdown, and logs the startup banner once
-// the application has started.
-//
-// The reference registers `PosixSignalRegistration` handlers; here they are
-// `process.on(...)` listeners, torn down on dispose. The reference reads its
-// logger from an `ILoggerFactory` under a fixed lifetime category; the in-repo
-// category is {@link HOSTING_LIFETIME_CATEGORY} (no vendor branding).
-
 import type { IHostApplicationLifetime, IHostEnvironment, IHostLifetime } from '@rhombus-std/hosting.core';
 import { type ILogger, type ILoggerFactory, logInformation, LogLevel } from '@rhombus-std/logging.core';
 import { type AbortSignal, process } from '@rhombus-std/primitives';
@@ -31,12 +21,9 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
   #onStopping?: Func<[], void>;
   #signalHandler?: Func<[], void>;
 
-  public constructor(
-    options: ConsoleLifetimeOptions,
-    environment: IHostEnvironment,
-    applicationLifetime: IHostApplicationLifetime,
-    loggerFactory: ILoggerFactory,
-  ) {
+  public constructor(options: ConsoleLifetimeOptions, environment: IHostEnvironment,
+    applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory)
+  {
     this.#options = options;
     this.#environment = environment;
     this.#applicationLifetime = applicationLifetime;

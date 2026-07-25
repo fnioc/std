@@ -83,8 +83,7 @@ const REPOSITORY_TEMPLATE = 'selfcheck:IRepository<$1>';
 
 /** A container whose one registration names a dependency nobody supplies. */
 function withUnsatisfiableStore(): IServiceManifest<'singleton'> {
-  return new ServiceManifest<'singleton'>()
-    .addClass(STORE_TOKEN, BrokenStore, [[CONNECTION_TOKEN]], 'singleton');
+  return new ServiceManifest<'singleton'>().addClass(STORE_TOKEN, BrokenStore, [[CONNECTION_TOKEN]], 'singleton');
 }
 
 /**
@@ -117,10 +116,9 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   // makes the other one: a slot that is deliberately caller-supplied is filled
   // at the call rather than by a registration, and a whole-graph check reads
   // every slot as a registration.
-  lines.push(stagedFailure(
-    'building with validateOnBuild',
-    () => withUnsatisfiableStore().build({ validateOnBuild: true }),
-  ));
+  lines.push(
+    stagedFailure('building with validateOnBuild', () => withUnsatisfiableStore().build({ validateOnBuild: true })),
+  );
 
   // ── resolution time ────────────────────────────────────────────────────────
   //
@@ -174,8 +172,8 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   // built, not when it is first called, so the failure lands during construction
   // of the thing that wanted the factory.
   lines.push(stagedFailure('a factory slot with no target', () => {
-    const services = new ServiceManifest<'singleton'>()
-      .addClass(REPORT_TOKEN, ReportService, [[{ type: STORE_TOKEN }]], 'singleton');
+    const services = new ServiceManifest<'singleton'>().addClass(REPORT_TOKEN, ReportService, [[{ type: STORE_TOKEN }]],
+      'singleton');
     return services.build().createScope('singleton').resolve(REPORT_TOKEN);
   }));
 
@@ -188,18 +186,12 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   // arriving while that is unsettled cannot wait, and says so rather than
   // handing back a half-built object.
   let asyncServices = new ServiceManifest<'singleton'>();
-  asyncServices = asyncServices.addFactory(
-    CONFIG_PROMISE_TOKEN,
-    async (): Promise<RemoteConfig> => ({ endpoint: 'https://reports.example.test' }),
-    [[]],
-    'singleton',
-  );
+  asyncServices = asyncServices.addFactory(CONFIG_PROMISE_TOKEN,
+    async (): Promise<RemoteConfig> => ({ endpoint: 'https://reports.example.test' }), [[]], 'singleton');
   asyncServices = asyncServices.addClass(REPORT_TOKEN, ReportService, [[CONFIG_TOKEN]], 'singleton');
   const asyncScope = asyncServices.build().createScope('singleton');
   const inFlight = asyncScope.resolveAsync(REPORT_TOKEN);
-  lines.push(
-    stagedFailure('a sync resolve while an async build is in flight', () => asyncScope.resolve(REPORT_TOKEN)),
-  );
+  lines.push(stagedFailure('a sync resolve while an async build is in flight', () => asyncScope.resolve(REPORT_TOKEN)));
   // Settle it before moving on, so the demonstration leaves nothing pending.
   await inFlight;
 
@@ -210,10 +202,8 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   // to await it. The engine refuses rather than dropping the value on the floor.
   // The takeaway is a one-liner: a container holding anything async is closed
   // async.
-  const promiseScope = new ServiceManifest<'singleton'>()
-    .addFactory(CONFIG_PROMISE_TOKEN, async (): Promise<RemoteConfig> => ({ endpoint: 'unused' }), [[]], 'singleton')
-    .build()
-    .createScope('singleton');
+  const promiseScope = new ServiceManifest<'singleton'>().addFactory(CONFIG_PROMISE_TOKEN,
+    async (): Promise<RemoteConfig> => ({ endpoint: 'unused' }), [[]], 'singleton').build().createScope('singleton');
   promiseScope.resolve(CONFIG_PROMISE_TOKEN);
   lines.push(stagedFailure('disposing a scope that owns a promise', () => promiseScope.dispose()));
   await promiseScope.disposeAsync();
@@ -223,10 +213,9 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   // ordinary object and the call typechecks — so the engine has to be the one
   // that refuses. This is the shape a leak takes in practice: something captured
   // the provider and outlived the scope that owned it.
-  const closedScope = new ServiceManifest<'singleton'>()
-    .addValue(STORE_TOKEN, { rows: [] })
-    .build()
-    .createScope('singleton');
+  const closedScope = new ServiceManifest<'singleton'>().addValue(STORE_TOKEN, { rows: [] }).build().createScope(
+    'singleton',
+  );
   closedScope.dispose();
   lines.push(stagedFailure('resolving from a scope already disposed', () => closedScope.resolve(STORE_TOKEN)));
 

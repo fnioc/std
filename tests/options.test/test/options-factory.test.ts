@@ -24,30 +24,16 @@ describe('OptionsFactory.create', () => {
   });
 
   test('configure steps run in registration order', () => {
-    const factory = new OptionsFactory<Settings>(
-      makeBase,
-      [
-        { configure: (o) => o.log.push('a') },
-        { configure: (o) => o.log.push('b') },
-        { configure: (o) => o.log.push('c') },
-      ],
-      [],
-    );
+    const factory = new OptionsFactory<Settings>(makeBase, [{ configure: (o) => o.log.push('a') }, {
+      configure: (o) => o.log.push('b'),
+    }, { configure: (o) => o.log.push('c') }], []);
     expect(factory.create().log).toEqual(['a', 'b', 'c']);
   });
 
   test('post-configure runs after every configure step -- and gets the last word', () => {
-    const factory = new OptionsFactory<Settings>(
-      makeBase,
-      [
-        { configure: (o) => o.log.push('configure') },
-        { configure: (o) => (o.port = 8080) },
-      ],
-      [
-        { postConfigure: (o) => o.log.push('post') },
-        { postConfigure: (o) => (o.port = 9090) },
-      ],
-    );
+    const factory = new OptionsFactory<Settings>(makeBase, [{ configure: (o) => o.log.push('configure') }, {
+      configure: (o) => (o.port = 8080),
+    }], [{ postConfigure: (o) => o.log.push('post') }, { postConfigure: (o) => (o.port = 9090) }]);
     const result = factory.create();
     expect(result.log).toEqual(['configure', 'post']);
     expect(result.port).toBe(9090);
@@ -55,56 +41,37 @@ describe('OptionsFactory.create', () => {
 
   test('validate sees the post-configured value, not the mid-configure one', () => {
     const seen: number[] = [];
-    const recordPort: IValidateOptions<Settings> = {
-      validate: (o) => {
-        seen.push(o.port);
-        return ValidateOptionsResult.success;
-      },
-    };
-    const factory = new OptionsFactory<Settings>(
-      makeBase,
-      [{ configure: (o) => (o.port = 8080) }],
-      [{ postConfigure: (o) => (o.port = 9090) }],
-      [recordPort],
-    );
+    const recordPort: IValidateOptions<Settings> = { validate: (o) => {
+      seen.push(o.port);
+      return ValidateOptionsResult.success;
+    } };
+    const factory = new OptionsFactory<Settings>(makeBase, [{ configure: (o) => (o.port = 8080) }], [{
+      postConfigure: (o) => (o.port = 9090),
+    }], [recordPort]);
     factory.create();
     expect(seen).toEqual([9090]);
   });
 
   test('a passing validator returns the built value', () => {
-    const factory = new OptionsFactory<Settings>(
-      makeBase,
-      [{ configure: (o) => (o.port = 8080) }],
-      [],
-      [{ validate: (o) => o.port > 0 ? ValidateOptionsResult.success : ValidateOptionsResult.fail('bad') }],
-    );
+    const factory = new OptionsFactory<Settings>(makeBase, [{ configure: (o) => (o.port = 8080) }], [], [{
+      validate: (o) => o.port > 0 ? ValidateOptionsResult.success : ValidateOptionsResult.fail('bad'),
+    }]);
     expect(factory.create().port).toBe(8080);
   });
 
   test('skip and success validators do not fail the pipeline', () => {
-    const factory = new OptionsFactory<Settings>(
-      makeBase,
-      [],
-      [],
-      [
-        { validate: () => ValidateOptionsResult.skip },
-        { validate: () => ValidateOptionsResult.success },
-      ],
-    );
+    const factory = new OptionsFactory<Settings>(makeBase, [], [], [{ validate: () => ValidateOptionsResult.skip }, {
+      validate: () => ValidateOptionsResult.success,
+    }]);
     expect(() => factory.create()).not.toThrow();
   });
 
   test('validation failures across every step aggregate into one OptionsValidationError', () => {
-    const factory = new OptionsFactory<Settings>(
-      makeBase,
-      [],
-      [],
-      [
-        { validate: () => ValidateOptionsResult.fail('port is required') },
-        { validate: () => ValidateOptionsResult.skip },
-        { validate: () => ValidateOptionsResult.fail(['host is required', 'host must be a name']) },
-      ],
-    );
+    const factory = new OptionsFactory<Settings>(makeBase, [], [], [{
+      validate: () => ValidateOptionsResult.fail('port is required'),
+    }, { validate: () => ValidateOptionsResult.skip }, {
+      validate: () => ValidateOptionsResult.fail(['host is required', 'host must be a name']),
+    }]);
 
     expect(() => factory.create()).toThrow(OptionsValidationError);
 
@@ -114,14 +81,8 @@ describe('OptionsFactory.create', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(OptionsValidationError);
       const validationError = error as OptionsValidationError;
-      expect(validationError.failures).toEqual([
-        'port is required',
-        'host is required',
-        'host must be a name',
-      ]);
-      expect(validationError.message).toBe(
-        'port is required; host is required; host must be a name',
-      );
+      expect(validationError.failures).toEqual(['port is required', 'host is required', 'host must be a name']);
+      expect(validationError.message).toBe('port is required; host is required; host must be a name');
     }
   });
 });

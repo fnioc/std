@@ -1,15 +1,7 @@
-// PhysicalFileInfo -- ported from
-// ME.FileProviders.Physical.PhysicalFileInfo.
-//
 // Wraps an on-disk path and reads its metadata lazily via a single `statSync`.
-// Two mappings differ from the reference:
-//   - `DateTimeOffset LastModified` maps to the built-in `Date` (as in
-//     fileproviders.core's IFileInfo).
-//   - `System.IO.Stream CreateReadStream()` maps to a web
-//     `ReadableStream<Uint8Array>` -- the ESNext analog of a read-only byte
-//     stream (DEVIATION, flagged). The stream reads fixed-size chunks off the
-//     file descriptor on demand and closes the descriptor when drained or
-//     cancelled, mirroring the reference's lazy sequential read.
+// `createReadStream` returns a `ReadableStream<Uint8Array>` that reads
+// fixed-size chunks off the file descriptor on demand and closes it once
+// drained or cancelled.
 
 import { closeSync, openSync, readSync, type Stats, statSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -30,9 +22,9 @@ interface UnderlyingByteSource {
 }
 type ReadableStreamConstructor = new(source: UnderlyingByteSource) => ReadableStream<Uint8Array>;
 
-// The platform `ReadableStream` constructor, re-typed against our owned
-// structural `ReadableStream<R>` (docs/decisions.md §39). No runtime fallback
-// -- native in node >=18 / bun / deno / browsers.
+// The platform `ReadableStream` constructor, re-typed against this package's
+// structural `ReadableStream<R>`. No runtime fallback -- native in Node >=18,
+// Bun, Deno, and browsers.
 const ReadableStreamConstructor: ReadableStreamConstructor =
   (globalThis as unknown as { ReadableStream: ReadableStreamConstructor; }).ReadableStream;
 
@@ -115,27 +107,23 @@ export class PhysicalFileInfo implements IFileInfo {
   public createReadStream(): ReadableStream<Uint8Array> {
     const path = this.#fullPath;
     let fd: number | undefined;
-    return new ReadableStreamConstructor({
-      start() {
-        fd = openSync(path, 'r');
-      },
-      pull(controller) {
-        const buffer = new Uint8Array(READ_CHUNK_BYTES);
-        const bytesRead = readSync(fd!, buffer, 0, READ_CHUNK_BYTES, null);
-        if (bytesRead === 0) {
-          closeSync(fd!);
-          fd = undefined;
-          controller.close();
-          return;
-        }
-        controller.enqueue(buffer.subarray(0, bytesRead));
-      },
-      cancel() {
-        if (fd !== undefined) {
-          closeSync(fd);
-          fd = undefined;
-        }
-      },
-    });
+    return new ReadableStreamConstructor({ start() {
+      fd = openSync(path, 'r');
+    }, pull(controller) {
+      const buffer = new Uint8Array(READ_CHUNK_BYTES);
+      const bytesRead = readSync(fd!, buffer, 0, READ_CHUNK_BYTES, null);
+      if (bytesRead === 0) {
+        closeSync(fd!);
+        fd = undefined;
+        controller.close();
+        return;
+      }
+      controller.enqueue(buffer.subarray(0, bytesRead));
+    }, cancel() {
+      if (fd !== undefined) {
+        closeSync(fd);
+        fd = undefined;
+      }
+    } });
   }
 }

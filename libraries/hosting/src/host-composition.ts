@@ -1,25 +1,20 @@
-// Shared host-composition tail for both builders -- the port of the reference
-// runtime's `HostBuilder.PopulateServiceCollection` + `HostBuilder.ResolveHost`,
-// factored out so the classic `HostBuilder` and the modern
-// `HostApplicationBuilder` compose identically.
+// Shared host-composition tail for both builders, factored out so the classic
+// `HostBuilder` and the modern `HostApplicationBuilder` compose identically.
 //
-// Two seams differ from the reference because this repo constructs the internal
-// `Host` with its dependencies passed DIRECTLY (ctor args), not resolved from
-// the container:
+// The internal `Host` is constructed with its dependencies passed DIRECTLY
+// (ctor args), not resolved from the container:
 //   - The framework singletons (`ApplicationLifetime`, the `LoggerFactory`, the
 //     resolved `HostOptions`) are constructed eagerly and registered as VALUES,
 //     so `IHost.services` hands the SAME instance back to a consumer that
 //     resolves them (a `.as("singleton")` registration would resolve
-//     transiently off the frameless root -- decisions.md; the frameless-provider
-//     gotcha). This is what keeps `waitForShutdownAsync`'s
-//     `resolve(HOST_APPLICATION_LIFETIME_TOKEN)` returning the very lifetime the
-//     host drives.
-//   - Logging: the reference resolves `ILoggerFactory` from the container. Here
-//     the hosting layer OWNS one `LoggerFactory` and threads it, because a
-//     `LoggerFactory` built by `addLogging` does not yet inject the registered
-//     provider set (logging issue #75). The registered providers are resolved
-//     off the built container and folded into the owned factory, so the host's
-//     own loggers -- and any composite logger already handed out -- light up.
+//     transiently off the frameless root). This is what keeps
+//     `waitForShutdownAsync`'s `resolve(HOST_APPLICATION_LIFETIME_TOKEN)`
+//     returning the very lifetime the host drives.
+//   - Logging: the hosting layer OWNS one `LoggerFactory` and threads it,
+//     because a `LoggerFactory` built by `addLogging` does not yet inject the
+//     registered provider set. The registered providers are resolved off the
+//     built container and folded into the owned factory, so the host's own
+//     loggers -- and any composite logger already handed out -- light up.
 
 import type { IConfig } from '@rhombus-std/config.core';
 import type { IServiceManifest } from '@rhombus-std/di.core';
@@ -101,12 +96,9 @@ function resolvePath(base: string, path: string): string {
 /**
  * Resolves a content-root path against `basePath`: returns `basePath` for an
  * empty input, the path itself when already absolute, otherwise the path
- * resolved against `basePath`. Port of the reference `ResolveContentRootPath`.
+ * resolved against `basePath`.
  */
-export function resolveContentRootPath(
-  contentRootPath: string | undefined,
-  basePath: string,
-): string {
+export function resolveContentRootPath(contentRootPath: string | undefined, basePath: string): string {
   if (!contentRootPath) {
     return basePath;
   }
@@ -117,12 +109,10 @@ export function resolveContentRootPath(
 }
 
 /**
- * Constructs the mutable {@link HostingEnvironment} from `config`,
- * reading the {@link HostDefaults} keys -- port of the reference
- * `CreateHostingEnvironment`. `contentRootFileProvider` keeps its
- * `NullFileProvider` default (the physical file provider is deferred, decisions.md
- * §20). `basePath` defaults to the current working directory, the analog of the
- * reference `AppContext.BaseDirectory`.
+ * Constructs the mutable {@link HostingEnvironment} from `config`, reading the
+ * {@link HostDefaults} keys. `contentRootFileProvider` keeps its
+ * `NullFileProvider` default (the physical file provider isn't wired in here
+ * yet). `basePath` defaults to the current working directory.
  */
 export function createHostingEnvironment(config: IConfig): HostingEnvironment {
   const environment = new HostingEnvironment();
@@ -152,28 +142,21 @@ export function createHostingEnvironment(config: IConfig): HostingEnvironment {
  */
 export function createFrameworkServices(): FrameworkServices {
   const loggerFactory = new LoggerFactory([]);
-  const applicationLifetime = new ApplicationLifetime(
-    loggerFactory.createLogger(APPLICATION_LIFETIME_CATEGORY),
-  );
+  const applicationLifetime = new ApplicationLifetime(loggerFactory.createLogger(APPLICATION_LIFETIME_CATEGORY));
   return { loggerFactory, applicationLifetime, hostOptions: new HostOptions() };
 }
 
 /**
- * Registers the framework services into `services` -- the port of
- * `PopulateServiceCollection`. Runs BEFORE the user's configure-services
- * delegates so a later `useConsoleLifetime` (which appends a
+ * Registers the framework services into `services`. Runs BEFORE the user's
+ * configure-services delegates so a later `useConsoleLifetime` (which appends a
  * {@link HOST_LIFETIME_TOKEN} registration) wins last over the default
  * {@link NullLifetime} registered here. Returns the manifest produced by every
  * registration -- the chain is immutable, so the caller must thread this
  * result forward instead of reusing the `services` it passed in.
  */
-export function populateFrameworkServices(
-  services: IServiceManifest,
-  context: HostBuilderContext,
-  environment: HostingEnvironment,
-  config: IConfig,
-  framework: FrameworkServices,
-): IServiceManifest {
+export function populateFrameworkServices(services: IServiceManifest, context: HostBuilderContext,
+  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): IServiceManifest
+{
   let s = services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
   s = s.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
   s = s.addValue(CONFIG_TOKEN, config);
@@ -188,10 +171,10 @@ export function populateFrameworkServices(
 }
 
 /**
- * Builds the provider and constructs the internal {@link Host} -- the port of
- * `ResolveHost`. Loads the container's registered {@link ILoggerProvider}s into
- * the owned {@link LoggerFactory}, resolves the (possibly overridden) host
- * lifetime, and hands the internal host its dependencies directly.
+ * Builds the provider and constructs the internal {@link Host}. Loads the
+ * container's registered {@link ILoggerProvider}s into the owned
+ * {@link LoggerFactory}, resolves the (possibly overridden) host lifetime, and
+ * hands the internal host its dependencies directly.
  *
  * `@rhombus-std/di` MUST be imported by the caller before this runs so
  * `IServiceManifest.build()` is patched on (di.core alone throws in `build()`).
@@ -199,16 +182,12 @@ export function populateFrameworkServices(
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
- * `serviceProviderOptions` (the reference `ServiceProviderOptions`) carries the
- * `validateScopes` / `validateOnBuild` toggles the builders resolved; omitted ⇒
- * an unvalidated build.
+ * `serviceProviderOptions` carries the `validateScopes` / `validateOnBuild`
+ * toggles the builders resolved; omitted ⇒ an unvalidated build.
  */
-export function resolveHost(
-  services: IServiceManifest,
-  framework: FrameworkServices,
-  config: IConfig,
-  serviceProviderOptions?: ServiceProviderOptions,
-): IHost {
+export function resolveHost(services: IServiceManifest, framework: FrameworkServices, config: IConfig,
+  serviceProviderOptions?: ServiceProviderOptions): IHost
+{
   const provider: IServiceProvider = services.build(serviceProviderOptions);
 
   const loggerProviders = provider.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
@@ -221,9 +200,7 @@ export function resolveHost(
   // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TOKEN sees
   // the same mutated instance).
   framework.hostOptions.initialize(config);
-  const configureSteps = provider.resolve<Array<Func<[HostOptions], void>>>(
-    `Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`,
-  );
+  const configureSteps = provider.resolve<Array<Func<[HostOptions], void>>>(`Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`);
   for (const configureStep of configureSteps) {
     configureStep(framework.hostOptions);
   }
@@ -231,11 +208,5 @@ export function resolveHost(
   const hostLifetime = provider.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
   const logger = framework.loggerFactory.createLogger(HOST_LOGGER_CATEGORY);
 
-  return new Host(
-    provider,
-    framework.applicationLifetime,
-    logger,
-    hostLifetime,
-    framework.hostOptions,
-  );
+  return new Host(provider, framework.applicationLifetime, logger, hostLifetime, framework.hostOptions);
 }

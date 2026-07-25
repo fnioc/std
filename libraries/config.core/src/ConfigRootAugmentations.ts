@@ -1,17 +1,7 @@
-// The public debug-view augmentation over IConfigRoot -- port of the reference
-// `ConfigurationRootExtensions.cs` (and the `ConfigurationDebugViewContext`
-// struct it depends on, collapsed to a plain type). A runtime function defined
-// against the abstraction interfaces only, so it belongs in config.core (the
-// assembly mirroring the reference's `.Configuration.Abstractions`).
-//
-// This is a CLOSED augmentation set (docs/decisions.md §28/§38): the receiver
-// interface (IConfigRoot) AND this augmentation are owned inside the config
-// family with no downstream extender. The member set is authored here as ONE
-// named exported const, so `getDebugView` is available BOTH as a fluent method
-// (`root.getDebugView()`) and as the standalone member form
-// (`ConfigRootAugmentations.getDebugView(root)`). The install -- the
-// `applyAugmentations` calls and `declare module` merges onto the concrete root
-// classes -- lives in @rhombus-std/config.
+// A convenience member over IConfigRoot, callable as a fluent method
+// (`root.getDebugView()`) or as the standalone form
+// (`ConfigRootAugmentations.getDebugView(root)`). The install onto the concrete
+// IConfigRoot classes lives in @rhombus-std/config, which can import them.
 
 import type { AugmentationSet } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
@@ -22,8 +12,6 @@ import type { IConfigSection } from './IConfigSection';
 /**
  * Data about the current item of the configuration, handed to the
  * `processValue` callback of {@link ConfigRootAugmentations.getDebugView}.
- * Mirrors the fields of the reference runtime's `ConfigurationDebugViewContext`
- * struct as a runtime-free type.
  */
 export type ConfigDebugViewContext = {
   /** The path of the current item. */
@@ -37,10 +25,9 @@ export type ConfigDebugViewContext = {
 };
 
 /** The value/provider that last defined `key`, scanning providers in reverse. */
-function getValueAndProvider(
-  root: IConfigRoot,
-  key: string,
-): [value: string | undefined, provider: IConfigProvider] | undefined {
+function getValueAndProvider(root: IConfigRoot, key: string): [value: string | undefined, provider: IConfigProvider]
+  | undefined
+{
   const providers = [...root.providers].reverse();
   for (const provider of providers) {
     const result = provider.tryGet(key);
@@ -51,12 +38,7 @@ function getValueAndProvider(
   return undefined;
 }
 
-/**
- * One named object literal mirroring the reference `ConfigurationRootExtensions`
- * static class (docs §28/§38) -- a receiver-first member over
- * IConfigRoot. Installed directly (CLOSED set, no token) onto the
- * concrete root classes AND exported so the member is the standalone form.
- */
+/** Receiver-first convenience member over {@link IConfigRoot}. */
 export const ConfigRootAugmentations = {
   /**
    * A human-readable view of the configuration showing where each value came
@@ -64,15 +46,11 @@ export const ConfigRootAugmentations = {
    * with no directly-defined value is rendered `key:`. `processValue` may
    * transform a leaf's rendered value, e.g. to hide secrets.
    *
-   * The provider label is `String(provider)` -- the base `ConfigProvider`
-   * renders the concrete class name by default (e.g. "JsonConfigProvider"),
-   * and a provider may override `toString` further to add its own detail (the
-   * JSON provider adds its path and optional flag).
+   * @remarks
+   * The `(provider)` label is `String(provider)` — a provider's `toString`
+   * override supplies any distinguishing detail (e.g. a file path).
    */
-  getDebugView(
-    root: IConfigRoot,
-    processValue?: Func<[ConfigDebugViewContext], string>,
-  ): string {
+  getDebugView(root: IConfigRoot, processValue?: Func<[ConfigDebugViewContext], string>): string {
     const parts: string[] = [];
 
     const recurse = (children: Iterable<IConfigSection>, indent: string): void => {
@@ -80,9 +58,7 @@ export const ConfigRootAugmentations = {
         const found = getValueAndProvider(root, child.path);
         if (found) {
           const [value, provider] = found;
-          const rendered = processValue
-            ? processValue({ path: child.path, key: child.key, value, provider })
-            : value;
+          const rendered = processValue ? processValue({ path: child.path, key: child.key, value, provider }) : value;
           parts.push(`${indent}${child.key}=${rendered} (${String(provider)})\n`);
         } else {
           parts.push(`${indent}${child.key}:\n`);

@@ -9,9 +9,7 @@
 //   - neither parses -> compare ordinal-case-insensitive,
 //   - exactly one parses -> the numeric one sorts first.
 // If every shared segment ties, the key that runs out of segments first (the
-// shorter, once runs are collapsed) sorts first. This mirrors MEC's
-// ConfigurationKeyComparer.Compare / SkipAheadOnDelimiter span-walk rather than
-// a naive split(':'), which would order delimiter-run keys differently.
+// shorter, once runs are collapsed) sorts first.
 
 import { configPath } from '@rhombus-std/config.core';
 import { foldKey } from './fold-key';
@@ -75,8 +73,6 @@ function compareSegments(xSegment: string, ySegment: string): number {
 
 /** Compares two configuration keys segment-by-segment; suitable as an `Array.prototype.sort` comparator. */
 export function compareConfigKeys(x: string, y: string): number {
-  // Walk both keys segment by segment, collapsing delimiter runs (leading,
-  // trailing, and doubled) exactly as MEC's SkipAheadOnDelimiter does.
   let xi = skipDelimiters(x, 0);
   let yi = skipDelimiters(y, 0);
 

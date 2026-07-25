@@ -241,10 +241,7 @@ export class AuditTrail implements IAuditTrail {
  */
 export async function fetchExchangeRates(): Promise<IExchangeRates> {
   await Promise.resolve(); // stand-in for a real network round-trip
-  return {
-    asOf: '2026-01-01',
-    rate: (currency: string): number => (currency === 'GBP' ? 1 : 0.85),
-  };
+  return { asOf: '2026-01-01', rate: (currency: string): number => (currency === 'GBP' ? 1 : 0.85) };
 }
 
 // ── the router (provider injection + factory injection) ─────────────────────
@@ -284,11 +281,9 @@ export class PaymentRouter implements IPaymentRouter {
   readonly #gatewayToken: Typeof<IPaymentGateway>;
   readonly #mintReceipt: (order: CheckoutOrder) => IReceipt;
 
-  public constructor(
-    resolver: IResolver,
-    gatewayToken: Typeof<IPaymentGateway>,
-    mintReceipt: (order: CheckoutOrder) => IReceipt,
-  ) {
+  public constructor(resolver: IResolver, gatewayToken: Typeof<IPaymentGateway>,
+    mintReceipt: (order: CheckoutOrder) => IReceipt)
+  {
     this.#resolver = resolver;
     this.#gatewayToken = gatewayToken;
     this.#mintReceipt = mintReceipt;

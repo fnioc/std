@@ -28,50 +28,46 @@ export interface IHostBuilder {
    * application. Additive across calls; results are exposed at
    * {@link HostBuilderContext.config} and in {@link IHost.services}.
    *
-   * This is the reference's context form (the `IHostBuilder` interface method).
-   * The reference also offers a no-context `Action<IConfigBuilder>`
-   * convenience extension; it is intentionally not surfaced here — a TS overload
-   * on this method can't distinguish the two forms for an un-annotated lambda
-   * without degrading contextual typing of this dominant context form, and every
-   * in-repo caller uses the context form. A hand author writes the two-parameter
-   * form with an unused first parameter.
+   * @remarks
+   * There is no no-context overload: a TS overload on this method can't
+   * distinguish an unannotated context-less lambda from the context-taking
+   * form without degrading the dominant form's contextual typing. A caller
+   * that doesn't need the context writes the two-parameter form with an
+   * unused first parameter.
    */
-  configureAppConfig(
-    configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
-  ): this;
+  configureAppConfig(configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>): this;
 
   /**
-   * Adds services to the container. Additive across calls. (Context form; see
-   * {@link configureAppConfig} on the omitted no-context convenience.)
+   * Adds services to the container. Additive across calls. (Context form;
+   * see {@link configureAppConfig} for the no-context remark.)
    *
-   * The delegate RETURNS the manifest, it does not mutate one: the chain is
-   * immutable, so every registration hands back a new manifest and the builder
-   * threads the delegate's return into the next one. A delegate that registered
-   * something and returned the manifest it was GIVEN would silently drop every
-   * registration — hence the `Func`, not an `Action`.
+   * @remarks
+   * The delegate returns the manifest rather than mutating one — the chain
+   * is immutable, so every registration hands back a new manifest and the
+   * builder threads the delegate's return value into the next step. A
+   * delegate that registers something and returns the manifest it was given
+   * would silently drop that registration.
    */
-  configureServices(
-    configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>,
-  ): this;
+  configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this;
 
   /**
    * Overrides the factory used to create the service provider.
    *
-   * This repo has a SINGLE container type ({@link IServiceManifest}), so the
-   * reference's `IServiceProviderFactory<TContainerBuilder>` — di.core's shared
-   * {@link IServiceProviderFactory} — is accepted but the default `IServiceManifest`
-   * build path is always used. See diNotes.
+   * @remarks
+   * {@link IServiceProviderFactory} is generic over a container-builder type,
+   * but this host only ever builds one container type
+   * ({@link IServiceManifest}) — a factory for any other `TContainerBuilder`
+   * is accepted here but has no effect; the default `IServiceManifest` build
+   * path always runs.
    */
-  useServiceProviderFactory<TContainerBuilder>(
-    factory: IServiceProviderFactory<TContainerBuilder>,
-  ): this;
+  useServiceProviderFactory<TContainerBuilder>(factory: IServiceProviderFactory<TContainerBuilder>): this;
 
   /**
-   * Enables configuring the instantiated dependency container. Additive across
-   * calls. (Context form; see {@link configureAppConfig} on the omitted
-   * no-context convenience.) The container builder here IS the one real
-   * {@link IServiceManifest} (docs §24), so the delegate returns it for the same
-   * immutability reason {@link configureServices} does.
+   * Enables configuring the instantiated dependency container. Additive
+   * across calls. (Context form; see {@link configureAppConfig} for the
+   * no-context remark.) `TContainerBuilder` is always {@link IServiceManifest}
+   * here, so the delegate returns it for the same immutability reason
+   * {@link configureServices} does.
    */
   configureContainer<TContainerBuilder>(
     configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,

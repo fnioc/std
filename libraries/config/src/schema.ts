@@ -31,9 +31,7 @@ export type ObjectSchema = { readonly [key: string]: Schema; };
  */
 export type Schema = 'string' | 'number' | 'boolean' | OptionalSchema | ObjectSchema;
 
-type OptionalKeys<S> = {
-  [K in keyof S]-?: S[K] extends OptionalSchema ? K : never;
-}[keyof S];
+type OptionalKeys<S> = { [K in keyof S]-?: S[K] extends OptionalSchema ? K : never; }[keyof S];
 type RequiredKeys<S> = Exclude<keyof S, OptionalKeys<S>>;
 
 /**
@@ -60,8 +58,6 @@ export type Infer<S> = S extends 'string' ? string
   : S extends 'number' ? number
   : S extends 'boolean' ? boolean
   : S extends { readonly [OPTIONAL]: infer Inner; } ? (Inner extends Schema ? Infer<Inner> | undefined : never)
-  : S extends object ? (
-      & { readonly [K in RequiredKeys<S>]: Infer<S[K]>; }
-      & { readonly [K in OptionalKeys<S>]?: Infer<S[K]>; }
-    )
+  : S extends object
+    ? ({ readonly [K in RequiredKeys<S>]: Infer<S[K]>; } & { readonly [K in OptionalKeys<S>]?: Infer<S[K]>; })
   : never;

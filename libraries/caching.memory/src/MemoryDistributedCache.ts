@@ -1,15 +1,7 @@
-// MemoryDistributedCache -- ported from ME.Caching.Memory's
-// MemoryDistributedCache: an IDistributedCache implemented over a PRIVATE
-// MemoryCache (constructed here, never the DI-registered IMemoryCache -- the
-// reference deliberately keeps the two stores separate).
-//
-// The reference's two constructors (with and without an ILoggerFactory,
-// defaulting to the null logger factory) collapse into one optional
-// parameter, the same collapse MemoryCache's own constructor makes. The
-// sync+async member pairs collapse into the single Promise-returning members
-// of the ported IDistributedCache; the bodies are synchronous over the inner
-// MemoryCache, so each resolves immediately (the reference's async members
-// likewise wrap their sync twins in a completed Task).
+// Implements `IDistributedCache` over a PRIVATE MemoryCache -- constructed
+// here, never the DI-registered `IMemoryCache`; the two stores are
+// deliberately kept separate. Every member returns a `Promise` but resolves
+// synchronously over the inner cache.
 
 import type { DistributedCacheEntryOptions, IDistributedCache } from '@rhombus-std/caching.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
@@ -20,8 +12,8 @@ import { MemoryCache } from './MemoryCache';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // Binds the `IDistributedCache` interface symbol onto the class so the
-// interface-merged wrapper methods (setString/getString, §80) flow onto it,
-// beside the `@augment(tokenfor<IDistributedCache>())` install below.
+// interface-merged wrapper methods (setString/getString) flow onto it, beside
+// the `@augment(tokenfor<IDistributedCache>())` install below.
 export interface MemoryDistributedCache extends IDistributedCache {}
 
 /** Implements `IDistributedCache` by storing items in a private in-memory {@link MemoryCache}. */
@@ -36,10 +28,7 @@ export class MemoryDistributedCache implements IDistributedCache {
    * @param loggerFactory Optional; the inner cache falls back to a null logger
    * when omitted.
    */
-  public constructor(
-    optionsAccessor: IOptions<MemoryDistributedCacheOptions>,
-    loggerFactory?: ILoggerFactory,
-  ) {
+  public constructor(optionsAccessor: IOptions<MemoryDistributedCacheOptions>, loggerFactory?: ILoggerFactory) {
     this.#memCache = new MemoryCache(optionsAccessor.value, loggerFactory);
   }
 
@@ -50,15 +39,12 @@ export class MemoryDistributedCache implements IDistributedCache {
   }
 
   /** Sets the byte payload associated with `key`, sized at its byte length. */
-  public set(
-    key: string,
-    value: Uint8Array,
-    options: DistributedCacheEntryOptions,
-    _abortSignal?: AbortSignal,
-  ): Promise<void> {
-    // Dispose in `finally` (the reference `using`): a validating setter that
-    // throws must still dispose the entry so the linked-entry tracking chain
-    // (if enabled on the inner cache) is popped.
+  public set(key: string, value: Uint8Array, options: DistributedCacheEntryOptions,
+    _abortSignal?: AbortSignal): Promise<void>
+  {
+    // Dispose in `finally`: a validating setter that throws must still
+    // dispose the entry so the linked-entry tracking chain (if enabled on
+    // the inner cache) is popped.
     const entry = this.#memCache.createEntry(key);
     try {
       entry.absoluteExpiration = options.absoluteExpiration;

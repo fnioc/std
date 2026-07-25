@@ -1,9 +1,8 @@
-// StreamConfigProvider -- abstract base for stream-based configuration
-// providers; mirrors the reference `StreamConfigProvider`. The
-// reference declares BOTH the once-only-guard `Load()` and the abstract
-// payload-taking `Load(Stream)` as one overloaded name; TS cannot pair an
-// abstract overload with a concrete implementation of the other arity, so the
-// payload-taking half is named `loadStream` here.
+// Abstract base for stream-based configuration providers. The once-only-guard
+// `load()` and the abstract payload-taking loader can't share one overloaded
+// name in TS -- an abstract overload can't pair with a concrete
+// implementation of another arity -- so the payload-taking half is named
+// `loadStream`.
 
 import { ConfigProvider } from '../ConfigProvider';
 import type { StreamConfigSource, StreamPayload } from './StreamConfigSource';
@@ -28,8 +27,8 @@ export abstract class StreamConfigProvider extends ConfigProvider {
 
   /**
    * Loads the configuration data from the source's stream payload. Throws on
-   * subsequent calls -- a stream is consumed exactly once (reference parity),
-   * so a root-wide `reload()` over a stream provider throws too.
+   * subsequent calls -- a stream is consumed exactly once, so a root-wide
+   * `reload()` over a stream provider throws too.
    */
   public override load(): void {
     if (this.#loaded) {

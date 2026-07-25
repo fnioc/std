@@ -1,19 +1,6 @@
-// Owned structural typings for the page-lifecycle slice of the DOM — the
-// §39/§44 recipe (see @rhombus-std/primitives' abort.ts/process.ts): library
-// programs carry ZERO ambient platform types (`types: []`), so naming
-// `document`/`window` requires owned structural interfaces plus typed
-// `globalThis` lookups — never lib.dom. (A `declare module` d.ts can't cover
-// bare globals, and `declare global` would collide with lib.dom the moment a
-// consumer program pulls it in — the same reason primitives' abort.ts avoids
-// it.)
-//
-// The surface is EXACTLY what this package touches: event registration for the
-// five page-lifecycle events (visibilitychange/freeze/resume on `document`,
-// pagehide/pageshow on `window`), `document.visibilityState`, and
-// `PageTransitionEvent.persisted`. Extend it only when a call site actually
-// needs more. One-way assignability is all that is required (platform
-// document/window -> the *Like interfaces; we never hand ours back to a
-// platform API).
+// Structural typings for the page-lifecycle slice of the DOM this package
+// touches (document/window are typed via targeted globalThis lookups, not
+// lib.dom). Extend the surface only when a call site actually needs more.
 //
 // `unload`/`beforeunload` are DELIBERATELY not in the event unions: registering
 // either disqualifies the page from the back/forward cache, so this package
@@ -61,17 +48,13 @@ export interface PageContext {
 
 /**
  * The platform page context, re-typed against the owned structural interfaces.
- * Resolved LAZILY (a function, unlike primitives' eager `process` const) so
- * that merely importing this package never touches the globals — only actually
- * constructing a lifetime/bridge without an injected context does, and outside
- * a browser that fails loud here instead of as a property access on
- * `undefined`.
+ * Resolved lazily so merely importing this package never touches the globals;
+ * outside a browser, this throws here rather than as a property access on
+ * `undefined` deeper inside a lifetime/bridge.
  */
 export function defaultPageContext(): PageContext {
-  const { document, window } = globalThis as unknown as {
-    document: DocumentLike | undefined;
-    window: WindowLike | undefined;
-  };
+  const { document, window } = globalThis as unknown as { document: DocumentLike | undefined;
+    window: WindowLike | undefined; };
   if (document === undefined || window === undefined) {
     throw new Error(
       '@rhombus-std/hosting.browser requires a browser page context (document/window); '

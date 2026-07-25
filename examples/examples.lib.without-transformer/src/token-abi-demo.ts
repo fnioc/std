@@ -52,10 +52,7 @@ import type { ConcreteNode, DepSignatures, DepSlot, FactoryNode, FactoryRef, Hol
 
 /** Loads entities of one type. Registered as an open template. */
 class SqlRepository<T> {
-  public constructor(
-    public readonly entityToken: Token,
-    public readonly connection: unknown,
-  ) {}
+  public constructor(public readonly entityToken: Token, public readonly connection: unknown) {}
 
   public describe(): string {
     return `repository of ${this.entityToken}`;
@@ -73,12 +70,9 @@ class Connection {
 
 /** Reads reports. Its slots deliberately cover the whole slot vocabulary. */
 class ReportService {
-  public constructor(
-    public readonly connection: Connection,
-    public readonly region: string,
-    public readonly mintRepository: () => unknown,
-    public readonly cache: unknown,
-  ) {}
+  public constructor(public readonly connection: Connection, public readonly region: string,
+    public readonly mintRepository: () => unknown, public readonly cache: unknown)
+  {}
 }
 
 const CONNECTION_TOKEN = 'reports:IConnection';
@@ -132,29 +126,16 @@ export function addReportingFixture(services: IServiceManifest<'singleton'>): IS
   // The open template. `typeArg(1)` is the slot that asks for the TOKEN STRING
   // of the closing's first type argument — a `TypeArgRef`, one of the three
   // object-shaped slot kinds.
-  services = services.addClass(
-    REPOSITORY_TEMPLATE,
-    SqlRepository,
-    [[typeArg(1), CONNECTION_TOKEN]],
-    'singleton',
-  );
+  services = services.addClass(REPOSITORY_TEMPLATE, SqlRepository, [[typeArg(1), CONNECTION_TOKEN]], 'singleton');
   // One exact closing, registered on its own so the inspector has both an
   // `exact` and an `open` entry to classify.
   services = services.addClass(AUDIT_REPOSITORY_TOKEN, SqlRepository, [[{ value: AUDIT_TOKEN }, CONNECTION_TOKEN]]);
   // Every remaining slot kind in one signature: a plain token, a LITERAL (its
   // value injected verbatim, no lookup), a FACTORY (a callable producing the
   // named token), and a UNION (alternatives tried in order).
-  services = services.addClass(
-    REPORT_TOKEN,
-    ReportService,
-    [[
-      CONNECTION_TOKEN,
-      { value: 'eu-west' },
-      { type: USER_REPOSITORY_TOKEN },
-      union(CACHE_TOKEN, MEMORY_CACHE_TOKEN),
-    ]],
-    'singleton',
-  );
+  services = services.addClass(REPORT_TOKEN, ReportService, [[CONNECTION_TOKEN, { value: 'eu-west' }, {
+    type: USER_REPOSITORY_TOKEN,
+  }, union(CACHE_TOKEN, MEMORY_CACHE_TOKEN)]], 'singleton');
   return services;
 }
 
@@ -209,12 +190,8 @@ export function describeTree(raw: string): string {
   if (node === undefined) {
     return `${raw} — unparseable; tryParse said so instead of throwing`;
   }
-  const parts = [
-    `kind=${node.kind}`,
-    `base=${TokenNode.baseKey(node)}`,
-    `open=${TokenNode.isOpen(node)}`,
-    `roundTrip=${TokenNode.toString(node) === TokenNode.canonicalise(raw)}`,
-  ];
+  const parts = [`kind=${node.kind}`, `base=${TokenNode.baseKey(node)}`, `open=${TokenNode.isOpen(node)}`,
+    `roundTrip=${TokenNode.toString(node) === TokenNode.canonicalise(raw)}`];
   return `${raw} — ${parts.join(' ')}`;
 }
 
@@ -265,10 +242,7 @@ export class PackageCollector extends TokenWalker<readonly string[]> {
  * `reports:UserGroup`.
  */
 export class PackageRenamer extends TokenRewriter {
-  public constructor(
-    private readonly from: string,
-    private readonly to: string,
-  ) {
+  public constructor(private readonly from: string, private readonly to: string) {
     super();
   }
 
@@ -308,9 +282,7 @@ export function explainMatch(template: Token, ground: Token): string {
   if (bind === undefined) {
     return `${template} does NOT serve ${ground}`;
   }
-  const bindings = [...bind.entries()]
-    .map(([label, node]) => `$${label}=${TokenNode.toString(node)}`)
-    .join(', ');
+  const bindings = [...bind.entries()].map(([label, node]) => `$${label}=${TokenNode.toString(node)}`).join(', ');
   return `${template} serves ${ground} with ${bindings}`;
 }
 
@@ -341,10 +313,9 @@ export function explainMatch(template: Token, ground: Token): string {
  */
 export function rankBySpecificity(templates: readonly Token[]): readonly string[] {
   const specificity = new Specificity();
-  return templates
-    .map((template) => ({ template, score: specificity.measure(TokenNode.parse(template)) }))
-    .sort((left, right) => right.score - left.score || left.template.localeCompare(right.template))
-    .map(({ template, score }) => `${template} (specificity ${score})`);
+  return templates.map((template) => ({ template, score: specificity.measure(TokenNode.parse(template)) })).sort((left,
+    right) => right.score - left.score || left.template.localeCompare(right.template)
+  ).map(({ template, score }) => `${template} (specificity ${score})`);
 }
 
 // ── 7. slots: the wire form, the tree form, and closing a template ───────────
@@ -464,10 +435,8 @@ export function closeAgainst(signatures: DepSignatures, template: Token, ground:
   const substituter = new Substituter(bind);
   const closedToken = TokenNode.toString(substituter.rewrite(TokenNode.parse(template)));
   const closed = closeSignatures(signatures, bind);
-  return [
-    `  template ${template} closes to ${closedToken}`,
-    ...closed[0]!.map((slot) => `    slot: ${describeSlot(slot)}`),
-  ];
+  return [`  template ${template} closes to ${closedToken}`,
+    ...closed[0]!.map((slot) => `    slot: ${describeSlot(slot)}`)];
 }
 
 /**
@@ -550,14 +519,9 @@ export function demonstrateTokenAbi(services: Iterable<ManifestEntry>): readonly
   // closed generic no closing will ever match; and a KEYED template is still a
   // template — the key rides along outside the generic argument list, which is
   // why the shape question has to be asked of the unkeyed form.
-  const shapes: readonly Token[] = [
-    CONNECTION_TOKEN,
-    USER_REPOSITORY_TOKEN,
-    REPOSITORY_TEMPLATE,
-    closeToken('reports:IPair', USER_TOKEN, '$2'),
-    closeToken('reports:IRepository', '$01'),
-    `${REPOSITORY_TEMPLATE}#audit`,
-  ];
+  const shapes: readonly Token[] = [CONNECTION_TOKEN, USER_REPOSITORY_TOKEN, REPOSITORY_TEMPLATE,
+    closeToken('reports:IPair', USER_TOKEN, '$2'), closeToken('reports:IRepository', '$01'),
+    `${REPOSITORY_TEMPLATE}#audit`];
   lines.push('classifying a token without parsing it:');
   for (const token of shapes) {
     lines.push(`  ${classify(token)}`);
@@ -590,22 +554,15 @@ export function demonstrateTokenAbi(services: Iterable<ManifestEntry>): readonly
   // pins an argument concretely, the other pins two arguments to each other —
   // and the fully-open one scores 1 and is tried last.
   lines.push('ranking overlapping templates most-specific-first (a Specificity):');
-  for (const ranked of rankBySpecificity([
-    closeToken('reports:IPair', '$1', '$2'),
-    closeToken('reports:IPair', '$1', '$1'),
-    closeToken('reports:IPair', USER_TOKEN, '$2'),
-  ])) {
+  for (const ranked of rankBySpecificity([closeToken('reports:IPair', '$1', '$2'),
+    closeToken('reports:IPair', '$1', '$1'), closeToken('reports:IPair', USER_TOKEN, '$2')]))
+  {
     lines.push(`  ${ranked}`);
   }
 
   // Slots.
-  const reportSlots: readonly DepSlot[] = [
-    CONNECTION_TOKEN,
-    { value: 'eu-west' },
-    { type: USER_REPOSITORY_TOKEN },
-    union(CACHE_TOKEN, MEMORY_CACHE_TOKEN),
-    typeArg(1),
-  ];
+  const reportSlots: readonly DepSlot[] = [CONNECTION_TOKEN, { value: 'eu-west' }, { type: USER_REPOSITORY_TOKEN },
+    union(CACHE_TOKEN, MEMORY_CACHE_TOKEN), typeArg(1)];
   lines.push('the five slot kinds, told apart by the published guards:');
   for (const slot of reportSlots) {
     lines.push(`  ${describeSlot(slot)}`);

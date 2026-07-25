@@ -149,13 +149,9 @@ describe('element lifetime / scoping', () => {
     const root = services.build().createScope('singleton');
     const reqA = root.createScope('request');
     const reqB = root.createScope('request');
-    expect(reqA.resolve<Scoped[]>(ARRAY)[0]).not.toBe(
-      reqB.resolve<Scoped[]>(ARRAY)[0],
-    );
+    expect(reqA.resolve<Scoped[]>(ARRAY)[0]).not.toBe(reqB.resolve<Scoped[]>(ARRAY)[0]);
     // Within one request scope the scoped element is stable.
-    expect(reqA.resolve<Scoped[]>(ARRAY)[0]).toBe(
-      reqA.resolve<Scoped[]>(ARRAY)[0],
-    );
+    expect(reqA.resolve<Scoped[]>(ARRAY)[0]).toBe(reqA.resolve<Scoped[]>(ARRAY)[0]);
   });
 });
 

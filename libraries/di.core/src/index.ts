@@ -4,18 +4,17 @@
  * A LIBRARY AUTHOR depends on this package to author registrations and
  * dependency signatures WITHOUT pulling the `@rhombus-std/di` resolution engine.
  * It carries the dependency-signature data format, the slot/token type surface
- * and its grammar/guard/constructor helpers, the registration ABI, and — mirror
- * of the reference DI split where the abstractions package ships the concrete
- * registration collection — the concrete registration builder `ServiceManifestClass`
- * (collects `addClass`/`addFactory`/`addValue`; `build()` is a `@rhombus-std/di`
- * extension). Cross-package fluent-authoring augmentations prototype-patch this
- * class, and depend on di.core ALONE, never the runtime.
+ * and its grammar/guard/constructor helpers, the registration ABI, and the
+ * concrete registration builder `ServiceManifestClass` (collects
+ * `addClass`/`addFactory`/`addValue`; a working `build()` arrives with
+ * `@rhombus-std/di`). Cross-package fluent-authoring augmentations prototype-patch
+ * that class, and depend on di.core ALONE, never the runtime.
  *
  * Runtime footprint: the slot/token helpers, the registration builder, the
  * `EmptyServiceProvider` null-object singleton, and the whole error taxonomy —
  * registration-time AND resolution-time, so a library that references only the
- * abstractions can classify a container failure without pulling the engine
- * (§130). Only the resolution engine itself (`ServiceProviderClass`) lives in
+ * abstractions can classify a container failure without pulling the engine. Only
+ * the resolution engine itself (`ServiceProviderClass`) lives in
  * `@rhombus-std/di`.
  */
 
@@ -42,12 +41,12 @@ export type { Ctor, Factory, ManifestEntry, OpenRegistration, Producer, Registra
 export type { IRequiredResolver, IResolver, IScopeFactory, IServiceProvider, IServiceQuery,
   Lifetime } from './provider.js';
 
-// The pluggable provider-factory seam (the reference `IServiceProviderFactory`
-// analog). A single-container no-op here, but named so hosting shares one type.
+// The pluggable provider-factory seam. A single-container no-op here, but named
+// so every hosting reference to it shares one type.
 export type { IServiceProviderFactory } from './IServiceProviderFactory.js';
 
-// The provider-construction options `build(options?)` accepts (the reference
-// `ServiceProviderOptions` analog) — pure data; the engine reads the flags.
+// The provider-construction options `build(options?)` accepts — pure data; the
+// engine reads the flags.
 export type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
 // The slot/token ABI runtime helpers. A di consumer reaches these through the
@@ -58,11 +57,9 @@ export { typeArg, union } from './slots.js';
 
 // The compile-time dependency-signature MINT primitives — derive a `DepSlot`
 // signature from an explicit type tuple (`signaturefor<[A, B]>()`) or the whole
-// overload set from a tuple-of-tuples (`signaturesfor<...>()`), the type-driven
-// siblings of `signatureof(value)`'s observe-from-a-value form. They live here
-// (not `@rhombus-std/primitives`) because they produce di.core's `DepSlot` shape
-// and every caller — di runtime libs and `di.extras` — already depends on
-// di.core. The runtime bodies throw without the transformer, like `tokenfor`.
+// overload set from a tuple-of-tuples (`signaturesfor<...>()`). They live here,
+// not in `@rhombus-std/primitives`, because they produce di.core's `DepSlot`
+// shape and every caller already depends on di.core.
 export { overrideSignatures } from './overrideSignatures.js';
 export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } from './signaturefor.js';
 
@@ -84,15 +81,15 @@ export { closeToken, isOpenToken, parseToken, unkeyedToken } from './token/index
 // the engine resolves it to the live provider view (see `provider-token.ts`).
 export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';
 
-// The shared null-object provider singleton (the reference `EmptyServiceProvider`
-// analog) — a `IServiceProvider` with no application services.
+// The shared null-object provider singleton — a `IServiceProvider` with no
+// application services.
 export { EmptyServiceProvider } from './EmptyServiceProvider.js';
 
 // The WHOLE error taxonomy: the `DiError` root, the registration-time errors the
 // builder here raises, and the resolution-time errors the engine raises. It all
 // lives in the abstractions package so a di.core-only library can classify what
 // a caller's container threw — branch, add context, re-raise — without taking a
-// reference on `@rhombus-std/di` (which re-exports these, §130).
+// dependency on `@rhombus-std/di` (which re-exports these).
 export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
   MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
   OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
@@ -100,6 +97,6 @@ export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDepen
 
 // The descriptor-level mutation augmentation (`removeAll`, `tryAdd*`, `replace*`).
 // A side-effect import: pulling the barrel registers it against the
-// `ServiceManifest` token so the verbs are installed onto the collection prototype
-// (§28/§38). The const is the standalone call surface.
+// `ServiceManifest` token, installing the verbs onto the collection prototype.
+// The const itself is the standalone call surface.
 export { ServiceManifestDescriptorAugmentations } from './augmentations/ServiceManifestDescriptorAugmentations.js';

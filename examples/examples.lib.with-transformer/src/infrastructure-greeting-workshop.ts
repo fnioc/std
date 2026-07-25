@@ -202,10 +202,7 @@ export class GreetingWorkshop {
    */
   public readonly stationeryIsOverridden: boolean;
 
-  public constructor(
-    mintCard: (recipient: ICardRecipient) => GreetingCard,
-    stationery?: ICardStationery,
-  ) {
+  public constructor(mintCard: (recipient: ICardRecipient) => GreetingCard, stationery?: ICardStationery) {
     this.#mintCard = mintCard;
     this.stationeryIsOverridden = stationery !== undefined;
     this.stationery = stationery ?? new PlainStationery();
@@ -262,8 +259,7 @@ export class LocatorGreetingWorkshop {
     // Explicit-token: `ICardStationery` is registered under a token the app may
     // or may not have written, and this class names it back — the same string
     // the builder's `useStationery` registers it under.
-    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN)
-      ?? new PlainStationery();
+    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN) ?? new PlainStationery();
   }
 
   /**
@@ -358,10 +354,9 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-  configure: (builder: IGreetingWorkshopBuilder) => void,
-): IServiceManifest<S | 'singleton'> {
+export function addGreetingWorkshop<S extends string>(services: IServiceManifest<S | 'singleton'>,
+  configure: (builder: IGreetingWorkshopBuilder) => void): IServiceManifest<S | 'singleton'>
+{
   const holder: IServiceManifestHolder<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
@@ -371,9 +366,7 @@ export function addGreetingWorkshop<S extends string>(
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services
-    .addClass<GreetingCard>(GreetingCard)
-    .withSignatures(...CARD_SIGNATURES);
+  holder.services = holder.services.addClass<GreetingCard>(GreetingCard).withSignatures(...CARD_SIGNATURES);
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its dependency signature. The demo
@@ -398,19 +391,17 @@ export function addGreetingWorkshop<S extends string>(
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services
-    .addClass<GreetingWorkshop>(GreetingWorkshop)
-    .withSignature<[(recipient: ICardRecipient) => GreetingCard, ICardStationery | undefined]>()
-    .as<'singleton'>();
+  holder.services = holder.services.addClass<GreetingWorkshop>(GreetingWorkshop).withSignature<
+    [(recipient: ICardRecipient) => GreetingCard, ICardStationery | undefined]
+  >().as<'singleton'>();
 
   // The counter-example, at its own derived token so a caller can resolve both
   // from one container and compare the cards. Its one slot is the intrinsic
   // provider — spread in from `LOCATOR_SIGNATURE` rather than stated inline, so
   // the file shows both ways of supplying a pinned overload.
-  holder.services = holder.services
-    .addClass<LocatorGreetingWorkshop>(LocatorGreetingWorkshop)
-    .withSignature(...LOCATOR_SIGNATURE)
-    .as<'singleton'>();
+  holder.services = holder.services.addClass<LocatorGreetingWorkshop>(LocatorGreetingWorkshop).withSignature(
+    ...LOCATOR_SIGNATURE,
+  ).as<'singleton'>();
 
   return holder.services;
 }

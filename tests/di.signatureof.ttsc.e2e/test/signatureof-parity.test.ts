@@ -142,24 +142,12 @@ services.addValue<IBaz>(bazValue);
 `;
 
 function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(
-    join(projDir, name),
+  writeFileSync(join(projDir, name),
     JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: outDir,
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-        plugins,
-      },
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+        outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
       include: ['src/**/*'],
-    }),
-  );
+    }));
 }
 
 function setupWorkspace(): void {
@@ -186,11 +174,8 @@ function setupWorkspace(): void {
     // A package name WITHOUT "tokenfor"/"signatureof" substrings so the derived
     // tokens (which embed the package name) don't collide with the primitive-call
     // survival assertions below.
-    JSON.stringify({
-      name: 'di-sig-app',
-      version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' },
-    }),
+    JSON.stringify({ name: 'di-sig-app', version: '0.0.0',
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
@@ -199,12 +184,8 @@ function setupWorkspace(): void {
   // must be byte-identical; that descriptor-independence is what the parity test
   // below asserts. The di.extras/ttsc descriptor is the DI authoring package a
   // consumer directly depends on; primitives.extras/ttsc is its transitive base.
-  writeTsconfig('tsconfig.inline.json', 'dist-inline', [
-    { transform: '@rhombus-std/di.extras/ttsc' },
-  ]);
-  writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [
-    { transform: '@rhombus-std/primitives.extras/ttsc' },
-  ]);
+  writeTsconfig('tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
+  writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [{ transform: '@rhombus-std/primitives.extras/ttsc' }]);
 }
 
 function lower(tsconfig: string, outDir: string): string {

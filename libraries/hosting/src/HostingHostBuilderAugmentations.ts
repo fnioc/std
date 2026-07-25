@@ -1,18 +1,14 @@
-// IHostBuilder helpers -- ported from the reference hosting runtime's
-// `HostingHostBuilderExtensions` static augmentation class. Authored as one named
-// object literal per ME class (docs §28), `satisfies AugmentationSet<IHostBuilder>`.
+// IHostBuilder helpers, authored as one named object literal
+// `satisfies AugmentationSet<IHostBuilder>`.
 //
-// OPEN receiver (docs §38): `IHostBuilder` is owned by hosting.core and extended
-// across packages, so this const registers into the augmentation registry under
+// OPEN receiver: `IHostBuilder` is owned by hosting.core and extended across
+// packages, so this const registers into the augmentation registry under
 // the `IHostBuilder` token (alongside hosting.core's
 // `HostingAbstractionsHostBuilderExtensions`, which contributes `startHost`). The
-// interface-side merge for THIS const's members lives here beside it (rule 0.6);
-// the class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
+// interface-side merge for THIS const's members lives here beside it; the
+// class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
 // class itself is decorated with `@augment(tokenfor<IHostBuilder>())`.
-//
-// The synchronous reference wrappers (`RunConsoleAsync` blocks until shutdown)
-// collapse into their async forms -- JS cannot block a thread.
 
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { type IResolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di.core';
@@ -34,22 +30,16 @@ import { ConsoleLifetime } from './internal/ConsoleLifetime';
 import { MetricsBuilder } from './MetricsBuilder';
 import { setServiceProviderOptionsFactory } from './ServiceProviderOptionsFactory';
 
-// The interface-side merge for this const's members lives HERE beside the const
-// (rule 0.6): a consumer holding `IHostBuilder` sees the method form. hosting.core
+// The interface-side merge for this const's members lives HERE beside the
+// const: a consumer holding `IHostBuilder` sees the method form. hosting.core
 // contributes `startHost` onto the same interface from its own const file. The
 // concrete `HostBuilder` (and `HostBuilderAdapter`) satisfy the fully-merged
 // interface via their own `interface ... extends IHostBuilder` merge beside each
 // class — no class-side member restatement.
 //
 // The merge targets the package BARREL (`@rhombus-std/hosting.core`), matching
-// hosting.core's own `startHost` merge. A cross-package merge is kept verbatim in
-// the rolled `.d.ts` (rollup-dts `respectExternal`), so it only reaches a
-// published consumer if the specifier survives publish -- the `internal/*`
-// subpath this used to target is scrubbed at publish time (docs §7), so consumers
-// of `@rhombus-std/hosting` silently lost every member below. The barrel is
-// publish-resolvable and, being shared with hosting.core's merge, keeps every
-// site for this interface on one module file (the §38 merge-identity rule), so
-// the concrete `HostBuilder` still satisfies `implements IHostBuilder`.
+// hosting.core's own `startHost` merge, so a published consumer of
+// `@rhombus-std/hosting` sees every member below.
 declare module '@rhombus-std/hosting.core' {
   interface IHostBuilder {
     configureDefaults(args?: readonly string[]): this;
@@ -66,18 +56,15 @@ declare module '@rhombus-std/hosting.core' {
     useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
     useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
     runConsoleAsync(abortSignal?: AbortSignal): Promise<void>;
-    runConsoleAsync(
-      configureOptions: Func<[ConsoleLifetimeOptions], void>,
-      abortSignal?: AbortSignal,
-    ): Promise<void>;
+    runConsoleAsync(configureOptions: Func<[ConsoleLifetimeOptions], void>, abortSignal?: AbortSignal): Promise<void>;
   }
 }
 
 /**
- * The `HostingHostBuilderAugmentations` augmentation set for {@link IHostBuilder}
- * (docs §28). Registered under the `IHostBuilder` token; the
- * concrete `HostBuilder` pulls it (and hosting.core's `startHost`) via `@augment`.
- * The members here are also the standalone call surface.
+ * The `HostingHostBuilderAugmentations` augmentation set for {@link IHostBuilder}.
+ * Registered under the `IHostBuilder` token; the concrete `HostBuilder` pulls it
+ * (and hosting.core's `startHost`) via `@augment`. The members here are also the
+ * standalone call surface.
  */
 export const HostingHostBuilderAugmentations = {
   /**
@@ -91,67 +78,56 @@ export const HostingHostBuilderAugmentations = {
       applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args)
     );
     hostBuilder.configureServices((_context, services) => addDefaultServices(services));
-    // The reference finishes with a default service-provider factory carrying the
-    // dev-environment validation options. Here the single-container `build()`
-    // reads them from the side channel instead (docs §24); the factory computes
-    // them at build time, once the hosting environment is resolved.
-    setServiceProviderOptionsFactory(
-      hostBuilder,
-      (context) => createDefaultServiceProviderOptions(context.hostingEnvironment),
-    );
+    // The single-container `build()` reads the service-provider options from a
+    // side channel; the factory computes them at build time, once the hosting
+    // environment is resolved.
+    setServiceProviderOptionsFactory(hostBuilder,
+      (context) => createDefaultServiceProviderOptions(context.hostingEnvironment));
     return hostBuilder;
   },
 
   /** Specifies the environment. Call after {@link configureDefaults} to avoid being overwritten. */
   useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
     return hostBuilder.configureHostConfig((configBuilder) => {
-      configBuilder.add(
-        new MemoryConfigSource({ initialData: { [HostDefaults.environmentKey]: environment } }),
-      );
+      configBuilder.add(new MemoryConfigSource({ initialData: { [HostDefaults.environmentKey]: environment } }));
     });
   },
 
   /** Specifies the content root directory. Call after {@link configureDefaults} to avoid being overwritten. */
   useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
     return hostBuilder.configureHostConfig((configBuilder) => {
-      configBuilder.add(
-        new MemoryConfigSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }),
-      );
+      configBuilder.add(new MemoryConfigSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }));
     });
   },
 
   /**
    * Adds a delegate for configuring the {@link HostOptions} of the host. Additive
-   * across calls. The no-context form (a one-parameter delegate) is the
-   * reference's convenience overload; the two are told apart by declared arity.
+   * across calls. The no-context form (a one-parameter delegate) is a
+   * convenience overload; the two are told apart by declared arity.
    */
-  configureHostOptions(
-    hostBuilder: IHostBuilder,
-    configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>,
-  ): IHostBuilder {
+  configureHostOptions(hostBuilder: IHostBuilder,
+    configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): IHostBuilder
+  {
     return hostBuilder.configureServices((context, services) =>
-      services.addValue(
-        HOST_OPTIONS_CONFIGURE_TOKEN,
-        (options: HostOptions) => {
-          if (configureOptions.length >= 2) {
-            (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
-          } else {
-            (configureOptions as Func<[HostOptions], void>)(options);
-          }
-        },
-      )
+      services.addValue(HOST_OPTIONS_CONFIGURE_TOKEN, (options: HostOptions) => {
+        if (configureOptions.length >= 2) {
+          (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
+        } else {
+          (configureOptions as Func<[HostOptions], void>)(options);
+        }
+      })
     );
   },
 
   /**
    * Adds a delegate for configuring the {@link ILoggingBuilder}. Additive across
-   * calls. The one-parameter no-context form is the reference's convenience
-   * overload, distinguished by declared arity.
+   * calls. The one-parameter no-context form is a convenience overload,
+   * distinguished by declared arity.
    */
-  configureLogging(
-    hostBuilder: IHostBuilder,
-    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder], void>,
-  ): IHostBuilder {
+  configureLogging(hostBuilder: IHostBuilder,
+    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder],
+      void>): IHostBuilder
+  {
     return hostBuilder.configureServices((context, services) => {
       const builder = new LoggingBuilder(services);
       if (configureLoggingDelegate.length >= 2) {
@@ -167,13 +143,13 @@ export const HostingHostBuilderAugmentations = {
 
   /**
    * Adds a delegate for configuring the {@link IMetricsBuilder}. Additive across
-   * calls. The one-parameter no-context form is the reference's convenience
-   * overload, distinguished by declared arity.
+   * calls. The one-parameter no-context form is a convenience overload,
+   * distinguished by declared arity.
    */
-  configureMetrics(
-    hostBuilder: IHostBuilder,
-    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder], void>,
-  ): IHostBuilder {
+  configureMetrics(hostBuilder: IHostBuilder,
+    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder],
+      void>): IHostBuilder
+  {
     return hostBuilder.configureServices((context, services) => {
       const builder = new MetricsBuilder(services);
       if (configureMetricsDelegate.length >= 2) {
@@ -188,16 +164,13 @@ export const HostingHostBuilderAugmentations = {
   },
 
   /**
-   * Specifies the default service-provider configuration — the reference
-   * `UseDefaultServiceProvider`. The delegate configures a fresh
-   * {@link ServiceProviderOptions} (`validateScopes` / `validateOnBuild`) that
-   * `build()` then threads into `ServiceManifest.build(options)`. Overrides any
-   * options set by an earlier `configureDefaults`.
+   * Specifies the default service-provider configuration. The delegate
+   * configures a fresh {@link ServiceProviderOptions} (`validateScopes` /
+   * `validateOnBuild`) that `build()` then threads into
+   * `ServiceManifest.build(options)`. Overrides any options set by an earlier
+   * `configureDefaults`.
    */
-  useDefaultServiceProvider(
-    hostBuilder: IHostBuilder,
-    configure: Func<[ServiceProviderOptions], void>,
-  ): IHostBuilder {
+  useDefaultServiceProvider(hostBuilder: IHostBuilder, configure: Func<[ServiceProviderOptions], void>): IHostBuilder {
     const options: ServiceProviderOptions = {};
     configure(options);
     setServiceProviderOptionsFactory(hostBuilder, () => options);
@@ -209,41 +182,30 @@ export const HostingHostBuilderAugmentations = {
    * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
    * default {@link import("./internal/NullLifetime").NullLifetime}).
    */
-  useConsoleLifetime(
-    hostBuilder: IHostBuilder,
-    configureOptions?: Func<[ConsoleLifetimeOptions], void>,
-  ): IHostBuilder {
+  useConsoleLifetime(hostBuilder: IHostBuilder, configureOptions?: Func<[ConsoleLifetimeOptions], void>): IHostBuilder {
     const options = new ConsoleLifetimeOptions();
     configureOptions?.(options);
     return hostBuilder.configureServices((_context, services) => {
       const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
-      return withOptions.addFactory(
-        HOST_LIFETIME_TOKEN,
+      return withOptions.addFactory(HOST_LIFETIME_TOKEN,
         (resolver: IResolver) =>
-          new ConsoleLifetime(
-            resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN),
+          new ConsoleLifetime(resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN),
             resolver.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN),
             resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
-            resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-          ),
-        [[RESOLVER_TOKEN]],
-      );
+            resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN)), [[RESOLVER_TOKEN]]);
     });
   },
 
   /**
    * Enables console support, builds and starts the host, and waits for Ctrl+C /
    * SIGTERM to shut down. The optional leading delegate configures the
-   * {@link ConsoleLifetimeOptions} before the console lifetime is registered
-   * (the reference's `configureOptions` overload); the two forms are told apart
-   * by whether the first argument is a function.
+   * {@link ConsoleLifetimeOptions} before the console lifetime is registered;
+   * the two forms are told apart by whether the first argument is a function.
    */
-  runConsoleAsync(
-    hostBuilder: IHostBuilder,
-    ...args:
-      | [abortSignal?: AbortSignal]
-      | [configureOptions: Func<[ConsoleLifetimeOptions], void>, abortSignal?: AbortSignal]
-  ): Promise<void> {
+  runConsoleAsync(hostBuilder: IHostBuilder,
+    ...args: [abortSignal?: AbortSignal] | [configureOptions: Func<[ConsoleLifetimeOptions], void>,
+      abortSignal?: AbortSignal]): Promise<void>
+  {
     let configureOptions: Func<[ConsoleLifetimeOptions], void> | undefined;
     let abortSignal: AbortSignal | undefined;
     if (typeof args[0] === 'function') {

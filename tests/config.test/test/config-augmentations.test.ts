@@ -69,11 +69,8 @@ describe('getRequiredSection', () => {
 describe('asIterable', () => {
   // A small nested tree: two leaves under Server, one two levels deep.
   function tree(): IConfigRoot {
-    return rootOf({
-      'Server:Host': 'localhost',
-      'Server:Port': '8080',
-      'Logging:Level:Default': 'Info',
-    }) as IConfigRoot;
+    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080',
+      'Logging:Level:Default': 'Info' }) as IConfigRoot;
   }
 
   test("from a root, yields every section's full path (root itself excluded)", () => {
@@ -113,10 +110,7 @@ describe('asIterable', () => {
     // A section that carries both a direct value and children. In relative mode
     // the enumeration root would map to an empty key, so its own value is
     // omitted; only its descendants are yielded, relative.
-    const root = rootOf({
-      Server: 'self-value',
-      'Server:Host': 'localhost',
-    }) as IConfigRoot;
+    const root = rootOf({ Server: 'self-value', 'Server:Host': 'localhost' }) as IConfigRoot;
     const server = root.getSection('Server');
     expect(server.value).toBe('self-value');
 

@@ -27,9 +27,7 @@ const FIXTURES = join(import.meta.dirname, 'fixtures', 'config-builder');
 
 describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (built dist)', () => {
   test('a later JSON file overlay overrides specific keys while leaving others untouched', () => {
-    const config = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/base.json`)
-      .addJsonFile(`${FIXTURES}/overlay.json`)
+    const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
       .build();
 
     assert.equal(config.get('Server:Port'), '9090');
@@ -38,52 +36,41 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
   });
 
   test('environment variables override JSON', () => {
-    const config = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/base.json`)
-      .addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } })
-      .build();
+    const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } }).build();
 
     assert.equal(config.get('Server:Port'), '7070');
     assert.equal(config.get('Server:Host'), 'localhost');
   });
 
   test('a conventionally-uppercase env var overrides a JSON key across a layered merge', () => {
-    const config = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/base.json`)
-      .addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } })
-      .build();
+    const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } }).build();
 
     assert.equal(config.get('Server:Port'), '7070');
     // Same, seen through a typed section-scoped build (case-insensitive resolution).
-    const typed = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/base.json`)
-      .addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } })
-      .withSchema({ Server: { Port: 'number' } })
-      .build();
+    const typed = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } }).withSchema({
+        Server: { Port: 'number' },
+      }).build();
     assert.equal(typed.Server.Port, 7070);
 
     assert.equal(config.get('Server:Host'), 'localhost');
   });
 
   test('a conventionally-uppercase env var overrides a differently-cased JSON key', () => {
-    const config = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/server-port-only.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '9999' } })
-      .build();
+    const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/server-port-only.json`).addEnvironmentVariables({
+      prefix: 'APP_',
+      env: { APP_SERVER__PORT: '9999' },
+    }).build();
 
     assert.equal(config.get('Server:Port'), '9999');
   });
 
   test('command line overrides both JSON and environment variables', () => {
-    const config = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/base.json`)
-      .addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } })
-      .addCommandLine(['--Server:Port', '6060'])
-      .build();
+    const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } }).addCommandLine(['--Server:Port',
+        '6060']).build();
 
     assert.equal(config.get('Server:Port'), '6060');
     assert.equal(config.get('Server:Host'), 'localhost');
@@ -91,10 +78,10 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
   });
 
   test("an optional JSON file that's absent doesn't throw and doesn't affect the merge", () => {
-    const config = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/base.json`)
-      .addJsonFile(`${FIXTURES}/does-not-exist.json`, { optional: true })
-      .build();
+    const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(
+      `${FIXTURES}/does-not-exist.json`,
+      { optional: true },
+    ).build();
 
     assert.equal(config.get('Server:Host'), 'localhost');
     assert.equal(config.get('Server:Port'), '8080');

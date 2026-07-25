@@ -1,8 +1,5 @@
-// The serialise + pure-query edge of the token tree: `toString` (the canonical
-// token STRING of a node), `canonicalise` (`toString(parse(raw))`), `isOpen`
-// (does the tree hold a hole anywhere), and `baseKey` (the generics-stripped
-// base+key the open-template index is gated on). These are the plain fns the
-// `TokenNode.*` companion re-exports; the mutating/query VISITORS live in their
+// The serialise + pure-query edge of the token tree — the plain functions the
+// `TokenNode.*` companion re-exports. The tree-walking visitors live in their
 // own files.
 
 import { assertNever, RESOLVER_TOKEN_STRING } from './constants.js';
@@ -11,9 +8,7 @@ import { parse } from './parse.js';
 
 /** The canonical token STRING of a node. Defined only for the token-shaped kinds
  * (`concrete | hole | provider`); the slot-only kinds (`union | literal |
- * factory`) have no token-string form — serialise those through `serialiseSlot`.
- * In the live paths `toString` only ever sees the token-shaped kinds (a bound
- * ground token, a parsed template), so the throw is defensive. */
+ * factory`) have no token-string form — serialise those through `serialiseSlot`. */
 export function toString(node: TokenNode): string {
   switch (node.kind) {
     case 'hole': {
@@ -40,13 +35,13 @@ export function toString(node: TokenNode): string {
   }
 }
 
-/** `toString(parse(raw))` — the canonical string of a raw token. Idempotent. */
+/** The canonical string of a raw token. Idempotent. */
 export function canonicalise(raw: string): string {
   return toString(parse(raw));
 }
 
-/** True when the tree contains a hole anywhere — i.e. it is an open template
- * rather than a resolvable closed token. */
+/** True when the tree contains a hole anywhere — an open template rather than a
+ * resolvable closed token. */
 export function isOpen(node: TokenNode): boolean {
   switch (node.kind) {
     case 'hole': {

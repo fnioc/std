@@ -3,9 +3,6 @@
 //   - `addClass`   — a class (its ctor deps are injected),
 //   - `addFactory` — a factory function (its call-param deps are injected),
 //   - `addValue`   — an already-built instance (no deps, no lifetime).
-// The transformer lowers the type-driven authoring forms (`addClass<I>(C)`,
-// `addFactory<I>(fn)`, `addValue<I>(v)`) to these; the explicit-token forms are
-// the plugin-less mechanism for overrides, test doubles, and third-party wiring.
 // The verb NAME (not arg inspection) discriminates class from factory — both are
 // functions, so `addClass` and `addFactory` are separate methods rather than one
 // method guessing.
@@ -38,13 +35,6 @@ import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
 import { isOpenToken, TokenNode, unkeyedToken } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
 
-// The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
-// interface `IServiceManifestBase` — lives alongside this builder in the
-// abstractions package `@rhombus-std/di.core`. The runtime `ServiceManifestClass`
-// implements the interface; the engine-constructing half of `build()` is a
-// `@rhombus-std/di` extension (see `build()` below).
-
-/** Compile-time exhaustiveness guard for a discriminated union switch. */
 function assertNever(value: never): never {
   throw new TypeError(`Unhandled variant: ${JSON.stringify(value)}`);
 }
@@ -66,21 +56,17 @@ function bucket<V>(index: Map<Token, V[]>, key: Token, value: V): void {
 /**
  * The separator between a base token and a keyed registration's key. A keyed
  * registration lives under the ORDINARY token `base + "#" + key` — service
- * identity is already a token string and a key is just a `"#<key>"` suffix on it,
- * so keyed registration needs no separate table. It mirrors the resolve-side
- * separator in `@rhombus-std/di` (`resolve(token, key)` composes `key === "" ?
- * token : token + "#" + key`), so a keyed register and a keyed resolve agree.
+ * identity is already a token string and a key is just a suffix on it, so keyed
+ * registration needs no separate table. `@rhombus-std/di`'s `resolve(token, key)`
+ * composes the same string, so a keyed register and a keyed resolve agree.
  */
 const KEY_SEPARATOR = '#';
 
 /**
  * Composes the effective registration token from a base token and an OPTIONAL
  * tail key. A falsy key — `undefined` (the omitted tail argument) or the empty
- * string — is unkeyed and leaves the token unchanged, so a plugin-less unkeyed
- * call and a transformer-lowered UNKEYED call both register under the bare token
- * exactly as before. A non-empty key suffixes `#<key>`, landing on the same
- * string the transformer's di direct stage composes into arg0 for
- * `addClass<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
+ * string — is unkeyed and leaves the token unchanged; a non-empty key suffixes
+ * `#<key>`.
  *
  * Exported for the descriptor verbs (`ServiceManifestDescriptorAugmentations`),
  * which must probe / remove under the SAME token their add path registers under.
@@ -114,10 +100,8 @@ interface PendingRegistration {
  * refinement, so the error a recomposed token raises names the ORIGINATING verb
  * (`add` / `addFactory` / `addValue`) exactly as the first call would have.
  */
-type PendingProducer =
-  | { readonly kind: 'class'; readonly ctor: Ctor; }
-  | { readonly kind: 'factory'; readonly factory: Factory; }
-  | { readonly kind: 'value'; readonly value: unknown; };
+type PendingProducer = { readonly kind: 'class'; readonly ctor: Ctor; } | { readonly kind: 'factory';
+  readonly factory: Factory; } | { readonly kind: 'value'; readonly value: unknown; };
 
 /**
  * Classifies a captured registration into the frozen `ManifestEntry` a chain node
@@ -144,13 +128,11 @@ function materialise(pending: PendingRegistration): ManifestEntry {
   // raw arg slices: `pkg:IRepo<pkg:IA, $1>` must classify like the canonical
   // spelling it parses to.
   const open = isOpenToken(unkeyedToken(pending.base));
-  // Union slots reach the engine union-bearing: per-param `#resolveUnion` resolves
-  // each union at RESOLVE time and falls through on a member's runtime failure (a
-  // ctor that throws at build, a Promise that rejects — union.test's GAP2 /
-  // async-reject pins). Registration-time cartesian blow-up to static overloads was
-  // abandoned (§112) precisely because it selects on registration-presence and
-  // cannot express that fall-through — so materialise threads signatures through
-  // untouched.
+  // Union slots thread through UNTOUCHED. Each union is resolved per-param at
+  // RESOLVE time, which is what lets a member's runtime failure (a ctor that
+  // throws at build, a Promise that rejects) fall through to the next member —
+  // something no registration-time expansion, selecting on mere presence, could
+  // express.
   const signatures = pending.signatures;
   const producer = pending.producer;
   switch (producer.kind) {
@@ -166,18 +148,13 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       // for `.name` and `0` for `.length`, so the missing-metadata signal and
       // ctor-name diagnostics would silently regress if read off the wrapper.
       const construct = producer.ctor;
-      const registration: Registration = {
-        produce: (...a: unknown[]) => new construct(...a),
-        scope: pending.scope,
-        signatures,
-        name: construct.name,
-        arity: construct.length,
-      };
+      const registration: Registration = { produce: (...a: unknown[]) => new construct(...a), scope: pending.scope,
+        signatures, name: construct.name, arity: construct.length };
       return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
     }
     case 'factory': {
       // Open registrations are class-only: a template must synthesize per-closing
-      // class registrations, which a factory/value shape cannot express in v1.
+      // class registrations, which a factory/value shape cannot express.
       if (open) {
         throw new OpenTokenRegistrationError(token, 'addFactory');
       }
@@ -185,13 +162,8 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       // parameter count (`factory.length`): a signatures-driven factory that
       // declares parameters but is registered with `[[]]` should trip the
       // missing-metadata signal, not silently run with no injected args.
-      const registration: Registration = {
-        produce: producer.factory,
-        scope: pending.scope,
-        signatures,
-        name: producer.factory.name,
-        arity: producer.factory.length,
-      };
+      const registration: Registration = { produce: producer.factory, scope: pending.scope, signatures,
+        name: producer.factory.name, arity: producer.factory.length };
       return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
     }
     case 'value': {
@@ -201,14 +173,9 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       // The value collapses to a producer that returns it verbatim. `scope` stays
       // `undefined` (a value is always transient — no ownership/caching), so a
       // value that is itself a `Promise` is returned raw through the normal path,
-      // never awaited (§"Async as values").
+      // never awaited.
       const value = producer.value;
-      const registration: Registration = {
-        produce: () => value,
-        scope: undefined,
-        name: '',
-        arity: 0,
-      };
+      const registration: Registration = { produce: () => value, scope: undefined, name: '', arity: 0 };
       return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
     }
     default: {
@@ -228,20 +195,16 @@ function materialise(pending: PendingRegistration): ManifestEntry {
  * Any mix of concrete args and holes is legal (`pkg:IRepo<pkg:IA,$1>`,
  * `pkg:IRepo<app/IBox<$1>>`): a hole binds whatever the closing carries in that
  * position, a concrete arg must match the closing's exactly, and a repeated hole
- * label (`IFoo<$1,$1>`) constrains a match to equal args. The v1 all-holes rule
- * this function used to enforce is retired.
+ * label (`IFoo<$1,$1>`) constrains a match to equal args.
  *
  * What is still rejected is a template no closed token could ever match: one the
  * typed grammar refuses (`"a b<$1>"` — trailing text after the base), and a bare
  * hole (`"$1"`), which has no base to bucket under and so is never reached by
  * `#lookup`. Both would otherwise register a silent never-matches.
  */
-function openEntry(
-  token: Token,
-  ctor: Ctor,
-  signatures: DepSignatures | undefined,
-  scope: string | undefined,
-): ManifestEntry {
+function openEntry(token: Token, ctor: Ctor, signatures: DepSignatures | undefined,
+  scope: string | undefined): ManifestEntry
+{
   const node = TokenNode.tryParse(token);
   if (node === undefined || node.kind !== 'concrete' || !node.args.length) {
     throw new OpenTokenRegistrationError(token, 'addClass');
@@ -254,14 +217,7 @@ function openEntry(
   // stripped key its ground spelling resolves to, instead of a raw space-bearing
   // key the canonical lookup could never find.
   const base = TokenNode.baseKey(node);
-  const open: OpenRegistration = {
-    template: token,
-    base,
-    ctor,
-    scope,
-    signatures,
-    node,
-  };
+  const open: OpenRegistration = { template: token, base, ctor, scope, signatures, node };
   return Object.freeze({ kind: 'open', base, open } satisfies ManifestEntry);
 }
 
@@ -301,9 +257,9 @@ function openEntry(
  * augmentation token: every cross-package registration augmentation (`build`,
  * `addOptions`, `addLogging`, `addMetrics`, `addMemoryCache`,
  * `addHostedService`, `removeAll`, ...) registers its set against
- * `tokenfor<IServiceManifest>()`, and the decorator subscribes the class
- * so each set — including those registered by DOWNSTREAM packages loaded after
- * this one — is (re)installed onto the prototype (docs/decisions.md §38).
+ * `tokenfor<IServiceManifest>()`, and the decorator subscribes the class so each
+ * set — including those registered by DOWNSTREAM packages loaded after this one —
+ * is installed onto the prototype.
  */
 @augment(tokenfor<IServiceManifest>())
 export class ServiceManifestClass<Scopes extends string = 'singleton'>
@@ -352,21 +308,16 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   }
 
   /**
-   * Class registration — a string token bound to a concrete constructor. The
-   * runtime form: what the transformer emits for a class, and what a
-   * plugin-less caller writes directly.
+   * Class registration — a string token bound to a concrete constructor.
    *
    * `signatures` carries the dep signatures ON the registration record — the sole
-   * signature channel now that the global metadata store is retired. Passing it
-   * POSITIONALLY (the 3+-arg overloads) starts the chain ungated. Passing it via
-   * the transformer inline (`addClass(token, ctor, [[...]])`) is the same. The
-   * bare 2-arg form `addClass(token, ctor)` supplies NO signature: it is GATED —
-   * the returned chain withholds the manifest face until `withSignature` /
-   * `withSignatures` supplies one (a plugin-less caller states `[[]]` for a ctor
-   * with no dependencies, either positionally or via `withSignature()`). Keying
-   * signatures on the registration (not on the ctor object) is what lets one JS
-   * class close differently per registration — an open template and its closings
-   * never collide.
+   * signature channel. Passing it POSITIONALLY (the 3+-arg overloads) starts the
+   * chain ungated. The bare 2-arg form `addClass(token, ctor)` supplies NO
+   * signature: it is GATED — the returned chain withholds the manifest face until
+   * `withSignature` / `withSignatures` supplies one (state `[[]]` for a ctor with
+   * no dependencies). Keying signatures on the registration, not on the ctor
+   * object, is what lets one JS class close differently per registration — an open
+   * template and its closings never collide.
    *
    * `scope` and `key` are the positional forms of the `.as()` / `.withKey()`
    * modifiers; whichever are omitted stay reachable on the returned chain.
@@ -379,33 +330,17 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * Returns a NEW manifest — this one is unchanged.
    */
-  public addClass(
-    token: Token,
-    ctor: Ctor,
-  ): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true>;
-  public addClass(
-    token: Token,
-    ctor: Ctor,
-    signatures: DepSignatures,
-  ): AddChain<Scopes, 'signature' | 'scope' | 'key', true>;
-  public addClass(
-    token: Token,
-    ctor: Ctor,
-    signatures: DepSignatures,
-    scope: Scopes,
-  ): AddChain<Scopes, 'signature' | 'key', true>;
-  public addClass(
-    token: Token,
-    ctor: Ctor,
-    signatures: DepSignatures,
-    scope: Scopes,
-    key: string,
-  ): AddChain<Scopes, 'signature', true>;
+  public addClass(token: Token, ctor: Ctor): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true>;
+  public addClass(token: Token, ctor: Ctor,
+    signatures: DepSignatures): AddChain<Scopes, 'signature' | 'scope' | 'key', true>;
+  public addClass(token: Token, ctor: Ctor, signatures: DepSignatures,
+    scope: Scopes): AddChain<Scopes, 'signature' | 'key', true>;
+  public addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes,
+    key: string): AddChain<Scopes, 'signature', true>;
   public addClass(...args: any[]): AddBuilderManifest<Scopes> {
-    // Only the string-token forms reach the engine at runtime. The single-arg
-    // `addClass<I>(ctor)` authoring overload never runs post-transform; guard
-    // defensively so a hand-written type-form call fails loud rather than
-    // registering junk. The 2-arg gated form (a real token, no signatures) is
+    // Only the string-token forms have a runtime body; the single-arg
+    // `addClass<I>(ctor)` authoring overload has none, so guard rather than
+    // register junk. The 2-arg gated form (a real token, no signatures) is
     // legitimate — it passes the guard and links with `signatures: undefined`.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
@@ -415,19 +350,11 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
       );
     }
     const [token, ctor, signatures, scope, key] = args;
-    return this.#link({
-      producer: { kind: 'class', ctor },
-      base: token,
-      key,
-      signatures,
-      scope,
-    });
+    return this.#link({ producer: { kind: 'class', ctor }, base: token, key, signatures, scope });
   }
 
   /**
-   * Factory registration — a string token bound to a factory function. The
-   * runtime form the transformer emits for an authored `addFactory<I>(fn)`, and
-   * what a plugin-less caller writes directly.
+   * Factory registration — a string token bound to a factory function.
    *
    * Parameter injection follows the metadata rule (see `IServiceProvider`): each
    * parameter is injected by its slot from the registration-carried `signatures`.
@@ -439,33 +366,18 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * Returns a NEW manifest — this one is unchanged.
    */
-  public addFactory(
-    token: Token,
-    factory: Factory,
-  ): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true>;
-  public addFactory(
-    token: Token,
-    factory: Factory,
-    signatures: DepSignatures,
-  ): AddChain<Scopes, 'signature' | 'scope' | 'key', true>;
-  public addFactory(
-    token: Token,
-    factory: Factory,
-    signatures: DepSignatures,
-    scope: Scopes,
-  ): AddChain<Scopes, 'signature' | 'key', true>;
-  public addFactory(
-    token: Token,
-    factory: Factory,
-    signatures: DepSignatures,
-    scope: Scopes,
-    key: string,
-  ): AddChain<Scopes, 'signature', true>;
+  public addFactory(token: Token,
+    factory: Factory): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true>;
+  public addFactory(token: Token, factory: Factory,
+    signatures: DepSignatures): AddChain<Scopes, 'signature' | 'scope' | 'key', true>;
+  public addFactory(token: Token, factory: Factory, signatures: DepSignatures,
+    scope: Scopes): AddChain<Scopes, 'signature' | 'key', true>;
+  public addFactory(token: Token, factory: Factory, signatures: DepSignatures, scope: Scopes,
+    key: string): AddChain<Scopes, 'signature', true>;
   public addFactory(...args: any[]): AddBuilderManifest<Scopes> {
-    // Only the string-token form reaches the engine at runtime. The single-arg
-    // `addFactory<I>(fn)` authoring overload never runs post-transform; guard
-    // defensively so a hand-written type-form call fails loud. The 2-arg gated
-    // form (a real token, no signatures) is legitimate.
+    // Only the string-token form has a runtime body; the single-arg
+    // `addFactory<I>(fn)` authoring overload has none. The 2-arg gated form (a
+    // real token, no signatures) is legitimate.
     if (args.length === 1 || typeof args[0] !== 'string') {
       throw new TypeError(
         'addFactory<I>(fn) requires the @rhombus-std/di.extras plugin. Without it, '
@@ -473,13 +385,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
       );
     }
     const [token, factory, signatures, scope, key] = args;
-    return this.#link({
-      producer: { kind: 'factory', factory },
-      base: token,
-      key,
-      signatures,
-      scope,
-    });
+    return this.#link({ producer: { kind: 'factory', factory }, base: token, key, signatures, scope });
   }
 
   /**
@@ -488,10 +394,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * function (a callable service), which is structurally indistinguishable from a
    * factory inside one overload — the verb name is what disambiguates. It takes
    * neither `signatures` nor `scope`; the optional trailing `key` composes the
-   * keyed token `base#key` (§98). The authoring form `addValue<I>(v)` (which
-   * lowers to `addValue("token", v)`) is a PURE TYPING contributed by the
-   * `@rhombus-std/di.extras` augmentation, not part of di's published
-   * surface.
+   * keyed token `base#key`.
    *
    * Returns a NEW manifest — this one is unchanged. There is no chain to
    * continue: a value has no slot left to fill.
@@ -506,13 +409,8 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
       );
     }
     const [token, value, key] = args;
-    return new AddBuilderManifest<Scopes>(this, {
-      producer: { kind: 'value', value },
-      base: token,
-      key,
-      signatures: undefined,
-      scope: undefined,
-    });
+    return new AddBuilderManifest<Scopes>(this, { producer: { kind: 'value', value }, base: token, key,
+      signatures: undefined, scope: undefined });
   }
 
   /**
@@ -528,10 +426,10 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * An open entry answering to BOTH names is DELIBERATELY broader than
    * `hasRegistrations`, which identifies it by its template alone: removal is the
-   * "drop everything filed under this name" verb (the reference
-   * `RemoveAll(IRepo<>)` affordance — clear a base and every template on it goes),
-   * while dedup is identity-exact, since `pkg:IRepo` and `pkg:IRepo<$1>` are
-   * different services and a bare base must never dedup a template away.
+   * "drop everything filed under this name" verb — clear a base and every template
+   * on it goes — while dedup is identity-exact, since `pkg:IRepo` and
+   * `pkg:IRepo<$1>` are different services and a bare base must never dedup a
+   * template away.
    *
    * It REBASES rather than filters in place: the survivors become the inner list
    * of a fresh root, collapsing the chain walked so far into one frozen array.
@@ -540,9 +438,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    */
   public removeRegistrations(token: Token): IServiceManifest<Scopes> {
     const kept = [...this].filter((entry) =>
-      entry.kind === 'exact'
-        ? entry.token !== token
-        : entry.open.template !== token && entry.base !== token
+      entry.kind === 'exact' ? entry.token !== token : entry.open.template !== token && entry.base !== token
     );
     return new ServiceManifestClass<Scopes>(Object.freeze(kept));
   }
@@ -557,10 +453,9 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * the conditional-add behavior through the fluent `tryAdd`/`replace`
    * augmentations, never as a raw method on the collection surface.
    *
-   * The token is our service-type key (the reference `TryAdd` dedups by
-   * `ServiceType`). Matching is exact — an open template dedups against the same
-   * template string, never against a closing it could synthesize and never
-   * against the bare base it buckets under.
+   * Matching is exact — an open template dedups against the same template string,
+   * never against a closing it could synthesize and never against the bare base it
+   * buckets under.
    */
   public hasRegistrations(token: Token): boolean {
     // Plain string equality on BOTH arms. An open entry's template always carries
@@ -623,13 +518,11 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   /**
    * Seals the collection and returns the built `IServiceProvider`.
    *
-   * The IMPLEMENTATION lives in `@rhombus-std/di`, not here — mirroring the
-   * reference DI split where the collection ships in the abstractions package
-   * but the provider-building entry is a runtime-package extension. Importing
-   * `@rhombus-std/di` PROTOTYPE-PATCHES this method onto `ServiceManifestClass`
-   * at load time (`services.seal()` → `new ServiceProviderClass(...)`), exactly
-   * how a cross-package fluent-authoring augmentation patches the concrete
-   * builder. The stub below is what runs if the runtime was never imported.
+   * The IMPLEMENTATION lives in `@rhombus-std/di`, not here: importing that
+   * package PROTOTYPE-PATCHES this method onto `ServiceManifestClass` at load
+   * time (`services.seal()` → `new ServiceProviderClass(...)`), exactly how a
+   * cross-package fluent-authoring augmentation patches the concrete builder. The
+   * stub below is what runs if the runtime was never imported.
    *
    * NO frame is pre-opened: the returned provider is frameless. There is no
    * root scope — resolving a tagged registration with no matching frame open
@@ -707,9 +600,7 @@ class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Sco
    * existing signatures — base `[]` for the gated 2-arg form that supplied none —
    * so calling it repeatedly adds injectable overloads. Supplying the first
    * signature this way is what OPENS the gate at the type level (the manifest face
-   * reappears once `'signatures'` is struck). Hand-writable:
-   * `addClass(t, c, [[…]]).withSignature('a')` is exactly what the survive lowering
-   * emits, so byte-parity holds.
+   * reappears once `'signatures'` is struck).
    */
   public withSignature(...slots: readonly DepSlot[]): AddBuilderManifest<Scopes> {
     const base = this.#pending.signatures ?? [];
@@ -736,7 +627,7 @@ class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Sco
 
   /**
    * Makes the registration KEYED, recomposing its effective token as `base#key`
-   * off the retained BASE token (§98). Because the recomposed token is
+   * off the retained BASE token. Because the recomposed token is
    * re-classified, this can raise the same open-token registration error the
    * originating call would have — at THIS call, not at `seal()`.
    */
@@ -748,18 +639,12 @@ class AddBuilderManifest<Scopes extends string> extends ServiceManifestClass<Sco
 /**
  * The public registration-builder INTERFACE a di consumer holds — the
  * `IServiceManifestBase` interface bound to the concrete provider `build()`
- * returns (the reference registration-collection analog). Interface-first (not the
- * impl class) so the `@rhombus-std/di.extras` augmentation — which merges the
- * authored `addClass<I>()` / `addFactory<I>()` / `addValue<I>()` forms onto
- * `IServiceManifestBase` — surfaces on a consumer typing against
- * `ServiceManifest<S>`. A class would not inherit those augmented overloads; the
- * interface does.
+ * returns. Interface-first, not the impl class, so that overloads a downstream
+ * package DECLARATION-MERGES onto `IServiceManifestBase` surface on a consumer
+ * typing against `ServiceManifest<S>`; a class would not inherit them.
  *
  * The constructor side (`ServiceManifestCtor`) and the constructible
  * `ServiceManifest` VALUE live in `@rhombus-std/di`, alongside the `build()`
  * prototype-patch that makes `new ServiceManifest().build()` produce a provider.
  */
-export type IServiceManifest<S extends string = 'singleton'> = IServiceManifestBase<
-  S,
-  IServiceProvider<S>
->;
+export type IServiceManifest<S extends string = 'singleton'> = IServiceManifestBase<S, IServiceProvider<S>>;

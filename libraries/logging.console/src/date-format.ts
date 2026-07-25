@@ -1,7 +1,5 @@
-// formatTimestamp — renders a Date through a reference-style date-time format
-// string. The reference passes `TimestampFormat` to the platform's date
-// formatting engine; this platform has none, so a small token formatter
-// implements the commonly used subset:
+// A small token formatter for date-time format strings, covering this
+// commonly used subset:
 //
 //   yyyy  4-digit year          HH  2-digit hour (00–23)
 //   MM    2-digit month         hh  2-digit hour (01–12)
@@ -30,16 +28,9 @@ interface DateParts {
 
 function getParts(date: Date, utc: boolean): DateParts {
   if (utc) {
-    return {
-      year: date.getUTCFullYear(),
-      month: date.getUTCMonth() + 1,
-      day: date.getUTCDate(),
-      hours: date.getUTCHours(),
-      minutes: date.getUTCMinutes(),
-      seconds: date.getUTCSeconds(),
-      milliseconds: date.getUTCMilliseconds(),
-      offsetMinutes: 0,
-    };
+    return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(),
+      hours: date.getUTCHours(), minutes: date.getUTCMinutes(), seconds: date.getUTCSeconds(),
+      milliseconds: date.getUTCMilliseconds(), offsetMinutes: 0 };
   }
   return {
     year: date.getFullYear(),

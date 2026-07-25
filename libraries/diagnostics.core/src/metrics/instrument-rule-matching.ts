@@ -1,29 +1,14 @@
-// Most-specific-InstrumentRule resolution -- ported from MED.Metrics's
-// `ListenerSubscription.{GetMostSpecificRule,RuleMatches,IsMoreSpecific}`.
+// Resolves which InstrumentRule applies to a given instrument: pure functions
+// over a `MetricsOptions.rules` list and a plain-data description of the
+// instrument being resolved. No matching rule means DISABLED --
+// `getMostSpecificInstrumentRule(options.rules, query)?.enable ?? false`.
 //
-// In the reference these are statics (internal-for-testing) on the metrics
-// listener runtime's per-listener subscription: whenever an instrument is
-// published or the bound `MetricsOptions` reload, the subscription walks the
-// rule list and enables the instrument iff the single most-specific matching
-// rule says enable. This repo has no meter/instrument listener RUNTIME (see the
-// package header), so the resolution algorithm itself is promoted to the
-// consumable surface: pure functions over a `MetricsOptions.rules` list and a
-// plain-data description of the instrument being resolved. Any consumer that
-// binds a `MetricsOptions` decides "is instrument X enabled for listener L?"
-// with `getMostSpecificInstrumentRule(options.rules, query)?.enable ?? false`
-// (no matching rule means DISABLED, exactly as in the reference).
-//
-// Matching semantics (every name comparison is case-insensitive, mirroring the
-// reference's ordinal-ignore-case):
+// Matching is case-insensitive throughout:
 //   - listenerName / instrumentName: exact match; unset/empty matches anything.
 //   - meterName: PREFIX match (`"a.b"` matches meter `"a.b.c"`), optionally
 //     with a single `*` wildcard splitting the pattern into a prefix and a
 //     suffix (`"a.*.c"`); unset/empty matches anything. More than one `*`
-//     throws -- lazily, at match time, mirroring the reference's deliberate
-//     asymmetry with `TracingRule`, which validates its pattern eagerly in the
-//     constructor. (The same prefix+suffix logic as the reference logging
-//     stack's category-name matching, quirks included: an overlapping
-//     prefix/suffix pair still matches.)
+//     throws, lazily, at match time.
 //   - scopes: the rule's {@link MeterScope} flags must include the queried
 //     instrument's scope (local = created via a DI meter factory).
 // Specificity (see {@link isMoreSpecificInstrumentRule}): a listener-named rule
@@ -36,8 +21,7 @@ import { MeterScope } from './MeterScope';
 
 /**
  * A plain-data description of the instrument (and resolving listener) an
- * {@link InstrumentRule} list is resolved against -- the pure stand-in for the
- * reference runtime's `Instrument` + listener-name + meter-factory triple.
+ * {@link InstrumentRule} list is resolved against.
  */
 export interface InstrumentRuleQuery {
   /** The owning meter's name (e.g. `"MyCompany.Orders"`). */
@@ -56,18 +40,16 @@ export interface InstrumentRuleQuery {
   readonly isLocalScope: boolean;
 }
 
-/** Case-insensitive equality -- the reference's ordinal-ignore-case string comparison. */
 function equalsIgnoreCase(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
 
 /**
- * Whether `rule` applies to the instrument described by `query`. The port of
- * `ListenerSubscription.RuleMatches`. Unset/empty rule fields match anything;
- * see the module header for the full semantics.
+ * Whether `rule` applies to the instrument described by `query`. Unset/empty
+ * rule fields match anything -- see the module header for the full semantics.
  *
  * @throws {@link Error} if `rule.meterName` contains more than one `*` wildcard
- * (validated lazily here, mirroring the reference).
+ * (validated lazily here).
  */
 export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRuleQuery): boolean {
   // Listener name: exact match or empty.
@@ -110,19 +92,17 @@ export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRul
 }
 
 /**
- * Whether `rule` is at least as specific as the current `best` candidate. The
- * port of `ListenerSubscription.IsMoreSpecific`. Both rules must already MATCH
- * the same {@link InstrumentRuleQuery} (or be blank in the differing fields) --
- * this only orders candidates, it does not re-check matching. `isLocalScope`
+ * Whether `rule` is at least as specific as the current `best` candidate. Both
+ * rules must already MATCH the same {@link InstrumentRuleQuery} (or be blank
+ * in the differing fields) -- this only orders candidates, it does not
+ * re-check matching. `isLocalScope`
  * is the queried instrument's scope: within it, the narrower scope flag set is
  * the more specific. Returns `true` on a full tie, so a fold over a rule list
  * keeps the LAST of equally specific rules.
  */
-export function isMoreSpecificInstrumentRule(
-  rule: InstrumentRule,
-  best: InstrumentRule | undefined,
-  isLocalScope: boolean,
-): boolean {
+export function isMoreSpecificInstrumentRule(rule: InstrumentRule, best: InstrumentRule | undefined,
+  isLocalScope: boolean): boolean
+{
   if (best === undefined) {
     return true;
   }
@@ -177,15 +157,15 @@ export function isMoreSpecificInstrumentRule(
 
 /**
  * Resolves the single winning {@link InstrumentRule} for the instrument
- * described by `query` -- the port of `ListenerSubscription.GetMostSpecificRule`
- * and THE selection primitive over a {@link MetricsOptions.rules} list. Returns
- * `undefined` when no rule matches; the instrument is then disabled, so the
- * enablement decision is `getMostSpecificInstrumentRule(...)?.enable ?? false`.
+ * described by `query` -- THE selection primitive over a
+ * {@link MetricsOptions.rules} list. Returns `undefined` when no rule matches;
+ * the instrument is then disabled, so the enablement decision is
+ * `getMostSpecificInstrumentRule(...)?.enable ?? false`.
  */
-export function getMostSpecificInstrumentRule(
-  rules: readonly InstrumentRule[],
-  query: InstrumentRuleQuery,
-): InstrumentRule | undefined {
+export function getMostSpecificInstrumentRule(rules: readonly InstrumentRule[], query: InstrumentRuleQuery):
+  | InstrumentRule
+  | undefined
+{
   let best: InstrumentRule | undefined;
   for (const rule of rules) {
     if (instrumentRuleMatches(rule, query) && isMoreSpecificInstrumentRule(rule, best, query.isLocalScope)) {

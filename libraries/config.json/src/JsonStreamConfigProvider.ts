@@ -1,8 +1,6 @@
-// JsonStreamConfigProvider -- loads JSON configuration key/value pairs
-// from an in-memory stream payload; mirrors the reference
-// `JsonStreamConfigProvider`. Same flattening rules as
-// JsonConfigProvider -- both delegate to the shared
-// JsonConfigFileParser.
+// Loads JSON configuration key/value pairs from an in-memory stream
+// payload. Same flattening rules as JsonConfigProvider -- both delegate to
+// the shared JsonConfigFileParser.
 
 import { StreamConfigProvider, type StreamPayload } from '@rhombus-std/config';
 import { JsonConfigFileParser } from './JsonConfigFileParser';
@@ -10,11 +8,10 @@ import type { JsonStreamConfigSource } from './JsonStreamConfigSource';
 
 // Structural typing for the platform's UTF-8 decoder global (native in
 // node/bun/deno/browsers), local to this module: the zero-ambient-types
-// library program (docs §44) has no TextDecoder in scope, and the type never
-// surfaces in a public signature, so a module-local lookup beats widening
-// primitives' platform surface (the caching.core
-// distributed-cache-augmentations precedent). Through `unknown` because the
-// bare-lib `typeof globalThis` genuinely lacks the property.
+// library program has no TextDecoder in scope, and the type never surfaces
+// in a public signature, so a module-local lookup beats widening the
+// platform surface elsewhere. Through `unknown` because the bare-lib
+// `typeof globalThis` genuinely lacks the property.
 interface Utf8Decoder {
   decode(input: Uint8Array): string;
 }

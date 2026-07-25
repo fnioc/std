@@ -49,10 +49,9 @@ Import the package for its side effect and a `ServiceManifest` gains
 import '@rhombus-std/caching.memory';
 import { ServiceManifest } from '@rhombus-std/di';
 
-const manifest = new ServiceManifest()
-  .addMemoryCache((options) => {
-    options.sizeLimit = 1024;
-  });
+const manifest = new ServiceManifest().addMemoryCache((options) => {
+  options.sizeLimit = 1024;
+});
 ```
 
 `addMemoryCache` registers the `IOptions<MemoryCacheOptions>` pipeline plus a
@@ -71,10 +70,9 @@ registers):
 import '@rhombus-std/caching.memory';
 import { ServiceManifest } from '@rhombus-std/di';
 
-const manifest = new ServiceManifest()
-  .addDistributedMemoryCache((options) => {
-    options.sizeLimit = 50 * 1024 * 1024; // bytes; defaults to 200 MB
-  });
+const manifest = new ServiceManifest().addDistributedMemoryCache((options) => {
+  options.sizeLimit = 50 * 1024 * 1024; // bytes; defaults to 200 MB
+});
 ```
 
 Useful for local development or single-instance deployments where code is

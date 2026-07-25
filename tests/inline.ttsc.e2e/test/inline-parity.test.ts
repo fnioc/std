@@ -72,13 +72,10 @@ function golden(name: string): string {
 //     intact, so per-line lineWith() lookups still isolate one statement each.
 // The exact byte-for-byte Go-printer parity is pinned separately at the Go tier.
 function canonQuotes(s: string): string {
-  return s
-    .replace(/'([^'\\\n]*)'/g, '"$1"')
-    .replace(/([([{])\s*\n\s*/g, '$1')
-    .replace(/,\s*\n\s*/g, ', ')
-    .replace(/\n\s*\./g, '.')
-    .replace(/\s*\n\s*([)\]}])/g, '$1')
-    // Bun emits a TRAILING comma when it wraps a call/array multi-line
+  return s.replace(/'([^'\\\n]*)'/g, '"$1"').replace(/([([{])\s*\n\s*/g, '$1').replace(/,\s*\n\s*/g, ', ').replace(
+    /\n\s*\./g,
+    '.',
+  ).replace(/\s*\n\s*([)\]}])/g, '$1') // Bun emits a TRAILING comma when it wraps a call/array multi-line
     // (`f(\n  "a",\n)`); the deterministic single-line Go output (and the golden)
     // has none. Drop a comma immediately before a close delimiter (inter-element
     // commas are never adjacent to a close, so this only strips the trailing one).
@@ -170,24 +167,12 @@ export const known = provider.isService<ILogger>();
 // share the plugin cache (see the file header). Each tsconfig differs only in
 // its plugin list and its outDir, so their emit never collides.
 function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(
-    join(projDir, name),
+  writeFileSync(join(projDir, name),
     JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: outDir,
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-        plugins,
-      },
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+        outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
       include: ['src/**/*'],
-    }),
-  );
+    }));
 }
 
 function setupWorkspace(): void {
@@ -209,19 +194,15 @@ function setupWorkspace(): void {
   // rhombus.inline ServiceQueryInline entry (the isService<T>() body) — with the
   // di stage deleted (W6p3), that inline body is the ONLY path that lowers the
   // tokenless isService, so it must be collected. di.core carries the receiver type.
-  writeFileSync(
-    join(projDir, 'package.json'),
+  writeFileSync(join(projDir, 'package.json'),
     JSON.stringify({ name: 'inline-e2e-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
-  );
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
   // One descriptor spawns the always-on host (W7): every stage runs regardless of
   // which @rhombus-std/*.extras descriptor is named, and the sugar bodies in play
   // come from the dependency scan (di.core + di.extras), not the plugin list.
-  writeTsconfig('tsconfig.inline.json', 'dist-inline', [
-    { transform: '@rhombus-std/di.extras/ttsc' },
-  ]);
+  writeTsconfig('tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
 }
 
 function lower(tsconfig: string, outDir: string): string {
@@ -504,24 +485,12 @@ function writeChainSrc(dir: string): void {
 }
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(
-    join(dir, 'tsconfig.json'),
+  writeFileSync(join(dir, 'tsconfig.json'),
     JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: 'dist',
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-        plugins,
-      },
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
       include: ['src/**/*'],
-    }),
-  );
+    }));
 }
 
 function linkChainDeps(dir: string): void {
@@ -550,22 +519,12 @@ function setupChainWorkspaces(): void {
   // the scan. There is no longer a semantic (di-direct) sandbox — that stage was
   // deleted (W6p3); its output is the frozen `*.di-direct.js` golden.
   linkChainDeps(chainInlineDir);
-  writeFileSync(
-    join(chainInlineDir, 'package.json'),
-    JSON.stringify({
-      name: 'chain-app',
-      version: '0.0.0',
-      dependencies: {
-        '@rhombus-std/di.core': 'workspace:*',
-        '@rhombus-std/di.extras': 'workspace:*',
-      },
-    }),
-  );
+  writeFileSync(join(chainInlineDir, 'package.json'),
+    JSON.stringify({ name: 'chain-app', version: '0.0.0',
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
   writeChainSrc(chainInlineDir);
   // One descriptor spawns the always-on host; the full stage table runs (W7).
-  writeChainTsconfig(chainInlineDir, [
-    { transform: '@rhombus-std/di.extras/ttsc' },
-  ]);
+  writeChainTsconfig(chainInlineDir, [{ transform: '@rhombus-std/di.extras/ttsc' }]);
 }
 
 function runChainTtsc(dir: string): ReturnType<typeof spawnSync> {
@@ -1052,27 +1011,17 @@ function linkOptionsDeps(dir: string): void {
 function setupOptionsWorkspace(): void {
   rmSync(join(OPTIONS_DIR, 'dist'), { recursive: true, force: true });
   linkOptionsDeps(OPTIONS_DIR);
-  writeFileSync(
-    join(OPTIONS_DIR, 'package.json'),
-    JSON.stringify({
-      name: 'options-app',
-      version: '0.0.0',
-      dependencies: {
-        '@rhombus-std/di.core': 'workspace:*',
-        '@rhombus-std/di.extras': 'workspace:*',
-        '@rhombus-std/di.extras.options': 'workspace:*',
-      },
-    }),
-  );
+  writeFileSync(join(OPTIONS_DIR, 'package.json'),
+    JSON.stringify({ name: 'options-app', version: '0.0.0',
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*',
+        '@rhombus-std/di.extras.options': 'workspace:*' } }));
   const src = join(OPTIONS_DIR, 'src');
   mkdirSync(src, { recursive: true });
   writeFileSync(join(src, 'authoring.ts'), OPTIONS_AUTHORING);
   writeFileSync(join(src, 'options-app.ts'), OPTIONS_SOURCE);
   // One descriptor spawns the always-on host; the full stage table runs (W7). The
   // addOptions<T>() body comes from the di.extras.options dep via the scan.
-  writeChainTsconfig(OPTIONS_DIR, [
-    { transform: '@rhombus-std/di.extras/ttsc' },
-  ]);
+  writeChainTsconfig(OPTIONS_DIR, [{ transform: '@rhombus-std/di.extras/ttsc' }]);
 }
 
 let optionsOut = '';

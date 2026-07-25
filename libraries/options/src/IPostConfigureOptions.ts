@@ -1,7 +1,3 @@
-// IPostConfigureOptions<T> -- a post-configure step, ported from MEO's
-// IPostConfigureOptions<T> (I prefix dropped, name parameter dropped -- see
-// configure-options.ts).
-
 /**
  * Represents something that runs *after* all {@link IConfigureOptions} steps.
  * The guaranteed-last-word pass of the {@link OptionsFactory} pipeline: a

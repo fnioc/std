@@ -1,14 +1,8 @@
-// PathUtils -- ported from
-// ME.FileProviders.Physical.Internal.PathUtils.
-//
-// DEVIATION (flagged): the reference derives its invalid-character sets from
-// `Path.GetInvalidFileNameChars()`, which is platform-specific and Windows-
-// heavy. On POSIX the only character that is truly invalid in a path segment
-// is the NUL byte (`/` is the separator and is allowed in a full path), so the
-// invalid-char checks here test for NUL. `hasInvalidFilterChars` differs from
-// `hasInvalidPathChars` only in that glob characters (`*`, `?`, `|`) would be
-// permitted -- but since this port defers wildcard watching (see
-// PhysicalFilesWatcher), both currently reduce to the same NUL check.
+// On POSIX the only character invalid in a path segment is the NUL byte
+// (`/` is the separator and is allowed in a full path), so the invalid-char
+// checks below test for NUL only. `hasInvalidFilterChars` would additionally
+// permit glob characters (`*`, `?`, `|`) once wildcard watching exists (see
+// PhysicalFilesWatcher); today both reduce to the same NUL check.
 
 import { sep } from 'node:path';
 
@@ -42,9 +36,8 @@ export function ensureTrailingSeparator(path: string): string {
 }
 
 /**
- * Removes any leading directory separators from `path`. Mirrors the reference's
- * `TrimStart(PathSeparators)` -- leading slashes on a relative subpath are
- * tolerated.
+ * Removes any leading directory separators from `path` -- leading slashes on
+ * a relative subpath are tolerated.
  */
 export function trimStartSeparators(path: string): string {
   let start = 0;
@@ -56,8 +49,7 @@ export function trimStartSeparators(path: string): string {
 
 /**
  * Returns `true` if walking `path` segment-by-segment ever rises above its
- * starting directory (a leading `..` that escapes the root). Mirrors the
- * reference's depth-counting `PathNavigatesAboveRoot`.
+ * starting directory (a leading `..` that escapes the root).
  */
 export function pathNavigatesAboveRoot(path: string): boolean {
   let depth = 0;
@@ -77,8 +69,8 @@ export function pathNavigatesAboveRoot(path: string): boolean {
 }
 
 /**
- * Returns `true` if `path` ends in a directory separator -- the reference's
- * `IsDirectoryPath`, used to route a directory-prefix watch.
+ * Returns `true` if `path` ends in a directory separator -- used to route a
+ * directory-prefix watch.
  */
 export function isDirectoryPath(path: string): boolean {
   return path.length > 0 && (path[path.length - 1] === '/' || path[path.length - 1] === '\\');

@@ -44,8 +44,8 @@ export function consoleMethodFor(logLevel: LogLevel): ConsoleMethod {
 }
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
-// wrapper methods (logInformation/…, §80) flow onto `BrowserConsoleLogger`,
-// beside the `@augment(tokenfor<ILogger>())` install below.
+// wrapper methods (logInformation/…) flow onto `BrowserConsoleLogger`, beside
+// the `@augment(tokenfor<ILogger>())` install below.
 export interface BrowserConsoleLogger extends ILogger {}
 
 /** An {@link ILogger} that writes through the browser console global. */
@@ -59,13 +59,9 @@ export class BrowserConsoleLogger implements ILogger {
     this.#console = console;
   }
 
-  public log<TState>(
-    logLevel: LogLevel,
-    eventId: EventId,
-    state: TState,
-    error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>,
-  ): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
+    formatter: Func<[TState, Error | undefined], string>): void
+  {
     if (!this.isEnabled(logLevel)) {
       return;
     }

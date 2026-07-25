@@ -1,12 +1,8 @@
-// ILoggerProviderConfig<T>, ported from the reference logging
-// configuration project's `ILoggerProviderConfig<T>`.
-//
-// `T` is the provider type the configuration belongs to — a compile-time
-// phantom (exactly as in the reference, where it only selects the closed
-// generic to inject). The runtime identity is the closed di token
-// {@link loggerProviderConfigToken} derives; the open template
-// (`...<$1>`) is registered by the no-arg `addConfig`, so resolving any
-// closing constructs a `LoggerProviderConfig` for that provider.
+// `T` is a compile-time phantom -- it only selects which closed di token to
+// resolve. The runtime identity is the closed token
+// {@link loggerProviderConfigToken} derives; the open template (`...<$1>`)
+// is registered by the no-arg `addConfig`, so resolving any closing
+// constructs a `LoggerProviderConfig` for that provider.
 
 import type { IConfig } from '@rhombus-std/config.core';
 import { closeToken, type Token } from '@rhombus-std/di.core';
@@ -32,9 +28,9 @@ const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.config:I
 
 /**
  * The closed di token for {@link ILoggerProviderConfig}`<providerType>`
- * — byte-identical to what a transformer consumer's
- * `tokenfor<ILoggerProviderConfig<TProvider>>()` derives. Pass `"$1"` to
- * spell the open registration template.
+ * — byte-identical to what `tokenfor<ILoggerProviderConfig<TProvider>>()`
+ * derives for that provider type. Pass `"$1"` to spell the open
+ * registration template.
  */
 export function loggerProviderConfigToken(providerType: Token): Token {
   return closeToken(LOGGER_PROVIDER_CONFIGURATION_BASE, providerType);

@@ -22,16 +22,12 @@ function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
   const scopes: unknown[] = [];
   // Partial ILogger double — only the primitives this test exercises; cast past
   // the merged wrapper members (§80) it never calls.
-  const logger = {
-    log(): void {},
-    isEnabled(): boolean {
-      return true;
-    },
-    beginScope<TState>(state: TState): Disposable {
-      scopes.push(state);
-      return { [Symbol.dispose]() {} };
-    },
-  } as unknown as ILogger;
+  const logger = { log(): void {}, isEnabled(): boolean {
+    return true;
+  }, beginScope<TState>(state: TState): Disposable {
+    scopes.push(state);
+    return { [Symbol.dispose]() {} };
+  } } as unknown as ILogger;
   return { logger, scopes };
 }
 
@@ -39,13 +35,9 @@ function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
 class DecoratedRecordingLogger implements ILogger {
   public readonly scopes: unknown[] = [];
   public readonly logs: Array<{ eventId: EventId; state: unknown; }> = [];
-  public log<TState>(
-    _logLevel: LogLevel,
-    eventId: EventId,
-    state: TState,
-    _error: Error | undefined,
-    _formatter: (state: TState, error: Error | undefined) => string,
-  ): void {
+  public log<TState>(_logLevel: LogLevel, eventId: EventId, state: TState, _error: Error | undefined,
+    _formatter: (state: TState, error: Error | undefined) => string): void
+  {
     this.logs.push({ eventId, state });
   }
   public isEnabled(): boolean {
@@ -65,10 +57,8 @@ augment(ILOGGER_TOKEN)(DecoratedRecordingLogger);
 // The convenience method forms `@augment` installs at runtime — not statically
 // typed onto the class (TS2430: `log`/`beginScope` share their names with
 // `ILogger`'s body-declared primitives), so intersected in at the call site.
-type LoggerConvenience = {
-  log(logLevel: LogLevel, message: string, ...args: unknown[]): void;
-  beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined;
-};
+type LoggerConvenience = { log(logLevel: LogLevel, message: string, ...args: unknown[]): void;
+  beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined; };
 
 /** A decorated recording logger widened to its runtime convenience method forms. */
 function decoratedLogger(): DecoratedRecordingLogger & LoggerConvenience {
@@ -86,11 +76,8 @@ describe('LoggerExtensions.beginScope', () => {
     const state = scopes[0];
     expect(state).toBeInstanceOf(FormattedLogValues);
     expect(String(state)).toBe('Processing request 42 from 10.0.0.1');
-    expect([...(state as FormattedLogValues)]).toEqual([
-      ['Id', 42],
-      ['Address', '10.0.0.1'],
-      ['{OriginalFormat}', 'Processing request {Id} from {Address}'],
-    ]);
+    expect([...(state as FormattedLogValues)]).toEqual([['Id', 42], ['Address', '10.0.0.1'], ['{OriginalFormat}',
+      'Processing request {Id} from {Address}']]);
   });
 
   test("a concrete logger's beginScope primitive still takes raw state (no recursion)", () => {

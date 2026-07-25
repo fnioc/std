@@ -1,16 +1,8 @@
-// SimpleConsoleFormatter — the default "simple" console format, ported from
-// the reference internal `SimpleConsoleFormatter`. Internal: not exported from
-// the package barrel; consumers select it by name ("simple").
+// Internal: not exported from the package barrel; consumers select it by
+// name ("simple"). Example output:
 //
 //       info: ConsoleApp.Program[10]
 //             Request received
-//
-// The reference's `IOptionsMonitor<TOptions>` constructor parameter is the
-// repo's collapsed `IOptions<TOptions>` (subscribe-capable when reloadable).
-// The `BufferedLogRecord` fast path is NOT ported — `IBufferedLogger` /
-// `BufferedLogRecord` don't exist in @rhombus-std/logging.core yet (residual,
-// see the package index). The Android/mobile color suppression is skipped: a
-// platform condition with no analog here.
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -70,11 +62,11 @@ function getLogLevelString(logLevel: LogLevel): string {
   }
 }
 
-/** Writes the reference "simple" console format (optionally colored/single-line). */
+/** Writes the default "simple" console format (optionally colored/single-line). */
 export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposable {
   readonly #optionsReloadToken: Disposable | undefined;
 
-  /** The live options — reassigned on reload (internal, as upstream). */
+  /** The live options — reassigned on reload. */
   public formatterOptions: SimpleConsoleFormatterOptions;
 
   public constructor(options: IOptions<SimpleConsoleFormatterOptions>) {
@@ -89,34 +81,18 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     this.#optionsReloadToken?.[Symbol.dispose]();
   }
 
-  public override write<TState>(
-    logEntry: LogEntry<TState>,
-    scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter,
-  ): void {
+  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
+    textWriter: TextWriter): void
+  {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
-    this.#writeInternal(
-      scopeProvider,
-      textWriter,
-      message,
-      logEntry.logLevel,
-      logEntry.eventId.id,
-      logEntry.error === undefined ? undefined : logEntry.error.stack ?? String(logEntry.error),
-      logEntry.category,
-      this.#getCurrentDateTime(),
-    );
+    this.#writeInternal(scopeProvider, textWriter, message, logEntry.logLevel, logEntry.eventId.id,
+      logEntry.error === undefined ? undefined : logEntry.error.stack ?? String(logEntry.error), logEntry.category,
+      this.#getCurrentDateTime());
   }
 
-  #writeInternal(
-    scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter,
-    message: string,
-    logLevel: LogLevel,
-    eventId: number,
-    error: string | undefined,
-    category: string,
-    stamp: Date | undefined,
-  ): void {
+  #writeInternal(scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter, message: string,
+    logLevel: LogLevel, eventId: number, error: string | undefined, category: string, stamp: Date | undefined): void
+  {
     message = ConsoleControlCharacterSanitizer.sanitize(message);
     error = ConsoleControlCharacterSanitizer.sanitize(error);
     category = ConsoleControlCharacterSanitizer.sanitize(category);
@@ -128,20 +104,11 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     if (timestampFormat !== undefined && stamp !== undefined) {
       textWriter.write(formatTimestamp(stamp, timestampFormat, this.formatterOptions.useUtcTimestamp));
     }
-    TextWriterExtensions.writeColoredMessage(
-      textWriter,
-      logLevelString,
-      logLevelColors.background,
-      logLevelColors.foreground,
-    );
+    TextWriterExtensions.writeColoredMessage(textWriter, logLevelString, logLevelColors.background,
+      logLevelColors.foreground);
 
     const singleLine = this.formatterOptions.singleLine;
 
-    // Example:
-    // info: ConsoleApp.Program[10]
-    //       Request received
-
-    // category and event id
     textWriter.write(LOGLEVEL_PADDING);
     textWriter.write(category);
     textWriter.write('[');
@@ -151,7 +118,6 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
       textWriter.write('\n');
     }
 
-    // scope information
     this.#writeScopeInformation(textWriter, scopeProvider, singleLine);
     SimpleConsoleFormatter.#writeMessage(textWriter, message, singleLine);
 
@@ -216,11 +182,9 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     }
   }
 
-  #writeScopeInformation(
-    textWriter: TextWriter,
-    scopeProvider: IExternalScopeProvider | undefined,
-    singleLine: boolean,
-  ): void {
+  #writeScopeInformation(textWriter: TextWriter, scopeProvider: IExternalScopeProvider | undefined,
+    singleLine: boolean): void
+  {
     if (!this.formatterOptions.includeScopes || scopeProvider === undefined) {
       return;
     }

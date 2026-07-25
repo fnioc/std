@@ -1,8 +1,5 @@
-// HostingEnvironment -- ported from the reference hosting runtime's
-// `HostingEnvironment` (the mutable `IHostEnvironment` implementation the host
-// populates during the build). `contentRootFileProvider` defaults to a
-// `NullFileProvider`; a physical file provider is deferred (see decisions.md
-// §20).
+// `contentRootFileProvider` defaults to a `NullFileProvider` until a physical
+// provider is wired in.
 
 import { type IFileProvider, NullFileProvider } from '@rhombus-std/fileproviders.core';
 import type { IHostEnvironment } from '@rhombus-std/hosting.core';

@@ -1,16 +1,5 @@
-// JsonConsoleFormatter — one JSON object per log line, ported from the
-// reference internal `JsonConsoleFormatter`. Internal: not exported from the
-// package barrel; consumers select it by name ("json").
-//
-// Serialization adapts the reference's streaming JSON writer to
-// `JSON.stringify` over an insertion-ordered plain object; property names and
-// ordering match the reference output (`Timestamp?`, `EventId`, `LogLevel`,
-// `Category`, `Message`, `Error?`, `State?`, `Scopes?`) -- `Error?` renamed
-// from the reference's `Exception?` per this port's error-naming convention.
-// One further divergence: the reference writer can emit DUPLICATE keys inside
-// `State` (its fixed `Message` plus a state property also named "Message"); a
-// JS object cannot, so the state property wins (last write). The
-// `BufferedLogRecord` fast path is NOT ported (see SimpleConsoleFormatter).
+// Internal: not exported from the package barrel; consumers select it by
+// name ("json"). Writes one JSON object per log line.
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -53,10 +42,7 @@ function getLogLevelString(logLevel: LogLevel): string {
   }
 }
 
-/**
- * The reference `WriteItem` value mapping: JSON-native values pass through,
- * everything else renders as its invariant string.
- */
+/** JSON-native values pass through; everything else renders as its string form. */
 function toJsonValue(value: unknown): JsonValue {
   switch (typeof value) {
     case 'boolean':
@@ -77,9 +63,9 @@ function toJsonValue(value: unknown): JsonValue {
 }
 
 /**
- * The analog of the reference's `state as IReadOnlyList<KeyValuePair<string,
- * object?>>` probe: an iterable of `[key, value]` pairs (an array of tuples, a
- * `Map`, …) yields its entries; anything else yields `undefined`.
+ * Probes `value` for `[key, value]` pair shape: an iterable of 2-tuples with
+ * string keys (an array of tuples, a `Map`, …) yields its entries; anything
+ * else yields `undefined`.
  */
 function asKeyValuePairs(value: unknown): Array<[string, unknown]> | undefined {
   if (value === null || typeof value !== 'object' || !(Symbol.iterator in value)) {
@@ -99,7 +85,7 @@ function asKeyValuePairs(value: unknown): Array<[string, unknown]> | undefined {
 export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable {
   readonly #optionsReloadToken: Disposable | undefined;
 
-  /** The live options — reassigned on reload (internal, as upstream). */
+  /** The live options — reassigned on reload. */
   public formatterOptions: JsonConsoleFormatterOptions;
 
   public constructor(options: IOptions<JsonConsoleFormatterOptions>) {
@@ -114,11 +100,9 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
     this.#optionsReloadToken?.[Symbol.dispose]();
   }
 
-  public override write<TState>(
-    logEntry: LogEntry<TState>,
-    scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter,
-  ): void {
+  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
+    textWriter: TextWriter): void
+  {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
 
     const entry: { [key: string]: JsonValue; } = {};
@@ -140,7 +124,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
     if (state !== undefined && state !== null) {
       const stateObject: { [key: string]: JsonValue; } = {};
       // The message and state message are often identical; only write the
-      // state message when it differs (reduces the entry size, as upstream).
+      // state message when it differs (keeps the entry small).
       const stateMessage = String(state);
       if (stateMessage !== message) {
         stateObject['Message'] = stateMessage;

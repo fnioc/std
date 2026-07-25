@@ -37,12 +37,10 @@ describe('ConfigManager', () => {
     // Same Map instance on every read, and visible to a source built later.
     expect(manager.properties.get('BasePath')).toBe('/etc/app');
     let observed: unknown;
-    manager.add({
-      build(builder) {
-        observed = builder.properties.get('BasePath');
-        return new MemoryConfigSource().build(builder);
-      },
-    });
+    manager.add({ build(builder) {
+      observed = builder.properties.get('BasePath');
+      return new MemoryConfigSource().build(builder);
+    } });
     expect(observed).toBe('/etc/app');
   });
 

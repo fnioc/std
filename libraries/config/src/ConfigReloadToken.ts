@@ -1,16 +1,14 @@
-// ConfigReloadToken -- ported from MECA's ConfigReloadToken.
-//
-// A single-fire IChangeToken: hasChanged flips permanently once onReload()
-// runs, and every callback registered via registerChangeCallback fires. The
-// owner (a provider or the root) does NOT reset a fired instance -- it swaps
-// in a brand-new ConfigReloadToken after each fire (see
-// ConfigProvider.onReload / ConfigRoot's own reload plumbing),
-// so a fired token stays fired forever and each registerChangeCallback
-// subscriber observes exactly one transition per instance.
+// ConfigReloadToken -- a single-fire IChangeToken: hasChanged flips
+// permanently once onReload() runs, and every callback registered via
+// registerChangeCallback fires. The owner (a provider or the root) does NOT
+// reset a fired instance -- it swaps in a brand-new ConfigReloadToken after
+// each fire (see ConfigProvider.onReload / ConfigRoot's own reload
+// plumbing), so a fired token stays fired forever and each
+// registerChangeCallback subscriber observes exactly one transition per
+// instance.
 //
 // Backed by this monorepo's AbortSignal-based CancellationChangeToken over a
-// private AbortController -- the structural analog of the reference's
-// AbortController-backed implementation.
+// private AbortController.
 
 import { AbortController, CancellationChangeToken, type IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';

@@ -10,22 +10,12 @@ import { describe, expect, test } from 'bun:test';
 // Side-effect import: installs `addJsonFile` + `addJsonStream` onto both builders.
 import '@rhombus-std/config.json';
 
-const PAYLOAD = JSON.stringify({
-  TopLevel: 'value',
-  Server: {
-    Host: 'localhost',
-    Port: 8080,
-    UseTls: true,
-    Tags: ['a', 'b'],
-    Nullable: null,
-  },
-});
+const PAYLOAD = JSON.stringify({ TopLevel: 'value',
+  Server: { Host: 'localhost', Port: 8080, UseTls: true, Tags: ['a', 'b'], Nullable: null } });
 
 describe('JsonStreamConfigProvider', () => {
   test('flattens a string payload with the same rules as the file provider', () => {
-    const root = new ConfigBuilder()
-      .add(new JsonStreamConfigSource(PAYLOAD))
-      .build();
+    const root = new ConfigBuilder().add(new JsonStreamConfigSource(PAYLOAD)).build();
 
     expect(root.get('TopLevel')).toBe('value');
     expect(root.get('Server:Host')).toBe('localhost');
@@ -37,9 +27,7 @@ describe('JsonStreamConfigProvider', () => {
   });
 
   test('accepts a Uint8Array payload, decoded as UTF-8', () => {
-    const root = new ConfigBuilder()
-      .add(new JsonStreamConfigSource(new TextEncoder().encode(PAYLOAD)))
-      .build();
+    const root = new ConfigBuilder().add(new JsonStreamConfigSource(new TextEncoder().encode(PAYLOAD))).build();
 
     expect(root.get('Server:Host')).toBe('localhost');
   });
@@ -47,22 +35,19 @@ describe('JsonStreamConfigProvider', () => {
   test('throws on malformed JSON', () => {
     const source = new JsonStreamConfigSource('{ not valid json');
 
-    expect(() => new ConfigBuilder().add(source).build())
-      .toThrow(/failed to parse JSON/);
+    expect(() => new ConfigBuilder().add(source).build()).toThrow(/failed to parse JSON/);
   });
 
   test('throws when the JSON root is a scalar', () => {
     const source = new JsonStreamConfigSource('42');
 
-    expect(() => new ConfigBuilder().add(source).build())
-      .toThrow(/the top-level JSON element must be an object/);
+    expect(() => new ConfigBuilder().add(source).build()).toThrow(/the top-level JSON element must be an object/);
   });
 
   test('throws when the JSON root is a top-level array', () => {
     const source = new JsonStreamConfigSource('[1, 2, 3]');
 
-    expect(() => new ConfigBuilder().add(source).build())
-      .toThrow(/the top-level JSON element must be an object/);
+    expect(() => new ConfigBuilder().add(source).build()).toThrow(/the top-level JSON element must be an object/);
   });
 
   test("throws when the source's stream payload was never assigned", () => {
@@ -87,9 +72,7 @@ describe('JsonStreamConfigProvider', () => {
 
 describe('addJsonStream augmentation', () => {
   test('registers a JsonStreamConfigSource on the builder', () => {
-    const root = new ConfigBuilder()
-      .addJsonStream(PAYLOAD)
-      .build();
+    const root = new ConfigBuilder().addJsonStream(PAYLOAD).build();
 
     expect(root.get('Server:Host')).toBe('localhost');
   });
@@ -101,9 +84,7 @@ describe('addJsonStream augmentation', () => {
   });
 
   test('accepts a Uint8Array payload through the sugar too', () => {
-    const root = new ConfigBuilder()
-      .addJsonStream(new TextEncoder().encode(PAYLOAD))
-      .build();
+    const root = new ConfigBuilder().addJsonStream(new TextEncoder().encode(PAYLOAD)).build();
 
     expect(root.get('Server:Tags:1')).toBe('b');
   });

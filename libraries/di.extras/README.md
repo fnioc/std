@@ -19,10 +19,7 @@ Write the type-driven registration form:
 
 ```ts
 class SqlUserRepo implements IUserRepo {
-  constructor(
-    private log: ILogger,
-    private db: IDbConnection,
-  ) {}
+  constructor(private log: ILogger, private db: IDbConnection) {}
 }
 
 services = services.add<IUserRepo>(SqlUserRepo).as<'request'>();
@@ -33,9 +30,8 @@ A registration collection is immutable — every verb hands back a NEW collectio
 The transformer rewrites that call, at compile time, into the plain-data form a hand author would otherwise have to type themselves:
 
 ```ts
-services = services
-  .add('pkg:IUserRepo', SqlUserRepo, [['pkg:ILogger', 'pkg:IDbConnection']])
-  .as('request');
+services = services.add('pkg:IUserRepo', SqlUserRepo, [['pkg:ILogger',
+  'pkg:IDbConnection']]).as('request');
 ```
 
 Both forms run identically at resolve time — the transformer only saves you from writing the second one by hand. If you never install the transformer, `add<I>(C)` still needs a dependency signature to resolve correctly; without it you'd write the explicit form directly, or use `addFactory`/`addValue`.
@@ -80,10 +76,7 @@ services.add<IRepository<$<1>>>(SqlRepository<$<1>>);
 import type { Typeof } from '@rhombus-std/di.core';
 
 class SqlRepository<T> implements IRepository<T> {
-  constructor(
-    private db: IDbConnection,
-    private entityToken: Typeof<T>,
-  ) {}
+  constructor(private db: IDbConnection, private entityToken: Typeof<T>) {}
 }
 ```
 

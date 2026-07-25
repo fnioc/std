@@ -34,13 +34,10 @@ describe('configure — DI-injected', () => {
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
-    services = services.configure<WidgetOptions, [UrlProvider]>(
-      OPTIONS_TOKEN,
-      [URL_PROVIDER_TOKEN],
+    services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
       (options, urls) => {
         options.url = urls.base;
-      },
-    );
+      });
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
@@ -53,14 +50,13 @@ describe('configure — DI-injected', () => {
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
     services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
-    services = services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(
-      OPTIONS_TOKEN,
-      [URL_PROVIDER_TOKEN, RETRY_POLICY_TOKEN],
-      (options, urls, policy) => {
-        options.url = urls.base;
-        options.retries = policy.attempts;
-      },
-    );
+    services = services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(OPTIONS_TOKEN, [
+      URL_PROVIDER_TOKEN,
+      RETRY_POLICY_TOKEN,
+    ], (options, urls, policy) => {
+      options.url = urls.base;
+      options.retries = policy.attempts;
+    });
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
@@ -75,13 +71,10 @@ describe('configure — DI-injected', () => {
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'plain';
     });
-    services = services.configure<WidgetOptions, [UrlProvider]>(
-      OPTIONS_TOKEN,
-      [URL_PROVIDER_TOKEN],
+    services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
       (options, urls) => {
         options.url = urls.base;
-      },
-    );
+      });
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
@@ -99,13 +92,10 @@ describe('postConfigure — DI-injected', () => {
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'base';
     });
-    services = services.postConfigure<WidgetOptions, [{ text: string; }]>(
-      OPTIONS_TOKEN,
-      [SUFFIX_TOKEN],
+    services = services.postConfigure<WidgetOptions, [{ text: string; }]>(OPTIONS_TOKEN, [SUFFIX_TOKEN],
       (options, suffix) => {
         options.note += suffix.text;
-      },
-    );
+      });
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
@@ -128,12 +118,8 @@ describe('validate — DI-injected', () => {
 
   test('a passing predicate resolves the options without throwing', () => {
     let services = servicesWithLimit(3, 10);
-    services = services.validate<WidgetOptions, [{ max: number; }]>(
-      OPTIONS_TOKEN,
-      [LIMIT_TOKEN],
-      (options, limit) => options.retries <= limit.max,
-      'retries over limit',
-    );
+    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
+      (options, limit) => options.retries <= limit.max, 'retries over limit');
 
     const provider = services.build().createScope('singleton');
 
@@ -142,12 +128,8 @@ describe('validate — DI-injected', () => {
 
   test('a failing predicate surfaces the failure message', () => {
     let services = servicesWithLimit(50, 10);
-    services = services.validate<WidgetOptions, [{ max: number; }]>(
-      OPTIONS_TOKEN,
-      [LIMIT_TOKEN],
-      (options, limit) => options.retries <= limit.max,
-      'retries over limit',
-    );
+    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
+      (options, limit) => options.retries <= limit.max, 'retries over limit');
 
     const provider = services.build().createScope('singleton');
 
@@ -157,11 +139,8 @@ describe('validate — DI-injected', () => {
 
   test('a failing predicate with no message uses the default', () => {
     let services = servicesWithLimit(50, 10);
-    services = services.validate<WidgetOptions, [{ max: number; }]>(
-      OPTIONS_TOKEN,
-      [LIMIT_TOKEN],
-      (options, limit) => options.retries <= limit.max,
-    );
+    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
+      (options, limit) => options.retries <= limit.max);
 
     const provider = services.build().createScope('singleton');
 

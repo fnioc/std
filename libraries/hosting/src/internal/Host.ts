@@ -1,16 +1,14 @@
-// Host -- the internal `IHost` implementation, ported from the reference hosting
-// runtime's `Internal/Host.cs`.
+// Host -- the internal `IHost` implementation.
 //
 // Lives in `internal/Host.ts` (not `src/Host.ts`) because `src/Host.ts` already
-// holds the static `Host` builder facade from the prior stage; the reference
-// names both `Host`, in distinct namespaces, and mirroring its `Internal/`
-// directory keeps the two apart here too.
+// holds the static `Host` builder facade -- keeping this one under `internal/`
+// avoids a name collision between the two.
 //
-// Frameless-provider handling (this repo's DI, decisions.md): `build()` returns
-// a frameless provider whose singleton registrations only cache once a
-// `"singleton"` scope is open. So `start` opens `createScope("singleton")`,
-// resolves the hosted services from THAT scope, and `stop` disposes it -- that
-// scope is what gives singleton semantics and deterministic disposal.
+// Frameless-provider handling: `build()` returns a frameless provider whose
+// singleton registrations only cache once a `"singleton"` scope is open. So
+// `start` opens `createScope("singleton")`, resolves the hosted services from
+// THAT scope, and `stop` disposes it -- that scope is what gives singleton
+// semantics and deterministic disposal.
 
 import type { IResolver, IServiceProvider } from '@rhombus-std/di.core';
 import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
@@ -58,14 +56,9 @@ function getHostLifecycles(hostedServices: readonly IHostedService[]): IHostedLi
  * `abortOnFirstError`, stop after the first failure. Every failure is
  * collected into `errors` rather than thrown.
  */
-async function foreachService<T>(
-  services: readonly T[],
-  signal: AbortSignal,
-  concurrent: boolean,
-  abortOnFirstError: boolean,
-  errors: unknown[],
-  operation: Func<[T, AbortSignal], Promise<void>>,
-): Promise<void> {
+async function foreachService<T>(services: readonly T[], signal: AbortSignal, concurrent: boolean,
+  abortOnFirstError: boolean, errors: unknown[], operation: Func<[T, AbortSignal], Promise<void>>): Promise<void>
+{
   if (concurrent) {
     const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
@@ -115,13 +108,9 @@ export class Host implements IHost, AsyncDisposable {
   #backgroundServiceTasks?: Array<Promise<void>>;
   #backgroundServiceErrors?: unknown[];
 
-  public constructor(
-    services: IServiceProvider,
-    applicationLifetime: IHostApplicationLifetime,
-    logger: ILogger,
-    hostLifetime: IHostLifetime,
-    options: HostOptions,
-  ) {
+  public constructor(services: IServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger,
+    hostLifetime: IHostLifetime, options: HostOptions)
+  {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
       throw new Error('Replacing IHostApplicationLifetime is not supported.');
     }
@@ -175,53 +164,35 @@ export class Host implements IHost, AsyncDisposable {
       this.#hostedServices = singletonScope.resolve<IHostedService[]>(hostedServiceCollectionToken());
       this.#hostedLifecycleServices = getHostLifecycles(this.#hostedServices);
 
-      // Force eager validation of any options marked with `validateOnStart`
-      // (reference Host order: after resolving hosted services, before
-      // starting()). The validator is registered only when `validateOnStart`
-      // ran, so resolve it optionally; a validation failure throws out of start.
+      // Force eager validation of any options marked with `validateOnStart`,
+      // after resolving hosted services and before starting(). The validator is
+      // registered only when `validateOnStart` ran, so resolve it optionally; a
+      // validation failure throws out of start.
       const startupValidator = singletonScope.tryResolve<IStartupValidator>(tokenfor<IStartupValidator>());
       startupValidator?.validate();
 
       // starting()
       if (this.#hostedLifecycleServices) {
-        await foreachService(
-          this.#hostedLifecycleServices,
-          signal,
-          concurrent,
-          abortOnFirstError,
-          errors,
-          (service, innerSignal) => service.starting(innerSignal),
-        );
+        await foreachService(this.#hostedLifecycleServices, signal, concurrent, abortOnFirstError, errors,
+          (service, innerSignal) => service.starting(innerSignal));
         logAndRethrow();
       }
 
       // start()
-      await foreachService(
-        this.#hostedServices,
-        signal,
-        concurrent,
-        abortOnFirstError,
-        errors,
+      await foreachService(this.#hostedServices, signal, concurrent, abortOnFirstError, errors,
         async (service, innerSignal) => {
           await service.start(innerSignal);
           if (service instanceof BackgroundService) {
             const monitor = this.#tryExecuteBackgroundService(service);
             (this.#backgroundServiceTasks ??= []).push(monitor);
           }
-        },
-      );
+        });
       logAndRethrow();
 
       // started()
       if (this.#hostedLifecycleServices) {
-        await foreachService(
-          this.#hostedLifecycleServices,
-          signal,
-          concurrent,
-          abortOnFirstError,
-          errors,
-          (service, innerSignal) => service.started(innerSignal),
-        );
+        await foreachService(this.#hostedLifecycleServices, signal, concurrent, abortOnFirstError, errors,
+          (service, innerSignal) => service.started(innerSignal));
       }
       logAndRethrow();
 
@@ -261,39 +232,21 @@ export class Host implements IHost, AsyncDisposable {
 
         // stopping()
         if (reversedLifecycleServices) {
-          await foreachService(
-            reversedLifecycleServices,
-            signal,
-            concurrent,
-            false,
-            errors,
-            (service, innerSignal) => service.stopping(innerSignal),
-          );
+          await foreachService(reversedLifecycleServices, signal, concurrent, false, errors, (service, innerSignal) =>
+            service.stopping(innerSignal));
         }
 
         // Fire applicationStopping.
         this.#applicationLifetime.stopApplication();
 
         // stop()
-        await foreachService(
-          reversedServices,
-          signal,
-          concurrent,
-          false,
-          errors,
-          (service, innerSignal) => service.stop(innerSignal),
-        );
+        await foreachService(reversedServices, signal, concurrent, false, errors, (service, innerSignal) =>
+          service.stop(innerSignal));
 
         // stopped()
         if (reversedLifecycleServices) {
-          await foreachService(
-            reversedLifecycleServices,
-            signal,
-            concurrent,
-            false,
-            errors,
-            (service, innerSignal) => service.stopped(innerSignal),
-          );
+          await foreachService(reversedLifecycleServices, signal, concurrent, false, errors, (service, innerSignal) =>
+            service.stopped(innerSignal));
         }
       }
 
@@ -321,10 +274,8 @@ export class Host implements IHost, AsyncDisposable {
       }
 
       if (errors.length) {
-        const error = aggregate(
-          errors,
-          'One or more hosted services failed to stop, or a background service threw an error.',
-        );
+        const error = aggregate(errors,
+          'One or more hosted services failed to stop, or a background service threw an error.');
         HostingLoggerExtensions.stoppedWithError(this.#logger, error);
         throw error;
       }

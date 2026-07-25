@@ -1,51 +1,31 @@
-// Most-specific-TracingRule resolution -- ported from MED.Tracing's
-// `DefaultActivitySourceFactory.{GetMostSpecificRule,RuleMatches,IsMoreSpecific,Matches}`.
+// Resolves which TracingRule applies to a given activity source/operation:
+// pure functions over a `TracingOptions.rules` list and a plain-data
+// description of the source being resolved. No matching rule means DISABLED
+// -- `getMostSpecificTracingRule(options.rules, query)?.enable ?? false`.
 //
-// In the reference these are private statics of the tracing runtime's
-// activity-source factory: each listener registration resolves, per activity
-// source (and per operation name, when operation-name rules exist), the single
-// most-specific matching rule and listens iff it says enable. This repo has no
-// Activity/ActivitySource RUNTIME (see the package header), so the resolution
-// algorithm itself is promoted to the consumable surface: pure functions over a
-// `TracingOptions.rules` list and a plain-data description of the source being
-// resolved. Any consumer that binds a `TracingOptions` decides "is source X
-// (operation Y) enabled for listener L?" with
-// `getMostSpecificTracingRule(options.rules, query)?.enable ?? false` (no
-// matching rule means DISABLED, exactly as in the reference).
-//
-// Matching semantics (every name comparison is case-insensitive, mirroring the
-// reference's ordinal-ignore-case):
+// Matching is case-insensitive throughout:
 //   - listenerName / operationName: exact match; unset/empty matches anything.
 //     An operation-named rule additionally never matches a query WITHOUT an
 //     operation name -- omitting `query.operationName` resolves the
-//     source-level default, exactly as the reference's factory does when it
-//     computes a source's default enablement.
+//     source-level default.
 //   - sourceName: PREFIX match (`"a.b"` matches source `"a.b.c"`), optionally
 //     with a single `*` wildcard splitting the pattern into a prefix and a
 //     suffix (`"a.*.c"`); unset/empty matches anything. `TracingRule`'s
 //     constructor validates the at-most-one-`*` invariant eagerly, so no
-//     re-check happens here (the reference's deliberate asymmetry with the
-//     metrics rule's lazy match-time validation).
+//     re-check happens here.
 //   - scopes: the rule's {@link ActivitySourceScopes} flags must include the
 //     queried source's scope (local = created via a DI activity-source factory).
 // Specificity (see {@link isMoreSpecificTracingRule}): a listener-named rule
 // beats a source-named one beats an operation-named one beats a narrower
 // scope; a longer source name beats a shorter one; on a full tie the LAST rule
 // in the list wins, so later-appended rules override earlier ones.
-//
-// The reference statics thread a `considerOperationName` flag; every call site
-// passes `true` (`false` would make operation-named rules match any operation),
-// so the flag is not ported -- the always-taken branch is inlined. Flagged as a
-// deliberate surface simplification.
 
 import { ActivitySourceScopes } from './ActivitySourceScopes';
 import type { TracingRule } from './TracingRule';
 
 /**
  * A plain-data description of the activity source (and resolving listener) a
- * {@link TracingRule} list is resolved against -- the pure stand-in for the
- * reference runtime's source-name + operation-name + listener-name + scope
- * tuple.
+ * {@link TracingRule} list is resolved against.
  */
 export interface TracingRuleQuery {
   /** The activity-source name being resolved (e.g. `"MyCompany.Orders"`). */
@@ -67,19 +47,17 @@ export interface TracingRuleQuery {
   readonly isLocalScope: boolean;
 }
 
-/** Case-insensitive equality -- the reference's ordinal-ignore-case string comparison. */
 function equalsIgnoreCase(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
 
 /**
- * Whether the source-name `pattern` covers `name` -- the port of
- * `DefaultActivitySourceFactory.Matches`: unset/empty matches anything;
- * otherwise a case-insensitive prefix match, with a single `*` wildcard
- * splitting the pattern into a prefix and a suffix. `TracingRule`'s
+ * Whether the source-name `pattern` covers `name`: unset/empty matches
+ * anything; otherwise a case-insensitive prefix match, with a single `*`
+ * wildcard splitting the pattern into a prefix and a suffix. `TracingRule`'s
  * constructor validates that at most one `*` is present, so no re-check
  * happens here; a second `*` reaching this code would be treated as a literal
- * character inside the suffix, mirroring the reference.
+ * character inside the suffix.
  */
 function sourceNameMatches(pattern: string | undefined, name: string): boolean {
   if (!pattern) {
@@ -95,8 +73,8 @@ function sourceNameMatches(pattern: string | undefined, name: string): boolean {
 
 /**
  * Whether `rule` applies to the activity source (and operation) described by
- * `query`. The port of `DefaultActivitySourceFactory.RuleMatches`. Unset/empty
- * rule fields match anything; see the module header for the full semantics.
+ * `query`. Unset/empty rule fields match anything -- see the module header
+ * for the full semantics.
  */
 export function tracingRuleMatches(rule: TracingRule, query: TracingRuleQuery): boolean {
   // Listener name: exact match or empty.
@@ -129,19 +107,16 @@ export function tracingRuleMatches(rule: TracingRule, query: TracingRuleQuery): 
 }
 
 /**
- * Whether `rule` is at least as specific as the current `best` candidate. The
- * port of `DefaultActivitySourceFactory.IsMoreSpecific`. Both rules must
- * already MATCH the same {@link TracingRuleQuery} (or be blank in the differing
- * fields) -- this only orders candidates, it does not re-check matching.
- * `isLocalScope` is the queried source's scope: within it, the narrower scope
- * flag set is the more specific. Returns `true` on a full tie, so a fold over
- * a rule list keeps the LAST of equally specific rules.
+ * Whether `rule` is at least as specific as the current `best` candidate. Both
+ * rules must already MATCH the same {@link TracingRuleQuery} (or be blank in
+ * the differing fields) -- this only orders candidates, it does not re-check
+ * matching. `isLocalScope` is the queried source's scope: within it, the
+ * narrower scope flag set is the more specific. Returns `true` on a full tie,
+ * so a fold over a rule list keeps the LAST of equally specific rules.
  */
-export function isMoreSpecificTracingRule(
-  rule: TracingRule,
-  best: TracingRule | undefined,
-  isLocalScope: boolean,
-): boolean {
+export function isMoreSpecificTracingRule(rule: TracingRule, best: TracingRule | undefined,
+  isLocalScope: boolean): boolean
+{
   if (best === undefined) {
     return true;
   }
@@ -196,16 +171,14 @@ export function isMoreSpecificTracingRule(
 
 /**
  * Resolves the single winning {@link TracingRule} for the activity source (and
- * operation) described by `query` -- the port of
- * `DefaultActivitySourceFactory.GetMostSpecificRule` and THE selection
- * primitive over a {@link TracingOptions.rules} list. Returns `undefined` when
- * no rule matches; the source/operation is then disabled, so the enablement
- * decision is `getMostSpecificTracingRule(...)?.enable ?? false`.
+ * operation) described by `query` -- THE selection primitive over a
+ * {@link TracingOptions.rules} list. Returns `undefined` when no rule matches;
+ * the source/operation is then disabled, so the enablement decision is
+ * `getMostSpecificTracingRule(...)?.enable ?? false`.
  */
-export function getMostSpecificTracingRule(
-  rules: readonly TracingRule[],
-  query: TracingRuleQuery,
-): TracingRule | undefined {
+export function getMostSpecificTracingRule(rules: readonly TracingRule[], query: TracingRuleQuery): TracingRule
+  | undefined
+{
   let best: TracingRule | undefined;
   for (const rule of rules) {
     if (tracingRuleMatches(rule, query) && isMoreSpecificTracingRule(rule, best, query.isLocalScope)) {

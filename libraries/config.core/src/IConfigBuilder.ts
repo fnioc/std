@@ -1,6 +1,3 @@
-// The `IConfigBuilder` interface -- mirrors MECA's
-// `IConfigBuilder.cs` one-type-per-file layout (see docs/decisions.md #46).
-
 import type { IConfigRoot } from './IConfigRoot';
 import type { IConfigSource } from './IConfigSource';
 
@@ -10,8 +7,7 @@ export interface IConfigBuilder {
    * A shared key/value bag used to pass data between the builder and its
    * registered sources -- e.g. a source reading a builder-wide setting
    * during {@link IConfigSource.build}. One mutable `Map` for the
-   * builder's lifetime; mirrors the reference `IConfigBuilder`'s
-   * `Properties` dictionary.
+   * builder's lifetime.
    */
   get properties(): Map<string, unknown>;
 
@@ -22,7 +18,7 @@ export interface IConfigBuilder {
   add(source: IConfigSource): IConfigBuilder;
 
   /**
-   * Builds an {@link IConfig} with keys and values from the set of
+   * Builds an {@link IConfigRoot} with keys and values from the set of
    * sources registered in {@link IConfigBuilder.sources}.
    */
   build(): IConfigRoot;

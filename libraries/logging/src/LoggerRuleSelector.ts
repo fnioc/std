@@ -1,20 +1,16 @@
-// LoggerRuleSelector — the most-specific-rule-wins filter selection, ported
-// from ME.Logging's `LoggerRuleSelector`. Given the accumulated
+// The most-specific-rule-wins filter selection. Given the accumulated
 // `LoggerFilterOptions` and one provider/category pair, it picks the single
 // governing rule and yields its `(minLevel, filter)`.
 //
-// Rule selection (verbatim from the reference):
+// Rule selection:
 //   1. Prefer rules naming the current provider; else rules with no provider.
 //   2. Prefer the longest matching category prefix.
 //   3. With none matching by category, fall back to rules with no category.
 //   4. One applicable rule → use it; several → use the last.
 //   5. No applicable rule → the options' global `minLevel`, no filter.
 //
-// Provider ALIAS matching (the reference's `ProviderAliasUtilities.GetAlias`)
-// has no analog yet in this port — the provider-alias attribute lands with
-// logging.core's ProviderAliasAttribute work. Until an alias source exists here,
-// only the provider TYPE name is matched; a rule keyed by an alias simply does
-// not match. Wiring the alias in is a documented residual.
+// Only the provider TYPE name is matched — a rule keyed by a provider alias
+// never matches.
 
 import type { LogLevel } from '@rhombus-std/logging.core';
 import type { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
@@ -31,11 +27,7 @@ export interface SelectedRule {
  * returning its `minLevel`/`filter` (or the global `minLevel` and no filter
  * when nothing matches).
  */
-export function select(
-  options: LoggerFilterOptions,
-  providerType: string,
-  category: string,
-): SelectedRule {
+export function select(options: LoggerFilterOptions, providerType: string, category: string): SelectedRule {
   let current: LoggerFilterRule | undefined;
   for (const rule of options.rules) {
     if (isBetter(rule, current, providerType, category)) {
@@ -52,13 +44,9 @@ export function select(
 const WILDCARD_CHAR = '*';
 
 /** Whether `rule` is a strictly better match than `current` for `logger`/`category`. */
-function isBetter(
-  rule: LoggerFilterRule,
-  current: LoggerFilterRule | undefined,
-  logger: string,
-  category: string,
-): boolean {
-  // Skip rules with an inapplicable provider or category.
+function isBetter(rule: LoggerFilterRule, current: LoggerFilterRule | undefined, logger: string,
+  category: string): boolean
+{
   if (rule.providerName !== undefined && rule.providerName !== logger) {
     return false;
   }
@@ -83,7 +71,8 @@ function isBetter(
       return false;
     }
   } else {
-    // Skip the category check when moving from no provider to a provider.
+    // A rule naming a provider always beats a current match that doesn't,
+    // regardless of category specificity.
     if (rule.providerName !== undefined) {
       return true;
     }
@@ -112,5 +101,4 @@ function endsWithIgnoreCase(value: string, suffix: string): boolean {
   return value.slice(value.length - suffix.length).toLowerCase() === suffix.toLowerCase();
 }
 
-/** The `LoggerRuleSelector` static surface (the reference names it thus). */
 export const LoggerRuleSelector = { select };

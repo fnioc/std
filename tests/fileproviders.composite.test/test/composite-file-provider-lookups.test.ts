@@ -78,10 +78,7 @@ function providerWithDir(subpath: string, files: IFileInfo[]): StubProvider {
 
 describe('CompositeFileProvider.getFileInfo', () => {
   test('returns the first existing file across providers', () => {
-    const provider = new CompositeFileProvider(
-      providerWithFile('a.txt', 'first'),
-      providerWithFile('a.txt', 'second'),
-    );
+    const provider = new CompositeFileProvider(providerWithFile('a.txt', 'first'), providerWithFile('a.txt', 'second'));
 
     const info = provider.getFileInfo('a.txt') as StubFileInfo;
     expect(info.exists).toBe(true);
@@ -89,10 +86,7 @@ describe('CompositeFileProvider.getFileInfo', () => {
   });
 
   test('falls through to NotFoundFileInfo when no provider has the file', () => {
-    const provider = new CompositeFileProvider(
-      providerWithFile('a.txt', 'first'),
-      providerWithFile('b.txt', 'second'),
-    );
+    const provider = new CompositeFileProvider(providerWithFile('a.txt', 'first'), providerWithFile('b.txt', 'second'));
 
     const info = provider.getFileInfo('missing.txt');
     expect(info).toBeInstanceOf(NotFoundFileInfo);
@@ -114,10 +108,8 @@ describe('CompositeFileProvider.getDirectoryContents', () => {
 
   test('de-duplicates by name -- the first provider wins', () => {
     const first = providerWithDir('sub', [new StubFileInfo('dup.txt', 'first')]);
-    const second = providerWithDir('sub', [
-      new StubFileInfo('dup.txt', 'second'),
-      new StubFileInfo('unique.txt', 'second'),
-    ]);
+    const second = providerWithDir('sub', [new StubFileInfo('dup.txt', 'second'),
+      new StubFileInfo('unique.txt', 'second')]);
     const provider = new CompositeFileProvider(first, second);
 
     const entries = [...provider.getDirectoryContents('sub')] as StubFileInfo[];
@@ -128,9 +120,7 @@ describe('CompositeFileProvider.getDirectoryContents', () => {
   });
 
   test('reports exists=false when no provider has the directory', () => {
-    const provider = new CompositeFileProvider(
-      providerWithDir('other', [new StubFileInfo('x.txt', 'first')]),
-    );
+    const provider = new CompositeFileProvider(providerWithDir('other', [new StubFileInfo('x.txt', 'first')]));
 
     const contents = provider.getDirectoryContents('missing');
     expect(contents.exists).toBe(false);
@@ -141,14 +131,11 @@ describe('CompositeFileProvider.getDirectoryContents', () => {
 describe('CompositeDirectoryContents', () => {
   test('initializes lazily -- providers are not consulted until iterated or exists is read', () => {
     let consulted = 0;
-    const provider: IFileProvider = {
-      getFileInfo: (subpath) => new NotFoundFileInfo(subpath),
+    const provider: IFileProvider = { getFileInfo: (subpath) => new NotFoundFileInfo(subpath),
       getDirectoryContents: (subpath) => {
         consulted++;
         return new StubDirectoryContents(true, [new StubFileInfo('x.txt', 'p')]);
-      },
-      watch: () => NullChangeToken.singleton,
-    };
+      }, watch: () => NullChangeToken.singleton };
 
     const contents = new CompositeDirectoryContents([provider], 'sub');
     expect(consulted).toBe(0);

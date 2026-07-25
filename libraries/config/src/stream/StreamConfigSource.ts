@@ -1,15 +1,10 @@
-// StreamConfigSource -- abstract base for stream-based configuration
-// sources; mirrors the reference `StreamConfigSource`.
+// Abstract base for stream-based configuration sources.
 //
-// Platform adaptation (the reference's byte-stream type): providers load
-// SYNCHRONOUSLY (`IConfigProvider.load(): void` -- the whole engine's
-// build path is sync), and the platform's `ReadableStream` can only be
-// consumed asynchronously, so the payload here is the already-materialized
-// bytes or text (`Uint8Array | string`) rather than @rhombus-std/primitives'
-// structural `ReadableStream<R>`. That matches how the reference type is
-// actually used -- an in-memory payload (embedded resource, test fixture)
-// wrapped in an in-memory stream -- while keeping `load()` synchronous and
-// `addJsonStream` faithful.
+// Providers load SYNCHRONOUSLY (`IConfigProvider.load(): void` -- the whole
+// engine's build path is sync), and a `ReadableStream` can only be consumed
+// asynchronously, so the payload here is already-materialized bytes or text
+// (`Uint8Array | string`) rather than @rhombus-std/primitives' structural
+// `ReadableStream<R>`.
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource } from '@rhombus-std/config.core';
 
@@ -27,8 +22,8 @@ export type StreamPayload = Uint8Array | string;
 export abstract class StreamConfigSource implements IConfigSource {
   /**
    * The payload containing the configuration data. May be assigned after
-   * construction (the reference shape); {@link StreamConfigProvider}'s
-   * `load()` throws if it is still unset.
+   * construction; {@link StreamConfigProvider}'s `load()` throws if it is
+   * still unset.
    */
   public stream: StreamPayload | undefined;
 

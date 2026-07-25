@@ -1,20 +1,19 @@
-// The resolve-side guard. A resolve arg — a slot the engine will resolve as a
-// dependency — must be a pure token node (`concrete | hole | provider`). The
-// slot-only kinds (`union | literal | factory`) are handled by their own paths
-// BEFORE a slot reaches token resolution (a union is tried member-by-member at
-// resolve time, a literal supplies its value, a factory injects a callable), so
-// encountering one where a resolvable token is expected is a malformed tree —
-// `validate` rejects it. This is what makes the shared kinds safe now that a
-// factory param is a `TokenNode` that could, structurally, be any kind.
-//
-// It guards a HAND-BUILT tree. The engine reaches resolution through `DepSlot`,
-// whose wire forms parse to the right kind by construction, so nothing on the
-// live path calls this today.
-
 import type { FactoryNode, LiteralNode, UnionNode } from './node.js';
 import { TokenNode } from './node.js';
 import { TokenWalker } from './visitor.js';
 
+/**
+ * The resolve-side guard: a slot to be resolved as a dependency must be a pure
+ * token node (`concrete | hole | provider`).
+ *
+ * @remarks
+ * The slot-only kinds (`union | literal | factory`) are handled by their own
+ * paths BEFORE a slot reaches token resolution — a union is tried
+ * member-by-member, a literal supplies its value, a factory injects a callable —
+ * so meeting one where a resolvable token is expected means a malformed tree.
+ * Only a HAND-BUILT tree needs this: parsing a `DepSlot` yields the right kind
+ * by construction.
+ */
 export class Validator extends TokenWalker<void> {
   /** Throws unless every node reachable from `node` is a resolvable token kind. */
   public validate(node: TokenNode): void {
@@ -39,9 +38,7 @@ export class Validator extends TokenWalker<void> {
 }
 
 function reject(kind: string, node: TokenNode): TypeError {
-  return new TypeError(
-    `resolve arg is not a resolvable token: encountered a '${kind}' slot node (${describe(node)}).`,
-  );
+  return new TypeError(`resolve arg is not a resolvable token: encountered a '${kind}' slot node (${describe(node)}).`);
 }
 
 /** A best-effort label for the offending node — its token string when it has one,

@@ -1,7 +1,3 @@
-// IValidateOptions<T> -- a validate step, ported from MEO's
-// IValidateOptions<T> (I prefix dropped, name parameter dropped -- see
-// configure-options.ts).
-
 import type { ValidateOptionsResult } from './ValidateOptionsResult.js';
 
 /**

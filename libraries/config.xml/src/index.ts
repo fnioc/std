@@ -3,7 +3,6 @@
 // Exports XmlConfigSource/Provider (+ the XmlStream* pair for in-memory
 // payloads) and installs `addXmlFile` / `addXmlStream` onto config's
 // ConfigBuilder AND ConfigManager via the augmentation registry.
-// Mirrors config.json/config.ini's install exactly.
 //
 // A consumer who only wants the sugar needs a bare side-effect import:
 // `import "@rhombus-std/config.xml";`. `sideEffects: true` in package.json keeps
@@ -18,7 +17,7 @@ import { XmlStreamConfigSource } from './XmlStreamConfigSource';
 
 // Declare-merge onto the config barrel (dist-referenced flat dist/bundle/index.d.ts
 // declares the classes directly, so the merge lands cleanly even with other
-// provider augmentations present -- see config.json's addJsonFile install).
+// provider augmentations present).
 declare module '@rhombus-std/config' {
   interface ConfigBuilder<T = IndexedSection> {
     /** Registers an {@link XmlConfigSource} reading `path`. */
@@ -37,18 +36,14 @@ declare module '@rhombus-std/config' {
   }
 }
 
-/** One named object literal mirroring the reference `XmlConfigExtensions`. */
 export const XmlConfigAugmentations = {
-  addXmlFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
-    builder: TBuilder,
-    path: string,
-    opts?: XmlConfigSourceOptions,
-  ): TBuilder {
+  addXmlFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder, path: string,
+    opts?: XmlConfigSourceOptions): TBuilder
+  {
     return builder.add(new XmlConfigSource(path, opts));
   },
-  addXmlStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
-    builder: TBuilder,
-    stream: StreamPayload,
+  addXmlStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
+    stream: StreamPayload
   ): TBuilder {
     return builder.add(new XmlStreamConfigSource(stream));
   },

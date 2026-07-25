@@ -1,6 +1,5 @@
-// HostBuilder -- the classic `IHostBuilder`, ported from the reference hosting
-// runtime's `HostBuilder`. Accumulates host-config / app-config /
-// configure-services delegates and, on `build()`, runs the reference build
+// HostBuilder -- the classic `IHostBuilder`. Accumulates host-config /
+// app-config / configure-services delegates and, on `build()`, runs the
 // pipeline: host configuration -> hosting environment -> host-builder context ->
 // application configuration -> framework services -> the internal host.
 //
@@ -51,17 +50,13 @@ export class HostBuilder implements IHostBuilder {
   }
 
   /** Sets up the configuration for the remainder of the build and application. Additive. */
-  public configureAppConfig(
-    configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
-  ): this {
+  public configureAppConfig(configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>): this {
     this.#configureAppConfigActions.push(configureDelegate);
     return this;
   }
 
   /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
-  public configureServices(
-    configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>,
-  ): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
@@ -70,11 +65,8 @@ export class HostBuilder implements IHostBuilder {
    * Overrides the factory used to create the service provider. This repo has a
    * SINGLE container type, so this is a minimal no-op single-container hook: the
    * default `ServiceManifest` build path is always used to produce the provider.
-   * See diNotes.
    */
-  public useServiceProviderFactory<TContainerBuilder>(
-    _factory: IServiceProviderFactory<TContainerBuilder>,
-  ): this {
+  public useServiceProviderFactory<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>): this {
     return this;
   }
 
@@ -82,9 +74,7 @@ export class HostBuilder implements IHostBuilder {
   public configureContainer<TContainerBuilder>(
     configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
   ): this {
-    this.#configureContainerActions.push(
-      configureDelegate as Func<[HostBuilderContext, unknown], unknown>,
-    );
+    this.#configureContainerActions.push(configureDelegate as Func<[HostBuilderContext, unknown], unknown>);
     return this;
   }
 
@@ -108,11 +98,8 @@ export class HostBuilder implements IHostBuilder {
     const hostingEnvironment = createHostingEnvironment(hostConfig);
 
     // 3. Host-builder context.
-    const hostBuilderContext: HostBuilderContext = {
-      hostingEnvironment,
-      config: hostConfig,
-      properties: this.properties,
-    };
+    const hostBuilderContext: HostBuilderContext = { hostingEnvironment, config: hostConfig,
+      properties: this.properties };
 
     // 4. Application configuration (host configuration chained in first --
     // a live read-through, not a snapshot, so a later host-configuration

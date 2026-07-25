@@ -4,9 +4,7 @@
  */
 export class HostAbortedError extends Error {
   /**
-   * Constructs the error, collapsing the reference's three ctors (`()`,
-   * `(message)`, `(message, innerError)`) into one. `innerError` maps to
-   * the JS `Error` `cause` — the platform's analog of a wrapped inner error.
+   * @param innerError Set as the resulting error's `cause`.
    */
   public constructor(message?: string, innerError?: Error) {
     super(message ?? 'The host was aborted.', innerError ? { cause: innerError } : undefined);

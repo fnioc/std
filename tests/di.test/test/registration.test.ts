@@ -14,10 +14,7 @@ class SqlDb {
 }
 
 class Repo {
-  public constructor(
-    public readonly logger: ConsoleLogger,
-    public readonly db: SqlDb,
-  ) {}
+  public constructor(public readonly logger: ConsoleLogger, public readonly db: SqlDb) {}
 }
 
 describe('registration + basic resolution', () => {

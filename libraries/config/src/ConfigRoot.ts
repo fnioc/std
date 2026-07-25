@@ -1,19 +1,6 @@
-// ConfigRoot -- the provider-list engine, presented as the empty-path
-// Section at the top of the tree.
-//
-// Providers are stored in registration order and eagerly load()ed at
-// construction. Reads resolve LAST-registered-wins by iterating providers in
-// REVERSE per lookup (a lazy, per-key resolution -- not an eager merge into a
-// flat map). Writes fan out to EVERY provider in forward order.
-//
-// The root also carries the section trio (key/path/value, all empty/undefined
-// sentinels) and extends IndexAccessed, so `build()` can present it as the
-// index-navigable root of the Section tree. See ConfigSection.ts for
-// the reserved-name hazard (real members shadow the indexer).
-//
-// Child enumeration lives in the internal InternalConfigRootExtensions
-// helper (see InternalConfigRootExtensions.ts), shared with the
-// manager and the sections -- mirroring the reference split.
+// ConfigRoot — the provider-list engine, presented as the empty-path section
+// at the top of the tree. Reads resolve last-registered-wins (providers are
+// checked in reverse per lookup); writes fan out to every provider.
 
 import type { ConfigObject, IConfigProvider, IConfigRoot, IConfigSection,
   IndexedSection } from '@rhombus-std/config.core';
@@ -31,11 +18,9 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
   #changeToken = new ConfigReloadToken();
 
   /**
-   * Stores `providers` in registration order and eagerly loads each, forward
-   * order, so the root reflects every source's data immediately after
-   * construction -- then subscribes to each provider's reload token, so a
-   * provider-driven reload (not just {@link reload}) also raises the root's
-   * own token.
+   * Eagerly loads every provider, so the root reflects their data immediately,
+   * and subscribes to each provider's reload token so a provider-driven reload
+   * raises this root's own token.
    */
   public constructor(providers: Iterable<IConfigProvider>) {
     super();
@@ -53,7 +38,6 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
     return this.#changeToken;
   }
 
-  /** Fires the current root token and swaps in a fresh one. */
   #raiseChanged(): void {
     const previous = this.#changeToken;
     this.#changeToken = new ConfigReloadToken();
@@ -61,15 +45,9 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
   }
 
   /**
-   * The {@link ConfigManager} incremental-composition seam: loads and
-   * appends a single already-built provider WITHOUT touching the existing ones,
-   * mirroring the reference `ConfigManager.AddSource`. Only the new
-   * provider is `load()`ed, so any prior `set()` state on the existing
-   * providers survives -- a whole-list rebuild would discard it. The adopted
-   * provider's reload-token registration joins `#changeTokenRegistrations`, so
-   * it is released by {@link [Symbol.dispose]} alongside the constructor's --
-   * no leak. Intended for intra-package use by ConfigManager, not
-   * general consumers.
+   * Loads and appends one already-built provider without touching the existing
+   * ones, so any prior {@link set} state on them survives. An intra-package seam
+   * for {@link ConfigManager}'s incremental composition, not for general use.
    */
   public adoptProvider(provider: IConfigProvider): void {
     provider.load();
@@ -104,11 +82,6 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
     return this.#providers;
   }
 
-  /**
-   * Reads `key`, checking providers in REVERSE (last-registered first) and
-   * returning the first hit -- so the last source to define a key wins,
-   * resolved lazily per lookup. Returns `undefined` if no provider has it.
-   */
   #rawGet(key: string): string | undefined {
     for (let i = this.#providers.length - 1; i >= 0; i--) {
       const result = this.#providers[i]!.tryGet(key);
@@ -157,10 +130,7 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
     return r.value;
   }
 
-  /**
-   * Writes `key` to EVERY provider, forward order. Throws if there are no
-   * providers -- there is nowhere to store the value.
-   */
+  /** Writes `key` into every provider. */
   public set(key: string, value: string): this {
     if (this.#providers.length === 0) {
       throw new Error('Cannot set configuration value: no configuration sources are registered.');
@@ -171,7 +141,7 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
     return this;
   }
 
-  /** Always returns a section view for `key` -- never null, no existence check. */
+  /** Always returns a section view for `key`, never null. */
   public getSection(key: string): IConfigSection {
     return new ConfigSection(this, key);
   }
@@ -186,7 +156,7 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
     return subtreeToObject(this);
   }
 
-  /** Forces every provider to reload its source, forward order, then raises this root's token. */
+  /** Reloads every provider from its source, then raises this root's token. */
   public reload(): void {
     for (const provider of this.#providers) {
       provider.load();
@@ -195,12 +165,8 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
   }
 
   /**
-   * Unsubscribes every per-provider reload-token registration -- those set up
-   * in the constructor and any added later by {@link adoptProvider}; otherwise
-   * those callbacks keep the root (and each provider's token) alive for the
-   * process lifetime -- then disposes any provider that is
-   * itself disposable. Mirrors MEC's `ConfigRoot.Dispose`. Safe to call
-   * more than once: each registration's own dispose is idempotent.
+   * Releases every per-provider reload subscription and disposes any provider
+   * that is itself disposable. Safe to call more than once.
    */
   public [Symbol.dispose](): void {
     for (const registration of this.#changeTokenRegistrations) {
@@ -222,8 +188,6 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
   }
 
   protected _setIndex(_key: PropertyKey, _value: IndexedSection): IndexedSection {
-    throw new TypeError(
-      'Configuration is read-only through index access; use set(key, value) or the value setter.',
-    );
+    throw new TypeError('Configuration is read-only through index access; use set(key, value) or the value setter.');
   }
 }

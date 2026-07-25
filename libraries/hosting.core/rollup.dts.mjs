@@ -21,10 +21,5 @@ export default {
   // Preserve every workspace package as an external import so its module
   // identity (the augmentation target) survives into the published declaration.
   external: [/^@rhombus-std\//, /^@rhombus-toolkit\//],
-  plugins: [
-    dts({
-      tsconfig: join(PKG_ROOT, 'tsconfig.json'),
-      respectExternal: true,
-    }),
-  ],
+  plugins: [dts({ tsconfig: join(PKG_ROOT, 'tsconfig.json'), respectExternal: true })],
 };

@@ -1,11 +1,5 @@
-// Buffered logging — the batch-delivery capability, ported from
-// ME.Logging.Abstractions' `IBufferedLogger` + `BufferedLogRecord`.
-//
-// A logging provider always implements `ILogger`; it MAY additionally implement
-// `IBufferedLogger` to signal that it can accept a batch of already-captured log
-// records at once. When buffering is enabled, the log producer type-tests the
-// provider for this interface and, if present, delivers records through
-// `logRecords` instead of one-at-a-time `ILogger.log` calls.
+// Buffered logging — the batch-delivery capability a provider may implement
+// beside `ILogger`.
 
 import type { EventId } from './EventId';
 import type { LogLevel } from './LogLevel';
@@ -34,19 +28,12 @@ export abstract class BufferedLogRecord {
     return undefined;
   }
 
-  /**
-   * The activity span id of the thread that created the record, if any. A plain
-   * hex string here — the reference `ActivitySpanId` has no analog in this port
-   * (the tracing/`Activity` runtime is intentionally unported).
-   */
+  /** The span id of the activity that created the record, as a hex string, if any. */
   public get activitySpanId(): string | undefined {
     return undefined;
   }
 
-  /**
-   * The activity trace id of the thread that created the record, if any. A plain
-   * hex string here, for the same reason as {@link activitySpanId}.
-   */
+  /** The trace id of the activity that created the record, as a hex string, if any. */
   public get activityTraceId(): string | undefined {
     return undefined;
   }
@@ -66,11 +53,7 @@ export abstract class BufferedLogRecord {
     return undefined;
   }
 
-  /**
-   * The variable set of name/value pairs associated with the record. Defaults to
-   * empty; the reference `IReadOnlyList<KeyValuePair<string, object?>>` shape is
-   * a readonly array of `[name, value]` tuples.
-   */
+  /** The name/value pairs associated with the record; empty by default. */
   public get attributes(): ReadonlyArray<readonly [string, unknown]> {
     return [];
   }

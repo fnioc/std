@@ -1,9 +1,4 @@
-// Public entry point for @rhombus-std/options -- the collapsed IOptions<T>
-// accessor (see docs/decisions.md §4.2) and the OptionsFactory pipeline
-// (§4.5).
-//
-// The DI-builder registration augmentation (`addOptions`/`configure`) is NOT
-// ported here -- see the README.
+// Public entry point for @rhombus-std/options.
 
 export { Options } from './IOptions.js';
 export type { IOptions } from './IOptions.js';

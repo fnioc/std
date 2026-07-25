@@ -15,10 +15,7 @@ describe('ConfigSection', () => {
   });
 
   test('get(key) reads a descendant relative to the section path', () => {
-    const root = rootOf({
-      'Database:Primary:Host': 'db.internal',
-      'Database:Primary:Port': '5432',
-    });
+    const root = rootOf({ 'Database:Primary:Host': 'db.internal', 'Database:Primary:Port': '5432' });
 
     const primary = root.getSection('Database:Primary');
     expect(primary.get('Host')).toBe('db.internal');
@@ -49,10 +46,7 @@ describe('ConfigSection', () => {
   });
 
   test('getChildren returns the immediate descendant sections of the section', () => {
-    const root = rootOf({
-      'Server:Port': '8080',
-      'Server:Host': 'localhost',
-    });
+    const root = rootOf({ 'Server:Port': '8080', 'Server:Host': 'localhost' });
 
     const keys = [...root.getSection('Server').getChildren()].map((section) => section.key).sort();
     expect(keys).toEqual(['Host', 'Port']);

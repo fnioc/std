@@ -21,14 +21,7 @@ import path from 'node:path';
 export function createTtscPlugin(context) {
   // context.dirname is the load-mode-independent __dirname of THIS descriptor
   // (libraries/primitives.extras); the owner host lives at the repo root.
-  const source = path.resolve(
-    context.dirname,
-    '..',
-    '..',
-    'transforms',
-    'cmd',
-    'ttsc-std',
-  );
+  const source = path.resolve(context.dirname, '..', '..', 'transforms', 'cmd', 'ttsc-std');
   return { name: 'rhombusstd', source };
 }
 

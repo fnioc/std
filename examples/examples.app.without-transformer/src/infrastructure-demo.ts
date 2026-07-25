@@ -48,9 +48,7 @@ function newWorkshopManifest(): IServiceManifest<'singleton'> {
  * @returns One line per observation, in a fixed order.
  */
 export function demonstrateInfrastructure(): readonly string[] {
-  const lines: string[] = [
-    '=== di infrastructure (library-author surface) — without transformer ===',
-  ];
+  const lines: string[] = ['=== di infrastructure (library-author surface) — without transformer ==='];
 
   // The factory is this root's single point of container construction: every
   // container below is built through it, so all of them get the same build
@@ -76,9 +74,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // the container fills the parameter instead of leaving it undefined. Same
   // library code, both branches.
   const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
-    workshop
-      .useGreeting(WorkshopGreeting)
-      .useStationery({ border: '***' });
+    workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
   const customProvider = containers.createServiceProvider(containers.createBuilder(customised));
   const customWorkshop = customProvider.resolve<GreetingWorkshop>(GREETING_WORKSHOP_TOKEN);

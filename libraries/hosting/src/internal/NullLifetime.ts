@@ -1,6 +1,3 @@
-// NullLifetime -- ported from the reference hosting runtime's `NullLifetime`.
-// A minimal {@link IHostLifetime} that does nothing.
-
 import type { IHostLifetime } from '@rhombus-std/hosting.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
 

@@ -1,13 +1,9 @@
-// A string is itself iterable (char by char), so a naive `Symbol.iterator in
-// value` check would treat `combine("Host")` as an iterable of characters and
-// recurse into `combine("H", "o", "s", "t")` -> "H:o:s:t" (and infinite-loops
-// on a 1-char string). Excluding strings (and null/undefined) keeps the
-// single-string overload returning the string verbatim.
+// A string is itself iterable (char by char), so excluding it (and
+// null/undefined) here keeps combine("Host") returning "Host" instead of
+// recursing per character -- which would infinite-loop on a single-char string.
 function isIterable(value: unknown): value is Iterable<unknown> {
   return typeof value === 'object' && value !== null && Symbol.iterator in value;
 }
-
-// Utility functions and constants for manipulating configuration paths.
 
 /** The delimiter ":" used to separate individual keys in a path. */
 export const KeyDelimiter = ':';

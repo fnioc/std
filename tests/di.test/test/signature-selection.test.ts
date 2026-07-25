@@ -32,10 +32,7 @@ describe('greedy signature selection', () => {
         this.args = args;
       }
     }
-    defineDeps(Svc, [
-      [T.Logger, T.Db],
-      [T.Db],
-    ]);
+    defineDeps(Svc, [[T.Logger, T.Db], [T.Db]]);
 
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
@@ -56,10 +53,7 @@ describe('greedy signature selection', () => {
         this.args = args;
       }
     }
-    defineDeps(Svc, [
-      [T.Logger, T.Db],
-      [T.Logger],
-    ]);
+    defineDeps(Svc, [[T.Logger, T.Db], [T.Logger]]);
 
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
@@ -82,10 +76,7 @@ describe('greedy signature selection', () => {
         this.args = args;
       }
     }
-    defineDeps(Svc, [
-      [T.Logger, UNREGISTERED],
-      [T.Logger],
-    ]);
+    defineDeps(Svc, [[T.Logger, UNREGISTERED], [T.Logger]]);
 
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');

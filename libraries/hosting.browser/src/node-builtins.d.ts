@@ -1,13 +1,9 @@
-// Minimal compile-scope typings for the real node builtin imports in this
-// package's program -- libraries carry no @types/node (docs/decisions.md
-// §39/§44). Nothing in hosting.browser imports any of these; they come in
-// because this package src-references @rhombus-std/hosting, whose program
-// still co-compiles config.json's `JsonConfigProvider` (`node:fs` +
-// `node:path`, see #68) and logging's `LoggerExternalScopeProvider`
-// (`node:async_hooks`). Compile-scope only: nothing imports this file, so
-// rollup-plugin-dts never reaches it and the declarations are NOT shipped.
-// When @types/node happens to be in a consumer program the declarations merge
-// as extra overloads -- legal and inert.
+// Minimal compile-scope typings for the node builtins pulled in transitively
+// through this package's program (via @rhombus-std/hosting and logging's
+// LoggerExternalScopeProvider) -- libraries carry no @types/node. Nothing in
+// hosting.browser imports these directly, so rollup-plugin-dts never reaches
+// this file and the declarations are NOT shipped. If @types/node is present in
+// a consumer program, these merge in as extra overloads -- legal and inert.
 
 declare module 'node:fs' {
   export function readFileSync(path: string, encoding: 'utf-8'): string;

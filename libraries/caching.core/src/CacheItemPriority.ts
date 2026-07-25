@@ -1,7 +1,3 @@
-// CacheItemPriority -- ported verbatim from ME.Caching.Abstractions'
-// CacheItemPriority. Specifies how items are prioritized for preservation
-// during a size-limit-triggered compaction.
-
 /** Specifies how items are prioritized for preservation during a compaction. */
 export enum CacheItemPriority {
   /** Remove as soon as possible during a compaction. */

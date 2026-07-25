@@ -12,11 +12,8 @@ const { getDebugView } = ConfigRootAugmentations;
 
 describe('getDebugView', () => {
   function tree(): IConfigRoot {
-    return rootOf({
-      'Server:Host': 'localhost',
-      'Server:Port': '8080',
-      'ConnectionStrings:Default': 'secret-value',
-    }) as IConfigRoot;
+    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080',
+      'ConnectionStrings:Default': 'secret-value' }) as IConfigRoot;
   }
 
   test('renders leaves as key=value (provider) and intermediate nodes as key:', () => {
@@ -54,10 +51,9 @@ describe('getDebugView', () => {
   test('with two providers, the rendered value comes from the last (winning) provider', () => {
     // Both providers define Server:Port; getValueAndProvider scans providers in
     // reverse, so the debug view attributes the value to the last registration.
-    const root = new ConfigBuilder()
-      .addInMemoryCollection({ 'Server:Port': '8080' })
-      .addInMemoryCollection({ 'Server:Port': '9090' })
-      .build() as unknown as IConfigRoot;
+    const root = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080' }).addInMemoryCollection({
+      'Server:Port': '9090',
+    }).build() as unknown as IConfigRoot;
 
     const view = getDebugView(root);
     expect(view).toContain('  Port=9090 (MemoryConfigProvider)');

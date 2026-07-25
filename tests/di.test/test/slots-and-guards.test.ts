@@ -16,14 +16,13 @@ test('typeArg() helper returns a TypeArgRef slot', () => {
 });
 
 describe('slot type guards', () => {
-  const cases: Array<{ slot: DepSlot; kind: string; }> = [
-    { slot: 'pkg:IFoo', kind: 'token' },
-    { slot: { type: 'pkg:IFoo' }, kind: 'factory' },
-    { slot: { union: ['pkg:A', 'pkg:B'] }, kind: 'union' },
-    { slot: { value: 42 }, kind: 'literal' },
-    { slot: { value: undefined }, kind: 'literal' },
-    { slot: { typeArg: 2 }, kind: 'typearg' },
-  ];
+  const cases: Array<{ slot: DepSlot; kind: string; }> = [{ slot: 'pkg:IFoo', kind: 'token' }, {
+    slot: { type: 'pkg:IFoo' },
+    kind: 'factory',
+  }, { slot: { union: ['pkg:A', 'pkg:B'] }, kind: 'union' }, { slot: { value: 42 }, kind: 'literal' }, {
+    slot: { value: undefined },
+    kind: 'literal',
+  }, { slot: { typeArg: 2 }, kind: 'typearg' }];
 
   test('each guard matches exactly its own slot kind', () => {
     for (const { slot, kind } of cases) {

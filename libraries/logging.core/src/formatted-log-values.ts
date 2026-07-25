@@ -1,31 +1,18 @@
-// Deferred message formatting — the TS analog of ME.Logging.Abstractions'
-// internal `FormattedLogValues` + `LogValuesFormatter`.
-//
-// The reference formatter parses a message template with named holes
-// (`"User {User} logged in from {Address}"`) and substitutes the positional
-// args for each hole in order. `FormattedLogValues` is an
-// `IReadOnlyList<KeyValuePair<string, object?>>`: a structured sink can read the
-// parsed name/value pairs (one per hole), followed by the `{OriginalFormat}`
-// pseudo-entry carrying the raw template. Here that shape is a plain `Iterable`
-// of `[name, value]` tuples plus indexer/`count`, so the console formatter's
-// `state as IReadOnlyList<KeyValuePair<...>>` probe (an iterable of two-tuples)
-// reads it structurally.
-//
-// This lives behind the deferred-formatter boundary on purpose: `ILogger.log`
-// takes a `state` + `formatter`, and a disabled sink never calls the formatter,
-// so both the `{hole}` string substitution and the name parsing below run only
-// when a message is actually emitted or a structured sink enumerates the state.
+// Deferred message formatting for a template with named holes
+// (`"User {User} logged in from {Address}"`): the positional args substitute
+// into the holes in order. A structured sink can instead read the parsed
+// `[name, value]` pairs, one per hole, followed by the `{OriginalFormat}`
+// pseudo-entry carrying the raw template.
 
-/** The synthetic key the reference appends for the raw, unsubstituted template. */
+/** The key of the pseudo-entry carrying the raw, unsubstituted template. */
 const ORIGINAL_FORMAT_KEY = '{OriginalFormat}';
 
 const NO_NAMES: readonly string[] = [];
 
 /**
- * Renders a message template by replacing each `{hole}` with the next
- * positional arg (in order), and collapsing the `{{` / `}}` escapes to literal
- * braces. Extra args are ignored; missing/nullish args render as an empty
- * string. Single-pass so escapes and holes cannot interfere with each other.
+ * Renders a message template, replacing each `{hole}` with the next positional
+ * arg in order and collapsing `{{` / `}}` to literal braces. Extra args are
+ * ignored; a missing or nullish arg renders as the empty string.
  */
 export function formatMessage(template: string, args: readonly unknown[]): string {
   let out = '';
@@ -41,7 +28,7 @@ export function formatMessage(template: string, args: readonly unknown[]): strin
       }
       const close = template.indexOf('}', i + 1);
       if (close === -1) {
-        // No closing brace — emit the rest verbatim.
+        // Unterminated hole — emit the rest verbatim.
         out += template.slice(i);
         break;
       }
@@ -63,11 +50,9 @@ export function formatMessage(template: string, args: readonly unknown[]): strin
 }
 
 /**
- * Extracts the ordered hole names from a message template — the same holes
- * {@link formatMessage} substitutes, so the nth name pairs with the nth arg. A
- * hole's name is the text before its first `,` (alignment) or `:` (format spec),
- * mirroring the reference's `{name[,alignment][:format]}` grammar. `{{`/`}}`
- * escapes are skipped, and an unterminated `{` ends the scan.
+ * Extracts the ordered hole names from a template — the nth name pairs with the
+ * nth arg. A hole's name is the text before its first `,` (alignment) or `:`
+ * (format spec), per the `{name[,alignment][:format]}` grammar.
  */
 function parseValueNames(template: string): readonly string[] {
   const names: string[] = [];
@@ -99,20 +84,18 @@ function parseValueNames(template: string): readonly string[] {
 }
 
 /**
- * The deferred-formatting `state` the logging sugar passes to `ILogger.log`.
- * Holds the raw template and args; `toString()` renders on demand, and the
- * structured `IReadOnlyList` surface (`count`/`get`/iteration) yields the parsed
- * `[holeName, value]` pairs followed by the `["{OriginalFormat}", template]`
- * pseudo-entry.
+ * The deferred-formatting `state` passed to {@link ILogger.log}: holds the raw
+ * template and args. `toString()` renders on demand; the structured surface
+ * (`count`/`get`/iteration) yields the parsed `[holeName, value]` pairs followed
+ * by the `["{OriginalFormat}", template]` pseudo-entry.
  */
 export class FormattedLogValues implements Iterable<readonly [string, unknown]> {
   public readonly message: string;
   public readonly args: readonly unknown[];
 
-  // Parsed lazily: rendering (`toString`) never needs it, and a disabled sink
-  // never enumerates. Named holes are only surfaced when there are values to
-  // bind them to — mirrors the reference, whose formatter is null for an empty
-  // value list, collapsing the list to the lone `{OriginalFormat}` entry.
+  // Parsed lazily — rendering never needs it and a disabled sink never
+  // enumerates. With no args there are no names to bind, leaving just the
+  // `{OriginalFormat}` entry.
   #valueNames: readonly string[] | undefined;
 
   public constructor(message: string, args: readonly unknown[]) {

@@ -38,11 +38,7 @@ describe('ConfigProvider.getChildKeys', () => {
   });
 
   test('with a parentPath, returns the segment after a boundary-exact colon match', () => {
-    const provider = providerOf({
-      'Server:Port': '8080',
-      'Server:Host': 'localhost',
-      'ServerFarm:Size': '3',
-    });
+    const provider = providerOf({ 'Server:Port': '8080', 'Server:Host': 'localhost', 'ServerFarm:Size': '3' });
 
     // "ServerFarm:Size" must NOT match parentPath "Server" (no ':' boundary
     // after "Server"), only "Server:Port"/"Server:Host" do.

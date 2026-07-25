@@ -13,8 +13,7 @@ import type { ChainedConfigSource } from './ChainedConfigSource';
 /**
  * Duck-types `config` as an {@link IConfigRoot}: TS interfaces have no
  * runtime tag, so this checks for the one member (`reload`) that only a root
- * carries -- neither a plain section nor `IConfig` has it. Mirrors the
- * reference's `_config is IConfigRoot` type test.
+ * carries -- neither a plain section nor `IConfig` has it.
  */
 function isConfigRoot(config: IConfig): config is IConfigRoot {
   return typeof (config as Partial<IConfigRoot>).reload === 'function';
@@ -37,7 +36,6 @@ export class ChainedConfigProvider implements IConfigProvider, Disposable {
     return value ? [true, value] : [false];
   }
 
-  /** Writes through to the chained configuration. */
   public set(key: string, value?: string): void {
     this.#config.set(key, value ?? '');
   }
@@ -69,10 +67,8 @@ export class ChainedConfigProvider implements IConfigProvider, Disposable {
 
   /**
    * Combines the chained configuration's own immediate children under
-   * `parentPath` with `earlierKeys`, sorted -- the same "own keys first, then
-   * earlier, then sort" shape as {@link ConfigProvider.getChildKeys}, just
-   * sourced from the chained configuration's real section tree instead of a
-   * flat key/value store.
+   * `parentPath` with `earlierKeys` (already collected from earlier
+   * providers in the chain), sorted.
    */
   public getChildKeys(earlierKeys: Iterable<string>, parentPath?: string): Iterable<string> {
     const section = parentPath === undefined ? this.#config : this.#config.getSection(parentPath);
@@ -87,11 +83,7 @@ export class ChainedConfigProvider implements IConfigProvider, Disposable {
     return keys;
   }
 
-  /**
-   * A friendly label for this provider, shown by {@link getDebugView} -- see
-   * the base {@link ConfigProvider.toString} this class doesn't inherit
-   * (it implements the interface directly, not that base).
-   */
+  /** Label shown in {@link getDebugView} output. */
   public toString(): string {
     return this.constructor.name;
   }

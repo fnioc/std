@@ -57,9 +57,7 @@ describe('getSection', () => {
     const chained = root.getSection('a').getSection('b');
     const direct = root.getSection('a:b');
     expect(chained.value).toBe(direct.value);
-    expect([...chained.getChildren()].map((s) => s.key)).toEqual(
-      [...direct.getChildren()].map((s) => s.key),
-    );
+    expect([...chained.getChildren()].map((s) => s.key)).toEqual([...direct.getChildren()].map((s) => s.key));
   });
 
   test('a missing key yields an empty section, never null', () => {
@@ -71,16 +69,8 @@ describe('getSection', () => {
 
 describe('toObject', () => {
   test('nested tree serializes to a ConfigObject; a node with value AND children is a record (value dropped)', () => {
-    const root = rootOf({
-      'Server:Host': 'h',
-      'Server:Port': '8080',
-      Server: 'has-value-too',
-      Flag: 'on',
-    });
-    expect(root.toObject()).toEqual({
-      Server: { Host: 'h', Port: '8080' },
-      Flag: 'on',
-    });
+    const root = rootOf({ 'Server:Host': 'h', 'Server:Port': '8080', Server: 'has-value-too', Flag: 'on' });
+    expect(root.toObject()).toEqual({ Server: { Host: 'h', Port: '8080' }, Flag: 'on' });
   });
 
   test('a section toObject() returns just its subtree', () => {

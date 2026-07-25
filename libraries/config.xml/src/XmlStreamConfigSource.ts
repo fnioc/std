@@ -1,7 +1,6 @@
 // XmlStreamConfigSource -- represents an in-memory XML payload as an
-// IConfigSource; mirrors the reference `XmlStreamConfigSource`.
-// Payload/once-only handling lives on config's stream bases; this class only
-// picks the concrete provider.
+// IConfigSource. Payload/once-only handling lives on config's stream bases;
+// this class only picks the concrete provider.
 
 import { StreamConfigSource } from '@rhombus-std/config';
 import type { IConfigBuilder, IConfigProvider } from '@rhombus-std/config.core';

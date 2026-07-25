@@ -1,9 +1,3 @@
-// IChangeToken -- ported from ME.Primitives.IChangeToken.
-//
-// `IDisposable` maps to the built-in `Disposable` (Symbol.dispose), the
-// TS/ESNext analog -- `tsconfig.base.json` already includes lib
-// "ESNext.Disposable" for every package in this monorepo.
-
 import type { Func } from '@rhombus-toolkit/func';
 
 /**

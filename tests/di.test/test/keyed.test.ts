@@ -61,9 +61,7 @@ describe('keyed singular resolution', () => {
     // Open the singleton frame so the tag caches — same instance proves both
     // spellings compute the identical lookup token.
     const root = services.build().createScope('singleton');
-    expect(root.resolve<RedisCache>(CACHE, 'redis')).toBe(
-      root.resolve<RedisCache>(CACHE_REDIS),
-    );
+    expect(root.resolve<RedisCache>(CACHE, 'redis')).toBe(root.resolve<RedisCache>(CACHE_REDIS));
   });
 
   test('the empty-key default resolves the BARE non-keyed token', () => {
@@ -161,12 +159,8 @@ describe('keyed plural resolution', () => {
 
     const root = services.build().createScope('singleton');
     // Singleton keyed element is cached; transient keyed element is fresh.
-    expect(root.resolve<RedisCache>(CACHE, 'redis')).toBe(
-      root.resolve<RedisCache>(CACHE, 'redis'),
-    );
-    expect(root.resolve<MemoryCache>(CACHE, 'memory')).not.toBe(
-      root.resolve<MemoryCache>(CACHE, 'memory'),
-    );
+    expect(root.resolve<RedisCache>(CACHE, 'redis')).toBe(root.resolve<RedisCache>(CACHE, 'redis'));
+    expect(root.resolve<MemoryCache>(CACHE, 'memory')).not.toBe(root.resolve<MemoryCache>(CACHE, 'memory'));
   });
 
   test('a specific base is FIXED — a keyed scan never wanders to another type', () => {
@@ -233,9 +227,7 @@ describe('keyed plural over open-template closings', () => {
     services = services.addClass('pkg:IRepo<$1>', Repo, [[]], 'singleton', 'redis');
     services = services.addClass('pkg:IRepo<pkg:IA>#redis', OtherRepo, [[]], 'singleton');
 
-    const kinds = services.build()
-      .resolve<object>(REPO_OF_A, /redis/)
-      .map((r) => (r as { kind: string; }).kind);
+    const kinds = services.build().resolve<object>(REPO_OF_A, /redis/).map((r) => (r as { kind: string; }).kind);
 
     // Same closings-then-exact order `Array<T>` aggregates by, so the last
     // element is what the singular resolve yields.

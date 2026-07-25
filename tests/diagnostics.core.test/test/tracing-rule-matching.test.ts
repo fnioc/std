@@ -11,13 +11,9 @@ import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes, getMostSpecificTracin
 import { describe, expect, test } from 'bun:test';
 
 /** Shorthand rule ctor: names + scopes, `enable` defaulting to true. */
-function rule(
-  sourceName: string | undefined,
-  operationName?: string,
-  listenerName?: string,
-  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL,
-  enable = true,
-): TracingRule {
+function rule(sourceName: string | undefined, operationName?: string, listenerName?: string,
+  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL, enable = true): TracingRule
+{
   return new TracingRule(sourceName, operationName, listenerName, scopes, enable);
 }
 
@@ -37,12 +33,8 @@ function isEnabled(rules: readonly TracingRule[], query: TracingRuleQuery): bool
 }
 
 describe('tracingRuleMatches', () => {
-  const query: TracingRuleQuery = {
-    sourceName: 'MyCompany.Service',
-    operationName: 'Op1',
-    listenerName: 'L1',
-    isLocalScope: true,
-  };
+  const query: TracingRuleQuery = { sourceName: 'MyCompany.Service', operationName: 'Op1', listenerName: 'L1',
+    isLocalScope: true };
 
   test('unset fields match anything', () => {
     expect(tracingRuleMatches(rule(undefined), query)).toBe(true);

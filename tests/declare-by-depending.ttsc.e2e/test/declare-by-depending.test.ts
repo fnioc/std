@@ -100,23 +100,12 @@ function writeProject(projDir: string): void {
   rmSync(join(projDir, 'dist'), { recursive: true, force: true });
   writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
-  writeFileSync(
-    join(projDir, 'tsconfig.json'),
+  writeFileSync(join(projDir, 'tsconfig.json'),
     JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: 'dist',
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-      },
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
       include: ['src/**/*'],
-    }),
-  );
+    }));
 }
 
 /** Link the shared ttsc toolchain into a fixture's node_modules. */
@@ -131,11 +120,7 @@ function linkToolchain(projDir: string): void {
 
 /** Drive the real ttsc over a fixture and return its transformed app module. */
 function driveTtsc(projDir: string): string {
-  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
-    cwd: projDir,
-    encoding: 'utf8',
-    env: goEnv(),
-  });
+  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projDir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
     throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
   }
@@ -163,14 +148,8 @@ beforeAll(async () => {
   // own primitives.extras dependency is what carries the tokenfor stage; the
   // host reaches it through the scan. The transitive @rhombus-std packages are
   // linked so the host's walk resolves them from the fixture's node_modules.
-  writeFileSync(
-    join(CONSUMER, 'package.json'),
-    JSON.stringify({
-      name: '@fixture/consumer',
-      private: true,
-      devDependencies: { '@rhombus-std/di.extras': '*' },
-    }),
-  );
+  writeFileSync(join(CONSUMER, 'package.json'),
+    JSON.stringify({ name: '@fixture/consumer', private: true, devDependencies: { '@rhombus-std/di.extras': '*' } }));
   linkToolchain(CONSUMER);
   const cScoped = join(CONSUMER, 'node_modules', '@rhombus-std');
   link(lib('di.extras'), join(cScoped, 'di.extras'));
@@ -183,14 +162,8 @@ beforeAll(async () => {
   // auto-discovery spawns no host — even though di.core devDeps
   // primitives.extras to lower its OWN source (a transitive devDep that must
   // not leak).
-  writeFileSync(
-    join(CORE_ONLY, 'package.json'),
-    JSON.stringify({
-      name: '@fixture/core-only',
-      private: true,
-      dependencies: { '@rhombus-std/di.core': '*' },
-    }),
-  );
+  writeFileSync(join(CORE_ONLY, 'package.json'),
+    JSON.stringify({ name: '@fixture/core-only', private: true, dependencies: { '@rhombus-std/di.core': '*' } }));
   linkToolchain(CORE_ONLY);
   link(lib('di.core'), join(CORE_ONLY, 'node_modules', '@rhombus-std', 'di.core'));
   writeProject(CORE_ONLY);

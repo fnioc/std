@@ -1,6 +1,3 @@
-// The `IConfig` interface -- mirrors MECA's `IConfig.cs`
-// one-type-per-file layout (see docs/decisions.md #46).
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import type { IConfigSection } from './IConfigSection';

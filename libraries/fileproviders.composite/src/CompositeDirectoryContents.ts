@@ -1,14 +1,3 @@
-// CompositeDirectoryContents -- ported from
-// ME.FileProviders.Composite.CompositeDirectoryContents.
-//
-// Represents the merged result of GetDirectoryContents across a list of
-// providers for one subpath. Directories and files are initialized lazily
-// (mirroring ME's EnsureDirectoriesAreInitialized / EnsureFilesAreInitialized),
-// and files are de-duplicated by name -- first provider wins. ME's
-// MemberNotNull attributes are compile-time null-flow hints with no TS analog;
-// the lazy `#files == null` / `#directories == null` guards carry the same
-// once-only-init intent.
-
 import type { IDirectoryContents, IFileInfo, IFileProvider } from '@rhombus-std/fileproviders.core';
 
 /**
@@ -23,12 +12,6 @@ export class CompositeDirectoryContents implements IDirectoryContents {
   #files: IFileInfo[] | undefined;
   #exists = false;
 
-  /**
-   * Initializes a new instance of the {@link CompositeDirectoryContents} class.
-   *
-   * @param fileProviders The providers whose results are composed.
-   * @param subpath The path being enumerated.
-   */
   public constructor(fileProviders: readonly IFileProvider[], subpath: string) {
     this.#fileProviders = fileProviders;
     this.#subpath = subpath;

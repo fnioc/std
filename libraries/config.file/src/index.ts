@@ -29,10 +29,10 @@ import type { Func } from '@rhombus-toolkit/func';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 
 // The `builder.properties` keys the default file provider and load-error
-// handler are stashed under. Kept as the reference's literal strings so the
-// property bag stays interoperable across every file-config package -- note
-// the handler key still reads "Exception" (a cross-package data key, not a
-// member name; the member and type use "error" per the naming convention).
+// handler are stashed under -- fixed literal strings so the property bag
+// stays interoperable across every file-config package. The handler key
+// still reads "Exception" (a cross-package data key, not a member name;
+// the member and type use "error").
 const FILE_PROVIDER_KEY = 'FileProvider';
 const FILE_LOAD_ERROR_HANDLER_KEY = 'FileLoadExceptionHandler';
 
@@ -40,7 +40,7 @@ const FILE_LOAD_ERROR_HANDLER_KEY = 'FileLoadExceptionHandler';
 type FileLoadErrorHandler = Func<[FileLoadErrorContext], void>;
 
 // Interface-side merge onto config.core's IConfigBuilder (the public
-// barrel -- config.file doesn't own the interface, §38): gives the interface
+// barrel -- config.file doesn't own the interface): gives the interface
 // the file-default hooks a FileConfigSource.ensureDefaults calls
 // through the plain IConfigBuilder type.
 declare module '@rhombus-std/config.core' {
@@ -85,9 +85,8 @@ declare module '@rhombus-std/config' {
 }
 
 /**
- * One named object literal mirroring the reference `FileConfigExtensions`
- * static class (docs §28/§38): receiver-first members over IConfigBuilder,
- * registered against the shared token AND exported as the standalone form.
+ * Receiver-first members over IConfigBuilder, registered against the shared
+ * token and exported as the standalone form.
  */
 export const FileConfigAugmentations = {
   setFileProvider(builder: IConfigBuilder, fileProvider: IFileProvider): IConfigBuilder {
@@ -99,7 +98,7 @@ export const FileConfigAugmentations = {
     if (provider !== undefined) {
       return provider as IFileProvider;
     }
-    // The AppContext.BaseDirectory analog: a physical provider rooted at cwd.
+    // Falls back to a physical provider rooted at the current working directory.
     return new PhysicalFileProvider(process.cwd());
   },
   setBasePath(builder: IConfigBuilder, basePath: string): IConfigBuilder {

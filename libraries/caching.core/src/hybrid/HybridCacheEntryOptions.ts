@@ -1,19 +1,3 @@
-// HybridCacheEntryOptions -- ported from ME.Caching.Abstractions'
-// Hybrid/HybridCacheEntryOptions.
-//
-// Platform adaptations from the reference:
-//   - The init-only properties (`{ get; init; }` on a sealed class) map to
-//     readonly properties assigned from an optional constructor init bag --
-//     the closest analog of the reference's object-initializer authoring.
-//   - `TimeSpan?` durations are milliseconds (the family convention, as in
-//     DistributedCacheEntryOptions).
-//   - The internal memoized `ToDistributedCacheEntryOptions()` ports as the
-//     module-scoped `toDistributedCacheEntryOptions` below -- exported from
-//     this module for the family's own use, but NOT from the package barrel,
-//     mirroring the reference's `internal` visibility (the
-//     `freezeDistributedCacheEntryOptions` precedent). The reference's private
-//     `_dc` memo field becomes the module-scoped WeakMap.
-
 import { DistributedCacheEntryOptions } from '../DistributedCacheEntryOptions';
 import type { HybridCacheEntryFlags } from './HybridCacheEntryFlags';
 
@@ -43,26 +27,19 @@ export class HybridCacheEntryOptions {
   /** Additional flags that apply to the requested operation. */
   public readonly flags: HybridCacheEntryFlags | undefined;
 
-  public constructor(init?: {
-    expiration?: number;
-    localCacheExpiration?: number;
-    flags?: HybridCacheEntryFlags;
-  }) {
+  public constructor(init?: { expiration?: number; localCacheExpiration?: number; flags?: HybridCacheEntryFlags; }) {
     this.expiration = init?.expiration;
     this.localCacheExpiration = init?.localCacheExpiration;
     this.flags = init?.flags;
   }
 }
 
-/** The memoized conversions -- the analog of the reference's private `_dc` field. */
 const memoizedDistributedOptions = new WeakMap<HybridCacheEntryOptions, DistributedCacheEntryOptions>();
 
 /**
- * Converts `options` to the `DistributedCacheEntryOptions` a backend
- * distributed cache consumes -- `undefined` when no expiration is set. The
- * conversion is memoized per instance (safe: the properties are readonly).
- * The port of the reference's internal `ToDistributedCacheEntryOptions()`;
- * deliberately absent from the package barrel (see the module doc comment).
+ * Converts `options` to the `DistributedCacheEntryOptions` a backend distributed
+ * cache consumes -- `undefined` when no expiration is set. Memoized per instance
+ * (safe: the source properties are readonly). Not exported from the package barrel.
  */
 export function toDistributedCacheEntryOptions(
   options: HybridCacheEntryOptions,

@@ -29,21 +29,15 @@ describe('LiteralRef core guard', () => {
 describe('LiteralRef — ctor argument value supply', () => {
   test('each value kind is injected verbatim into a ctor', () => {
     class Holder {
-      public constructor(
-        public readonly s: unknown,
-        public readonly n: unknown,
-        public readonly b: unknown,
-        public readonly big: unknown,
-      ) {}
+      public constructor(public readonly s: unknown, public readonly n: unknown, public readonly b: unknown,
+        public readonly big: unknown)
+      {}
     }
-    defineDeps(Holder, [
-      [{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }],
-    ]);
+    defineDeps(Holder, [[{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }]]);
 
     let services = new ServiceManifest<'singleton'>();
-    services = services.addClass(T.Service, Holder, [
-      [{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }],
-    ], 'singleton');
+    services = services.addClass(T.Service, Holder, [[{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }]],
+      'singleton');
 
     const h = services.build().resolve<Holder>(T.Service);
     expect(h.s).toBe('dev');
@@ -54,10 +48,7 @@ describe('LiteralRef — ctor argument value supply', () => {
 
   test('undefined and null values are injected verbatim', () => {
     class Holder {
-      public constructor(
-        public readonly u: unknown,
-        public readonly nul: unknown,
-      ) {}
+      public constructor(public readonly u: unknown, public readonly nul: unknown) {}
     }
     const undef: LiteralRef = { value: undefined };
     const nul: LiteralRef = { value: null };
@@ -73,10 +64,7 @@ describe('LiteralRef — ctor argument value supply', () => {
 
   test('a negative number / negative bigint value round-trips', () => {
     class Holder {
-      public constructor(
-        public readonly n: unknown,
-        public readonly big: unknown,
-      ) {}
+      public constructor(public readonly n: unknown, public readonly big: unknown) {}
     }
     defineDeps(Holder, [[{ value: -5 }, { value: -9n }]]);
 
@@ -105,10 +93,7 @@ describe('LiteralRef — ctor argument value supply', () => {
 
 describe('LiteralRef — factory argument value supply', () => {
   test('a value slot is injected into a registered factory function', () => {
-    const factory = (mode: unknown, log: unknown): { mode: unknown; log: unknown; } => ({
-      mode,
-      log,
-    });
+    const factory = (mode: unknown, log: unknown): { mode: unknown; log: unknown; } => ({ mode, log });
     defineDeps(factory, [[{ value: 'dev' }, T.Logger]]);
 
     let services = new ServiceManifest<'singleton'>();
@@ -172,9 +157,7 @@ describe('optional param fallback — union(token, LiteralRef(undefined))', () =
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Service, Consumer, [[union(T.A, { value: undefined })]], 'singleton');
 
-    expect(() => services.build().resolve(T.Service)).not.toThrow(
-      NoSatisfiableSignatureError,
-    );
+    expect(() => services.build().resolve(T.Service)).not.toThrow(NoSatisfiableSignatureError);
   });
 
   test("registered 'boolean' token injects into optional boolean param (Fix 1)", () => {

@@ -42,9 +42,7 @@ describe('open-table matching', () => {
 
     expect(sp.resolve('app/IR<pkg:IA>')).toBeInstanceOf(ZeroRepo);
     expect(sp.resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(MemRepo);
-    expect(() => sp.resolve('app/IR<pkg:IA,pkg:IB,pkg:IC>')).toThrow(
-      UnregisteredTokenError,
-    );
+    expect(() => sp.resolve('app/IR<pkg:IA,pkg:IB,pkg:IC>')).toThrow(UnregisteredTokenError);
   });
 
   test('a non-canonical (whitespace) template base resolves its canonical closing', () => {
@@ -103,9 +101,7 @@ describe('open-table matching', () => {
 
     const sp = services.build();
 
-    expect(() => sp.resolve(closeToken('app/IR', T.A))).toThrow(
-      UnregisteredTokenError,
-    );
+    expect(() => sp.resolve(closeToken('app/IR', T.A))).toThrow(UnregisteredTokenError);
   });
 
   test('resolving a non-canonical template spelling names the hole, not a miss', () => {
@@ -124,9 +120,7 @@ describe('open-table matching', () => {
     const sp = services.build();
 
     expect(sp.resolve('app/IPair<pkg:IA,pkg:IA>')).toBeInstanceOf(ZeroRepo);
-    expect(() => sp.resolve('app/IPair<pkg:IA,pkg:IB>')).toThrow(
-      UnregisteredTokenError,
-    );
+    expect(() => sp.resolve('app/IPair<pkg:IA,pkg:IB>')).toThrow(UnregisteredTokenError);
   });
 
   test('repeated-hole template wins for equal args; general template still matches unequal', () => {
@@ -237,10 +231,7 @@ describe('partially-closed templates', () => {
 
   test('holes bind by LABEL around a pinned middle arg', () => {
     class Inverted {
-      public constructor(
-        public readonly first: unknown,
-        public readonly second: unknown,
-      ) {}
+      public constructor(public readonly first: unknown, public readonly second: unknown) {}
     }
     let services = new ServiceManifest();
     services = services.addClass('app/IInv<$7,pkg:IB,$3>', Inverted, [[typeArg(3), typeArg(7)]]);
@@ -250,30 +241,19 @@ describe('partially-closed templates', () => {
 
     expect(inv.first).toBe('pkg:IY');
     expect(inv.second).toBe('pkg:IX');
-    expect(() => sp.resolve('app/IInv<pkg:IX,pkg:IC,pkg:IY>')).toThrow(
-      UnregisteredTokenError,
-    );
+    expect(() => sp.resolve('app/IInv<pkg:IX,pkg:IC,pkg:IY>')).toThrow(UnregisteredTokenError);
   });
 
   test('every slot kind closes through a template that also carries a concrete arg', () => {
     class KitchenSink {
-      public constructor(
-        public readonly sp: IResolver,
-        public readonly lit: unknown,
-        public readonly argToken: unknown,
-        public readonly dep: unknown,
-        public readonly viaUnion: unknown,
-      ) {}
+      public constructor(public readonly sp: IResolver, public readonly lit: unknown, public readonly argToken: unknown,
+        public readonly dep: unknown, public readonly viaUnion: unknown)
+      {}
     }
     let services = new ServiceManifest();
     services = services.addValue(T.A, 'A!');
-    services = services.addClass('app/IKitchen<pkg:IC,$1>', KitchenSink, [[
-      RESOLVER_TOKEN,
-      { value: 42 },
-      typeArg(1),
-      '$1',
-      union('app/absent', '$1'),
-    ]]);
+    services = services.addClass('app/IKitchen<pkg:IC,$1>', KitchenSink, [[RESOLVER_TOKEN, { value: 42 }, typeArg(1),
+      '$1', union('app/absent', '$1')]]);
 
     const sp = services.build();
     const sink = sp.resolve<KitchenSink>('app/IKitchen<pkg:IC,pkg:IA>');
@@ -332,24 +312,22 @@ describe('partially-closed templates', () => {
     base = base.addClass('app/IR<pkg:IA,$1>', ZeroRepo, [[]]);
 
     // Same template string: the tryAdd is a no-op, so the first ctor survives.
-    expect(base.tryAdd('app/IR<pkg:IA,$1>', MemRepo, [[]]).build().resolve(
-      'app/IR<pkg:IA,pkg:IB>',
-    )).toBeInstanceOf(ZeroRepo);
+    expect(base.tryAdd('app/IR<pkg:IA,$1>', MemRepo, [[]]).build().resolve('app/IR<pkg:IA,pkg:IB>')).toBeInstanceOf(
+      ZeroRepo,
+    );
 
     // A DIFFERENT template on the same base is a different service token, so it
     // registers rather than dedup'ing away.
-    expect(base.tryAdd('app/IR<$1,$2>', MemRepo, [[]]).build().resolve(
-      'app/IR<pkg:IZ,pkg:IB>',
-    )).toBeInstanceOf(MemRepo);
+    expect(base.tryAdd('app/IR<$1,$2>', MemRepo, [[]]).build().resolve('app/IR<pkg:IZ,pkg:IB>')).toBeInstanceOf(
+      MemRepo,
+    );
 
     // removeAll is keyed by the canonical BASE the entry is bucketed under.
     const cleared = base.removeAll('app/IR').build();
     expect(() => cleared.resolve('app/IR<pkg:IA,pkg:IB>')).toThrow(UnregisteredTokenError);
 
     // A bare BASE never dedups a template away — they are different services.
-    expect(base.tryAdd('app/IR', MemRepo, [[]]).build().resolve('app/IR')).toBeInstanceOf(
-      MemRepo,
-    );
+    expect(base.tryAdd('app/IR', MemRepo, [[]]).build().resolve('app/IR')).toBeInstanceOf(MemRepo);
   });
 
   test('removeAll also drops an open entry named by its TEMPLATE', () => {
@@ -378,23 +356,14 @@ describe('partially-closed templates', () => {
 describe('substitution across slot kinds', () => {
   test('provider token, LiteralRef, TypeArgRef, hole token, and Union-with-hole all close', () => {
     class KitchenSink {
-      public constructor(
-        public readonly sp: IResolver,
-        public readonly lit: unknown,
-        public readonly argToken: unknown,
-        public readonly dep: unknown,
-        public readonly viaUnion: unknown,
-      ) {}
+      public constructor(public readonly sp: IResolver, public readonly lit: unknown, public readonly argToken: unknown,
+        public readonly dep: unknown, public readonly viaUnion: unknown)
+      {}
     }
     let services = new ServiceManifest();
     services = services.addValue(T.A, 'A!');
-    services = services.addClass('app/IKitchen<$1>', KitchenSink, [[
-      RESOLVER_TOKEN,
-      { value: 42 },
-      typeArg(1),
-      '$1',
-      union('app/absent', '$1'),
-    ]]);
+    services = services.addClass('app/IKitchen<$1>', KitchenSink, [[RESOLVER_TOKEN, { value: 42 }, typeArg(1), '$1',
+      union('app/absent', '$1')]]);
 
     const sp = services.build();
     const sink = sp.resolve<KitchenSink>('app/IKitchen<pkg:IA>');
@@ -412,15 +381,12 @@ describe('substitution across slot kinds', () => {
       public constructor(public readonly supplied: unknown) {}
     }
     class Consumer {
-      public constructor(
-        public readonly makeThing: Func<[p: unknown], Thing>,
-      ) {}
+      public constructor(public readonly makeThing: Func<[p: unknown], Thing>) {}
     }
     let services = new ServiceManifest();
     services = services.addClass('app/IThing<$1>', Thing, [['app/IParam<$1>']]);
-    services = services.addClass('app/IConsumer<$1>', Consumer, [[
-      { type: 'app/IThing<$1>', params: ['app/IParam<$1>'] },
-    ]]);
+    services = services.addClass('app/IConsumer<$1>', Consumer, [[{ type: 'app/IThing<$1>',
+      params: ['app/IParam<$1>'] }]]);
 
     const sp = services.build();
     const consumer = sp.resolve<Consumer>('app/IConsumer<pkg:IA>');
@@ -432,10 +398,7 @@ describe('substitution across slot kinds', () => {
 
   test('holes bind by NUMBER, not position: <$2,$1> inverts', () => {
     class Inverted {
-      public constructor(
-        public readonly first: unknown,
-        public readonly second: unknown,
-      ) {}
+      public constructor(public readonly first: unknown, public readonly second: unknown) {}
     }
     let services = new ServiceManifest();
     services = services.addClass('app/IInv<$2,$1>', Inverted, [[typeArg(1), typeArg(2)]]);
@@ -460,22 +423,13 @@ describe('memoization', () => {
     }
   }
 
-  const openTable = (
-    reg: OpenRegistration,
-  ): ReadonlyMap<Token, readonly OpenRegistration[]> => new Map([[reg.base, [reg]]]);
+  const openTable = (reg: OpenRegistration): ReadonlyMap<Token, readonly OpenRegistration[]> =>
+    new Map([[reg.base, [reg]]]);
 
   test('repeat resolves reuse the identical synthesized Registration object', () => {
     const memo = new CountingMap();
-    const sp = new ServiceProviderClass(
-      new Map(),
-      openTable({
-        template: G.RepoTemplate,
-        base: T.Repo,
-        ctor: ZeroRepo,
-        scope: undefined,
-      }),
-      memo,
-    );
+    const sp = new ServiceProviderClass(new Map(),
+      openTable({ template: G.RepoTemplate, base: T.Repo, ctor: ZeroRepo, scope: undefined }), memo);
 
     sp.resolve(G.RepoOfA);
     const first = memo.get(G.RepoOfA);
@@ -489,16 +443,8 @@ describe('memoization', () => {
 
   test('the memo is shared across scope frames of one provider tree', () => {
     const memo = new CountingMap();
-    const sp = new ServiceProviderClass(
-      new Map(),
-      openTable({
-        template: G.RepoTemplate,
-        base: T.Repo,
-        ctor: ZeroRepo,
-        scope: undefined,
-      }),
-      memo,
-    );
+    const sp = new ServiceProviderClass(new Map(),
+      openTable({ template: G.RepoTemplate, base: T.Repo, ctor: ZeroRepo, scope: undefined }), memo);
 
     sp.createScope('one').resolve(G.RepoOfA);
     sp.createScope('two').resolve(G.RepoOfA);
@@ -607,10 +553,7 @@ describe('registration-carried signatures', () => {
 
   test('an open registration carries its hole template inline (typeArg substitution)', () => {
     class ManualImpl {
-      public constructor(
-        public readonly dep: unknown,
-        public readonly argToken: unknown,
-      ) {}
+      public constructor(public readonly dep: unknown, public readonly argToken: unknown) {}
     }
 
     let services = new ServiceManifest();
@@ -652,25 +595,19 @@ describe('errors', () => {
   test('addValue with an open token throws OpenTokenRegistrationError', () => {
     const services = new ServiceManifest();
 
-    expect(() => services.addValue(G.RepoTemplate, 'x')).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addValue(G.RepoTemplate, 'x')).toThrow(OpenTokenRegistrationError);
   });
 
   test('addFactory with an open token throws OpenTokenRegistrationError', () => {
     const services = new ServiceManifest();
 
-    expect(() => services.addFactory(G.RepoTemplate, () => 'x', [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addFactory(G.RepoTemplate, () => 'x', [[]])).toThrow(OpenTokenRegistrationError);
   });
 
   test('a bare hole as the service token throws — it names no base to register under', () => {
     const services = new ServiceManifest();
 
-    expect(() => services.addClass('$1', ZeroRepo, [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addClass('$1', ZeroRepo, [[]])).toThrow(OpenTokenRegistrationError);
   });
 
   test('a template the token grammar refuses throws instead of registering a never-matches', () => {
@@ -680,9 +617,7 @@ describe('errors', () => {
     // typed parser stops the base at the space and rejects the trailing text.
     // The engine unifies on the typed tree, so registering this would bucket an
     // entry `#lookup` could never match.
-    expect(() => services.addClass('a b<$1>', ZeroRepo, [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addClass('a b<$1>', ZeroRepo, [[]])).toThrow(OpenTokenRegistrationError);
   });
 });
 
@@ -709,17 +644,11 @@ describe('holey slots in normal resolution', () => {
       }
       public readonly args: unknown[];
     }
-    defineDeps(Overloaded, [
-      ['app/IX<$1>', T.A],
-      [T.A],
-    ]);
+    defineDeps(Overloaded, [['app/IX<$1>', T.A], [T.A]]);
 
     let services = new ServiceManifest();
     services = services.addValue(T.A, 'A!');
-    services = services.addClass(T.Service, Overloaded, [
-      ['app/IX<$1>', T.A],
-      [T.A],
-    ]);
+    services = services.addClass(T.Service, Overloaded, [['app/IX<$1>', T.A], [T.A]]);
 
     const sp = services.build();
 
@@ -754,9 +683,7 @@ describe('gappy open template whose signature references an unbound hole', () =>
 
     const sp = services.build();
 
-    expect(() => sp.resolve('app/IX<pkg:IA,pkg:IB>')).toThrow(
-      UnregisteredTokenError,
-    );
+    expect(() => sp.resolve('app/IX<pkg:IA,pkg:IB>')).toThrow(UnregisteredTokenError);
   });
 
   test('a mis-authored template does not delete a BETTER-RANKED sibling closing', () => {
@@ -828,12 +755,7 @@ describe('disposal of open-synthesized instances (green guard)', () => {
   test('distinct closings dispose in reverse construction order (sync)', () => {
     const log = new DisposeLog();
     let services = new ServiceManifest<'singleton'>();
-    services = services.addClass(
-      G.RepoTemplate,
-      SyncDisposable,
-      [[typeArg(1), { value: log }]],
-      'singleton',
-    );
+    services = services.addClass(G.RepoTemplate, SyncDisposable, [[typeArg(1), { value: log }]], 'singleton');
 
     const app = services.build().createScope('singleton');
     app.resolve(G.RepoOfA); // label pkg:IA, constructed first
@@ -847,12 +769,7 @@ describe('disposal of open-synthesized instances (green guard)', () => {
   test('distinct closings dispose in reverse construction order (async)', async () => {
     const log = new DisposeLog();
     let services = new ServiceManifest<'singleton'>();
-    services = services.addClass(
-      G.RepoTemplate,
-      AsyncDisposableThing,
-      [[typeArg(1), { value: log }]],
-      'singleton',
-    );
+    services = services.addClass(G.RepoTemplate, AsyncDisposableThing, [[typeArg(1), { value: log }]], 'singleton');
 
     const app = services.build().createScope('singleton');
     app.resolve(G.RepoOfA);
@@ -890,10 +807,7 @@ describe('resolveFactory against an open template — top-level public API (gree
 
   test('parameterized mode partitions caller args against the substituted signature', () => {
     class Widget {
-      public constructor(
-        public readonly seed: unknown,
-        public readonly supplied: unknown,
-      ) {}
+      public constructor(public readonly seed: unknown, public readonly supplied: unknown) {}
     }
     defineDeps(Widget, [['app/WRONG', 'app/WRONG2']]); // ctor store must not win
 

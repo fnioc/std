@@ -1,13 +1,12 @@
 // The browser IHostEnvironment factory. A browser page has no filesystem:
 // the content root collapses to the posix root "/" and the content-root file
 // provider is the NullFileProvider (every lookup misses, watch monitors
-// nothing) — the same default hosting's HostingEnvironment carries while the
-// physical provider stays deferred (decisions.md §20).
+// nothing).
 //
-// The backing class mirrors hosting's internal `HostingEnvironment`: decorated
-// `@augment(tokenfor<IHostEnvironment>())` so it pulls hosting.core's
-// environment predicates (isDevelopment/…) from the augmentation registry, and
-// class-side-merged below so it still SATISFIES the fully-merged interface.
+// The backing class is decorated `@augment(tokenfor<IHostEnvironment>())` so
+// it pulls hosting.core's environment predicates (isDevelopment/…) from the
+// augmentation registry, and class-side-merged below so it still SATISFIES
+// the fully-merged interface.
 
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { Environments, type IHostEnvironment } from '@rhombus-std/hosting.core';

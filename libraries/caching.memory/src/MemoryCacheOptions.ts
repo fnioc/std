@@ -1,14 +1,5 @@
-// MemoryCacheOptions -- ported from ME.Caching.Memory's MemoryCacheOptions.
-//
-// The reference implements `IOptions<MemoryCacheOptions>` (Value => this); this
-// repo's collapsed accessor is @rhombus-std/options' `IOptions<T>`, so this
-// class implements that instead -- `value` returns itself, so a MemoryCache
-// can be constructed straight from a `new MemoryCacheOptions()`.
-//
-// Durations map to milliseconds (`number`): the reference
-// `ExpirationScanFrequency` default `TimeSpan.FromMinutes(1)` becomes 60_000.
-// The obsolete `CompactOnMemoryPressure` is dropped -- the reference marks it
-// `Obsolete(error: true)`.
+// `value` returns itself, so a MemoryCache can be constructed straight from
+// `new MemoryCacheOptions()`. Durations are plain milliseconds (`number`).
 
 import type { IOptions } from '@rhombus-std/options';
 import type { ISystemClock } from './ISystemClock';
@@ -32,8 +23,7 @@ export class MemoryCacheOptions implements IOptions<MemoryCacheOptions> {
    * by {@link MemoryCache.createEntry} is pending (not yet committed by its
    * dispose), entries read or committed within that window propagate their
    * expiration tokens and earlier absolute expirations to it. Defaults to
-   * `false`. See cache-entry.ts's module doc for the ambient-scope divergence
-   * from the reference.
+   * `false`.
    */
   public trackLinkedCacheEntries = false;
 
@@ -44,12 +34,7 @@ export class MemoryCacheOptions implements IOptions<MemoryCacheOptions> {
    */
   public trackStatistics = false;
 
-  /**
-   * The name of this cache instance. The reference uses it to tag the
-   * metrics its meter emits; the metrics wiring is not ported (no
-   * meter/instrument analog exists in the diagnostics family), so the name is
-   * carried for parity but nothing consumes it yet.
-   */
+  /** The name of this cache instance. Currently informational only -- nothing reads it yet. */
   public name = 'Default';
 
   /**
@@ -82,7 +67,6 @@ export class MemoryCacheOptions implements IOptions<MemoryCacheOptions> {
     this.#compactionPercentage = value;
   }
 
-  /** Self-referential accessor: mirrors the reference `IOptions<T>.Value => this`. */
   public get value(): MemoryCacheOptions {
     return this;
   }

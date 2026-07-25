@@ -1,29 +1,9 @@
-// MemoryCache -- a real IMemoryCache implementation, ported from
-// ME.Caching.Memory's MemoryCache.
-//
-// JS is single-threaded, so the reference runtime's concurrency machinery
-// (CoherentState, Interlocked size CAS loops, the string/non-string
-// ConcurrentDictionary split, the per-thread Stats/StatsHandler statistics
-// sharding, background Task-scheduled scans/compaction) collapses to a plain
-// `Map`, straight-line size arithmetic, and plain counters. Behavior is
-// preserved:
-//   - Absolute / sliding / token expiration, enforced LAZILY on access and by
-//     an inline periodic scan gated on `expirationScanFrequency`.
-//   - A size limit with priority- then LRU-ordered compaction, run
-//     synchronously on the insert that would overflow (the reference defers it
-//     to a background thread; the effect is the same).
-//   - Eviction callbacks fired on remove / replace / expire / capacity.
-//   - Statistics (`MemoryCacheOptions.trackStatistics`): hit/miss/eviction
-//     counters and the entry-count/estimated-size snapshot via
-//     `getCurrentStatistics`.
-//   - Linked cache-entry tracking (`MemoryCacheOptions.trackLinkedCacheEntries`):
-//     see cache-entry.ts's module doc for the ambient-scope divergence from
-//     the reference (a module-scoped synchronous chain instead of an
-//     async-context slot).
-//
-// NOT ported: the meter/observable-counter metrics (`IMeterFactory` ctor
-// parameter, the counter instruments) -- they need a meter/instrument analog
-// the diagnostics family deliberately does not provide (no listener runtime).
+// MemoryCache -- a local IMemoryCache backed by a `Map`. Enforces absolute,
+// sliding, and change-token expiration (lazily on access, plus an inline
+// periodic scan gated on `expirationScanFrequency`); a size limit with
+// priority-then-LRU compaction run synchronously on the overflowing insert;
+// eviction callbacks on remove/replace/expire/capacity; and opt-in statistics
+// and linked-entry tracking (both captured once at construction).
 
 import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache,
   MemoryCacheStatistics } from '@rhombus-std/caching.core';
@@ -37,11 +17,10 @@ import { CacheEntry, type IMemoryCacheHost } from './CacheEntry';
 import type { MemoryCacheOptions } from './MemoryCacheOptions';
 import { NullLogger } from './NullLogger';
 
-// Interface-extends merge (augmentation doctrine): binding the IMemoryCache SYMBOL
-// flows every in-program augmentation of the interface (caching.core's get/set/
-// getOrCreate/… convenience wrappers) onto this concrete holder, so it satisfies
-// `implements IMemoryCache` without restating any member. `tryGetValue` is a base
-// IMemoryCache primitive the class implements directly.
+// Declaration-merge so the class inherits the convenience methods added to
+// IMemoryCache (get/set/getOrCreate/…) -- it satisfies `implements IMemoryCache`
+// without restating them. `tryGetValue` is the one base primitive it implements
+// directly.
 export interface MemoryCache extends IMemoryCache {}
 
 /** A local in-memory cache backed by a `Map`. */
@@ -64,8 +43,7 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
 
   /**
    * Whether linked (nested) cache entries are tracked -- captured once at
-   * construction so it is consistent for the entire cache lifetime, exactly
-   * as the reference does.
+   * construction so it stays consistent for the cache's lifetime.
    */
   public readonly trackLinkedCacheEntries: boolean;
 
@@ -123,14 +101,11 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     const utcNow = this.#now();
     const entry = this.#entries.get(key);
     if (entry !== undefined) {
-      // A Replaced entry may still be readable until its replacement commits
-      // (mirrors the reference's stale-Replaced read allowance).
+      // A Replaced entry stays readable until its replacement commits.
       if (!entry.checkExpired(utcNow) || entry.evictionReason === EvictionReason.Replaced) {
         entry.lastAccessed = utcNow;
         const value = entry.value;
         if (this.trackLinkedCacheEntries) {
-          // When this entry is retrieved in the scope of creating another
-          // entry, that entry needs a copy of these expiration options.
           entry.propagateOptionsToCurrent();
         }
         this.#scanForExpiredItemsIfNeeded(utcNow);
@@ -185,13 +160,8 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     if (!this.#trackStatistics) {
       return undefined;
     }
-    return new MemoryCacheStatistics({
-      totalMisses: this.#misses,
-      totalHits: this.#hits,
-      currentEntryCount: this.count,
-      currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined,
-      totalEvictions: this.#evictions,
-    });
+    return new MemoryCacheStatistics({ totalMisses: this.#misses, totalHits: this.#hits, currentEntryCount: this.count,
+      currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined, totalEvictions: this.#evictions });
   }
 
   public [Symbol.dispose](): void {
@@ -390,8 +360,6 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   #scanForExpiredItemsIfNeeded(utcNow: number): void {
     if (this.#options.expirationScanFrequency < utcNow - this.#lastExpirationScan) {
       this.#lastExpirationScan = utcNow;
-      // The reference runtime hops this onto a background Task; a
-      // single-threaded runtime just walks the map inline.
       for (const entry of this.#entries.values()) {
         if (entry.checkExpired(utcNow)) {
           if (this.#removeEntryCore(entry) && this.#trackStatistics) {

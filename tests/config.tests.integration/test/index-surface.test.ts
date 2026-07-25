@@ -42,10 +42,10 @@ describe('cross-package public surface (built dist)', () => {
   });
 
   test('withSchema(...).build() coerces through the command-line provider, and the generic threads', () => {
-    const config: { readonly Host: string; readonly Port: number; } = new ConfigBuilder()
-      .addCommandLine(['--Host=localhost', '--Port=8080'])
-      .withSchema({ Host: 'string', Port: 'number' })
-      .build();
+    const config: { readonly Host: string; readonly Port: number; } = new ConfigBuilder().addCommandLine([
+      '--Host=localhost',
+      '--Port=8080',
+    ]).withSchema({ Host: 'string', Port: 'number' }).build();
 
     assert.deepEqual(config, { Host: 'localhost', Port: 8080 });
     // Compile-time: the builder threads the generic so `Port` is a `number`.

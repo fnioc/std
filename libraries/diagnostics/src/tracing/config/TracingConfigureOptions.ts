@@ -1,9 +1,4 @@
-// TracingConfigureOptions -- ported from MED.Tracing's internal
-// `TracingConfigureOptions`. The tracing analog of MetricsConfigureOptions: reads
-// the tracing enablement schema from an IConfig and appends the matching
-// TracingRules.
-//
-// Schema (case-insensitive section keys): `EnabledTracing` (both scopes),
+// Tracing enablement schema (case-insensitive section keys): `EnabledTracing` (both scopes),
 // `EnabledGlobalTracing`, `EnabledLocalTracing`, plus the listener-specific
 // `{ListenerName}:{Enabled...Tracing}:...`. Within a scope section, each child is
 // either a bool leaf (`{SourceName} = true`) or an object of per-operation bool
@@ -23,12 +18,9 @@ const ENABLED_GLOBAL_TRACING_KEY = 'EnabledGlobalTracing';
 const ENABLED_LOCAL_TRACING_KEY = 'EnabledLocalTracing';
 
 /** Appends per-operation rules from an object of `{OperationName} = bool` leaves. */
-function loadActivityRules(
-  options: TracingOptions,
-  sourceSection: IConfigSection,
-  scopes: ActivitySourceScopes,
-  listenerName: string | undefined,
-): void {
+function loadActivityRules(options: TracingOptions, sourceSection: IConfigSection, scopes: ActivitySourceScopes,
+  listenerName: string | undefined): void
+{
   for (const [relativePath, rawValue] of flattenLeaves(sourceSection)) {
     const enabled = parseBool(rawValue);
     if (enabled === undefined) {
@@ -40,12 +32,9 @@ function loadActivityRules(
 }
 
 /** Appends per-source rules (bool leaf) or recurses into per-operation rules (object). */
-function loadActivitySourceRules(
-  options: TracingOptions,
-  scopeSection: IConfigSection,
-  scopes: ActivitySourceScopes,
-  listenerName: string | undefined,
-): void {
+function loadActivitySourceRules(options: TracingOptions, scopeSection: IConfigSection, scopes: ActivitySourceScopes,
+  listenerName: string | undefined): void
+{
   for (const sourceSection of scopeSection.getChildren()) {
     if (hasChildren(sourceSection)) {
       loadActivityRules(options, sourceSection, scopes, listenerName);
@@ -62,13 +51,11 @@ function loadActivitySourceRules(
 
 /**
  * A {@link IConfigureOptions} step that binds the tracing enablement schema of an
- * {@link IConfig} into a {@link TracingOptions}. Mirrors MED.Tracing's
- * `TracingConfigureOptions`.
+ * {@link IConfig} into a {@link TracingOptions}.
  */
 export class TracingConfigureOptions implements IConfigureOptions<TracingOptions> {
   readonly #config: IConfig;
 
-  /** @param config The configuration section to read tracing rules from. */
   public constructor(config: IConfig) {
     this.#config = config;
   }

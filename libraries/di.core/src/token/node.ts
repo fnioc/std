@@ -1,45 +1,33 @@
 // The unified token/slot expression tree — ONE plain-data discriminated union
 // that every token operation (parse, serialise, match, substitute, validate,
-// rank) walks. It absorbs the whole `DepSlot` vocabulary so a resolve arg and a
-// signature slot are the SAME expression, letting one traversal serve every op
-// instead of the five parallel string/tree substitution routines the package
-// used to carry (docs TODO §0 / Appendix A1).
+// rank) walks. It absorbs the whole `DepSlot` vocabulary, so a resolve arg and a
+// signature slot are the SAME expression and one traversal serves every op.
 //
-// A token STRING is still the wire identity (the stored/emitted `DepSlot` format
-// is UNCHANGED); a `TokenNode` is its transient parsed view. di.core parses the
-// wire at the edges into this tree, runs the ops, and serialises back — the tree
-// never touches the serialized ABI.
+// A token STRING remains the wire identity; a `TokenNode` is its transient
+// parsed view. The tree is parsed in at the edges and serialised back out, so it
+// never touches the stored/emitted ABI.
 //
-// PLAIN DATA, never class instances: the manifest updates nodes by SPREAD
-// (`{ ...node, args }`), and spreading a class instance strips its prototype. So
-// the visitor holds the `switch(kind)`, not an `accept` method on the node.
+// PLAIN DATA, never class instances: nodes are updated by SPREAD
+// (`{ ...node, args }`), and spreading a class instance strips its prototype.
+// Hence the `switch(kind)` lives in the visitor, not an `accept` on the node.
 //
 // Kind map to the wire `DepSlot`:
 //   - `concrete`  — a `(package:)?path` base with positional generic args and an
 //                   optional `#key`. A literal-union arg (`"a" | "b"`) is an
 //                   arg-less concrete whose `base` carries the canonical literal
-//                   text (it has token identity — see the spike report).
+//                   text — it has token identity.
 //   - `hole`      — an open-generic hole `$N` (`typeArg` absent), OR — with
 //                   `typeArg: true` — the wire `TypeArgRef` (`typeof(T)`): on
 //                   substitution it reifies to a LITERAL of the bound node's
 //                   token string rather than to the bound node itself.
 //   - `provider`  — the resolver intrinsic sentinel (`RESOLVER_TOKEN_STRING`).
-//   - `union`     — the wire `Union`; members tried in order at resolve time by
-//                   per-param resolution (§112 — the registration-time blow-up to
-//                   concrete overloads was abandoned).
+//   - `union`     — the wire `Union`; members tried in order at resolve time.
 //   - `literal`   — the wire `LiteralRef`; supplies its value directly.
 //   - `factory`   — the wire `FactoryRef`; `type` is the produced token, `params`
 //                   the caller-supplied param tokens (absent when the wire form
 //                   omitted them — the absence is load-bearing, so `params` stays
-//                   OPTIONAL rather than an empty array).
-//
-// NOTE the deliberate deviations from the Appendix A1 sketch, both forced by
-// wire round-trip fidelity: `concrete` keeps an optional `key` (the `#key` grammar
-// is part of the wire), and `literal.value` keeps the full wire value domain
-// (`bigint`/`undefined` included, identified by the PRESENCE of the value — see
-// `LiteralRef`). Factory params stay FLAT token positions (each parses to a
-// `concrete | hole | provider`); making them recursively expressive is a later,
-// wire-changing PR.
+//                   OPTIONAL rather than an empty array). Params are FLAT token
+//                   positions: each parses to a `concrete | hole | provider`.
 
 import { parse, tryParse } from './parse.js';
 import { baseKey, canonicalise, isOpen, toString } from './stringify.js';
@@ -73,9 +61,7 @@ export interface ProviderNode {
 }
 
 /** A set of alternative slots tried in declaration order — the wire `Union`.
- * It reaches the engine union-bearing and is resolved per-param at RESOLVE time,
- * falling through on a member's runtime failure; the registration-time blow-up
- * to concrete overloads was abandoned (§112). */
+ * Resolved per-param at RESOLVE time, falling through on a member's failure. */
 export interface UnionNode {
   readonly kind: 'union';
   readonly members: readonly TokenNode[];
@@ -101,25 +87,10 @@ export interface FactoryNode {
 /** The unified token/slot expression tree. A signature is `readonly
  * TokenNode[][]`; a resolve arg is a node the `Validator` proves is
  * `concrete | hole | provider` only. */
-export type TokenNode =
-  | ConcreteNode
-  | HoleNode
-  | ProviderNode
-  | UnionNode
-  | LiteralNode
-  | FactoryNode;
+export type TokenNode = ConcreteNode | HoleNode | ProviderNode | UnionNode | LiteralNode | FactoryNode;
 
-/** The static op surface — the owner-preferred `TokenNode.*` companion (statics,
- * not floating fns). The visitor CLASSES (`Substituter`, `Validator`, `Matcher`,
- * `Specificity`) are exported separately; these are the plain query/serialise
- * ops. `toString` (not `stringify`) per owner preference — a STATIC keeps the
- * nodes plain-data (an instance `toString` would force class nodes and fight the
- * spread-update idiom); it never auto-coerces, so every caller spells it out. */
-export const TokenNode = {
-  parse,
-  tryParse,
-  toString,
-  canonicalise,
-  baseKey,
-  isOpen,
-};
+/** The plain query/serialise ops; the visitor classes (`Substituter`,
+ * `Validator`, `Matcher`, `Specificity`) are exported separately. `toString` is
+ * a STATIC so nodes stay plain data — and so it never auto-coerces, meaning
+ * every caller spells the conversion out. */
+export const TokenNode = { parse, tryParse, toString, canonicalise, baseKey, isOpen };

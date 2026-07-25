@@ -1,10 +1,6 @@
-// HybridCacheEntryFlags -- ported verbatim from ME.Caching.Abstractions'
-// Hybrid/HybridCacheEntryFlags, a `[Flags]` enum: members combine bitwise,
-// and the two `Disable*Cache` members are the read|write combinations.
-
 /**
- * Additional flags that apply to a `HybridCache` operation. A `[Flags]`-style
- * enum: members combine bitwise.
+ * Additional flags that apply to a `HybridCache` operation. A bit-flags enum:
+ * members combine bitwise.
  */
 export enum HybridCacheEntryFlags {
   /** No additional flags. */

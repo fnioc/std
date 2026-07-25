@@ -1,11 +1,3 @@
-// ICacheEntry -- ported from ME.Caching.Abstractions' ICacheEntry.
-//
-// Type mapping from the reference runtime: `object Key` / `object? Value` ->
-// `unknown`; `DateTimeOffset?` -> `Date | undefined`; `TimeSpan?` -> `number |
-// undefined` (a duration in MILLISECONDS, the JS convention); the reference
-// `IDisposable` -> the built-in `Disposable` (`Symbol.dispose`). Disposing the
-// entry COMMITS it to the cache (see @rhombus-std/caching.memory's CacheEntry).
-
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { CacheItemPriority } from './CacheItemPriority';
 import type { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';

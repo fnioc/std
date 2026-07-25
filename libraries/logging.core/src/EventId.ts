@@ -1,12 +1,6 @@
-// EventId — identifies a logging event, ported from ME.Logging.Abstractions'
-// `EventId` readonly struct. The primary identifier is `id`; `name` is an
-// optional short description.
-//
-// The reference type is a value struct with an implicit `int -> EventId`
-// conversion, so every logging API that takes an EventId also accepts a bare
-// integer. TS has no implicit conversions, so callers pass a number and the
-// APIs coerce via {@link EventId.from} (see `toEventId`). Equality is by `id`
-// only, mirroring the reference struct's `Equals`/`GetHashCode`.
+// EventId identifies a logging event: the numeric `id` plus an optional short
+// `name`. Wherever an API takes an `EventId` it also accepts a bare number,
+// coerced via {@link EventId.from}.
 
 export class EventId {
   /** The numeric identifier for this event. */
@@ -21,9 +15,8 @@ export class EventId {
   }
 
   /**
-   * Coerces a bare integer into an `EventId` — the TS stand-in for the
-   * reference struct's implicit `int -> EventId` conversion. Passing an
-   * existing `EventId` returns it unchanged.
+   * Coerces a bare integer into an `EventId`; an existing `EventId` is returned
+   * unchanged.
    */
   public static from(value: EventId | number): EventId {
     return typeof value === 'number' ? new EventId(value) : value;
@@ -39,5 +32,5 @@ export class EventId {
   }
 }
 
-/** The value the logging sugar accepts wherever the reference API takes an `EventId`. */
+/** An `EventId`, or the bare integer id that {@link EventId.from} coerces into one. */
 export type EventIdLike = EventId | number;

@@ -14,11 +14,9 @@ import { expect, test } from 'bun:test';
 /** A recording stand-in for the di.core registration builder. */
 function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
   const values: Array<[Token, unknown]> = [];
-  const services = {
-    addValue(token: Token, value: unknown): void {
-      values.push([token, value]);
-    },
-  } as unknown as IServiceManifest;
+  const services = { addValue(token: Token, value: unknown): void {
+    values.push([token, value]);
+  } } as unknown as IServiceManifest;
   return { services, values };
 }
 
@@ -32,11 +30,9 @@ class UpperFormatter extends ConsoleFormatter {
     super('upper');
   }
 
-  public override write<TState>(
-    logEntry: LogEntry<TState>,
-    _scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter,
-  ): void {
+  public override write<TState>(logEntry: LogEntry<TState>, _scopeProvider: IExternalScopeProvider | undefined,
+    textWriter: TextWriter): void
+  {
     textWriter.write(`${logEntry.formatter(logEntry.state, logEntry.error).toUpperCase()}\n`);
   }
 }
@@ -106,13 +102,10 @@ test('provider setScopeProvider reaches existing loggers', () => {
   expect(logger.beginScope('s')).toBeUndefined();
 
   let pushed: unknown;
-  provider.setScopeProvider({
-    forEachScope(): void {},
-    push(state: unknown): Disposable {
-      pushed = state;
-      return { [Symbol.dispose]: () => {} };
-    },
-  });
+  provider.setScopeProvider({ forEachScope(): void {}, push(state: unknown): Disposable {
+    pushed = state;
+    return { [Symbol.dispose]: () => {} };
+  } });
 
   const scope = logger.beginScope('scoped');
   expect(pushed).toBe('scoped');

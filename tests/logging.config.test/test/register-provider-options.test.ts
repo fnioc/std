@@ -31,11 +31,8 @@ function rootWith(data: Record<string, string>): IConfigRoot {
 
 describe('LoggerProviderOptions.registerProviderOptions', () => {
   test("binds the provider's section into the options assembly for the token", () => {
-    const config = rootWith({
-      'FakeProvider:Format': 'json',
-      'FakeProvider:MaxDepth': '3',
-      'OtherProvider:Format': 'xml',
-    });
+    const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3',
+      'OtherProvider:Format': 'xml' });
 
     let services = new ServiceManifest<'singleton'>();
     const logging = new LoggingBuilder(services);

@@ -8,17 +8,12 @@ import { type IOptions as OptionsType, Options } from '@rhombus-std/options';
 import { describe, expect, test } from 'bun:test';
 
 function watchPort(root: IConfigRoot): OptionsType<number | undefined> {
-  return Options.watch(
-    () => root.getNum('Server:Port'),
-    () => root.getReloadToken(),
-  );
+  return Options.watch(() => root.getNum('Server:Port'), () => root.getReloadToken());
 }
 
 describe('config.getReloadToken() -> Options.watch', () => {
   test('value re-reads the live configuration on every access', () => {
-    const root = new ConfigBuilder()
-      .addInMemoryCollection({ 'Server:Port': '8080' })
-      .build() as unknown as IConfigRoot;
+    const root = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080' }).build() as unknown as IConfigRoot;
     const options = watchPort(root);
 
     expect(options.value).toBe(8080);
@@ -29,9 +24,7 @@ describe('config.getReloadToken() -> Options.watch', () => {
 
   test('subscribe fires when root.reload() runs, observing the reloaded value', () => {
     const data = { 'Server:Port': '8080' };
-    const root = new ConfigBuilder()
-      .addInMemoryCollection(data)
-      .build() as unknown as IConfigRoot;
+    const root = new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
     const options = watchPort(root);
 
     const seen: Array<number | undefined> = [];
@@ -50,9 +43,7 @@ describe('config.getReloadToken() -> Options.watch', () => {
   });
 
   test('keeps observing across multiple reloads (re-subscribes via ChangeToken.onChange)', () => {
-    const root = new ConfigBuilder()
-      .addInMemoryCollection({ 'Server:Port': '8080' })
-      .build() as unknown as IConfigRoot;
+    const root = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080' }).build() as unknown as IConfigRoot;
     const options = watchPort(root);
 
     const seen: Array<number | undefined> = [];

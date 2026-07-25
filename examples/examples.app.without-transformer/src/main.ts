@@ -98,13 +98,8 @@ const CONFIG_TOKEN = '@rhombus-std/config:ConfigRoot';
 
 /** The layered configuration root — an in-memory source seeds the server keys. */
 function buildConfig(): ConfigRoot {
-  return new ConfigBuilder()
-    .addInMemoryCollection({
-      'Server:Host': '0.0.0.0',
-      'Server:Port': '8080',
-      'Server:MaxConnections': '100',
-    })
-    .build() as unknown as ConfigRoot;
+  return new ConfigBuilder().addInMemoryCollection({ 'Server:Host': '0.0.0.0', 'Server:Port': '8080',
+    'Server:MaxConnections': '100' }).build() as unknown as ConfigRoot;
 }
 
 /**
@@ -117,27 +112,20 @@ function makeServerOptions(config: ConfigRoot): IOptions<ServerOptions> {
   const bindConfig: IConfigureOptions<ServerOptions> = new ConfigConfigureOptions<ServerOptions>(
     config.getSection('Server'),
   );
-  const coerce: IPostConfigureOptions<ServerOptions> = {
-    postConfigure(options: ServerOptions): void {
-      options.Port = Number(options.Port);
-      options.MaxConnections = Number(options.MaxConnections);
-    },
-  };
-  const validate: IValidateOptions<ServerOptions> = {
-    validate(options: ServerOptions): ValidateOptionsResult {
-      if (options.Port > 0 && options.MaxConnections > 0) {
-        return ValidateOptionsResult.success;
-      }
-      return ValidateOptionsResult.fail('Port and MaxConnections must be positive');
-    },
-  };
+  const coerce: IPostConfigureOptions<ServerOptions> = { postConfigure(options: ServerOptions): void {
+    options.Port = Number(options.Port);
+    options.MaxConnections = Number(options.MaxConnections);
+  } };
+  const validate: IValidateOptions<ServerOptions> = { validate(options: ServerOptions): ValidateOptionsResult {
+    if (options.Port > 0 && options.MaxConnections > 0) {
+      return ValidateOptionsResult.success;
+    }
+    return ValidateOptionsResult.fail('Port and MaxConnections must be positive');
+  } };
   const build = (): ServerOptions =>
-    new OptionsFactory<ServerOptions>(
-      () => ({ Host: '', Port: 0, MaxConnections: 0 }),
-      [bindConfig],
-      [coerce],
-      [validate],
-    ).create();
+    new OptionsFactory<ServerOptions>(() => ({ Host: '', Port: 0, MaxConnections: 0 }), [bindConfig], [coerce], [
+      validate,
+    ]).create();
   return Options.watch(build, () => config.getReloadToken());
 }
 
@@ -163,12 +151,9 @@ class InteropWorker implements IHostedLifecycleService {
   readonly #logger: ILogger;
   readonly #config: ConfigRoot;
 
-  public constructor(
-    resolver: IResolver,
-    lifetime: IHostApplicationLifetime,
-    loggerFactory: ILoggerFactory,
-    config: ConfigRoot,
-  ) {
+  public constructor(resolver: IResolver, lifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory,
+    config: ConfigRoot)
+  {
     this.#resolver = resolver;
     this.#lifetime = lifetime;
     this.#logger = loggerFactory.createLogger('Rhombus.Examples.InteropWorker');
@@ -199,15 +184,9 @@ class InteropWorker implements IHostedLifecycleService {
     const after = optionsView.value.MaxConnections;
     subscription[Symbol.dispose]();
 
-    const lines = [
-      '=== @rhombus-std interop — without transformer ===',
-      `async banner (resolveAsync): ${banner.text}`,
-      ...report.lines,
-      'live reload (config → reactive Options):',
-      `  MaxConnections before reload: ${before}`,
-      ...updates,
-      `  MaxConnections after reload: ${after}`,
-    ];
+    const lines = ['=== @rhombus-std interop — without transformer ===', `async banner (resolveAsync): ${banner.text}`,
+      ...report.lines, 'live reload (config → reactive Options):', `  MaxConnections before reload: ${before}`,
+      ...updates, `  MaxConnections after reload: ${after}`];
 
     for (const line of lines) {
       console.log(line);
@@ -285,9 +264,8 @@ services = services.addValue(CONFIG_TOKEN, config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addHostedService(InteropWorker, [
-  [RESOLVER_TOKEN, HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, CONFIG_TOKEN],
-]);
+builder.services = services.addHostedService(InteropWorker, [[RESOLVER_TOKEN, HOST_APPLICATION_LIFETIME_TOKEN,
+  LOGGER_FACTORY_TOKEN, CONFIG_TOKEN]]);
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 

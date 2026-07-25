@@ -11,24 +11,16 @@ import { getMostSpecificInstrumentRule, InstrumentRule, instrumentRuleMatches, t
 import { describe, expect, test } from 'bun:test';
 
 /** Shorthand rule ctor: names + scopes, `enable` defaulting to true. */
-function rule(
-  meterName: string | undefined,
-  instrumentName: string | undefined,
-  listenerName: string | undefined,
-  scopes: MeterScope = MeterScope.Global,
-  enable = true,
-): InstrumentRule {
+function rule(meterName: string | undefined, instrumentName: string | undefined, listenerName: string | undefined,
+  scopes: MeterScope = MeterScope.Global, enable = true): InstrumentRule
+{
   return new InstrumentRule(meterName, instrumentName, listenerName, scopes, enable);
 }
 
 // The reference test instrument: a GLOBAL meter "Long.Silly.Meter.Name" with an
 // instrument "InstrumentName", resolved by listener "ListenerName".
-const query: InstrumentRuleQuery = {
-  meterName: 'Long.Silly.Meter.Name',
-  instrumentName: 'InstrumentName',
-  listenerName: 'ListenerName',
-  isLocalScope: false,
-};
+const query: InstrumentRuleQuery = { meterName: 'Long.Silly.Meter.Name', instrumentName: 'InstrumentName',
+  listenerName: 'ListenerName', isLocalScope: false };
 
 describe('instrumentRuleMatches', () => {
   // (meterName, instrumentName, listenerName) triples that match `query`.
@@ -162,16 +154,10 @@ describe('isMoreSpecificInstrumentRule', () => {
     [rule('meter.Name', undefined, undefined), rule('meter.*', undefined, undefined), false],
 
     // Scopes: Local > Global+Local (as local), Global > Global+Local (as global).
-    [
-      rule(undefined, undefined, undefined, MeterScope.Local),
-      rule(undefined, undefined, undefined, METER_SCOPE_ALL),
-      true,
-    ],
-    [
-      rule(undefined, undefined, undefined, MeterScope.Global),
-      rule(undefined, undefined, undefined, METER_SCOPE_ALL),
-      false,
-    ],
+    [rule(undefined, undefined, undefined, MeterScope.Local), rule(undefined, undefined, undefined, METER_SCOPE_ALL),
+      true],
+    [rule(undefined, undefined, undefined, MeterScope.Global), rule(undefined, undefined, undefined, METER_SCOPE_ALL),
+      false],
   ];
 
   for (const [candidate, best, isLocalScope] of moreSpecific) {
@@ -212,11 +198,7 @@ describe('getMostSpecificInstrumentRule', () => {
     const rules = [enableAll, disableService];
 
     const broad: InstrumentRuleQuery = { meterName: 'MyCompany.Other', instrumentName: 'hits', isLocalScope: false };
-    const narrow: InstrumentRuleQuery = {
-      meterName: 'MyCompany.Service',
-      instrumentName: 'hits',
-      isLocalScope: false,
-    };
+    const narrow: InstrumentRuleQuery = { meterName: 'MyCompany.Service', instrumentName: 'hits', isLocalScope: false };
 
     expect(getMostSpecificInstrumentRule(rules, broad)).toBe(enableAll);
     expect(getMostSpecificInstrumentRule(rules, narrow)).toBe(disableService);
@@ -225,12 +207,8 @@ describe('getMostSpecificInstrumentRule', () => {
   test('a listener-named rule beats a meter-named one', () => {
     const meterNamed = new InstrumentRule('MyCompany.Service', undefined, undefined, METER_SCOPE_ALL, true);
     const listenerNamed = new InstrumentRule(undefined, undefined, 'ListenerName', METER_SCOPE_ALL, false);
-    const winner = getMostSpecificInstrumentRule([meterNamed, listenerNamed], {
-      meterName: 'MyCompany.Service',
-      instrumentName: 'hits',
-      listenerName: 'ListenerName',
-      isLocalScope: false,
-    });
+    const winner = getMostSpecificInstrumentRule([meterNamed, listenerNamed], { meterName: 'MyCompany.Service',
+      instrumentName: 'hits', listenerName: 'ListenerName', isLocalScope: false });
     expect(winner).toBe(listenerNamed);
   });
 

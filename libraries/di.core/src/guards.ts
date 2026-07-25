@@ -1,53 +1,26 @@
-// DepSlot type guards — the runtime discriminators the resolver uses to tell
-// slot kinds apart. Part of di.core's slot/token ABI runtime: the guards
-// discriminate `DepSlot` (a di.core type), so they belong with the ABI they
-// describe. The engine (`@rhombus-std/di`) and the registration builder both
-// consume them.
+// The runtime discriminators for the `DepSlot` union — one per object slot kind,
+// each identified by a key no other kind carries.
 
 import type { DepSlot, FactoryRef, LiteralRef, TypeArgRef, Union } from './types.js';
 
-/** True when `slot` is a `FactoryRef` (carries a `.type` token). */
 export function isFactoryRef(slot: DepSlot): slot is FactoryRef {
-  return (
-    typeof slot === 'object'
-    && slot !== null
-    && typeof (slot as { type?: unknown; }).type === 'string'
-  );
+  return (typeof slot === 'object' && slot !== null && typeof (slot as { type?: unknown; }).type === 'string');
 }
 
-/** True when `slot` is a `Union` (carries a `.union` array of member slots). */
 export function isUnionSlot(slot: DepSlot): slot is Union {
-  return (
-    typeof slot === 'object'
-    && slot !== null
-    && Array.isArray((slot as { union?: unknown; }).union)
-  );
+  return (typeof slot === 'object' && slot !== null && Array.isArray((slot as { union?: unknown; }).union));
 }
 
 /**
- * True when `slot` is a `LiteralRef` — an object slot carrying a `value` key.
- * The value supplies a singular literal directly (`"dev"`, `42`, `true`, `1n`)
- * OR the lone inhabitant of `void` / `undefined` / `null`.
- *
- * Identified by the PRESENCE of the `value` key (`"value" in slot`), never by
- * `value !== undefined` — `value` is legitimately `undefined` for the
- * `void`/`undefined` case. No other slot kind (FactoryRef `.type`, Union
- * `.union`) carries a `value` key, so this is unambiguous.
+ * A `LiteralRef` supplies a singular literal directly (`"dev"`, `42`, `true`,
+ * `1n`) or the lone inhabitant of `void` / `undefined` / `null`. It is therefore
+ * identified by the PRESENCE of the `value` key, never by `value !== undefined`.
  */
 export function isLiteralRef(slot: DepSlot): slot is LiteralRef {
   return typeof slot === 'object' && slot !== null && 'value' in slot;
 }
 
-/**
- * True when `slot` is a `TypeArgRef` — an object slot carrying a numeric
- * `typeArg` key (the 1-based hole number). Key-disjoint from every other slot
- * kind (FactoryRef `.type`, Union `.union`, LiteralRef `.value`), so the check
- * is unambiguous.
- */
+/** A `TypeArgRef` carries the 1-based hole number under `typeArg`. */
 export function isTypeArgRef(slot: DepSlot): slot is TypeArgRef {
-  return (
-    typeof slot === 'object'
-    && slot !== null
-    && typeof (slot as { typeArg?: unknown; }).typeArg === 'number'
-  );
+  return (typeof slot === 'object' && slot !== null && typeof (slot as { typeArg?: unknown; }).typeArg === 'number');
 }

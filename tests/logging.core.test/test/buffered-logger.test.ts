@@ -66,13 +66,11 @@ describe('BufferedLogRecord', () => {
 describe('IBufferedLogger', () => {
   test('receives a batch of records', () => {
     const delivered: BufferedLogRecord[] = [];
-    const logger: IBufferedLogger = {
-      logRecords(records: Iterable<BufferedLogRecord>): void {
-        for (const record of records) {
-          delivered.push(record);
-        }
-      },
-    };
+    const logger: IBufferedLogger = { logRecords(records: Iterable<BufferedLogRecord>): void {
+      for (const record of records) {
+        delivered.push(record);
+      }
+    } };
 
     logger.logRecords([new MinimalRecord(), new RichRecord()]);
 

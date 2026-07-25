@@ -1,6 +1,3 @@
-// LoggerColorBehavior — when to use color when logging messages, ported from
-// the reference `LoggerColorBehavior` enum.
-
 /** Describes when to use color when logging messages. */
 export enum LoggerColorBehavior {
   /**

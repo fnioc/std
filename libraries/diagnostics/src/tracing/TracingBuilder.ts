@@ -1,26 +1,25 @@
 // TracingBuilder -- the concrete ITracingBuilder the addTracing augmentation hands
-// to a consumer's configure callback. Mirrors the reference's private
-// `TracingServiceExtensions.TracingBuilder`.
+// to a consumer's configure callback.
 
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 
-// Interface-extends merge (augmentation doctrine): binding the ITracingBuilder
-// SYMBOL flows every in-program augmentation of the interface (the listener/rule
-// members from diagnostics.core, the config-binding member from this package) onto
-// this concrete holder, so it satisfies `implements ITracingBuilder` without
+// Interface-extends merge: binding the ITracingBuilder SYMBOL flows every
+// in-program augmentation of the interface (the listener/rule members from
+// diagnostics.core, the config-binding member from this package) onto this
+// concrete holder, so it satisfies `implements ITracingBuilder` without
 // restating any member.
 export interface TracingBuilder extends ITracingBuilder {}
 
 /**
  * The concrete {@link ITracingBuilder}.
  *
- * `@augment` subscribes this class to the OPEN `ITracingBuilder` bag (docs §38):
- * every set registered against tokenfor<ITracingBuilder>() -- the
- * listener/rule members (diagnostics.core) and the config-binding member (this
- * package) -- is installed onto the prototype, now and on any later registration.
+ * `@augment` subscribes this class to the OPEN `ITracingBuilder` bag: every set
+ * registered against tokenfor<ITracingBuilder>() -- the listener/rule members
+ * (diagnostics.core) and the config-binding member (this package) -- is
+ * installed onto the prototype, now and on any later registration.
  */
 @augment(tokenfor<ITracingBuilder>())
 export class TracingBuilder implements ITracingBuilder {

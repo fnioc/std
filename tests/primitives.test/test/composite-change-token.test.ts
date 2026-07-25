@@ -24,14 +24,12 @@ class TestChangeToken implements IChangeToken {
 
     const invoke = () => callback(state);
     this.#callbacks.push(invoke);
-    return {
-      [Symbol.dispose]: () => {
-        const i = this.#callbacks.indexOf(invoke);
-        if (i !== -1) {
-          this.#callbacks.splice(i, 1);
-        }
-      },
-    };
+    return { [Symbol.dispose]: () => {
+      const i = this.#callbacks.indexOf(invoke);
+      if (i !== -1) {
+        this.#callbacks.splice(i, 1);
+      }
+    } };
   }
 
   get registeredCallbackCount(): number {
@@ -164,16 +162,12 @@ describe('CompositeChangeToken', () => {
     const active = new TestChangeToken();
     const passive = new PollOnlyChangeToken();
     let passiveRegistrations = 0;
-    const countingPassive: IChangeToken = {
-      get hasChanged() {
-        return passive.hasChanged;
-      },
-      activeChangeCallbacks: false,
-      registerChangeCallback: () => {
-        passiveRegistrations++;
-        return { [Symbol.dispose]() {} };
-      },
-    };
+    const countingPassive: IChangeToken = { get hasChanged() {
+      return passive.hasChanged;
+    }, activeChangeCallbacks: false, registerChangeCallback: () => {
+      passiveRegistrations++;
+      return { [Symbol.dispose]() {} };
+    } };
     const composite = new CompositeChangeToken([countingPassive, active]);
 
     composite.registerChangeCallback(() => {});

@@ -18,15 +18,12 @@ interface Box {
   read(): number;
 }
 
-const BoxExtensions = {
-  add(box: Box, n: number): Box {
-    box.value += n;
-    return box;
-  },
-  read(box: Box): number {
-    return box.value;
-  },
-} satisfies AugmentationSet<Box>;
+const BoxExtensions = { add(box: Box, n: number): Box {
+  box.value += n;
+  return box;
+}, read(box: Box): number {
+  return box.value;
+} } satisfies AugmentationSet<Box>;
 
 // Install once for the whole file (mirrors how a library author installs at
 // module-import time).

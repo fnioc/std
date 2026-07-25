@@ -143,9 +143,7 @@ resolver.resolve<IRepository<User>>().entityToken; // "pkg:User"
 // manual dialect:
 services = services.addClass('pkg:IRepository<$1>', Repository, [[{
   typeArg: 1,
-}]]).as(
-  'request',
-);
+}]]).as('request');
 ```
 
 ### 7. Factory resolution with caller-supplied params
@@ -293,14 +291,15 @@ pending.build(); // compile error: `build` isn't on `pending`'s type until a sig
 services = pending.withSignature('pkg:IConnection').as('singleton'); // opens the gate
 
 // withSignature APPENDS and is repeatable — each call adds one more injectable overload:
-services = services.addClass('pkg:ICache', RedisOrMemCache)
-  .withSignature('pkg:IRedisClient')
-  .withSignature('pkg:IMemoryStore');
+services = services.addClass('pkg:ICache', RedisOrMemCache).withSignature(
+  'pkg:IRedisClient',
+).withSignature('pkg:IMemoryStore');
 
 // withSignatures REPLACES the whole signature set in bulk, once — it cannot follow
 // a withSignature append, and (like withSignature) it opens the gate:
-services = services.addClass('pkg:ICache', RedisOrMemCache)
-  .withSignatures(['pkg:IRedisClient'], ['pkg:IMemoryStore']);
+services = services.addClass('pkg:ICache', RedisOrMemCache).withSignatures([
+  'pkg:IRedisClient',
+], ['pkg:IMemoryStore']);
 ```
 
 Under the transformer's type-driven sugar (`addClass<I>(C)`), the signature is derived from the

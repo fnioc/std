@@ -1,18 +1,3 @@
-// Host lifetime helpers -- ported from the reference's
-// `HostingAbstractionsHostExtensions` static augmentation class. Authored as one
-// named object literal per ME class (docs §28), `satisfies AugmentationSet<IHost>`.
-//
-// OPEN receiver (docs §38): `IHost` is extended across packages, so this const
-// registers into the primitives augmentation registry under
-// the `IHost` token (beside the interface-side `declare module`
-// merge below, per rule 0.6). The concrete `Host` class -- downstream in
-// `@rhombus-std/hosting` -- is decorated with `@augment(tokenfor<IHost>())`,
-// which pulls this bag onto its prototype; the class-side merge stays downstream
-// next to that class. The members here are also the standalone call surface.
-//
-// The synchronous reference wrappers (Start/Run/WaitForShutdown that block a
-// thread) collapse into their async forms -- JS cannot block a thread.
-
 import { AbortController, type AbortSignal, type AugmentationSet, clearTimeout, neverSignal, registerAugmentations,
   setTimeout } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -20,11 +5,6 @@ import type { IHost } from './IHost';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';
 
-// The interface-side merge for the `IHost` augmentation members lives HERE,
-// beside the const that registers them (rule 0.6): a `hosting.core`-only consumer
-// holding `IHost` sees the method form. The runtime install onto the concrete
-// `Host` (and its class-side merge so the class still SATISFIES `IHost`) live
-// downstream in `@rhombus-std/hosting`.
 declare module './IHost' {
   interface IHost {
     run(abortSignal?: AbortSignal): Promise<void>;
@@ -44,18 +24,9 @@ function whenAborted(signal: AbortSignal): Promise<void> {
   });
 }
 
-/**
- * The `HostingAbstractionsHostExtensions` augmentation set for {@link IHost}
- * (docs §28). Registered into the augmentation registry under
- * the `IHost` token; the concrete `Host` downstream pulls it via
- * `@augment`. The members here are also the standalone call surface.
- */
+/** Augmentation set for {@link IHost}; each member is also directly callable. */
 export const HostingAbstractionsHostExtensions = {
-  /**
-   * Alias for {@link runAsync}. The reference's synchronous `Run` blocks the
-   * calling thread until shutdown; JS cannot, so `run` returns the same promise
-   * `runAsync` does.
-   */
+  /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
   run(host: IHost, abortSignal?: AbortSignal): Promise<void> {
     return HostingAbstractionsHostExtensions.runAsync(host, abortSignal);
   },
@@ -85,13 +56,8 @@ export const HostingAbstractionsHostExtensions = {
    * `applicationStopping` (or via `abortSignal`, which requests a stop),
    * then gracefully stops the host.
    */
-  async waitForShutdownAsync(
-    host: IHost,
-    abortSignal?: AbortSignal,
-  ): Promise<void> {
-    const lifetime = host.services.resolve<IHostApplicationLifetime>(
-      HOST_APPLICATION_LIFETIME_TOKEN,
-    );
+  async waitForShutdownAsync(host: IHost, abortSignal?: AbortSignal): Promise<void> {
+    const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
 
     const requestStop = (): void => lifetime.stopApplication();
     if (abortSignal !== undefined) {

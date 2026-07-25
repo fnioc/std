@@ -1,14 +1,3 @@
-// MemoryCacheStatistics -- ported from ME.Caching.Abstractions'
-// MemoryCacheStatistics: a snapshot of an IMemoryCache's counters, returned by
-// `IMemoryCache.getCurrentStatistics`.
-//
-// The reference shape is a parameterless constructor plus init-only
-// properties; TS has no init-only accessors, so the closest faithful analog is
-// a constructor taking an all-optional init bag feeding readonly fields --
-// the snapshot stays immutable after construction, and an implementer writes
-// `new MemoryCacheStatistics({ totalHits, ... })` where the reference writes
-// an object initializer.
-
 /** Holds a snapshot of statistics for a memory cache. */
 export class MemoryCacheStatistics {
   /** The number of entries currently in the memory cache. */
@@ -36,13 +25,8 @@ export class MemoryCacheStatistics {
   public readonly totalEvictions: number;
 
   public constructor(
-    init: {
-      currentEntryCount?: number;
-      currentEstimatedSize?: number;
-      totalMisses?: number;
-      totalHits?: number;
-      totalEvictions?: number;
-    } = {},
+    init: { currentEntryCount?: number; currentEstimatedSize?: number; totalMisses?: number; totalHits?: number;
+      totalEvictions?: number; } = {},
   ) {
     this.currentEntryCount = init.currentEntryCount ?? 0;
     this.currentEstimatedSize = init.currentEstimatedSize;

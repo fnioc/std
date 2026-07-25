@@ -46,14 +46,11 @@ re-arms the next change token automatically after each fire.
 function watch<T>(getValue: Func<[], T>,
   produceToken: ChangeTokenProducer): IOptions<T>
 {
-  return {
-    get value(): T {
-      return getValue();
-    },
-    subscribe(listener: Func<[T], void>): Disposable {
-      return ChangeToken.onChange(produceToken, () => listener(getValue()));
-    },
-  };
+  return { get value(): T {
+    return getValue();
+  }, subscribe(listener: Func<[T], void>): Disposable {
+    return ChangeToken.onChange(produceToken, () => listener(getValue()));
+  } };
 }
 ```
 
@@ -150,11 +147,9 @@ bare delegate on the same verb.
 services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
   options.suffix += '!'; // delegate
 });
-services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, {
-  postConfigure(options) {
-    options.suffix += '!'; // pre-built IPostConfigureOptions<T>
-  },
-});
+services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, { postConfigure(options) {
+  options.suffix += '!'; // pre-built IPostConfigureOptions<T>
+} });
 ```
 
 Both append to the token's post-configure slot, which the assembly runs after every configure

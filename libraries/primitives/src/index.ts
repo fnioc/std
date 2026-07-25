@@ -1,8 +1,4 @@
-// Public entry point for @rhombus-std/primitives -- the change-token
-// primitives ported from ME.Primitives (see docs/decisions.md #0: the
-// universal leaf every other family builds on).
-//
-// StringValues/StringSegment are NOT ported yet -- see the README.
+// Public entry point for @rhombus-std/primitives.
 
 export { AbortController, neverSignal } from './abort.js';
 export type { AbortControllerConstructor, AbortSignal } from './abort.js';

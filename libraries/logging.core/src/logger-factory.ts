@@ -1,17 +1,10 @@
-// The factory/provider contracts, ported from ME.Logging.Abstractions'
-// `ILoggerFactory` / `ILoggerProvider`.
+// The factory/provider contracts.
 
 import type { ILogger } from './ILogger';
 
 /**
- * Creates {@link ILogger} instances. A `ILoggerProvider` is one sink family
- * (console, debug, …); the reference runtime keeps each concrete provider in
- * its own package, all of which are OUT OF SCOPE this pass (see issue #75).
- * The contract is ported so a consumer can supply their own provider to
- * `LoggerFactory`.
- *
- * Extends `Disposable` (the repo's `ESNext.Disposable` convention) in place of
- * the reference `IDisposable`.
+ * Creates {@link ILogger} instances for one sink family (console, debug, …).
+ * Supply your own to a `LoggerFactory` to route log output somewhere new.
  */
 export interface ILoggerProvider extends Disposable {
   /** Creates a new {@link ILogger} for the given category. */

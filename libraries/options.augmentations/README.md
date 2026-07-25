@@ -38,9 +38,9 @@ interface WidgetOptions {
   Url: string;
 }
 
-const config = new ConfigBuilder()
-  .addInMemoryCollection({ 'Widget:Url': 'http://first' })
-  .build();
+const config = new ConfigBuilder().addInMemoryCollection({
+  'Widget:Url': 'http://first',
+}).build();
 
 const services = new ServiceManifest<'singleton'>();
 services.addOptions<WidgetOptions>('app:WidgetOptions', () => ({ Url: '' })).as(

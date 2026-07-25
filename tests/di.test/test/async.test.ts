@@ -8,15 +8,9 @@ import { defineDeps } from './fixtures.js';
 // is the ONLY path that may satisfy T via an honest `Promise<T>` registration.
 // Async never leaks a Pending carrier through the public surface.
 
-const T = {
-  Config: 'pkg:IConfig' as Token,
-  Widget: 'pkg:IWidget' as Token,
-  Scoped: 'pkg:IScoped' as Token,
-  A: 'pkg:IA' as Token,
-  B: 'pkg:IB' as Token,
-  UnionHolder: 'pkg:IUnionHolder' as Token,
-  Raw: 'pkg:IRaw' as Token,
-} as const;
+const T = { Config: 'pkg:IConfig' as Token, Widget: 'pkg:IWidget' as Token, Scoped: 'pkg:IScoped' as Token,
+  A: 'pkg:IA' as Token, B: 'pkg:IB' as Token, UnionHolder: 'pkg:IUnionHolder' as Token,
+  Raw: 'pkg:IRaw' as Token } as const;
 
 /** The honest `Promise<T>` token — where an async-only registration truly lives. */
 function promiseOf(token: Token): Token {
@@ -70,9 +64,7 @@ describe('resolveAsync — honest Promise<T> fallback', () => {
     const provider = services.build();
 
     // Sync cannot: the dep is not resolvable without the async fallback.
-    expect(() => provider.resolve(T.Widget)).toThrow(
-      NoSatisfiableSignatureError,
-    );
+    expect(() => provider.resolve(T.Widget)).toThrow(NoSatisfiableSignatureError);
 
     const widget = await provider.resolveAsync<Widget>(T.Widget);
     expect(widget).toBeInstanceOf(Widget);
@@ -103,10 +95,8 @@ describe('resolveAsync — single-flight + cached-Pending semantics', () => {
 
     // Fire both BEFORE awaiting — the second must hit the cached in-flight
     // Pending, not start a second construction.
-    const [a, b] = await Promise.all([
-      scope.resolveAsync<AsyncScoped>(T.Scoped),
-      scope.resolveAsync<AsyncScoped>(T.Scoped),
-    ]);
+    const [a, b] = await Promise.all([scope.resolveAsync<AsyncScoped>(T.Scoped),
+      scope.resolveAsync<AsyncScoped>(T.Scoped)]);
 
     expect(a).toBe(b);
     expect(ctorRuns).toBe(1);
@@ -150,9 +140,7 @@ describe('resolveAsync — union async-reject fall-through', () => {
     // Member B is a plain value — the fall-through winner.
     services = services.addValue(T.B, { source: 'B' });
 
-    const holder = await services
-      .build()
-      .resolveAsync<UnionHolder>(T.UnionHolder);
+    const holder = await services.build().resolveAsync<UnionHolder>(T.UnionHolder);
 
     expect(holder.dep).toEqual({ source: 'B' });
   });

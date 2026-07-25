@@ -1,4 +1,4 @@
-// The two error types the file-configuration base and the file parsers raise.
+// The two error types a file-format parser and the file-configuration base raise.
 //
 // `FormatError` is the shared "the file's contents don't parse" error every
 // file-format provider throws from its `loadContent` (JSON root not an
@@ -6,8 +6,7 @@
 // `InvalidDataError` is the file base's wrapper: when a provider's
 // `loadContent` throws, the base rethrows it wrapped in `InvalidDataError`
 // (carrying the original as `cause`) so the failure carries the file path and
-// routes through the `onLoadError` handler uniformly. Named `*Error`, not
-// `*Exception`, per the repo's error-not-exception convention.
+// routes through the `onLoadError` handler uniformly.
 
 /** Thrown by a file-format parser when a file's contents are malformed. */
 export class FormatError extends Error {

@@ -88,9 +88,7 @@ describe('XML grammar', () => {
   });
 
   test('ignores the XML declaration, comments, and processing instructions', () => {
-    const root = fromXml(
-      '<?xml version="1.0"?><!-- a comment --><settings><?pi data?><Key>v</Key></settings>',
-    );
+    const root = fromXml('<?xml version="1.0"?><!-- a comment --><settings><?pi data?><Key>v</Key></settings>');
 
     expect(root.get('Key')).toBe('v');
   });
@@ -114,8 +112,7 @@ describe('XML grammar', () => {
   test('a duplicate resolved key is rejected', () => {
     // The root attribute `Key` and the child element `<Key>` both resolve to
     // the key "Key" -- a collision, unlike repeated siblings (which index).
-    expect(() => fromXml('<settings Key="1"><Key>2</Key></settings>'))
-      .toThrow(/duplicate key/i);
+    expect(() => fromXml('<settings Key="1"><Key>2</Key></settings>')).toThrow(/duplicate key/i);
   });
 });
 
@@ -133,10 +130,7 @@ describe('XmlConfigSource file wiring', () => {
     dir = mkdtempSync(join(tmpdir(), 'rhombus-config-xml-'));
     writeFileSync(join(dir, 'app.xml'), '<settings><Server><Host>localhost</Host></Server></settings>');
 
-    const root = new ConfigBuilder()
-      .setBasePath(dir)
-      .addXmlFile('app.xml')
-      .build();
+    const root = new ConfigBuilder().setBasePath(dir).addXmlFile('app.xml').build();
 
     expect(root.get('Server:Host')).toBe('localhost');
   });
@@ -144,10 +138,7 @@ describe('XmlConfigSource file wiring', () => {
   test('a missing optional XML file yields no keys', () => {
     dir = mkdtempSync(join(tmpdir(), 'rhombus-config-xml-'));
 
-    const root = new ConfigBuilder()
-      .setBasePath(dir)
-      .addXmlFile('missing.xml', { optional: true })
-      .build();
+    const root = new ConfigBuilder().setBasePath(dir).addXmlFile('missing.xml', { optional: true }).build();
 
     expect([...root.getChildren()]).toEqual([]);
   });

@@ -48,11 +48,9 @@ describe('late registration reaches every decorated class sharing the token', ()
   test("a set registered NOW installs onto both families' MetricsBuilders", () => {
     // Both concrete classes were decorated at module load, long before this
     // registration. The decorator's listener must still pull the new member.
-    registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, {
-      lateRegisteredProbe(builder: unknown): unknown {
-        return builder;
-      },
-    });
+    registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, { lateRegisteredProbe(builder: unknown): unknown {
+      return builder;
+    } });
 
     type Probed = { lateRegisteredProbe(): unknown; };
     const hosting = new HostingMetricsBuilder(new ServiceManifest()) as unknown as Probed;

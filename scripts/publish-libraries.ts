@@ -74,11 +74,7 @@ function discoverPackages(): Map<string, Package> {
     if (!manifest.publishConfig || manifest.private) {
       continue;
     }
-    packages.set(manifest.name, {
-      name: manifest.name,
-      dir,
-      deps: [...new Set(workspaceDeps(manifest))],
-    });
+    packages.set(manifest.name, { name: manifest.name, dir, deps: [...new Set(workspaceDeps(manifest))] });
   }
   return packages;
 }

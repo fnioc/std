@@ -1,10 +1,9 @@
 // The shared BrowserLifetime registration — the composition seam both entry
 // points route through: `useBrowserLifetime` (the classic-builder augmentation)
-// and `BrowserHost.createApplicationBuilder` (the modern-builder facade).
-// Mirrors hosting's `useConsoleLifetime` registration shape: the options land
-// as a value, and the lifetime lands as a factory under the imported
-// HOST_LIFETIME_TOKEN — di.core is append-only last-wins, so this overrides the
-// default NullLifetime registered by the host composition.
+// and `BrowserHost.createApplicationBuilder` (the modern-builder facade). The
+// options land as a value, and the lifetime lands as a factory under the
+// imported HOST_LIFETIME_TOKEN — di.core is append-only last-wins, so this
+// overrides the default NullLifetime registered by the host composition.
 
 import { type IResolver, RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { IServiceManifest } from '@rhombus-std/di.core';
@@ -32,25 +31,17 @@ import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './t
  * caller must thread this result forward instead of reusing the `services` it
  * passed in.
  */
-export function registerBrowserLifetime(
-  services: IServiceManifest,
-  options: BrowserLifetimeOptions,
-  context?: PageContext,
-): IServiceManifest {
+export function registerBrowserLifetime(services: IServiceManifest, options: BrowserLifetimeOptions,
+  context?: PageContext): IServiceManifest
+{
   let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);
   s = s.addValue(PAGE_LIFECYCLE_EVENTS_TOKEN, pageLifecycleEvents);
 
-  return s.addFactory(
-    HOST_LIFETIME_TOKEN,
+  return s.addFactory(HOST_LIFETIME_TOKEN,
     (resolver: IResolver) =>
-      new BrowserLifetime(
-        resolver.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN),
+      new BrowserLifetime(resolver.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN),
         resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
-        resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-        pageLifecycleEvents,
-      ),
-    [[RESOLVER_TOKEN]],
-  );
+        resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN), pageLifecycleEvents), [[RESOLVER_TOKEN]]);
 }

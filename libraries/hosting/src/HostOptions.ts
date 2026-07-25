@@ -1,9 +1,4 @@
-// HostOptions -- ported from the reference hosting runtime's `HostOptions`.
-//
-// Timeouts are milliseconds (the JS timer unit) rather than the reference's
-// `TimeSpan`; `Infinity` stands in for the reference `Timeout.InfiniteTimeSpan`
-// (no timeout). `initialize` reads the same configuration keys the reference
-// reads, folding them onto the defaults.
+// Timeouts on this class are milliseconds; use `Infinity` for no timeout.
 
 import type { IConfig } from '@rhombus-std/config.core';
 import type { BackgroundService, IHost, IHostedLifecycleService } from '@rhombus-std/hosting.core';

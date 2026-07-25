@@ -14,9 +14,7 @@ describe('missing metadata', () => {
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Service, NoDeps, [[]], 'singleton');
 
-    const instance = services.build().resolve<NoDeps>(
-      T.Service,
-    );
+    const instance = services.build().resolve<NoDeps>(T.Service);
     expect(instance.ok).toBe(true);
   });
 
@@ -138,10 +136,7 @@ describe('cycle detection', () => {
       public constructor(public readonly d: D) {}
     }
     class A {
-      public constructor(
-        public readonly b: B,
-        public readonly c: C,
-      ) {}
+      public constructor(public readonly b: B, public readonly c: C) {}
     }
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Db, D, [[]], 'singleton');

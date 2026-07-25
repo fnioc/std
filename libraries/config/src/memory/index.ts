@@ -5,24 +5,22 @@
 // pattern the external provider packages use (TS declaration merging + a
 // registry registration) -- `ConfigBuilder` itself carries no add* sugar
 // of its own, only augmentations, even for the in-package Memory provider. The
-// augmentation targets the package barrel "@rhombus-std/config" (the
-// `config-source` condition on config's `.` export routes it back to
-// ./src/index.ts for config's own compile -- di.core's self-source pattern),
-// the same specifier chained/index.ts and with-type-augment.ts use, so all of
-// config's own ConfigBuilder augmenters merge onto one type.
+// augmentation targets the package barrel "@rhombus-std/config" (config's own
+// compile resolves that specifier back to ./src/index.ts), the same specifier
+// chained/index.ts and with-type-augment.ts use, so all of config's own
+// ConfigBuilder augmenters merge onto one type.
 //
 // `addInMemoryCollection` targets the OPEN `IConfigBuilder` receiver, so
-// it registers against tokenfor<IConfigBuilder>() (docs §38)
-// rather than installing directly: the reference extension method targets
-// IConfigBuilder, and ConfigManager implements that interface
-// too, so both concrete builders are decorated with that one token and a
-// single registration reaches BOTH -- `manager.addInMemoryCollection(...)`
-// works the same way `builder.addInMemoryCollection(...)` does. The
-// augmentation's receiver is generic over any receiver whose `add()` returns
-// itself, rather than pinned to ConfigBuilder<T>, so ONE object literal
-// satisfies `AugmentationSet` for both classes while still preserving each
-// one's own concrete return type through the fluent chain (ConfigBuilder<T>
-// keeps T; ConfigManager stays ConfigManager).
+// it registers against tokenfor<IConfigBuilder>() rather than installing
+// directly: ConfigManager also implements IConfigBuilder, so both concrete
+// builders are decorated with that one token and a single registration
+// reaches BOTH -- `manager.addInMemoryCollection(...)` works the same way
+// `builder.addInMemoryCollection(...)` does. The augmentation's receiver is
+// generic over any receiver whose `add()` returns itself, rather than pinned
+// to ConfigBuilder<T>, so ONE object literal satisfies `AugmentationSet` for
+// both classes while still preserving each one's own concrete return type
+// through the fluent chain (ConfigBuilder<T> keeps T; ConfigManager stays
+// ConfigManager).
 
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
@@ -52,16 +50,14 @@ declare module '../ConfigManager' {
   }
 }
 
-// One named object literal mirroring the reference `MemoryConfigBuilderExtensions`
-// static class (docs §28/§38), registered against the shared
-// IConfigBuilder token AND exported so the member is the standalone
-// form. `TBuilder` is bounded by "has an add() that returns itself" rather than
-// pinned to ConfigBuilder<T> -- see the module doc comment above.
+// Registered against the shared IConfigBuilder token and exported so the
+// member is usable in its standalone form. `TBuilder` is bounded by "has an
+// add() that returns itself" rather than pinned to ConfigBuilder<T> -- see
+// the module doc comment above.
 export const MemoryConfigBuilderExtensions = {
-  addInMemoryCollection<TBuilder extends { add(source: IConfigSource): TBuilder; }>(
-    builder: TBuilder,
-    initialData?: ConfigData,
-  ): TBuilder {
+  addInMemoryCollection<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
+    initialData?: ConfigData): TBuilder
+  {
     return builder.add(new MemoryConfigSource({ initialData }));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

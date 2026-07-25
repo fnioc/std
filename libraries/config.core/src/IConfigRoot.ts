@@ -1,6 +1,3 @@
-// The `IConfigRoot` interface -- mirrors MECA's
-// `IConfigRoot.cs` one-type-per-file layout (see docs/decisions.md #46).
-
 import type { IConfig } from './IConfig';
 import type { IConfigProvider } from './IConfigProvider';
 

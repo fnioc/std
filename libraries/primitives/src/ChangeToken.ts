@@ -1,16 +1,3 @@
-// ChangeToken.onChange -- ported from ME.Primitives.ChangeToken.
-//
-// ME's ChangeToken static class overloads OnChange four ways (sync/async
-// consumer x with/without TState) using Interlocked-based disposal
-// bookkeeping (a sentinel `IDisposable` swapped in via CompareExchange) to
-// stay correct under concurrent callers. JS is single-threaded, so this port
-// collapses to ONE signature -- a consumer returning `void` (sync) or a
-// thenable (async), optional typed state; a thenable result gets the async
-// overloads' semantics (re-register only once it settles), detected at
-// runtime -- and replaces the sentinel/CompareExchange dance with a plain
-// `disposed` boolean. The re-subscription loop itself (the load-bearing
-// part) is otherwise mirrored exactly.
-
 import type { Func } from '@rhombus-toolkit/func';
 
 import type { IChangeToken } from './IChangeToken.js';
@@ -32,9 +19,7 @@ export type ChangeTokenProducer = Func<[], IChangeToken | null | undefined>;
  * void return" rule only applies to a bare `void` return type, so the union
  * keeps terse sync consumers like `() => count++` assignable.
  */
-export type ChangeTokenConsumer<TState> =
-  | Func<[state: TState], void>
-  | Func<[state: TState], PromiseLike<void>>;
+export type ChangeTokenConsumer<TState> = Func<[state: TState], void> | Func<[state: TState], PromiseLike<void>>;
 
 function isThenable(value: void | PromiseLike<void>): value is PromiseLike<void> {
   return typeof (value as PromiseLike<void> | undefined)?.then === 'function';
@@ -95,35 +80,30 @@ class ChangeTokenRegistration<TState> {
       // the change token.
       result = this.#consumeToken(this.#state);
     } catch (error) {
-      // We always want to ensure the callback is registered, even when the
-      // consumer throws synchronously.
+      // Re-register before rethrowing, so a synchronous throw doesn't drop the subscription.
       this.#registerChangeTokenCallback(token);
       throw error;
     }
 
     if (isThenable(result)) {
-      // Async completion: only re-register once the consumer's promise
-      // settles. Rejections can't be propagated to the trigger code without
-      // blocking, so they are left unobserved -- swallowed after the
-      // re-registration, mirroring the reference's default treatment of
-      // unobserved failures. A consumer that needs its async failures seen
-      // must handle them itself.
+      // Async completion: re-register only once the consumer's promise settles.
+      // A rejection can't reach the trigger code without blocking, so it is left
+      // unobserved -- a consumer that needs its async failures seen must handle
+      // them itself.
       void this.#awaitConsumerThenRegisterCallback(result, token);
     } else {
       this.#registerChangeTokenCallback(token);
     }
   }
 
-  async #awaitConsumerThenRegisterCallback(
-    consumerResult: PromiseLike<void>,
-    token: IChangeToken | null | undefined,
-  ): Promise<void> {
+  async #awaitConsumerThenRegisterCallback(consumerResult: PromiseLike<void>,
+    token: IChangeToken | null | undefined): Promise<void>
+  {
     try {
       await consumerResult;
     } catch {
       // Unobserved by design -- see #onChangeTokenFired.
     } finally {
-      // We always want to ensure the callback is registered.
       this.#registerChangeTokenCallback(token);
     }
   }
@@ -160,11 +140,9 @@ export const ChangeToken = {
    * @param state State passed through to `consumeToken`.
    * @returns A {@link Disposable} that, when disposed, unregisters the consumer.
    */
-  onChange<TState = undefined>(
-    produceToken: ChangeTokenProducer,
-    consumeToken: ChangeTokenConsumer<TState>,
-    state?: TState,
-  ): Disposable {
+  onChange<TState = undefined>(produceToken: ChangeTokenProducer, consumeToken: ChangeTokenConsumer<TState>,
+    state?: TState): Disposable
+  {
     return new ChangeTokenRegistration(produceToken, consumeToken, state as TState);
   },
 };

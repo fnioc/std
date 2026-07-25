@@ -29,14 +29,13 @@ import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
  * never instantiated directly by consumers.
  */
 export class ConfigSection extends IndexAccessed<IndexedSection> implements IConfigSection {
-  // Public runtime brand (docs/decisions.md §38 identity invariant) so
-  // config.core's `isConfigSection` can distinguish a genuine section from a
-  // root -- the runtime stand-in for the reference's `config is
-  // IConfigurationSection` interface test, which TS erasure removes. A class
-  // FIELD (not a `this.x =` assignment) so it lands as a plain own property via
-  // [[DefineOwnProperty]], bypassing IndexAccessed's set trap; being an own
-  // property, later reads resolve it directly without hitting `_getIndex`.
-  // Deliberately not `#`/`__`-private: the guard reads it from outside.
+  // Public runtime brand so config.core's `isConfigSection` can distinguish a
+  // genuine section from a root at runtime, which TS type erasure alone
+  // cannot do. A class FIELD (not a `this.x =` assignment) so it lands as a
+  // plain own property via [[DefineOwnProperty]], bypassing IndexAccessed's
+  // set trap; being an own property, later reads resolve it directly without
+  // hitting `_getIndex`. Deliberately not `#`/`__`-private: the guard reads
+  // it from outside.
   readonly [configSectionBrand] = true;
 
   readonly #root: ConfigRoot;
@@ -147,9 +146,7 @@ export class ConfigSection extends IndexAccessed<IndexedSection> implements ICon
   }
 
   protected _setIndex(_key: PropertyKey, _value: IndexedSection): IndexedSection {
-    throw new TypeError(
-      'Configuration is read-only through index access; use set(key, value) or the value setter.',
-    );
+    throw new TypeError('Configuration is read-only through index access; use set(key, value) or the value setter.');
   }
 }
 

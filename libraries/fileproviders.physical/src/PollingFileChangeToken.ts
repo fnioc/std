@@ -1,26 +1,14 @@
-// PollingFileChangeToken -- ported from
-// ME.FileProviders.Physical.PollingFileChangeToken.
-//
-// A change token that detects file-system changes by polling, rather than by
-// an OS file watcher. `hasChanged` re-reads the target's modification time (or,
-// for a directory-prefix target, a structural signature of its subtree) at
-// most once per polling interval, and latches `true` permanently once a change
-// is observed -- so the token must be discarded and re-created after it fires
-// (as the IChangeToken contract requires).
-//
-// The reference collapses the file case (PollingFileChangeToken, using the
-// file's LastWriteTimeUtc) and the directory/wildcard case
-// (PollingWildCardChangeToken, hashing the sorted (path, mtime) pairs of the
-// subtree) into two types. This port unifies them behind one `#getSignature`:
-//   - file target -> the mtime in milliseconds, as a string;
-//   - directory target -> the sorted `path:mtimeMs` pairs of the subtree,
-//     joined (DEVIATION, flagged: the reference uses a SHA over the sorted
-//     pairs; a structural join is equivalent for change detection and cheaper).
+// A change token that detects changes by polling rather than by an OS file
+// watcher. `hasChanged` re-reads the target's signature -- a file's mtime, or
+// a directory's sorted `path:mtimeMs` pairs for its subtree -- at most once
+// per polling interval, and latches `true` permanently once a change is
+// observed, so the token must be discarded and a new one created after it
+// fires.
 //
 // By default the token is passive (`activeChangeCallbacks` false) and the
-// consumer must poll `hasChanged`. When `activate()` is called (active-polling
-// mode), an AbortSignal-backed inner token drives registered callbacks, which
-// the watcher's timer fires once `hasChanged` flips.
+// consumer must poll `hasChanged`. Calling `activate()` switches it to active
+// mode: an AbortSignal-backed inner token drives registered callbacks, fired
+// by the watcher's timer once `hasChanged` flips.
 
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,7 +19,7 @@ import type { ExclusionFilters } from './ExclusionFilters.js';
 import { isExcluded } from './FileSystemInfoHelper.js';
 
 /**
- * The default polling interval, matching the reference's 4-second cadence.
+ * The default polling interval: 4 seconds.
  */
 export const DEFAULT_POLLING_INTERVAL_MS = 4000;
 
@@ -45,8 +33,7 @@ export class PollingFileChangeToken implements IChangeToken {
   /**
    * The polling interval in milliseconds: `hasChanged` re-reads the target at
    * most once per this window. Mutable so white-box tests can drive a
-   * deterministic short interval (mirrors the reference's internal
-   * `PollingInterval`).
+   * deterministic short interval.
    *
    * INDEPENDENT of {@link PhysicalFilesWatcher.pollingIntervalMs} (the shared
    * timer's cadence); active-polling tests must lower both -- see that field.

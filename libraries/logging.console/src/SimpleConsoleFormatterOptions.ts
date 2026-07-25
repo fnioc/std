@@ -1,6 +1,3 @@
-// SimpleConsoleFormatterOptions — options for the default ("simple") console
-// formatter, ported from the reference `SimpleConsoleFormatterOptions`.
-
 import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
 import { LoggerColorBehavior } from './LoggerColorBehavior';
 

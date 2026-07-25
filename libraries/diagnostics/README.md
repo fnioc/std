@@ -32,11 +32,10 @@ import '@rhombus-std/diagnostics';
 import { ServiceManifest } from '@rhombus-std/di';
 import { METRICS_OPTIONS_TOKEN } from '@rhombus-std/diagnostics.core';
 
-const manifest = new ServiceManifest()
-  .addMetrics((builder) => {
-    builder.enableMetrics('MyApp.Http'); // enable a whole meter
-    builder.disableMetrics('MyApp.Http', 'request.duration'); // ...except one instrument
-  });
+const manifest = new ServiceManifest().addMetrics((builder) => {
+  builder.enableMetrics('MyApp.Http'); // enable a whole meter
+  builder.disableMetrics('MyApp.Http', 'request.duration'); // ...except one instrument
+});
 
 const provider = manifest.build();
 const options = provider.resolve(METRICS_OPTIONS_TOKEN);
@@ -62,11 +61,9 @@ builder:
 import '@rhombus-std/diagnostics';
 import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigBuilder()
-  .addInMemoryCollection({
-    'EnabledMetrics:MyApp.Http:request.duration': 'false',
-  })
-  .build();
+const config = new ConfigBuilder().addInMemoryCollection({
+  'EnabledMetrics:MyApp.Http:request.duration': 'false',
+}).build();
 
 manifest.addMetrics((builder) => {
   builder.addMetricsConfig(config);

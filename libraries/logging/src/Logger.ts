@@ -1,14 +1,14 @@
-// Logger — the composite ILogger that fans a write out across the sinks of
-// every registered provider, ported from ME.Logging's internal `Logger`.
+// Logger is the composite ILogger that fans a write out across the sinks of
+// every registered provider.
 //
-// The composite holds a `LoggerInformation[]` (one per provider, computed by the
-// factory) plus the FILTERED views the factory recomputes whenever the filter
-// options change: `messageLoggers` (the sinks enabled for this category, each
-// with its selected min level + filter delegate) and `scopeLoggers` (the scope
-// targets). `log`/`isEnabled` consult `messageLoggers` so `LoggerFilterOptions`
-// rules are honoured per (provider, category); `beginScope` fans out across
-// `scopeLoggers`. A throwing sink is collected and re-thrown as an
-// `AggregateError` after the others run (the reference `AggregateException`).
+// It holds a `LoggerInformation[]` (one per provider, computed by the factory)
+// plus the FILTERED views the factory recomputes whenever the filter options
+// change: `messageLoggers` (the sinks enabled for this category, each with its
+// selected min level + filter delegate) and `scopeLoggers` (the scope targets).
+// `log`/`isEnabled` consult `messageLoggers` so `LoggerFilterOptions` rules are
+// honoured per (provider, category); `beginScope` fans out across
+// `scopeLoggers`. A throwing sink is collected and re-thrown as a single
+// `AggregateError` after the others run.
 
 import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
@@ -19,8 +19,8 @@ import type { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInfo
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
 const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
-// Binds the `ILogger` interface symbol onto the class so the interface-merged
-// wrapper methods (logInformation/…, §80) flow onto `Logger`, beside the
+// Binds the `ILogger` interface onto the class so the interface-merged
+// wrapper methods (logInformation/…) flow onto `Logger`, beside the
 // `@augment(tokenfor<ILogger>())` install below.
 export interface Logger extends ILogger {}
 
@@ -37,13 +37,9 @@ export class Logger implements ILogger {
     this.loggers = loggers;
   }
 
-  public log<TState>(
-    logLevel: LogLevel,
-    eventId: EventId,
-    state: TState,
-    error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>,
-  ): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
+    formatter: Func<[TState, Error | undefined], string>): void
+  {
     const loggers = this.messageLoggers;
     if (loggers === undefined) {
       return;
@@ -118,17 +114,15 @@ export class Logger implements ILogger {
       throwLoggingError(errors);
     }
 
-    return {
-      [Symbol.dispose]() {
-        for (const scope of scopes) {
-          scope?.[Symbol.dispose]();
-        }
-      },
-    };
+    return { [Symbol.dispose]() {
+      for (const scope of scopes) {
+        scope?.[Symbol.dispose]();
+      }
+    } };
   }
 }
 
-/** Re-throws one or more sink failures as a single aggregate (reference `AggregateException`). */
+/** Re-throws one or more sink failures as a single aggregate error. */
 function throwLoggingError(errors: readonly unknown[]): never {
   throw new AggregateError(errors, 'An error occurred while writing to logger(s).');
 }

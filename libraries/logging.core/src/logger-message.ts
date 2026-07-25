@@ -1,23 +1,4 @@
-// LoggerMessage — the cached-delegate factories, ported from the runtime half of
-// ME.Logging.Abstractions' static `LoggerMessage` class.
-//
-// `define(logLevel, eventId, formatString)` returns a strongly-typed log action
-// bound to a fixed level/event/template; `defineScope(formatString)` returns a
-// scope-opening action. Both are meant to be created ONCE (cached in a static)
-// and invoked per message, so the template is parsed a single time. The reused
-// `FormattedLogValues` state is the structured `IReadOnlyList` a sink reads, and
-// `formatLogValues` renders it — the direct analog of the reference's private
-// `LogValues<T...>` states and their `Callback`.
-//
-// The compile-time-generated (attribute / source-generator) half — the
-// reference `[LoggerMessage]` attribute that emits these `define` calls — is
-// transformer territory and is NOT ported here (BLOCKED: codegen).
-//
-// One fidelity note: the reference validates the template's hole count against
-// the generic arity at define time (`CreateLogValuesFormatter`'s
-// expectedNamedParameterCount). That arity is erased at runtime in TS, and the
-// typed overloads below already fix the value-arg count the returned delegate
-// accepts, so the define-time hole/arity cross-check is intentionally dropped.
+// The cached log-delegate factories: define / defineScope.
 
 import { EventId, type EventIdLike } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
@@ -30,54 +11,26 @@ export interface LogDefineOptions {
   skipEnabledCheck?: boolean;
 }
 
-function define(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
-): (logger: ILogger, error: Error | undefined) => void;
-function define<T1>(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
-): (logger: ILogger, arg1: T1, error: Error | undefined) => void;
-function define<T1, T2>(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
-): (logger: ILogger, arg1: T1, arg2: T2, error: Error | undefined) => void;
-function define<T1, T2, T3>(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
-): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, error: Error | undefined) => void;
-function define<T1, T2, T3, T4>(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
+function define(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions): (logger: ILogger, error: Error | undefined) => void;
+function define<T1>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions): (logger: ILogger, arg1: T1, error: Error | undefined) => void;
+function define<T1, T2>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, error: Error | undefined) => void;
+function define<T1, T2, T3>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, error: Error | undefined) => void;
+function define<T1, T2, T3, T4>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions
 ): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, error: Error | undefined) => void;
-function define<T1, T2, T3, T4, T5>(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
+function define<T1, T2, T3, T4, T5>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions
 ): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, error: Error | undefined) => void;
-function define<T1, T2, T3, T4, T5, T6>(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
+function define<T1, T2, T3, T4, T5, T6>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions
 ): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, error: Error | undefined) => void;
-function define(
-  logLevel: LogLevel,
-  eventId: EventIdLike,
-  formatString: string,
-  options?: LogDefineOptions,
-): (logger: ILogger, ...rest: unknown[]) => void {
+function define(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
+  options?: LogDefineOptions): (logger: ILogger, ...rest: unknown[]) => void
+{
   const id = EventId.from(eventId);
   const skipEnabledCheck = options?.skipEnabledCheck === true;
   return (logger: ILogger, ...rest: unknown[]): void => {
@@ -113,11 +66,9 @@ function defineScope(formatString: string): (logger: ILogger, ...args: unknown[]
 }
 
 /**
- * Creates cached delegates that log messages (and open scopes) in a performant
- * way. Create a delegate once and reuse it per message — the analog of the
- * reference static `LoggerMessage` factory class.
+ * Creates cached delegates that log messages and open scopes.
+ * `define(logLevel, eventId, formatString)` binds a log action to a fixed
+ * level/event/template; `defineScope(formatString)` opens a scope. Create the
+ * delegate once and reuse it per message, so the template is parsed a single time.
  */
-export const LoggerMessage = {
-  define,
-  defineScope,
-};
+export const LoggerMessage = { define, defineScope };

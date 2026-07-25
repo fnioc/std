@@ -1,19 +1,14 @@
-// CompositeChangeToken -- a minimal composite over several IChangeTokens, kept
-// internal to this package.
+// A minimal composite over several IChangeTokens, kept internal to this package.
 //
 // An assembled reactive `IOptions<MetricsOptions>` / `IOptions<TracingOptions>` may
-// watch MULTIPLE change-token sources (e.g. two addConfig calls binding
-// two sections). `Options.watch` takes ONE producer, so the sources' tokens
-// compose into one token that has changed when any child has, and registers a
-// callback against every child.
+// watch multiple change-token sources (e.g. two addConfig calls binding two
+// sections). `Options.watch` takes one producer, so the sources' tokens compose
+// into one token that has changed when any child has.
 //
-// NOTE: this duplicates @rhombus-std/options.augmentations's own internal
-// CompositeChangeToken. That class's comment already anticipates the composite
-// being promoted into @rhombus-std/primitives "once a second consumer needs it";
-// diagnostics is now that second consumer, so the correct follow-up is to promote
-// ONE CompositeChangeToken into primitives and delete both copies (out of scope
-// for this pass -- see the package tbd notes). The local copy keeps this package's
-// boundaries clean in the meantime (no cross-package internal/* reach).
+// Duplicates @rhombus-std/options.augmentations's own CompositeChangeToken; the
+// intended follow-up is to promote one copy into @rhombus-std/primitives and
+// delete both, but that's out of scope here — this local copy avoids a
+// cross-package internal reach in the meantime.
 
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
@@ -47,12 +42,10 @@ export class CompositeChangeToken implements IChangeToken {
    */
   public registerChangeCallback(callback: Func<[state: unknown], void>, state?: unknown): Disposable {
     const registrations = this.#tokens.map((token) => token.registerChangeCallback(callback, state));
-    return {
-      [Symbol.dispose](): void {
-        for (const registration of registrations) {
-          registration[Symbol.dispose]();
-        }
-      },
-    };
+    return { [Symbol.dispose](): void {
+      for (const registration of registrations) {
+        registration[Symbol.dispose]();
+      }
+    } };
   }
 }

@@ -1,13 +1,3 @@
-// LoggerFilterOptions / LoggerFilterRule — the filter configuration data
-// classes, ported from ME.Logging's `LoggerFilterOptions` / `LoggerFilterRule`.
-//
-// These are pure data holders and are implemented for real. What is NOT wired
-// this pass is their CONSUMPTION: the reference `Logger` selects the most-
-// specific rule per (provider, category) to compute each sink's enabled state.
-// That selection runs inside the filter-options-monitor DI integration which is
-// deferred (see ./Logger.ts and ./logger-factory.ts). A caller can still build
-// and inspect rules; `addFilter` (./filter-augmentations) appends them.
-
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -25,12 +15,9 @@ export class LoggerFilterRule {
   /** The filter delegate applied to messages that pass the {@link LogLevel}. */
   public readonly filter: Func<[string | undefined, string | undefined, LogLevel], boolean> | undefined;
 
-  public constructor(
-    providerName: string | undefined,
-    categoryName: string | undefined,
-    logLevel: LogLevel | undefined,
-    filter: Func<[string | undefined, string | undefined, LogLevel], boolean> | undefined,
-  ) {
+  public constructor(providerName: string | undefined, categoryName: string | undefined, logLevel: LogLevel | undefined,
+    filter: Func<[string | undefined, string | undefined, LogLevel], boolean> | undefined)
+  {
     this.providerName = providerName;
     this.categoryName = categoryName;
     this.logLevel = logLevel;

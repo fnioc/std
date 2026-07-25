@@ -16,18 +16,16 @@
 //     string   ::= '"' char* '"'               ; quote-aware; interior , < > inert
 //     key      ::= '#' name
 //
-// THIS FILE IS THE HOLE GRAMMAR. Labels are 1-BASED and carry no leading zero,
-// so `$0`, `$01` and `$007` are parse errors rather than holes — the one answer
-// to "is this a hole", which `edges.ts`'s `isOpenToken` reads back off the tree
-// instead of restating as a second pattern (§129). It matches the `Hole<N>`
-// brand's own documented domain and the `$` + integer the Go transformer emits,
-// so no spelling a real author or the transformer produces is affected.
+// THIS FILE IS THE HOLE GRAMMAR — the single answer to "is this a hole", which
+// `edges.ts`'s `isOpenToken` reads back off the tree rather than restating.
+// Labels are 1-BASED and carry no leading zero, so `$0`, `$01` and `$007` are
+// parse errors, matching the `Hole<N>` brand's own domain.
 //
-// Canonicalisation strips whitespace outside quoted literals, ` | `-joins literal
-// unions (byte-identical to the Go transformer's emit), and normalises quotes to
-// double. Hole labels need no normalisation — a label that parses is already its
-// integer form. Numeric literals are NOT a normalised category — a bare `72` is
-// an identifier-shaped `path`, byte-preserved.
+// Canonicalisation strips whitespace outside quoted literals, ` | `-joins
+// literal unions, and normalises quotes to double. Hole labels need no
+// normalisation — a label that parses is already its integer form. Numeric
+// literals are NOT a normalised category: a bare `72` is an identifier-shaped
+// `path`, byte-preserved.
 
 import { RESOLVER_TOKEN_STRING } from './constants.js';
 import type { ConcreteNode, HoleNode, TokenNode } from './node.js';
@@ -46,9 +44,8 @@ export function parse(raw: string): TokenNode {
   return new TokenParser(raw).parse();
 }
 
-/** Throw-free {@link parse}: the parsed tree, or `undefined` for malformed input.
- * The engine funnels a ground token through here so a malformed token becomes a
- * clean miss instead of a throw. */
+/** {@link parse}, but `undefined` for malformed input — so a ground token that
+ * cannot parse becomes a clean lookup miss instead of a throw. */
 export function tryParse(raw: string): TokenNode | undefined {
   try {
     return new TokenParser(raw).parse();
@@ -100,10 +97,8 @@ class TokenParser {
       throw this.#fail('hole `$` must be followed by digits');
     }
     const digits = this.#src.slice(start, this.#i);
-    // Labels are 1-based with no leading zero, so exactly one spelling reaches
-    // each label. Accepting `$01` alongside `$1` would make the grammar's
-    // canonicalisation the only thing keeping two spellings of one template on
-    // one identity, and accepting `$0` would contradict the `Hole<N>` brand.
+    // Labels are 1-based with no leading zero, so exactly ONE spelling reaches
+    // each label — `$01` alongside `$1` would split one template's identity.
     if (digits[0] === '0') {
       throw this.#fail(
         digits.length === 1
@@ -160,9 +155,8 @@ class TokenParser {
       }
       break;
     }
-    // Canonical union separator is ` | ` (space-pipe-space), byte-identical to the
-    // Go transformer's emit and the old string engine's grammar, so a re-derived
-    // union matches a transformer-spelled exact registration.
+    // The canonical separator is ` | ` (space-pipe-space), so a re-derived union
+    // lands on the same identity as an exactly-registered one.
     const base = parts.map(canonicaliseQuoted).join(' | ');
     return { kind: 'concrete', base, args: [] };
   }
@@ -193,9 +187,7 @@ class TokenParser {
     if (colon > 0 && !base.slice(colon + 1)) {
       throw this.#fail('empty path after package');
     }
-    return key !== undefined
-      ? { kind: 'concrete', base, args, key }
-      : { kind: 'concrete', base, args };
+    return key !== undefined ? { kind: 'concrete', base, args, key } : { kind: 'concrete', base, args };
   }
 
   #parseGenerics(): TokenNode[] {

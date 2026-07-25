@@ -11,9 +11,8 @@ import { exists, type IConfig } from '@rhombus-std/config.core';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { OPTIONAL, type Schema } from './schema';
 
-export type ParseResult<T> =
-  | { readonly ok: true; readonly value: T; }
-  | { readonly ok: false; readonly reason: string; };
+export type ParseResult<T> = { readonly ok: true; readonly value: T; } | { readonly ok: false;
+  readonly reason: string; };
 
 /**
  * Coerces `raw` to a finite number. Rejects blank explicitly (`Number("")` and
@@ -77,13 +76,7 @@ function present(node: IConfig, inner: Schema, key: string): boolean {
   return isLeaf(inner) ? node.get(key) !== undefined : exists(node.getSection(key));
 }
 
-function walkRequired(
-  node: IConfig,
-  schema: Schema,
-  key: string,
-  path: readonly string[],
-  issues: string[],
-): unknown {
+function walkRequired(node: IConfig, schema: Schema, key: string, path: readonly string[], issues: string[]): unknown {
   const fullPath = [...path, key].join(':');
 
   if (isLeaf(schema)) {
@@ -124,12 +117,9 @@ function walkRequired(
   return walkObject(section, schema as Record<PropertyKey, Schema>, [...path, key], issues);
 }
 
-function walkObject(
-  node: IConfig,
-  schema: Record<PropertyKey, Schema>,
-  path: readonly string[],
-  issues: string[],
-): Record<string, unknown> {
+function walkObject(node: IConfig, schema: Record<PropertyKey, Schema>, path: readonly string[],
+  issues: string[]): Record<string, unknown>
+{
   const result: Record<string, unknown> = {};
   // Only string keys are walked -- OPTIONAL is a symbol and only ever appears
   // INSIDE a wrapper, never as a sibling of the object's string keys.
@@ -137,9 +127,7 @@ function walkObject(
     const sub = schema[key] as Schema;
     if (isOptional(sub)) {
       const inner = sub[OPTIONAL];
-      result[key] = present(node, inner, key)
-        ? walkRequired(node, inner, key, path, issues)
-        : undefined;
+      result[key] = present(node, inner, key) ? walkRequired(node, inner, key, path, issues) : undefined;
     } else {
       result[key] = walkRequired(node, sub, key, path, issues);
     }

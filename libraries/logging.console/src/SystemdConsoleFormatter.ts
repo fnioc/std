@@ -1,14 +1,11 @@
-// SystemdConsoleFormatter — the systemd-journal "<pri>message" format, ported
-// from the reference internal `SystemdConsoleFormatter`. Internal: not
-// exported from the package barrel; consumers select it by name ("systemd").
+// Internal: not exported from the package barrel; consumers select it by
+// name ("systemd").
 //
 // systemd reads messages from standard out line-by-line in a `<pri>message`
 // format; newline characters are treated as message delimiters, so they are
 // replaced. Example:
 //
 //   <6>ConsoleApp.Program[10] Request received
-//
-// The `BufferedLogRecord` fast path is NOT ported (see SimpleConsoleFormatter).
 
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -49,11 +46,11 @@ function getSyslogSeverityString(logLevel: LogLevel): string {
   }
 }
 
-/** Writes the reference systemd-journal console format. */
+/** Writes the systemd-journal console format. */
 export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposable {
   readonly #optionsReloadToken: Disposable | undefined;
 
-  /** The live options — reassigned on reload (internal, as upstream). */
+  /** The live options — reassigned on reload. */
   public formatterOptions: ConsoleFormatterOptions;
 
   public constructor(options: IOptions<ConsoleFormatterOptions>) {
@@ -68,69 +65,46 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
     this.#optionsReloadToken?.[Symbol.dispose]();
   }
 
-  public override write<TState>(
-    logEntry: LogEntry<TState>,
-    scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter,
-  ): void {
+  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
+    textWriter: TextWriter): void
+  {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
-    this.#writeInternal(
-      scopeProvider,
-      textWriter,
-      message,
-      logEntry.logLevel,
-      logEntry.category,
-      logEntry.eventId.id,
+    this.#writeInternal(scopeProvider, textWriter, message, logEntry.logLevel, logEntry.category, logEntry.eventId.id,
       logEntry.error === undefined ? undefined : logEntry.error.stack ?? String(logEntry.error),
-      this.#getCurrentDateTime(),
-    );
+      this.#getCurrentDateTime());
   }
 
-  #writeInternal(
-    scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter,
-    message: string,
-    logLevel: LogLevel,
-    category: string,
-    eventId: number,
-    error: string | undefined,
-    stamp: Date | undefined,
-  ): void {
+  #writeInternal(scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter, message: string,
+    logLevel: LogLevel, category: string, eventId: number, error: string | undefined, stamp: Date | undefined): void
+  {
     message = ConsoleControlCharacterSanitizer.sanitize(message);
     error = ConsoleControlCharacterSanitizer.sanitize(error);
     category = ConsoleControlCharacterSanitizer.sanitize(category);
 
-    // loglevel
     textWriter.write(getSyslogSeverityString(logLevel));
 
-    // timestamp
     const timestampFormat = this.formatterOptions.timestampFormat;
     if (timestampFormat !== undefined && stamp !== undefined) {
       textWriter.write(formatTimestamp(stamp, timestampFormat, this.formatterOptions.useUtcTimestamp));
     }
 
-    // category and event id
     textWriter.write(category);
     textWriter.write('[');
     textWriter.write(String(eventId));
     textWriter.write(']');
 
-    // scope information
     this.#writeScopeInformation(textWriter, scopeProvider);
 
-    // message
     if (message !== '') {
       textWriter.write(' ');
       textWriter.write(message.replaceAll('\n', ' '));
     }
 
-    // error, single-line
     if (error !== undefined) {
       textWriter.write(' ');
       textWriter.write(error.replaceAll('\n', ' '));
     }
 
-    // newline delimiter
     textWriter.write('\n');
   }
 

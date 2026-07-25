@@ -1,7 +1,7 @@
 // IniConfigSource -- a file-backed source that reads an INI file into
 // the case-insensitive key/value store. Derives from the shared
 // FileConfigSource base (config.file); this class only picks the
-// concrete provider. Mirrors config.json's file source, options and all.
+// concrete provider.
 
 import type { IConfigBuilder, IConfigProvider } from '@rhombus-std/config.core';
 import { FileConfigSource } from '@rhombus-std/config.file';

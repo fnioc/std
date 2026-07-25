@@ -1,6 +1,3 @@
-// The `IConfigSection` interface -- mirrors MECA's
-// `IConfigSection.cs` one-type-per-file layout (see docs/decisions.md #46).
-
 import type { IConfig } from './IConfig';
 
 /**
@@ -9,8 +6,7 @@ import type { IConfig } from './IConfig';
  * `isConfigSection` can recognize it, and so {@link IConfigSection} is nominal:
  * a root -- which structurally also exposes `key`/`path`/`value` -- cannot
  * satisfy it. Declared in config.core so the concrete section (in
- * @rhombus-std/config) and every consumer resolve the SAME symbol
- * (docs/decisions.md §38 identity invariant).
+ * @rhombus-std/config) and every consumer resolve the SAME symbol.
  */
 export const configSectionBrand: unique symbol = Symbol('@rhombus-std/config.core#IConfigSection');
 

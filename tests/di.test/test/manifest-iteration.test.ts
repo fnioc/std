@@ -116,9 +116,7 @@ describe('collection aggregation enumerates EVERY registration, in order', () =>
     services = services.addValue(T.Service, 'second');
 
     const provider = services.build();
-    expect([...provider.resolve<Iterable<string>>(ITERABLE)]).toEqual(
-      provider.resolve<string[]>(ARRAY),
-    );
+    expect([...provider.resolve<Iterable<string>>(ITERABLE)]).toEqual(provider.resolve<string[]>(ARRAY));
   });
 
   test('the aggregate mirrors the entry stream one-for-one', () => {
@@ -142,18 +140,14 @@ describe('a modifier REPLACES its node — one chain is exactly ONE entry', () =
   // still pick the refined one); the entry COUNT and the collection aggregate can.
 
   test('.addClass(...).as(scope) contributes ONE entry, not two', () => {
-    const services = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .as('singleton');
+    const services = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).as('singleton');
 
     expect(tokensOf(services)).toEqual([T.Service]);
     expect(services.build().resolve<unknown[]>(`Array<${T.Service}>`)).toHaveLength(1);
   });
 
   test('.addClass(...).withKey(key) contributes ONE entry — under the KEYED token only', () => {
-    const services = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]], 'singleton')
-      .withKey('k');
+    const services = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]], 'singleton').withKey('k');
 
     // No leftover shadow under the bare token: the refined node REPLACED it.
     expect(tokensOf(services)).toEqual([`${T.Service}#k`]);
@@ -161,18 +155,13 @@ describe('a modifier REPLACES its node — one chain is exactly ONE entry', () =
   });
 
   test('.addClass(...).as(...).withKey(...) — still ONE entry after two refinements', () => {
-    const services = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .as('singleton')
-      .withKey('k');
+    const services = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).as('singleton').withKey('k');
 
     expect(tokensOf(services)).toEqual([`${T.Service}#k`]);
   });
 
   test('.addFactory(...).as(scope) contributes ONE entry', () => {
-    const services = new ServiceManifest<'singleton'>()
-      .addFactory(T.Service, () => new Alpha(), [[]])
-      .as('singleton');
+    const services = new ServiceManifest<'singleton'>().addFactory(T.Service, () => new Alpha(), [[]]).as('singleton');
 
     expect(tokensOf(services)).toEqual([T.Service]);
     expect(services.build().resolve<unknown[]>(`Array<${T.Service}>`)).toHaveLength(1);

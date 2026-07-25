@@ -265,12 +265,10 @@ const requestTrace = new LifecycleTrace();
  * is immutable, so the whole chain is ONE expression and its RESULT is what
  * carries the registrations.
  */
-const orderServices: IServiceManifest<OrderScopes> = new ServiceManifest<OrderScopes>()
-  .addValue(TRACE_TOKEN, requestTrace)
-  .addClass(POOL_TOKEN, ConnectionPool, [[TRACE_TOKEN]], 'singleton')
-  .addClass(UNIT_OF_WORK_TOKEN, OrderUnitOfWork, [[POOL_TOKEN, TRACE_TOKEN]], 'request')
-  .addClass(OUTBOX_TOKEN, OutboxChannel, [[UNIT_OF_WORK_TOKEN, TRACE_TOKEN]], 'request')
-  .addClass(VALIDATOR_TOKEN, OrderValidator, [[]]);
+const orderServices: IServiceManifest<OrderScopes> = new ServiceManifest<OrderScopes>().addValue(TRACE_TOKEN,
+  requestTrace).addClass(POOL_TOKEN, ConnectionPool, [[TRACE_TOKEN]], 'singleton').addClass(UNIT_OF_WORK_TOKEN,
+    OrderUnitOfWork, [[POOL_TOKEN, TRACE_TOKEN]], 'request').addClass(OUTBOX_TOKEN, OutboxChannel, [[UNIT_OF_WORK_TOKEN,
+    TRACE_TOKEN]], 'request').addClass(VALIDATOR_TOKEN, OrderValidator, [[]]);
 
 const captiveTrace = new LifecycleTrace();
 
@@ -283,9 +281,12 @@ const captiveTrace = new LifecycleTrace();
  * (a later registration of the same token wins) so this container's teardown
  * never lands in the request container's trace.
  */
-const captiveServices: IServiceManifest<OrderScopes> = orderServices
-  .addValue(TRACE_TOKEN, captiveTrace)
-  .addClass(REPORT_CACHE_TOKEN, OrderReportCache, [[UNIT_OF_WORK_TOKEN]], 'singleton');
+const captiveServices: IServiceManifest<OrderScopes> = orderServices.addValue(TRACE_TOKEN, captiveTrace).addClass(
+  REPORT_CACHE_TOKEN,
+  OrderReportCache,
+  [[UNIT_OF_WORK_TOKEN]],
+  'singleton',
+);
 
 const incompleteTrace = new LifecycleTrace();
 
@@ -294,9 +295,8 @@ const incompleteTrace = new LifecycleTrace();
  * pool and nobody registered one. Without `validateOnBuild` this builds happily
  * and only fails at the first request that needs it.
  */
-const incompleteServices: IServiceManifest<OrderScopes> = new ServiceManifest<OrderScopes>()
-  .addValue(TRACE_TOKEN, incompleteTrace)
-  .addClass(UNIT_OF_WORK_TOKEN, OrderUnitOfWork, [[POOL_TOKEN, TRACE_TOKEN]], 'request');
+const incompleteServices: IServiceManifest<OrderScopes> = new ServiceManifest<OrderScopes>().addValue(TRACE_TOKEN,
+  incompleteTrace).addClass(UNIT_OF_WORK_TOKEN, OrderUnitOfWork, [[POOL_TOKEN, TRACE_TOKEN]], 'request');
 
 const flakyTrace = new LifecycleTrace();
 
@@ -306,10 +306,12 @@ const flakyTrace = new LifecycleTrace();
  * are "request"-scoped, so ONE request frame ends up owning three disposables of
  * which two throw.
  */
-const flakyShutdownServices: IServiceManifest<OrderScopes> = orderServices
-  .addValue(TRACE_TOKEN, flakyTrace)
-  .addClass(OUTBOX_TOKEN, UnreliableOutboxChannel, [[UNIT_OF_WORK_TOKEN, TRACE_TOKEN]], 'request')
-  .addClass(SEARCH_INDEX_TOKEN, UnreliableSearchIndexWriter, [[UNIT_OF_WORK_TOKEN, TRACE_TOKEN]], 'request');
+const flakyShutdownServices: IServiceManifest<OrderScopes> = orderServices.addValue(TRACE_TOKEN, flakyTrace).addClass(
+  OUTBOX_TOKEN,
+  UnreliableOutboxChannel,
+  [[UNIT_OF_WORK_TOKEN, TRACE_TOKEN]],
+  'request',
+).addClass(SEARCH_INDEX_TOKEN, UnreliableSearchIndexWriter, [[UNIT_OF_WORK_TOKEN, TRACE_TOKEN]], 'request');
 
 /**
  * How a host should build its provider in DEVELOPMENT. Both flags default to
@@ -317,10 +319,7 @@ const flakyShutdownServices: IServiceManifest<OrderScopes> = orderServices
  * resolve and every build. Turning them on while developing is what converts the
  * two silent lifetime hazards below into loud, early failures.
  */
-const developmentOptions: ServiceProviderOptions = {
-  validateScopes: true,
-  validateOnBuild: true,
-};
+const developmentOptions: ServiceProviderOptions = { validateScopes: true, validateOnBuild: true };
 
 // ── the demonstration ────────────────────────────────────────────────────────
 
@@ -390,14 +389,11 @@ export async function demonstrateLifetimes(): Promise<readonly string[]> {
   await root.disposeAsync();
   const shutdownTeardown = requestTrace.take();
 
-  lines.push(
-    `open frames: "${rootScopeName}" > "${requestScopeName}"`,
+  lines.push(`open frames: "${rootScopeName}" > "${requestScopeName}"`,
     `request 1: 2 validator resolves -> ${validatorInstances} instances (no scope tag = transient)`,
-    `request 1 closed -> ${requestOneTeardown}`,
-    `request 2 closed -> ${requestTwoTeardown}`,
+    `request 1 closed -> ${requestOneTeardown}`, `request 2 closed -> ${requestTwoTeardown}`,
     `each request had its own unit of work: ${distinctUnitsOfWork}; both shared one pool: ${sharedPool}`,
-    `shutdown -> ${shutdownTeardown}`,
-  );
+    `shutdown -> ${shutdownTeardown}`);
 
   // ── 2. a tag with no open frame is not an error ────────────────────────────
   //
@@ -405,10 +401,8 @@ export async function demonstrateLifetimes(): Promise<readonly string[]> {
   // owner and falls back to transient — a fresh pool per resolve, silently. A
   // frameless provider owns nothing, so it has nothing to dispose either.
   const frameless = orderServices.build();
-  const framelessPools = new Set([
-    frameless.resolve<IConnectionPool>(POOL_TOKEN),
-    frameless.resolve<IConnectionPool>(POOL_TOKEN),
-  ]).size;
+  const framelessPools =
+    new Set([frameless.resolve<IConnectionPool>(POOL_TOKEN), frameless.resolve<IConnectionPool>(POOL_TOKEN)]).size;
 
   // With no frame open there is no frame NAME either — `provider.name` reports
   // which frame this provider is, and a provider straight out of `build()` is
@@ -421,10 +415,8 @@ export async function demonstrateLifetimes(): Promise<readonly string[]> {
     framelessHasNoScopeName = true;
   }
 
-  lines.push(
-    `a "singleton" tag with no open frame is not an error: 2 resolves -> ${framelessPools} pools`,
-    `  ...because build() opens no frame at all: it has no scope name (${framelessHasNoScopeName})`,
-  );
+  lines.push(`a "singleton" tag with no open frame is not an error: 2 resolves -> ${framelessPools} pools`,
+    `  ...because build() opens no frame at all: it has no scope name (${framelessHasNoScopeName})`);
 
   // ── 3. the captive dependency ──────────────────────────────────────────────
   //
@@ -464,11 +456,9 @@ export async function demonstrateLifetimes(): Promise<readonly string[]> {
   await strictRoot.disposeAsync();
   captiveTrace.take();
 
-  lines.push(
-    'captive dependency (a singleton holding a request-scoped unit of work):',
+  lines.push('captive dependency (a singleton holding a request-scoped unit of work):',
     `  build() plain             -> held a unit of work owned by no request: ${heldByNoRequest}`,
-    `  build({ validateScopes }) -> ${captiveReport}`,
-  );
+    `  build({ validateScopes }) -> ${captiveReport}`);
 
   // ── 4. the forgotten registration ──────────────────────────────────────────
   //
@@ -503,11 +493,9 @@ export async function demonstrateLifetimes(): Promise<readonly string[]> {
     earlyFailure = `AggregateError naming ${error.errors.length} broken registration (${cause})`;
   }
 
-  lines.push(
-    'a dependency that was never registered:',
+  lines.push('a dependency that was never registered:',
     `  build() plain              -> built fine; the first resolve threw ${lateFailure}`,
-    `  build({ validateOnBuild }) -> ${earlyFailure}`,
-  );
+    `  build({ validateOnBuild }) -> ${earlyFailure}`);
 
   // ── 5. aggregated disposal ─────────────────────────────────────────────────
   //
@@ -535,11 +523,8 @@ export async function demonstrateLifetimes(): Promise<readonly string[]> {
   await flakyRoot.disposeAsync();
   flakyTrace.take();
 
-  lines.push(
-    'disposal is aggregated, never abort-on-first-throw:',
-    `  every teardown still ran -> ${flakyTeardown}`,
-    `  the caller got ${aggregateReport}`,
-  );
+  lines.push('disposal is aggregated, never abort-on-first-throw:', `  every teardown still ran -> ${flakyTeardown}`,
+    `  the caller got ${aggregateReport}`);
 
   return lines;
 }

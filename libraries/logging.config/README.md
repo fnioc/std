@@ -30,9 +30,7 @@ import { ServiceManifestClass } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import '@rhombus-std/logging.config';
 
-const config = new ConfigBuilder()
-  .addJsonFile('logging.json')
-  .build();
+const config = new ConfigBuilder().addJsonFile('logging.json').build();
 
 const services = new ServiceManifestClass();
 const builder = new LoggingBuilder(services);

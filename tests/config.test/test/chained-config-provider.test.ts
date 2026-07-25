@@ -59,9 +59,8 @@ describe('ChainedConfigProvider', () => {
   });
 
   test("getChildKeys combines the chained configuration's own children with earlierKeys, sorted", () => {
-    const inner = new ConfigBuilder()
-      .addInMemoryCollection({ 'Server:Port': '8080', 'Server:Host': 'localhost', 'Logging:Level': 'Info' })
-      .build();
+    const inner = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080', 'Server:Host': 'localhost',
+      'Logging:Level': 'Info' }).build();
     const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     expect([...provider.getChildKeys(['Zeta'], undefined)]).toEqual(['Logging', 'Server', 'Zeta']);
@@ -170,9 +169,7 @@ describe('ChainedConfigProvider disposal', () => {
 
   test('disposes the chained configuration when shouldDisposeConfig is true', () => {
     const inner = new FakeDisposableConfig();
-    const provider = new ChainedConfigProvider(
-      new ChainedConfigSource({ config: inner, shouldDisposeConfig: true }),
-    );
+    const provider = new ChainedConfigProvider(new ChainedConfigSource({ config: inner, shouldDisposeConfig: true }));
 
     provider[Symbol.dispose]();
     expect(inner.disposed).toBe(true);
@@ -196,10 +193,7 @@ describe('addConfig augmentation', () => {
 
   test('a source registered after the chained configuration still overrides it (last-registered wins)', () => {
     const inner = new ConfigBuilder().addInMemoryCollection({ A: '1' }).build();
-    const root = new ConfigBuilder()
-      .addConfig(inner)
-      .addInMemoryCollection({ A: '2' })
-      .build();
+    const root = new ConfigBuilder().addConfig(inner).addInMemoryCollection({ A: '2' }).build();
 
     expect(root.get('A')).toBe('2');
   });
