@@ -2,7 +2,7 @@
   "name": "@rhombus-std/examples.contracts",
   "private": true,
   "version": "0.0.0",
-  "description": "Type-only shared contracts for the example interop matrix: the IGreeting collection element, ServerOptions, IHealthCheck, and IBanner. No runtime code — every reference erases.",
+  "description": "Type-only shared contracts for the examples: the interop matrix (IGreeting, ServerOptions, IHealthCheck, IBanner) plus the di tour's checkout pipeline and open-generic entity chain. No runtime code — every reference erases.",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",

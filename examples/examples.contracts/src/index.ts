@@ -77,3 +77,24 @@ export interface IBanner {
 export interface IServerReport {
   readonly lines: readonly string[];
 }
+
+// ── the di feature tour's contracts ──────────────────────────────────────────
+//
+// The types above belong to the interop scenario the two apps boot through the
+// Generic Host. The two modules below belong to the guided di tour those apps
+// run afterwards, and they are re-exported HERE rather than declared inside an
+// app for one load-bearing reason: a transformer derives a token from a type's
+// PACKAGE-PUBLIC path, so `IRepository<User>` reached through this barrel derives
+// `@rhombus-std/examples.contracts:IRepository<@rhombus-std/examples.contracts:User>`
+// — the exact string the without-transformer app hand-writes. Declared inside an
+// app they would derive an app-private token instead, the two dialects would
+// stop meeting on the string, and the pair could no longer be diffed line for
+// line.
+
+// The checkout pipeline the RESOLUTION demonstration is built on.
+export type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway,
+  IPaymentRouter, IReceipt, IReceiptNumbering } from './resolution-contracts.js';
+
+// The three-deep entity/table/repository chain the OPEN-GENERICS demonstration
+// closes one hole at a time.
+export type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from './open-generics-contracts.js';
