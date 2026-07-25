@@ -130,6 +130,7 @@ a union whose every member fails to build: NoSatisfiableUnionError — 1 alterna
 a factory slot with no target: FactoryTargetError — a factory was asked for "selfcheck:IStore" (unregistered); a factory can only defer a lookup, not invent the registration
 a sync resolve while an async build is in flight: AsyncResolutionRequiredError — "selfcheck:IReportService" is mid-construction on the async path; await resolveAsync instead of calling resolve
 disposing a scope that owns a promise: AsyncDisposalRequiredError — this scope owns a promise, which a synchronous teardown cannot settle; await disposeAsync
+resolving from a scope already disposed: ProviderDisposedError — this provider was disposed, and a disposed frame will not build anything new; the caller is holding a reference that outlived its scope
 every failure above shares one root: true
 something else entirely: not a DiError at all — this diagnostic would rethrow rather than guess
 
@@ -146,6 +147,7 @@ classifying a token without parsing it:
   reports:IRepository<$1> — OPEN template, base reports:IRepository, 1 argument(s)
   reports:IPair<reports:User,$2> — OPEN template, base reports:IPair, 2 argument(s)
   reports:IRepository<$01> — closed generic, base reports:IRepository, 1 argument(s)
+  reports:IRepository<$1>#audit — OPEN template, base reports:IRepository, 1 argument(s), keyed off reports:IRepository<$1>
 the parsed view — TokenNode is transient, the string is the identity:
   reports:IRepository<reports:User> — kind=concrete base=reports:IRepository open=false roundTrip=true
   reports:IRepository<$1> — kind=concrete base=reports:IRepository open=true roundTrip=true

@@ -43,7 +43,7 @@
 import type { IServiceManifest } from '@rhombus-std/di.core';
 import { closeSignatures, closeToken, isFactoryRef, isLiteralRef, isOpenToken, isTypeArgRef, isUnionSlot, Matcher,
   parseSlot, parseToken, RESOLVER_TOKEN, serialiseSlot, Specificity, Substituter, TokenNode, TokenRewriter, TokenWalker,
-  typeArg, union, Validator } from '@rhombus-std/di.core';
+  typeArg, union, unkeyedToken, Validator } from '@rhombus-std/di.core';
 import type { ConcreteNode, DepSignatures, DepSlot, FactoryNode, FactoryRef, HoleNode, LiteralNode, LiteralRef,
   ManifestEntry, OpenRegistration, ParsedToken, ProviderNode, Registration, Token, TypeArgRef, Union,
   UnionNode } from '@rhombus-std/di.core';
@@ -162,23 +162,31 @@ export function addReportingFixture(services: IServiceManifest<'singleton'>): IS
 
 /**
  * The SHALLOW string edge: `parseToken` splits `base<a,b>` into its base and
- * top-level arguments, and `isOpenToken` answers "does this contain a hole
- * anywhere". Neither builds a tree, and both are grammar-aware where a regex is
- * not — a `<` inside a quoted literal argument does not open a nesting level.
+ * top-level arguments, `isOpenToken` answers "does this contain a hole
+ * anywhere", and `unkeyedToken` drops a trailing `#key`. None builds a tree, and
+ * all are grammar-aware where a regex is not — a `<` inside a quoted literal
+ * argument does not open a nesting level.
  *
  * Reach for these when the question is about the token's SHAPE. Reach for
  * `TokenNode` (below) when you need to look inside it.
  *
- * @param token Any token string.
+ * @param token Any token string, keyed or not.
  * @returns A human-readable classification.
  */
 export function classify(token: Token): string {
-  const parsed: ParsedToken | undefined = parseToken(token);
+  // Strip the key BEFORE asking about shape. A key is a `#suffix` on an
+  // otherwise ordinary token and can neither introduce nor remove a hole, so
+  // classifying the raw string would read `reports:IRepository<$1>#audit` as a
+  // closed generic — putting the two spellings of one keyed registration into
+  // disagreement about whether they name a template.
+  const bare = unkeyedToken(token);
+  const parsed: ParsedToken | undefined = parseToken(bare);
   if (parsed === undefined) {
     return `${token} — not generic (no top-level arguments)`;
   }
-  const openness = isOpenToken(token) ? 'OPEN template' : 'closed generic';
-  return `${token} — ${openness}, base ${parsed.base}, ${parsed.args.length} argument(s)`;
+  const openness = isOpenToken(bare) ? 'OPEN template' : 'closed generic';
+  const keyed = bare === token ? '' : `, keyed off ${bare}`;
+  return `${token} — ${openness}, base ${parsed.base}, ${parsed.args.length} argument(s)${keyed}`;
 }
 
 // ── 2. the parsed tree ───────────────────────────────────────────────────────
@@ -536,16 +544,19 @@ export function demonstrateTokenAbi(services: Iterable<ManifestEntry>): readonly
   lines.push('a manifest is data — every registration, in authoring order:');
   lines.push(...describeRegistrations(services));
 
-  // Shape questions, answered at the string edge. The last two are the pair
-  // worth staring at: ONE hole is enough to make a token a template even with a
-  // concrete argument beside it, and `$01` is not a hole at all, so a token
-  // spelled that way is a closed generic that no closing will ever match.
+  // Shape questions, answered at the string edge. Three worth staring at: ONE
+  // hole is enough to make a token a template even with a concrete argument
+  // beside it; `$01` is not a hole at all, so a token spelled that way is a
+  // closed generic no closing will ever match; and a KEYED template is still a
+  // template — the key rides along outside the generic argument list, which is
+  // why the shape question has to be asked of the unkeyed form.
   const shapes: readonly Token[] = [
     CONNECTION_TOKEN,
     USER_REPOSITORY_TOKEN,
     REPOSITORY_TEMPLATE,
     closeToken('reports:IPair', USER_TOKEN, '$2'),
     closeToken('reports:IRepository', '$01'),
+    `${REPOSITORY_TEMPLATE}#audit`,
   ];
   lines.push('classifying a token without parsing it:');
   for (const token of shapes) {

@@ -218,6 +218,18 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   lines.push(stagedFailure('disposing a scope that owns a promise', () => promiseScope.dispose()));
   await promiseScope.disposeAsync();
 
+  // Disposal closes a frame for CONSTRUCTION, not just for teardown. Nothing in
+  // the language stops a caller holding the reference afterwards — it is an
+  // ordinary object and the call typechecks — so the engine has to be the one
+  // that refuses. This is the shape a leak takes in practice: something captured
+  // the provider and outlived the scope that owned it.
+  const closedScope = new ServiceManifest<'singleton'>()
+    .addValue(STORE_TOKEN, { rows: [] })
+    .build()
+    .createScope('singleton');
+  closedScope.dispose();
+  lines.push(stagedFailure('resolving from a scope already disposed', () => closedScope.resolve(STORE_TOKEN)));
+
   // ── and the escape hatch ───────────────────────────────────────────────────
   //
   // Everything above extends ONE root, and that root is declared by di.core —

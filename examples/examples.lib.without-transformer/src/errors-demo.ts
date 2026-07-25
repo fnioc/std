@@ -46,7 +46,8 @@
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
   MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
-  OpenTokenResolutionError, RegistrationValidationError, UnregisteredTokenError } from '@rhombus-std/di.core';
+  OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError,
+  UnregisteredTokenError } from '@rhombus-std/di.core';
 import type { IServiceManifest } from '@rhombus-std/di.core';
 
 // ── the domain ───────────────────────────────────────────────────────────────
@@ -170,6 +171,10 @@ export function diagnose(error: unknown): string {
   }
 
   // ── teardown time ──────────────────────────────────────────────────────────
+  if (error instanceof ProviderDisposedError) {
+    return 'ProviderDisposedError — this provider was disposed, and a disposed frame will not build '
+      + 'anything new; the caller is holding a reference that outlived its scope';
+  }
   if (error instanceof AsyncDisposalRequiredError) {
     return 'AsyncDisposalRequiredError — this scope owns a promise, which a synchronous teardown cannot '
       + 'settle; await disposeAsync';
