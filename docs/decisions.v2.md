@@ -777,14 +777,15 @@ change. `OpenRegistration.pattern` (the parsed top-level args, documented as "ea
 is deleted: it was written at registration and read nowhere, and its contract is exactly the
 retired rule.
 
-Two known gaps stay OPEN, both pinned by tests rather than fixed, because both are grammar
-decisions of their own: `materialise` still classifies with the string-grammar `isOpenToken`, which
-requires the closing `>` to be the token's last character, so a KEYED open template
-(`pkg:IRepo<$1>#k`, reachable via `.withKey`) reads as closed and registers as an exact holey entry
-no closing can resolve. Moving the classifier onto `TokenNode.tryParse` + `TokenNode.isOpen` would
-fix that and drop the string grammar's second parser, but it also flips `$0` from not-a-hole
-(`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole (the typed parser accepts any digits), which
-`token-grammar.test.ts` currently pins.
+One known gap stayed OPEN at the time, pinned by a test rather than fixed: `materialise`
+classified with the string-grammar `isOpenToken`, which requires the closing `>` to be the token's
+last character, so a KEYED open template (`pkg:IRepo<$1>#k`, reachable via `.withKey`) read as
+closed and registered as an exact holey entry no closing could resolve. Moving the classifier onto
+`TokenNode.tryParse` + `TokenNode.isOpen` would fix that and drop the string grammar's second
+parser, but it also flips `$0` from not-a-hole (`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole
+(the typed parser accepts any digits), which `token-grammar.test.ts` pins. — **CLOSED by §126**,
+which classifies on the BASE token instead: a key suffix can neither introduce nor remove a hole,
+so the fix needs no new parser and leaves the `$0` question untouched.
 
 _Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
 guard's shape (reject only what can never match, on the typed tree) is Claude's.
@@ -810,3 +811,82 @@ by construction: identical templates score equally and fall to the latest index 
 registration order and now does so regardless of order, and distinct arities never share a bucket
 slot to contend for. _ME-divergent: the reference DI has no most-specific-wins rule (its open
 generics cannot carry a concrete arg at all, so nothing overlaps)._
+
+---
+
+## §126 — The di correctness sweep: keyed identity, open-template identity, and use-after-dispose
+
+A general audit of `libraries/di.core` and `libraries/di` for correctness bugs and vestigial code,
+run on top of §124/§125. Everything below was reproduced against the built bundle before it was
+touched. The findings cluster: most of them are one identity question — _what token, exactly, does
+this operation name?_ — answered inconsistently by two sides of the same seam.
+
+**Keyed registration.** A keyed registration lives under the composed token `base#key`
+(`keyedToken`), but three places named the bare base instead.
+
+- `materialise` asked `isOpenToken` about the COMPOSED token. The string grammar cannot see a hole
+  past a key, so a keyed open template classified CLOSED and landed as an exact entry on a literal
+  holey string — a dead registration, no error. Classification moves to the BASE token, which the
+  key cannot affect, and everything downstream already handled the keyed case (`TokenNode` parses
+  `base<args>#key`, `openEntry`'s `baseKey` yields the `base#key` the open table is indexed by,
+  `Matcher` compares template key against ground key). `addFactory`/`addValue` gain the same reach.
+  This is the §124 gap, closed without the parser swap that entry contemplated.
+- `tryAdd*` probed `hasRegistrations(base)` and `replace*` called `removeRegistrations(base)` while
+  their add path composed `base#key`. So a keyed `tryAdd` was dropped whenever the UNKEYED token
+  happened to be registered, two `tryAdd`s under different keys collided, and a keyed `replace`
+  DELETED the unkeyed registrations while merely appending a second keyed one. All six verbs now
+  compose through `keyedToken`, which di.core exports package-internally for them.
+
+**Open-entry identity.** An open entry has two names — its TEMPLATE (`pkg:IRepo<$1>`) and the
+canonical BASE it buckets under (`pkg:IRepo`). `removeRegistrations` matched only the base,
+`hasRegistrations` only the template, so no query could satisfy both: `removeAll` handed a template
+removed nothing, and `replace` on a template therefore accumulated duplicates without bound
+(masked at resolve time by the ranked scan). Removal now accepts EITHER name; dedup still accepts
+the template alone. The asymmetry is deliberate: removal is the "drop everything filed under this
+name" verb (the reference `RemoveAll(IRepo<>)` affordance, already pinned by a test), while dedup
+is identity-exact — `pkg:IRepo` and `pkg:IRepo<$1>` are different services.
+
+**Collections aggregate every matching template.** `#collectionRegistrations` reached the open
+table through `#lookup`, which returns at most ONE registration and only when the exact list is
+empty. So several templates covering one closing collapsed to the winner, and an exact registration
+of the closing suppressed the open closings entirely. `#lookup` splits into `#closings(token)` —
+every match, ranked most-specific-first, memoized per closed token — and a thin `#lookup` returning
+`closings[0]`, so singular resolution is unchanged and the memo still guarantees ONE `Registration`
+object per closing (bare-`T` and the aggregate element therefore share a frame-cache slot). ORDER
+is the new rule: the aggregate's last element must be what bare-`T` yields, so the exact list comes
+LAST and the closings are reversed out of their rank; registration order holds within each group.
+
+**Use after dispose.** `#disposed` was read only by `dispose`/`disposeAsync` themselves. A closed
+scope kept resolving, and anything it built landed in the `owned` list that a second (idempotent)
+`dispose()` never re-drains — constructed, cached, silently leaked undisposed. Every entry point,
+`createScope` and the injected `IResolver` view included, now raises `ProviderDisposedError`, the
+reference's `ObjectDisposedException` behaviour. `dispose`/`disposeAsync` stay unguarded.
+
+**Smaller repairs.** A `FactoryRef` slot is satisfiable only when its TARGET resolves — greedy
+selection used to accept it unconditionally and then hard-fail, where an unregistered plain token
+makes it fall through to a shorter signature; the more actionable `FactoryTargetError` is still
+raised when a missing target is the sole obstacle. `EmptyServiceProvider`'s keyed PLURAL overloads
+return `[]` instead of throwing / returning `undefined` (`IRequiredResolver`: "0 matches yields
+`[]` — never throws on count"). `#resolveKeyed` restores the caller's `pattern.lastIndex`.
+`seal()`'s `Object.freeze` on the two Maps is deleted — it seals a Map's own properties, not its
+entry slots, so a "frozen" sealed map still accepts `set`; the per-token LISTS are the real
+immutability and `ReadonlyMap` is the rest. `FactoryTargetError.reason` narrows to
+`"unregistered"`: `"not-a-class"` lost its referent when the three authoring kinds collapsed into
+one `produce` closure, and nothing has ever constructed it.
+
+**Two findings deliberately NOT acted on**, both being design calls rather than defects:
+
+- `validateScopes` is defeated inside a `Union` slot. A member's `ScopeValidationError` is caught
+  by `#resolveUnion`'s fall-through and the next member wins, so the violation is silently skipped.
+  Whether a validation failure should be a hard stop or a soft miss inside a union is a semantics
+  question about what "the first member that BUILDS" means, not an implementation slip.
+- A non-canonical spelling of a closed token bypasses its exact registration. `#lookup` probes the
+  exact map with the RAW request string but reaches the open table through the CANONICALISED parse,
+  so `resolve("app:IR< app:User >")` is served by the `app:IR<$1>` template even though an exact
+  `app:IR<app:User>` is registered — exact-beats-open violated, two identities for one service.
+  The honest fix is to canonicalise at the registration boundary, which changes the stored map key
+  and therefore what `hasRegistrations`, `removeRegistrations`, and `#resolveKeyed`'s prefix scan
+  all compare against. That is a wire-grammar decision, not a patch.
+
+_Claude's calls throughout, on the owner's direction to sweep the family; the collection ordering
+rule and the removal/dedup asymmetry are the two that chose between defensible alternatives._
