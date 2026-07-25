@@ -1,5 +1,6 @@
 import { AsyncDisposalRequiredError, type IResolver, type IServiceProvider, ProviderDisposedError, RESOLVER_TOKEN,
   ServiceManifest } from '@rhombus-std/di';
+import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
 import { AsyncDisposableThing, DisposeLog, NonDisposable, SyncDisposable, T } from './fixtures.js';
 
@@ -394,5 +395,75 @@ describe('a disposed provider rejects further use', () => {
   test('dispose stays idempotent — closing twice is still a no-op', () => {
     const scope = disposedScope();
     expect(() => scope.dispose()).not.toThrow();
+  });
+
+  test('a held FACTORY callable is guarded too — it builds long after it was minted', () => {
+    const log = new DisposeLog();
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.A, () => new SyncDisposable('A', log), [[]], 'singleton');
+
+    const scope = services.build().createScope('singleton');
+    const make = scope.resolveFactory<Func<[], SyncDisposable>>(T.A);
+    expect(make()).toBeInstanceOf(SyncDisposable);
+
+    scope.dispose();
+    expect(log.order).toEqual(['A']);
+
+    // Without the guard this builds a second instance into the drained frame,
+    // where the idempotent second `dispose()` never reaches it.
+    expect(() => make()).toThrow(ProviderDisposedError);
+    scope.dispose();
+    expect(log.order).toEqual(['A']);
+  });
+
+  test('a PARAMETERIZED factory callable is guarded on the same terms', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, NonDisposable, [['pkg:label']], 'singleton');
+
+    const scope = services.build().createScope('singleton');
+    const make = scope.resolveFactory<Func<[string], NonDisposable>>(T.Service, ['pkg:label']);
+    expect(make('first').label).toBe('first');
+
+    scope.dispose();
+    expect(() => make('second')).toThrow(ProviderDisposedError);
+  });
+});
+
+// Disposal does NOT cascade to child scopes, so a child outlives its parent's
+// frame. A parent-scoped registration resolved from that live child would be
+// cached and owned by the CLOSED parent frame — the same leak the provider-level
+// guard exists to prevent, reached one level down.
+describe('a disposed scope FRAME rejects ownership from a live child', () => {
+  test('a child resolving a parent-scoped registration throws instead of leaking', () => {
+    const log = new DisposeLog();
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.addFactory(T.A, () => new SyncDisposable('A', log), [[]], 'singleton');
+
+    const app = services.build().createScope('singleton');
+    const req = app.createScope('request');
+    expect(req.resolve(T.A)).toBeInstanceOf(SyncDisposable);
+
+    app.dispose();
+    expect(log.order).toEqual(['A']);
+
+    expect(() => req.resolve(T.A)).toThrow(ProviderDisposedError);
+    // Nothing was stranded in the closed frame for the no-op re-dispose to miss.
+    app.dispose();
+    expect(log.order).toEqual(['A']);
+  });
+
+  test('the child stays usable for everything the closed frame does not own', () => {
+    let services = new ServiceManifest<'singleton' | 'request'>();
+    services = services.addValue(T.Config, { v: 1 });
+    services = services.addClass(T.B, NonDisposable, [[{ value: 'b' }]], 'request');
+
+    const app = services.build().createScope('singleton');
+    const req = app.createScope('request');
+    app.dispose();
+
+    // A transient registration owns nothing, and a request-scoped one is owned
+    // by the child's OWN live frame.
+    expect(req.resolve(T.Config)).toEqual({ v: 1 });
+    expect(req.resolve(T.B)).toBeInstanceOf(NonDisposable);
   });
 });

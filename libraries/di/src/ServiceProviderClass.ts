@@ -331,6 +331,14 @@ class Scope {
   /** Owned instances in construction order — disposed in reverse. */
   readonly owned: unknown[] = [];
 
+  /**
+   * Set when the provider that opened this frame closed it. Disposal does NOT
+   * cascade to child scopes, so a child outlives its parent's frame and would
+   * otherwise keep caching into it — the flag is what lets `#resolveWith` refuse
+   * a CLOSED owner rather than own an instance nothing will ever drain.
+   */
+  disposed = false;
+
   public constructor(
     /** This scope's name — must match the registration's lifetime tag. */
     public readonly name: string,
@@ -869,6 +877,18 @@ export class ServiceProviderClass<S extends string = string> implements IService
       ? ServiceProviderClass.#findOwner(vantage, registration.scope)
       : undefined;
 
+    // ── The owning frame must still be OPEN. `#assertLive` guards THIS provider,
+    // but disposal does not cascade, so a live child scope can still reach a
+    // parent frame whose provider was closed — and an instance cached there is
+    // the exact leak the dispose guard exists to prevent (a second, idempotent
+    // `dispose()` never re-drains it). Refuse loudly instead. A transient
+    // registration has no owner and so cannot leak; it is unaffected.
+    if (owner?.disposed) {
+      throw new ProviderDisposedError(
+        `resolve "${token}" into the closed "${owner.name}" scope`,
+      );
+    }
+
     // ── Scope validation (`validateScopes`). A scope tag with no matching open
     // frame would fall back to a transient — the central-principle fallback —
     // which is exactly the reference validator's hazard surface: a "scoped"
@@ -1215,6 +1235,13 @@ export class ServiceProviderClass<S extends string = string> implements IService
    *
    * The closure captures `owningFrame`. §5.4 holds at call time: the target's
    * deps resolve relative to the scope that owns the factory-holding instance.
+   *
+   * Both returned callables open with the same use-after-dispose guard the
+   * public entry points and the provider view do. A factory is minted during one
+   * resolve and INVOKED arbitrarily later — typically off a slot injected into a
+   * long-lived instance — so the guard on the minting call says nothing about the
+   * call that builds; without it a closed scope keeps constructing into a frame
+   * nothing will drain again.
    */
   #makeFactory(
     ref: FactoryRef,
@@ -1237,7 +1264,10 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // stored instance every call) and the strict zero-arg factory alike — with
     // the kinds collapsed, no target-shape branch is needed.
     if (callerParams === undefined) {
-      return () => sp.#resolve<unknown>(ref.type, owningFrame, [], false);
+      return () => {
+        sp.#assertLive(`invoke the factory for "${ref.type}"`);
+        return sp.#resolve<unknown>(ref.type, owningFrame, [], false);
+      };
     }
 
     // Parameterized mode: the target's signatures ride on its registration
@@ -1253,8 +1283,9 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // params-claimed slots and resolving the remainder from the container.
     // A fresh cycle stack per call — the factory runs outside the resolve that
     // created it.
-    return (...callArgs: unknown[]) =>
-      sp.#buildPartitioned(
+    return (...callArgs: unknown[]) => {
+      sp.#assertLive(`invoke the factory for "${ref.type}"`);
+      return sp.#buildPartitioned(
         ref.type,
         target,
         targetSignature as readonly DepSlot[] | undefined,
@@ -1262,6 +1293,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
         callArgs,
         owningFrame,
       );
+    };
   }
 
   /**
@@ -1834,9 +1866,11 @@ export class ServiceProviderClass<S extends string = string> implements IService
     throwDisposalFailures(failures);
   }
 
-  /** Drops owned references after disposal so they can be collected. */
+  /** Drops owned references after disposal so they can be collected, and marks
+   * the frame closed so a still-live CHILD scope cannot cache into it. */
   #clear(): void {
     if (this.#frame) {
+      this.#frame.disposed = true;
       this.#frame.cache.clear();
       this.#frame.owned.length = 0;
     }
