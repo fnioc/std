@@ -491,8 +491,39 @@ consulting the checker. Two nodes get no anchor and are skipped: one a stage **m
 `factory.New*` (synthesized flag, no Original link), and one whose Original lands in a **different
 file** — which is exactly the inline stage's deep-cloned sugar bodies, since the clone hook records
 the side-parsed body node as the clone's original. Both belong to the artifacts path, so the two
-mechanisms partition cleanly: a minted node has no parse anchor by construction, and an artifacts
-entry was resolved while the tree was still pristine.
+mechanisms partition cleanly: a minted node has no parse anchor by construction, and the artifacts
+path answers for the rest.
+
+### Artifacts entries are not automatically pass-0 — anchor what you RECORD
+
+It is tempting to read "the inline stage resolved this at the original call site" as "so it is
+pristine". It is not. Substitution happens on whatever pass the inline visitor first **reaches** a
+sugar call, and the visitor does not descend past a match — so a registration sitting in receiver
+(or argument) position under another sugar call waits a pass, and the primitive stages rewrite
+what is inside its arguments while it waits:
+
+```ts
+services
+  .addValue({ clockToken: tokenfor<IClock>(), retries: 3 }) // waits: it is the receiver
+  .addClass<IWidget>(Widget); // inlines on pass 0
+```
+
+On pass 0 the outer `addClass` substitutes and the receiver is spliced verbatim; also on pass 0
+the token stage lowers the `tokenfor<IClock>()` inside that object literal, rebuilding the literal
+through `factory.Update*`. Only on pass 1 does `addValue` substitute — and `callArguments(call)`
+now hands back the **rebuilt** literal.
+
+That matters for any artifacts field holding a **node** rather than a resolved type.
+`PrimitiveUse.ValueArg` is the only one, and its two consumers (the token stage's
+`tokenfor(value)` / `tokenof(value)` branches and the signature stage's artifacts branch) hand it
+straight to the checker. Typing a rebuilt node resolves the enclosing call's overloads, which
+contextually types the minted symbol-less literals downstream stages produced, and
+`getContextualTypeForObjectLiteralElement` nil-derefs — the same crash parse-anchoring exists to
+prevent, arriving by a route no matcher guard can see. So the rule extends: **anchor the node you
+RECORD, not only the node you match.** `fileState.anchorValueArg` does that, pairing each spliced
+argument with the pass-0 argument at the same index and falling back to the Original chain;
+a shape with no parse node behind it records `nil`, every consumer reads that as "not a registered
+value argument", and the emit sweep names the surviving primitive instead of the process dying.
 
 Anchoring costs nothing in expressiveness, because **every checker question this engine asks is a
 question about source-written syntax** — which primitive is this callee, which overload does this

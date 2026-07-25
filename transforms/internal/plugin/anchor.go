@@ -49,11 +49,28 @@ import (
 // the pass-0 node is not an approximation; it is the question the stage meant to
 // ask, and the checker's own per-node memoization makes the repeat queries cheap.
 //
+// ANCHORING ALSO MAKES THE ANSWERS RIGHT, NOT ONLY SAFE. A chain link over an
+// already-lowered registration used to have its overload resolved against the
+// LOWERED receiver — and di.extras states outright that the lowered 5-argument form
+// satisfies only `ServiceManifestClass`'s implementation signature, never the public
+// overload list a hand-writer is held to. The question the stage means to ask is
+// "which sugar did the AUTHOR call", so resolving against the pass-0 receiver is
+// the correct answer as well as the surviving one.
+//
 // The synthetic (inline-substituted) counterparts are NOT lost by this: they are
-// resolved once, at substitution time, into inlinetransform.Artifacts, and every
-// stage consults that table alongside its source-written matcher. Anchored
-// matching and artifacts partition cleanly — a minted node has no parse anchor by
-// construction, and an artifacts entry was resolved while the tree was pristine.
+// resolved at substitution time into inlinetransform.Artifacts, and every stage
+// consults that table alongside its source-written matcher. Anchored matching and
+// artifacts partition cleanly — a minted node has no parse anchor by construction.
+//
+// AN ARTIFACTS ENTRY IS NOT AUTOMATICALLY SAFE, THOUGH, AND THAT IS THE SUBTLE
+// HALF. Substitution happens on whatever pass the inline visitor first REACHES a
+// sugar call, which is not always pass 0 — the visitor does not descend past a
+// match, so a registration in receiver or argument position under another sugar
+// call waits, and the primitive stages rewrite its arguments while it waits. Any
+// artifacts field holding a NODE must therefore be anchored when it is RECORDED,
+// or it carries the rewritten tree straight past every matcher into the checker.
+// `PrimitiveUse.ValueArg` is the one such field; inlinetransform.fileState's
+// anchorValueArg is where that is enforced.
 type CheckerAnchor func(node *shimast.Node) *shimast.Node
 
 // NewCheckerAnchor builds the anchor for one file's pass: nodes resolve through

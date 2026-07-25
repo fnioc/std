@@ -305,6 +305,13 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		Params: strippedParamNames(body.Params),
 		Args:   callArguments(call),
 	}
+	// The arguments SPLICED into the body come from the CURRENT tree (above), so
+	// they carry whatever earlier passes lowered. The arguments the checker is
+	// later asked about must not: pair each spliced argument with the pass-0 node
+	// at the same position so registerPrimitives can record the parse node instead.
+	// See anchorValueArg for why the pairing is positional rather than a walk back
+	// up the Original chain.
+	argAnchors := positionalArgAnchors(in.Args, callArguments(anchored.AsCallExpression()))
 	if target.resolved.Kind != KindFunction {
 		in.Receiver = call.Expression.AsPropertyAccessExpression().Expression
 	} else {
@@ -332,8 +339,25 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	// stage; a KEYED call keeps it, and the stage lowers it to the key string.
 	res.Expr = st.elideUnkeyedKeyArg(res.Expr, body, env)
 
-	st.registerPrimitives(res.Expr, body, env)
+	st.registerPrimitives(res.Expr, body, env, argAnchors)
 	return wrapForPrecedence(st.ec, res.Expr), true
+}
+
+// positionalArgAnchors pairs each CURRENT-tree argument with the pass-0 argument
+// at the same index on the anchored call. A rewrite never changes a call's
+// argument COUNT — the visitor rebuilds a call through factory.Update*, which
+// replaces arguments one for one — so index equality is the pairing; a length
+// mismatch (nothing produces one today) yields an empty map, which degrades every
+// lookup to the Original-chain fallback rather than mispairing.
+func positionalArgAnchors(current, anchored []*shimast.Node) map[*shimast.Node]*shimast.Node {
+	if len(current) == 0 || len(current) != len(anchored) {
+		return nil
+	}
+	pairs := make(map[*shimast.Node]*shimast.Node, len(current))
+	for i, arg := range current {
+		pairs[arg] = anchored[i]
+	}
+	return pairs
 }
 
 // normalizeInstantiationArgs strips the type arguments from an
@@ -518,7 +542,16 @@ func (st *fileState) keyofArgIsKeyed(keyofCall *shimast.Node, env map[string]*sh
 // call (a call whose identifier callee is one of the body's primitive imports)
 // in artifacts, binding its type arguments to the checker types captured at the
 // original call. The nameof stage reads these to lower a call it cannot anchor.
-func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) {
+//
+// argAnchors pairs each spliced argument with its pass-0 counterpart, so a
+// VALUE-argument primitive records a node the checker may safely be asked about
+// (anchorValueArg).
+func (st *fileState) registerPrimitives(
+	expr *shimast.Node,
+	body *ResolvedBody,
+	env map[string]*shimchecker.Type,
+	argAnchors map[*shimast.Node]*shimast.Node,
+) {
 	walk(expr, func(n *shimast.Node) bool {
 		if n.Kind != shimast.KindCallExpression {
 			return false
@@ -557,16 +590,56 @@ func (st *fileState) registerPrimitives(expr *shimast.Node, body *ResolvedBody, 
 			}
 		}
 		use := PrimitiveUse{Name: prim, TypeArgs: bound, Composed: composed}
-		// A VALUE-argument primitive (signatureof(ctor)) records its spliced
-		// argument node — the ORIGINAL call-site expression, still program-bound,
-		// so the signatureof stage can checker-query it. A TYPE-argument primitive
-		// (nameof<T>()) has no value argument and leaves this nil.
+		// A VALUE-argument primitive (signatureof(ctor), tokenof(value)) records the
+		// PARSE node behind its spliced argument, because the consuming stage's only
+		// use for it is a checker query. A TYPE-argument primitive (nameof<T>()) has
+		// no value argument and leaves this nil.
 		if args := n.AsCallExpression().Arguments; args != nil && len(args.Nodes) == 1 {
-			use.ValueArg = args.Nodes[0]
+			use.ValueArg = st.anchorValueArg(argAnchors, args.Nodes[0])
 		}
 		st.artifacts.PrimitiveCalls[n] = use
 		return false
 	})
+}
+
+// anchorValueArg resolves a spliced value argument to the PARSE node the checker
+// may be asked about, or nil when there is none.
+//
+// WHY THIS IS NOT JUST `args.Nodes[0]`. A sugar call is substituted on whatever
+// pass the visitor first REACHES it, and that is not always pass 0: the visitor
+// does not descend past a match, so a registration sitting in receiver or argument
+// position under another sugar call waits a pass — and while it waits, the
+// primitive stages lower whatever is inside its arguments. By the time it
+// substitutes, `callArguments(call)` can hand back an argument earlier passes
+// rebuilt or replaced. Recording that node made `ValueArg` a rewritten node, and
+// its two consumers — the nameof stage's tokenfor/tokenof value branches and the
+// signatureof stage's artifacts branch — feed it straight to the checker. Typing
+// it resolves the enclosing call's overloads, which contextually types the minted,
+// symbol-less literals downstream stages produced, and the checker nil-derefs
+// (plugin.CheckerAnchor). Concretely:
+//
+//	services.addValue({ tok: tokenfor<IClock>(), retries: 3 }).addClass<IWidget>(W)
+//
+// pass 0 inlines the OUTER addClass and leaves the receiver alone, nameof rebuilds
+// that object literal to lower the tokenfor inside it, and pass 1 inlines
+// `addValue` over the REBUILT literal.
+//
+// WHY POSITIONAL FIRST, PARSE-ANCHOR SECOND. The positional pairing is exact and
+// total: it answers even when an earlier pass replaced the whole argument with a
+// MINTED node (`addValue(tokenfor<IClock>())` lowers its argument to a fresh string
+// literal), which has no Original link and so no parse anchor at all. The
+// Original-chain anchor then covers the residue the pairing cannot see — an
+// argument a body nested inside another expression rather than passing straight
+// through, whose enclosing node is not itself one of the call's arguments.
+//
+// A miss records nil. The consuming stages treat that as "not a registered value
+// argument", so the primitive call stays in the tree and the emit sweep reports it
+// as unlowered — a named diagnostic instead of a process-killing panic.
+func (st *fileState) anchorValueArg(argAnchors map[*shimast.Node]*shimast.Node, arg *shimast.Node) *shimast.Node {
+	if anchored, ok := argAnchors[arg]; ok {
+		return anchored
+	}
+	return st.parseAnchor(arg)
 }
 
 // composedTypeArg builds a composed-generic descriptor for a spelled type node

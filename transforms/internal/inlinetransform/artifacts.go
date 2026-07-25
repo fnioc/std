@@ -12,11 +12,18 @@ import (
 // (the callee clone has no symbol).
 //
 // TypeArgs carries a TYPE-argument primitive's bound arguments (nameof<T>()).
-// ValueArg carries a VALUE-argument primitive's spliced argument node
-// (signatureof(ctor)) — the ORIGINAL, program-bound call-site argument, so the
-// signatureof stage can checker-query it even though the primitive's own callee
-// is synthetic. It is captured at registration time, so it survives any later
-// tree reconstruction between the inline stage and the consuming stage.
+// ValueArg carries a VALUE-argument primitive's argument (signatureof(ctor),
+// tokenof(value)) as the PARSE node behind it, so the consuming stage can
+// checker-query it even though the primitive's own callee is synthetic.
+//
+// IT IS A PARSE NODE, NOT THE SPLICED ONE, AND THAT IS LOAD-BEARING. Substitution
+// happens on whatever pass the visitor first reaches the sugar call, which is not
+// always pass 0, so the argument spliced into the body may be one earlier passes
+// already rewrote. Handing that to the checker walks it into the minted,
+// symbol-less literals those passes produced and nil-derefs it
+// (plugin.CheckerAnchor). fileState.anchorValueArg resolves the parse node at
+// record time and records nil when there is none; every consumer treats nil as
+// "not a registered value argument".
 //
 // Composed carries a COMPOSED-GENERIC type argument (`tokenfor<IOptions<T>>()`)
 // whose base names a body-external imported type and whose leaves bind from the
