@@ -15,6 +15,7 @@
     "lint": "bun scripts/derive-publish-config.ts --check && bun --filter '*' lint",
     "format": "dprint fmt",
     "format:check": "dprint check",
+    "knip": "knip --tsConfig tsconfig.knip.json --no-exit-code",
     "typecheck": "tsc -b",
     "release": "semantic-release"
   },

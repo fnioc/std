@@ -2,6 +2,11 @@
 bun = "latest"
 go = "latest"
 node = "24"
+# The dead-code scanner behind `bun run knip` (config: knip.jsonc). Pinned to an
+# exact version, not "latest": the scan's output is a committed worklist
+# (knip-report.md), so a silent minor bump that changes what counts as a
+# reference would make the report and the tool disagree with no diff to show it.
+"npm:knip" = "6.29.0"
 pnpm = "10.34.4"
 
 # Points git at .githooks/ on directory entry so the pre-commit format check is
