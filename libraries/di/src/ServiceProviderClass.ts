@@ -23,7 +23,7 @@
 
 import { closeSignatures, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken,
   isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, type ServiceProviderOptions, Specificity,
-  type Token, TokenNode, type TypeArgRef, type Union } from '@rhombus-std/di.core';
+  type Token, TokenNode, type TypeArgRef, type Union, unkeyedToken } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
@@ -644,8 +644,9 @@ export class ServiceProviderClass<S extends string = string> implements IService
     }
 
     // An open template is not resolvable. Classification stays on the string
-    // predicate (the registration-boundary grammar). Miss, never throw.
-    if (isOpenToken(token)) {
+    // predicate (the registration-boundary grammar), over the UNKEYED token so a
+    // keyed template is seen for what it is. Miss, never throw.
+    if (isOpenToken(unkeyedToken(token))) {
       return NO_CLOSINGS;
     }
 
@@ -832,7 +833,10 @@ export class ServiceProviderClass<S extends string = string> implements IService
       }
       // A holey token can never resolve — it is a template naming a FAMILY of
       // tokens. Distinguish that from a plain miss so the fix is actionable.
-      if (isOpenToken(token)) {
+      // Over the UNKEYED token: `resolve("pkg:IRepo<$1>", "redis")` composes
+      // `pkg:IRepo<$1>#redis`, whose hole the string grammar cannot see past the
+      // key, and the unbound hole is the actionable half of that diagnosis.
+      if (isOpenToken(unkeyedToken(token))) {
         throw new OpenTokenResolutionError(token);
       }
       throw new UnregisteredTokenError(token);

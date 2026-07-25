@@ -35,7 +35,7 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { isOpenToken, TokenNode } from './token/index.js';
+import { isOpenToken, TokenNode, unkeyedToken } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
@@ -127,16 +127,17 @@ type PendingProducer =
  */
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
-  // Classify off the BASE, never the key-composed token. A key suffix can
-  // neither introduce nor remove a hole, but the string grammar cannot see past
-  // one: `parseToken` requires the closing `>` to be the token's LAST character,
-  // so `isOpenToken("pkg:IRepo<$1>#redis")` answers false and a keyed template
-  // used to land as an exact entry on a literal holey string no closing could
-  // ever resolve. The typed side has always handled it — `TokenNode` parses
-  // `base<args>#key`, `baseKey` yields the `base#key` the engine's open table is
-  // indexed by, and `Matcher` compares template key against ground key — so
-  // classifying on the base is all that was missing.
-  const open = isOpenToken(pending.base);
+  // Classify off the UNKEYED base, never the key-composed token. A key suffix
+  // can neither introduce nor remove a hole, but the string grammar cannot see
+  // past one: `parseToken` requires the closing `>` to be the token's LAST
+  // character, so `isOpenToken("pkg:IRepo<$1>#redis")` answers false and a keyed
+  // template used to land as an exact entry on a literal holey string no closing
+  // could ever resolve. `unkeyedToken` covers the key SPELLED INTO the token as
+  // well as the one passed as the tail argument, so the two spellings of one
+  // keyed template agree. The typed side has always handled it — `TokenNode`
+  // parses `base<args>#key`, `baseKey` yields the `base#key` the engine's open
+  // table is indexed by, and `Matcher` compares template key against ground key.
+  const open = isOpenToken(unkeyedToken(pending.base));
   // Union slots reach the engine union-bearing: per-param `#resolveUnion` resolves
   // each union at RESOLVE time and falls through on a member's runtime failure (a
   // ctor that throws at build, a Promise that rejects — union.test's GAP2 /

@@ -579,6 +579,17 @@ describe('errors', () => {
     expect(() => sp.resolve('app/Never<$3>')).toThrow(OpenTokenResolutionError);
   });
 
+  test('a KEYED holey token gets the same diagnosis, not a plain miss', () => {
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, ZeroRepo, [[]]);
+
+    const sp = services.build();
+
+    // `resolve(t, key)` composes `t#key`, past which the string grammar cannot
+    // see the hole. The unbound hole is still the actionable half of the answer.
+    expect(() => sp.resolve(G.RepoTemplate, 'k')).toThrow(OpenTokenResolutionError);
+  });
+
   test('addValue with an open token throws OpenTokenRegistrationError', () => {
     const services = new ServiceManifest();
 

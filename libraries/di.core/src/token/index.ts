@@ -9,20 +9,25 @@ export type { ConcreteNode, FactoryNode, HoleNode, LiteralNode, ProviderNode, Un
 export { RESOLVER_TOKEN_STRING, TokenNode } from './node.js';
 
 // The visitor bases + the ops. `Substituter` (the collapse of the five
-// substitution routines), `Validator` (resolve-side kind guard), `Matcher`
-// (dual-tree unify), `Specificity` (most-specific-wins metric).
+// substitution routines), `Matcher` (dual-tree unify), `Specificity`
+// (most-specific-wins metric), and `Validator` — the resolve-side kind guard,
+// offered to a caller holding a hand-built tree; the engine's own paths reach
+// resolution through `DepSlot`, which cannot spell a malformed one.
 export { Matcher } from './match.js';
 export { Specificity } from './specificity.js';
 export { Substituter } from './substitute.js';
 export { Validator } from './validate.js';
 export { TokenRewriter, TokenWalker } from './visitor.js';
 
-// The parse-at-edges boundary + the two DepSlot-level signature transforms
-// (closing against a binding; union blow-up to concrete overloads at reg time).
+// The parse-at-edges boundary (`parseSlot` / `serialiseSlot`) + the one
+// DepSlot-level signature transform: closing an open template's signatures
+// against a binding. (The registration-time union blow-up to concrete overloads
+// that used to sit alongside it was abandoned — §112.)
 export { closeSignatures, parseSlot, serialiseSlot } from './slot.js';
 
-// The shallow string-grammar classification/compose edge.
-export { closeToken, HOLE_PATTERN, isOpenToken, parseToken } from './edges.js';
+// The shallow string-grammar classification/compose edge, plus the key strip
+// every classification runs first (the string grammar stops at a `#key`).
+export { closeToken, HOLE_PATTERN, isOpenToken, parseToken, unkeyedToken } from './edges.js';
 
 // The gated reference manifest/provider (not on the live resolution path).
 export type { Descriptor, SealedTokenManifest } from './manifest.js';

@@ -374,6 +374,32 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     expect(() => sp.resolve('pkg:IRepo<pkg:IA>', 'other')).toThrow(UnregisteredTokenError);
   });
 
+  test('the key SPELLED INTO the token registers exactly as the tail argument does', () => {
+    // The two spellings of one keyed template must agree, so classification
+    // strips the key off the token before asking the string grammar — which
+    // otherwise stops at the `#` and reads the whole thing as closed.
+    const composed = new ServiceManifest<'singleton'>()
+      .addClass('pkg:IRepo<$1>#k', Alpha, [[]])
+      .build();
+    const split = new ServiceManifest<'singleton'>()
+      .addClass(G.RepoTemplate, Alpha, [[]], 'singleton', 'k')
+      .build();
+
+    expect(composed.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
+    expect(split.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
+    expect(() => composed.resolve('pkg:IRepo<pkg:IA>')).toThrow(UnregisteredTokenError);
+  });
+
+  test('the composed spelling reaches the factory and value rejections too', () => {
+    const services = new ServiceManifest<'singleton'>();
+    expect(() => services.addFactory('pkg:IRepo<$1>#k', () => 1, [[]])).toThrow(
+      OpenTokenRegistrationError,
+    );
+    expect(() => services.addValue('pkg:IRepo<$1>#k', 'x')).toThrow(
+      OpenTokenRegistrationError,
+    );
+  });
+
   test('a keyed open template still rejects the factory and value verbs', () => {
     const services = new ServiceManifest<'singleton'>();
     expect(() => services.addFactory(G.RepoTemplate, () => 1, [[]]).withKey('k')).toThrow(

@@ -3,20 +3,28 @@
 // and COMPOSE one (`base<args>`), without a full parse. The five substitution
 // routines that used to sit alongside these are gone — folded into the ONE
 // `Substituter` reached through the slot edge (`slot.ts`); what remains is the
-// thin string layer the module shrinks to. These preserve the exact routing the
-// registration boundary has today (e.g. `parseToken` requires the closing `>` to
-// be the last character, so a keyed open generic classifies exactly as before).
+// thin string layer the module shrinks to.
+//
+// The one place the string grammar cannot answer for itself is a keyed token:
+// `parseToken` requires the closing `>` to be the LAST character, so it stops at
+// a `#key` suffix. `unkeyedToken` strips that suffix — using the tree parser for
+// the boundary rather than restating the key grammar — and every classification
+// runs on its result.
 //
 // A hole is a token node that is exactly `$N` (decimal N ≥ 1); a token containing
 // a hole in any arg position is an *open template*.
 
 import type { ParsedToken, Token } from '../types.js';
+import { TokenNode } from './node.js';
 
 /**
  * A token node that is exactly a hole: `$N`, decimal N ≥ 1. The single source of
  * the hole grammar — the builder imports this rather than re-declaring it.
  */
 export const HOLE_PATTERN = /^\$[1-9][0-9]*$/;
+
+/** The separator introducing a keyed token's trailing `#key`. */
+const KEY_SEPARATOR = '#';
 
 /**
  * Renders the canonical closed-generic form `base<arg1,arg2>`. With no args,
@@ -111,4 +119,28 @@ export function isOpenToken(token: Token): boolean {
     return false;
   }
   return parsed.args.some(isOpenToken);
+}
+
+/**
+ * `token` with its trailing `#key` removed, or `token` unchanged when it carries
+ * none — the inverse of composing a keyed token, and the pre-step every
+ * open-vs-closed classification takes.
+ *
+ * A key can neither introduce nor remove a hole, but `parseToken` requires the
+ * closing `>` to be the token's LAST character, so `isOpenToken` reads a keyed
+ * template (`pkg:IRepo<$1>#redis`) as closed. Classifying the UNKEYED token is
+ * what makes the two spellings of one keyed registration — composed into the
+ * token, or passed as the tail `key` argument — agree.
+ *
+ * The key boundary comes from the tree parser rather than a third copy of the
+ * key grammar; the result is still a slice of the ORIGINAL string, so nothing
+ * here canonicalises whitespace or quotes on the caller's behalf.
+ */
+export function unkeyedToken(token: Token): Token {
+  const node = TokenNode.tryParse(token);
+  if (node === undefined || node.kind !== 'concrete' || node.key === undefined) {
+    return token;
+  }
+  const suffix = `${KEY_SEPARATOR}${node.key}`;
+  return token.endsWith(suffix) ? token.slice(0, -suffix.length) : token;
 }

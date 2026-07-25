@@ -68,14 +68,16 @@ export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } fr
 // token STRING is the wire identity; `TokenNode` is its transient parsed view.
 // The `TokenNode.*` companion carries the pure ops (parse / tryParse / toString /
 // canonicalise / baseKey / isOpen); the visitor CLASSES carry the mutating/query
-// ops. `closeToken`/`isOpenToken`/`parseToken` are the shallow string-grammar
-// classification/compose edge. Partial closing / most-specific-wins live in the
-// `TokenProvider` reference but are GATED at the engine (see `token/`).
+// ops. `closeToken`/`isOpenToken`/`parseToken`/`unkeyedToken` are the shallow
+// string-grammar classification/compose edge. Partial closing and
+// most-specific-wins have GRADUATED from the `TokenProvider` reference to the
+// engine (§124/§125); what stays gated there is canon-on-miss variance recovery
+// and negative memoization (see `token/`).
 export type { ConcreteNode, FactoryNode, HoleNode, LiteralNode, ProviderNode, UnionNode } from './token/index.js';
 export { TokenNode } from './token/index.js';
 export { Matcher, Specificity, Substituter, TokenRewriter, TokenWalker, Validator } from './token/index.js';
 export { closeSignatures, parseSlot, serialiseSlot } from './token/index.js';
-export { closeToken, isOpenToken, parseToken } from './token/index.js';
+export { closeToken, isOpenToken, parseToken, unkeyedToken } from './token/index.js';
 
 // The intrinsic provider token — a `IResolver`-typed parameter derives it, and
 // the engine resolves it to the live provider view (see `provider-token.ts`).
