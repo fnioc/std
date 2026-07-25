@@ -136,7 +136,7 @@ addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes, key
 
 There is no global, constructor-keyed metadata store — this array **is** the sole signature channel, for both classes (`addClass`) and factories (`addFactory`). Keying it on the registration rather than the constructor function is what lets one JS class back **any number of independent registrations** with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template (see [Open generics](#open-generics) below). `@rhombus-std/di.extras` emits this array inline for every registration it can statically extract a signature from — `addClass<IFoo>(Foo)` lowers to `addClass("pkg:IFoo", Foo, [[...]])`, with no separate prelude call and nothing hoisted. Hand-write it directly for the plugin-less path.
 
-A service with no dependencies states that explicitly with `signatures: [[]]`, never by omitting the argument (omitting it gates the chain instead — see above). A constructor that does take parameters but is registered with `[[]]` throws `MissingMetadataError` at resolve time.
+A service with no dependencies states that explicitly with `signatures: [[]]`, never by omitting the argument (omitting it gates the chain instead — see above). `[[]]` is a declaration, not an absence: a constructor that does take parameters but is registered with `[[]]` is built with **no injected arguments** (its parameters arrive `undefined`), because one empty signature is what you said you wanted. `MissingMetadataError` fires for the different case — a registration carrying **no** signature at all whose producer declares parameters.
 
 ### `addFactory(token, factory, signatures?)` and `addValue(token, value)`
 
@@ -233,10 +233,11 @@ const orderRepo = scope.resolve<IRepository<Order>>(); // "pkg:IRepository<pkg:O
 
 ### Registration rules
 
-- **All-holes only.** Every type-arg position in an open service token must be a hole — `IFoo<$1,$1>` is allowed (repeats mean "match only equal args"); mixing concrete args and holes (`IFoo<$1,User>`) is a registration error.
+- **Concrete args and holes mix freely.** `IFoo<$1,User>` pins its second position and binds the first; `IFoo<$1,$1>` means "match only equal args"; `IFoo<Box<$1>>` nests. Only a template no closing could ever match is rejected: one the token grammar refuses, and a bare hole (`$1`), which names no base to file under.
 - **Class registrations only.** `addValue`/`addFactory` reject an open token — there is no single value or factory that could serve every closing.
 - **The scope tag applies per closing**, not to the template as a whole — `IRepository<A>` and `IRepository<B>` are distinct singletons, each cached in the nearest enclosing frame carrying `tag`, exactly like two unrelated `.as("singleton")` registrations.
-- **Last-registered wins** among multiple open registrations matching the same base + arity (and satisfying any repeated-hole equality constraint) — same semantics as the exact-match list.
+- **Most specific wins** among the open registrations matching one closing, ties broken by last-registered. Once a template may mix concrete args and holes, overlap on one base is the normal case (`IRepo<User,$1>` and `IRepo<$1,$2>` both file under `IRepo`), so recency alone would silently serve the general template to an author who registered the specific one first.
+- **A key rides along.** `addClass("pkg:IRepo<$1>", Impl, sigs, "singleton", "redis")` (or `.withKey("redis")`) files the template under `pkg:IRepo#redis`, and only a keyed closing — `resolve("pkg:IRepo<pkg:User>", "redis")` — reaches it.
 
 ### Resolve-time fallback and memoization
 
@@ -244,7 +245,7 @@ Resolving a token the exact-match map has no entry for falls through, in order:
 
 1. **Memo** — a closed token already synthesized on a previous resolve returns the _same_ `Registration` object (identity-stable — this is what makes per-closing caching correct across repeat resolves).
 2. **Parse.** A non-generic token that misses here is simply unregistered.
-3. **Open-table match** — search open registrations for the same base + arity (respecting repeated-hole equality), most-recently-registered first.
+3. **Open-table match** — search open registrations filed under the same base (and key), most-specific-first with ties to the latest registered, unifying each template against the closing: a concrete arg must match exactly, a hole binds, a repeated label must bind equal.
 4. **Substitute** — the open registration's carried dependency signatures are substituted with the closing's concrete type args (`TypeArgRef` slots become `LiteralRef`s carrying the substituted token).
 5. **Synthesize** a class `Registration` for the closed token — a constructor-wrapping producer that inherits the constructor and scope tag and carries the substituted signatures — and memoize it.
 
@@ -254,10 +255,10 @@ Resolving a token the exact-match map has no entry for falls through, in order:
 
 ### Errors
 
-| Error                                       | Thrown when                                                                                                                                                                                                                                                                  |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenTokenResolutionError(token)`           | `resolve()` (directly or transitively) is asked for a token that still contains an unbound hole.                                                                                                                                                                             |
-| `OpenTokenRegistrationError(token, method)` | `addClass()` is given a service token that mixes concrete args and holes, or `addValue()`/`addFactory()` is given any open token. `method` names the call that rejected it — currently `"add"` (not yet renamed to match the `addClass` verb), `"addValue"`, `"addFactory"`. |
+| Error                                       | Thrown when                                                                                                                                                                                                                                                         |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OpenTokenResolutionError(token)`           | `resolve()` (directly or transitively) is asked for a token that still contains an unbound hole.                                                                                                                                                                    |
+| `OpenTokenRegistrationError(token, method)` | `addClass()` is given an open token no closing could ever match (one the grammar refuses, or a bare hole), or `addValue()`/`addFactory()` is given any open token. `method` names the call that rejected it — currently `"addClass"`, `"addValue"`, `"addFactory"`. |
 
 ### Manual / plugin-less path
 
@@ -472,14 +473,9 @@ The captive-dependency rule holds at call time: the target's own deps are resolv
 
 ### `FactoryTargetError`
 
-Thrown when the container tries to build the factory callable and cannot. Two reasons:
+Thrown when the factory's target token has no registration — there is nothing for the injected callable to build. Register the target with `services = services.addClass(...)` first. `reason` carries the single value `"unregistered"`; a value or factory target is fine (it becomes a thunk returning the stored instance), so there is no "not a class" case.
 
-| Reason           | Meaning                                                                                                                                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `"unregistered"` | The factory's target token has no registration. A factory parameter needs the target registered with `services = services.addClass(...)`.                                                       |
-| `"not-a-class"`  | The target is registered via `addValue` or `addFactory`, not a class. A factory builds its target with `new`; only class registrations qualify. Resolve it directly or change the registration. |
-
-`FactoryTargetError` is thrown when the factory callable is constructed (at owning-class resolution time), not when the callable is invoked.
+`FactoryTargetError` is raised while the owning class's signature is selected, not when the callable is invoked. A factory slot whose target is missing simply makes that signature unsatisfiable, so greedy selection falls through to a shorter one that builds; the error surfaces only when no signature does.
 
 ## Union slots
 
