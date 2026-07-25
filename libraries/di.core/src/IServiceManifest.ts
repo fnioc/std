@@ -578,12 +578,15 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * list keeps registration order, so `#resolveKeyed`'s iteration order and the
    * last-wins semantics are exactly what the authoring order implies.
    *
-   * Deep-freezing the maps and each per-token list means a provider's view is
-   * fixed at build time. Nothing can invalidate it after the fact anyway — a
-   * later `add()` returns a DIFFERENT manifest and leaves this chain untouched —
-   * but the freeze keeps the snapshot honest against the engine, which adds its
-   * own MUTABLE closed-registration memo separately (synthesized closings land
-   * there, never in these sealed maps).
+   * Each per-token LIST is frozen, so a provider can never grow or reorder the
+   * registrations of one token. The two MAPS are read-only by type only:
+   * `Object.freeze` seals a Map's own properties, not its internal entry slots,
+   * so a frozen Map still accepts `set` — freezing them would assert a runtime
+   * guarantee that does not exist. The `ReadonlyMap` in `SealedManifest` is what
+   * holds the line, and nothing can invalidate the snapshot anyway: a later
+   * `add()` returns a DIFFERENT manifest and leaves this chain untouched, and
+   * the engine keeps its synthesized closings in its own MUTABLE memo rather
+   * than in these maps.
    *
    * This is the collection's own concern, so it lives here in di.core. The
    * ENGINE-CONSTRUCTING half — turning this snapshot into a `IServiceProvider` —
@@ -606,8 +609,6 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     for (const list of openRegistrations.values()) {
       Object.freeze(list);
     }
-    Object.freeze(registrations);
-    Object.freeze(openRegistrations);
 
     return { registrations, openRegistrations };
   }

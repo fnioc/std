@@ -132,7 +132,8 @@ export type ManifestEntry =
 /**
  * The sealed, immutable snapshot a `ServiceManifestClass` hands to the engine.
  * `ServiceManifestClass.seal()` materialises its entry stream into these two
- * deep-frozen tables; `@rhombus-std/di`'s `build()` extension reads it to construct the
+ * read-only tables (each per-token list frozen; the Maps are read-only by TYPE,
+ * since `Object.freeze` does not seal a Map's entry slots); `@rhombus-std/di`'s `build()` extension reads it to construct the
  * provider (the engine-constructing half stays in the runtime package). This is
  * the seam that lets the collection live in di.core while provider construction
  * lives in di.

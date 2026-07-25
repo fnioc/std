@@ -325,7 +325,7 @@ There's no built-in root scope — scope names are entirely user-declared tags. 
 
 An **open** template token (`pkg:IRepo<$1>` — any type argument a hole, at any depth) routes into a separate open-registration table instead of the exact map; resolution closes it per requested token. Concrete args and holes mix freely in one service token (`pkg:IRepo<pkg:IUser,$1>`, `pkg:IRepo<app/IBox<$1>>`): a concrete argument has to match the requested closing's exactly, a hole binds whatever the closing carries there, and a repeated hole label (`pkg:IPair<$1,$1>`) only matches equal arguments. Overlapping templates on one base are tried **most-specific first**, ties going to the later registration. A template no closed token could ever match — one the token grammar refuses, or a bare hole (`$1`) naming no base — throws from the registration call itself, including from a `.withKey(...)` whose recomposed token turns out to be open.
 
-`services.seal()` materialises the collection by iterating it, bucketing the entries into two frozen lookup indexes; `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `IServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
+`services.seal()` materialises the collection by iterating it, bucketing the entries into two read-only lookup indexes (each per-token list frozen); `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `IServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
 
 ## `ActivatorUtilities`
 
