@@ -13,10 +13,20 @@
 // registers INTO a manifest it was handed, or takes what it needs (a provider, a
 // way to build one) as an ordinary parameter.
 //
-// Nothing here constructs a manifest, calls `build()`, opens a scope, or resolves
-// from a composition root's container. Where a demonstration needed one of those
-// it lives in the example apps instead — and the seam it left behind is named at
-// the point it moved.
+// Nothing here constructs a manifest, calls `build()`, or decides that there
+// should be a container. Where a demonstration needed one of those it lives in
+// the example apps instead — and the seam it left behind is named at the point
+// it moved.
+//
+// What library code here DOES do with a container, it does only to something it
+// was handed. Three functions in `./manifest-surface-demo.ts` take one narrow
+// face of a provider apiece (`IServiceQuery`, `IRequiredResolver`,
+// `IScopeFactory`) and one of them opens a per-request frame, because that is
+// what those di.core interfaces exist for and library code is what asks for
+// them. `LocatorGreetingWorkshop` takes the whole `IResolver` and is labelled
+// the discouraged shape wherever it appears. The line is not "never touch a
+// provider" — it is "never REACH for one": every provider that reaches this
+// package arrived as a parameter somebody else filled.
 
 // ── the library's front door ─────────────────────────────────────────────────
 
@@ -64,11 +74,13 @@ export { addReportingFixture, classify, closeAgainst, demonstrateTokenAbi, descr
   slotRoundTrips } from './token-abi-demo.js';
 
 // The manifest as a value: the augmentation receiver, the standalone call
-// surface, the intrinsic primitives, and a test host built on all three. The
-// tour takes an empty manifest and a way to build a provider, since a library
-// can make neither.
+// surface, the intrinsic primitives, and the manifest-to-manifest half of a test
+// host. The tour takes a composed manifest, since a library cannot make one.
+// `forTests` plus the three capability-narrowed helpers are the rest of that test
+// host — the app builds a container and drives them, which is the only part a
+// library could not write.
 export { addShopServices, asSingleton, auditToken, authoringMintsIn, demonstrateManifestSurface, describeSeal, forTests,
-  inScope, isRegistrationBuilder, missingFrom, repointFirstSlot, requireCheckout,
+  inScope, isRegistrationBuilder, missingFrom, repointFirstSlot, requireCheckout, SHOP_SELF_CHECK_TOKENS,
   withoutToken } from './manifest-surface-demo.js';
 export type { AuthoringSurface, IChainFaces, LegacyScope, NormalisedProducer,
   Registerable } from './manifest-surface-demo.js';

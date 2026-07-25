@@ -24,15 +24,26 @@
 //     `IScopeFactory` — the narrow faces of a provider, so a function can ask
 //     for exactly the power it needs.
 //
+// WHERE THE CHAPTER SPLITS, and the split is itself the lesson. Everything above
+// is reading and rewriting a manifest, which is library work, and all of it is
+// here. Running the result is not: `build()`, `createScope()`, `resolve()` and
+// `dispose()` are the composition root's verbs. So the test host's second half —
+// swap the fakes in, stand the container up, exercise it — is staged by
+// `@rhombus-std/examples.app.shared` and appended to these lines. It calls back
+// into `forTests`, `missingFrom`, `requireCheckout` and `inScope` below, so the
+// library still owns every piece of that test host except the container itself.
+//
+// The three capability helpers stay because they are exactly what those di.core
+// interfaces are FOR: a per-request pipeline really does take an `IScopeFactory`
+// and open a frame, a startup probe really does take an `IServiceQuery`. Each
+// receives its narrow face as an ordinary parameter — the distinction that
+// matters is not "does library code ever touch a provider" but "did it have to
+// reach for one to get it".
+//
 // Dialect-independent: none of this has a type-driven form. Both example apps
 // run THIS chapter rather than a with-transformer mirror.
 //
-// Every import is `@rhombus-std/di.core`, this library's only di dependency, and
-// that constraint is visible in the tour's signature: a test host that cannot
-// name the engine cannot CONSTRUCT a manifest and cannot BUILD a provider, so
-// `demonstrateManifestSurface` asks for both as plain function parameters. That
-// inversion is the same one this whole library is built on, applied one level
-// down — need a container? take a way to make one, do not reach for the engine.
+// Every import is `@rhombus-std/di.core`, this library's only di dependency.
 
 import { overrideSignatures, ServiceManifestClass, ServiceManifestDescriptorAugmentations, SIGNATUREFOR_NAME,
   SIGNATURESFOR_NAME } from '@rhombus-std/di.core';
@@ -40,6 +51,11 @@ import type { AddChain, Ctor, DepSignatures, DepTarget, Factory, IAsBuilder, IRe
   IResolveScope, IScopeFactory, IServiceManifest, IServiceManifestBase, IServiceProvider, IServiceQuery,
   IWithKeyBuilder, IWithSignatureBuilder, IWithSignaturesBuilder, Lifetime, Producer, Slot,
   Token } from '@rhombus-std/di.core';
+
+// A note on what is NOT imported, since it is the constraint the whole chapter
+// is written against: `@rhombus-std/di` — the resolution engine — appears
+// nowhere, which is why a manifest arrives as a parameter and a provider is
+// somebody else's to make.
 
 // ── the application being tested ─────────────────────────────────────────────
 
@@ -96,6 +112,17 @@ const LEDGER_TOKEN = 'shop:ILedger';
 const CLOCK_TOKEN = 'shop:IClock';
 const CHECKOUT_TOKEN = 'shop:ICheckout';
 const METRICS_TOKEN = 'shop:IMetrics';
+
+/**
+ * The ports a startup self-check asks about — published so the composition root
+ * can run {@link missingFrom} without hand-copying token strings out of this
+ * file, which is the sort of copy that goes stale silently.
+ *
+ * `IMetrics` is on the list and is deliberately never registered by
+ * {@link addShopServices}: a checklist that always passes proves nothing about
+ * the check.
+ */
+export const SHOP_SELF_CHECK_TOKENS: readonly Token[] = [GATEWAY_TOKEN, LEDGER_TOKEN, METRICS_TOKEN];
 
 /**
  * The production wiring, as the application itself would compose it.
@@ -291,6 +318,20 @@ export interface IChainFaces {
 }
 
 // ── 5. narrowing a provider to a capability ──────────────────────────────────
+//
+// The three functions below are the only ones in this file that touch a
+// container at all, and they are here rather than at the composition root
+// because they are what these di.core interfaces EXIST for. `IServiceQuery`,
+// `IRequiredResolver` and `IScopeFactory` are each one face of a provider,
+// published separately so a function can ask for exactly the power it needs —
+// and the code that asks is library code. A root already holds the whole
+// provider; it has nothing to narrow.
+//
+// Each takes its face as an ordinary PARAMETER, which is the line that matters.
+// The library is never the one that reached: the root builds the container and
+// hands over the one capability the call needs, exactly as it would hand over a
+// clock or a logger. That the root then calls all three back-to-back is what the
+// chapter's second half looks like.
 
 /**
  * A startup self-check that only ever ASKS whether things are registered.
@@ -318,6 +359,13 @@ export function requireCheckout(resolver: IRequiredResolver): Checkout {
  * `IScopeFactory` is the third face — scope creation on its own. A request
  * pipeline needs exactly this and nothing else: open a frame per request, hand
  * the frame to the handler, close it.
+ *
+ * This is the one place library code here opens and closes a scope, and it is
+ * deliberate: middleware is the canonical `IScopeFactory` consumer, and a
+ * per-request frame is not the root's to open — the root does not know when a
+ * request starts. What the library still does not do is DECIDE there should be a
+ * container; it is handed the factory and takes the narrowest thing that will
+ * do. Note the `finally`: whoever opens a frame closes it, on every path.
  */
 export function inScope<S extends string, T>(scopes: IScopeFactory<S>, name: S, run: (scope: IResolver) => T): T {
   const scope = scopes.createScope(...([name] as Parameters<IScopeFactory<S>['createScope']>));
@@ -366,6 +414,11 @@ export function authoringMintsIn(source: string): readonly string[] {
 }
 
 // ── 7. the test host ─────────────────────────────────────────────────────────
+//
+// What a test host actually IS, once the container is taken out of it: a
+// manifest-to-manifest function. `forTests` is the whole of it. Building the
+// result and running something against it is the caller's half, and the caller
+// is a composition root — see `@rhombus-std/examples.app.shared`.
 
 /**
  * Takes the application's wiring and returns it with the outside world replaced.
@@ -383,27 +436,25 @@ export function forTests(services: IServiceManifest<'singleton'>): IServiceManif
 }
 
 /**
- * Runs the whole manifest-surface tour and returns the report lines.
+ * Runs the manifest-as-data half of the tour and returns its report lines.
  *
- * The two parameters ARE the chapter's real lesson, so read them before the
- * body. This library depends on `@rhombus-std/di.core` alone, and the tour needs
- * two things the abstractions package cannot give it: a composed manifest (only
- * a root constructs one) and a way to turn a manifest into a provider (`build()`
- * is the engine's contribution). So it asks for both, as plain function
- * parameters rather than DI slots. Something that needs a container takes a way
- * to make one; it does not reach for the engine and settle its consumer's
- * container choice on their behalf.
+ * Read the signature before the body, because it is the chapter's real lesson.
+ * One parameter: a manifest somebody else composed. There is no second parameter
+ * and no import that could supply one — a library that cannot name the engine
+ * cannot construct a manifest and cannot turn one into a provider — and it turns
+ * out that nothing this chapter is ABOUT needed either. Recognising the receiver,
+ * reaching the intrinsic primitives, calling a verb through its standalone form,
+ * applying a house policy to a pending registration, repointing a derived slot:
+ * all of it is the manifest as a value, and all of it is library work.
+ *
+ * The composition root stages the rest — the swap, the container, the run — from
+ * the helpers exported above, and appends its lines to these.
  *
  * @param production The wiring under test, already composed — pass
  *   `addShopServices(<a fresh manifest>)`.
- * @param buildProvider Turns a finished manifest into a provider. `build()`,
- *   which `@rhombus-std/di` installs onto the collection di.core ships.
  * @returns One line per observation, in a fixed order.
  */
-export function demonstrateManifestSurface(
-  production: IServiceManifest<'singleton'>,
-  buildProvider: (services: IServiceManifest<'singleton'>) => IServiceProvider<'singleton'>,
-): readonly string[] {
+export function demonstrateManifestSurface(production: IServiceManifest<'singleton'>): readonly string[] {
   const lines: string[] = ['=== di manifest surface (dialect-independent) ==='];
 
   // The receiver identity.
@@ -420,35 +471,6 @@ export function demonstrateManifestSurface(
     'the standalone call surface — the same verbs, receiver-first:'
       + `\n  removeAll(services, IClock) left ${asBuilder(withoutClock).hasRegistrations(CLOCK_TOKEN)}`
       + ` on the result and ${asBuilder(production).hasRegistrations(CLOCK_TOKEN)} on the original`,
-  );
-
-  // The swap.
-  const tested = forTests(production);
-  const provider = buildProvider(tested);
-  // `build()` opens no frame, so open one for the `'singleton'` tags to cache in.
-  const scope = provider.createScope('singleton');
-  lines.push('the test host swaps the outside world and leaves the rest alone:');
-  lines.push(`  ${requireCheckout(scope).run(1250)}`);
-  lines.push(
-    `  the production manifest is untouched: ${
-      buildProvider(production).createScope('singleton').resolve<Checkout>(CHECKOUT_TOKEN).gateway.kind
-    }`,
-  );
-
-  // What `build()` actually handed back is a question this chapter deliberately
-  // does NOT answer, and the silence is the answer: naming the concrete provider
-  // class would need `@rhombus-std/di`, so a library cannot even write the check.
-  // "A consumer holds the interface, never the class" is proved structurally here
-  // rather than asserted — the caller makes the observation instead, from the
-  // layer that is allowed to.
-
-  // Capability narrowing.
-  const missing = missingFrom(scope, [GATEWAY_TOKEN, LEDGER_TOKEN, METRICS_TOKEN]);
-  lines.push(`a self-check that can only ASK (IServiceQuery): missing ${missing.join(', ') || 'nothing'}`);
-  lines.push(
-    `a request scope that can only OPEN frames (IScopeFactory): ${
-      inScope(provider, 'singleton', (request) => request.resolve<Checkout>(CHECKOUT_TOKEN).run(99))
-    }`,
   );
 
   // The chain as a value, started from the manifest this tour was HANDED. Safe
@@ -476,7 +498,6 @@ export function demonstrateManifestSurface(
     }`,
   );
 
-  scope.dispose();
   return lines;
 }
 
