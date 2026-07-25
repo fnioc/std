@@ -6,12 +6,10 @@ import { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
 import { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
 import { ConsoleLogger } from './ConsoleLogger';
-import { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
 import { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
 import { ConsoleLoggerProcessor } from './ConsoleLoggerProcessor';
 import { JsonConsoleFormatter } from './JsonConsoleFormatter';
 import { JsonConsoleFormatterOptions } from './JsonConsoleFormatterOptions';
-import { LoggerColorBehavior } from './LoggerColorBehavior';
 import { SimpleConsoleFormatter } from './SimpleConsoleFormatter';
 import { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
 import { SystemdConsoleFormatter } from './SystemdConsoleFormatter';
@@ -79,19 +77,10 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
   }
 
   #resolveFormatter(options: ConsoleLoggerOptions): ConsoleFormatter {
-    let formatter = options.formatterName !== undefined
+    const named = options.formatterName !== undefined
       ? this.#formatters.get(normalizeName(options.formatterName))
       : undefined;
-    if (formatter === undefined) {
-      // No/unknown formatterName falls back through the deprecated `format`.
-      formatter = options.format === ConsoleLoggerFormat.Systemd
-        ? this.#formatters.get(ConsoleFormatterNames.systemd)!
-        : this.#formatters.get(ConsoleFormatterNames.simple)!;
-      if (options.formatterName === undefined) {
-        ConsoleLoggerProvider.#updateFormatterOptions(formatter, options);
-      }
-    }
-    return formatter;
+    return named ?? this.#formatters.get(ConsoleFormatterNames.simple)!;
   }
 
   // warning: reachable before the constructor completed (first call happens
@@ -119,26 +108,6 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
       this.#loggers.set(name, logger);
     }
     return logger;
-  }
-
-  /** Maps the deprecated flat options onto the built-in formatters — kept for the deprecated APIs. */
-  static #updateFormatterOptions(formatter: ConsoleFormatter, deprecatedFromOptions: ConsoleLoggerOptions): void {
-    if (formatter instanceof SimpleConsoleFormatter) {
-      const formatterOptions = new SimpleConsoleFormatterOptions();
-      formatterOptions.colorBehavior = deprecatedFromOptions.disableColors
-        ? LoggerColorBehavior.Disabled
-        : LoggerColorBehavior.Default;
-      formatterOptions.includeScopes = deprecatedFromOptions.includeScopes;
-      formatterOptions.timestampFormat = deprecatedFromOptions.timestampFormat;
-      formatterOptions.useUtcTimestamp = deprecatedFromOptions.useUtcTimestamp;
-      formatter.formatterOptions = formatterOptions;
-    } else if (formatter instanceof SystemdConsoleFormatter) {
-      const formatterOptions = new ConsoleFormatterOptions();
-      formatterOptions.includeScopes = deprecatedFromOptions.includeScopes;
-      formatterOptions.timestampFormat = deprecatedFromOptions.timestampFormat;
-      formatterOptions.useUtcTimestamp = deprecatedFromOptions.useUtcTimestamp;
-      formatter.formatterOptions = formatterOptions;
-    }
   }
 
   /** Sets the scope provider all current and future loggers use. */
