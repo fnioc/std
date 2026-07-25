@@ -75,10 +75,10 @@ export type {
   ServiceProviderOptions,
 } from './types.js';
 
-export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError,
-  FactoryTargetError, MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError,
-  OpenTokenRegistrationError, OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError,
-  ScopeValidationError, UnregisteredTokenError } from './errors.js';
+export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
+  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
+  OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
+  UnregisteredTokenError } from './errors.js';
 
 // The slot/token RUNTIME helpers live in @rhombus-std/di.core (its slot/token
 // ABI). di re-exports them for one-import authoring ergonomics — a di consumer
@@ -92,11 +92,10 @@ export { closeToken, isOpenToken, parseToken, unkeyedToken } from '@rhombus-std/
 // engine resolves it to the live provider view.
 export { isProviderToken, RESOLVER_TOKEN } from '@rhombus-std/di.core';
 
-// The activator helper + the null-object provider — authored in di.core, re-exported
-// for one-import reach (a di consumer expects `ActivatorUtilities` /
-// `EmptyServiceProvider` from the runtime package, as in the reference DI namespace).
-export { ActivatorUtilities, EmptyServiceProvider } from '@rhombus-std/di.core';
-export type { ObjectFactory } from '@rhombus-std/di.core';
+// The null-object provider — authored in di.core, re-exported for one-import
+// reach (a di consumer expects `EmptyServiceProvider` from the runtime package,
+// as in the reference DI namespace).
+export { EmptyServiceProvider } from '@rhombus-std/di.core';
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole
 // surface is reachable through one @rhombus-std/di import.
