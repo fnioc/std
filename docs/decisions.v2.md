@@ -784,8 +784,8 @@ closed and registered as an exact holey entry no closing could resolve. Moving t
 `TokenNode.tryParse` + `TokenNode.isOpen` would fix that and drop the string grammar's second
 parser, but it also flips `$0` from not-a-hole (`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole
 (the typed parser accepts any digits), which `token-grammar.test.ts` pins. — **CLOSED by §126**,
-which classifies on the BASE token instead: a key suffix can neither introduce nor remove a hole,
-so the fix needs no new parser and leaves the `$0` question untouched.
+which classifies the UNKEYED token instead: a key suffix can neither introduce nor remove a hole,
+so stripping it needs no new parser and leaves the `$0` question untouched.
 
 _Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
 guard's shape (reject only what can never match, on the typed tree) is Claude's.
@@ -874,7 +874,58 @@ immutability and `ReadonlyMap` is the rest. `FactoryTargetError.reason` narrows 
 `"unregistered"`: `"not-a-class"` lost its referent when the three authoring kinds collapsed into
 one `produce` closure, and nothing has ever constructed it.
 
-**Two findings deliberately NOT acted on**, both being design calls rather than defects:
+**A second pass over the sweep's own diff** found five more, each reproduced against the built
+bundle before it was touched. The first is a regression the sweep itself introduced.
+
+- **One mis-authored template poisoned every sibling on its base.** Splitting `#lookup` into
+  `#closings` turned a return-on-first-match scan into a full one, but the `RangeError` arm kept its
+  `return` — so a gappy template reached AFTER a valid winner was already synthesized discarded that
+  winner and every other closing with it, un-memoized, on every resolve. A template that cannot be
+  closed is simply not a candidate FOR THIS closing: the arm now `continue`s, exactly as a `match`
+  miss does, and the empty list at the end is what the sole-gappy-template case (pinned by an
+  existing test) wants. It also keeps a collection from losing the elements a gappy sibling cannot
+  contribute.
+- **Factory callables bypassed the dispose guard.** `#makeFactory`'s two returned closures called
+  the private spine directly. A factory is minted during one resolve and INVOKED arbitrarily later —
+  the guard on the minting call says nothing about the call that builds — so a closed scope kept
+  constructing through a `FactoryRef` slot injected into a long-lived instance. Both closures now
+  open with `#assertLive`.
+- **A live child scope could still cache into a disposed parent frame.** The guard was
+  per-PROVIDER, but disposal deliberately does not cascade, so `#findOwner` still walked up into a
+  closed frame and owned an instance there — the exact leak the guard exists to prevent, one level
+  down. `Scope` carries a `disposed` flag set by `#clear()`, and `#resolveWith` refuses a closed
+  owner. A transient registration owns nothing and is unaffected, as is anything the child's own
+  frame owns.
+- **The key SPELLED INTO the token still classified closed.** `materialise` moved onto the base
+  token, which fixed `.withKey` and the 5-arg form but not `addClass("pkg:IRepo<$1>#k", …)`, where
+  the key is part of the authored token. `unkeyedToken(token)` — a new string-grammar edge that
+  takes the key boundary from the tree parser rather than restating the key grammar — is now the
+  pre-step of every open-vs-closed classification, at the registration boundary and at both of the
+  engine's. That also fixes the diagnosis of `resolve("pkg:IRepo<$1>", "k")`, which raised
+  `UnregisteredTokenError` where the unbound hole was the actionable half of the answer.
+- **`ActivatorUtilities.slotResolvable` drifted from the mirror it documents.** The engine learned
+  that a `FactoryRef` is satisfiable only when its target resolves; the public mirror kept returning
+  `true` unconditionally, so an unregistered factory target raised `FactoryTargetError` instead of
+  falling through to the caller-supplied arguments the way an unregistered plain token does.
+
+**The keyed PLURAL scan sees template closings.** `#resolveKeyed` read only the exact map, so a
+keyed template — newly registrable above — answered `resolve(t, "redis")` but not
+`resolve(t, /redis/)`, and an unkeyed template answered bare `resolve(t)` and `Array<t>` but not
+`resolve(t, /.*/)`. The scan now walks `base`'s key-space across BOTH tables and resolves each
+matching key through `#collectionRegistrations`, which is the same closings-then-exact rule
+`Array<T>` aggregates by and returns the exact list untouched for a key with no template. Exact
+registrations still come first in the key order, so every pre-existing plural ordering holds.
+
+**Breaking public surface**, for the next publish pass to version on: `OpenRegistration.pattern` is
+deleted (the field's whole contract was the retired all-holes rule); `FactoryTargetError.reason`
+narrows from `"unregistered" | "not-a-class"` to `"unregistered"`, so an external
+`reason === "not-a-class"` comparison stops compiling; and `ServiceProviderClass`'s `closedMemo`
+constructor parameter widens from `Map<Token, Registration>` to `Map<Token, readonly
+Registration[]>`, which matters because the class is documented as exported for white-box use. All
+three are dead in-repo — nothing constructed `"not-a-class"` even before this branch. `unkeyedToken`
+is added to di.core's and di's barrels.
+
+**Three findings deliberately NOT acted on**, all being design calls rather than defects:
 
 - `validateScopes` is defeated inside a `Union` slot. A member's `ScopeValidationError` is caught
   by `#resolveUnion`'s fall-through and the next member wins, so the violation is silently skipped.
@@ -887,6 +938,18 @@ one `produce` closure, and nothing has ever constructed it.
   The honest fix is to canonicalise at the registration boundary, which changes the stored map key
   and therefore what `hasRegistrations`, `removeRegistrations`, and `#resolveKeyed`'s prefix scan
   all compare against. That is a wire-grammar decision, not a patch.
+- The two grammars disagree about `$0`, `$01`, and whitespace spellings (`pkg:IZ< $1 >`):
+  `HOLE_PATTERN` is `/^\$[1-9][0-9]*$/` and the tree parser accepts any digits, so those tokens
+  classify CLOSED and register exact. That is not a dead entry — each resolves under the same
+  spelling it registered under — so it is the canonicalisation question above wearing a different
+  hat, not a separate defect. `token-grammar.test.ts` pins the `$0` half.
+
+`Validator`, `parseSlot`/`serialiseSlot`, and `TokenManifest`/`TokenProvider` were audited as
+suspected vestigial and DELIBERATELY kept. Each is exported, correct, and (for the manifest pair)
+exercised by `token.spike.test.ts`; unused-but-correct public API is not a defect, and deleting it
+is a semver call rather than a repair. Their comments — which advertised jobs the live path no
+longer does — are corrected instead.
 
 _Claude's calls throughout, on the owner's direction to sweep the family; the collection ordering
-rule and the removal/dedup asymmetry are the two that chose between defensible alternatives._
+rule, the removal/dedup asymmetry, and the keyed-plural key order are the three that chose between
+defensible alternatives._
