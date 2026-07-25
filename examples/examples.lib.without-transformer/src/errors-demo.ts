@@ -65,6 +65,8 @@ const AUDIT_TOKEN = 'selfcheck:IAuditLog';
 const CONFIG_TOKEN = 'selfcheck:RemoteConfig';
 const CONFIG_PROMISE_TOKEN = `Promise<${CONFIG_TOKEN}>`;
 const REPOSITORY_TEMPLATE = 'selfcheck:IRepository<$1>';
+/** A hole with no base around it — a template that names nothing to look up. */
+const BARE_HOLE_TOKEN = '$1';
 
 // ── the diagnostic ───────────────────────────────────────────────────────────
 
@@ -83,8 +85,14 @@ const REPOSITORY_TEMPLATE = 'selfcheck:IRepository<$1>';
 export function diagnose(error: unknown): string {
   // ── registration time ──────────────────────────────────────────────────────
   if (error instanceof OpenTokenRegistrationError) {
+    // One class, two causes — told apart by `method` rather than by reading the
+    // message, which is the point of carrying the field.
+    if (error.method === 'addClass') {
+      return `OpenTokenRegistrationError — "${error.token}" is a template no closed token could ever match; `
+        + 'give it a base and at least one argument, so a closing has something to be looked up under';
+    }
     return `OpenTokenRegistrationError — "${error.token}" still has a hole in it, and ${error.method}() `
-      + 'cannot stand behind a family of tokens; register a class, or close the token';
+      + 'cannot stand behind a family of tokens; only a class can be built afresh per closing';
   }
 
   // ── build time ─────────────────────────────────────────────────────────────
@@ -187,6 +195,22 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
   lines.push(staged(
     'registering a value at an open template',
     () => new ServiceManifest<'singleton'>().addValue(REPOSITORY_TEMPLATE, { rows: [] }),
+  ));
+
+  // The OTHER cause of the same error, and the whole of what `addClass`
+  // refuses: a template no closed token could ever match. A template is found
+  // under a base and then unified against a closing, so it needs a base and at
+  // least one argument. A bare hole has neither — nothing is ever looked up
+  // under `$1` — and a token the grammar cannot read as a generic application
+  // is out for the same reason. Either would otherwise sit in the manifest
+  // matching nothing, forever, in silence.
+  //
+  // Note what is NOT here: a template that mixes concrete arguments with holes.
+  // `IRepository<User,$1>` is an ordinary template, registers fine, and is what
+  // the open-generics chapter is about.
+  lines.push(staged(
+    'registering a class at a bare hole',
+    () => new ServiceManifest<'singleton'>().addClass(BARE_HOLE_TOKEN, ReportService, [[STORE_TOKEN]]),
   ));
 
   // ── build time: the eager whole-graph check ────────────────────────────────

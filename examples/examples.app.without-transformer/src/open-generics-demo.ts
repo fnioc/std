@@ -28,13 +28,24 @@
 // grammar by hand is exactly where a manual author drifts from what the
 // transformer derives, and the helper removes the opportunity.
 //
-// WHAT AN OPEN TEMPLATE MAY LOOK LIKE. The engine this branch builds against
-// requires every top-level type argument of the SERVICE token to be a hole:
-// `IRepository<$1>` and `IJoin<$1,$2>` are templates, and a partially-open
-// `IJoin<…:User,$2>` is rejected at registration with `OpenTokenRegistrationError`
-// — see `demonstrateErrors` in @rhombus-std/examples.lib.without-transformer,
-// which raises exactly that. Holes inside a DEPENDENCY slot carry no such
-// restriction, which is what makes the propagation below work.
+// WHAT AN OPEN TEMPLATE MAY LOOK LIKE. ONE hole anywhere in the service token is
+// enough; the remaining type arguments may be concrete. `IRepository<$1>` and
+// `IJoin<$1,$2>` are templates, and so is the PARTIALLY-OPEN `IJoin<…:Order,$2>`
+// registered further down — it pins the left type argument and stays generic in
+// the right, which is what lets an implementation that genuinely needs to know
+// ONE of its type arguments still serve every closing of the others.
+//
+// Two templates over one base therefore OVERLAP, and the container picks between
+// them MOST-SPECIFIC-FIRST rather than by whoever registered last. A concrete
+// argument narrows a template, and so does a repeated hole label — a template
+// spelled `IPair<$1,$1>` matches only closings whose two arguments are equal.
+// The narrowest match wins, and only a tie falls back to registration order.
+// That is why the pinned join below can be registered BEFORE the general one and
+// still win.
+//
+// The hole's number is a 1-based LABEL with no leading zero. `$0` and `$01` are
+// not holes, so a token spelled that way is not a template at all — it registers
+// as an ordinary closed token that nothing will ever ask for.
 
 import { closeToken, OpenTokenResolutionError, ServiceManifest, typeArg } from '@rhombus-std/di';
 
@@ -57,12 +68,16 @@ const TABLE_BASE = '@rhombus-std/examples.contracts:ITable';
 const REPOSITORY_BASE = '@rhombus-std/examples.contracts:IRepository';
 const JOIN_BASE = '@rhombus-std/examples.contracts:IJoin';
 
-// The three open TEMPLATES. A hole is `$N`, 1-based, and it is matched
-// positionally against the closing's arguments — `$1` in `IJoin<$1,$2>` binds
-// the first argument wherever else `$1` appears in that registration.
+// The open TEMPLATES. A hole is `$N`, 1-based, and it is matched positionally
+// against the closing's arguments — `$1` in `IJoin<$1,$2>` binds the first
+// argument wherever else `$1` appears in that registration.
 const TABLE_TEMPLATE = closeToken(TABLE_BASE, '$1');
 const REPOSITORY_TEMPLATE = closeToken(REPOSITORY_BASE, '$1');
 const JOIN_TEMPLATE = closeToken(JOIN_BASE, '$1', '$2');
+// The partially-open one. `closeToken` composes a concrete argument and a hole
+// the same way it composes two holes — there is nothing special about the mixed
+// form on the wire, which is exactly why it needed no new grammar to allow.
+const ORDER_JOIN_TEMPLATE = closeToken(JOIN_BASE, ORDER_TOKEN, '$2');
 
 // ── the data each closing bottoms out at ────────────────────────────────────
 
@@ -192,6 +207,33 @@ class RepositoryJoin<TLeft, TRight> implements IJoin<TLeft, TRight> {
   }
 }
 
+/**
+ * The PARTIALLY-OPEN template — `…:IJoin<…:Order,$2>`, one argument pinned and
+ * one still a hole.
+ *
+ * The reason to reach for one is right here in the class: summing `.total` is
+ * only possible because `TLeft` is `Order` and nothing else, while the right
+ * side has no such requirement and stays generic. A fully-open template could
+ * not be written this way, and writing one join implementation per pair would
+ * put the registration count back where templates were meant to keep it down.
+ *
+ * It OVERLAPS `…:IJoin<$1,$2>` — both could serve `…:IJoin<…:Order,…:User>` —
+ * and wins that closing by being the more specific of the two.
+ */
+class OrderJoin<TRight> implements IJoin<Order, TRight> {
+  public constructor(
+    public readonly left: IRepository<Order>,
+    public readonly right: IRepository<TRight>,
+  ) {}
+
+  public describe(): string {
+    const orders = this.left.all();
+    const total = orders.reduce((sum, order) => sum + order.total, 0);
+    return `${this.left.entityToken} (${orders.length}, total ${total}) `
+      + `joined with ${this.right.entityToken} (${this.right.all().length})`;
+  }
+}
+
 // ── the registrations ───────────────────────────────────────────────────────
 //
 // Kept at module top level, the shape a composition root has. The manifest is
@@ -238,8 +280,22 @@ manifest = manifest.addClass(
   'singleton',
 );
 
-// Template 3 — arity 2. Each dependency names a DIFFERENT hole, so the two
-// sides close independently.
+// Template 3 — PARTIALLY OPEN, and registered FIRST on purpose. The service
+// token pins the left argument (`…:IJoin<…:Order,$2>`) and so does the left
+// dependency slot; only the right slot carries a hole. Under a last-wins rule
+// this ordering would bury it under the general template below; under
+// most-specific-first it costs nothing, because a concrete argument is what
+// decides.
+manifest = manifest.addClass(
+  ORDER_JOIN_TEMPLATE,
+  OrderJoin,
+  [[closeToken(REPOSITORY_BASE, ORDER_TOKEN), closeToken(REPOSITORY_BASE, '$2')]],
+  'singleton',
+);
+
+// Template 4 — fully open, arity 2. Each dependency names a DIFFERENT hole, so
+// the two sides close independently. It serves every join the pinned template
+// above declines.
 manifest = manifest.addClass(
   JOIN_TEMPLATE,
   RepositoryJoin,
@@ -279,6 +335,15 @@ export function demonstrateOpenGenerics(): readonly string[] {
     // registration.
     const join = app.resolve<IJoin<User, AuditEvent>>(closeToken(JOIN_BASE, USER_TOKEN, AUDIT_EVENT_TOKEN));
 
+    // Two closings over ONE base that two different templates could serve.
+    // `IJoin<Order,User>` matches both `IJoin<…:Order,$2>` and `IJoin<$1,$2>`,
+    // and the pinned one is narrower, so it wins. `IJoin<AuditEvent,User>`
+    // matches only the general template, which still serves it.
+    const pinnedJoin = app.resolve<IJoin<Order, User>>(closeToken(JOIN_BASE, ORDER_TOKEN, USER_TOKEN));
+    const generalJoin = app.resolve<IJoin<AuditEvent, User>>(
+      closeToken(JOIN_BASE, AUDIT_EVENT_TOKEN, USER_TOKEN),
+    );
+
     // A minted closing is a registration like any other, so the lifetime tag on
     // the template applies PER CLOSING: `IRepository<User>` is a singleton, and
     // `IRepository<Order>` is a different singleton.
@@ -310,6 +375,9 @@ export function demonstrateOpenGenerics(): readonly string[] {
       `  IRepository<AuditEvent>: ${audit.describe()}`,
       'arity 2 — $1 and $2 close independently, each side keeping its own precedence:',
       `  IJoin<User,AuditEvent>: ${join.describe()}`,
+      'a template may pin some arguments; where two overlap, the MOST SPECIFIC wins:',
+      `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`,
+      `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`,
       'every closing is its own singleton:',
       `  IRepository<User> resolved twice is one instance: ${Object.is(users, usersAgain)}`,
       `  IRepository<User> and IRepository<Order> are separate instances: ${!Object.is(users, orders)}`,

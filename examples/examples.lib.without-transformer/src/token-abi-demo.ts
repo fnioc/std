@@ -87,14 +87,26 @@ const AUDIT_TOKEN = 'reports:AuditEvent';
  * is the only sane way to write one: string concatenation drifts from the
  * grammar the parser expects the moment an argument is itself generic.
  *
- * A hole is the literal text `$N` in an argument position — that, and nothing
- * more, is what makes a token an open TEMPLATE.
+ * A hole is the literal text `$N` in an argument position — ONE of them
+ * anywhere, at any depth, is what makes a token an open TEMPLATE; the other
+ * arguments are free to be concrete.
+ *
+ * `N` is a 1-based label with no leading zero. `$0`, `$01` and `$007` are
+ * therefore not holes at all, and a token carrying one is not a template — it
+ * files as an ordinary exact registration under its literal spelling, which
+ * nothing will ever ask for. `classify` below prints that outcome rather than
+ * describing it.
  */
 const REPOSITORY_TEMPLATE = closeToken('reports:IRepository', '$1');
 const USER_REPOSITORY_TOKEN = closeToken('reports:IRepository', USER_TOKEN);
 
-/** A second template that OVERLAPS the first — see the specificity section. */
-const AUDIT_REPOSITORY_TEMPLATE = closeToken('reports:IRepository', AUDIT_TOKEN);
+/**
+ * A CLOSED closing of the same base, registered exactly. It gives the inspector
+ * below both an `open` and an `exact` entry over one base to tell apart — which
+ * is the pair a wiring report has to get right, since the exact one wins for its
+ * single closing and the template still serves every other.
+ */
+const AUDIT_REPOSITORY_TOKEN = closeToken('reports:IRepository', AUDIT_TOKEN);
 
 /**
  * The container the inspector reads. Nothing is ever resolved from it; the whole
@@ -115,7 +127,7 @@ function buildReportingManifest(): IServiceManifest<'singleton'> {
   );
   // One exact closing, registered on its own so the inspector has both an
   // `exact` and an `open` entry to classify.
-  services = services.addClass(AUDIT_REPOSITORY_TEMPLATE, SqlRepository, [[{ value: AUDIT_TOKEN }, CONNECTION_TOKEN]]);
+  services = services.addClass(AUDIT_REPOSITORY_TOKEN, SqlRepository, [[{ value: AUDIT_TOKEN }, CONNECTION_TOKEN]]);
   // Every remaining slot kind in one signature: a plain token, a LITERAL (its
   // value injected verbatim, no lookup), a FACTORY (a callable producing the
   // named token), and a UNION (alternatives tried in order).
@@ -292,12 +304,16 @@ export function explainMatch(template: Token, ground: Token): string {
  * match set, and a repeated label constrains the arguments to be equal, so
  * `IPair<$1,$1>` is strictly narrower than `IPair<$1,$2>` and outranks it.
  *
- * It is a metric over TREES and nothing else. It does not ask whether a given
- * shape would be accepted at registration — that is the manifest's question, and
- * the answer has changed over time — so a diagnostic can rank any set of
- * candidates it is handed. A TIE means the metric has nothing more to say; the
- * container falls back to registration order, and so does the sort below (by
- * name, so this report stays byte-stable).
+ * This is the SAME metric the container ranks by. A closing that misses the
+ * exact map tries the templates bucketed under its base most-specific-FIRST, and
+ * only a tie sends it back to registration order — latest wins there, matching
+ * the last-wins rule everywhere else. The sort below breaks its ties by name
+ * instead, so the report stays byte-stable whatever order the candidates arrive
+ * in.
+ *
+ * It is a metric over TREES and nothing else: it never asks whether a shape
+ * would be ACCEPTED at registration, so a diagnostic can rank whatever set of
+ * candidates it is handed.
  *
  * @param templates The candidate templates, in any order.
  * @returns The same templates, most specific first, each with its score.
@@ -474,7 +490,16 @@ export function describeRegistrations(services: Iterable<ManifestEntry>): readon
       continue;
     }
     const open: OpenRegistration = entry.open;
-    lines.push(`  open  ${open.template} (base ${open.base}, arity ${open.pattern.length}) -> ${open.ctor.name}`);
+    // The template's ARITY, read off the parsed tree the registration carries.
+    // `node` is the very tree the engine unifies a closing against; it is
+    // optional on the ABI only so a hand-built `OpenRegistration` literal stays
+    // valid, which is why a tool reparses when it is absent. Narrowing to
+    // `concrete` is not defensive bookkeeping — `args` lives on that one node
+    // kind, and a template that parsed to anything else would not have
+    // registered in the first place.
+    const template = open.node ?? TokenNode.parse(open.template);
+    const arity = template.kind === 'concrete' ? template.args.length : 0;
+    lines.push(`  open  ${open.template} (base ${open.base}, arity ${arity}) -> ${open.ctor.name}`);
   }
   return lines;
 }
@@ -492,9 +517,19 @@ export function demonstrateTokenAbi(): readonly string[] {
   lines.push('a manifest is data — every registration, in authoring order:');
   lines.push(...describeRegistrations(services));
 
-  // Shape questions, answered at the string edge.
+  // Shape questions, answered at the string edge. The last two are the pair
+  // worth staring at: ONE hole is enough to make a token a template even with a
+  // concrete argument beside it, and `$01` is not a hole at all, so a token
+  // spelled that way is a closed generic that no closing will ever match.
+  const shapes: readonly Token[] = [
+    CONNECTION_TOKEN,
+    USER_REPOSITORY_TOKEN,
+    REPOSITORY_TEMPLATE,
+    closeToken('reports:IPair', USER_TOKEN, '$2'),
+    closeToken('reports:IRepository', '$01'),
+  ];
   lines.push('classifying a token without parsing it:');
-  for (const token of [CONNECTION_TOKEN, USER_REPOSITORY_TOKEN, REPOSITORY_TEMPLATE]) {
+  for (const token of shapes) {
     lines.push(`  ${classify(token)}`);
   }
 
@@ -520,6 +555,10 @@ export function demonstrateTokenAbi(): readonly string[] {
   lines.push(
     `  ${explainMatch(closeToken('reports:IPair', '$1', '$1'), closeToken('reports:IPair', USER_TOKEN, AUDIT_TOKEN))}`,
   );
+  // Three templates that share ONE base, so a container holding all three has to
+  // choose between them per closing. Two score 2 for different reasons — one
+  // pins an argument concretely, the other pins two arguments to each other —
+  // and the fully-open one scores 1 and is tried last.
   lines.push('ranking overlapping templates most-specific-first (a Specificity):');
   for (const ranked of rankBySpecificity([
     closeToken('reports:IPair', '$1', '$2'),

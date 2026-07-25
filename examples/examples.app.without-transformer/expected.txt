@@ -106,6 +106,9 @@ an EXACT closed registration outranks the template:
   IRepository<AuditEvent>: @rhombus-std/examples.contracts:AuditEvent -> 2 event(s), ids redacted
 arity 2 — $1 and $2 close independently, each side keeping its own precedence:
   IJoin<User,AuditEvent>: @rhombus-std/examples.contracts:User (2) joined with @rhombus-std/examples.contracts:AuditEvent (2)
+a template may pin some arguments; where two overlap, the MOST SPECIFIC wins:
+  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: @rhombus-std/examples.contracts:Order (3, total 66) joined with @rhombus-std/examples.contracts:User (2)
+  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: @rhombus-std/examples.contracts:AuditEvent (2) joined with @rhombus-std/examples.contracts:User (2)
 every closing is its own singleton:
   IRepository<User> resolved twice is one instance: true
   IRepository<User> and IRepository<Order> are separate instances: true
@@ -115,7 +118,8 @@ the template itself is NOT resolvable — a hole is not a service:
   resolving @rhombus-std/examples.contracts:IRepository<$1> threw OpenTokenResolutionError
 
 === di errors (dialect-independent) ===
-registering a value at an open template: OpenTokenRegistrationError — "selfcheck:IRepository<$1>" still has a hole in it, and addValue() cannot stand behind a family of tokens; register a class, or close the token
+registering a value at an open template: OpenTokenRegistrationError — "selfcheck:IRepository<$1>" still has a hole in it, and addValue() cannot stand behind a family of tokens; only a class can be built afresh per closing
+registering a class at a bare hole: OpenTokenRegistrationError — "$1" is a template no closed token could ever match; give it a base and at least one argument, so a closing has something to be looked up under
 building with validateOnBuild: AggregateError — 1 registration(s) cannot be constructed: selfcheck:IStore
 resolving through the same hole, unvalidated: NoSatisfiableSignatureError — BrokenStore has signatures but every one names something missing: selfcheck:IConnection
 resolving a token nobody registered: UnregisteredTokenError — nothing is registered at "selfcheck:IReportService"; register it, or ask with tryResolve if its absence is legitimate
@@ -140,6 +144,8 @@ classifying a token without parsing it:
   reports:IConnection — not generic (no top-level arguments)
   reports:IRepository<reports:User> — closed generic, base reports:IRepository, 1 argument(s)
   reports:IRepository<$1> — OPEN template, base reports:IRepository, 1 argument(s)
+  reports:IPair<reports:User,$2> — OPEN template, base reports:IPair, 2 argument(s)
+  reports:IRepository<$01> — closed generic, base reports:IRepository, 1 argument(s)
 the parsed view — TokenNode is transient, the string is the identity:
   reports:IRepository<reports:User> — kind=concrete base=reports:IRepository open=false roundTrip=true
   reports:IRepository<$1> — kind=concrete base=reports:IRepository open=true roundTrip=true

@@ -259,9 +259,10 @@ const FLAGS_TOKEN = 'orders:FeatureFlags';
 // the composed form by hand (as this slot does) hits exactly the same lookup.
 const VENDOR_CLOCK_TOKEN = `${CLOCK_TOKEN}#vendor`;
 
-// An OPEN template token: every type argument is a `$N` hole. It never resolves
-// directly — resolving a CLOSED token that has no exact registration matches
-// against the templates and synthesizes a registration for that closing.
+// An OPEN template token: at least one type argument is a `$N` hole (the rest
+// may be concrete). It never resolves directly — resolving a CLOSED token that
+// has no exact registration matches against the templates and synthesizes a
+// registration for that closing.
 const REPOSITORY_TEMPLATE = 'orders:IRepository<$1>';
 const ORDER_TOKEN = 'orders:Order';
 // A CLOSED token is the template with its hole filled in — plain string
