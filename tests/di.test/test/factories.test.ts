@@ -328,6 +328,28 @@ describe('factory target errors', () => {
     }
   });
 
+  test('a signature whose factory target is missing falls back to a shorter one', () => {
+    class Holder {
+      public constructor(
+        public readonly makeFoo?: () => Foo,
+        public readonly dep?: unknown,
+      ) {}
+    }
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, 'cfg');
+    // The LONGER signature names an unregistered factory target, so greedy
+    // selection has to reject it and take the shorter, buildable one — the same
+    // fall-back it performs for an unregistered plain token slot.
+    services = services.addClass(T.Repo, Holder, [
+      [factoryOf(T.Service), T.Config],
+      [T.Config],
+    ], 'singleton');
+
+    const holder = services.build().resolve<Holder>(T.Repo);
+    expect(holder.makeFoo).toBe('cfg');
+    expect(holder.dep).toBeUndefined();
+  });
+
   test('a FactoryRef targeting a value registration yields a thunk returning the value', () => {
     // Semantic change: the old engine threw FactoryTargetError("not-a-class") for
     // a value target. The new engine treats a value target as a zero-arg factory

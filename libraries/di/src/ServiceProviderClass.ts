@@ -1328,7 +1328,8 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * Greedy signature selection. Scans signatures longest → shortest and returns
    * the first SATISFIABLE one. A slot is satisfiable when it is:
    *
-   *   - a `FactoryRef` — always satisfiable; injected as a callable;
+   *   - a `FactoryRef` — satisfiable iff its TARGET token resolves (injection
+   *     itself raises `FactoryTargetError` on a miss);
    *   - a `LiteralRef` — always satisfiable; injected as its value (Rule 2);
    *   - a `Union` — satisfiable iff at least one member is resolvable; or
    *   - a string token whose registration exists in the sealed map, the
@@ -1347,10 +1348,27 @@ export class ServiceProviderClass<S extends string = string> implements IService
     async: boolean,
   ): readonly DepSlot[] {
     const unsatisfiable = new Set<Token>();
+    // Factory-target misses are tracked apart from the plain unsatisfiable
+    // tokens so the more actionable `FactoryTargetError` still surfaces when an
+    // unregistered target is the ONLY thing standing in the way.
+    const factoryMisses = new Set<Token>();
     for (const sig of orderByArityDesc(signatures)) {
       let satisfiable = true;
       for (const slot of sig) {
-        if (isFactoryRef(slot) || isLiteralRef(slot)) {
+        if (isLiteralRef(slot)) {
+          continue;
+        }
+        if (isFactoryRef(slot)) {
+          // A factory slot is satisfiable iff its TARGET is registered —
+          // `#makeFactory` raises `FactoryTargetError` on a miss, and a signature
+          // that is going to throw is not one greedy selection should pick over a
+          // shorter one that builds. `#validateSlot` has always tested the target
+          // this way; selection used to accept the slot unconditionally and then
+          // hard-fail at construction.
+          if (this.#lookup(slot.type) === undefined) {
+            satisfiable = false;
+            factoryMisses.add(slot.type);
+          }
           continue;
         }
         if (isTypeArgRef(slot)) {
@@ -1383,6 +1401,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
       }
     }
 
+    // Nothing built. When every obstacle was an unregistered factory TARGET,
+    // raise the error `#makeFactory` used to — it names the one token to
+    // register, against the signature-level "some dependency is missing". A run
+    // that also hit a plain unregistered token is not a factory problem, so it
+    // keeps the general error.
+    if (factoryMisses.size && !unsatisfiable.size) {
+      throw new FactoryTargetError([...factoryMisses][0]!, 'unregistered');
+    }
     throw new NoSatisfiableSignatureError(token, targetName, [...unsatisfiable]);
   }
 
@@ -1426,14 +1452,19 @@ export class ServiceProviderClass<S extends string = string> implements IService
 
   /**
    * True when a slot is resolvable in ANY form:
-   *   - `FactoryRef` / `LiteralRef` — always satisfiable (injected);
+   *   - `LiteralRef` — always satisfiable (its value is injected verbatim);
+   *   - `FactoryRef` — satisfiable iff its TARGET token resolves, since
+   *     `#makeFactory` raises `FactoryTargetError` otherwise;
    *   - `Union` — satisfiable iff at least one member is resolvable (recursive);
    *   - string token — the intrinsic provider token, a registration in the
    *     sealed map, or (async) the `Promise<T>` fallback.
    */
   #isResolvableSlot(slot: DepSlot, async: boolean): boolean {
-    if (isFactoryRef(slot) || isLiteralRef(slot)) {
+    if (isLiteralRef(slot)) {
       return true;
+    }
+    if (isFactoryRef(slot)) {
+      return this.#lookup(slot.type) !== undefined;
     }
     if (isTypeArgRef(slot)) {
       return false;
