@@ -55,16 +55,22 @@ export type ObjectFactory<T = unknown> = (
 
 /**
  * True when `slot` can be filled from the provider alone — no supplied argument
- * needed. A `FactoryRef` / `LiteralRef` is always injectable; a `Union` is
- * satisfiable iff some member is; a raw `TypeArgRef` never is (only substitution
- * closes it); a string token is satisfiable iff the provider reports it a service
- * (`isService` also answers true for the intrinsic provider token). The public
- * mirror of the engine's `#isResolvableSlot`, restricted to what the `IResolver`
- * surface exposes.
+ * needed. A `LiteralRef` is always injectable (it carries its own value); a
+ * `FactoryRef` only when its TARGET is a service, since `resolveFactory` throws
+ * on a missing target rather than handing back a callable that fails later; a
+ * `Union` is satisfiable iff some member is; a raw `TypeArgRef` never is (only
+ * substitution closes it); a string token is satisfiable iff the provider reports
+ * it a service (`isService` also answers true for the intrinsic provider token).
+ * The public mirror of the engine's `#isResolvableSlot`, restricted to what the
+ * `IResolver` surface exposes — so an unregistered factory target falls through
+ * to the caller-supplied arguments exactly as an unregistered plain token does.
  */
 function slotResolvable(provider: IResolver, slot: DepSlot): boolean {
-  if (isFactoryRef(slot) || isLiteralRef(slot)) {
+  if (isLiteralRef(slot)) {
     return true;
+  }
+  if (isFactoryRef(slot)) {
+    return provider.isService(slot.type);
   }
   if (isTypeArgRef(slot)) {
     return false;

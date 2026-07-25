@@ -60,6 +60,39 @@ describe('createInstance', () => {
     expect(greeter.name).toBe('world');
   });
 
+  test('draws a factory slot whose TARGET is unregistered from the supplied arguments', () => {
+    class NeedsFactory {
+      public constructor(public readonly make: unknown) {}
+    }
+    const supplied = (): string => 'caller';
+
+    // `resolveFactory` throws on a missing target rather than handing back a
+    // callable that fails later, so an unregistered factory slot is no more
+    // satisfiable than an unregistered plain token — it falls to `args`.
+    const instance = ActivatorUtilities.createInstance(
+      providerWithLogger(),
+      NeedsFactory,
+      [{ type: 'pkg:IUnregistered' }],
+      supplied,
+    ) as NeedsFactory;
+
+    expect(instance.make).toBe(supplied);
+  });
+
+  test('a factory slot with a REGISTERED target still resolves from the provider', () => {
+    class NeedsFactory {
+      public constructor(public readonly make: () => Logger) {}
+    }
+
+    const instance = ActivatorUtilities.createInstance(
+      providerWithLogger(),
+      NeedsFactory,
+      [{ type: T.Logger }],
+    ) as NeedsFactory;
+
+    expect(instance.make()).toBeInstanceOf(Logger);
+  });
+
   test('injects the provider itself for an intrinsic provider-token slot', () => {
     const provider = providerWithLogger();
     const instance = ActivatorUtilities.createInstance(
