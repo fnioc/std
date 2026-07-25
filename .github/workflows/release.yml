@@ -1,16 +1,21 @@
 # Lockstep publish pipeline (semantic-release driven).
 #
-# This workflow is FULLY DEFINED BUT INERT: both jobs are gated behind the
-# `PUBLISHING_ENABLED` repository variable, which does not exist yet. Until it is
-# set to the string "true" (Settings -> Secrets and variables -> Actions ->
-# Variables), neither job can run even though their triggers are otherwise live.
-# This is intentional -- the release story is wired up but publishing is not yet
-# switched on.
+# The continuous release path (publish-next) and the promotion path (promote)
+# are FULLY DEFINED BUT INERT: both are gated behind the `PUBLISHING_ENABLED`
+# repository variable, which does not exist yet. Until it is set to the string
+# "true" (Settings -> Secrets and variables -> Actions -> Variables), neither
+# can run even though their triggers are otherwise live. This is intentional --
+# the release story is wired up but publishing is not yet switched on. The
+# dispatch-only smoke test (publish-dummy) is deliberately NOT gated on that
+# variable -- it fires only on an explicit workflow_dispatch with a non-empty
+# `dummy_version`, so it can run independently of the continuous release.
 #
 # EXTERNAL SETUP still required before OIDC publishing can actually succeed: each
 # publishable @rhombus-std package needs an npm "Trusted Publisher" configured on
-# npmjs.com pointing at this repo and the `publish-next` workflow. That is a
-# per-package human step this code cannot perform.
+# npmjs.com pointing at this repo and the `release.yml` workflow file, with the
+# environment field left blank -- `promote` runs under the `production`
+# environment while the other two jobs do not, so pinning one would break them.
+# That is a per-package human step this code cannot perform.
 
 name: Release
 
