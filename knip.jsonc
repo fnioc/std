@@ -78,6 +78,27 @@
     // `rollup-plugin-dts` import is counted. The config object it default-exports
     // is read by the `rollup -c` CLI, never imported.
     "**/rollup*.dts.mjs": ["exports"],
+
+    // `<pkg>/src/inline.ts` holds a package's `rhombus.inline` sugar bodies. They
+    // are located by a STRING in package.json -- `rhombus.inline.entries[].impl`
+    // -- and side-parsed out of source by the transform engine, which substitutes
+    // them at consumer call sites. No TypeScript import of them exists anywhere,
+    // so no static analyser can see the reference: knip reports the di.extras and
+    // di.extras.options bodies as unused exports, and config.extras/src/inline.ts
+    // as an unused FILE (that package has no `.` export to anchor src).
+    //
+    // `registerInlineBodies(X)` is called beside each body set to state that
+    // relationship in code for a human reader. It is a runtime no-op and it does
+    // NOT clear these findings -- the reference it creates lives in the SAME FILE
+    // as the declaration, and knip does not count a same-file reference as usage.
+    // Measured, not assumed. So do not delete this entry on the theory that the
+    // marker already covers it; it does not, and cannot.
+    //
+    // Scope note: this suppresses only the body file's own exports, so the file
+    // stays IN the graph and its ordinary imports still count -- which is what
+    // keeps `signatureof`/`valueof`/`keyof` silent. A file-level `ignore` would
+    // drop those edges and manufacture three new false positives.
+    "**/src/inline.ts": ["exports", "files"],
   },
 
   "workspaces": {
