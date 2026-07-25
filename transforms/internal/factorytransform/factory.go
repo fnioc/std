@@ -60,6 +60,10 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
+		// Which primitive a callee is, and what its type argument means, are facts
+		// about SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of
+		// a tree the loop has rewritten (plugin.CheckerAnchor).
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
@@ -67,14 +71,14 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 			}
 			if node.Kind == shimast.KindCallExpression {
 				// isFactory<T>() -> boolean literal.
-				if t, ok := factoryType(checker, artifacts, node, isFactoryName); ok {
+				if t, ok := factoryType(checker, parseAnchor, artifacts, node, isFactoryName); ok {
 					if isFunctionType(checker, t) {
 						return factory.NewKeywordExpression(shimast.KindTrueKeyword)
 					}
 					return factory.NewKeywordExpression(shimast.KindFalseKeyword)
 				}
 				// returntokenfor<T>() -> the factory return type's token literal.
-				if t, ok := factoryType(checker, artifacts, node, returnTokenforName); ok {
+				if t, ok := factoryType(checker, parseAnchor, artifacts, node, returnTokenforName); ok {
 					if token, has := returnToken(ctx, checker, t); has {
 						return factory.NewStringLiteral(token, shimast.TokenFlagsNone)
 					}
@@ -86,12 +90,12 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				// lower the trailing paramtokensfor to its array literal, or ELIDE it
 				// when the factory takes no parameters. Handled at the parent-call
 				// level so the empty case can drop the argument entirely.
-				if lowered, changed := lowerTrailingParamtokens(ec, checker, artifacts, ctx, emit, visitor, node); changed {
+				if lowered, changed := lowerTrailingParamtokens(ec, checker, parseAnchor, artifacts, ctx, emit, visitor, node); changed {
 					return lowered
 				}
 				// A bare paramtokensfor<T>() reached outside a trailing position
 				// (defensive) lowers to its array literal in place.
-				if t, ok := factoryType(checker, artifacts, node, paramTokensforName); ok {
+				if t, ok := factoryType(checker, parseAnchor, artifacts, node, paramTokensforName); ok {
 					lits, _ := paramTokenLits(ec, ctx, checker, emit, node, t)
 					return factory.NewArrayLiteralExpression(factory.NewNodeList(lits), false)
 				}
@@ -114,7 +118,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 // factory has no parameters, matching di.core's `resolveFactory(returnToken)`
 // no-arg form. Returns changed=false when the last argument is not a
 // paramtokensfor call, leaving the ordinary visitor to recurse.
-func lowerTrailingParamtokens(ec *shimprinter.EmitContext, checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, ctx *tokens.Context, emit func(plugin.Diagnostic), visitor *shimast.NodeVisitor, node *shimast.Node) (*shimast.Node, bool) {
+func lowerTrailingParamtokens(ec *shimprinter.EmitContext, checker *shimchecker.Checker, parseAnchor plugin.CheckerAnchor, artifacts *inlinetransform.Artifacts, ctx *tokens.Context, emit func(plugin.Diagnostic), visitor *shimast.NodeVisitor, node *shimast.Node) (*shimast.Node, bool) {
 	call := node.AsCallExpression()
 	if call.Arguments == nil {
 		return nil, false
@@ -127,7 +131,7 @@ func lowerTrailingParamtokens(ec *shimprinter.EmitContext, checker *shimchecker.
 	if last.Kind != shimast.KindCallExpression {
 		return nil, false
 	}
-	t, ok := factoryType(checker, artifacts, last, paramTokensforName)
+	t, ok := factoryType(checker, parseAnchor, artifacts, last, paramTokensforName)
 	if !ok {
 		return nil, false
 	}
@@ -210,30 +214,41 @@ func paramTokenLits(ec *shimprinter.EmitContext, ctx *tokens.Context, checker *s
 // primName at node — from the inline artifacts for a substituted call, else by
 // resolving a source-written call's callee to the primitive symbol. Mirrors the
 // singular stage's anchoring.
-func factoryType(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node, primName string) (*shimchecker.Type, bool) {
+func factoryType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+	primName string,
+) (*shimchecker.Type, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok && use.Name == primName && len(use.TypeArgs) == 1 {
 			return use.TypeArgs[0], true
 		}
 	}
-	return sourceWrittenType(checker, node, primName)
+	return sourceWrittenType(checker, parseAnchor, node, primName)
 }
 
 // sourceWrittenType returns the single type argument of a source-written
 // `primName<T>()` — a one-type-argument call whose callee resolves (following an
-// import alias) to the primName symbol. It anchors on the checker, which panics on
-// a SYNTHETIC callee (no program position), so a negative position or an unlinked
-// Parent is a clean skip (those are handled via artifacts above).
-func sourceWrittenType(checker *shimchecker.Checker, node *shimast.Node, primName string) (*shimchecker.Type, bool) {
-	call := node.AsCallExpression()
+// import alias) to the primName symbol. Callee and type argument are read off the
+// PARSE node, mirroring the singular stage, so no checker query walks a tree the
+// loop has rewritten (plugin.CheckerAnchor). A substituted call has no anchor in
+// this file and is handled via artifacts above.
+func sourceWrittenType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+	primName string,
+) (*shimchecker.Type, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, false
 	}

@@ -15,10 +15,10 @@ import (
 	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
-// syntheticSignatureofCall builds a factory-minted `signatureof(arg)` call whose
-// callee identifier is synthetic (position-less), standing in for the inline
-// stage's substituted clone. The factory nodes carry Pos<0, so this drives the
-// sourceWrittenArg guard that must NOT reach the checker.
+// syntheticSignatureofCall builds a factory-minted `signatureof(arg)` call,
+// standing in for a call a downstream stage rebuilt fresh. Factory-created nodes
+// carry no Original link, so they have no parse anchor — the shape sourceWrittenArg
+// must skip WITHOUT reaching the checker.
 func syntheticSignatureofCall(ec *shimprinter.EmitContext, argCount int) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	args := make([]*shimast.Node, argCount)
@@ -29,55 +29,64 @@ func syntheticSignatureofCall(ec *shimprinter.EmitContext, argCount int) *shimas
 	return factory.NewCallExpression(callee, nil, nil, factory.NewNodeList(args), 0)
 }
 
-// TestSourceWrittenArgSyntheticCalleeGuard is the signaturetransform analog of the
-// f1aaece checker-panic fix: a synthetic (inline-substituted) callee has Pos<0, so
-// sourceWrittenArg must return cleanly WITHOUT reaching GetSymbolAtLocation — a
-// nil checker here would panic if the guard failed. It also covers the arg-count
-// guard (a non-unary call is rejected before the callee is inspected).
-func TestSourceWrittenArgSyntheticCalleeGuard(t *testing.T) {
-	ec := shimprinter.NewEmitContext()
+// anchorOver builds a parse anchor for text's source file, for the guard tests
+// below. The file itself is irrelevant to a minted node (which anchors nowhere);
+// it matters for the foreign-file case, which must be rejected against it.
+func anchorOver(t *testing.T, ec *shimprinter.EmitContext, sf *shimast.SourceFile) plugin.CheckerAnchor {
+	t.Helper()
+	return plugin.NewCheckerAnchor(ec, sf)
+}
 
-	// Unary call, synthetic callee: the Pos<0 guard must fire before the checker.
+// TestSourceWrittenArgMintedCallGuard pins the first half of the parse-anchor
+// contract: a call a stage MINTED through the emit factory has no Original link and
+// therefore no parse anchor, so sourceWrittenArg skips it without ever reaching
+// GetSymbolAtLocation — a nil checker here would panic if the guard failed. It also
+// covers the arg-count guard (a non-unary call is rejected).
+func TestSourceWrittenArgMintedCallGuard(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+	parseAnchor := anchorOver(t, ec, parseTS(t, "signatureof(Foo);\n"))
+
+	// Unary call, minted: no anchor, so the checker is never asked.
 	unary := syntheticSignatureofCall(ec, 1)
-	if arg, ok := sourceWrittenArg(nil, unary); ok || arg != nil {
-		t.Fatalf("synthetic unary call: got (%v, %t), want (nil, false)", arg, ok)
+	if arg, ok := sourceWrittenArg(nil, parseAnchor, unary); ok || arg != nil {
+		t.Fatalf("minted unary call: got (%v, %t), want (nil, false)", arg, ok)
 	}
 
 	// Arg-count guard: a non-unary call is rejected up front.
 	binary := syntheticSignatureofCall(ec, 2)
-	if arg, ok := sourceWrittenArg(nil, binary); ok || arg != nil {
+	if arg, ok := sourceWrittenArg(nil, parseAnchor, binary); ok || arg != nil {
 		t.Fatalf("binary call: got (%v, %t), want (nil, false)", arg, ok)
 	}
 	zero := syntheticSignatureofCall(ec, 0)
-	if arg, ok := sourceWrittenArg(nil, zero); ok || arg != nil {
+	if arg, ok := sourceWrittenArg(nil, parseAnchor, zero); ok || arg != nil {
 		t.Fatalf("zero-arg call: got (%v, %t), want (nil, false)", arg, ok)
 	}
 }
 
-// TestSourceWrittenArgUnlinkedParentGuard is the signaturetransform analog of the
-// #240 `.as`-chain nil-deref (see nameoftransform.isNameofCall's writeup): a
-// callee can carry a REAL parsed position — so the Pos<0 guard above does not
-// fire — while its `Parent` link is unset, because the inline stage's
-// substitution rebuilt the wrapping node over a changed child without
-// re-linking it. This stage's visitor walks every call expression exactly like
-// tokenfor's, so it reaches the same shape. Detach a parsed (real-position)
-// callee's Parent to reproduce the unlinked-but-positioned node directly, and
-// assert the guard returns cleanly with a nil checker — a real checker call
-// here would panic.
-func TestSourceWrittenArgUnlinkedParentGuard(t *testing.T) {
-	sf := parseTS(t, "signatureof(Foo);\n")
-	call := findCallByCallee(sf, "signatureof")
-	if call == nil {
-		t.Fatal("signatureof(Foo) call not found")
+// TestSourceWrittenArgForeignFileGuard pins the SAME-FILE half of the anchor, the
+// half that is easy to mistake for decoration. The inline stage substitutes a sugar
+// body by deep-cloning it, and the clone hook records the side-parsed BODY node as
+// the clone's original — a real parse node, in the declaring package's file. So a
+// substituted body's own `signatureof(...)` anchors OUT of the file being lowered,
+// and handing that to the checker asks it about syntax from a program it never
+// loaded. Those calls belong to the artifacts path; the file comparison is what
+// routes them there. A nil checker asserts nothing reaches it.
+func TestSourceWrittenArgForeignFileGuard(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+	body := parseTS(t, "signatureof(Foo);\n")
+	bodyCall := findCallByCallee(body, "signatureof")
+	if bodyCall == nil {
+		t.Fatal("signatureof(Foo) call not found in the body file")
 	}
-	callee := call.AsCallExpression().Expression
-	if callee.Pos() < 0 {
-		t.Fatalf("test setup: expected a real parsed position, got %d", callee.Pos())
+	clone := ec.Factory.AsNodeFactory().DeepCloneNode(bodyCall)
+	if ec.ParseNode(clone) != bodyCall {
+		t.Fatalf("test setup: the clone must anchor back to the body node, got %v", ec.ParseNode(clone))
 	}
-	callee.Parent = nil
 
-	if arg, ok := sourceWrittenArg(nil, call); ok || arg != nil {
-		t.Fatalf("unlinked-parent callee: got (%v, %t), want (nil, false)", arg, ok)
+	consumer := inlinetransform.SideParse("/consumer.ts", "export const x = 1;\n")
+	parseAnchor := anchorOver(t, ec, consumer)
+	if arg, ok := sourceWrittenArg(nil, parseAnchor, clone); ok || arg != nil {
+		t.Fatalf("foreign-file clone: got (%v, %t), want (nil, false)", arg, ok)
 	}
 }
 
@@ -88,37 +97,39 @@ func TestSourceWrittenArgUnlinkedParentGuard(t *testing.T) {
 //   - a node not recorded at all -> falls through.
 //   - nil artifacts -> falls through.
 //
-// Every fall-through lands on sourceWrittenArg with a synthetic callee, which the
-// guard resolves to (nil,false) without a checker — so a nil checker is safe.
+// Every fall-through lands on sourceWrittenArg with a MINTED call, which has no
+// parse anchor and resolves to (nil,false) without a checker — so a nil checker is
+// safe.
 func TestSignatureofArgArtifacts(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
 	factory := ec.Factory.AsNodeFactory()
+	parseAnchor := anchorOver(t, ec, parseTS(t, "signatureof(Foo);\n"))
 
 	node := syntheticSignatureofCall(ec, 1)
 	valueArg := factory.NewIdentifier("Foo")
 
 	artifacts := inlinetransform.NewArtifacts()
 	artifacts.PrimitiveCalls[node] = inlinetransform.PrimitiveUse{Name: "signatureof", ValueArg: valueArg}
-	if arg, ok := signatureofArg(nil, artifacts, node); !ok || arg != valueArg {
+	if arg, ok := signatureofArg(nil, parseAnchor, artifacts, node); !ok || arg != valueArg {
 		t.Fatalf("recorded signatureof use: got (%v, %t), want (%v, true)", arg, ok, valueArg)
 	}
 
 	// Recorded under a different primitive name -> falls through (no match).
 	mismatch := inlinetransform.NewArtifacts()
 	mismatch.PrimitiveCalls[node] = inlinetransform.PrimitiveUse{Name: "tokenfor", ValueArg: valueArg}
-	if arg, ok := signatureofArg(nil, mismatch, node); ok || arg != nil {
+	if arg, ok := signatureofArg(nil, parseAnchor, mismatch, node); ok || arg != nil {
 		t.Fatalf("name-mismatch use: got (%v, %t), want (nil, false)", arg, ok)
 	}
 
 	// A recorded entry for a DIFFERENT node -> this node falls through.
 	other := inlinetransform.NewArtifacts()
 	other.PrimitiveCalls[syntheticSignatureofCall(ec, 1)] = inlinetransform.PrimitiveUse{Name: "signatureof", ValueArg: valueArg}
-	if arg, ok := signatureofArg(nil, other, node); ok || arg != nil {
+	if arg, ok := signatureofArg(nil, parseAnchor, other, node); ok || arg != nil {
 		t.Fatalf("unrecorded node: got (%v, %t), want (nil, false)", arg, ok)
 	}
 
 	// Nil artifacts -> straight to sourceWrittenArg.
-	if arg, ok := signatureofArg(nil, nil, node); ok || arg != nil {
+	if arg, ok := signatureofArg(nil, parseAnchor, nil, node); ok || arg != nil {
 		t.Fatalf("nil artifacts: got (%v, %t), want (nil, false)", arg, ok)
 	}
 }
@@ -243,13 +254,15 @@ export const c = keep;
 	prog, _ := buildSigWorkspace(t, mainSrc)
 	defer func() { _ = prog.Close() }()
 	sf := mainSourceFile(t, prog)
+	ec := shimprinter.NewEmitContext()
+	parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 
 	// Aliased happy path: `sig(Foo)` resolves through the alias to signatureof.
 	sigCall := findCallByCallee(sf, "sig")
 	if sigCall == nil {
 		t.Fatal("sig(Foo) call not found")
 	}
-	arg, ok := sourceWrittenArg(prog.Checker, sigCall)
+	arg, ok := sourceWrittenArg(prog.Checker, parseAnchor, sigCall)
 	if !ok {
 		t.Fatal("aliased signatureof call was not anchored")
 	}
@@ -263,8 +276,32 @@ export const c = keep;
 	if otherCall == nil {
 		t.Fatal("other(Foo) call not found")
 	}
-	if a, ok := sourceWrittenArg(prog.Checker, otherCall); ok || a != nil {
+	if a, ok := sourceWrittenArg(prog.Checker, parseAnchor, otherCall); ok || a != nil {
 		t.Fatalf("name-mismatch call: got (%v, %t), want (nil, false)", a, ok)
+	}
+
+	// A REBUILT call still anchors — and to the pass-0 node, which is the whole
+	// point: `sig(Foo)` rebuilt over a changed argument is the shape the loop
+	// produces, and it must keep matching (with the checker asked about the
+	// original, not the rebuild).
+	nodeFactory := ec.Factory.AsNodeFactory()
+	rebuilt := nodeFactory.UpdateCallExpression(
+		sigCall.AsCallExpression(),
+		sigCall.AsCallExpression().Expression,
+		nil,
+		nil,
+		nodeFactory.NewNodeList([]*shimast.Node{nodeFactory.NewIdentifier("Foo")}),
+		sigCall.Flags,
+	)
+	if rebuilt == sigCall {
+		t.Fatal("test setup: the update did not rebuild the call")
+	}
+	rebuiltArg, ok := sourceWrittenArg(prog.Checker, parseAnchor, rebuilt)
+	if !ok {
+		t.Fatal("a rebuilt source-written call must still anchor and match")
+	}
+	if rebuiltArg != arg {
+		t.Fatalf("a rebuilt call must yield the PASS-0 argument %v, got %v", arg, rebuiltArg)
 	}
 }
 

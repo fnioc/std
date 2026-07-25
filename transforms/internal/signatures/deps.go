@@ -149,15 +149,17 @@ type constructorExtraction struct {
 // extractFromExpression resolves the class a registration arg refers to and
 // extracts its constructor signature, or ok=false for a non-class expression.
 //
-// This is a checker-anchored matcher (GetSymbolAtLocation), so it carries the same
-// clean-skip guard the primitive stages do: under the fixed-point loop a value
-// argument handed to the shared extractor is always the ORIGINAL program-bound
-// node (the inline stage captures and re-splices it), but a rebuilt property access
-// can carry a real position with an unset Parent, and the checker's
-// GetSymbolAtLocation derefs `Parent.Parent` unconditionally — so a negative
-// position or nil Parent is a clean "not a class" skip, never a nil-deref.
+// This is a checker query (GetSymbolAtLocation), so the expression is resolved to
+// its PARSE node first — the engine-wide rule that keeps the checker off a tree the
+// fixed-point loop has rewritten (plugin.CheckerAnchor). Callers already hand this
+// the pass-0 node (the signatureof stage anchors its source-written argument; the
+// inline stage captured the original call-site argument into its artifacts), so the
+// anchor is normally the identity; it is applied here anyway so the invariant does
+// not depend on every future caller remembering it. No anchor in this file means a
+// minted or foreign-file node, which is a clean "not a class" skip.
 func (c *context) extractFromExpression(expr *shimast.Node) (*constructorExtraction, bool) {
-	if expr.Pos() < 0 || expr.Parent == nil {
+	expr = c.parseAnchor(expr)
+	if expr == nil {
 		return nil, false
 	}
 	symbol := c.checker.GetSymbolAtLocation(expr)

@@ -62,7 +62,7 @@ const fixtureTsconfig = `{
 `
 
 // nameofAppSrc is the shared fixture source: a lone tokenfor<T>() over a local
-// interface, imported from a local ./tokenfor stub. isNameofCall matches any call
+// interface, imported from a local ./tokenfor stub. The stage matches any call
 // whose callee symbol is named `tokenfor`, so the local stub is enough; when the
 // tokenfor stage is active the call lowers to the package-qualified token and the
 // now-dead import elides.

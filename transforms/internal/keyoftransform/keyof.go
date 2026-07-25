@@ -53,13 +53,17 @@ const keyofName = "keyof"
 func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, _ func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
+		// Which primitive a callee is, and what its type argument means, are facts
+		// about SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of
+		// a tree the loop has rewritten (plugin.CheckerAnchor).
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
-				if t, ok := keyofType(checker, artifacts, node); ok {
+				if t, ok := keyofType(checker, parseAnchor, artifacts, node); ok {
 					return lowerKey(ec, checker, t)
 				}
 			}
@@ -87,34 +91,37 @@ func lowerKey(ec *shimprinter.EmitContext, checker *shimchecker.Checker, t *shim
 // keyofType returns the bound type argument of a keyof call at node — from the
 // inline artifacts for a substituted (synthetic-callee) call, else by resolving a
 // source-written `keyof<T>()` callee to the primitive symbol.
-func keyofType(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimchecker.Type, bool) {
+func keyofType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+) (*shimchecker.Type, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok && use.Name == keyofName && len(use.TypeArgs) == 1 {
 			return use.TypeArgs[0], true
 		}
 	}
-	return sourceWrittenType(checker, node)
+	return sourceWrittenType(checker, parseAnchor, node)
 }
 
 // sourceWrittenType returns the single type argument of a source-written
 // `keyof<T>()` — a one-type-argument call whose callee resolves (following an
-// import alias) to the `keyof` symbol. It anchors on the checker, which panics on
-// a SYNTHETIC callee (no program position — the inline stage's substituted clone);
-// such nodes are handled via artifacts above, so a negative position is a clean
-// skip, not a nil-deref inside GetSymbolAtLocation. A node can also carry a real
-// position but an unset `Parent` (a property access the inline substitution
-// rebuilt because its OBJECT child changed) — the same clean-skip guard, mirroring
-// nameoftransform.isNameofCall's `.as`-chain hazard.
-func sourceWrittenType(checker *shimchecker.Checker, node *shimast.Node) (*shimchecker.Type, bool) {
-	call := node.AsCallExpression()
+// import alias) to the `keyof` symbol. Callee and type argument are read off the
+// PARSE node so no checker query walks the tree the fixed-point loop has rewritten
+// (plugin.CheckerAnchor: a rewritten registration chain leads the checker into a
+// minted, symbol-less literal and nil-derefs it). A call with no anchor in this
+// file is minted or is a substituted body clone; the substituted form is handled
+// via artifacts above, so it is a clean skip.
+func sourceWrittenType(checker *shimchecker.Checker, parseAnchor plugin.CheckerAnchor, node *shimast.Node) (*shimchecker.Type, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, false
 	}

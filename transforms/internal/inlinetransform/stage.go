@@ -84,6 +84,7 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		st := &fileState{
 			ec:            ec,
 			checker:       checker,
+			parseAnchor:   plugin.NewCheckerAnchor(ec, sf),
 			artifacts:     artifacts,
 			inlineByDecl:  inlineByDecl,
 			resolvedList:  resolvedList,
@@ -97,8 +98,16 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 
 // fileState carries the per-file inline pass state.
 type fileState struct {
-	ec            *shimprinter.EmitContext
-	checker       *shimchecker.Checker
+	ec      *shimprinter.EmitContext
+	checker *shimchecker.Checker
+	// parseAnchor maps a node in the current (already-rewritten) tree back to the
+	// pristine parse node, and is the ONLY node this stage hands the checker. Which
+	// overload a sugar call binds to, and which type arguments it was invoked with,
+	// are facts about the SOURCE-WRITTEN call, so they are resolved against the node
+	// the binder saw; the receiver and arguments spliced into the body still come
+	// from the CURRENT tree, since those must carry whatever earlier passes lowered.
+	// See plugin.CheckerAnchor for what re-querying a rewritten tree costs.
+	parseAnchor   plugin.CheckerAnchor
 	artifacts     *Artifacts
 	inlineByDecl  map[*shimast.Node]*matchTarget
 	resolvedList  []*Resolved
@@ -192,31 +201,37 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 
-	// Synthetic-node clean-skip guard. A call a PRIOR pass produced by lowering a
-	// sugar chain is never itself a source-written inline candidate — its sugar was
-	// already substituted — so it must not be re-matched. The concrete defect (W2
-	// repro): `.withSignature<[]>()` lowers to the zero-argument `.withSignature()`
-	// (the empty tuple makes `...signaturefor<[]>()` spread nothing); a later pass
-	// then re-visits that call, binds it to the zero-value-arg sugar overload, and
-	// RecoverTypeArguments fails with no type argument to recover — a spurious
-	// INLINE_INFERRED_TYPE_ARGUMENT that fails the build despite a byte-correct emit.
+	// Resolve the call back to the PARSE node before asking the checker anything.
+	// This is the stage's highest-exposure checker query: GetResolvedSignature runs
+	// on every pass, over every call whose callee NAME matches a sugar member — and
+	// resolving a signature means resolving the whole receiver chain, so on a
+	// rewritten registration it walks straight into the minted, symbol-less literals
+	// downstream stages produced and nil-derefs (plugin.CheckerAnchor).
 	//
-	// The synthetic marker is on the CALL EXPRESSION, not its callee. Substitute
-	// DeepCloneNodes the sugar body, which PRESERVES the cloned nodes' original
-	// positions, so the substituted `this.withSignature` property-access callee
-	// keeps a (foreign, body-file) Pos >= 0 — a callee-only Pos guard never fires
-	// (empirically observed: calleePos=463, callPos=-1). It is the CALL node that a
-	// downstream stage rebuilds fresh when it elides the spread, giving it Pos < 0.
-	// resolvedDeclaration feeds THIS node to checker.GetResolvedSignature, so guard
-	// it here, BEFORE that query, exactly as nameof/resolve guard the node they hand
-	// the checker. (Parent is re-linked every pass by RunToFixedPoint's
-	// SetParentInChildrenUnset, so the Pos check is the load-bearing half; the nil
-	// check stays as a defensive backstop for an unlinked node.)
-	if node.Pos() < 0 || node.Parent == nil {
+	// Anchoring also subsumes the clean-skip the old `Pos() < 0` guard provided, on
+	// the same two shapes and for a stated reason rather than an accident:
+	//
+	//   - A call a PRIOR pass produced by lowering a sugar chain is not a
+	//     source-written inline candidate — its sugar was already substituted. The
+	//     W2 repro: `.withSignature<[]>()` lowers to the zero-argument
+	//     `.withSignature()` (the empty tuple makes `...signaturefor<[]>()` spread
+	//     nothing), a later pass re-binds it to the zero-value-arg sugar overload,
+	//     and RecoverTypeArguments fails with no type argument to recover — a
+	//     spurious INLINE_INFERRED_TYPE_ARGUMENT on a byte-correct emit. That call is
+	//     minted through `factory.New*`, so it has no Original link and no anchor.
+	//   - A substituted sugar BODY calls `this.addClass(...)`, whose callee name
+	//     passes the pre-filter above. Its nodes are deep clones of the side-parsed
+	//     body, so they anchor into the DECLARING package's file, not this one, and
+	//     NewCheckerAnchor's same-file half rejects them.
+	//
+	// A source-written call that an earlier pass merely REBUILT (its receiver
+	// lowered) still anchors, and must: it is the next chain link waiting to inline.
+	anchored := st.parseAnchor(node)
+	if anchored == nil {
 		return nil, false
 	}
 
-	decl := resolvedDeclaration(st.checker, node)
+	decl := resolvedDeclaration(st.checker, anchored)
 	if decl == nil {
 		return nil, false
 	}
@@ -236,7 +251,7 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 
-	replacement, ok := st.inlineCall(node, target)
+	replacement, ok := st.inlineCall(node, anchored, target)
 	if !ok {
 		return nil, false
 	}
@@ -248,16 +263,21 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 	return replacement, true
 }
 
-// inlineCall performs the substitution for a matched call.
-func (st *fileState) inlineCall(node *shimast.Node, target *matchTarget) (*shimast.Node, bool) {
+// inlineCall performs the substitution for a matched call. node is the CURRENT
+// tree's call — what the substitution splices from — and anchored is its parse
+// node, the only one the checker is asked about (see fileState.parseAnchor).
+func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarget) (*shimast.Node, bool) {
 	call := node.AsCallExpression()
 	body := target.body
 
 	// Bind impl type params to the checker types at THIS call site (explicit or
-	// inferred), for the primitive-call registration.
+	// inferred), for the primitive-call registration. Read off the ANCHOR: an
+	// explicit type argument is source-written, and an inferred one is recovered
+	// from the resolved signature — both are properties of the pass-0 call, and
+	// asking the rewritten one would drag the checker back through the chain.
 	var env map[string]*shimchecker.Type
 	if len(body.TypeParams) > 0 {
-		types, ok := RecoverTypeArguments(st.checker, node)
+		types, ok := RecoverTypeArguments(st.checker, anchored)
 		if !ok || len(types) < len(body.TypeParams) {
 			st.emit(plugin.Diagnostic{
 				Code:    "INLINE_INFERRED_TYPE_ARGUMENT",

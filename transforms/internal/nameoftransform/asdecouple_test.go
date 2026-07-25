@@ -157,13 +157,12 @@ func lowerAsDecoupleInlinePipeline(t *testing.T, prog *driver.Program, app strin
 // deviation note): a `.as<"singleton">()` chained directly onto an
 // inline-substituted `addClass<I>(C)` call must lower to the value-arg `.as("singleton")`
 // with no authored generic or primitive surviving, and it must not panic — the
-// #240-noted tokenfor/checker nil-deref (`isNameofCall` -> `GetSymbolAtLocation`)
+// #240-noted tokenfor/checker nil-deref (a stage's `GetSymbolAtLocation`)
 // reproduced ONLY in this exact shape: a chained call whose OBJECT expression was
-// just replaced by the inline substitution keeps a real source position (so the
-// existing `Pos() < 0` synthetic guard doesn't fire) but loses its `Parent` link
-// (the factory's `Update...` rebuild of the wrapping property access never
-// re-links it), and the checker's `GetSymbolAtLocation` derefs `Parent.Parent`
-// unconditionally.
+// just replaced by the inline substitution keeps a real source position, so a
+// `Pos() < 0` synthetic guard never fires and the rewritten chain reaches the
+// checker. Every stage now resolves such a node back to its parse node first
+// (plugin.CheckerAnchor), which is what keeps this fixture from crashing.
 func TestAsDecoupleInlinePipelineLowersCleanly(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}

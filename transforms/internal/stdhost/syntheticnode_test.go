@@ -5,39 +5,39 @@ import (
 	"testing"
 )
 
-// This file pins a LIVE, UNFIXED defect: the typescript-go checker nil-derefs
-// when it is asked to contextually type an object literal a transform pass
-// minted. It is the crash that motivated the panic recovery in host.go, and it
-// is reachable from ordinary authored code, so it is pinned here rather than
-// left as folklore.
+// This file pins the repaired defect: the typescript-go checker nil-derefs when it
+// is asked to contextually type an object literal a transform pass minted. It was
+// pinned here as a LIVE bug when the panic recovery landed; it is now pinned as
+// FIXED, with the same fixtures asserting lowered output instead of a crash.
 //
 // THE MECHANISM. A slot for an OPTIONAL (or defaulted) constructor parameter
 // lowers to a union slot — the object literal `{ union: [token, { value: void 0
 // }] }` — which the signatures engine mints through the emit factory. A minted
 // node was never seen by the binder, so it carries no symbol. On the NEXT pass of
-// the fixed-point loop a stage asks the checker about the enclosing call chain
-// (nameof resolves the callee's symbol, the inline stage resolves the callee's
-// signature); resolving that reaches the receiver's overload resolution, which
-// contextually types the minted object literal's property assignment, and
-// checker.getContextualTypeForObjectLiteralElement dereferences the symbol it
-// assumes every element has:
+// the fixed-point loop a stage asked the checker about the enclosing call chain
+// (nameof resolved the callee's symbol, signatureof resolved its own, the inline
+// stage resolved the callee's signature); resolving that reached the receiver's
+// overload resolution, which contextually typed the minted object literal's
+// property assignment, and checker.getContextualTypeForObjectLiteralElement
+// dereferenced the symbol it assumes every element has:
 //
 //	symbol := c.getSymbolOfDeclaration(element)          // nil for a minted node
 //	return c.getTypeOfPropertyOfContextualTypeEx(t, symbol.Name, …)  // nil deref
 //
-// So it takes BOTH halves: a minted object literal in the argument list AND a
-// later checker query over the chain that contains it. The control cases below
-// carry the first without the second and lower cleanly.
+// So it took BOTH halves: a minted object literal in the argument list AND a later
+// checker query over the chain that contains it.
 //
-// The engine-side fix is not local — every stage resolves against the shared
-// checker, and the loop hands it a tree it has already rewritten, so the general
-// repair is to resolve on the pristine tree once instead of on each pass. That is
-// an architecture change, deliberately not made here. What IS fixed here is the
-// REPORT: the crash arrives as a diagnostic naming the file and the stage.
+// THE REPAIR (plugin.CheckerAnchor). Every in-loop checker query now resolves its
+// node back to the pristine PARSE node first — TypeScript's own `getParseTreeNode`
+// discipline — so the checker is never walked into a tree the loop has rewritten,
+// and never meets a minted node. The old `Pos() < 0 || Parent == nil` guard could
+// not catch this: `ast.updateNode` copies the original's position and flags onto a
+// rebuilt node, so a rebuild looks source-written.
 //
-// WHEN THESE TESTS START FAILING, the defect is fixed (a newer vendored checker,
-// or the engine stopped re-querying a rewritten tree). Promote them: drop the
-// panic expectation and assert the lowered output instead.
+// WHAT THESE TESTS PROTECT. Both crashing shapes must now lower cleanly AND emit
+// exactly the control registration with the trailing chain call appended — a fix
+// that merely stopped crashing while lowering less (a matcher that skipped the
+// rebuilt chain) would pass a code==0 assertion and fail these.
 
 // syntheticFixturePkg is the consumer manifest for the fixture below — a
 // dependency-free root, so CollectProject resolves nothing and the run needs no
@@ -70,8 +70,7 @@ export declare const manifest: IManifest;
 // syntheticPrelude declares the class whose OPTIONAL second constructor
 // parameter is what makes the derived signature carry a union slot — and so an
 // object literal — at all. With both parameters required the derived signature is
-// two bare token strings, there is no object literal to contextually type, and
-// none of these shapes crashes.
+// two bare token strings and there is no object literal to contextually type.
 const syntheticPrelude = `import { manifest, signatureof } from "./di";
 
 export interface IClock {}
@@ -86,6 +85,16 @@ export class Widget {
 
 `
 
+// syntheticLoweredRegistration is the registration every shape below must lower
+// to, byte for byte: the derived token, the constructor, and the ONE-slot
+// signature whose optional parameter became the minted union slot. Asserting the
+// full text (not just "it didn't crash") is what keeps a fix that lowers LESS from
+// passing — a matcher that skipped a rebuilt chain would leave `signatureof(...)`
+// standing here.
+const syntheticLoweredRegistration = `manifest.addClass("pkg:Widget", Widget, ` +
+	`[["@rhombus-std/synthetic-fixture/tokens/app:IClock", ` +
+	`{ union: ["@rhombus-std/synthetic-fixture/tokens/app:IOptions", { value: void 0 }] }]])`
+
 // syntheticFixture assembles the two-file fixture around one registration
 // statement.
 func syntheticFixture(registration string) map[string]string {
@@ -95,62 +104,106 @@ func syntheticFixture(registration string) map[string]string {
 	}
 }
 
-// TestSyntheticObjectLiteralPanicsTheChecker drives the two shapes that reach the
-// defect: a minted union slot in the argument list, plus a trailing chain call
-// the next pass asks the checker about. Both must arrive as a STAGE_PANIC naming
-// the source file — never as a process that dies with an unattributed Go stack.
-func TestSyntheticObjectLiteralPanicsTheChecker(t *testing.T) {
-	crashing := map[string]string{
-		// The smallest shape there is: one trailing scope call.
-		"trailing as": `export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as("singleton");`,
-		// A trailing single-slot append reaches it the same way.
-		"trailing withSignature": `export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).withSignature("pkg:IClock");`,
-	}
-	for name, registration := range crashing {
-		t.Run(name, func(t *testing.T) {
-			dir := t.TempDir()
-			writeFixture(t, dir, syntheticFixturePkg, syntheticFixture(registration))
+// lowerSyntheticFixture runs the real host over the fixture and returns the
+// lowered app source, failing the test on any diagnostic or non-zero exit.
+func lowerSyntheticFixture(t *testing.T, registration string) string {
+	t.Helper()
+	dir := t.TempDir()
+	writeFixture(t, dir, syntheticFixturePkg, syntheticFixture(registration))
 
-			env, stderr, code := driveHost(t, dir, `[]`)
-			if code == 0 {
-				t.Fatalf("this shape no longer reaches the checker defect — the underlying bug is FIXED. Promote this test: assert the lowered output instead of the panic.\nlowered: %s", env.TypeScript["src/app.ts"])
+	env, stderr, code := driveHost(t, dir, `[]`)
+	if code != 0 {
+		t.Fatalf("the run must succeed; code = %d\ndiagnostics = %+v\nstderr: %s", code, env.Diagnostics, stderr)
+	}
+	if got := findDiag(env, stagePanicCode); got != nil {
+		t.Fatalf("the checker crashed again: %s", got.MessageText)
+	}
+	return loweredApp(t, env)
+}
+
+// TestChainedRegistrationOverMintedLiteralLowers is the promoted pin. Both shapes
+// carry a minted union slot in the argument list AND a trailing chain call whose
+// resolution used to drag the checker back into that literal. Each must lower to
+// the control registration with its own trailing call appended, and leave nothing
+// un-lowered behind.
+func TestChainedRegistrationOverMintedLiteralLowers(t *testing.T) {
+	cases := map[string]struct{ registration, want string }{
+		// The smallest shape there is: one trailing scope call.
+		"trailing as": {
+			registration: `export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as("singleton");`,
+			want:         syntheticLoweredRegistration + `.as("singleton")`,
+		},
+		// A trailing single-slot append reaches it the same way.
+		"trailing withSignature": {
+			registration: `export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).withSignature("pkg:IClock");`,
+			want:         syntheticLoweredRegistration + `.withSignature("pkg:IClock")`,
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			lowered := lowerSyntheticFixture(t, tc.registration)
+			if !strings.Contains(lowered, tc.want) {
+				t.Fatalf("lowered registration mismatch.\nwant to contain:\n%s\ngot:\n%s", tc.want, lowered)
 			}
-			got := findDiag(env, stagePanicCode)
-			if got == nil {
-				t.Fatalf("the run failed WITHOUT a %s diagnostic; diagnostics = %+v\nstderr: %s", stagePanicCode, env.Diagnostics, stderr)
-			}
-			if got.File == nil || !strings.HasSuffix(*got.File, "src/app.ts") {
-				t.Fatalf("%s must name the file that crashed; file = %v", stagePanicCode, got.File)
-			}
-			if !strings.Contains(got.MessageText, "invalid memory address or nil pointer dereference") {
-				t.Errorf("expected the checker nil-deref; message =\n%s", got.MessageText)
-			}
-			if !strings.Contains(got.MessageText, "getContextualTypeForObjectLiteralElement") {
-				t.Errorf("the crash moved off getContextualTypeForObjectLiteralElement — re-read this file's mechanism note; message =\n%s", got.MessageText)
+			if strings.Contains(lowered, "signatureof") {
+				t.Fatalf("signatureof survived lowering:\n%s", lowered)
 			}
 		})
 	}
 }
 
-// TestSyntheticObjectLiteralAloneIsHarmless is the control: the SAME minted union
-// slot, with nothing chained after the registration for a later pass to ask the
-// checker about, lowers cleanly. It is what proves the trigger is the second
-// query over a rewritten tree, not the union slot on its own — without it, a
-// fixture that failed to mint the object literal at all would still look like a
-// passing pin above.
-func TestSyntheticObjectLiteralAloneIsHarmless(t *testing.T) {
-	dir := t.TempDir()
-	writeFixture(t, dir, syntheticFixturePkg, syntheticFixture(
+// TestUnchainedRegistrationLowersIdentically is the control the crashing cases are
+// measured against: the SAME minted union slot with nothing chained after it. It
+// never reached the defect (no later query over the rewritten chain), so it is the
+// oracle — the chained shapes above must lower to exactly this registration plus
+// their trailing call, not to something the repair quietly changed.
+func TestUnchainedRegistrationLowersIdentically(t *testing.T) {
+	lowered := lowerSyntheticFixture(t,
 		`export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget));`,
-	))
+	)
+	if !strings.Contains(lowered, syntheticLoweredRegistration) {
+		t.Fatalf("the control registration did not lower as expected.\nwant to contain:\n%s\ngot:\n%s", syntheticLoweredRegistration, lowered)
+	}
+	if !strings.Contains(lowered, "union:") {
+		t.Fatalf("the fixture did not mint the union slot the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
+	}
+	if strings.Contains(lowered, "signatureof") {
+		t.Fatalf("signatureof survived lowering:\n%s", lowered)
+	}
+}
+
+// TestAllRequiredParamsMintNoObjectLiteral pins the OTHER half of the mechanism:
+// with both constructor parameters required the derived signature is two bare
+// token strings, so no object literal is minted and the crash was unreachable even
+// when chained. It guards the fixture above from silently losing its optional
+// parameter — that would leave the pins passing for the wrong reason.
+func TestAllRequiredParamsMintNoObjectLiteral(t *testing.T) {
+	dir := t.TempDir()
+	writeFixture(t, dir, syntheticFixturePkg, map[string]string{
+		"src/di.ts": syntheticDiStub,
+		"src/app.ts": `import { manifest, signatureof } from "./di";
+
+export interface IClock {}
+export interface IOptions {}
+
+export class Widget {
+  public constructor(clock: IClock, options: IOptions) {
+    void clock;
+    void options;
+  }
+}
+
+export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as("singleton");
+`,
+	})
 
 	env, stderr, code := driveHost(t, dir, `[]`)
 	if code != 0 {
-		t.Fatalf("an unchained registration must lower cleanly; code = %d\ndiagnostics = %+v\nstderr: %s", code, env.Diagnostics, stderr)
+		t.Fatalf("an all-required constructor must lower cleanly; code = %d\ndiagnostics = %+v\nstderr: %s", code, env.Diagnostics, stderr)
 	}
 	lowered := loweredApp(t, env)
-	if !strings.Contains(lowered, "union:") {
-		t.Fatalf("the fixture did not mint the union slot the crashing cases depend on — the pin above would be vacuous:\n%s", lowered)
+	if strings.Contains(lowered, "union:") {
+		t.Fatalf("an all-required constructor must derive bare token strings, no union slot:\n%s", lowered)
 	}
 	if strings.Contains(lowered, "signatureof") {
 		t.Fatalf("signatureof survived lowering:\n%s", lowered)

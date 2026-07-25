@@ -5,6 +5,7 @@ import (
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
+	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signatures"
 )
 
@@ -28,8 +29,14 @@ const (
 // (its bound tuple type read from the inline artifacts, since the synthetic callee
 // carries no symbol) and a source-written one (anchored by resolving the callee to
 // the primitive symbol). ok=false leaves the call in place for the emit sweep.
-func lowerSignatureFor(extractor *signatures.Extractor, checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimast.Node, bool) {
-	t, name, ok := signatureForCall(checker, artifacts, node)
+func lowerSignatureFor(
+	extractor *signatures.Extractor,
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+) (*shimast.Node, bool) {
+	t, name, ok := signatureForCall(checker, parseAnchor, artifacts, node)
 	if !ok || t == nil {
 		return nil, false
 	}
@@ -43,34 +50,41 @@ func lowerSignatureFor(extractor *signatures.Extractor, checker *shimchecker.Che
 // signaturefor / signaturesfor call plus which primitive it is — from the inline
 // artifacts for a substituted (synthetic-callee) call, else by resolving a
 // source-written call's callee and reading its type argument through the checker.
-func signatureForCall(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimchecker.Type, string, bool) {
+func signatureForCall(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+) (*shimchecker.Type, string, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok &&
 			(use.Name == signatureforName || use.Name == signaturesforName) && len(use.TypeArgs) != 0 {
 			return use.TypeArgs[0], use.Name, true
 		}
 	}
-	return sourceWrittenSignatureFor(checker, node)
+	return sourceWrittenSignatureFor(checker, parseAnchor, node)
 }
 
 // sourceWrittenSignatureFor resolves a source-written `signaturefor<T>()` /
 // `signaturesfor<T>()` — a single-type-argument call whose callee resolves
 // (following an import alias) to one of the two primitive symbols — and returns
-// the checker type of its type argument. It guards the callee's position / parent
-// exactly as signatureof and nameof do: the checker's GetSymbolAtLocation panics on
-// a synthetic callee (no program position) or an inline-rebuilt property access
-// (an unset Parent), so both are a clean skip — a substituted call is handled via
-// artifacts above.
-func sourceWrittenSignatureFor(checker *shimchecker.Checker, node *shimast.Node) (*shimchecker.Type, string, bool) {
-	call := node.AsCallExpression()
+// the checker type of its type argument. Callee and type argument both come off
+// the PARSE node, exactly as signatureof and nameof do, so no query walks a
+// rewritten tree (plugin.CheckerAnchor). A substituted call has no anchor in this
+// file and is handled via artifacts above.
+func sourceWrittenSignatureFor(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+) (*shimchecker.Type, string, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, "", false
+	}
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, "", false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, "", false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, "", false
 	}

@@ -60,16 +60,20 @@ const (
 func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Artifacts, _ func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
+		// Which primitive a callee is, and what its type argument means, are facts
+		// about SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of
+		// a tree the loop has rewritten (plugin.CheckerAnchor).
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
-				if t, ok := singularType(checker, artifacts, node, isSingularName); ok {
+				if t, ok := singularType(checker, parseAnchor, artifacts, node, isSingularName); ok {
 					return lowerIsSingular(ec, t)
 				}
-				if t, ok := singularType(checker, artifacts, node, singularValueName); ok {
+				if t, ok := singularType(checker, parseAnchor, artifacts, node, singularValueName); ok {
 					if lowered, done := lowerSingularValue(ec, t); done {
 						return lowered
 					}
@@ -147,31 +151,41 @@ func literalExpression(factory *shimast.NodeFactory, v tokens.LiteralValue) *shi
 // singularType returns the bound type argument of a call to the primitive named
 // primName at node — from the inline artifacts for a substituted (synthetic-callee)
 // call, else by resolving a source-written call's callee to the primitive symbol.
-func singularType(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node, primName string) (*shimchecker.Type, bool) {
+func singularType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+	primName string,
+) (*shimchecker.Type, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok && use.Name == primName && len(use.TypeArgs) == 1 {
 			return use.TypeArgs[0], true
 		}
 	}
-	return sourceWrittenType(checker, node, primName)
+	return sourceWrittenType(checker, parseAnchor, node, primName)
 }
 
 // sourceWrittenType returns the single type argument of a source-written
 // `primName<T>()` — a one-type-argument call whose callee resolves (following an
-// import alias) to the primName symbol. It anchors on the checker, which panics on
-// a SYNTHETIC callee (no program position — the inline stage's substituted clone),
-// so a negative position or an unlinked Parent is a clean skip (those are handled
-// via artifacts above), mirroring keyof's guard.
-func sourceWrittenType(checker *shimchecker.Checker, node *shimast.Node, primName string) (*shimchecker.Type, bool) {
-	call := node.AsCallExpression()
+// import alias) to the primName symbol. Callee and type argument are read off the
+// PARSE node, mirroring keyof, so no checker query walks a tree the loop has
+// rewritten (plugin.CheckerAnchor). A substituted call has no anchor in this file
+// and is handled via artifacts above.
+func sourceWrittenType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+	primName string,
+) (*shimchecker.Type, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, false
 	}

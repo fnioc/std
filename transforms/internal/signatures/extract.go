@@ -5,6 +5,7 @@ import (
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 
+	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -30,12 +31,13 @@ func NewExtractor(
 	addDiag func(Diagnostic),
 ) *Extractor {
 	return &Extractor{c: &context{
-		tokens:  ctx,
-		checker: checker,
-		factory: ec.Factory.AsNodeFactory(),
-		sf:      sf,
-		addDiag: addDiag,
-		ec:      ec,
+		tokens:      ctx,
+		checker:     checker,
+		factory:     ec.Factory.AsNodeFactory(),
+		sf:          sf,
+		addDiag:     addDiag,
+		ec:          ec,
+		parseAnchor: plugin.NewCheckerAnchor(ec, sf),
 	}}
 }
 
@@ -43,6 +45,13 @@ func NewExtractor(
 // class or factory VALUE would lower to, or ok=false for a value that is neither
 // constructable nor callable (a caller then leaves the primitive call in place,
 // which the emit sweep flags as an unlowered primitive).
+//
+// CALLER CONTRACT: arg must be a PARSE node. Both callers satisfy it — the
+// signatureof stage reads its source-written argument off the parse-anchored call,
+// and the inline stage recorded the ORIGINAL call-site argument in its artifacts —
+// which is what keeps the type queries below off a tree the loop has rewritten
+// (plugin.CheckerAnchor). extractFromExpression re-applies the anchor as a
+// backstop, so a future caller that forgets gets a clean miss, not a crash.
 func (e *Extractor) SignatureArray(arg *shimast.Node) (*shimast.Node, bool) {
 	sigs, ok := e.c.signaturesForValue(arg)
 	if !ok {

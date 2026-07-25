@@ -19,6 +19,7 @@ import (
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 
+	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -59,8 +60,8 @@ type Diagnostic struct {
 }
 
 // context is the per-file lowering context: the program-wide token derivation
-// context plus the per-file checker, node factory, source file, and diagnostic
-// sink.
+// context plus the per-file checker, node factory, source file, parse anchor, and
+// diagnostic sink.
 type context struct {
 	tokens  *tokens.Context
 	checker *shimchecker.Checker
@@ -68,6 +69,13 @@ type context struct {
 	sf      *shimast.SourceFile
 	addDiag func(Diagnostic)
 	ec      *shimprinter.EmitContext
+	// parseAnchor resolves a node to the pristine parse node before the checker is
+	// asked about it — the engine-wide rule (plugin.CheckerAnchor). Every other
+	// checker call in this engine is symbol- or type-driven (a declaration off a
+	// symbol, a type off a type), which is loop-invariant by construction; the one
+	// SYNTAX-driven query is extractFromExpression's GetSymbolAtLocation, and that
+	// is where this is used.
+	parseAnchor plugin.CheckerAnchor
 }
 
 // emitError raises a hard diagnostic anchored at node.
