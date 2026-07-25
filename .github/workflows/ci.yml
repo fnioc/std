@@ -105,63 +105,14 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Prewarm: compile the ttsc sidecar ONCE and populate the shared, content-keyed
-  # cache so the transform shards restore a warm binary instead of each paying the
-  # ~5-minute cold Go compile. Only runs when the transform gate is hot.
-  # ---------------------------------------------------------------------------
-  prewarm:
-    name: prewarm ttsc sidecar
-    needs: changes
-    if: ${{ github.event_name != 'workflow_dispatch' && needs.changes.outputs.transform == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - uses: jdx/mise-action@v2
-
-      # The compiled ttsc sidecars + ttsc's Go object cache live at the shared,
-      # content-keyed ~/.cache/fnioc-ttsc/cache (~30 MB per sidecar) plus the
-      # general Go build cache. Key on the whole engine source + toolchain pins so
-      # only a genuine engine/toolchain change forces a cold rebuild; the restore
-      # key lets an unchanged-engine run reuse a prior binary. Scoped to .../cache
-      # so the per-worktree e2e sandboxes ride outside it.
-      - name: Cache ttsc plugin sidecars
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/fnioc-ttsc/cache
-            ~/.cache/go-build
-            node_modules/.cache
-          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
-          restore-keys: |
-            ttsc-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install
-
-      # Lowering during the build compiles/links the sidecar into the cache; the
-      # actions/cache post step then saves it for the shards to restore.
-      - name: Build (warms the ttsc sidecar cache)
-        run: bun run build
-
-  # ---------------------------------------------------------------------------
   # Always-on gate: the non-transform-sensitive checks. Build, the full unit-test
   # sweep (every package's `test`, which includes the examples.app output-diff),
   # lint, and format:check. Runs on every PR/merge regardless of the change gate.
-  # Depends on prewarm only to reuse its warm sidecar cache when the gate is hot;
-  # when the gate is cold prewarm is skipped and this restores a prior warm cache.
   # ---------------------------------------------------------------------------
   main-gate:
     name: build, unit tests, lint, format
-    needs: [changes, prewarm]
-    if: ${{ always() && github.event_name != 'workflow_dispatch' && needs.changes.result == 'success' && needs.prewarm.result != 'failure' && needs.prewarm.result != 'cancelled' }}
+    needs: changes
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -175,16 +126,23 @@ jobs:
 
       - uses: jdx/mise-action@v2
 
-      - name: Cache ttsc plugin sidecars
-        uses: actions/cache@v4
+      - name: Restore ttsc sidecar binaries
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cache/fnioc-ttsc/cache
-            ~/.cache/go-build
             node_modules/.cache
-          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
           restore-keys: |
-            ttsc-${{ runner.os }}-
+            ttsc-sidecar-${{ runner.os }}-
+
+      - name: Restore Go build objects
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-main-gate-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+          restore-keys: |
+            go-build-${{ runner.os }}-main-gate-
 
       - name: Install dependencies
         run: bun install
@@ -203,15 +161,33 @@ jobs:
       - name: Format
         run: bun run format:check
 
+      - name: Save ttsc sidecar binaries
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/fnioc-ttsc/cache
+            node_modules/.cache
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+
+      - name: Save Go build objects
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-main-gate-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+
   # ---------------------------------------------------------------------------
   # Transform shards: the ttsc e2e parity suites + the Go engine gates, split into
-  # balanced legs so they run in parallel off the prewarmed sidecar cache. Skipped
-  # entirely when the change gate is cold.
+  # balanced legs so they run in parallel. Skipped entirely when the change gate is
+  # cold. Each leg restores the caches itself -- there is no prewarm barrier, so a
+  # cold engine means four legs compiling the sidecar concurrently rather than one
+  # serial compile the whole run waits on.
   # ---------------------------------------------------------------------------
   transform-shards:
     name: transform shard (${{ matrix.name }})
-    needs: [changes, prewarm]
-    if: ${{ always() && needs.changes.outputs.transform == 'true' && needs.prewarm.result == 'success' }}
+    needs: changes
+    if: ${{ needs.changes.outputs.transform == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -240,16 +216,27 @@ jobs:
 
       - uses: jdx/mise-action@v2
 
-      - name: Cache ttsc plugin sidecars
-        uses: actions/cache@v4
+      - name: Restore ttsc sidecar binaries
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cache/fnioc-ttsc/cache
-            ~/.cache/go-build
             node_modules/.cache
-          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
           restore-keys: |
-            ttsc-${{ runner.os }}-
+            ttsc-sidecar-${{ runner.os }}-
+
+      # Per-leg key: the go-gates leg compiles a different object set (vet + test
+      # binaries for every transforms package) than the e2e legs (the sidecar link).
+      # Under one shared key the first leg to finish won it and every other leg's
+      # objects were never saved, so `go test ./...` recompiled cold every run.
+      - name: Restore Go build objects
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-shard-${{ matrix.name }}-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+          restore-keys: |
+            go-build-${{ runner.os }}-shard-${{ matrix.name }}-
 
       - name: Install dependencies
         run: bun install
@@ -282,6 +269,22 @@ jobs:
           go test ./...
           test -z "$(gofmt -l .)"
 
+      - name: Save ttsc sidecar binaries
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/fnioc-ttsc/cache
+            node_modules/.cache
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+
+      - name: Save Go build objects
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-shard-${{ matrix.name }}-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+
   # ---------------------------------------------------------------------------
   # The required status check. Named `verify` so the merge-queue ruleset stays
   # untouched. Aggregates every gated job: succeeds when they passed OR were
@@ -289,7 +292,7 @@ jobs:
   # ---------------------------------------------------------------------------
   verify:
     name: verify
-    needs: [changes, prewarm, main-gate, transform-shards]
+    needs: [changes, main-gate, transform-shards]
     if: ${{ always() && github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
@@ -298,17 +301,15 @@ jobs:
       - name: Aggregate gated job results
         env:
           R_CHANGES: ${{ needs.changes.result }}
-          R_PREWARM: ${{ needs.prewarm.result }}
           R_MAIN: ${{ needs.main-gate.result }}
           R_SHARDS: ${{ needs.transform-shards.result }}
         run: |
           set -euo pipefail
           echo "changes:          $R_CHANGES"
-          echo "prewarm:          $R_PREWARM"
           echo "main-gate:        $R_MAIN"
           echo "transform-shards: $R_SHARDS"
           fail=0
-          for r in "$R_CHANGES" "$R_PREWARM" "$R_MAIN" "$R_SHARDS"; do
+          for r in "$R_CHANGES" "$R_MAIN" "$R_SHARDS"; do
             if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
               fail=1
             fi
@@ -340,13 +341,21 @@ jobs:
         with:
           node-version: 24
 
-      - name: Cache ttsc plugin sidecars
-        uses: actions/cache@v4
+      - name: Restore ttsc sidecar binaries
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/fnioc-ttsc/cache
-          key: ttsc-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
           restore-keys: |
-            ttsc-${{ runner.os }}-
+            ttsc-sidecar-${{ runner.os }}-
+
+      - name: Restore Go build objects
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-main-gate-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+          restore-keys: |
+            go-build-${{ runner.os }}-main-gate-
 
       - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
         run: npm install -g npm@latest
