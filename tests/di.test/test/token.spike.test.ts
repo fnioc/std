@@ -394,9 +394,14 @@ describe('canonicalisation — parse → stringify is canonical, idempotent, ora
     expect(canonicalise('IFoo<72#k>')).toBe('IFoo<72#k>');
   });
 
-  test('hole labels canonicalise (leading zeros) but reject out-of-range', () => {
-    expect(canonicalise('$01')).toBe('$1');
-    expect(canonicalise('IFoo<$007>')).toBe('IFoo<$7>');
+  test('hole labels are 1-based, leading-zero-free, and in safe-integer range', () => {
+    // One spelling per label: a leading zero is a parse error, not a second
+    // spelling canonicalisation has to fold away.
+    expect(() => parse('$01')).toThrow();
+    expect(() => parse('IFoo<$007>')).toThrow();
+    expect(() => parse('$0')).toThrow();
+    expect(canonicalise('$1')).toBe('$1');
+    expect(canonicalise('IFoo<$7>')).toBe('IFoo<$7>');
     // Beyond the safe-integer range a label would lose precision / emit
     // e-notation the grammar can't re-parse — reject at parse instead.
     expect(() => parse('$9007199254740993')).toThrow();

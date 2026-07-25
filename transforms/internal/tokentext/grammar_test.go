@@ -45,8 +45,14 @@ func TestIsOpenToken(t *testing.T) {
 	}{
 		{"$1", true},
 		{"$12", true},
+		// Hole labels are 1-based with no leading zero. di.core's tree parser
+		// states the same grammar (§129), so the two engines agree on every
+		// spelling, not just the ones a transform emits.
 		{"$0", false},
+		{"$01", false},
+		{"$007", false},
 		{"Promise<$1>", true},
+		{"Promise<$01>", false},
 		{"Array<pkg:IFoo>", false},
 		{"pkg:IFoo", false},
 		{`Holder<"$1">`, false},

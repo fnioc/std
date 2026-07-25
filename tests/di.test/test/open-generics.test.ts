@@ -91,16 +91,21 @@ describe('open-table matching', () => {
     expect(repo.dep).toBe('A!');
   });
 
-  test('a leading-zero hole label is the label it canonicalises to', () => {
+  // Hole labels are 1-based and leading-zero-free, so `$01` is not a hole and
+  // `app/IR<$01>` is not a template — it is an ordinary closed token that
+  // happens to contain a `$`. It files exact, and the closing it was meant to
+  // serve resolves nothing. This is the same standing shape `$0` has always
+  // had; §129 only brought the tree parser into line with it.
+  test('a leading-zero hole label is not a hole, so the token is not a template', () => {
     let services = new ServiceManifest();
     services = services.addValue(T.A, 'A!');
     services = services.addClass('app/IR<$01>', SqlRepo, [['$01']]);
 
     const sp = services.build();
-    const repo = sp.resolve<SqlRepo>(closeToken('app/IR', T.A));
 
-    expect(repo).toBeInstanceOf(SqlRepo);
-    expect(repo.dep).toBe('A!');
+    expect(() => sp.resolve(closeToken('app/IR', T.A))).toThrow(
+      UnregisteredTokenError,
+    );
   });
 
   test('resolving a non-canonical template spelling names the hole, not a miss', () => {

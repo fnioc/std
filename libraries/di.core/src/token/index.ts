@@ -28,4 +28,4 @@ export { closeSignatures, parseSlot, serialiseSlot } from './slot.js';
 // The classification/compose edge: `isOpenToken` (open template?, read off the
 // typed tree so it does not depend on spelling), the shallow `parseToken` /
 // `closeToken` string pair, and the key strip every classification runs first.
-export { closeToken, HOLE_PATTERN, isOpenToken, parseToken, unkeyedToken } from './edges.js';
+export { closeToken, isOpenToken, parseToken, unkeyedToken } from './edges.js';

@@ -500,7 +500,7 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 
 - **Holes are labels, not indices.** `$N` binds by label, so a template may use non-sequential, reordered holes (`add<IFoo<$7, SomeType, $3>>(Foo<$3, $7>)`): `match` records a label→token map, a repeated label must bind consistently (canonical compare), and `substituteSignaturesByLabel` closes the carried dep signatures by that map — throwing `RangeError` on an unbound label so a gappy template (`IX<$1,$3>` depending on `$2`) stays a clean miss, not a crash.
 - **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
-- **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
+- **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. (`HOLE_PATTERN` was deleted by §129 — the hole grammar is stated once, by the tree parser.) That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
 - **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **SUPERSEDED:** both are now live — the all-holes registration guard is retired so partial closing works (§124), and template selection is most-specific-first (§125). The string-grammar-as-classifier half is superseded too: `isOpenToken` reads the typed tree now (§127), so `materialise` and `#lookup` classify off `TokenNode` and the shallow scan survives only as the fallback for a token the tree grammar refuses.
 
@@ -788,7 +788,9 @@ which classifies the UNKEYED token instead: a key suffix can neither introduce n
 so stripping it needs no new parser and leaves the `$0` question untouched. — **§127 then took the
 `tryParse` route anyway**, because the key was only one of several spellings the raw-slice scan
 could not see; `$0` is still held back by an explicit 1-based rule in the classifier, so the
-`token-grammar.test.ts` pin stands.
+`token-grammar.test.ts` pin stands. — **§129 closed the `$0` question the other way round**: the
+tree parser adopted the 1-based, leading-zero-free grammar, so there is no laxer grammar left for a
+classifier rule to hold back against and `HOLE_PATTERN` is deleted.
 
 _Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
 guard's shape (reject only what can never match, on the typed tree) is Claude's.
@@ -953,7 +955,8 @@ is added to di.core's and di's barrels.
   DEPS. Give `pkg:IZ<pkg:IA, $1>` the `[['$1']]` signature that motivates it and the entry resolves
   under nothing — the closing misses the exact map, and its own spelling raises
   `NoSatisfiableSignatureError` on the un-substituted `$1`. The whitespace and `$01` halves were a
-  separate defect; only `$0` is the canonicalisation question.
+  separate defect; only `$0` is the canonicalisation question. — **CLOSED by §129**: the two
+  grammars are one, `$0` and `$01` are not holes on either side, and `HOLE_PATTERN` is gone.
 
 `Validator`, `parseSlot`/`serialiseSlot`, and `TokenManifest`/`TokenProvider` were audited as
 suspected vestigial and DELIBERATELY kept. Each is exported, correct, and (for the manifest pair)
@@ -1001,7 +1004,10 @@ key should not rest on the classifier's internals, and the fallback path still n
 any digit run, and the classifier states the 1-based rule explicitly rather than adopting the laxer
 grammar. So one divergence survives, on purpose and in one commented line: whether `$0` is a legal
 hole is a grammar decision, not a repair. `$01` is NOT in that class — it parses to the same node
-`$1` does, so treating it as a hole is the canonicalisation contract, not a new semantic.
+`$1` does, so treating it as a hole is the canonicalisation contract, not a new semantic. —
+**SUPERSEDED by §129**, which took the grammar decision: the parser is now 1-based and
+leading-zero-free, `$01` joins `$0` as not-a-hole, and the classifier's duplicate rule is deleted
+rather than kept in step.
 
 **`token/manifest.ts` is deleted.** `TokenManifest` / `TokenProvider` / `Descriptor` /
 `SealedTokenManifest` were package-PRIVATE — di.core declares one export and `src/index.ts` omits
@@ -1065,3 +1071,56 @@ The surface was present in the published `@rhombus-std/di.core` alphas, which ha
 migration path or deprecation cycle is owed to anyone.
 
 _Owner-directed 2026-07-24._
+
+---
+
+## §129 — One hole grammar: 1-based, leading-zero-free, stated only by the tree parser
+
+Two things were spelled `$N` in di.core and only one of them survives in each position.
+
+**`$1` … `$9` as TYPES are deleted.** `brands.ts` declared both the generic `$<N>` and nine
+pre-instantiated aliases; the barrel exported all ten. The aliases saved one pair of angle brackets
+and charged a permanent ambiguity for it, because `$1` is also the WIRE text of a hole inside a
+token string (`"pkg:IRepo<$1>"`). One name, two grammars, and a reader had to check for surrounding
+quotes to know which one was in front of them — in a package whose whole job is the boundary
+between a type and the token it derives. `$<N>` is now the only type-position spelling, at every
+label; a bare `$1` is only ever wire text. Nothing outside di.core used the aliases: every
+type-position site in the libraries, tests, examples, docs and the Go fixtures already wrote
+`$<N>`, so the deletion touched `brands.ts`, `src/index.ts` and the di.core README and nothing else.
+
+**Hole LABELS are 1-based with no leading zero, and `token/parse.ts` is the only place that says
+so.** Two implementations disagreed: `edges.ts`'s `HOLE_PATTERN` (`/^\$[1-9][0-9]*$/`) rejected `$0`
+and `$01`, while the tree parser's `#parseHole` consumed any digit run and built a hole node for
+both, folding `$01` onto label 1. §127 documented the split as a deliberate hold-back — "whether
+`$0` is a legal hole is a grammar decision, not a repair" — and left it as one commented line of
+divergence. That is the entry this supersedes: the answer is that a grammar with two
+implementations is wrong regardless of which one wins, and the `Hole<N>` brand already documents
+its own domain as 1-based, so the parser was the side that disagreed with the design.
+
+`#parseHole` now rejects `$0` ("hole labels are 1-based") and any leading zero, alongside the
+out-of-safe-integer-range check it already had. One spelling reaches each label, so canonicalisation
+has nothing to fold and the parser cannot mint a node the brand could not have produced. The Go
+engine's `tokentext.isHoleNode` had implemented exactly this grammar all along, so this closes a
+cross-engine divergence rather than opening one — no token any transform emits, or any author writes
+with `$<N>`, changes shape.
+
+**`HOLE_PATTERN` is gone.** Its only consumer was `isOpenToken`'s fallback for a token the tree
+grammar REFUSES (`"a b<$1>"` — trailing text after the base, which must still classify OPEN so
+`openEntry` can reject it). That fallback now splits the top-level args with the shallow scan and
+puts each one back through `isOpenToken`, so the hole grammar it consults is the parser's.
+`holdsHole` — the tree walk that re-applied the 1-based rule the parser did not enforce — collapses
+into `TokenNode.isOpen` for the same reason. Recursion terminates because every arg slice is
+strictly shorter than the token it came from. `isOpenToken` is now the one predicate and it states
+no grammar of its own.
+
+**What changes for a caller.** `$0` behaves exactly as it always did. `$01` and `$007` join it: not
+holes, so a token carrying one is not a template and files as an ordinary exact registration. A
+would-be template written that way therefore fails at resolve rather than at registration — the
+closing misses, and the token's own spelling raises on the un-substituted dep. That is the standing
+shape `$0` has had since §127 signed it off, not a new hazard, and turning it into a loud
+registration error would mean teaching `isOpenToken` to answer `true` for something that is not a
+template. A "you probably meant a hole" diagnostic belongs at the registration boundary, not in the
+classifier; it is a separate design question and deliberately not taken here.
+
+_Owner-directed 2026-07-24 ("delete all of the `$N` in favour of `$<…>`" / "just make it right" on
+the two hole grammars). The `HOLE_PATTERN` collapse and the residual-hazard call above are Claude's._

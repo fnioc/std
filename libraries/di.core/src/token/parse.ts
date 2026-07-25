@@ -11,16 +11,23 @@
 //     base     ::= (package ':')? path        ; none of  <  >  "  #
 //     generics ::= '<' arg (',' arg)* '>'
 //     arg      ::= token | hole | literal
-//     hole     ::= '$' digit+                  ; a template LABEL, reorderable
+//     hole     ::= '$' [1-9] digit*            ; a template LABEL, reorderable
 //     literal  ::= string ('|' string)*        ; literal-union type arg
 //     string   ::= '"' char* '"'               ; quote-aware; interior , < > inert
 //     key      ::= '#' name
 //
+// THIS FILE IS THE HOLE GRAMMAR. Labels are 1-BASED and carry no leading zero,
+// so `$0`, `$01` and `$007` are parse errors rather than holes — the one answer
+// to "is this a hole", which `edges.ts`'s `isOpenToken` reads back off the tree
+// instead of restating as a second pattern (§129). It matches the `Hole<N>`
+// brand's own documented domain and the `$` + integer the Go transformer emits,
+// so no spelling a real author or the transformer produces is affected.
+//
 // Canonicalisation strips whitespace outside quoted literals, ` | `-joins literal
-// unions (byte-identical to the Go transformer's emit), normalises quotes to
-// double, and normalises hole labels to their integer form (rejecting
-// out-of-safe-integer labels at parse). Numeric literals are NOT a normalised
-// category — a bare `72` is an identifier-shaped `path`, byte-preserved.
+// unions (byte-identical to the Go transformer's emit), and normalises quotes to
+// double. Hole labels need no normalisation — a label that parses is already its
+// integer form. Numeric literals are NOT a normalised category — a bare `72` is
+// an identifier-shaped `path`, byte-preserved.
 
 import { RESOLVER_TOKEN_STRING } from './constants.js';
 import type { ConcreteNode, HoleNode, TokenNode } from './node.js';
@@ -92,7 +99,19 @@ class TokenParser {
     if (this.#i === start) {
       throw this.#fail('hole `$` must be followed by digits');
     }
-    const index = Number(this.#src.slice(start, this.#i));
+    const digits = this.#src.slice(start, this.#i);
+    // Labels are 1-based with no leading zero, so exactly one spelling reaches
+    // each label. Accepting `$01` alongside `$1` would make the grammar's
+    // canonicalisation the only thing keeping two spellings of one template on
+    // one identity, and accepting `$0` would contradict the `Hole<N>` brand.
+    if (digits[0] === '0') {
+      throw this.#fail(
+        digits.length === 1
+          ? 'hole labels are 1-based — `$0` is not a hole'
+          : 'hole label must not carry a leading zero',
+      );
+    }
+    const index = Number(digits);
     if (!Number.isSafeInteger(index)) {
       throw this.#fail('hole label out of safe-integer range');
     }
