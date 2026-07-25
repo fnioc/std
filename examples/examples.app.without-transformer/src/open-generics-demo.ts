@@ -13,7 +13,7 @@
 // fourth entity later costs one `Seed<T>` value and nothing else.
 //
 // THE HOLE IS JUST TEXT HERE. Where the tokenless dialect writes the
-// compile-time brands `$<1>` / `$1` / `Hole<1, Entity>`, this file writes the
+// compile-time brands `$<1>` / `Hole<1, Entity>`, this file writes the
 // literal `"$1"` inside a token string. The brands exist so a transformer can
 // DERIVE that text; with no transformer there is nothing to derive and the
 // substring is the whole mechanism. Likewise the `Typeof<TEntity>` parameter
@@ -28,11 +28,13 @@
 // grammar by hand is exactly where a manual author drifts from what the
 // transformer derives, and the helper removes the opportunity.
 //
-// WHAT AN OPEN TEMPLATE MAY LOOK LIKE (as of this branch): every top-level type
-// argument of the SERVICE token must be a hole. `IRepository<$1>` and
-// `IJoin<$1,$2>` are templates; a partially-open `IJoin<…:User,$2>` is rejected
-// at registration with an OpenTokenRegistrationError. Holes inside a DEPENDENCY
-// slot have no such restriction — that is what makes the propagation below work.
+// WHAT AN OPEN TEMPLATE MAY LOOK LIKE. The engine this branch builds against
+// requires every top-level type argument of the SERVICE token to be a hole:
+// `IRepository<$1>` and `IJoin<$1,$2>` are templates, and a partially-open
+// `IJoin<…:User,$2>` is rejected at registration with `OpenTokenRegistrationError`
+// — see `demonstrateErrors` in @rhombus-std/examples.lib.without-transformer,
+// which raises exactly that. Holes inside a DEPENDENCY slot carry no such
+// restriction, which is what makes the propagation below work.
 
 import { closeToken, OpenTokenResolutionError, ServiceManifest, typeArg } from '@rhombus-std/di';
 

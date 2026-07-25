@@ -16,29 +16,32 @@
 // open-generics-demo.ts. Diff the two files: same scenario, same output, only
 // the dialect differs.
 //
-// THREE SPELLINGS OF A HOLE appear below, and the choice between them is not
+// TWO SPELLINGS OF A HOLE appear below, and the choice between them is not
 // cosmetic:
-//   $<1>            the general form, `Hole<1>` — an UNCONSTRAINED hole
-//   $1              the same thing with one fewer pair of angle brackets; the
-//                   bare aliases $1…$9 cover the common arities, and $<N> stays
-//                   the only spelling for N >= 10
+//   $<1>            the general form, `Hole<1>` — an UNCONSTRAINED hole. This is
+//                   the one spelling of a bare hole in TYPE position. (`$1`
+//                   without brackets is the same hole's WIRE text, i.e. what it
+//                   looks like inside a token STRING like "pkg:IRepo<$1>" — a
+//                   different grammar, and never a type.)
 //   Hole<1, Entity> a CONSTRAINED hole. `InMemoryRepository<TEntity extends
 //                   Entity>` needs `.id`, so its type argument must satisfy that
-//                   bound — and a bare `$1` (unconstrained) does not. The second
+//                   bound — and a bare `$<1>` (unconstrained) does not. The second
 //                   parameter is the constraint carrier: `Hole<1, Entity>` IS an
 //                   `Entity`, so the bound is met while the hole survives.
 //
-// WHAT AN OPEN TEMPLATE MAY LOOK LIKE (as of this branch): every top-level type
-// argument of the SERVICE token must be a hole. `IRepository<$1>` and
-// `IJoin<$1,$2>` are templates; a partially-open `IJoin<User,$2>` is rejected at
-// registration. Holes inside a DEPENDENCY slot have no such restriction — that
-// is what makes the propagation below work.
+// WHAT AN OPEN TEMPLATE MAY LOOK LIKE. The engine this branch builds against
+// requires every top-level type argument of the SERVICE token to be a hole:
+// `IRepository<$<1>>` and `IJoin<$<1>,$<2>>` are templates, and a partially-open
+// `IJoin<User,$<2>>` is rejected at registration with `OpenTokenRegistrationError`
+// — see `demonstrateErrors` in @rhombus-std/examples.lib.without-transformer,
+// which raises exactly that. Holes inside a DEPENDENCY slot carry no such
+// restriction, which is what makes the propagation below work.
 
 import { OpenTokenResolutionError, ServiceManifest } from '@rhombus-std/di';
 // The compile-time authoring brands. They have zero runtime footprint — this
 // import erases — and reaching them through di.extras is the documented idiom: a
 // single dependency brings both the lowering and the brands into scope.
-import type { $, $1, $2, Hole, Typeof } from '@rhombus-std/di.extras';
+import type { $, Hole, Typeof } from '@rhombus-std/di.extras';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
   User } from '@rhombus-std/examples.contracts';
@@ -99,7 +102,7 @@ class InMemoryTable<TEntity> implements ITable<TEntity> {
 
 /**
  * The template a consumer actually asks for. `TEntity extends Entity` is why the
- * registration below spells its hole `Hole<1, Entity>` rather than `$1`:
+ * registration below spells its hole `Hole<1, Entity>` rather than `$<1>`:
  * `describe()` reads `.id` off each row, so the skolem has to satisfy the bound.
  */
 class InMemoryRepository<TEntity extends Entity> implements IRepository<TEntity> {
@@ -151,8 +154,8 @@ class AuditRepository implements IRepository<AuditEvent> {
 }
 
 /**
- * An ARITY-2 template. Holes are numbered, not positional wildcards: `$1` and
- * `$2` bind independently, and each side then resolves through the ordinary
+ * An ARITY-2 template. Holes are numbered, not positional wildcards: `$<1>` and
+ * `$<2>` bind independently, and each side then resolves through the ordinary
  * precedence rules — so asking for `IJoin<User,AuditEvent>` gets a
  * template-minted left side and the exact `AuditRepository` on the right.
  */
@@ -192,7 +195,7 @@ manifest = manifest.addClass<ITable<$<1>>>(InMemoryTable<$<1>>).as<'singleton'>(
 
 // Template 2 — `IRepository<$1>`, the one a consumer asks for. Its hole is
 // CONSTRAINED (`Hole<1, Entity>`) because the implementation's type parameter
-// is: swap in a bare `$1` here and the instantiation expression stops
+// is: swap in a bare `$<1>` here and the instantiation expression stops
 // type-checking.
 manifest = manifest
   .addClass<IRepository<Hole<1, Entity>>>(InMemoryRepository<Hole<1, Entity>>)
@@ -202,8 +205,9 @@ manifest = manifest
 // precedence over template 2 for `AuditEvent` and only for `AuditEvent`.
 manifest = manifest.addClass<IRepository<AuditEvent>>(AuditRepository).as<'singleton'>();
 
-// Template 3 — arity 2, spelled with the bare `$1` / `$2` aliases.
-manifest = manifest.addClass<IJoin<$1, $2>>(RepositoryJoin<$1, $2>).as<'singleton'>();
+// Template 3 — arity 2. Each hole gets its own label; nothing about `$<1>` makes
+// it "the first" beyond the number written in it.
+manifest = manifest.addClass<IJoin<$<1>, $<2>>>(RepositoryJoin<$<1>, $<2>>).as<'singleton'>();
 
 // The ONE hand-written token in this file. There is no point asking the
 // container for a template — the token still has a hole in it, so there is

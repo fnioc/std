@@ -19,7 +19,6 @@
 import './augment.js';
 
 // Re-export the authoring brand types so a consumer can use `Inject<T, "tok">`,
-// the open-generics placeholders (`Hole<N, C>`, `$<N>`, and the pre-instantiated
-// bare aliases `$1`…`$9`), and `Typeof<T>` without importing from
-// `@rhombus-std/di.core` directly.
-export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Typeof } from './augment.js';
+// the open-generics placeholders (`Hole<N, C>`, `$<N>`), and `Typeof<T>` without
+// importing from `@rhombus-std/di.core` directly.
+export type { $, Hole, Inject, Typeof } from './augment.js';

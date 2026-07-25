@@ -42,13 +42,11 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { AddChain, IServiceManifest, Slot } from '@rhombus-std/di.core';
 
 // Re-export the authoring brand types so transformer consumers can use
-// `Inject<T, "tok">`, the open-generics placeholders (`Hole<N, C>`, `$<N>` and
-// its pre-instantiated bare aliases `$1`…`$9`) and the `Typeof<T>` witness
-// without importing from `@rhombus-std/di.core` directly. A single import of
-// `@rhombus-std/di.extras` brings both the transformer plugin and these types
-// into scope — which is only true if the SHORTHAND comes through too, so the
-// `$1`…`$9` aliases are re-exported alongside the generic `$<N>`.
-export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Typeof } from '@rhombus-std/di.core';
+// `Inject<T, "tok">`, the open-generics placeholders (`Hole<N, C>`, `$<N>`)
+// and the `Typeof<T>` witness without importing from `@rhombus-std/di.core`
+// directly. A single import of `@rhombus-std/di.extras` brings both the
+// transformer plugin and these types into scope.
+export type { $, Hole, Inject, Typeof } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
   // The type-driven registration forms merge onto core's `IServiceManifestBase`

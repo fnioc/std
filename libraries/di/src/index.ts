@@ -103,9 +103,5 @@ export { EmptyServiceProvider } from '@rhombus-std/di.core';
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole
 // surface is reachable through one @rhombus-std/di import.
-// The authoring BRANDS (`$`/`Hole`/`Inject`/`Typeof`) come through in full: the
-// pre-instantiated bare hole aliases `$1`…`$9` are re-exported alongside the
-// generic `$<N>` they abbreviate. A shorthand di.core offers but this barrel
-// withholds is a shorthand no consumer can reach.
-export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, DepSignatures, DepSlot, Hole, Inject, ParsedToken, Token,
-  TypeArgRef, Typeof, Union } from '@rhombus-std/di.core';
+export type { $, DepSignatures, DepSlot, Hole, Inject, ParsedToken, Token, TypeArgRef, Typeof,
+  Union } from '@rhombus-std/di.core';
