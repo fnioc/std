@@ -67,8 +67,7 @@ There is no global metadata store and no decorator: the dependency signature tra
 | `closeToken` / `parseToken` / `isOpenToken` / `unkeyedToken` / `typeArg`                                | Functions            | The open-generic token edge: render and parse the string form, detect an open template, drop a token's trailing `#key` before classifying it, and mint a `{ typeArg: n }` slot by hand.                                                                                                                                                                                                                                                                                            |
 | `TokenNode` / `Matcher` / `Substituter` / `Validator` / `TokenRewriter` / `TokenWalker` / `Specificity` | Type / classes       | The unified token/slot expression tree (`concrete \| hole \| provider \| union \| literal \| factory`) and its visitor operations — what `@rhombus-std/di`'s engine walks to match and substitute an open registration against a closing. `Validator` is NOT on that path: it is offered for a caller holding a hand-built tree, and the engine validates over `DepSlot`, which cannot spell a malformed one. A token STRING stays the wire identity; advanced/white-box use only. |
 | `EmptyServiceProvider`                                                                                  | Const                | A null-object `IServiceProvider` with no application services registered.                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `ActivatorUtilities`                                                                                    | Const                | Activates an unregistered class against a provider, injecting its dependency slots — for controllers, middleware, or anything the container doesn't itself own.                                                                                                                                                                                                                                                                                                                    |
-| `DiError` / `OpenTokenRegistrationError` / `ActivationError`                                            | Classes              | The registration-time and activation-time error taxonomy. Resolution-time errors live in `@rhombus-std/di`.                                                                                                                                                                                                                                                                                                                                                                        |
+| `DiError` / `OpenTokenRegistrationError`                                                                | Classes              | The registration-time error taxonomy. Resolution-time errors live in `@rhombus-std/di`.                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ServiceManifestDescriptorAugmentations`                                                                | Const                | Side-effect import — see below. Installs `removeAll` / `tryAdd*` / `replace*` onto every `ServiceManifest`.                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### `Token`
@@ -232,7 +231,7 @@ One or many signature arrays, supporting constructor overloads: the engine picks
 
 ### Authoring signatures by hand
 
-There's no global metadata store and no decorator. A signature rides directly on the registration, as the required third argument to `addClass` / `addFactory`:
+There's no global metadata store, no decorator, and no runtime reflection to read a constructor's parameter types from. A signature rides directly on the registration, as the required third argument to `addClass` / `addFactory`:
 
 ```ts
 import { ServiceManifest } from '@rhombus-std/di';
@@ -329,26 +328,6 @@ There's no built-in root scope — scope names are entirely user-declared tags. 
 An **open** template token (`pkg:IRepo<$1>` — any type argument a hole, at any depth) routes into a separate open-registration table instead of the exact map; resolution closes it per requested token. Concrete args and holes mix freely in one service token (`pkg:IRepo<pkg:IUser,$1>`, `pkg:IRepo<app/IBox<$1>>`): a concrete argument has to match the requested closing's exactly, a hole binds whatever the closing carries there, and a repeated hole label (`pkg:IPair<$1,$1>`) only matches equal arguments. Overlapping templates on one base are tried **most-specific first**, ties going to the later registration. A template no closed token could ever match — one the token grammar refuses, or a bare hole (`$1`) naming no base — throws from the registration call itself, including from a `.withKey(...)` whose recomposed token turns out to be open.
 
 `services.seal()` materialises the collection by iterating it, bucketing the entries into two read-only lookup indexes (each per-token list frozen); `services.build(options?)` (added by `@rhombus-std/di`) seals and constructs the actual `IServiceProvider`. Calling `build()` without importing `@rhombus-std/di` throws, naming the missing import.
-
-## `ActivatorUtilities`
-
-Activates a class the container does **not** know about, pulling its constructor dependencies from a provider — for controllers, middleware, or anything else you want to construct on demand rather than register up front.
-
-```ts
-import { ActivatorUtilities } from '@rhombus-std/di.core';
-
-const handler = ActivatorUtilities.createInstance(
-  provider,
-  RequestHandler,
-  ['pkg:ILogger', 'pkg:IDb'],
-);
-```
-
-- `createInstance(provider, ctor, signature?, ...args)` — builds one instance now. Signature slots the provider can satisfy resolve from it; any slot it can't is filled from `args`, left to right.
-- `createFactory(ctor, signature?)` — pre-builds a reusable `ObjectFactory`: `(provider, args?) => T`, producing a fresh instance on every call.
-- `getServiceOrCreateInstance(provider, token, ctor, signature?)` — returns the token's registered service if there is one, otherwise activates `ctor`.
-
-Signatures here are hand-fed the same way as `addClass`'s third argument — there's no runtime reflection to read a constructor's parameter types from. (`ActivatorUtilities` is the one place the signature stays optional: it activates a class the manifest never saw, so there is no registration record for it to ride on.)
 
 ## Side-effect import: descriptor mutation verbs
 

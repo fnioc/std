@@ -910,7 +910,9 @@ bundle before it was touched. The first is a regression the sweep itself introdu
 - **`ActivatorUtilities.slotResolvable` drifted from the mirror it documents.** The engine learned
   that a `FactoryRef` is satisfiable only when its target resolves; the public mirror kept returning
   `true` unconditionally, so an unregistered factory target raised `FactoryTargetError` instead of
-  falling through to the caller-supplied arguments the way an unregistered plain token does.
+  falling through to the caller-supplied arguments the way an unregistered plain token does. —
+  **MOOT under §128**: the whole activation surface is deleted, so the hand-kept mirror this fix
+  repaired no longer exists. The drift is what §128 cites as the upkeep the surface was charging.
 
 **The keyed PLURAL scan sees template closings.** `#resolveKeyed` read only the exact map, so a
 keyed template — newly registrable above — answered `resolve(t, "redis")` but not
@@ -1022,3 +1024,44 @@ additive work to scope separately.
 
 _Claude's calls; the `$0` hold-back and the public-API deferrals are the two that deliberately
 stop short of a decision the owner should make. 2026-07-24._
+
+---
+
+## §128 — `ActivatorUtilities` is porting noise; the whole activation surface is removed
+
+`ActivatorUtilities` (`createInstance` / `createFactory` / `getServiceOrCreateInstance`), its
+`ObjectFactory` return type, and `ActivationError` are deleted outright.
+
+They existed for exactly one reason: the reference exposes a static activator helper, and §56
+ported it because the mirror said to. Nothing here ever called it — no library, no example, no
+transform fixture — and its only exercise was `tests/di.test/test/activator.test.ts`, a test
+written to cover the mirror rather than to pin a consumer's behaviour. That is what porting noise
+looks like under the "faithfulness is a disposable starting discipline" rule: a reference shape
+carried across with no job on this side.
+
+It was not free to keep. Activation deliberately never enters the resolution engine, so it shipped
+`slotResolvable`/`resolveSlot` — a di.core-local synchronous MIRROR of the engine's private
+`#resolveSlot`, kept in step with it by hand. §126 caught that mirror after it had already drifted
+(an unregistered factory target raised `FactoryTargetError` instead of falling through to the
+caller-supplied arguments). Deleting the surface retires that standing obligation with it.
+
+`ActivationError` goes too. `ActivatorUtilities` was its ONLY thrower — verified across the whole
+repo, engine included — so no other failure mode loses the error it reports with.
+
+**What §56 (v1) no longer describes.** §56 records three things landing together; the descriptor
+`tryAdd*`/`replace*` verbs and `EmptyServiceProvider` are untouched and still current. Its
+`ActivatorUtilities` bullet, and every deliberate divergence hanging off it — positional argument
+matching in place of type-assignability, no constructor selection, no
+`[ActivatorUtilitiesConstructor]` preferred-ctor marking, no keyed-parameter paths — are now
+historical record only. They describe adaptations of something the repo does not contain. §56 stays
+in the retiring v1 doc unedited; this entry is the correction.
+
+The capability the reference reaches for the activator to get — construct something the container
+does not own, with its dependencies filled in — is already served here by factory injection and
+`resolveFactory(token, params?)`, neither of which needs reflection (`docs/libraries/di.md`,
+divergence 7). Removing the helper removes a second, weaker way to do it, not a capability.
+
+The surface was present in the published `@rhombus-std/di.core` alphas, which have no users; no
+migration path or deprecation cycle is owed to anyone.
+
+_Owner-directed 2026-07-24._

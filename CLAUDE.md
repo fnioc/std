@@ -117,9 +117,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   compile-scope `node-builtins.d.ts` files (§44).
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
   builder + registration-time errors — it ships runtime, §9 — plus the
-  `ServiceCollectionDescriptorExtensions.removeAll`/`tryAdd*`/`replace*` descriptor verbs (§38, §56),
-  `ActivatorUtilities` (activate an unregistered class from a provider, §56), and the
-  `EmptyServiceProvider` null-object singleton, §56) ← `di` (the resolution engine: scopes,
+  `ServiceCollectionDescriptorExtensions.removeAll`/`tryAdd*`/`replace*` descriptor verbs (§38, §56)
+  and the `EmptyServiceProvider` null-object singleton, §56 — but NOT `ActivatorUtilities`, which
+  §128 removed as porting noise) ← `di` (the resolution engine: scopes,
   resolution, captive-dependency protection, `ServiceProviderOptions`-gated `validateScopes` /
   `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57).
   `di.extras` (the Go/ttsc authoring surface: the `declare module` for the tokenless
