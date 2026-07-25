@@ -126,10 +126,17 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 
 // TestRunToFixedPointExhaustsWhenNonSettling pins the loud-cap contract: a stage
 // that is NOT identity-preserving on a no-op (it hands back a fresh pointer every
-// pass) must make RunToFixedPoint stop at maxPasses and report exhausted=true —
+// pass) must make RunToFixedPoint stop at the cap and report exhausted=true —
 // never spin forever, never silently cap. The host turns that bool into the
 // FIXED_POINT_EXHAUSTED per-file error. Modeled with a flip-flop transform that
 // alternates between two distinct source-file pointers, so no pass is ever a no-op.
+//
+// It settles on maxPasses+1 CHANGED passes, not maxPasses. Exhaustion is only ever
+// OBSERVED: a changing pass says nothing about whether the next one would change
+// anything, so a file that uses its whole budget still gets its confirming pass
+// before the loop concludes it is not settling. The one extra pass here is what a
+// file settling on exactly maxPasses passes spends being correctly reported as
+// settled instead of failing the run (plugin.RunToFixedPoint).
 func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
 	prog, app := buildWithSigChainWorkspace(t, "export const x = 1;\nexport const y = 2;\n")
 	defer func() { _ = prog.Close() }()
@@ -159,8 +166,8 @@ func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
 	if !exhausted {
 		t.Fatal("a non-settling transform must exhaust the pass cap, got exhausted=false")
 	}
-	if passes != loopMaxPasses {
-		t.Errorf("exhaustion should report exactly maxPasses changed passes, got %d want %d", passes, loopMaxPasses)
+	if passes != loopMaxPasses+1 {
+		t.Errorf("exhaustion should report maxPasses+1 changed passes (the budget plus the pass that proved it was still changing), got %d want %d", passes, loopMaxPasses+1)
 	}
 	if settled != a && settled != b {
 		t.Error("settled result should be one of the two flip-flop files")
