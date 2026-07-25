@@ -1,12 +1,6 @@
-// ILoggerProviderConfigFactory, ported from the reference logging
-// configuration project's `ILoggerProviderConfigFactory`.
-//
-// The reference member takes a `Type providerType`; this platform erases types
-// at runtime, so the provider type travels as its derived TOKEN
-// (`"<declaring-package>:<TypeName>"` — `tokenfor<ConsoleLoggerProvider>()` for a
-// transformer consumer, the literal string for a hand-written one). That is
-// the same `typeof(T)` analog the rest of the repo uses (di.core's `Typeof<T>`
-// brand / `typeArg(n)` slot).
+// The provider type travels as its derived token (`"<declaring-package>:<TypeName>"`,
+// e.g. `tokenfor<ConsoleLoggerProvider>()`) rather than a type argument, since
+// TS erases generics at runtime.
 
 import type { IConfig } from '@rhombus-std/config.core';
 import type { Token } from '@rhombus-std/di.core';

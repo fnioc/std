@@ -1,11 +1,8 @@
 // XmlStreamParser -- the XML text -> flat key/value pairs parser shared by
-// XmlConfigProvider (file) and XmlStreamConfigProvider (in-memory
-// payload); mirrors the reference `XmlStreamConfigProvider.Read` +
-// `ProvideConfiguration`.
+// XmlConfigProvider (file) and XmlStreamConfigProvider (in-memory payload).
 //
-// A minimal, self-contained tokenizer + tree walk -- NO XML-parser dependency
-// (a dep would violate the zero-ambient-types ethos, docs §39/§44). The grammar
-// is closed and bounded:
+// A minimal, self-contained tokenizer + tree walk -- no XML-parser dependency.
+// The grammar is closed and bounded:
 //
 //   - Recognizes elements, end tags, self-closing elements, text, and CDATA
 //     (treated as text). Ignores the XML declaration, processing instructions,
@@ -15,33 +12,19 @@
 //   - A namespaced element or attribute name (one containing `:`) is a
 //     FormatError -- namespaces are not supported.
 //
-// Key construction (matching the reference): the root element contributes only
-// its `Name` attribute to the prefix, never its element name. A descendant
-// element pushes its element name; a case-insensitive `Name` attribute pushes
-// an extra segment right after it AND is additionally emitted as an ordinary
-// `elementPath:Name` attribute pair (the reference reads Name both for the
-// prefix and as a normal attribute). Repeated sibling elements (same
-// element-name[:Name]) each push a numeric index. Other attributes map to
-// `elementPath:AttrName`, text maps to `elementPath`, and a duplicate resolved
-// key is a FormatError.
-//
-// SIMPLIFICATION (flagged) from the reference: the reference's SingleChild /
-// ChildrenBySiblingName perf optimization (skip the dictionary for one-child
-// elements) is collapsed to a plain children array grouped at walk time --
-// semantically identical, without the micro-optimization. XmlDocumentDecryptor
-// / EncryptedData (DPAPI-encrypted config) is omitted entirely -- no analog.
+// Key construction: the root element contributes only its `Name` attribute to
+// the prefix, never its element name. A descendant element pushes its element
+// name; a case-insensitive `Name` attribute pushes an extra segment right
+// after it AND is additionally emitted as an ordinary `elementPath:Name`
+// attribute pair. Repeated sibling elements (same element-name[:Name]) each
+// push a numeric index. Other attributes map to `elementPath:AttrName`, text
+// maps to `elementPath`, and a duplicate resolved key is a FormatError.
 
 import { configPath } from '@rhombus-std/config';
 import { FormatError } from '@rhombus-std/config.file';
 
 const NAME_ATTRIBUTE = 'Name';
-const PREDEFINED_ENTITIES: Record<string, string> = {
-  lt: '<',
-  gt: '>',
-  amp: '&',
-  quot: '"',
-  apos: "'",
-};
+const PREDEFINED_ENTITIES: Record<string, string> = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
 
 interface XmlAttribute {
   name: string;
@@ -83,10 +66,9 @@ function buildTree(input: string): XmlElement | undefined {
 
   while (i < input.length) {
     if (input[i] !== '<') {
-      // Text run up to the next '<'. A whitespace-ONLY run is ignored (like
-      // the reference's IgnoreWhitespace); a run with any non-space content is
-      // kept verbatim (whitespace preserved), matching the reference which
-      // does not trim significant text.
+      // Text run up to the next '<'. A whitespace-only run is ignored; a run
+      // with any non-space content is kept verbatim (whitespace preserved,
+      // not trimmed).
       const end = input.indexOf('<', i);
       const rawText = input.slice(i, end < 0 ? input.length : end);
       if (rawText.trim()) {
@@ -148,9 +130,9 @@ function buildTree(input: string): XmlElement | undefined {
     }
 
     if (selfClosing) {
-      // A self-closing element completes immediately; per the reference it
-      // gets NO text content (distinct from <a></a>). Treat as if an end tag
-      // followed, so the next node isn't seen as "right after a start".
+      // A self-closing element completes immediately with NO text content
+      // (distinct from <a></a>). Treat as if an end tag followed, so the
+      // next node isn't seen as "right after a start".
       previousWasElementStart = false;
     } else {
       stack.push(element);
@@ -186,10 +168,8 @@ function parseStartTag(inner: string): XmlElement {
   for (const [attrName, attrValue] of parseAttributes(trimmed.slice(cursor))) {
     if (attrName.toLowerCase() === NAME_ATTRIBUTE.toLowerCase()) {
       // The special "Name" attribute contributes to the prefix -- AND is still
-      // emitted as an ordinary `<prefix>:Name` attribute pair. The reference
-      // reads it twice: GetName pulls it for the prefix while ReadAttributes
-      // adds *every* attribute (Name included) to element.Attributes, so keys
-      // like `Data:DefaultConnection:Name` are produced alongside the prefix
+      // emitted as an ordinary `<prefix>:Name` attribute pair, so keys like
+      // `Data:DefaultConnection:Name` are produced alongside the prefix
       // contribution. Set nameAttribute but fall through to push it too.
       nameAttribute = attrValue;
     }
@@ -262,12 +242,9 @@ function provideConfig(root: XmlElement | undefined): Array<[key: string, value:
   return pairs;
 }
 
-function processElement(
-  prefix: Prefix,
-  element: XmlElement,
-  pairs: Array<[key: string, value: string]>,
-  seen: Set<string>,
-): void {
+function processElement(prefix: Prefix, element: XmlElement, pairs: Array<[key: string, value: string]>,
+  seen: Set<string>): void
+{
   for (const attribute of element.attributes) {
     prefix.push(attribute.name);
     addPair(prefix.value, attribute.value, pairs, seen);
@@ -287,13 +264,9 @@ function processElement(
   }
 }
 
-function processChild(
-  prefix: Prefix,
-  child: XmlElement,
-  index: number | undefined,
-  pairs: Array<[key: string, value: string]>,
-  seen: Set<string>,
-): void {
+function processChild(prefix: Prefix, child: XmlElement, index: number | undefined,
+  pairs: Array<[key: string, value: string]>, seen: Set<string>): void
+{
   prefix.push(child.elementName);
   if (child.nameAttribute) {
     prefix.push(child.nameAttribute);
@@ -328,12 +301,7 @@ function groupChildren(children: XmlElement[]): XmlElement[][] {
   return [...groups.values()];
 }
 
-function addPair(
-  key: string,
-  value: string,
-  pairs: Array<[key: string, value: string]>,
-  seen: Set<string>,
-): void {
+function addPair(key: string, value: string, pairs: Array<[key: string, value: string]>, seen: Set<string>): void {
   const folded = key.toLowerCase();
   if (seen.has(folded)) {
     throw new FormatError(`A duplicate key '${key}' was found.`);
@@ -342,7 +310,7 @@ function addPair(
   pairs.push([key, value]);
 }
 
-/** Builds configuration keys with push/pop, mirroring the reference `Prefix` helper. */
+/** Builds configuration keys with push/pop. */
 class Prefix {
   #value = '';
   readonly #lengths: number[] = [];

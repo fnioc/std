@@ -1,28 +1,12 @@
-// EnvironmentVariablesConfigSource.
-//
-// Two pieces of translation happen when a provider built from this source
-// loads: a variable-name transformation (default `__` -> `:`, matching most
-// shells/platforms being unable to hold a literal colon in an env var name)
-// applied to the FULL variable name first, THEN an optional case-insensitive
-// prefix match/strip against the transformed name. This order matters: a
-// prefix like "Foo:Bar:" only becomes visible on a raw variable such as
-// `Foo__Bar__Baz` AFTER the `__` -> `:` transform runs, so the transform must
-// happen before prefix-matching, not after (see the provider for where this
-// is actually applied); the provider runs the configured prefix through the
-// same transformation before matching, so a caller-supplied prefix may be
-// spelled in either raw (`Foo__Bar__`) or already-transformed (`Foo:Bar:`)
-// form. There's no connection-string special-casing here -- this provider
-// only handles the generic name-transform/prefix-filter path.
-//
-// `colonAndDotVariableNameTransformation` below is a drop-in alternative to
-// the default transform, for names that also want a `.` delimiter.
+// The source side: what to read, and how names are translated. The translation
+// itself runs in EnvironmentVariablesConfigProvider, which documents the order
+// it applies the transformation and the prefix filter in.
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource } from '@rhombus-std/config.core';
 import { process } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { EnvironmentVariablesConfigProvider } from './EnvironmentVariablesConfigProvider';
 
-/** Options accepted by {@link EnvironmentVariablesConfigSource}. */
 export interface EnvironmentVariablesConfigSourceOptions {
   /**
    * Only variables whose TRANSFORMED name starts with `prefix` (case-insensitive)
@@ -36,28 +20,28 @@ export interface EnvironmentVariablesConfigSourceOptions {
    */
   variableNameTransformation?: Func<[string], string>;
   /**
-   * The environment map to read. Defaults to `process.env`. Injectable so
-   * `load()` is pure with respect to an explicit map -- tests (and any caller
-   * wanting a hermetic source) pass their own instead of mutating the ambient
-   * `process.env`.
+   * The environment map to read; defaults to `process.env`. Pass your own for a
+   * hermetic source, instead of mutating the ambient `process.env`.
    */
   env?: Record<string, string | undefined>;
 }
 
-/** Default {@link EnvironmentVariablesConfigSourceOptions.variableNameTransformation}: `__` -> `:`. */
+/** `__` -> `:` — the default {@link EnvironmentVariablesConfigSourceOptions.variableNameTransformation}. */
 export function defaultVariableNameTransformation(name: string): string {
   return name.replaceAll('__', ':');
 }
 
 /**
  * An alternate {@link EnvironmentVariablesConfigSourceOptions.variableNameTransformation}:
- * replaces every `___` with `.`, then every remaining `__` with `:`. The
- * `___` pass MUST run first -- reversing the order would consume two of
- * every three underscores in a `___` run as a `:`, leaving a stray `_` where
- * a `.` belonged (`A___B` would misparse as `A:_B` instead of `A.B`). Both
- * passes are simple non-overlapping left-to-right scans, so a run of
- * underscores is always consumed greedily from the left -- a run of four
- * is one triple plus a literal underscore (`._`), not two colons.
+ * every `___` becomes `.`, then every remaining `__` becomes `:`.
+ *
+ * @remarks
+ * The `___` pass MUST run first: reversing the order would consume two of every
+ * three underscores in a `___` run as a `:`, leaving a stray `_` where a `.`
+ * belonged (`A___B` would misparse as `A:_B` instead of `A.B`). Both passes are
+ * non-overlapping left-to-right scans, so a run of underscores is consumed
+ * greedily from the left -- a run of four is one triple plus a literal
+ * underscore (`._`), not two colons.
  */
 export function colonAndDotVariableNameTransformation(name: string): string {
   return name.replaceAll('___', '.').replaceAll('__', ':');

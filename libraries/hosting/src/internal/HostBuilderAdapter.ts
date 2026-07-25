@@ -1,17 +1,14 @@
 // HostBuilderAdapter -- the internal IHostBuilder view of a
-// HostApplicationBuilder, ported from the reference hosting runtime's private
-// `HostApplicationBuilder.HostBuilderAdapter`. It lets external tooling that
-// only knows the classic delegate-accumulating `IHostBuilder` drive a modern
-// property-based builder: the classic configure* calls are accumulated here and
-// replayed onto the application builder's live configuration / services when the
-// host is built (`applyChanges`, invoked from `HostApplicationBuilder.build()`).
+// HostApplicationBuilder. It lets external tooling that only knows the classic
+// delegate-accumulating `IHostBuilder` drive a modern property-based builder:
+// the classic configure* calls are accumulated here and replayed onto the
+// application builder's live configuration / services when the host is built
+// (`applyChanges`, invoked from `HostApplicationBuilder.build()`).
 //
-// Reference parity notes / divergences:
-//   - Container customization (`useServiceProviderFactory` / `configureContainer`)
-//     is a no-op, matching this repo's single-container design (docs §24) -- the
-//     application builder's own `configureContainer` is likewise a no-op.
-//   - `build()` is unsupported (as in the reference); the adapter only mutates the
-//     application builder it wraps.
+// Container customization (`useServiceProviderFactory` / `configureContainer`)
+// is a no-op, matching this repo's single-container design -- the application
+// builder's own `configureContainer` is likewise a no-op. `build()` is
+// unsupported; the adapter only mutates the application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
 import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
@@ -48,17 +45,13 @@ export class HostBuilderAdapter implements IHostBuilder {
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
   readonly #configureServicesActions: Array<Func<[HostBuilderContext, IServiceManifest], IServiceManifest>> = [];
 
-  public constructor(
-    config: IConfigManager,
-    holder: IServiceManifestHolder,
-    context: HostBuilderContext,
-  ) {
+  public constructor(config: IConfigManager, holder: IServiceManifestHolder, context: HostBuilderContext) {
     this.#config = config;
     this.#holder = holder;
     this.#context = context;
   }
 
-  /** Shared with the wrapped application builder's context (reference parity). */
+  /** Shared with the wrapped application builder's context. */
   public get properties(): Map<string | symbol, unknown> {
     return this.#context.properties;
   }
@@ -68,28 +61,22 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureAppConfig(
-    configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>,
-  ): this {
+  public configureAppConfig(configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>): this {
     this.#configureAppConfigActions.push(configureDelegate);
     return this;
   }
 
-  public configureServices(
-    configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>,
-  ): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
 
-  /** No-op single-container hook (docs §24), mirroring the application builder. */
-  public useServiceProviderFactory<TContainerBuilder>(
-    _factory: IServiceProviderFactory<TContainerBuilder>,
-  ): this {
+  /** No-op single-container hook, mirroring the application builder. */
+  public useServiceProviderFactory<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>): this {
     return this;
   }
 
-  /** No-op single-container hook (docs §24), mirroring the application builder. */
+  /** No-op single-container hook, mirroring the application builder. */
   public configureContainer<TContainerBuilder>(
     _configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
   ): this {
@@ -102,11 +89,10 @@ export class HostBuilderAdapter implements IHostBuilder {
   }
 
   /**
-   * Replays the accumulated delegates onto the wrapped application builder --
-   * port of the reference `ApplyChanges`. Host-configuration changes are applied
-   * first and then GUARDED: the application name, environment, and content root
-   * were already read to build the defaults, so changing them this late is
-   * unsupported and throws.
+   * Replays the accumulated delegates onto the wrapped application builder.
+   * Host-configuration changes are applied first and then GUARDED: the
+   * application name, environment, and content root were already read to build
+   * the defaults, so changing them this late is unsupported and throws.
    */
   public applyChanges(): void {
     const config = this.#config;
@@ -138,13 +124,9 @@ export class HostBuilderAdapter implements IHostBuilder {
       // A content-root change is allowed only when it resolves back to the same
       // path the environment was built with; anything else is unsupported.
       const currentContentRootConfig = config.get(HostDefaults.contentRootKey);
-      if (
-        !equalsIgnoreCase(previousContentRootConfig, currentContentRootConfig)
-        && !equalsIgnoreCase(
-          previousContentRootPath,
-          resolveContentRootPath(currentContentRootConfig, process.cwd()),
-        )
-      ) {
+      if (!equalsIgnoreCase(previousContentRootConfig, currentContentRootConfig)
+        && !equalsIgnoreCase(previousContentRootPath, resolveContentRootPath(currentContentRootConfig, process.cwd())))
+      {
         throw new Error(
           `The content root changed from "${previousContentRootConfig}" to `
             + `"${currentContentRootConfig}". Changing host settings after the host builder `

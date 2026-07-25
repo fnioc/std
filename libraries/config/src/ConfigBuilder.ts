@@ -4,8 +4,8 @@
 // addJsonFile/addEnvironmentVariables/etc. baked in. Each provider package (and
 // the in-package Memory/Chained providers) bolts its own add* sugar on via TS
 // declaration merging + an augmentation registered against the shared
-// IConfigBuilder token (docs/decisions.md §38); this class is decorated
-// for that token at the bottom of the file. add* return `this` so those
+// IConfigBuilder token; this class is decorated for that token at the
+// bottom of the file. add* return `this` so those
 // augmentations type-check without a cast and preserve `T` through the fluent
 // chain.
 //
@@ -33,7 +33,7 @@ import type { Infer, ObjectSchema, Schema } from './schema';
  * `@augment` decorates the concrete builder for the OPEN IConfigBuilder
  * receiver: it (re)installs the tokenfor<IConfigBuilder>() bag
  * onto the prototype now and on every later registration, so downstream
- * provider packages' add* sugar reaches it (docs/decisions.md §38).
+ * provider packages' add* sugar reaches it.
  */
 @augment(tokenfor<IConfigBuilder>())
 export class ConfigBuilder<T = IndexedSection> {

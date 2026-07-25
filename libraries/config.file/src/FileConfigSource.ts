@@ -1,7 +1,6 @@
 // FileConfigSource -- the abstract base for every file-backed
-// configuration source (JSON, INI, XML). Ported from the reference
-// `FileConfigSource`. Holds the file provider + path + optionality +
-// reload settings a concrete source's `build` turns into a
+// configuration source (JSON, INI, XML). Holds the file provider + path +
+// optionality + reload settings a concrete source's `build` turns into a
 // FileConfigProvider, and the two builder-default hooks
 // (`ensureDefaults`, `resolveFileProvider`) that resolve a file provider when
 // the caller didn't supply one.

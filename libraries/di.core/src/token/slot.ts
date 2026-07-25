@@ -1,16 +1,6 @@
 // The parse-at-edges boundary between the wire `DepSlot` and the transient
-// `TokenNode` tree, plus the DepSlot-level signature transform the engine and the
-// registration builder need:
-//
-//   - `parseSlot` / `serialiseSlot` — one DepSlot ⇄ one TokenNode. A string slot
-//     parses to a `concrete | hole | provider` tree; the object slots map to the
-//     matching node kind (a `TypeArgRef` becomes a `typeArg` hole).
-//   - `closeSignatures` — closes an open template's signatures against a
-//     label→node binding. THE replacement for the old `substituteSignaturesByLabel`
-//     — the collapse target for the five substitution routines: every token-string
-//     hole substitution now runs through the ONE `Substituter`. Kept
-//     kind-for-kind so an unparseable string slot passes through untouched
-//     (matching the old `tryParse`-undefined passthrough).
+// `TokenNode` tree, plus the slot-level signature closing the engine and the
+// registration builder need.
 
 import { isFactoryRef, isTypeArgRef, isUnionSlot } from '../guards.js';
 import type { DepSignatures, DepSlot } from '../types.js';
@@ -69,18 +59,12 @@ export function serialiseSlot(node: TokenNode): DepSlot {
   }
 }
 
-/** Closes every slot of every signature against a label→node binding — the one
- * signature-substitution edge (was `substituteSignaturesByLabel`). */
-export function closeSignatures(
-  signatures: DepSignatures,
-  bind: ReadonlyMap<number, TokenNode>,
-): DepSignatures {
+/** Closes every slot of every signature against a label→node binding. */
+export function closeSignatures(signatures: DepSignatures, bind: ReadonlyMap<number, TokenNode>): DepSignatures {
   const substituter = new Substituter(bind);
   return signatures.map((signature) => signature.map((slot) => closeSlot(slot, substituter, bind)));
 }
 
-/** Slot-level closing, kind-for-kind with the old `substituteSlot`. Every
- * token-string hole substitution routes through the ONE `Substituter`. */
 function closeSlot(slot: DepSlot, substituter: Substituter, bind: ReadonlyMap<number, TokenNode>): DepSlot {
   if (typeof slot === 'string') {
     return closeTokenString(slot, substituter);
@@ -102,8 +86,7 @@ function closeSlot(slot: DepSlot, substituter: Substituter, bind: ReadonlyMap<nu
 }
 
 /** Substitute a single token string's holes by label. An unparseable token passes
- * through unchanged, matching the string engine's `parseToken`-undefined
- * passthrough. */
+ * through unchanged. */
 function closeTokenString(token: string, substituter: Substituter): string {
   const node = Tree.tryParse(token);
   if (node === undefined) {
@@ -112,9 +95,7 @@ function closeTokenString(token: string, substituter: Substituter): string {
   return Tree.toString(substituter.rewrite(node));
 }
 
-/** The canonical token string bound to hole `label`; throws `RangeError` when the
- * binding does not carry it (mirrors the old `holeArg`/`boundLabel` out-of-range
- * throw). Used for a `TypeArgRef`, whose closed form is the token STRING as a
+/** A `TypeArgRef` closes to the token STRING of its bound node, carried as a
  * literal value. */
 function boundLabel(label: number, bind: ReadonlyMap<number, TokenNode>): string {
   const bound = bind.get(label);

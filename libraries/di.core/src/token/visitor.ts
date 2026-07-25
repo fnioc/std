@@ -1,10 +1,6 @@
-// The two typed visitor bases every single-tree token op subclasses. Each routes
-// ONE `assertNever`-closed `switch(kind)` to an overridable `visit<Kind>` method;
-// each default recurses into a branch node's children (spread-rebuilding for the
-// rewriter) or is identity on a leaf. An op overrides ONLY its interesting node
-// — `Substituter` overrides `__visitHole`, `Validator` overrides the three
-// slot-only nodes. Dispatch lives on the visitor (the `switch`), NOT as an
-// `accept` method on the node, because nodes are plain data updated by spread.
+// The two typed visitor bases every single-tree token op subclasses: an op
+// overrides ONLY the node kinds it cares about and inherits the recursion for
+// the rest.
 //
 // Protected members are `__`-prefixed per repo convention (`protected` is erased
 // in emit, so the prefix is the runtime "internal" signal).

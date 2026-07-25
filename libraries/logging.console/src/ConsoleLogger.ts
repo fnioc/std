@@ -1,12 +1,7 @@
-// ConsoleLogger — the console provider's logger, ported from the reference
-// internal `ConsoleLogger`: renders each entry through its current
-// ConsoleFormatter into a shared StringWriter, then hands the rendered string
-// to the ConsoleLoggerProcessor queue (routed to stderr at/above the options'
+// ConsoleLogger renders each entry through its current ConsoleFormatter into
+// a shared StringWriter, then hands the rendered string to the
+// ConsoleLoggerProcessor queue (routed to stderr at/above the options'
 // logToStandardErrorThreshold).
-//
-// The reference's `IBufferedLogger` side (`LogRecords`/`BufferedLogRecord`) is
-// NOT ported — those types don't exist in @rhombus-std/logging.core yet
-// (residual, see the package index).
 
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
@@ -18,13 +13,12 @@ import type { ConsoleLoggerOptions } from './ConsoleLoggerOptions';
 import type { ConsoleLoggerProcessor } from './ConsoleLoggerProcessor';
 import { StringWriter } from './text-writer';
 
-// The reference renders through a [ThreadStatic] StringWriter; single-threaded
-// runtime → one shared module-level writer.
+// Single-threaded runtime, so one shared module-level writer suffices.
 const sharedStringWriter = new StringWriter();
 
-// Binds the `ILogger` interface symbol onto the class so the interface-merged
-// wrapper methods (logInformation/…, §80) flow onto `ConsoleLogger`, beside the
-// `@augment(tokenfor<ILogger>())` install below — see @rhombus-std/logging's Logger.
+// Declaration-merged with ILogger so its wrapper methods (logInformation,
+// etc.) are available on ConsoleLogger alongside the
+// `@augment(tokenfor<ILogger>())` install below.
 export interface ConsoleLogger extends ILogger {}
 
 /** An {@link ILogger} that renders through a {@link ConsoleFormatter} and queues writes. */
@@ -33,22 +27,18 @@ export class ConsoleLogger implements ILogger {
   readonly #name: string;
   readonly #queueProcessor: ConsoleLoggerProcessor;
 
-  /** The formatter rendering this logger's entries (internal, as upstream: reassigned on options reload). */
+  /** The formatter rendering this logger's entries; reassigned when options reload. */
   public formatter: ConsoleFormatter;
 
-  /** The scope provider, or `undefined` when scopes are unsupported (internal, as upstream). */
+  /** The scope provider, or `undefined` when scopes are unsupported. */
   public scopeProvider: IExternalScopeProvider | undefined;
 
-  /** The current options (internal, as upstream: reassigned on options reload). */
+  /** The current options; reassigned when options reload. */
   public options: ConsoleLoggerOptions;
 
-  public constructor(
-    name: string,
-    loggerProcessor: ConsoleLoggerProcessor,
-    formatter: ConsoleFormatter,
-    scopeProvider: IExternalScopeProvider | undefined,
-    options: ConsoleLoggerOptions,
-  ) {
+  public constructor(name: string, loggerProcessor: ConsoleLoggerProcessor, formatter: ConsoleFormatter,
+    scopeProvider: IExternalScopeProvider | undefined, options: ConsoleLoggerOptions)
+  {
     this.#name = name;
     this.#queueProcessor = loggerProcessor;
     this.formatter = formatter;
@@ -56,25 +46,14 @@ export class ConsoleLogger implements ILogger {
     this.options = options;
   }
 
-  public log<TState>(
-    logLevel: LogLevel,
-    eventId: EventId,
-    state: TState,
-    error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>,
-  ): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
+    formatter: Func<[TState, Error | undefined], string>): void
+  {
     if (!this.isEnabled(logLevel)) {
       return;
     }
 
-    const logEntry: LogEntry<TState> = {
-      logLevel,
-      category: this.#name,
-      eventId,
-      state,
-      error,
-      formatter,
-    };
+    const logEntry: LogEntry<TState> = { logLevel, category: this.#name, eventId, state, error, formatter };
     this.formatter.write(logEntry, this.scopeProvider, sharedStringWriter);
 
     if (sharedStringWriter.length === 0) {
@@ -82,10 +61,8 @@ export class ConsoleLogger implements ILogger {
     }
     const computedAnsiString = sharedStringWriter.toString();
     sharedStringWriter.clear();
-    this.#queueProcessor.enqueueMessage({
-      message: computedAnsiString,
-      logAsError: logLevel >= this.options.logToStandardErrorThreshold,
-    });
+    this.#queueProcessor.enqueueMessage({ message: computedAnsiString,
+      logAsError: logLevel >= this.options.logToStandardErrorThreshold });
   }
 
   /** Every level is enabled except {@link LogLevel.None}; filtering belongs to the factory. */
@@ -94,8 +71,8 @@ export class ConsoleLogger implements ILogger {
   }
 
   /**
-   * Begins a scope through the provider's scope provider; `undefined` when no
-   * scope provider was supplied (the analog of the reference `NullScope`).
+   * Begins a scope through the configured scope provider; `undefined` when no
+   * scope provider was supplied.
    */
   public beginScope<TState>(state: TState): Disposable | undefined {
     return this.scopeProvider?.push(state);

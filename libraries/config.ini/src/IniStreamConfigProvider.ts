@@ -1,14 +1,13 @@
 // IniStreamConfigProvider -- loads INI configuration from an in-memory
-// stream payload; mirrors the reference `IniStreamConfigProvider`. Same
-// grammar as IniConfigProvider -- both delegate to IniStreamParser.
+// stream payload. Same grammar as IniConfigProvider -- both delegate to
+// IniStreamParser.
 
 import { StreamConfigProvider, type StreamPayload } from '@rhombus-std/config';
 import type { IniStreamConfigSource } from './IniStreamConfigSource';
 import { IniStreamParser } from './IniStreamParser';
 
-// The platform UTF-8 decoder, looked up module-locally (the zero-ambient-types
-// library program has no TextDecoder in scope, docs §44); mirrors config.json's
-// JsonStreamConfigProvider.
+// The platform UTF-8 decoder, looked up module-locally since this library's
+// program has no TextDecoder ambient type in scope.
 interface Utf8Decoder {
   decode(input: Uint8Array): string;
 }

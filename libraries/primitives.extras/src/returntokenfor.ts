@@ -1,25 +1,16 @@
-// `returntokenfor<T>()` — the compile-time FACTORY RETURN-TYPE token (§94, factory
-// form). Where `tokenfor<T>()` derives the service token of `T` itself,
-// `returntokenfor<F>()` (with `F` a function type) derives the token of what `F`
-// RETURNS — the product a `resolveFactory(returnToken, [paramTokens])` builds.
-// `returntokenfor<() => IThing>()` → `"pkg:IThing"`; an async factory's
-// `Promise<X>` derives the honest closed-generic token (`TokenForReturnType`).
-//
-// It is the return-type half of the factory resolve body's true arm, sibling to
-// `paramtokensfor<T>()` (the parameter half). Both are AUTHORING-ONLY constructs
-// used only inside the inline-sugar bodies, never in runtime source, so they home
-// here in the token-grammar transformer (§92's homing rule). The runtime body
-// only runs when the transformer is absent, and throws so un-lowered code fails
-// loud.
-
 /**
- * Compile-time token of a factory type's RETURN type. Rewritten by the
- * transformer to the return type's token string literal; the runtime body only
- * runs when the transformer is absent.
+ * Compile-time token of a factory type's return type — the product a
+ * `resolveFactory(returnToken, paramTokens)` call builds. Resolved to a string
+ * literal at compile time; the body only runs — and throws — if that
+ * resolution didn't happen.
+ *
+ * @remarks
+ * `returntokenfor<() => IThing>()` resolves to `"pkg:IThing"`. An async
+ * factory's `Promise<X>` return type is NOT unwrapped — its token is derived
+ * from the closed `Promise<X>` type itself, not from `X`.
  *
  * @example
  * ```ts
- * // authored inside a resolve sugar body:
  * return this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>());
  * ```
  */
@@ -31,5 +22,4 @@ export function returntokenfor<T>(): string {
   );
 }
 
-/** The exported identifier name the transformer recognizes as `returntokenfor`. */
 export const RETURN_TOKENFOR_NAME = 'returntokenfor';

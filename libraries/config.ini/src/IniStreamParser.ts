@@ -1,6 +1,6 @@
 // IniStreamParser -- the INI text -> flat key/value pairs parser shared by
 // IniConfigProvider (file) and IniStreamConfigProvider (in-memory
-// payload); mirrors the reference's `IniStreamConfigProvider.Read`.
+// payload).
 //
 // Grammar (line-oriented, no reader dependency): blank lines and lines whose
 // first non-space character is `;`, `#`, or `/` are comments and skipped. A

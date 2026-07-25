@@ -1,10 +1,5 @@
-import type { Ctor, Func } from '@rhombus-toolkit/func';
-// The Token TYPE only, a type-only import (erased from emit) from the
-// `@rhombus-std/primitives` PUBLIC barrel -- never the publish-unreachable
-// `internal/*` subpath. Token is hoisted to primitives (docs/decisions.md §38) so
-// the augmentation registry can key its bags on it without a di.core dependency
-// (di ⊥ config); di.core re-exports it UNCHANGED below.
 import type { Token } from '@rhombus-std/primitives';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 /**
  * Anything a dependency signature can describe: a class constructor (its deps
@@ -14,10 +9,9 @@ import type { Token } from '@rhombus-std/primitives';
  */
 export type DepTarget = Ctor | Func<never[], unknown>;
 
-// `Token` is hoisted to `@rhombus-std/primitives` (docs/decisions.md §38) so the
-// augmentation registry can key its bags on it without a di.core dependency
-// (di ⊥ config). di.core re-exports it UNCHANGED, so every consumer importing
-// `Token` from `@rhombus-std/di.core` keeps working.
+// `Token` lives in `@rhombus-std/primitives` so the augmentation registry can key
+// its bags on it without depending on di.core; re-exported UNCHANGED here, so
+// either import names the same type.
 export type { Token };
 
 /**
@@ -25,9 +19,10 @@ export type { Token };
  * registered type token, rather than a resolved instance. The factory's own
  * call signature is determined by the caller-supplied `params` list.
  *
- * `type` is the token of the produced type T (replaces the former `.factory` field).
- * `params` is the complete, authored-order list of caller-supplied parameter tokens;
- * when present it pins the factory shape so it no longer drifts with registration state.
+ * @remarks
+ * `params` is the complete, authored-order list of caller-supplied parameter
+ * tokens; when present it pins the factory shape, so it does not drift with
+ * registration state.
  */
 export interface FactoryRef {
   readonly type: Token;
@@ -45,18 +40,17 @@ export interface Union {
 
 /**
  * A SINGULAR (non-union) type that supplies its value directly — no container
- * lookup. Emitted for:
- *   - a non-union literal param (`"dev"`, `42`, `true`, `1n`) → its value, and
- *   - a whole-type `void` / `undefined` → `undefined`; a whole-type `null` →
- *     `null` (a singleton type has exactly one inhabitant, so it is supplied
- *     directly, NOT tokenized — Rule 2).
- * The engine injects `value` verbatim. A LITERAL/typed UNION (`"a" | "b"`,
- * `Foo | undefined`) is NOT a `LiteralRef`: a literal union stays a resolved
- * token, and a nullish union is stripped by the optional/overload path. Always
- * satisfiable — the value is self-supplying.
+ * lookup, and so always satisfiable. Used for a non-union literal param
+ * (`"dev"`, `42`, `true`, `1n`) and for a whole-type `void`/`undefined`/`null`,
+ * each a type with exactly one inhabitant.
  *
- * NOTE: `value` may legitimately be `undefined` (the `void`/`undefined` case),
- * so a `LiteralRef` is identified by the PRESENCE of the `value` key, never by
+ * @remarks
+ * A UNION (`"a" | "b"`, `Foo | undefined`) is NOT a `LiteralRef`: a literal
+ * union stays a resolved token, and a nullish union is stripped by the
+ * optional/overload path.
+ *
+ * `value` may legitimately be `undefined` (the `void`/`undefined` case), so a
+ * `LiteralRef` is identified by the PRESENCE of the `value` key, never by
  * `value !== undefined`. See `isLiteralRef`.
  */
 export interface LiteralRef {
@@ -65,11 +59,11 @@ export interface LiteralRef {
 
 /**
  * Marks a parameter to be injected with the TOKEN STRING of one of the
- * registration's type arguments — the `typeof(T)` analog for open-generic
- * templates. `typeArg` is the 1-based hole number (`{ typeArg: 1 }` names the
- * argument bound to `$1`). At close time, substitution replaces the slot with
- * a `LiteralRef` carrying the substituted argument's token string; a raw
- * (unsubstituted) `TypeArgRef` reaching resolution is an error.
+ * registration's type arguments. `typeArg` is the 1-based hole number
+ * (`{ typeArg: 1 }` names the argument bound to `$1`). At close time,
+ * substitution replaces the slot with a `LiteralRef` carrying the substituted
+ * argument's token string; a raw (unsubstituted) `TypeArgRef` reaching
+ * resolution is an error.
  */
 export interface TypeArgRef {
   readonly typeArg: number;
@@ -88,32 +82,25 @@ export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
 
 /**
  * The positional dependency signatures of a constructor / factory: one inner
- * array of `DepSlot`s per overload — `signatures[i][j]` is the `DepSlot` (a token,
- * a `FactoryRef`, a `Union`, a `LiteralRef`, or a `TypeArgRef`) for parameter `j`
- * of overload `i`. This is the shape `signatureof(ctor)` derives and the third
- * argument `addClass(token, ctor, signatures)` carries, named so authoring-time
- * machinery (the `di.extras` `signatureof` primitive) can refer to it
- * directly.
+ * array of `DepSlot`s per overload — `signatures[i][j]` is the slot for
+ * parameter `j` of overload `i`.
  *
- * It is required, never optional, on the positional plugin-less registration
- * surface (the 3+-arg forms): a caller without the transformer cannot DERIVE a
- * signature, so "this service takes no dependencies" is STATED as `[[]]` rather
- * than inferred from an absent argument. (The bare 2-arg `addClass(token, ctor)`
- * form supplies it later through the gated `withSignature`/`withSignatures`
- * builder.)
+ * @remarks
+ * Required, never optional, on the positional registration forms: "this service
+ * takes no dependencies" is STATED as `[[]]` rather than inferred from an absent
+ * argument. The bare 2-arg `addClass(token, ctor)` form supplies it later
+ * through the gated `withSignature`/`withSignatures` builder.
  */
 export type DepSignatures = ReadonlyArray<readonly DepSlot[]>;
 
 /**
  * The result of parsing a closed-generic token `base<arg1,arg2>` into its base
- * and top-level args. A pure data shape (the parse routine that produces it is a
- * runtime helper that lives in `@rhombus-std/di`); kept here so the type surface a
- * consumer references stays in the types-only substrate.
+ * and top-level args. A pure data shape; the parse routine producing it lives in
+ * `@rhombus-std/di`.
  */
 export interface ParsedToken {
   readonly base: Token;
   readonly args: readonly Token[];
 }
 
-// The authoring brands (`Inject`, `Hole`, `$`, `Typeof`) live in `./brands.ts` --
-// split out as their own cohesive concern (see docs/decisions.md #46).
+// The authoring brands (`Inject`, `Hole`, `$`, `Typeof`) live in `./brands.ts`.

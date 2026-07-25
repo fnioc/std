@@ -1,16 +1,15 @@
-// MetricsBuilder -- the concrete IMetricsBuilder, ported from the private
-// `MetricsBuilder` the reference hosting runtime nests inside
-// `HostApplicationBuilder`. A thin wrapper exposing the registration builder as
-// `.services`, exactly like {@link import("@rhombus-std/logging").LoggingBuilder}.
+// MetricsBuilder -- the concrete IMetricsBuilder. A thin wrapper exposing the
+// registration builder as `.services`, exactly like
+// {@link import("@rhombus-std/logging").LoggingBuilder}.
 //
 // This is a SECOND concrete `IMetricsBuilder` alongside `@rhombus-std/diagnostics`'s
 // own `MetricsBuilder`; both share the `IMetricsBuilder` receiver, so this class is
-// decorated with `@augment(tokenfor<IMetricsBuilder>())` (docs §38) to pull
-// the metrics augmentation bag (`addMetricsListener`/`enableMetrics`/... registered
-// by the diagnostics family) onto its prototype -- otherwise a host's `builder.metrics`
-// would never receive `enableMetrics`. The class-side merge below keeps this class
-// satisfying `IMetricsBuilder` once diagnostics.core merges those members onto the
-// interface (rule 0.6).
+// decorated with `@augment(tokenfor<IMetricsBuilder>())` to pull the metrics
+// augmentation bag (`addMetricsListener`/`enableMetrics`/... registered by the
+// diagnostics family) onto its prototype -- otherwise a host's `builder.metrics`
+// would never receive `enableMetrics`. The class-side merge below keeps this
+// class satisfying `IMetricsBuilder` once diagnostics.core merges those members
+// onto the interface.
 
 import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';

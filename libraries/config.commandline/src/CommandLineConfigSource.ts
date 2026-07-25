@@ -1,41 +1,27 @@
-// CommandLineConfigSource -- source-side construction, including
-// construction-time switchMappings validation:
+// Source-side construction, including eager validation of `switchMappings`:
 //
-//   - every switchMappings key must start with "-" (covers both "-x" and
-//     "--LongForm" mapping keys);
-//   - two mapping keys that differ only by case collide and throw ("-p" and
-//     "-P" registered together is a caller mistake, not two switches).
+//   - every key must start with "-" (covering both "-x" and "--LongForm");
+//   - two keys that differ only by case collide and throw ("-p" and "-P"
+//     registered together is a caller mistake, not two switches).
 //
-// Both checks run eagerly here, at construction time, rather than lazily
-// during parsing -- a malformed switchMappings table should fail the moment
-// it's built, not only when the CLI happens to exercise the affected switch.
-//
-// Everything else about parsing (the fail-loud behavior in
-// command-line-configuration-provider.ts) is this repo's pre-existing,
-// already-tested baseline -- deliberately NOT a silent-ignore-on-unmapped-
-// switch/missing-value behavior. See that file's module doc comment for the
-// full rationale.
+// Both run at construction rather than lazily during parsing -- a malformed
+// table should fail the moment it's built, not only when the CLI happens to
+// exercise the affected switch.
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource } from '@rhombus-std/config.core';
 import { CommandLineConfigProvider } from './CommandLineConfigProvider';
 
-/** Options accepted by {@link CommandLineConfigSource}'s constructor. */
 export interface CommandLineConfigSourceOptions {
   /**
-   * Maps a switch (including its leading dash(es), e.g. `"-p"` or
-   * `"--port"`) to the full delimited key name it should populate (e.g.
-   * `"Server:Port"`). Validated at construction time: every key must start
-   * with `"-"`, and keys that differ only by case are rejected as
-   * duplicates.
+   * Maps a switch (including its leading dash(es), e.g. `"-p"` or `"--port"`)
+   * to the full delimited key name it should populate (e.g. `"Server:Port"`).
+   * Every key must start with `"-"`, and keys differing only by case are
+   * rejected as duplicates.
    */
   switchMappings?: Record<string, string>;
 }
 
-/**
- * Validates `switchMappings`, throwing synchronously on the first violation
- * found (iteration order is `Object.keys` insertion order, so the error is
- * deterministic).
- */
+/** Throws on the FIRST violation, in `Object.keys` order — so the error is deterministic. */
 function validateSwitchMappings(switchMappings: Record<string, string>): void {
   const seenByFoldedKey = new Map<string, string>();
 
@@ -58,21 +44,16 @@ function validateSwitchMappings(switchMappings: Record<string, string>): void {
 }
 
 /**
- * A {@link IConfigSource} that flattens argv-style tokens (typically
- * `process.argv.slice(2)`) via {@link CommandLineConfigProvider}. See
- * that class's module doc comment for the parsing behavior.
+ * A configuration source over argv-style tokens (typically
+ * `process.argv.slice(2)`), parsed by {@link CommandLineConfigProvider}.
  */
 export class CommandLineConfigSource implements IConfigSource {
-  /** The raw argv-style tokens to parse. */
   public readonly args: readonly string[];
 
-  /** The validated switch mappings (never `undefined` -- defaults to `{}`). */
+  /** The validated mappings — never `undefined`; an absent option defaults to `{}`. */
   public readonly switchMappings: Record<string, string>;
 
-  public constructor(
-    args: readonly string[],
-    options?: CommandLineConfigSourceOptions,
-  ) {
+  public constructor(args: readonly string[], options?: CommandLineConfigSourceOptions) {
     const switchMappings = options?.switchMappings ?? {};
     validateSwitchMappings(switchMappings);
 

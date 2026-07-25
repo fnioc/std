@@ -1,18 +1,16 @@
 // BrowserConsoleLoggerExtensions — the browser-console registration surface
 // for ILoggingBuilder, mirroring @rhombus-std/logging.console's
-// `ConsoleLoggerExtensions.addConsole` shape (there is no reference-stack
-// analog: the browser sink is native to this port).
+// `ConsoleLoggerExtensions.addConsole` shape.
 //
-// ILoggingBuilder is @rhombus-std/logging.core's own interface (an OPEN
-// receiver extended across the family), so this downstream sink registers its
-// augmentation set against the shared `tokenfor<ILoggingBuilder>()` token (docs
-// §38): the @augment-decorated concrete LoggingBuilder pulls the method onto
-// its prototype. The exported const IS the standalone call surface.
+// This downstream sink registers its augmentation set against the shared
+// `tokenfor<ILoggingBuilder>()` token: the @augment-decorated concrete
+// LoggingBuilder pulls the method onto its prototype. The exported const IS
+// the standalone call surface.
 //
-// Idempotence mirrors the console sink's `TryAddEnumerable` semantics: ONE
-// provider per BUILDER however many addBrowserConsole calls run, tracked in a
-// WeakMap keyed by the builder itself (the manifest chain is immutable, so the
-// manifest is a different object after each registration).
+// Idempotent: ONE provider per BUILDER however many addBrowserConsole calls
+// run, tracked in a WeakMap keyed by the builder itself (the manifest chain
+// is immutable, so the manifest is a different object after each
+// registration).
 
 import { LoggingBuilderExtensions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
@@ -26,10 +24,8 @@ import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 const registrations = new WeakMap<ILoggingBuilder, BrowserConsoleLoggerProvider>();
 
 /**
- * The `BrowserConsoleLoggerExtensions` augmentation set for
- * {@link ILoggingBuilder} (docs §28/§38). Registered against
- * `tokenfor<ILoggingBuilder>()` below and reachable as the standalone
- * `BrowserConsoleLoggerExtensions.addBrowserConsole(builder)`.
+ * Registered against `tokenfor<ILoggingBuilder>()` below and reachable as
+ * the standalone `BrowserConsoleLoggerExtensions.addBrowserConsole(builder)`.
  */
 export const BrowserConsoleLoggerExtensions = {
   /**
@@ -48,10 +44,10 @@ export const BrowserConsoleLoggerExtensions = {
   },
 } satisfies AugmentationSet<ILoggingBuilder>;
 
-// The method form (docs §38): merge onto the owning ILoggingBuilder interface so a
-// consumer holding it sees the method. Concrete implementers (logging's
-// LoggingBuilder) inherit it through their `interface ... extends ILoggingBuilder`
-// merge, so no class-side restatement is needed here.
+// Merges the method onto the owning ILoggingBuilder interface so a consumer
+// holding it sees the method. Concrete implementers (logging's
+// LoggingBuilder) inherit it through their `interface ... extends
+// ILoggingBuilder` merge, so no class-side restatement is needed here.
 declare module '@rhombus-std/logging.core' {
   interface ILoggingBuilder {
     /** Instance-method form of {@link BrowserConsoleLoggerExtensions.addBrowserConsole}. */

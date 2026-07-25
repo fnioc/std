@@ -1,32 +1,24 @@
-// Public entry point for @rhombus-std/logging — the ME.Logging (impl) analog.
+// Public entry point for @rhombus-std/logging.
 //
 // Importing this module installs the `addLogging` sugar onto
 // @rhombus-std/di.core's ServiceManifest via the declaration-merging
-// side-effect augmentation (./add-logging). A consumer who only wants that
-// sugar writes a bare `import "@rhombus-std/logging";`. This package MUST keep
-// `"sideEffects": true` so a bundler cannot tree-shake the augmentation away.
+// side-effect augmentation (./LoggingServiceManifestAugmentations). A consumer
+// who only wants that sugar writes a bare `import "@rhombus-std/logging";`.
+// This package MUST keep `"sideEffects": true` so a bundler cannot tree-shake
+// the augmentation away.
 
-// Wholesale re-export of this family's own core (the ILogger* abstractions AND
-// the runtime helpers consumers extend), so a consumer depending on the runtime
-// package resolves the abstractions from it too; the package's public surface
-// stays a superset of its core's. Where a name is defined both here and in core
-// (e.g. `Logger`), the concrete local export below wins, as ES module semantics
-// give an explicit re-export precedence over a `*` re-export.
+// Re-exports this family's core (the ILogger* abstractions plus the runtime
+// helpers consumers extend) so a consumer depending on this package resolves
+// the abstractions from it too. Where a name is defined both here and in core
+// (e.g. `Logger`), the concrete export below wins.
 export * from '@rhombus-std/logging.core';
 
-// Side-effect + standalone surface: registers the `addLogging` augmentation against
-// the di.core ServiceManifest token, merges the method onto the IServiceManifestBase
-// interface, and exports the `LoggingServiceManifestAugmentations` set (docs §28/§38).
+// Registers the `addLogging` augmentation onto di.core's ServiceManifest.
 export { LoggingServiceManifestAugmentations } from './LoggingServiceManifestAugmentations';
-// Side-effect + standalone surface: registers the ILoggingBuilder augmentations
-// (addProvider/…) against the logging-builder token so the @augment-decorated
-// LoggingBuilder pulls them onto its prototype, and exports the set (docs §38).
+// Registers the ILoggingBuilder augmentations (addProvider/…).
 export { LoggingBuilderExtensions } from './LoggingBuilderExtensions';
-// Side-effect + standalone surface: installs the LoggerFilterOptions augmentation
-// (addFilter) directly onto the concrete value object (CLOSED set, #105), registers
-// the ILoggingBuilder half (the builder-level addFilter, routed through the
-// options-configure pipeline) against the logging-builder token, and exports both
-// sets.
+// Installs LoggerFilterOptions's addFilter directly, and registers the
+// ILoggingBuilder half that routes through the options-configure pipeline.
 export { FilterLoggingBuilderExtensions, LoggerFilterOptionsExtensions } from './filter-augmentations';
 export { Logger } from './Logger';
 export { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';

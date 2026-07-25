@@ -1,6 +1,6 @@
-// LoggingBuilder — the concrete ILoggingBuilder, ported from ME.Logging's
-// internal `LoggingBuilder`. A thin wrapper exposing the registration builder
-// as `.services`, handed to the `configure` delegate by `addLogging`.
+// LoggingBuilder is the concrete ILoggingBuilder: a thin wrapper exposing the
+// registration builder as `.services`, handed to the `configure` delegate by
+// `addLogging`.
 //
 // `.services` is an ACCESSOR over a holder, not a field of its own, so the
 // builder can be pointed at a slot that something ELSE also writes. `addLogging`
@@ -14,18 +14,16 @@ import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 
-// Interface-extends merge (augmentation doctrine): binding the ILoggingBuilder
-// SYMBOL flows every in-program augmentation of the interface — this package's
-// `addProvider`/`addFilter`/…, plus downstream `addConfig`/`addConsole` —
-// onto this concrete holder, so it satisfies `implements ILoggingBuilder` without
-// any class-side restatement of members.
+// Binding the ILoggingBuilder interface onto the class flows every
+// augmentation of the interface — this package's `addProvider`/`addFilter`/…,
+// plus downstream `addConfig`/`addConsole` — onto this concrete holder, so it
+// satisfies `implements ILoggingBuilder` without any class-side restatement.
 export interface LoggingBuilder extends ILoggingBuilder {}
 
-// OPEN receiver (docs §38): decorate the concrete builder with the ILoggingBuilder
-// augmentation token — derived inline by `tokenfor<ILoggingBuilder>()`, lowered at
-// build time — so every set registered against it — this package's
-// `LoggingBuilderExtensions`, plus downstream `addConfig`/`addConsole` — is
-// (re)installed onto the prototype, whatever the import order.
+// Decorating the concrete builder with the ILoggingBuilder token means every
+// set registered against it — this package's `LoggingBuilderExtensions`, plus
+// downstream `addConfig`/`addConsole` — is (re)installed onto the prototype,
+// whatever the import order.
 @augment(tokenfor<ILoggingBuilder>())
 export class LoggingBuilder implements ILoggingBuilder {
   readonly #holder: IServiceManifestHolder;

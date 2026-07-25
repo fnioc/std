@@ -1,7 +1,6 @@
 // XmlConfigSource -- a file-backed source that reads an XML file into
 // the case-insensitive key/value store. Derives from FileConfigSource
-// (config.file); this class only picks the concrete provider. Mirrors
-// config.json/config.ini's file source.
+// (config.file); this class only picks the concrete provider.
 
 import type { IConfigBuilder, IConfigProvider } from '@rhombus-std/config.core';
 import { FileConfigSource } from '@rhombus-std/config.file';

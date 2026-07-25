@@ -1,7 +1,4 @@
-// The tracing analog of MeterScope: distinguishes activity sources created
-// globally (via an ActivitySource constructor) from those created locally
-// (via a DI activity-source factory). Used by TracingRule. No tracing runtime
-// backs it -- pure data.
+// The tracing counterpart of MeterScope. Pure data -- no tracing runtime backs it.
 
 /**
  * Scopes used by {@link TracingRule} to distinguish global activity sources

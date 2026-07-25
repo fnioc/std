@@ -1,27 +1,22 @@
 // FileConfigProvider -- the abstract base for every file-backed
-// configuration provider. Ported from the reference `FileConfigProvider`.
+// configuration provider.
 //
 // Reads the file named by its source through the source's IFileProvider, hands
 // the decoded text to the concrete `loadContent`, and -- when
 // `reloadOnChange` is set -- re-reads on every change the provider's
 // `watch` token reports.
 //
-// Two platform-driven deviations from the reference, flagged:
-//
 //   - READ IS SYNCHRONOUS VIA `physicalPath`. `IConfigProvider.load()`
 //     is synchronous (the whole build path is), but `IFileInfo.createReadStream`
 //     yields an ASYNC web `ReadableStream` that can't be drained in a sync
-//     method. So the base reads with `readFileSync(fileInfo.physicalPath)` --
-//     which is exactly the reference's own primary path (its `OpenRead`
-//     special-cases `PhysicalPath` to a synchronous `FileStream`). A provider
-//     that exposes no `physicalPath` (an in-memory/remote provider) is
-//     therefore unsupported for synchronous file config, and load throws.
+//     method. So the base reads with `readFileSync(fileInfo.physicalPath)`.
+//     A provider that exposes no `physicalPath` (an in-memory/remote provider)
+//     is therefore unsupported for synchronous file config, and load throws.
 //
-//   - RESET BY REASSIGNMENT. The reference reloads via `Data = newDict`; this
-//     base does the analogous `this.data = new Map()` (enabled by #86), which
-//     lets it parse into a fresh store and swap it in atomically -- restoring
-//     the previous store if a NON-reload parse fails, matching the reference's
-//     "Data unchanged on a failed initial load" semantics.
+//   - RESET BY REASSIGNMENT. Reload does `this.data = new Map()`, which lets
+//     it parse into a fresh store and swap it in atomically -- restoring the
+//     previous store if a non-reload parse fails, so the store stays
+//     unchanged after a failed initial load.
 
 import { ConfigProvider } from '@rhombus-std/config';
 import type { IFileInfo } from '@rhombus-std/fileproviders.core';
@@ -92,9 +87,9 @@ export abstract class FileConfigProvider extends ConfigProvider implements Dispo
         this.#handleError(new Error(fileNotFoundMessage(this.#source.path, file)));
       }
     } else {
-      // Read outside the try (mirrors the reference `OpenRead`): a read
-      // failure propagates directly, not through the load-error handler, and
-      // leaves the current store untouched. Only a parse failure is wrapped.
+      // Read outside the try: a read failure propagates directly, not
+      // through the load-error handler, and leaves the current store
+      // untouched. Only a parse failure is wrapped.
       const content = readFileContent(file);
       const previous = this.data;
       this.data = new Map();
@@ -102,7 +97,6 @@ export abstract class FileConfigProvider extends ConfigProvider implements Dispo
         this.loadContent(content);
       } catch (error) {
         this.data = reload ? new Map() : previous;
-        // Reference parity: the failure names the resolved physical path.
         this.#handleError(
           new InvalidDataError(`Failed to load configuration from file '${file.physicalPath}'.`, { cause: error }),
         );
@@ -113,9 +107,9 @@ export abstract class FileConfigProvider extends ConfigProvider implements Dispo
   }
 
   async #reloadAfterDelay(): Promise<void> {
-    // The async-consumer form (docs §58): ChangeToken.onChange re-registers
-    // only once this promise settles, so the delay debounces naturally -- a
-    // burst of file events collapses to one reload.
+    // ChangeToken.onChange re-registers only once this promise settles, so
+    // the delay debounces naturally -- a burst of file events collapses to
+    // one reload.
     await new Promise<void>((resolve) => {
       setTimeout(resolve, this.#source.reloadDelay);
     });

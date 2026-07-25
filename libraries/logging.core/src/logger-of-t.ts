@@ -1,15 +1,10 @@
-// Logger<T> — the generic-category logger, ported from
-// ME.Logging.Abstractions' `Logger<T>`. Delegates to an inner `ILogger` created
-// by the injected `ILoggerFactory` under the category derived from `T`.
+// Logger<T> — delegates to an inner `ILogger` created by the injected
+// `ILoggerFactory`, categorized by `T`.
 //
-// The reference derives the category from `typeof(T)`'s display name. This
-// platform erases `T`, so — exactly like `LoggerProviderConfig<T>` in
-// logging.config — the di engine supplies the closing type's token as a
-// `Typeof<T>` constructor parameter (from the open registration's `typeArg(1)`
-// slot; see `@rhombus-std/logging`'s `addLogging`). The category is the token's
-// type-name segment (`"@pkg/x:HomeController"` → `"HomeController"`), the
-// closest analog of the reference's type display name — std tokens are not
-// namespace-qualified, the one divergence from the reference category string.
+// `T` is erased at runtime, so the di engine supplies the closing type's
+// token as a `Typeof<T>` constructor parameter (see `@rhombus-std/logging`'s
+// `addLogging`). The category is the token's type-name segment
+// (`"@pkg/x:HomeController"` → `"HomeController"`).
 
 import type { Typeof } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
@@ -27,7 +22,7 @@ function categoryFromToken(token: string): string {
 }
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
-// wrapper methods (logInformation/…, §80) flow onto `Logger<T>`, present and
+// wrapper methods (logInformation/…) flow onto `Logger<T>`, present and
 // future, beside the `@augment(tokenfor<ILogger>())` install below.
 export interface Logger<T> extends ILogger<T> {}
 
@@ -44,13 +39,9 @@ export class Logger<T> implements ILogger<T> {
     this.#logger = factory.createLogger(categoryFromToken(categoryType as unknown as string));
   }
 
-  public log<TState>(
-    logLevel: LogLevel,
-    eventId: EventId,
-    state: TState,
-    error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>,
-  ): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
+    formatter: Func<[TState, Error | undefined], string>): void
+  {
     this.#logger.log(logLevel, eventId, state, error, formatter);
   }
 

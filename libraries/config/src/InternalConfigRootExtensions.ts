@@ -1,32 +1,14 @@
-// The INTERNAL child-enumeration helper shared by the root, the manager, and
-// every section -- port of the reference `InternalConfigRootExtensions`
-// static class. Same object-literal shape as the public augmentation sets
-// (docs/decisions.md §28/§42), `satisfies AugmentationSet<IConfigRoot>`,
-// but INTERNAL like its reference: exported for the package's own call sites
-// only, never re-exported from the barrel, and never installed on a prototype
-// (no `applyAugmentations`, no registry token) -- call sites use the standalone
+// Internal child-enumeration helper shared by the root, the manager, and
+// every section: exported for the package's own call sites only, never
+// re-exported from the barrel, and never installed on a prototype (no
+// `applyAugmentations`, no registry token) -- call sites use the standalone
 // member form, `InternalConfigRootExtensions.getChildrenImplementation(root, path)`.
-//
-// Two reference members are deliberately not mirrored here:
-//   - The `ConfigManager` reference-counted-providers branch inside
-//     `getChildrenImplementation` (GetProvidersReference + the eager ToList):
-//     the copy-on-write provider list it guards is itself unported (see
-//     ./ConfigManager.ts -- no concurrent-reader story in a
-//     single-threaded runtime), so `root.providers` is always the live list.
-//   - `tryGetConfiguration` (the reverse-scan value lookup behind the reference
-//     section's value getter): this port routes every section read through
-//     `ConfigRoot.get`, whose private `#rawGet` IS that reverse scan, so
-//     a second copy here would have no call site.
 
 import { configPath, type IConfigRoot, type IConfigSection } from '@rhombus-std/config.core';
 import type { AugmentationSet } from '@rhombus-std/primitives';
 import { foldKey } from './fold-key';
 
-/**
- * One named object literal mirroring the reference
- * `InternalConfigRootExtensions` internal static class (docs §28/§38) --
- * receiver-first members over {@link IConfigRoot}, intra-package only.
- */
+/** Receiver-first members over {@link IConfigRoot}, intra-package only. */
 export const InternalConfigRootExtensions = {
   /**
    * Shared child-enumeration for the root, the manager, and their sections.

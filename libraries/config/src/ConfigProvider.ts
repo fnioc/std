@@ -21,9 +21,7 @@ import { foldKey } from './fold-key';
  */
 function segment(key: string, prefixLength: number): string {
   const delimiterIndex = key.indexOf(configPath.KeyDelimiter, prefixLength);
-  return delimiterIndex < 0
-    ? key.slice(prefixLength)
-    : key.slice(prefixLength, delimiterIndex);
+  return delimiterIndex < 0 ? key.slice(prefixLength) : key.slice(prefixLength, delimiterIndex);
 }
 
 /**
@@ -36,16 +34,14 @@ export abstract class ConfigProvider implements IConfigProvider {
   /**
    * lowercased-key -> [original-cased key, value].
    *
-   * NOT `readonly` (#86): a provider may reset its store either in place
+   * NOT `readonly`: a provider may reset its store either in place
    * (`this.data.clear()`) or by wholesale reassignment (`this.data = new
-   * Map()`). The reference's file providers reload via the reassignment idiom
-   * (`Data = newDict`), and {@link FileConfigProvider} relies on it to
-   * swap in a freshly-parsed store atomically and restore the previous one if
-   * a non-reload parse fails -- which an in-place `clear()` cannot express,
-   * since it destroys the previous store. The base's own accessors always read
-   * `this.data`, so either idiom is observed. (#86's second half -- preserving
-   * a distinct null value vs. the empty string -- is unaddressed here: the
-   * value tuple stays `string`, as no ported provider stores a null leaf.)
+   * Map()`). {@link FileConfigProvider} relies on the reassignment idiom to
+   * swap in a freshly-parsed store atomically and restore the previous one
+   * if a non-reload parse fails -- an in-place `clear()` cannot express that,
+   * since it destroys the previous store before the new one is ready. The
+   * base's own accessors always read `this.data`, so either idiom is
+   * observed.
    */
   protected data = new Map<string, [key: string, value: string]>();
 
@@ -115,11 +111,10 @@ export abstract class ConfigProvider implements IConfigProvider {
     } else {
       const foldedParent = foldKey(parentPath);
       for (const [, [originalKey]] of this.data) {
-        if (
-          originalKey.length > parentPath.length
+        if (originalKey.length > parentPath.length
           && foldKey(originalKey).startsWith(foldedParent)
-          && originalKey[parentPath.length] === configPath.KeyDelimiter
-        ) {
+          && originalKey[parentPath.length] === configPath.KeyDelimiter)
+        {
           results.push(segment(originalKey, parentPath.length + 1));
         }
       }

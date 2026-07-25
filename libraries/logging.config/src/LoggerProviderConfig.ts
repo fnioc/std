@@ -1,9 +1,5 @@
-// LoggerProviderConfig<T>, ported from the reference logging
-// configuration project's internal `LoggerProviderConfig<T>`.
-//
-// The reference constructor reifies the provider type with `typeof(T)`; this
-// platform erases `T`, so the constructor takes the provider token as a
-// `Typeof<T>`-branded parameter — the di engine supplies it from the open
+// `T` erases at runtime, so the constructor takes the provider token as a
+// `Typeof<T>`-branded parameter -- the di engine supplies it from the open
 // registration's `typeArg(1)` slot (see the no-arg `addConfig`), and a
 // direct construction passes `tokenfor<TProvider>()`.
 
@@ -20,10 +16,7 @@ import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactor
 export class LoggerProviderConfig<T> implements ILoggerProviderConfig<T> {
   public readonly config: IConfig;
 
-  public constructor(
-    providerConfigFactory: ILoggerProviderConfigFactory,
-    providerType: Typeof<T>,
-  ) {
+  public constructor(providerConfigFactory: ILoggerProviderConfigFactory, providerType: Typeof<T>) {
     this.config = providerConfigFactory.getConfig(providerType);
   }
 }

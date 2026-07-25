@@ -14,16 +14,15 @@
 // -Provider/-Manager + ITryGetResult, the `configPath` helpers, the
 // `ConfigAugmentations`/`ConfigRootAugmentations` convenience sets + `exists`,
 // and the `isConfigSection` runtime discriminant) live in
-// @rhombus-std/config.core -- the assembly mirroring the reference
-// `.Configuration.Abstractions`. Re-export the WHOLE surface (types AND values)
+// @rhombus-std/config.core. Re-export the WHOLE surface (types AND values)
 // so consumers importing any of it from @rhombus-std/config keep working;
 // config's public surface stays a superset of core's.
 export * from '@rhombus-std/config.core';
 
 // Install the convenience augmentations' fluent forms onto the concrete engine
-// classes (CLOSED sets, docs §38). The member sets themselves are re-exported
-// from core by the `export *` above; these side-effect imports run the
-// `applyAugmentations` calls and carry the `declare module` merges.
+// classes. The member sets themselves are re-exported from core by the
+// `export *` above; these side-effect imports run the `applyAugmentations`
+// calls and carry the `declare module` merges.
 import './config-augmentations-install';
 import './config-root-augmentations-install';
 
@@ -38,7 +37,7 @@ export { ConfigSection } from './ConfigSection';
 
 // Memory provider. The re-export is side-effectful: importing this module
 // registers the `addInMemoryCollection` augmentation against the shared
-// IConfigBuilder token (docs §38), reaching both decorated builders.
+// IConfigBuilder token, reaching both decorated builders.
 export * from './memory';
 
 // Chained provider. Side-effectful re-export: registers the `addConfig`

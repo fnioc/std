@@ -1,8 +1,5 @@
 // FileLoadErrorContext -- the value handed to a builder-wide load-error
 // handler (`setFileLoadErrorHandler`) when a file provider's load throws.
-// Mirrors the reference `FileLoadExceptionContext`, renamed to `*ErrorContext`
-// per the error-not-exception convention; the `error` field is likewise the
-// renamed `Exception` member.
 
 import type { FileConfigProvider } from './FileConfigProvider';
 

@@ -29,8 +29,7 @@ export interface JsonConfigSourceOptions {
  * A {@link IConfigSource} that reads a JSON file and flattens it into
  * the case-insensitive key/value store shared by every
  * {@link ConfigProvider}. With no explicit `fileProvider`, the file is
- * resolved relative to `process.cwd()` (the builder default), reproducing the
- * pre-file-base cwd-relative behavior.
+ * resolved relative to `process.cwd()` (the builder default).
  */
 export class JsonConfigSource extends FileConfigSource {
   public constructor(path: string, opts?: JsonConfigSourceOptions) {
@@ -49,12 +48,11 @@ export class JsonConfigSource extends FileConfigSource {
   }
 
   public override build(builder: IConfigBuilder): IConfigProvider {
-    // resolveFileProvider BEFORE ensureDefaults so an absolute path self-roots
-    // (directory-rooted provider + bare file name) instead of being resolved
-    // against the cwd default. DEVIATION from the reference (which resolves
-    // only inside the AddJsonFile ladder): doing it here too keeps direct
-    // `new JsonConfigSource(absolutePath).build(...)` construction
-    // reading absolute paths, as the pre-file-base provider did.
+    // resolveFileProvider runs BEFORE ensureDefaults so an absolute path
+    // self-roots (directory-rooted provider + bare file name) instead of
+    // being resolved against the cwd default -- this also makes a direct
+    // `new JsonConfigSource(absolutePath).build(...)` call read the
+    // absolute path correctly.
     this.resolveFileProvider();
     this.ensureDefaults(builder);
     return new JsonConfigProvider(this);

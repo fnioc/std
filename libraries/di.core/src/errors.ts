@@ -3,13 +3,9 @@
 // raises. All of it lives in the abstractions package because classifying a
 // failure is ordinary library work — a di.core-only library has to be able to
 // `catch (e) { if (e instanceof UnregisteredTokenError) … }`, add context, and
-// re-raise without taking a reference on the engine. `@rhombus-std/di` re-exports
-// the taxonomy, so the classes are reachable through either import and there is
-// exactly ONE runtime copy of each (di keeps di.core external in its bundle).
-//
-// Nothing here touches the engine: the classes carry tokens, slots and strings,
-// and their messages are written for a human reading a stack trace at the moment
-// a graph fails to resolve.
+// re-raise without taking a dependency on the engine. `@rhombus-std/di`
+// re-exports these classes, so both imports reach the ONE runtime copy of each
+// and `instanceof` holds either way.
 
 import type { DepSlot, Token } from './types.js';
 
@@ -26,14 +22,10 @@ export class DiError extends Error {
  * accept one: `addValue`/`addFactory` (open registrations are class-only), or
  * `addClass` with a template no closed token could ever match — one the token
  * grammar refuses, or a bare hole (`$1`), which names no base to register under.
- * Concrete args and holes MIX freely (`pkg:IRepo<pkg:IUser,$1>`); the v1
- * all-holes rule that used to be enforced here is retired.
+ * Concrete args and holes MIX freely (`pkg:IRepo<pkg:IUser,$1>`).
  */
 export class OpenTokenRegistrationError extends DiError {
-  public constructor(
-    public readonly token: Token,
-    public readonly method: 'addClass' | 'addFactory' | 'addValue',
-  ) {
+  public constructor(public readonly token: Token, public readonly method: 'addClass' | 'addFactory' | 'addValue') {
     super(
       method === 'addClass'
         ? `Cannot register open template "${token}": an open service token must `
@@ -58,22 +50,13 @@ export class OpenTokenRegistrationError extends DiError {
  */
 export class UnregisteredTokenError extends DiError {
   public constructor(public readonly token: Token) {
-    super(
-      `No registration found for token "${token}". Register it with `
-        + `services.addClass(...) before resolving.`,
-    );
+    super(`No registration found for token "${token}". Register it with ` + `services.addClass(...) before resolving.`);
   }
 }
 
-/**
- * A constructor with parameters carries no dep signature on its registration —
- * the transformer never saw it and no signature was hand-fed.
- */
+/** A constructor with parameters carries no dep signature on its registration. */
 export class MissingMetadataError extends DiError {
-  public constructor(
-    public readonly token: Token,
-    public readonly ctorName: string,
-  ) {
+  public constructor(public readonly token: Token, public readonly ctorName: string) {
     super(
       `No dep metadata found for ${ctorName} (resolving "${token}"). The `
         + `constructor has parameters but no dep signature was found on its `
@@ -90,21 +73,15 @@ export class MissingMetadataError extends DiError {
  * that is not registered, or contains a hole this phase cannot fill).
  */
 export class NoSatisfiableSignatureError extends DiError {
-  public constructor(
-    public readonly token: Token,
-    public readonly ctorName: string,
-    public readonly unsatisfiable: readonly Token[],
-  ) {
+  public constructor(public readonly token: Token, public readonly ctorName: string,
+    public readonly unsatisfiable: readonly Token[])
+  {
     super(
       `No satisfiable constructor signature for ${ctorName} (resolving `
         + `"${token}"). Every candidate signature names a dependency that is `
         + `not registered in the owning scope`
         + (unsatisfiable.length
-          ? `; unsatisfiable tokens: ${
-            unsatisfiable
-              .map((t) => `"${t}"`)
-              .join(', ')
-          }`
+          ? `; unsatisfiable tokens: ${unsatisfiable.map((t) => `"${t}"`).join(', ')}`
           : '')
         + `. Register the missing dependencies, or provide a useFactory `
         + `override.`,
@@ -126,20 +103,9 @@ export class CircularDependencyError extends DiError {
  * A constructor parameter is typed as a factory of some token (a `FactoryRef`),
  * but that token has no registration, so there is nothing for the injected
  * callable to build.
- *
- * `reason` carries the single value `"unregistered"`. It once also admitted
- * `"not-a-class"` — the old engine refused a factory over a value / factory
- * target because it built with a bare `new`. The three authoring kinds have
- * since collapsed into one `produce` closure, so a value target is simply a
- * zero-arg thunk returning the stored instance and the distinction has no
- * referent; the field stays (it is public surface, and it reads at a catch site)
- * rather than being dropped outright.
  */
 export class FactoryTargetError extends DiError {
-  public constructor(
-    public readonly factoryToken: Token,
-    public readonly reason: 'unregistered',
-  ) {
+  public constructor(public readonly factoryToken: Token, public readonly reason: 'unregistered') {
     super(
       `Cannot inject a factory for "${factoryToken}": no registration found `
         + `for it. A factory parameter (typed \`() => IFoo\`) needs the target `
@@ -155,9 +121,7 @@ export class FactoryTargetError extends DiError {
  */
 export class NoSatisfiableUnionError extends DiError {
   public constructor(public readonly members: readonly DepSlot[]) {
-    const memberList = members
-      .map((m) => (typeof m === 'string' ? `"${m}"` : JSON.stringify(m)))
-      .join(', ');
+    const memberList = members.map((m) => (typeof m === 'string' ? `"${m}"` : JSON.stringify(m))).join(', ');
     super(
       `No satisfiable union member found. Tried: [${memberList}]. `
         + `Register at least one of the union members before resolving.`,
@@ -185,8 +149,7 @@ export class OpenTokenResolutionError extends DiError {
  * matching frame open in the owning chain — the resolution would silently fall
  * back to a transient instance, which scope validation makes loud instead.
  *
- * The engine's analog of the reference validator's three failures, told apart
- * by the fields (each `undefined` field narrows the flavor):
+ * Three flavors, told apart by the fields (each `undefined` field narrows it):
  *
  *   - `consumer` set — "scoped consumed by a singleton": the tagged service was
  *     a dependency of an instance OWNED by a frame whose chain has no `scope`
@@ -205,8 +168,8 @@ export class ScopeValidationError extends DiError {
     public readonly scope: string,
     /**
      * The nearest enclosing OWNED (frame-cached) instance consuming `token` —
-     * its token and the scope owning it — when the violation happened inside
-     * a construction: the reference validator's "singleton" party.
+     * its token and the scope owning it — when the violation happened inside a
+     * construction.
      */
     public readonly consumer?: { readonly token: Token; readonly scope: string; },
     /** The token the triggering `resolve()` call originally requested. */
@@ -231,16 +194,12 @@ export class ScopeValidationError extends DiError {
 }
 
 /**
- * One registration failed the eager `validateOnBuild` pass. Wraps the
- * underlying failure (available as `cause`), naming the registration's token —
- * the reference's per-descriptor "Error while validating the service
- * descriptor" wrapper. `build()` collects these into one `AggregateError`.
+ * One registration failed the eager `validateOnBuild` pass. Wraps the underlying
+ * failure (available as `cause`) and names the registration's token; `build()`
+ * collects these into one `AggregateError`.
  */
 export class RegistrationValidationError extends DiError {
-  public constructor(
-    public readonly token: Token,
-    cause: unknown,
-  ) {
+  public constructor(public readonly token: Token, cause: unknown) {
     super(
       `Error while validating the registration for "${token}": ${
         cause instanceof Error ? cause.message : String(cause)
@@ -266,8 +225,7 @@ export class AsyncDisposalRequiredError extends DiError {
 }
 
 /**
- * A provider was used after `dispose()` / `disposeAsync()` closed it — the
- * reference container's `ObjectDisposedException` analog.
+ * A provider was used after `dispose()` / `disposeAsync()` closed it.
  *
  * Every resolution entry point is guarded, `createScope` included. A disposed
  * frame has already drained the instances it owned, and its bookkeeping is not

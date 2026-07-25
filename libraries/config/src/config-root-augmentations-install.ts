@@ -1,6 +1,5 @@
 // Install wiring for `ConfigRootAugmentations` (the IConfigRoot debug-view
-// member set, which now lives in @rhombus-std/config.core -- the assembly
-// mirroring the reference `.Configuration.Abstractions`). The member set is
+// member set, which lives in @rhombus-std/config.core). The member set is
 // pure and lives in core; the install -- the `applyAugmentations` calls plus
 // the `declare module` merges -- stays here, because it references the concrete
 // engine classes (ConfigRoot/ConfigManager) config.core cannot import.

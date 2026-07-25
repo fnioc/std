@@ -1,14 +1,13 @@
-// HostApplicationBuilder -- the modern, property-based builder, ported from the
-// reference hosting runtime's `HostApplicationBuilder`. Unlike the classic
-// delegate-accumulating `HostBuilder`, it exposes its `config`,
+// HostApplicationBuilder -- the modern, property-based builder. Unlike the
+// classic delegate-accumulating `HostBuilder`, it exposes its `config`,
 // `environment`, `logging`, `metrics`, and `services` as live properties the
 // caller mutates directly, then `build()` runs the same composition tail.
 //
-// `config` is a live `ConfigManager` (both an
-// `IConfigBuilder` and an `IConfig`): adding a source updates its
-// current view immediately, which is why the framework services are populated
-// eagerly in the constructor but `HostOptions` is folded from the configuration
-// at `build()` time (in the composition tail), once every source is present.
+// `config` is a live `ConfigManager` (both an `IConfigBuilder` and an
+// `IConfig`): adding a source updates its current view immediately, which is
+// why the framework services are populated eagerly in the constructor but
+// `HostOptions` is folded from the configuration at `build()` time (in the
+// composition tail), once every source is present.
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
@@ -55,9 +54,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
 
   public constructor(settings?: HostApplicationBuilderSettings) {
     const resolved = settings ?? new HostApplicationBuilderSettings();
-    this.#config = resolved.config instanceof ConfigManager
-      ? resolved.config
-      : new ConfigManager();
+    this.#config = resolved.config instanceof ConfigManager ? resolved.config : new ConfigManager();
     this.#framework = createFrameworkServices();
 
     // Calls made directly on `this.#config` (a concrete
@@ -69,9 +66,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     // classic `HostBuilder`'s delegate-typed configuration callbacks, which
     // never see a concrete class to hang the sugar off of.
     if (!resolved.disableDefaults) {
-      if (
-        resolved.contentRootPath === undefined && this.#config.get(HostDefaults.contentRootKey) === undefined
-      ) {
+      if (resolved.contentRootPath === undefined && this.#config.get(HostDefaults.contentRootKey) === undefined) {
         setDefaultContentRoot(this.#config);
       }
       this.#config.addEnvironmentVariables({ prefix: HOST_ENVIRONMENT_VARIABLE_PREFIX });
@@ -97,28 +92,20 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     }
 
     this.#environment = createHostingEnvironment(this.#config);
-    this.#context = {
-      hostingEnvironment: this.#environment,
-      config: this.#config,
-      properties: new Map<string | symbol, unknown>(),
-    };
+    this.#context = { hostingEnvironment: this.#environment, config: this.#config,
+      properties: new Map<string | symbol, unknown>() };
 
-    this.#services = populateFrameworkServices(
-      this.#services,
-      this.#context,
-      this.#environment,
-      this.#config,
-      this.#framework,
-    );
+    this.#services = populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config,
+      this.#framework);
 
     if (!resolved.disableDefaults) {
       applyDefaultAppConfig(this.#config, this.#environment, resolved.args);
       this.#services = addDefaultServices(this.#services);
     }
 
-    // The reference computes the default service-provider options here (dev-env
-    // scope/build validation) and threads them into the provider build. With
-    // defaults disabled there is no factory, so the build stays unvalidated.
+    // Dev-environment scope/build-time validation options are computed here
+    // and threaded into the provider build. With defaults disabled there is no
+    // factory, so the build stays unvalidated.
     this.#serviceProviderOptions = resolved.disableDefaults
       ? undefined
       : createDefaultServiceProviderOptions(this.#environment);
@@ -171,25 +158,20 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   /**
    * Registers a factory used to create the service provider. This repo has a
    * SINGLE container type, so this is a minimal no-op single-container hook: the
-   * default `ServiceManifest` build path is always used. See diNotes.
+   * default `ServiceManifest` build path is always used.
    */
-  public configureContainer<TContainerBuilder>(
-    _factory: IServiceProviderFactory<TContainerBuilder>,
-    _configure?: Action<[TContainerBuilder]>,
-  ): void {}
+  public configureContainer<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>,
+    _configure?: Action<[TContainerBuilder]>): void
+  {}
 
   /**
-   * Returns a classic {@link IHostBuilder} view over this builder -- the
-   * reference `AsHostBuilder`. Lazily allocated and cached; the accumulated
-   * configure* delegates are replayed at {@link build} time. Intended for tooling
-   * that only understands the classic builder shape.
+   * Returns a classic {@link IHostBuilder} view over this builder. Lazily
+   * allocated and cached; the accumulated configure* delegates are replayed at
+   * {@link build} time. Intended for tooling that only understands the classic
+   * builder shape.
    */
   public asHostBuilder(): IHostBuilder {
-    return this.#hostBuilderAdapter ??= new HostBuilderAdapter(
-      this.#config,
-      this,
-      this.#context,
-    );
+    return this.#hostBuilderAdapter ??= new HostBuilderAdapter(this.#config, this, this.#context);
   }
 
   /** Builds the host. Can only be called once. */
@@ -199,7 +181,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     }
     this.#hostBuilt = true;
     // Replay any classic-builder delegates accumulated through `asHostBuilder()`
-    // before the provider is built (reference parity).
+    // before the provider is built.
     this.#hostBuilderAdapter?.applyChanges();
     return resolveHost(this.#services, this.#framework, this.#config, this.#serviceProviderOptions);
   }

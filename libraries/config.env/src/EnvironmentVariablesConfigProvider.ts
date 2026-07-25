@@ -1,30 +1,22 @@
-// EnvironmentVariablesConfigProvider -- loads `process.env` into the
-// case-insensitive ConfigProvider store.
+// Loads `process.env` into the case-insensitive ConfigProvider store.
 //
-// Transform-before-filter order: each raw variable name is run through
-// `source.variableNameTransformation` FIRST (default `__` -> `:`), and only
-// THEN checked against `source.prefix` with a case-insensitive prefix match.
-// This is more correct than filtering on the raw name: a prefix such as
-// "Foo:Bar:" only becomes visible on `Foo__Bar__Baz` after the `__` -> `:`
-// translation runs, so filtering on the untransformed name would silently
-// drop variables a caller reasonably expects to match. Costs nothing given
-// the base ConfigProvider's case-insensitive store.
+// TRANSFORM BEFORE FILTER: each raw variable name runs through
+// `source.variableNameTransformation` first (default `__` -> `:`), and only THEN
+// is checked against `source.prefix` with a case-insensitive prefix match. A
+// prefix such as "Foo:Bar:" only becomes visible on `Foo__Bar__Baz` once the
+// `__` -> `:` translation has run, so filtering on the untransformed name would
+// silently drop variables a caller reasonably expects to match.
 //
-// The prefix itself is run through the SAME transformation before matching
-// (once per load(), not per variable) -- so a caller may spell `prefix` in
-// either the raw pre-transform form ("Foo__Bar__") or the already-delimited
-// form ("Foo:Bar:"); the transformation is idempotent on the latter, so this
-// is a strict superset of matching only the raw form.
+// The prefix itself runs through the SAME transformation before matching (once
+// per load(), not per variable), so a caller may spell it either raw
+// ("Foo__Bar__") or already-delimited ("Foo:Bar:") -- the transformation is
+// idempotent on the latter.
 //
-// Connection-string prefixes: some deployment platforms inject connection
-// strings as environment variables under conventional `*CONNSTR_` prefixes. A
-// variable whose name starts (case-insensitively) with one of these is
-// re-keyed into the `ConnectionStrings` section -- `SQLCONNSTR_Db` becomes
-// `ConnectionStrings:Db` -- so it lands where a connection-string lookup
-// expects it. The reference additionally emits a `<name>_ProviderName` sibling
-// naming the ADO provider for four of these prefixes; those provider-name
-// values are omitted here (they are runtime-stack-specific identifiers with no
-// analog in this ecosystem), so no `_ProviderName` key is written.
+// Connection strings: some deployment platforms inject connection strings as
+// environment variables under conventional `*CONNSTR_` prefixes. A variable
+// whose name starts (case-insensitively) with one of these is re-keyed into the
+// `ConnectionStrings` section -- `SQLCONNSTR_Db` becomes `ConnectionStrings:Db`
+// -- so it lands where a connection-string lookup expects it.
 
 import { ConfigProvider } from '@rhombus-std/config';
 import type { Func } from '@rhombus-toolkit/func';
@@ -35,19 +27,9 @@ import type { EnvironmentVariablesConfigSource } from './EnvironmentVariablesCon
  * platforms inject connection strings. A matching variable is re-keyed into
  * the `ConnectionStrings` section (the prefix stripped).
  */
-const CONNECTION_STRING_PREFIXES: readonly string[] = [
-  'MYSQLCONNSTR_',
-  'SQLAZURECONNSTR_',
-  'SQLCONNSTR_',
-  'POSTGRESQLCONNSTR_',
-  'CUSTOMCONNSTR_',
-  'APIHUBCONNSTR_',
-  'DOCDBCONNSTR_',
-  'EVENTHUBCONNSTR_',
-  'NOTIFICATIONHUBCONNSTR_',
-  'REDISCACHECONNSTR_',
-  'SERVICEBUSCONNSTR_',
-];
+const CONNECTION_STRING_PREFIXES: readonly string[] = ['MYSQLCONNSTR_', 'SQLAZURECONNSTR_', 'SQLCONNSTR_',
+  'POSTGRESQLCONNSTR_', 'CUSTOMCONNSTR_', 'APIHUBCONNSTR_', 'DOCDBCONNSTR_', 'EVENTHUBCONNSTR_',
+  'NOTIFICATIONHUBCONNSTR_', 'REDISCACHECONNSTR_', 'SERVICEBUSCONNSTR_'];
 
 export class EnvironmentVariablesConfigProvider extends ConfigProvider {
   readonly #source: EnvironmentVariablesConfigSource;
@@ -61,8 +43,8 @@ export class EnvironmentVariablesConfigProvider extends ConfigProvider {
     this.data.clear();
 
     const { prefix, variableNameTransformation, env } = this.#source;
-    // See the module doc comment: the prefix is matched against TRANSFORMED
-    // names, so it must run through the same transformation itself first.
+    // The prefix is matched against TRANSFORMED names, so it runs through the
+    // same transformation itself first.
     const transformedPrefix = prefix === undefined ? undefined : variableNameTransformation(prefix);
 
     for (const [rawName, value] of Object.entries(env)) {
@@ -70,13 +52,8 @@ export class EnvironmentVariablesConfigProvider extends ConfigProvider {
         continue;
       }
 
-      // A connection-string variable is re-keyed into ConnectionStrings:*;
-      // every other variable keeps its transformed name.
       const name = effectiveName(rawName, variableNameTransformation);
 
-      // Narrow `transformedPrefix` via an early continue rather than a
-      // separate `undefined` check + a non-null assertion below -- the same
-      // `undefined` check does both jobs.
       if (transformedPrefix === undefined) {
         this.set(name, value);
         continue;

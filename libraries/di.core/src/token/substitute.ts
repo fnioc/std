@@ -1,19 +1,17 @@
-// The ONE substitution op — the collapse of the five parallel routines the
-// package used to carry (`substitute` / `substituteSignature` / `substituteToken`
-// / `substituteSignatures` / `substituteSignaturesByLabel`). It replaces each
-// hole BY LABEL with its bound node; the signature-level closing that maps it
-// over `DepSlot`s lives at the slot edge (`slot.ts`, `closeSignatures`).
-//
-// A `typeArg` hole (the wire `TypeArgRef`) reifies to a LITERAL of the bound
-// node's token STRING — the `typeof(T)` semantics — rather than to the bound node
-// itself; a plain hole substitutes to the bound node. An unbound label throws
-// `RangeError` (not a plain `Error`) so the engine's `catch (RangeError) → miss`
-// keeps a gappy template a clean miss rather than an opaque crash.
-
 import type { HoleNode } from './node.js';
 import { TokenNode } from './node.js';
 import { TokenRewriter } from './visitor.js';
 
+/**
+ * Replaces each hole BY LABEL with its bound node. Signature-level closing over
+ * `DepSlot`s lives at the slot edge (`closeSignatures`).
+ *
+ * @remarks
+ * A `typeArg` hole reifies to a LITERAL of the bound node's token STRING, where
+ * a plain hole substitutes to the bound node itself. An unbound label throws
+ * `RangeError` specifically, so a caller can treat a gappy template as a clean
+ * miss rather than an opaque crash.
+ */
 export class Substituter extends TokenRewriter {
   readonly #bind: ReadonlyMap<number, TokenNode>;
 

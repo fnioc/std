@@ -1,5 +1,3 @@
-// IniStreamConfigSource -- represents an in-memory INI payload as an
-// IConfigSource; mirrors the reference `IniStreamConfigSource`.
 // The payload/once-only handling lives on the abstract stream bases in
 // @rhombus-std/config; this class only picks the concrete provider.
 
