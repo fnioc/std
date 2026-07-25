@@ -116,12 +116,14 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   pinned by `types: []` in `/tsconfig.lib.json`; `node:fs`/`node:path` imports get per-package
   compile-scope `node-builtins.d.ts` files (§44).
 - **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
-  builder + registration-time errors — it ships runtime, §9 — plus the
+  builder + the WHOLE error taxonomy, resolution-time errors included so a library can classify a
+  container failure without referencing the engine (§130) — it ships runtime, §9 — plus the
   `ServiceCollectionDescriptorExtensions.removeAll`/`tryAdd*`/`replace*` descriptor verbs (§38, §56)
   and the `EmptyServiceProvider` null-object singleton, §56 — but NOT `ActivatorUtilities`, which
   §128 removed as porting noise) ← `di` (the resolution engine: scopes,
   resolution, captive-dependency protection, `ServiceProviderOptions`-gated `validateScopes` /
-  `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57).
+  `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57; it re-exports
+  the taxonomy, so both imports name the same class and `instanceof` holds either way).
   `di.extras` (the Go/ttsc authoring surface: the `declare module` for the tokenless
   registration forms, the inline sugar bodies, and the `signatureof` primitive) depends on
   **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.extras.options` is a satellite lowering the `addOptions<T>()`
@@ -284,6 +286,10 @@ Cross-cutting invariants (each spans several packages — confirm against `docs/
 before touching):
 
 - **di ⊥ config** — neither imports the other; the only bridge is `options.augmentations` (§4.3).
+- **A library references the abstractions package; only an entry point references the engine**
+  (§130) — repo-wide, not an examples-only convention. Everything a library needs (authoring
+  registrations, holding an `IResolver`, classifying a container failure) is reachable from
+  `di.core` alone; `examples.lib.*` are the existence proof.
 - **Interface-first; no concrete leaks** — public signatures use the `di.core` interfaces
   (`IServiceProvider`, `IResolver`, `ServiceManifest`); the concrete `*Class` impls never appear in
   a public type (§1, §10).

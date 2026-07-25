@@ -1,9 +1,12 @@
 # `@rhombus-std/di`
 
-`di.core` (the abstractions and the concrete `ServiceManifest` registration builder, registration-time
-errors, the `EmptyServiceProvider` null-object singleton) ← `di` (the resolution
+`di.core` (the abstractions and the concrete `ServiceManifest` registration builder, the whole error
+taxonomy — registration-time and resolution-time alike — and the `EmptyServiceProvider` null-object
+singleton) ← `di` (the resolution
 engine: scopes, resolution, captive-dependency protection, `ServiceProviderOptions`-gated
-`validateScopes`/`validateOnBuild`, and aggregated disposal). `di.extras` (token derivation,
+`validateScopes`/`validateOnBuild`, and aggregated disposal; it re-exports the taxonomy so both
+imports name the same classes). A library references `di.core`; only an entry point references `di`.
+`di.extras` (token derivation,
 dependency extraction, registration lowering, factory-signature diagnostic) depends on `di.core`
 types only, never the `di` runtime. `di.extras.options` is a satellite lowering the
 `addOptions<T>()` sugar.
@@ -316,7 +319,9 @@ services = services.addClass<ICache>(RedisCache).withSignature<
 One more cross-cutting difference: every failure mode here is a typed subclass of `DiError`
 (`UnregisteredTokenError`, `NoSatisfiableSignatureError`, `CircularDependencyError`,
 `AsyncDisposalRequiredError`, `ScopeValidationError`, `RegistrationValidationError`, …), so callers
-branch on `instanceof` instead of parsing an exception message.
+branch on `instanceof` instead of parsing an error message. The whole taxonomy is declared in
+`di.core`, so a library that references only the abstractions can classify what a caller's container
+threw at it.
 
 ## Design notes
 

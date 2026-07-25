@@ -1124,3 +1124,54 @@ classifier; it is a separate design question and deliberately not taken here.
 
 _Owner-directed 2026-07-24 ("delete all of the `$N` in favour of `$<…>`" / "just make it right" on
 the two hole grammars). The `HOLE_PATTERN` collapse and the residual-hazard call above are Claude's._
+
+---
+
+## §130 — A library references the abstractions package; only an entry point references the engine
+
+The whole di error taxonomy is DECLARED in `@rhombus-std/di.core` and re-exported from
+`@rhombus-std/di`. `UnregisteredTokenError`, `OpenTokenResolutionError`,
+`CircularDependencyError`, `MissingMetadataError`, `NoSatisfiableSignatureError`,
+`NoSatisfiableUnionError`, `FactoryTargetError`, `AsyncResolutionRequiredError`,
+`AsyncDisposalRequiredError`, `RegistrationValidationError`, `ScopeValidationError` and
+`ProviderDisposedError` join the `DiError` root and `OpenTokenRegistrationError` that were already
+there. `libraries/di/src/errors.ts` is deleted; the barrel re-export replaces it, so every existing
+`from '@rhombus-std/di'` import keeps working unchanged.
+
+**The rule this enforces.** A library references the abstractions package; only an entry point
+references the engine. It is repo-wide, not an examples-only convention. `examples.lib.*` are its
+existence proof — they declare registrations and take an `IResolver`, and neither one has a runtime
+dependency on `@rhombus-std/di`; the application packages that build a provider are the only things
+in `examples/` that do.
+
+**Why the split was a defect, not tidying.** The di.core / di boundary exists to make one claim: a
+library can do everything a library needs with only a `di.core` reference. Classifying what a
+caller's container threw at it — branching on the failure, adding context, re-raising, or degrading
+gracefully — is ordinary library work. With the taxonomy split, a di.core-only library could branch
+on the root `DiError` and nothing else, so it had to take a reference on the engine purely to READ
+an error class. Nothing about that reference is used at runtime, which is exactly what makes it the
+wrong dependency: the boundary was claiming an independence it did not actually deliver.
+
+**Nothing moved gains an engine dependency.** The moved classes import `DiError`, `Token` and
+`DepSlot` — di.core's own types — and reference no engine internal, which is what made the move
+mechanical. di.core stays the zero-engine-dependency package.
+
+**Runtime identity holds (§9/§38).** These are `instanceof` classes, so there must be exactly one
+copy. di keeps di.core external in its bundle, so `libraries/di/dist/bundle/index.js` declares none
+of them and imports all of them from `@rhombus-std/di.core`, whose bundle declares each once; the
+rolled `.d.ts` re-exports rather than inlining. Verified live: `core.X === engine.X` for all
+fourteen classes, and an error thrown by the engine satisfies `instanceof` against the class
+imported from `di.core`.
+
+**Two residuals, deliberately not taken here.** `examples.lib.*` still `import type` from
+`@rhombus-std/di` (a devDependency) for `IServiceManifest` / `IResolver`. Those are erased at
+compile time, so no runtime reference survives and the existence proof stands, but a library
+reaching for the engine's name to spell a type it could spell from `di.core` is the same instinct
+this entry rules out. Separately, `logging` and `hosting` are the only libraries carrying a RUNTIME
+`@rhombus-std/di` dependency, both for the constructible `ServiceManifest` value (di.core ships
+`ServiceManifestClass`; di ships the value and the `build()` patch). `hosting` is an entry point by
+job description, but `LoggerFactory.create` builds its own provider, which is entry-point work
+inside a library. Both are separate changes and need an owner call.
+
+_Owner-directed 2026-07-24 ("move the errors"), and the rule stated in the owner's words. The
+residual note above is Claude's._
