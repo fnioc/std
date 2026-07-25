@@ -12,9 +12,10 @@
  * class, and depend on di.core ALONE, never the runtime.
  *
  * Runtime footprint: the slot/token helpers, the registration builder, and the
- * registration-time errors (`DiError` base, `OpenTokenRegistrationError`). The
- * resolution engine (`ServiceProviderClass`) and resolution-time errors live in
- * `@rhombus-std/di`.
+ * whole error taxonomy — registration-time AND resolution-time, so a library
+ * that references only the abstractions can classify a container failure without
+ * pulling the engine (§130). Only the resolution engine itself
+ * (`ServiceProviderClass`) lives in `@rhombus-std/di`.
  */
 
 export type { DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
@@ -86,9 +87,15 @@ export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';
 // analog) — a `IServiceProvider` with no application services.
 export { EmptyServiceProvider } from './EmptyServiceProvider.js';
 
-// The registration-time error taxonomy root and the open-token registration
-// error. Resolution-time errors extend `DiError` from `@rhombus-std/di`.
-export { DiError, OpenTokenRegistrationError } from './errors.js';
+// The WHOLE error taxonomy: the `DiError` root, the registration-time errors the
+// builder here raises, and the resolution-time errors the engine raises. It all
+// lives in the abstractions package so a di.core-only library can classify what
+// a caller's container threw — branch, add context, re-raise — without taking a
+// reference on `@rhombus-std/di` (which re-exports these, §130).
+export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
+  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
+  OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
+  UnregisteredTokenError } from './errors.js';
 
 // The descriptor-level mutation augmentation (`removeAll`, `tryAdd*`, `replace*`).
 // A side-effect import: pulling the barrel registers it against the

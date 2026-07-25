@@ -21,14 +21,14 @@
 // one's cached instance — when no matching frame encloses the owner, the dep
 // resolves transiently (a fresh instance) instead.
 
-import { closeSignatures, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken,
-  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, type ServiceProviderOptions, Specificity,
-  type Token, TokenNode, type TypeArgRef, type Union, unkeyedToken } from '@rhombus-std/di.core';
+import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, closeSignatures, closeToken,
+  type DepSlot, type FactoryRef, FactoryTargetError, isFactoryRef, isLiteralRef, isOpenToken, isProviderToken,
+  isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, MissingMetadataError, NoSatisfiableSignatureError,
+  NoSatisfiableUnionError, OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError,
+  ScopeValidationError, type ServiceProviderOptions, Specificity, type Token, TokenNode, type TypeArgRef, type Union,
+  unkeyedToken, UnregisteredTokenError } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
-  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
-  ProviderDisposedError, RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
 import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Registration } from './types.js';
 
 /**

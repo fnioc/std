@@ -75,10 +75,16 @@ export type {
   ServiceProviderOptions,
 } from './types.js';
 
+// The WHOLE error taxonomy lives in @rhombus-std/di.core — a library that
+// references only the abstractions has to be able to classify what a caller's
+// container threw at it. di re-exports it so the taxonomy stays reachable
+// through one @rhombus-std/di import, and — because di keeps di.core external in
+// its bundle — both imports name the SAME class object, so `instanceof` holds
+// across the seam (§130).
 export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
   MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
   OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
-  UnregisteredTokenError } from './errors.js';
+  UnregisteredTokenError } from '@rhombus-std/di.core';
 
 // The slot/token RUNTIME helpers live in @rhombus-std/di.core (its slot/token
 // ABI). di re-exports them for one-import authoring ergonomics — a di consumer
