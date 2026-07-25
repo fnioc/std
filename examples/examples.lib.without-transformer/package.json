@@ -24,10 +24,10 @@
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@rhombus-std/di": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*"
   },
   "devDependencies": {
-    "@rhombus-std/di": "workspace:*",
     "typescript": "^5.9.0"
   }
 }

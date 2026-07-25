@@ -23,10 +23,10 @@
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@rhombus-std/di": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*"
   },
   "devDependencies": {
-    "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/options": "workspace:*",

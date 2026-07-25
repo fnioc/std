@@ -13,6 +13,21 @@
 // dialect an app is authored in, it registers these building blocks and the
 // lowered `makeServerReport` resolves them by the agreed tokens.
 
+// ── the interop scenario's building blocks ───────────────────────────────────
+
 export { fetchBanner } from './fetch-banner.js';
 export { FormalGreeting } from './formal-greeting.js';
 export { makeServerReport } from './server-report.js';
+
+// ── the di feature tour ──────────────────────────────────────────────────────
+
+// The library-author infrastructure surface (`IServiceManifestHolder`,
+// `ActivatorUtilities`, `IServiceProviderFactory`, the error taxonomy),
+// demonstrated from inside a library because that is where those pieces are
+// actually reached for. The mirror of
+// `@rhombus-std/examples.lib.without-transformer`'s demonstration: same
+// scenario, same lines, tokenless dialect.
+export { demonstrateInfrastructure } from './infrastructure-demo.js';
+export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, ManifestServiceProviderFactory,
+  newWorkshopManifest, PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
+export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';
