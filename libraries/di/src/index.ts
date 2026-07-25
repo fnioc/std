@@ -56,8 +56,6 @@ export type {
   // The named reference capability analogs IResolver composes.
   IRequiredResolver,
   IResolver,
-  // Backwards-compat alias.
-  IResolveScope,
   IScopeFactory,
   // The public provider surface — the abstractions interface (di.core), not the
   // impl class. What `build()` / `createScope()` return.

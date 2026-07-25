@@ -38,7 +38,7 @@ export type { IServiceManifest } from './IServiceManifest.js';
 
 export type { Ctor, Factory, ManifestEntry, OpenRegistration, Producer, Registration } from './registrations.js';
 
-export type { IRequiredResolver, IResolver, IResolveScope, IScopeFactory, IServiceProvider, IServiceQuery,
+export type { IRequiredResolver, IResolver, IScopeFactory, IServiceProvider, IServiceQuery,
   Lifetime } from './provider.js';
 
 // The pluggable provider-factory seam (the reference `IServiceProviderFactory`
