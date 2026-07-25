@@ -67,12 +67,17 @@ export interface IBanner {
 }
 
 /**
- * The report the with-transformer library assembles from the whole container:
- * the aggregated greetings (#48), the live server options (#6/#40), the greeting
- * policy (#34), and whether a health check is present (#23/#25). Its factory
- * pulls every input through an injected `IResolver` (#49), resolving each
- * TOKENLESSLY — which is why that library must ship its build (the raw source's
- * un-lowered `resolve<T>()` calls would throw).
+ * The report the with-transformer library assembles: the aggregated greetings
+ * (#48), the live server options (#6/#40), the greeting policy (#34), and
+ * whether a health check is present (#23/#25).
+ *
+ * Every one of those arrives as a FACTORY PARAMETER — a collection, two
+ * `IOptions<T>` wrappers and an optional union — so the factory's dependencies
+ * are exactly what its signature says and it never asks the container a
+ * question. Deriving those four slots from the parameter types is the densest
+ * piece of boilerplate the sugar removes anywhere in these examples; that
+ * derivation is also why the library must ship its BUILD rather than its source,
+ * since the un-lowered registration call has no signatures in it yet.
  */
 export interface IServerReport {
   readonly lines: readonly string[];

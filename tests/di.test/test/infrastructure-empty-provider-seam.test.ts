@@ -15,7 +15,7 @@ import { describe, expect, test } from 'bun:test';
 //
 // The COMPILE-TIME half of that regression cannot be pinned from THIS program,
 // which has no augmentation in scope — it lives in
-// `tests/augmentations.test/test/empty-provider-augmented-assignment.test.ts`,
+// `tests/di.extras.test/test/empty-provider-augmented-assignment.test.ts`,
 // whose `lint` typechecks with `@rhombus-std/di.extras` pulled in. What this
 // suite pins is the runtime consequence: the singleton really does behave as the
 // interface says wherever a provider is asked for.
