@@ -114,6 +114,79 @@ a closing nobody registered still answers the registration probe:
 the template itself is NOT resolvable — a hole is not a service:
   resolving @rhombus-std/examples.contracts:IRepository<$1> threw OpenTokenResolutionError
 
+=== di errors (dialect-independent) ===
+registering a value at an open template: OpenTokenRegistrationError — "selfcheck:IRepository<$1>" still has a hole in it, and addValue() cannot stand behind a family of tokens; register a class, or close the token
+building with validateOnBuild: AggregateError — 1 registration(s) cannot be constructed: selfcheck:IStore
+resolving through the same hole, unvalidated: NoSatisfiableSignatureError — BrokenStore has signatures but every one names something missing: selfcheck:IConnection
+resolving a token nobody registered: UnregisteredTokenError — nothing is registered at "selfcheck:IReportService"; register it, or ask with tryResolve if its absence is legitimate
+resolving an open template directly: OpenTokenResolutionError — "selfcheck:IRepository<$1>" is a template, not a service; resolve a closing of it instead
+a constructor with parameters and no signature: MissingMetadataError — ReportService takes parameters but its registration carries no signature; pass one as the third addClass argument
+a dependency cycle: CircularDependencyError — selfcheck:ILedger -> selfcheck:IAuditLog -> selfcheck:ILedger; break the loop with a factory slot
+a union whose every member fails to build: NoSatisfiableUnionError — 1 alternative(s) were tried and none produced a value; at least one member has to build
+a factory slot with no target: FactoryTargetError — a factory was asked for "selfcheck:IStore" (unregistered); a factory can only defer a lookup, not invent the registration
+a sync resolve while an async build is in flight: AsyncResolutionRequiredError — "selfcheck:IReportService" is mid-construction on the async path; await resolveAsync instead of calling resolve
+disposing a scope that owns a promise: AsyncDisposalRequiredError — this scope owns a promise, which a synchronous teardown cannot settle; await disposeAsync
+every failure above shares one root: true
+something else entirely: not a DiError at all — this diagnostic would rethrow rather than guess
+
+=== di token ABI (dialect-independent) ===
+a manifest is data — every registration, in authoring order:
+  exact reports:IConnection -> Connection [singleton]
+  exact reports:IMemoryCache -> Connection [singleton]
+  open  reports:IRepository<$1> (base reports:IRepository, arity 1) -> SqlRepository
+  exact reports:IRepository<reports:AuditEvent> -> SqlRepository [transient]
+  exact reports:IReportService -> ReportService [singleton]
+classifying a token without parsing it:
+  reports:IConnection — not generic (no top-level arguments)
+  reports:IRepository<reports:User> — closed generic, base reports:IRepository, 1 argument(s)
+  reports:IRepository<$1> — OPEN template, base reports:IRepository, 1 argument(s)
+the parsed view — TokenNode is transient, the string is the identity:
+  reports:IRepository<reports:User> — kind=concrete base=reports:IRepository open=false roundTrip=true
+  reports:IRepository<$1> — kind=concrete base=reports:IRepository open=true roundTrip=true
+  reports:IReportService#eu — kind=concrete base=reports:IReportService#eu open=false roundTrip=true
+  not<a token — unparseable; tryParse said so instead of throwing
+what one token couples us to (a TokenWalker): reports
+renaming a package across a whole token (a TokenRewriter):
+  reports:IRepository<reports:User> -> analytics:IRepository<analytics:User>
+  a prefix that must NOT match: reports:UserGroup -> analytics:UserGroup
+which template serves which closing (a Matcher):
+  reports:IRepository<$1> serves reports:IRepository<reports:User> with $1=reports:User
+  reports:IPair<$1,$1> does NOT serve reports:IPair<reports:User,reports:AuditEvent>
+ranking overlapping templates most-specific-first (a Specificity):
+  reports:IPair<$1,$1> (specificity 2)
+  reports:IPair<reports:User,$2> (specificity 2)
+  reports:IPair<$1,$2> (specificity 1)
+the five slot kinds, told apart by the published guards:
+  token reports:IConnection
+  literal "eu-west" — injected verbatim, never looked up
+  factory of reports:IRepository<reports:User> — shape follows the registration
+  union of 2 — tried in order, first resolvable wins
+  typeArg $1 — the closing's argument token, as a value
+every slot survives parseSlot -> serialiseSlot: true
+2 of 5 are RESOLVED as tokens; the rest supply their own value
+and what the engine does with all of it — closing a template:
+  template reports:IRepository<$1> closes to reports:IRepository<reports:User>
+    slot: literal "reports:User" — injected verbatim, never looked up
+    slot: token reports:IConnection
+
+=== di manifest surface (dialect-independent) ===
+the manifest is the augmentation receiver: true
+asking the manifest directly, no fluent verbs:
+  hasRegistrations(shop:IPaymentGateway): true
+  after removeRegistrations: receiver true, result false
+  seal(): 4 exact token(s), 0 open base(s), both indexes frozen
+the standalone call surface — the same verbs, receiver-first:
+  removeAll(services, IClock) left false on the result and true on the original
+the test host swaps the outside world and leaves the rest alone:
+  2024-05-01T09:00:00Z pretended to charge 1250 -> memory ledger
+  the production manifest is untouched: live
+  what build() handed back: an IServiceProvider, backed by ServiceProviderClass — a consumer holds the interface, never this class
+a self-check that can only ASK (IServiceQuery): missing shop:IMetrics
+a request scope that can only OPEN frames (IScopeFactory): 2024-05-01T09:00:00Z pretended to charge 99 -> memory ledger
+a house policy applied to a pending registration (AddChain): IMetrics registered as singleton
+overrideSignatures pins slot 0 and keeps the rest: ["shop:IPaymentGateway#sandbox","shop:ILedger"]
+the mint names tooling matches on: signaturefor, signaturesfor
+
 === di infrastructure (library-author surface) — without transformer ===
 app registered no stationery:
   stationery overridden: false

@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*"
   },
   "devDependencies": {

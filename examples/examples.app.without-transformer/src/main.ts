@@ -37,12 +37,12 @@ import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { fetchBanner, FormalGreeting, makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
-import { addCasualServices, demonstrateInfrastructure,
-  GREETING_TOKEN } from '@rhombus-std/examples.lib.without-transformer';
+import { addCasualServices, demonstrateErrors, demonstrateInfrastructure, demonstrateManifestSurface,
+  demonstrateTokenAbi, GREETING_TOKEN } from '@rhombus-std/examples.lib.without-transformer';
 
-// The five chapters of the di tour that runs after the host has shut down. Each
-// returns its lines rather than printing, so this file owns the ordering and the
-// spacing — see the tour at the bottom.
+// The app-side chapters of the di tour that runs after the host has shut down.
+// Each returns its lines rather than printing, so this file owns the ordering
+// and the spacing — see the tour at the bottom.
 import { demonstrateLifetimes } from './lifetimes-demo.js';
 import { demonstrateOpenGenerics } from './open-generics-demo.js';
 import { demonstrateRegistration } from './registration-demo.js';
@@ -258,6 +258,14 @@ const tour: readonly (readonly string[])[] = [
   await demonstrateResolution(),
   await demonstrateLifetimes(),
   demonstrateOpenGenerics(),
+  // Three chapters with no dialect: an error class, a token string and the
+  // manifest's own data structure read the same whether or not a transformer
+  // ran, so there is nothing for a with-transformer twin to differ in and both
+  // apps run these same four functions. Their header lines say so rather than
+  // naming a dialect.
+  await demonstrateErrors(),
+  demonstrateTokenAbi(),
+  demonstrateManifestSurface(),
   // From the LIBRARY, not the app: the infrastructure surface exists for library
   // authors, so it is demonstrated from inside one.
   demonstrateInfrastructure(),

@@ -61,11 +61,12 @@ import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 import type { GreetingPolicy, IBanner, IGreeting, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { demonstrateInfrastructure, fetchBanner, FormalGreeting,
   makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
-import { addCasualServices } from '@rhombus-std/examples.lib.without-transformer';
+import { addCasualServices, demonstrateErrors, demonstrateManifestSurface,
+  demonstrateTokenAbi } from '@rhombus-std/examples.lib.without-transformer';
 
-// The five chapters of the di tour that runs after the host has shut down. Each
-// returns its lines rather than printing, so this file owns the ordering and the
-// spacing — see the tour at the bottom.
+// The app-side chapters of the di tour that runs after the host has shut down.
+// Each returns its lines rather than printing, so this file owns the ordering
+// and the spacing — see the tour at the bottom.
 import { demonstrateLifetimes } from './lifetimes-demo.js';
 import { demonstrateOpenGenerics } from './open-generics-demo.js';
 import { demonstrateRegistration } from './registration-demo.js';
@@ -270,10 +271,12 @@ await host.runAsync();
 // how one registration serves every closing of a generic, and finally the pieces
 // a LIBRARY author (rather than an application) reaches for.
 //
-// Every chapter has a line-for-line twin in the without-transformer app, and the
-// two print the SAME lines apart from the "with"/"without transformer" header —
-// which is the no-transformer-first rule made checkable, since both apps' output
-// is byte-diffed against a checked-in `expected.txt`.
+// Every DIALECT-BEARING chapter has a line-for-line twin in the
+// without-transformer app, and the two print the SAME lines apart from the
+// "with"/"without transformer" header — which is the no-transformer-first rule
+// made checkable, since both apps' output is byte-diffed against a checked-in
+// `expected.txt`. The three dialect-independent chapters are not twinned: they
+// are the same function, imported by both apps.
 //
 // Each chapter owns its own container, so nothing here can perturb the host's —
 // and each returns its lines rather than printing, which is what lets this file
@@ -283,6 +286,14 @@ const tour: readonly (readonly string[])[] = [
   await demonstrateResolution(),
   await demonstrateLifetimes(),
   demonstrateOpenGenerics(),
+  // Three chapters with no dialect: an error class, a token string and the
+  // manifest's own data structure read the same whether or not a transformer
+  // ran, so there is nothing for a with-transformer twin to differ in and both
+  // apps run these same four functions. Their header lines say so rather than
+  // naming a dialect.
+  await demonstrateErrors(),
+  demonstrateTokenAbi(),
+  demonstrateManifestSurface(),
   // From the LIBRARY, not the app: the infrastructure surface exists for library
   // authors, so it is demonstrated from inside one.
   demonstrateInfrastructure(),
