@@ -391,10 +391,11 @@ describe('substitution across slot kinds', () => {
 });
 
 describe('memoization', () => {
-  /** A memo Map that counts `set` calls so re-synthesis is observable. */
-  class CountingMap extends Map<Token, Registration> {
+  /** A memo Map that counts `set` calls so re-synthesis is observable. The memo
+   * holds the FULL ranked closing list per closed token, not a single entry. */
+  class CountingMap extends Map<Token, readonly Registration[]> {
     public sets = 0;
-    public override set(key: Token, value: Registration): this {
+    public override set(key: Token, value: readonly Registration[]): this {
       this.sets += 1;
       return super.set(key, value);
     }

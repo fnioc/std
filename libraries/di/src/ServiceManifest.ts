@@ -54,7 +54,7 @@ export const ServiceManifestContainerBuilderAugmentations = {
     return new ServiceProviderClass<string>(
       registrations as ReadonlyMap<Token, Registration[]>,
       openRegistrations as ReadonlyMap<Token, readonly OpenRegistration[]>,
-      new Map<Token, Registration>(),
+      new Map<Token, readonly Registration[]>(),
       undefined,
       options,
     );

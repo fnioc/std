@@ -78,6 +78,11 @@ function rankTemplates(candidates: readonly OpenRegistration[]): RankedTemplate[
   return ranked;
 }
 
+/** The shared empty closing list — the miss result of `#closings`, never
+ * memoized (misses are unbounded, so caching them would grow the memo without
+ * limit). */
+const NO_CLOSINGS: readonly Registration[] = Object.freeze([]);
+
 /** True when a value implements the native synchronous `Disposable`. */
 function isDisposable(value: unknown): value is Disposable {
   return (
@@ -368,12 +373,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
 
   /**
    * The memo of registrations synthesized from open matches, keyed by closed
-   * token. Deliberately MUTABLE and shared across ALL providers of one tree
-   * (`build()` creates it once and every `createScope` passes the same Map),
-   * so a closing resolved in one frame reuses the identical Registration
-   * object everywhere. The sealed maps are never touched.
+   * token — the FULL ranked closing list per token, since a closed token may be
+   * covered by several overlapping templates and a collection resolution wants
+   * them all. Deliberately MUTABLE and shared across ALL providers of one tree
+   * (`build()` creates it once and every `createScope` passes the same Map), so
+   * a closing resolved in one frame reuses the identical Registration object
+   * everywhere. The sealed maps are never touched.
    */
-  readonly #closedMemo: Map<Token, Registration>;
+  readonly #closedMemo: Map<Token, readonly Registration[]>;
 
   /**
    * The provider options (`ServiceProviderOptions`), shared across the tree —
@@ -385,7 +392,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public constructor(
     registrations: ReadonlyMap<Token, Registration[]>,
     openRegistrations: ReadonlyMap<Token, readonly OpenRegistration[]>,
-    closedMemo: Map<Token, Registration>,
+    closedMemo: Map<Token, readonly Registration[]>,
     /** This provider's scope frame, if any. */
     frame?: Scope,
     /** The provider's validation options; omitted ⇒ no validation. */
@@ -607,45 +614,39 @@ export class ServiceProviderClass<S extends string = string> implements IService
   // ── Registration lookup ─────────────────────────────────────────────────────
 
   /**
-   * Returns the most-recent registration for `token` from the sealed map.
-   * The sealed map is shared across all providers in the tree; local overrides
-   * are not supported in the new model (scope-local registration is deleted).
+   * Every registration `token` can be served by, MOST-SPECIFIC FIRST — the
+   * synthesized closings of every open template whose base bucket `token` falls
+   * into and whose shape it unifies with. The result is memoized under the closed
+   * token and the memo is shared across the whole provider tree, so one closing
+   * is synthesized ONCE: singular resolution and a collection element that name
+   * the same template get the identical `Registration` object, and the frame
+   * cache (keyed by registration) therefore keys them together.
    *
-   * The single lookup funnel — instance resolution, factory injection, and
-   * satisfiability all come through here. On an exact miss the open-generic
-   * fallback chain runs: memo hit → parse as closed-generic → open-table
-   * candidates ranked most-specific-first → match → substitute → synthesize a
-   * class `Registration` → memoize. Exact beats open (this order IS the
-   * precedence rule). Never throws: a holey token simply misses (so
-   * `#isResolvable` is false for it); the dedicated error is raised by
-   * `#resolve`.
+   * The chain: memo hit → reject a holey token (letting one reach the open table
+   * would "close" a template with its own holes) → parse as a closed generic →
+   * ranked open-table candidates → match → substitute → synthesize. Never throws:
+   * a malformed token, a non-generic one, and an empty bucket all miss cleanly.
+   * A miss is NOT memoized — misses are unbounded (every `Promise<T>` probe is
+   * one), so caching them would grow the map without limit.
    */
-  #lookup(token: Token): Registration | undefined {
-    const list = this.#registrations.get(token);
-    if (list !== undefined && list.length) {
-      return list[list.length - 1];
-    }
-
+  #closings(token: Token): readonly Registration[] {
     const memoized = this.#closedMemo.get(token);
     if (memoized !== undefined) {
       return memoized;
     }
 
-    // An open template is not resolvable — and letting it reach the open table
-    // would "close" the template with its own holes. Classification stays on the
-    // string predicate (the registration-boundary grammar). Miss, never throw.
+    // An open template is not resolvable. Classification stays on the string
+    // predicate (the registration-boundary grammar). Miss, never throw.
     if (isOpenToken(token)) {
-      return undefined;
+      return NO_CLOSINGS;
     }
 
     // Parse the closed GROUND token into the typed model. A malformed or
     // non-generic token is not an open-template closing — miss cleanly.
-    // `tryParse` never throws, so `#lookup` never throws (a parse failure that
-    // the old `parseToken` returned `undefined` for now becomes a `tryParse`
-    // miss).
+    // `tryParse` never throws, so this never throws.
     const ground = TokenNode.tryParse(token);
     if (ground === undefined || ground.kind !== 'concrete' || !ground.args.length) {
-      return undefined;
+      return NO_CLOSINGS;
     }
 
     // The open table is keyed by the template's base; `TokenNode.baseKey(ground)`
@@ -653,7 +654,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // matching key.
     const candidates = this.#openRegistrations.get(TokenNode.baseKey(ground));
     if (candidates === undefined) {
-      return undefined;
+      return NO_CLOSINGS;
     }
 
     // MOST-SPECIFIC-FIRST, ties to the latest registration (§125). Since a
@@ -663,6 +664,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // who registered the specific one first. Identical templates score equally
     // and fall through to the latest index, so the exact map's last-wins list
     // semantics are preserved where they were the only rule in play.
+    const synthesized: Registration[] = [];
     for (const { template, open } of rankTemplates(candidates)) {
       const bind = MATCHER.match(template, ground);
       if (!bind) {
@@ -676,16 +678,17 @@ export class ServiceProviderClass<S extends string = string> implements IService
       //
       // Substitution can fail when a mis-authored template references a hole the
       // service token never binds (e.g. `IX<$1,$3>` carrying a dep on `$2`) —
-      // `closeSignatures` throws `RangeError` then. #lookup must NEVER throw (so
-      // `#isResolvable` can probe safely and greedy selection can fall back), so
-      // treat a substitution failure as a plain miss: no synthesis, no memo entry.
+      // `closeSignatures` throws `RangeError` then. This must NEVER throw (so
+      // `#isResolvable` can probe safely and greedy selection can fall back), and
+      // a mis-authored template aborts the whole synthesis rather than quietly
+      // handing the closing to a more general sibling: no closings, no memo.
       let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
       if (open.signatures !== undefined) {
         try {
           signatures = closeSignatures(open.signatures, bind);
         } catch (err) {
           if (err instanceof RangeError) {
-            return undefined;
+            return NO_CLOSINGS;
           }
           throw err;
         }
@@ -693,20 +696,44 @@ export class ServiceProviderClass<S extends string = string> implements IService
 
       // Synthesize the closed producer record. Wrap the template ctor exactly as
       // the builder does for an exact class, carrying `name`/`arity` off the ctor
-      // (the wrapper itself reports `""`/`0`). Memoize under the ORIGINAL token
-      // string.
+      // (the wrapper itself reports `""`/`0`).
       const ctor = open.ctor;
-      const registration: Registration = {
+      synthesized.push({
         produce: (...a: unknown[]) => new ctor(...a),
         scope: open.scope,
         signatures,
         name: ctor.name,
         arity: ctor.length,
-      };
-      this.#closedMemo.set(token, registration);
-      return registration;
+      });
     }
-    return undefined;
+
+    if (!synthesized.length) {
+      return NO_CLOSINGS;
+    }
+    // Memoize under the ORIGINAL token string.
+    const closings = Object.freeze(synthesized);
+    this.#closedMemo.set(token, closings);
+    return closings;
+  }
+
+  /**
+   * Returns the ONE registration singular resolution of `token` uses: the
+   * most-recent exact registration, else the most-specific open-template closing.
+   * The sealed map is shared across all providers in the tree; local overrides
+   * are not supported in the new model (scope-local registration is deleted).
+   *
+   * The single lookup funnel — instance resolution, factory injection, and
+   * satisfiability all come through here. Exact beats open (this order IS the
+   * precedence rule). Never throws: a holey token simply misses (so
+   * `#isResolvable` is false for it); the dedicated error is raised by
+   * `#resolve`.
+   */
+  #lookup(token: Token): Registration | undefined {
+    const list = this.#registrations.get(token);
+    if (list !== undefined && list.length) {
+      return list[list.length - 1];
+    }
+    return this.#closings(token)[0];
   }
 
   /**
@@ -942,19 +969,27 @@ export class ServiceProviderClass<S extends string = string> implements IService
   }
 
   /**
-   * The registrations to aggregate for a collection's element token, in
-   * registration order. The exact per-token list when present; otherwise the
-   * single open-generic closing `#lookup` synthesizes (so `Iterable<IRepo<X>>`
-   * enumerates the one closed `IRepo<X>` a template produces), or none — an
+   * The registrations to aggregate for a collection's element token: EVERY
+   * open-template closing the element unifies with, then the exact per-token
+   * list. Both contribute — an open template is a registration of its closings,
+   * so `Array<IHandler<Cmd>>` enumerates the closings of every `IHandler<$1>`
+   * template alongside any exact `IHandler<Cmd>`. Neither present ⇒ an
    * unregistered element aggregates to EMPTY.
+   *
+   * ORDER. The aggregate's LAST element must be the instance bare-`T` resolution
+   * yields, since that is what last-wins means to a caller holding both. So the
+   * exact list (whose last entry `#lookup` returns) comes last, and the closings
+   * — ranked most-specific-first — are REVERSED, putting the most specific one
+   * `#lookup` would pick nearest the end. Within each group registration order
+   * is preserved.
    */
   #collectionRegistrations(element: Token): readonly Registration[] {
-    const exact = this.#registrations.get(element);
-    if (exact !== undefined && exact.length) {
+    const exact = this.#registrations.get(element) ?? [];
+    const closings = this.#closings(element);
+    if (!closings.length) {
       return exact;
     }
-    const synthesized = this.#lookup(element);
-    return synthesized ? [synthesized] : [];
+    return [...closings].reverse().concat(exact);
   }
 
   /**
