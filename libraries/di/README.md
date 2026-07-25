@@ -69,7 +69,7 @@ services.addClass('app:IClock', SystemClock, [[]]); // SILENTLY REGISTERS NOTHIN
 | `RESOLVER_TOKEN`                                                                                                                                                                                                                                                                                                                                                                       | The intrinsic token a `IResolver`-typed constructor parameter derives, for factories that want the live provider. |
 | `ActivatorUtilities`                                                                                                                                                                                                                                                                                                                                                                   | Activates an unregistered class using the container's own dependency resolution.                                  |
 | `EmptyServiceProvider`                                                                                                                                                                                                                                                                                                                                                                 | A null-object provider that resolves nothing.                                                                     |
-| `closeToken`, `isOpenToken`, `parseToken`, `typeArg`, `union`                                                                                                                                                                                                                                                                                                                          | Token-grammar helpers for open generics and union slots without a transformer.                                    |
+| `closeToken`, `isOpenToken`, `parseToken`, `unkeyedToken`, `typeArg`, `union`                                                                                                                                                                                                                                                                                                          | Token-grammar helpers for open generics and union slots without a transformer.                                    |
 | `ActivationError`, `CircularDependencyError`, `UnregisteredTokenError`, `OpenTokenResolutionError`, `OpenTokenRegistrationError`, `FactoryTargetError`, `MissingMetadataError`, `AsyncResolutionRequiredError`, `AsyncDisposalRequiredError`, `NoSatisfiableSignatureError`, `NoSatisfiableUnionError`, `ProviderDisposedError`, `RegistrationValidationError`, `ScopeValidationError` | The error types the container throws — see below for when each fires.                                             |
 
 ## `ServiceManifest<Scopes>`
@@ -237,7 +237,7 @@ const orderRepo = scope.resolve<IRepository<Order>>(); // "pkg:IRepository<pkg:O
 - **Class registrations only.** `addValue`/`addFactory` reject an open token — there is no single value or factory that could serve every closing.
 - **The scope tag applies per closing**, not to the template as a whole — `IRepository<A>` and `IRepository<B>` are distinct singletons, each cached in the nearest enclosing frame carrying `tag`, exactly like two unrelated `.as("singleton")` registrations.
 - **Most specific wins** among the open registrations matching one closing, ties broken by last-registered. Once a template may mix concrete args and holes, overlap on one base is the normal case (`IRepo<User,$1>` and `IRepo<$1,$2>` both file under `IRepo`), so recency alone would silently serve the general template to an author who registered the specific one first.
-- **A key rides along.** `addClass("pkg:IRepo<$1>", Impl, sigs, "singleton", "redis")` (or `.withKey("redis")`) files the template under `pkg:IRepo#redis`, and only a keyed closing — `resolve("pkg:IRepo<pkg:User>", "redis")` — reaches it.
+- **A key rides along.** `addClass("pkg:IRepo<$1>", Impl, sigs, "singleton", "redis")` (or `.withKey("redis")`, or the key spelled straight into the token as `"pkg:IRepo<$1>#redis"` — all three agree) files the template under `pkg:IRepo#redis`, and only a keyed closing — `resolve("pkg:IRepo<pkg:User>", "redis")` — reaches it. The plural form `resolve("pkg:IRepo<pkg:User>", /re/)` scans template closings alongside exact registrations, so both views of one keyed template agree.
 
 ### Resolve-time fallback and memoization
 
@@ -251,7 +251,9 @@ Resolving a token the exact-match map has no entry for falls through, in order:
 
 **Exact beats open.** An exact registration for a closed token — one you registered directly, e.g. `services = services.addClass<IRepository<User>>(SpecialUserRepo)` alongside the open `IRepository<$<1>>` registration — is checked _before_ the memo and the open-table fallback, so it always wins.
 
-**Resolving a token that still contains a hole throws.** `scope.resolve("pkg:IRepository<$1>")` is not a valid resolve target — only closed tokens resolve. See `OpenTokenResolutionError` below.
+**Resolving a token that still contains a hole throws** — with or without a key. `scope.resolve("pkg:IRepository<$1>")` is not a valid resolve target, and neither is `scope.resolve("pkg:IRepository<$1>", "redis")`; only closed tokens resolve. See `OpenTokenResolutionError` below.
+
+**A mis-authored template is skipped, not fatal.** A template whose signatures name a hole its own token never binds (`IRepo<$1,$3>` depending on `$2`) cannot be closed, so it drops out of the candidate list exactly as a non-matching template does. Siblings that _do_ match still serve the closing; when it was the only candidate, the token is simply unregistered.
 
 ### Errors
 
@@ -347,7 +349,9 @@ scope.disposeAsync(): Promise<void>
 
 Instances owned by ancestor scopes are disposed when those scopes close, not when child scopes close.
 
-A closed scope is closed for good: `resolve`, `resolveAsync`, `tryResolve`, `isService`, `resolveFactory`, and `createScope` all throw `ProviderDisposedError` afterwards, on the provider itself and on any `IResolver` view injected from it. Closing is idempotent, so a disposed scope would never drain a second time — an instance built after teardown would be cached and then leaked undisposed. Resolve from a live scope, or open a fresh one.
+A closed scope is closed for good: `resolve`, `resolveAsync`, `tryResolve`, `isService`, `resolveFactory`, and `createScope` all throw `ProviderDisposedError` afterwards, on the provider itself, on any `IResolver` view injected from it, and on any factory callable it minted. Closing is idempotent, so a disposed scope would never drain a second time — an instance built after teardown would be cached and then leaked undisposed. Resolve from a live scope, or open a fresh one.
+
+Disposal doesn't cascade, so a child scope opened before its parent closed stays usable — but only for what the closed frame doesn't own. Resolving a registration tagged with the closed scope's name from that child throws `ProviderDisposedError` too: the instance would be cached in a frame nothing will drain again. Transient registrations and the child's own scoped ones are unaffected.
 
 ## Async resolution
 
@@ -475,7 +479,7 @@ The captive-dependency rule holds at call time: the target's own deps are resolv
 
 Thrown when the factory's target token has no registration — there is nothing for the injected callable to build. Register the target with `services = services.addClass(...)` first. `reason` carries the single value `"unregistered"`; a value or factory target is fine (it becomes a thunk returning the stored instance), so there is no "not a class" case.
 
-`FactoryTargetError` is raised while the owning class's signature is selected, not when the callable is invoked. A factory slot whose target is missing simply makes that signature unsatisfiable, so greedy selection falls through to a shorter one that builds; the error surfaces only when no signature does.
+For an **injected** factory slot, `FactoryTargetError` is raised while the owning class's signature is selected, not when the callable is invoked. A factory slot whose target is missing simply makes that signature unsatisfiable, so greedy selection falls through to a shorter one that builds; the error surfaces only when no signature does. An explicit `resolveFactory(token)` call has no signature to fall back to, so it raises immediately.
 
 ## Union slots
 

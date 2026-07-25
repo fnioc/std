@@ -5,13 +5,13 @@
 // through canonicalisation, and synthesises closings of open templates by
 // most-specific-wins unification.
 //
-// The live engine graduation kept the parts that preserve today's behavior;
-// `TokenProvider`'s EXTRAS — `specificity` ranking / most-specific-wins,
-// canon-on-miss variance recovery, negative memoization — stay GATED (they are
-// behavior CHANGES) and live on only as this exercised reference for the
-// still-gated features. Ported to the unified tree: it drives the same
-// `TokenNode.*` statics + `Matcher` / `Substituter` / `Specificity` visitors the
-// live path uses.
+// The live engine graduation kept the parts that preserve today's behavior, and
+// `specificity` ranking / most-specific-wins has since graduated too (§125 — the
+// engine's own `rankTemplates` states the same rule). What is left here that the
+// engine does NOT do is canon-on-miss variance recovery and negative
+// memoization, so this stays the exercised reference for those. Ported to the
+// unified tree: it drives the same `TokenNode.*` statics + `Matcher` /
+// `Substituter` / `Specificity` visitors the live path uses.
 
 import { Matcher } from './match.js';
 import type { TokenNode } from './node.js';
