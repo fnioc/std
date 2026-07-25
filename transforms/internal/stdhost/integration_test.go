@@ -106,13 +106,21 @@ func writeFixture(t *testing.T, dir, pkgJSON string, srcFiles map[string]string)
 // inherit an ambient TTSC_LINKED_PLUGINS_JSON from the host machine.
 func driveHost(t *testing.T, dir, manifest string) (decodedEnvelope, string, int) {
 	t.Helper()
+	return driveHostWith(t, testHost(), dir, manifest)
+}
+
+// driveHostWith is driveHost over a caller-supplied host, so a test can drive the
+// same fixture path with a hand-built stage table (a deliberately panicking stub
+// stage, say) instead of the real one.
+func driveHostWith(t *testing.T, host Host, dir, manifest string) (decodedEnvelope, string, int) {
+	t.Helper()
 	t.Setenv(driver.LinkedPluginsEnv, "")
 
 	var outBuf, errBuf bytes.Buffer
 	restore := swapStreams(&outBuf, &errBuf)
 	defer restore()
 
-	code := Run(testHost(), []string{
+	code := Run(host, []string{
 		"--cwd=" + dir,
 		"--tsconfig=" + filepath.Join(dir, "tsconfig.json"),
 		"--plugins-json", manifest,

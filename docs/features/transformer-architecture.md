@@ -542,6 +542,16 @@ The sweep is the backstop for the first case: a synthetic use that never got pru
 lowered is exactly what the sweep exists to catch. Nothing in the loop ever silently succeeds with
 a wrong or empty answer.
 
+A **panic** inside the per-file pipeline is held to the same standard. The whole pipeline runs
+under a recover, and a crash — in a stage, the emit sweep, or the printer — becomes a
+`STAGE_PANIC` error diagnostic carrying the source file, the phase that was running, the recovered
+value, and the stack, after which the run **aborts**: the panic escaped the shared checker, whose
+resolution bookkeeping is left in an indeterminate state, so every later file's lowering would be
+untrustworthy and lowering that is quietly wrong is worse than none. A panic outside the per-file
+loop — the dependency scan, program load, the linked-plugin handoff — has no file to name and is
+reported on stderr as `HOST_PANIC` against the host itself. Either way the process exits non-zero
+with something to report, never with a bare runtime trace.
+
 ## Why one pass per file, not a chained pipeline
 
 `ttsc` runs a transform as a single source-to-source rewrite: it reads your original file once and
