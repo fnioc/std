@@ -14,20 +14,20 @@
 //
 //   - `IServiceManifestHolder` — the mutable-slot seam that makes a
 //     `configure(builder)` callback API possible at all (see the builder below).
-//   - `ActivatorUtilities` — building a class the container does NOT know about,
-//     with the caller filling the slots the container cannot.
+//   - `IResolver.resolveFactory` — building an object whose dependencies are PART
+//     container-owned and PART caller-owned, without the library having to know
+//     what the application registered.
 //   - `IServiceProviderFactory` — the pluggable seam between "the registrations
 //     are collected" and "here is the provider to run against".
-//   - `ActivationError` / `OpenTokenRegistrationError` / `DiError` — the failures
-//     a consumer of this library can actually catch and act on.
+//   - `EmptyServiceProvider` — the null-object provider to fall back on when
+//     there is no container at all.
 //
 // The mirror of this file is `../../examples.lib.with-transformer/src/
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { ActivatorUtilities, RESOLVER_TOKEN, ServiceManifest } from '@rhombus-std/di';
-import type { IResolver, IServiceManifest, IServiceManifestHolder, IServiceProviderFactory,
-  ObjectFactory } from '@rhombus-std/di';
+import { RESOLVER_TOKEN, ServiceManifest } from '@rhombus-std/di';
+import type { IResolver, IServiceManifest, IServiceManifestHolder, IServiceProviderFactory } from '@rhombus-std/di';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
 import { GREETING_TOKEN } from './tokens.js';
@@ -35,21 +35,24 @@ import { GREETING_TOKEN } from './tokens.js';
 // ── tokens ───────────────────────────────────────────────────────────────────
 
 // Hand-written in the same `<import-specifier>:<exported-name>` form
-// `@rhombus-std/di.extras` derives, exactly as `./tokens.ts` does. These three
-// are LOCAL to this demo — nothing outside it registers or resolves them — so
-// they only have to agree with each other. `GREETING_TOKEN` is re-used from
+// `@rhombus-std/di.extras` derives, exactly as `./tokens.ts` does. These are
+// LOCAL to this demo — nothing outside it registers or resolves them — so they
+// only have to agree with each other. `GREETING_TOKEN` is re-used from
 // `./tokens.js` because the workshop registers a real `IGreeting` and the card
 // resolves it back through the same slot.
 
 /**
  * The per-card recipient. Deliberately NEVER registered: it is an argument, not
- * a service, and that is the whole point of the activation demo below — a slot
- * the container cannot fill has to come from the caller.
+ * a service, and that is the whole point of the factory below — a slot the
+ * container cannot fill has to come from the caller.
  */
 const CARD_RECIPIENT_TOKEN = '@rhombus-std/examples.lib.without-transformer:ICardRecipient';
 
 /** The card stationery. Registered only when the consuming app chooses to override it. */
 const CARD_STATIONERY_TOKEN = '@rhombus-std/examples.lib.without-transformer:ICardStationery';
+
+/** One rendered card. Registered, but never resolved directly — see {@link GreetingWorkshop}. */
+const GREETING_CARD_TOKEN = '@rhombus-std/examples.lib.without-transformer:GreetingCard';
 
 /** The workshop service itself — the one thing this library registers unconditionally. */
 export const GREETING_WORKSHOP_TOKEN = '@rhombus-std/examples.lib.without-transformer:GreetingWorkshop';
@@ -86,20 +89,24 @@ export class WorkshopGreeting implements IGreeting {
 }
 
 /**
- * One rendered greeting card. NOT a service and never registered: there is a
- * fresh one per recipient, and one of its constructor arguments (the recipient)
- * is data the container has no way to know. This is precisely the shape
- * `ActivatorUtilities` exists for — a class whose dependencies are PART
- * container-owned and PART caller-owned.
+ * One rendered greeting card. There is a fresh one per recipient, and one of its
+ * constructor arguments — the recipient — is data the container has no way to
+ * know. It is registered anyway, because a registration is what carries the
+ * DEPENDENCY SIGNATURE; `resolveFactory` then splits that signature in two,
+ * filling the greeting slot from the container and leaving the recipient slot to
+ * the caller.
  */
 export class GreetingCard {
-  public constructor(
-    private readonly greeting: IGreeting,
-    private readonly recipient: ICardRecipient,
-  ) {}
+  readonly #greeting: IGreeting;
+  readonly #recipient: ICardRecipient;
+
+  public constructor(greeting: IGreeting, recipient: ICardRecipient) {
+    this.#greeting = greeting;
+    this.#recipient = recipient;
+  }
 
   public render(border: string): string {
-    return `${border} ${this.greeting.greet(this.recipient.name)} ${border}`;
+    return `${border} ${this.#greeting.greet(this.#recipient.name)} ${border}`;
   }
 }
 
@@ -111,55 +118,54 @@ export class GreetingCard {
  */
 export class GreetingWorkshop {
   readonly #resolver: IResolver;
-  readonly #mintCard: ObjectFactory<GreetingCard>;
 
   /**
-   * The stationery in force. `getServiceOrCreateInstance` is the reason this is
-   * one line rather than a `tryResolve` + `??` dance: "use the app's
-   * registration if there is one, otherwise build my default" is a single verb.
-   * Resolved ONCE at construction — the workshop is a singleton, so the answer
-   * cannot change under it.
+   * The card factory, built on FIRST USE and then reused. `resolveFactory` works
+   * the slot plan out once — which slot the caller fills, which the container
+   * resolves — so paying for that per card would be waste.
+   *
+   * Lazy rather than eager because a workshop has to be CONSTRUCTIBLE against a
+   * provider that holds no cards at all; see the `EmptyServiceProvider` section
+   * of the demo, where exactly that happens and the failure surfaces at the first
+   * `card()` call instead of taking the constructor down with it.
+   */
+  #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
+
+  /**
+   * The stationery in force. `tryResolve` + `??` is the whole "use the app's
+   * registration if there is one, otherwise build my default" idiom: `tryResolve`
+   * is the verb whose miss is `undefined` rather than a throw, which is what makes
+   * absence a legitimate deployment shape instead of a wiring bug. Resolved ONCE
+   * at construction — the workshop is a singleton, so the answer cannot change
+   * under it.
    */
   public readonly stationery: ICardStationery;
 
   public constructor(resolver: IResolver) {
     this.#resolver = resolver;
-    this.stationery = ActivatorUtilities.getServiceOrCreateInstance(
-      resolver,
-      CARD_STATIONERY_TOKEN,
-      PlainStationery,
-    ) as ICardStationery;
-
-    // `createFactory` rather than `createInstance` because the workshop mints
-    // MANY cards: the slot plan is worked out once here and reused per call.
-    // `createInstance` is the one-shot form (used in the demo's degenerate-host
-    // section) and is literally `createFactory(...)(provider, args)`.
-    //
-    // The signature is hand-fed — `ActivatorUtilities` has no way to reflect a
-    // constructor's parameter types at runtime, so the slots are supplied the
-    // same way `addClass(token, ctor, [[...]])` supplies them. Slot 0 is
-    // registered, so it resolves from the container; slot 1 never is, so it
-    // falls through to the supplied arguments.
-    this.#mintCard = ActivatorUtilities.createFactory<GreetingCard>(GreetingCard, [
-      GREETING_TOKEN,
-      CARD_RECIPIENT_TOKEN,
-    ]);
+    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN)
+      ?? new PlainStationery();
   }
 
   /**
    * Renders a card for `name`. The greeting comes from the container; the
-   * recipient is the caller's, passed positionally into the slots the provider
-   * could not satisfy.
+   * recipient is the caller's.
    *
-   * Supplied arguments are matched to unsatisfiable slots LEFT TO RIGHT, not by
-   * type — so the argument list must line up with the slots the container
-   * cannot fill, in order. Run this against a provider that has no `IGreeting`
-   * and the single `recipient` argument lands in the GREETING slot instead; the
-   * demo shows what that failure looks like.
+   * `resolveFactory(token, params)` IS the partition: `params` names the tokens
+   * the CALLER supplies, and every other slot in the target's signature resolves
+   * from the container as usual. Call arguments line up with the `params` list in
+   * order, so `[CARD_RECIPIENT_TOKEN]` means "argument 1 is the recipient" — the
+   * container never sees a recipient registration and never needs to.
+   *
+   * A parameterized factory deliberately does NOT cache: the arguments differ per
+   * call, so a fresh card every time is the only correct answer.
    */
   public card(name: string): string {
-    const recipient: ICardRecipient = { name };
-    return this.#mintCard(this.#resolver, [recipient]).render(this.stationery.border);
+    this.#mintCard ??= this.#resolver.resolveFactory<(recipient: ICardRecipient) => GreetingCard>(
+      GREETING_CARD_TOKEN,
+      [CARD_RECIPIENT_TOKEN],
+    );
+    return this.#mintCard({ name }).render(this.stationery.border);
   }
 
   /** Whether the app registered its own stationery, or the library default is in force. */
@@ -239,6 +245,17 @@ export function addGreetingWorkshop<S extends string>(
 ): IServiceManifest<S | 'singleton'> {
   const holder: IServiceManifestHolder<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
+
+  // The card, registered with NO lifetime — transient, the honest tag for
+  // something built fresh per recipient. Its second slot names a token nothing
+  // ever registers; that slot is the caller's, and `resolveFactory` is what hands
+  // it over.
+  holder.services = holder.services.addClass(
+    GREETING_CARD_TOKEN,
+    GreetingCard,
+    [[GREETING_TOKEN, CARD_RECIPIENT_TOKEN]],
+  );
+
   // The workshop itself goes on last so a consumer cannot forget it. The
   // intrinsic RESOLVER_TOKEN slot is how a plugin-less author asks for the live
   // provider view — "I want the provider" is plain DI, not a special slot kind.
@@ -284,10 +301,21 @@ export class ManifestServiceProviderFactory implements IServiceProviderFactory<I
   }
 
   public createServiceProvider(containerBuilder: IServiceManifest): IResolver {
-    // The one policy this factory imposes: every registration is checked at
-    // build time rather than on first resolve, so a mis-wired container fails
-    // during startup instead of halfway through a request.
-    return containerBuilder.build({ validateOnBuild: true });
+    // The one policy this factory imposes: every container it builds runs inside
+    // an OPEN root scope. `build()` on its own is frameless, so a
+    // `'singleton'`-tagged registration has no frame to be cached in and quietly
+    // resolves transiently instead — a mistake that costs nothing at startup and
+    // everything later. Deciding it once, here, rather than at each `build()`
+    // call site is exactly what the seam is for.
+    //
+    // Deliberately NOT `build({ validateOnBuild: true })`, tempting as that
+    // looks. The eager pass dry-runs every EXACT registration, and this library
+    // ships one that can never satisfy it: `GreetingCard`'s recipient slot is the
+    // CALLER's, handed over through `resolveFactory`, and no registration stands
+    // behind it. A whole-graph check cannot tell a deliberately caller-supplied
+    // slot apart from a wiring hole, so a container that uses the partition has
+    // to opt out of it.
+    return containerBuilder.build().createScope('singleton');
   }
 }
 

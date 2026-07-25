@@ -125,7 +125,6 @@ no container at all (EmptyServiceProvider):
   provider reports itself a service: true
   probing an ordinary token: undefined
   stationery overridden: false
-  card failed: ActivationError building "GreetingCard"
-  ... and it is a DiError: true
+  card failed: the empty provider has no card registration to build from
 registering a value at an open template: caught a DiError (OpenTokenRegistrationError)
 resolving an unregistered token: caught a DiError (UnregisteredTokenError)

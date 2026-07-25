@@ -22,9 +22,9 @@ export { addCheckoutServices, AmountIsPositive, AuditTrail, CardGateway, CHECKOU
   WalletGateway } from './resolution-checkout-services.js';
 
 // The library-author infrastructure surface (`IServiceManifestHolder`,
-// `ActivatorUtilities`, `IServiceProviderFactory`, the error taxonomy),
-// demonstrated from inside a library because that is where those pieces are
-// actually reached for.
+// `resolveFactory`'s caller/container partition, `IServiceProviderFactory`,
+// `EmptyServiceProvider`), demonstrated from inside a library because that is
+// where those pieces are actually reached for.
 export { demonstrateInfrastructure } from './infrastructure-demo.js';
 export { addGreetingWorkshop, GREETING_WORKSHOP_TOKEN, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder,
   ManifestServiceProviderFactory, newWorkshopManifest, PlainStationery,

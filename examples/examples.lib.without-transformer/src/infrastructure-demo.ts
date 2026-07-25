@@ -5,20 +5,23 @@
 // diff depends on.
 //
 // Read alongside `./infrastructure-greeting-workshop.ts`, which defines every
-// type used below. The five sections mirror the five things a library author
+// type used below. The four sections mirror the four things a library author
 // actually needs from the infrastructure surface:
 //
 //   1. a container assembled through the `configure(builder)` seam, built via
 //      `IServiceProviderFactory`;
 //   2. the same library against an app that OVERRODE a default;
-//   3. the same library against `EmptyServiceProvider` — no container at all;
-//   4. `ActivationError`, raised and caught;
-//   5. `OpenTokenRegistrationError` and `DiError`, raised and caught.
+//   3. the same library against `EmptyServiceProvider` — no container at all,
+//      where the defaultable half degrades and the rest fails loudly;
+//   4. `DiError`, the taxonomy root one catch covers the whole lifecycle with.
+//
+// The exhaustive error catalogue — every failure the container can raise, each
+// one provoked on purpose — is its own chapter: `./errors-demo.ts`.
 //
 // The with-transformer sibling produces IDENTICAL lines from the type-driven
 // dialect: `../../examples.lib.with-transformer/src/infrastructure-demo.ts`.
 
-import { ActivationError, ActivatorUtilities, DiError, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di';
+import { DiError, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di';
 import type { IResolver } from '@rhombus-std/di';
 
 import { addGreetingWorkshop, GREETING_WORKSHOP_TOKEN, GreetingWorkshop, ManifestServiceProviderFactory,
@@ -53,9 +56,8 @@ export function demonstrateInfrastructure(): readonly string[] {
   lines.push(`  card: ${defaultWorkshop.card('Ada')}`);
 
   // ── 2. the same library, with the app overriding a default ─────────────────
-  // `getServiceOrCreateInstance` inside the workshop now finds a registration
-  // and returns it instead of building `PlainStationery`. Same library code,
-  // both branches.
+  // The workshop's `tryResolve` now finds a registration and uses it instead of
+  // building `PlainStationery`. Same library code, both branches.
   const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
     workshop
       .useGreeting(WorkshopGreeting)
@@ -77,17 +79,13 @@ export function demonstrateInfrastructure(): readonly string[] {
   // stub (it is the whole `IServiceProvider` surface, kept honest by di.core).
   //
   // It answers `isService` true for exactly one token — the intrinsic provider
-  // itself — so a class whose only dependency is the provider still activates.
+  // itself — so a class whose only dependency is the provider still constructs.
   //
   // Held as the `IResolver` INTERFACE, not the concrete class: that is the
   // surface library code should program against, and it is what makes the null
   // object drop-in wherever a real provider would go.
   const nowhere: IResolver = EmptyServiceProvider.instance;
-  const emptyWorkshop = ActivatorUtilities.createInstance(
-    nowhere,
-    GreetingWorkshop,
-    [RESOLVER_TOKEN],
-  ) as GreetingWorkshop;
+  const emptyWorkshop = new GreetingWorkshop(nowhere);
 
   lines.push('no container at all (EmptyServiceProvider):');
   lines.push(`  provider reports itself a service: ${nowhere.isService(RESOLVER_TOKEN)}`);
@@ -97,30 +95,26 @@ export function demonstrateInfrastructure(): readonly string[] {
   // its defaults instead of throwing.
   lines.push(`  stationery overridden: ${emptyWorkshop.stationeryIsOverridden}`);
 
-  // ── 4. ActivationError ─────────────────────────────────────────────────────
-  // The other half: what genuinely CANNOT be defaulted still fails loudly. The
-  // card needs a greeting, the empty provider has none, and the workshop
-  // supplies only a recipient — so a slot runs out of sources.
-  //
-  // An error a consumer cannot handle is not a feature, so note what the error
-  // carries: `ctorName` names the class that could not be built and `token` the
-  // slot that had no source — enough to write the fix without reading a stack.
+  // The other half: what genuinely CANNOT be defaulted still fails loudly. A
+  // card needs a `GreetingCard` registration to build from, and the empty
+  // provider has none — so the first `card()` call throws rather than inventing
+  // one. Degrade what has a default; refuse what does not.
   try {
     lines.push(`  card: ${emptyWorkshop.card('Linus')}`);
   } catch (error) {
-    if (error instanceof ActivationError) {
-      lines.push(`  card failed: ActivationError building "${error.ctorName}"`);
-      lines.push(`  ... and it is a DiError: ${error instanceof DiError}`);
+    if (error instanceof DiError) {
+      lines.push('  card failed: the empty provider has no card registration to build from');
     } else {
       throw error;
     }
   }
 
-  // ── 5. the registration-time and resolution-time errors ────────────────────
-  // `DiError` is the taxonomy root shared by di.core (registration) and the
-  // resolution engine, so ONE `instanceof DiError` catch covers a consumer's
-  // whole container lifecycle. The two failures below come from opposite ends
-  // of it.
+  // ── 4. the taxonomy root ───────────────────────────────────────────────────
+  // `DiError` is shared by di.core (registration time) and the resolution engine,
+  // so ONE `instanceof DiError` catch covers a consumer's whole container
+  // lifecycle. The two failures below come from opposite ends of it; the full
+  // catalogue, with each error class named and caught individually, is
+  // `./errors-demo.ts`.
   //
   // Registration time: an OPEN template names a FAMILY of tokens, one per
   // closing, so only a class can stand behind it — `addValue` has a single

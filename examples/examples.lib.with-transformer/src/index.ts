@@ -24,9 +24,9 @@ export { makeServerReport } from './server-report.js';
 // ── the di feature tour ──────────────────────────────────────────────────────
 
 // The library-author infrastructure surface (`IServiceManifestHolder`,
-// `ActivatorUtilities`, `IServiceProviderFactory`, the error taxonomy),
-// demonstrated from inside a library because that is where those pieces are
-// actually reached for. The mirror of
+// `resolveFactory`'s caller/container partition, `IServiceProviderFactory`,
+// `EmptyServiceProvider`), demonstrated from inside a library because that is
+// where those pieces are actually reached for. The mirror of
 // `@rhombus-std/examples.lib.without-transformer`'s demonstration: same
 // scenario, same lines, tokenless dialect.
 export { demonstrateInfrastructure } from './infrastructure-demo.js';

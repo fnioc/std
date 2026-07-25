@@ -1,4 +1,4 @@
-import { ActivatorUtilities, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di.core';
+import { DiError, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di.core';
 import type { IResolver, IServiceProvider } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 
@@ -13,32 +13,19 @@ import { describe, expect, test } from 'bun:test';
 // for the single thing it exists for: standing in wherever a provider is
 // required. Publishing the interface keeps it drop-in either way.
 //
-// The COMPILE-TIME half of this regression is pinned by
-// `examples/examples.lib.with-transformer`, whose `lint` typechecks with
-// `@rhombus-std/di.extras` in the program and assigns the singleton to an
-// `IResolver`. This suite has no such augmentation in scope, so what it pins is
-// the runtime consequence: the singleton really does flow through every seam
-// that asks for a provider.
+// The COMPILE-TIME half of that regression cannot be pinned from THIS program,
+// which has no augmentation in scope — it lives in
+// `tests/augmentations.test/test/empty-provider-augmented-assignment.test.ts`,
+// whose `lint` typechecks with `@rhombus-std/di.extras` pulled in. What this
+// suite pins is the runtime consequence: the singleton really does behave as the
+// interface says wherever a provider is asked for.
 
 /** Its only dependency is the provider itself — the intrinsic `RESOLVER_TOKEN` slot. */
 class NeedsOnlyTheProvider {
   public constructor(public readonly resolver: IResolver) {}
 }
 
-/** A caller-supplied dependency that is never a registration anywhere. */
-class Payload {
-  public constructor(public readonly text: string) {}
-}
-
-/** Mixes a container-owned slot with a caller-supplied one. */
-class Handler {
-  public constructor(
-    public readonly resolver: IResolver,
-    public readonly payload: Payload,
-  ) {}
-}
-
-const PAYLOAD_TOKEN = 'pkg:Payload';
+const ORDINARY_TOKEN = 'pkg:IOrdinary';
 
 describe('EmptyServiceProvider as an IResolver seam', () => {
   test('the singleton is typed as the provider interface, not the impl class', () => {
@@ -48,36 +35,37 @@ describe('EmptyServiceProvider as an IResolver seam', () => {
     expect(seam).toBe(EmptyServiceProvider.instance);
   });
 
-  test('activates a class whose only dependency is the provider', () => {
-    const instance = ActivatorUtilities.createInstance(
-      EmptyServiceProvider.instance,
-      NeedsOnlyTheProvider,
-      [RESOLVER_TOKEN],
-    ) as NeedsOnlyTheProvider;
+  test('the intrinsic provider slot is the one token it satisfies', () => {
+    const nowhere: IResolver = EmptyServiceProvider.instance;
 
-    expect(instance).toBeInstanceOf(NeedsOnlyTheProvider);
-    // The intrinsic provider slot is the one token the empty provider satisfies,
-    // and it resolves to the empty provider itself.
+    expect(nowhere.isService(RESOLVER_TOKEN)).toBe(true);
+    expect(nowhere.resolve(RESOLVER_TOKEN)).toBe(EmptyServiceProvider.instance);
+
+    // So a class whose only dependency is the provider is constructible against
+    // it by hand — the null object standing in for a real container.
+    const instance = new NeedsOnlyTheProvider(nowhere.resolve<IResolver>(RESOLVER_TOKEN));
     expect(instance.resolver).toBe(EmptyServiceProvider.instance);
   });
 
-  test('serves as a test double: unregistered slots fall through to supplied arguments', () => {
-    const build = ActivatorUtilities.createFactory<Handler>(Handler, [RESOLVER_TOKEN, PAYLOAD_TOKEN]);
-    const handler = build(EmptyServiceProvider.instance, [new Payload('hello')]);
+  test('every other token is a miss: tryResolve is undefined, resolve throws a DiError', () => {
+    const nowhere: IResolver = EmptyServiceProvider.instance;
 
-    expect(handler.resolver).toBe(EmptyServiceProvider.instance);
-    expect(handler.payload.text).toBe('hello');
+    expect(nowhere.isService(ORDINARY_TOKEN)).toBe(false);
+    expect(nowhere.tryResolve(ORDINARY_TOKEN)).toBeUndefined();
+    expect(() => nowhere.resolve(ORDINARY_TOKEN)).toThrow(DiError);
   });
 
-  test('getServiceOrCreateInstance falls back to activation on the empty provider', () => {
-    const built = ActivatorUtilities.getServiceOrCreateInstance(
-      EmptyServiceProvider.instance,
-      PAYLOAD_TOKEN,
-      class {
-        public readonly text = 'default';
-      },
-    ) as { text: string; };
+  test('resolveFactory throws too — there is no registration to build from', () => {
+    const nowhere: IResolver = EmptyServiceProvider.instance;
 
-    expect(built.text).toBe('default');
+    expect(() => nowhere.resolveFactory(ORDINARY_TOKEN)).toThrow(DiError);
+    expect(() => nowhere.resolveFactory(ORDINARY_TOKEN, ['pkg:IArg'])).toThrow(DiError);
+  });
+
+  test('resolveAsync surfaces the same miss through a rejection', async () => {
+    const nowhere: IResolver = EmptyServiceProvider.instance;
+
+    await expect(nowhere.resolveAsync(ORDINARY_TOKEN)).rejects.toThrow(DiError);
+    await expect(nowhere.resolveAsync(RESOLVER_TOKEN)).resolves.toBe(EmptyServiceProvider.instance);
   });
 });
