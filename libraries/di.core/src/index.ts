@@ -20,9 +20,10 @@
 export type { DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
   Union } from './types.js';
 
-// The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`), plus
-// the pre-instantiated `$1`…`$9` bare-hole aliases.
-export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Keyed, Typeof } from './brands.js';
+// The compile-time authoring brands (`Inject`, `Hole`, `$`, `Keyed`, `Typeof`).
+// `$<N>` is the ONE spelling of a bare hole — `$1`…`$9` are the wire text of a
+// hole inside a token STRING, never a type.
+export type { $, Hole, Inject, Keyed, Typeof } from './brands.js';
 
 // The authoring surface: the collection interface plus the `AddChain` slot
 // algebra a registration call returns (`Slot` + the four modifier faces).

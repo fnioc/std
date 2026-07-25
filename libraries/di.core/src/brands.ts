@@ -33,9 +33,11 @@ export type Inject<T, K extends Token> = T & { readonly [TOK]?: K; };
 
 /**
  * Compile-time skolem standing in for the `N`th type argument of an open
- * template (1-based). Writing `addClass<IRepository<$<1>>>(SqlRepository<$<1>>)`
- * binds the hole; the transformer derives `$N` wherever a Hole-branded type
- * appears.
+ * template. Labels are 1-BASED and carry no leading zero — `$0` and `$01` are
+ * not holes, in the type grammar here and in the token-string grammar the
+ * transformer emits (`token/parse.ts`). Writing
+ * `addClass<IRepository<$<1>>>(SqlRepository<$<1>>)` binds the hole; the
+ * transformer derives `$N` wherever a Hole-branded type appears.
  *
  * `C` is the constraint carrier: `Hole<1, Entity>` IS an `Entity` (the brand
  * property is optional, so the intersection stays assignable to `C`), which
@@ -49,27 +51,15 @@ export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
  * Unbounded sugar for the common unconstrained hole: `$<1>`, `$<2>`, … `$<N>`.
  * `$<N>` is exactly `Hole<N>`; reach for `Hole<N, C>` when the impl's type
  * parameter carries a constraint the skolem must satisfy.
+ *
+ * It is the ONE spelling of a bare hole at every label. The nine
+ * pre-instantiated `$1` … `$9` aliases that used to sit alongside it are gone:
+ * a second spelling of the same type bought one pair of angle brackets and cost
+ * a permanent ambiguity, since `$1` is ALSO the wire text of a hole inside a
+ * token string (`"pkg:IRepo<$1>"`) — one name, two grammars, and no way to tell
+ * which a reader is looking at without checking for quotes.
  */
 export type $<N extends number> = Hole<N>;
-
-/**
- * Pre-instantiated, non-generic aliases for the nine most common holes:
- * `$1` = `Hole<1>`, … `$9` = `Hole<9>`. One fewer pair of angle brackets than
- * `$<1>` … `$<9>` for the overwhelmingly common case — mirrors how
- * shell/regex backreference syntax treats `$1`-`$9` as directly usable bare
- * identifiers while reserving a bracketed/braced form (`${10}`, `$<10>`,
- * etc.) for everything beyond. `$<N>` stays the only spelling for N ≥ 10, and
- * remains usable at any N for anyone who prefers the generic form.
- */
-export type $1 = Hole<1>;
-export type $2 = Hole<2>;
-export type $3 = Hole<3>;
-export type $4 = Hole<4>;
-export type $5 = Hole<5>;
-export type $6 = Hole<6>;
-export type $7 = Hole<7>;
-export type $8 = Hole<8>;
-export type $9 = Hole<9>;
 
 // ── Typeof brand ────────────────────────────────────────────────────────
 

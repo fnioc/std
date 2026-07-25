@@ -61,8 +61,7 @@ There is no global metadata store and no decorator: the dependency signature tra
 | `signaturefor<T>()` / `signaturesfor<T>()`                                                              | Functions            | Compile-time-only: mint one overload's dependency slots (or the whole signature set) from an explicit type tuple — the type-driven siblings `withSignature<T>()` / `withSignatures<T>()` lower to.                                                                                                                                                                                                                                                                                 |
 | `Inject<T, K>`                                                                                          | Type alias           | Phantom brand — pins a specific token for one constructor parameter without changing its value type.                                                                                                                                                                                                                                                                                                                                                                               |
 | `Keyed<T, K>`                                                                                           | Type alias           | Phantom brand — marks a constructor parameter (or a sugar registration's type argument) as bound to a specific registration KEY rather than the unkeyed base token.                                                                                                                                                                                                                                                                                                                |
-| `Hole<N, C>` / `$<N>`                                                                                   | Type aliases         | Compile-time placeholders standing in for the `N`th type argument of an open-generic template.                                                                                                                                                                                                                                                                                                                                                                                     |
-| `$1` … `$9`                                                                                             | Type aliases         | Pre-instantiated, non-generic aliases for the 9 most common holes — `$1` = `Hole<1>`, … `$9` = `Hole<9>`. `$<N>` remains the only spelling for `N ≥ 10`.                                                                                                                                                                                                                                                                                                                           |
+| `Hole<N, C>` / `$<N>`                                                                                   | Type aliases         | Compile-time placeholders standing in for the `N`th type argument of an open-generic template. `$<N>` is the one spelling of a bare hole at every label.                                                                                                                                                                                                                                                                                                                           |
 | `Typeof<T>`                                                                                             | Type alias           | Phantom brand — a constructor parameter that receives the _token string_ of type argument `T`.                                                                                                                                                                                                                                                                                                                                                                                     |
 | `closeToken` / `parseToken` / `isOpenToken` / `unkeyedToken` / `typeArg`                                | Functions            | The open-generic token edge: render and parse the string form, detect an open template, drop a token's trailing `#key` before classifying it, and mint a `{ typeArg: n }` slot by hand.                                                                                                                                                                                                                                                                                            |
 | `TokenNode` / `Matcher` / `Substituter` / `Validator` / `TokenRewriter` / `TokenWalker` / `Specificity` | Type / classes       | The unified token/slot expression tree (`concrete \| hole \| provider \| union \| literal \| factory`) and its visitor operations — what `@rhombus-std/di`'s engine walks to match and substitute an open registration against a closing. `Validator` is NOT on that path: it is offered for a caller holding a hand-built tree, and the engine validates over `DepSlot`, which cannot spell a malformed one. A token STRING stays the wire identity; advanced/white-box use only. |
@@ -144,7 +143,7 @@ Use it as the escape hatch for anonymous or purely structural types the transfor
 
 ### `Hole<N, C>` and `$<N>`
 
-Compile-time placeholders standing in for the `N`th type argument of an open-generic template (1-based):
+Compile-time placeholders standing in for the `N`th type argument of an open-generic template. Labels are **1-based** and carry no leading zero — `$0` and `$01` are not holes, here or in the token-string grammar below:
 
 ```ts
 declare const HOLE: unique symbol;
@@ -158,18 +157,12 @@ export type $<N extends number> = Hole<N>;
 services = services.addClass<IRepository<$<1>>>(SqlRepository<Hole<1, Entity>>);
 ```
 
-For the overwhelmingly common unconstrained case with 9 or fewer holes, the pre-instantiated bare aliases `$1` … `$9` (`$1` = `Hole<1>`, … `$9` = `Hole<9>`) drop one more pair of angle brackets:
+`$<N>` is the only spelling of a bare hole — there is no non-generic `$1` … `$9` alias family. A bare `$1` is the hole's WIRE text, what a hole looks like inside a token string (`"pkg:IRepository<$1>"`), and nothing else:
 
 ```ts
-export type $1 = Hole<1>;
-// … through $9 = Hole<9>
+services = services.addClass<IRepository<$<1>>>(SqlRepository<$<1>>); // type position
+services = services.addClass('pkg:IRepository<$1>', SqlRepository, [[]]); // token string
 ```
-
-```ts
-services = services.addClass<IRepository<$1>>(SqlRepository<$1>);
-```
-
-This mirrors how shell/regex backreference syntax treats `$1`-`$9` as directly usable bare identifiers while reserving a bracketed/braced form (`${10}`, `$<10>`, etc.) for everything beyond. `$<N>` stays exactly as it is — the only spelling for `N ≥ 10`, and still usable at any `N` for anyone who prefers the generic form.
 
 Zero runtime footprint — these are pure compile-time brands read structurally by `@rhombus-std/di.extras`.
 
