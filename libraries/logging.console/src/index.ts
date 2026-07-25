@@ -16,7 +16,6 @@ export { ConsoleFormatterNames } from './ConsoleFormatterNames';
 export { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
 export { ConsoleLogger } from './ConsoleLogger';
 export { ConsoleLoggerExtensions } from './ConsoleLoggerExtensions';
-export { ConsoleLoggerFormat } from './ConsoleLoggerFormat';
 export { ConsoleLoggerOptions, DEFAULT_MAX_QUEUE_LENGTH } from './ConsoleLoggerOptions';
 export { ConsoleLoggerProvider } from './ConsoleLoggerProvider';
 export { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';

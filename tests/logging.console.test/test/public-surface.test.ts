@@ -4,9 +4,8 @@
 
 import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
-import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerExtensions, ConsoleLoggerFormat, ConsoleLoggerOptions,
-  ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
-  type TextWriter } from '@rhombus-std/logging.console';
+import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerExtensions, ConsoleLoggerOptions, ConsoleLoggerProvider,
+  ConsoleLoggerQueueFullMode, type LogEntry, StringWriter, type TextWriter } from '@rhombus-std/logging.console';
 import { EventId, type IExternalScopeProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
@@ -37,6 +36,38 @@ class UpperFormatter extends ConsoleFormatter {
   }
 }
 
+/** What a provider configured with `formatterName` writes for one message. */
+async function writesFor(formatterName: string | undefined): Promise<string[]> {
+  const options = new ConsoleLoggerOptions();
+  options.formatterName = formatterName;
+  using provider = new ConsoleLoggerProvider(Options.of(options));
+  const logger = provider.createLogger('Cat');
+
+  const writes: string[] = [];
+  const stdout = process.stdout as unknown as { write(chunk: string): boolean; };
+  const originalWrite = stdout.write.bind(stdout);
+  stdout.write = (chunk: string) => {
+    writes.push(chunk);
+    return true;
+  };
+  const env = process.env as Record<string, string | undefined>;
+  const hadNoColor = env['NO_COLOR'];
+  env['NO_COLOR'] = '1';
+  try {
+    logger.log(LogLevel.Information, new EventId(3), 'hello', undefined, (state) => state);
+    await Promise.resolve();
+  } finally {
+    stdout.write = originalWrite;
+    if (hadNoColor === undefined) {
+      delete env['NO_COLOR'];
+    } else {
+      env['NO_COLOR'] = hadNoColor;
+    }
+  }
+
+  return writes;
+}
+
 // --- ConsoleLoggerOptions ---
 
 test('ConsoleLoggerOptions defaults mirror the reference', () => {
@@ -45,20 +76,15 @@ test('ConsoleLoggerOptions defaults mirror the reference', () => {
   expect(options.logToStandardErrorThreshold).toBe(LogLevel.None);
   expect(options.queueFullMode).toBe(ConsoleLoggerQueueFullMode.Wait);
   expect(options.maxQueueLength).toBe(2500);
-
-  expect(options.format).toBe(ConsoleLoggerFormat.Default);
 });
 
-test('ConsoleLoggerOptions validates queueFullMode, maxQueueLength, and format', () => {
+test('ConsoleLoggerOptions validates queueFullMode and maxQueueLength', () => {
   const options = new ConsoleLoggerOptions();
   expect(() => {
     options.maxQueueLength = 0;
   }).toThrow(RangeError);
   expect(() => {
     options.queueFullMode = 99 as ConsoleLoggerQueueFullMode;
-  }).toThrow(RangeError);
-  expect(() => {
-    options.format = 99 as ConsoleLoggerFormat;
   }).toThrow(RangeError);
 });
 
@@ -94,6 +120,13 @@ test('provider resolves the formatter by name, case-insensitively', async () => 
   }
 
   expect(writes).toEqual(['HELLO\n']);
+});
+
+test('an unset or unrecognized formatterName resolves to the simple formatter', async () => {
+  const simple = await writesFor(ConsoleFormatterNames.simple);
+  expect(simple).not.toEqual([]);
+  expect(await writesFor(undefined)).toEqual(simple);
+  expect(await writesFor('no-such-formatter')).toEqual(simple);
 });
 
 test('provider setScopeProvider reaches existing loggers', () => {

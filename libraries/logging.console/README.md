@@ -111,7 +111,7 @@ runtime, or both if the same logging setup runs in more than one place.
   ahead of the built-ins; ones added afterward attach to the
   already-constructed provider. Either way, select them by name through
   `ConsoleLoggerOptions.formatterName`.
-- `ConsoleLoggerOptions.disableColors`, `.format`, `.includeScopes`,
-  `.timestampFormat`, and `.useUtcTimestamp` are deprecated — use
-  `SimpleConsoleFormatterOptions.colorBehavior` and the formatter-level
-  `ConsoleFormatterOptions` members instead.
+- Colors, scopes, and timestamps are formatter-level settings: reach for
+  `SimpleConsoleFormatterOptions.colorBehavior` and the
+  `ConsoleFormatterOptions` members (`includeScopes`, `timestampFormat`,
+  `useUtcTimestamp`), not `ConsoleLoggerOptions`.
