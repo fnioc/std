@@ -284,3 +284,43 @@ describe('removeAll returns a NEW manifest', () => {
     expect(pruned.build().resolve<string>(T.A)).toBe('a');
   });
 });
+
+// `seal()` is the manifest's hand-off to the engine: it buckets the entry stream
+// into the two lookup tables a provider reads. What it GUARANTEES is narrower
+// than "deep-frozen", and the narrow thing is the part worth pinning — a provider
+// must never be able to grow or reorder the registrations of one token, because
+// resolution's last-wins semantics and `#resolveKeyed`'s iteration order are read
+// straight off that list.
+//
+// The Maps themselves are deliberately NOT frozen: `Object.freeze` seals a Map's
+// own properties, not its internal entry slots, so a frozen Map still accepts
+// `set` — freezing them would assert a runtime guarantee that does not exist.
+// `SealedManifest`'s `ReadonlyMap` is what holds that line, at the type level.
+describe('seal() freezes what it actually promises', () => {
+  test('each per-token registration list is frozen', () => {
+    const sealed = new ServiceManifest<'singleton'>()
+      .addValue(T.A, 'first')
+      .addValue(T.A, 'second')
+      .seal();
+
+    const list = sealed.registrations.get(T.A);
+
+    expect(list).toHaveLength(2);
+    expect(Object.isFrozen(list)).toBe(true);
+    // The freeze is load-bearing, not decorative: a push would change which
+    // registration wins.
+    expect(() => (list as unknown as unknown[]).push('third')).toThrow();
+    expect(sealed.registrations.get(T.A)).toHaveLength(2);
+  });
+
+  test('each per-base open-template list is frozen too', () => {
+    const sealed = new ServiceManifest<'singleton'>()
+      .addClass('pkg:IBox<$1>', Alpha, [[]], 'singleton')
+      .seal();
+
+    const open = sealed.openRegistrations.get('pkg:IBox');
+
+    expect(open).toHaveLength(1);
+    expect(Object.isFrozen(open)).toBe(true);
+  });
+});
