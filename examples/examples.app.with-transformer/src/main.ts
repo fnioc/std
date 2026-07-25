@@ -1,9 +1,13 @@
 // The with-transformer composition root — ONE integrated story, authored in the
 // tokenless dialect with the @rhombus-std/di.extras + di.extras.options
-// plugins. Registration lowering is confined to a module's top level, which is
-// exactly here (the app's composition root), so every `add`/`addValue`/
-// `addOptions` in the CONTAINER SETUP below is authored tokenlessly and lowered
-// during the build. The ONE exception is the hosted-worker wiring at the very
+// plugins. Every `add`/`addValue`/`addOptions` in the CONTAINER SETUP below is
+// authored tokenlessly and lowered during the build. Registration lowering is
+// NOT confined to a module's top level — the inline stage rewrites a sugar call
+// wherever it appears, so a library function can be authored tokenlessly too
+// (see `addGreetingWorkshop` in @rhombus-std/examples.lib.with-transformer, and
+// the tour's own `buildOrderContainer`). This file keeps its registrations at the
+// top level because that is what a composition ROOT looks like, not because the
+// engine requires it. The ONE exception is the hosted-worker wiring at the very
 // bottom: there is no `@rhombus-std/di.extras` plugin for the hosting
 // family yet, so `addHostedService(...)` and the small `ConfigRoot` value
 // it needs are registered with EXPLICIT, hand-written tokens — the guard test in

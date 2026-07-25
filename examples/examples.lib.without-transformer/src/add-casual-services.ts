@@ -1,10 +1,12 @@
 // The library's contribution to a consuming application's container, authored in
 // the MANUAL dialect: explicit string tokens and plain-data dependency
-// signatures, no transformer. Because these forms need no lowering, they compose
-// into a reusable registration FUNCTION the app calls with its own manifest —
-// the shape the tokenless dialect cannot take (registration lowering is confined
-// to a module's top level). This is the manual dialect's producer half of the
-// interop matrix.
+// signatures, no transformer. They compose into a reusable registration FUNCTION
+// the app calls with its own manifest — the shape a library ships when it wants
+// consumers to get its services for free. The tokenless dialect can take the
+// same shape (see `addGreetingWorkshop` in
+// @rhombus-std/examples.lib.with-transformer); what is different here is that
+// nothing has to be lowered for it to run, so the raw source is already usable.
+// This is the manual dialect's producer half of the interop matrix.
 
 import type { IServiceManifest } from '@rhombus-std/di';
 

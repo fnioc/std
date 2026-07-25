@@ -6,12 +6,14 @@
 // source-libs entry would silently bypass the lowering. Consumers get lowered JS
 // + a clean d.ts and never need the transformer.
 //
-// The library exports its impl classes and its report factory; a consuming app
-// performs the container REGISTRATION (di.extras lowers registration calls
-// only at a module's top level, which is the application's composition root, not
-// a library function body). This is the interop matrix's producer half: whatever
-// dialect an app is authored in, it registers these building blocks and the
-// lowered `makeServerReport` resolves them by the agreed tokens.
+// For the interop scenario the library exports its impl classes and its report
+// factory and leaves the container REGISTRATION to the consuming app — a
+// deliberate split of responsibility, not an engine limit: the sugar lowers
+// wherever it appears, which is why `addGreetingWorkshop` below IS a tokenless
+// registration function shipped from this library. This is the interop matrix's
+// producer half: whatever dialect an app is authored in, it registers these
+// building blocks and the lowered `makeServerReport` resolves them by the agreed
+// tokens.
 
 // ── the interop scenario's building blocks ───────────────────────────────────
 
