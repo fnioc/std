@@ -17,7 +17,7 @@ import (
 // named `@rhombus-std/di.core` — the module the di registration stage anchors its
 // `addClass` verb on (ditransform's memberAnchoredOnDiCore hardcodes that specifier). It
 // declares the `addClass<T>(ctor)` sugar overload inside a `declare module
-// '@rhombus-std/di.core'` block so a `services.addClass<I<$1>>(C<$1>)` call anchors,
+// '@rhombus-std/di.core'` block so a `services.addClass<I<$<1>>>(C<$<1>>)` call anchors,
 // plus the `signatureof` primitive and the `$<N>` hole / `Typeof<T>` brands.
 // main.ts is caller-supplied.
 func buildDiParityWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
@@ -93,7 +93,7 @@ var diDirectGolden = func() map[string]string {
 }()
 
 // lowerDiMain returns the FROZEN di-direct registration-stage output for main.ts —
-// the direct `addClass<I<$1>>(C<$1>)` lowering the signatureof path must byte-match —
+// the direct `addClass<I<$<1>>>(C<$<1>>)` lowering the signatureof path must byte-match —
 // keyed by the reprinted (untransformed) source. The frozen registrations raised
 // no diagnostics, so it returns none.
 func lowerDiMain(t *testing.T, prog *driver.Program, app string) (string, []signatures.Diagnostic) {
@@ -122,7 +122,7 @@ func TestSignatureofHoleParityWithDiDirect(t *testing.T) {
 		name string
 		// decl declares the interfaces + class the registration targets.
 		decl string
-		// reg is the direct `services.addClass<I<$1>>(C<$1>)` registration statement.
+		// reg is the direct `services.addClass<I<$<1>>>(C<$<1>>)` registration statement.
 		reg string
 		// val is the value expression `signatureof(...)` extracts — the same
 		// class/instantiation expression the reg registers.

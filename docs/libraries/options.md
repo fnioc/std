@@ -87,9 +87,9 @@ services.addOptions(POLICY_OPTIONS_TOKEN, POLICY_TOKEN).as('singleton');
 The reference has no "wrap an existing registration as options" verb — you would register a
 factory by hand.
 
-### 4. `addOptions<T>()` type-driven sugar (`di.transformer.options`)
+### 4. `addOptions<T>()` type-driven sugar (`di.extras.options`)
 
-The `di.transformer.options` satellite lowers a token-free `addOptions<T>()` to the explicit wrap
+The `di.extras.options` satellite lowers a token-free `addOptions<T>()` to the explicit wrap
 verb above — you name the options type, the transformer derives both tokens.
 
 ```ts

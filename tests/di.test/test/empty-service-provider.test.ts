@@ -24,6 +24,26 @@ describe('EmptyServiceProvider', () => {
     expect(empty.resolve(RESOLVER_TOKEN)).toBe(empty);
   });
 
+  test('the keyed PLURAL forms return [] — never a throw on count', () => {
+    // `IRequiredResolver`'s contract: 0 matches yields `[]`. A provider with no
+    // registrations has an empty key-space for every token, the provider token
+    // included (a keyed scan is confined to its base's own key-space).
+    expect(empty.resolve('pkg:anything', /.*/)).toEqual([]);
+    expect(empty.tryResolve('pkg:anything', /.*/)).toEqual([]);
+    expect(empty.resolve(RESOLVER_TOKEN, /.*/)).toEqual([]);
+    expect(empty.tryResolve(RESOLVER_TOKEN, /.+/)).toEqual([]);
+  });
+
+  test('a keyed SINGULAR request misses, provider token included', () => {
+    // A key composes an ORDINARY token, and every token but the bare intrinsic
+    // provider is unregistered here.
+    expect(empty.tryResolve('pkg:anything', 'k')).toBeUndefined();
+    expect(empty.tryResolve(RESOLVER_TOKEN, 'k')).toBeUndefined();
+    expect(() => empty.resolve(RESOLVER_TOKEN, 'k')).toThrow(DiError);
+    // The empty key is the bare non-keyed token, so it still resolves.
+    expect(empty.resolve(RESOLVER_TOKEN, '')).toBe(empty);
+  });
+
   test('resolveAsync rejects a miss and resolves the provider token', async () => {
     await expect(empty.resolveAsync('pkg:anything')).rejects.toThrow(DiError);
     await expect(empty.resolveAsync(RESOLVER_TOKEN)).resolves.toBe(empty);

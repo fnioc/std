@@ -12,17 +12,19 @@
  * class, and depend on di.core ALONE, never the runtime.
  *
  * Runtime footprint: the slot/token helpers, the registration builder, and the
- * registration-time errors (`DiError` base, `OpenTokenRegistrationError`). The
- * resolution engine (`ServiceProviderClass`) and resolution-time errors live in
- * `@rhombus-std/di`.
+ * whole error taxonomy — registration-time AND resolution-time, so a library
+ * that references only the abstractions can classify a container failure without
+ * pulling the engine (§130). Only the resolution engine itself
+ * (`ServiceProviderClass`) lives in `@rhombus-std/di`.
  */
 
 export type { DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
   Union } from './types.js';
 
-// The compile-time authoring brands (`Inject`, `Hole`, `$`, `Typeof`), plus
-// the pre-instantiated `$1`…`$9` bare-hole aliases.
-export type { $, $1, $2, $3, $4, $5, $6, $7, $8, $9, Hole, Inject, Keyed, Typeof } from './brands.js';
+// The compile-time authoring brands (`Inject`, `Hole`, `$`, `Keyed`, `Typeof`).
+// `$<N>` is the ONE spelling of a bare hole — `$1`…`$9` are the wire text of a
+// hole inside a token STRING, never a type.
+export type { $, Hole, Inject, Keyed, Typeof } from './brands.js';
 
 // The authoring surface: the collection interface plus the `AddChain` slot
 // algebra a registration call returns (`Slot` + the four modifier faces).
@@ -36,7 +38,7 @@ export type { IServiceManifest } from './IServiceManifest.js';
 
 export type { Ctor, Factory, ManifestEntry, OpenRegistration, Producer, Registration } from './registrations.js';
 
-export type { IRequiredResolver, IResolver, IResolveScope, IScopeFactory, IServiceProvider, IServiceQuery,
+export type { IRequiredResolver, IResolver, IScopeFactory, IServiceProvider, IServiceQuery,
   Lifetime } from './provider.js';
 
 // The pluggable provider-factory seam (the reference `IServiceProviderFactory`
@@ -68,14 +70,14 @@ export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } fr
 // token STRING is the wire identity; `TokenNode` is its transient parsed view.
 // The `TokenNode.*` companion carries the pure ops (parse / tryParse / toString /
 // canonicalise / baseKey / isOpen); the visitor CLASSES carry the mutating/query
-// ops. `closeToken`/`isOpenToken`/`parseToken` are the shallow string-grammar
-// classification/compose edge. Partial closing / most-specific-wins live in the
-// `TokenProvider` reference but are GATED at the engine (see `token/`).
+// ops. `closeToken`/`isOpenToken`/`parseToken`/`unkeyedToken` are the
+// classification/compose edge — `isOpenToken` off the typed tree, the other
+// three shallow string work.
 export type { ConcreteNode, FactoryNode, HoleNode, LiteralNode, ProviderNode, UnionNode } from './token/index.js';
 export { TokenNode } from './token/index.js';
 export { Matcher, Specificity, Substituter, TokenRewriter, TokenWalker, Validator } from './token/index.js';
 export { closeSignatures, parseSlot, serialiseSlot } from './token/index.js';
-export { closeToken, isOpenToken, parseToken } from './token/index.js';
+export { closeToken, isOpenToken, parseToken, unkeyedToken } from './token/index.js';
 
 // The intrinsic provider token — a `IResolver`-typed parameter derives it, and
 // the engine resolves it to the live provider view (see `provider-token.ts`).
@@ -85,15 +87,15 @@ export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';
 // analog) — a `IServiceProvider` with no application services.
 export { EmptyServiceProvider } from './EmptyServiceProvider.js';
 
-// `ActivatorUtilities` — activate an UNREGISTERED class against a provider,
-// injecting its dependency-signature slots. The reference activator-helper analog.
-export { ActivatorUtilities } from './ActivatorUtilities.js';
-export type { ObjectFactory } from './ActivatorUtilities.js';
-
-// The registration-time error taxonomy root, the open-token registration error,
-// and the activation error `ActivatorUtilities` raises. Resolution-time errors
-// extend `DiError` from `@rhombus-std/di`.
-export { ActivationError, DiError, OpenTokenRegistrationError } from './errors.js';
+// The WHOLE error taxonomy: the `DiError` root, the registration-time errors the
+// builder here raises, and the resolution-time errors the engine raises. It all
+// lives in the abstractions package so a di.core-only library can classify what
+// a caller's container threw — branch, add context, re-raise — without taking a
+// reference on `@rhombus-std/di` (which re-exports these, §130).
+export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
+  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
+  OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
+  UnregisteredTokenError } from './errors.js';
 
 // The descriptor-level mutation augmentation (`removeAll`, `tryAdd*`, `replace*`).
 // A side-effect import: pulling the barrel registers it against the

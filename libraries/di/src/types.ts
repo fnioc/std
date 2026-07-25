@@ -11,8 +11,6 @@ export type {
   // The named reference capability analogs IResolver composes.
   IRequiredResolver,
   IResolver,
-  // Backwards-compat alias.
-  IResolveScope,
   IScopeFactory,
   // The public provider surface — the abstractions interface, not the impl class.
   IServiceProvider,

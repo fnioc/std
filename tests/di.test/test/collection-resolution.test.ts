@@ -222,3 +222,83 @@ describe('async collection resolution', () => {
     expect(array).toEqual(['plain', 'needs:dep']);
   });
 });
+
+// Open templates contribute to the aggregate. A template IS a registration of
+// each token it closes, so several templates covering one closing all appear —
+// alongside any exact registration of that closing. Order puts the bare-T
+// winner LAST: exact entries after the closings, and the closings reversed out
+// of their most-specific-first rank so the most specific sits nearest the end.
+describe('collection aggregation over open templates', () => {
+  class Alpha {
+    public readonly which = 'alpha';
+  }
+  class Beta {
+    public readonly which = 'beta';
+  }
+  class Gamma {
+    public readonly which = 'gamma';
+  }
+
+  const CLOSING: Token = 'app:IH<app:Cmd>';
+  const ARRAY_OF: Token = 'Array<app:IH<app:Cmd>>';
+
+  const whichOf = (items: readonly unknown[]): string[] => items.map((item) => (item as Alpha).which);
+
+  test('every matching template contributes, not just the winning one', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('app:IH<$1>', Alpha, [[]]);
+    services = services.addClass('app:IH<$1>', Beta, [[]]);
+
+    const sp = services.build();
+    // Identical templates rank by recency, so Beta is the bare-T winner and
+    // therefore the aggregate's last element.
+    expect(whichOf(sp.resolve<unknown[]>(ARRAY_OF))).toEqual(['alpha', 'beta']);
+    expect(sp.resolve<Beta>(CLOSING).which).toBe('beta');
+  });
+
+  test('templates of DIFFERENT specificity all contribute, most specific last', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('app:IH<app:Cmd>', Alpha, [[]]); // exact
+    services = services.addClass('app:IH<$1>', Beta, [[]]); // general template
+
+    const sp = services.build();
+    // The exact registration is what bare-T yields, so it comes last.
+    expect(whichOf(sp.resolve<unknown[]>(ARRAY_OF))).toEqual(['beta', 'alpha']);
+    expect(sp.resolve<Alpha>(CLOSING).which).toBe('alpha');
+  });
+
+  test('a partially-closed template and a general one both land', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('app:IP<$1,$2>', Alpha, [[]]);
+    services = services.addClass('app:IP<app:Cmd,$1>', Beta, [[]]);
+    services = services.addClass('app:IP<app:Cmd,app:Res>', Gamma, [[]]);
+
+    const sp = services.build();
+    const all = sp.resolve<unknown[]>('Array<app:IP<app:Cmd,app:Res>>');
+
+    // Ranked most-specific-first ⇒ reversed to least-specific-first here.
+    expect(whichOf(all)).toEqual(['alpha', 'beta', 'gamma']);
+    expect(sp.resolve<Gamma>('app:IP<app:Cmd,app:Res>').which).toBe('gamma');
+  });
+
+  test('a template that does not match the closing contributes nothing', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('app:IH<app:Other>', Alpha, [[]]);
+    services = services.addClass('app:IH<$1>', Beta, [[]]);
+
+    const sp = services.build();
+    expect(whichOf(sp.resolve<unknown[]>(ARRAY_OF))).toEqual(['beta']);
+  });
+
+  test('aggregate elements share the memoized closing, so lifetimes still hold', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('app:IH<$1>', Alpha, [[]], 'singleton');
+
+    const root = services.build().createScope('singleton');
+    const first = root.resolve<Alpha[]>(ARRAY_OF)[0];
+
+    // Same synthesized Registration ⇒ same frame-cache slot as bare-T.
+    expect(root.resolve<Alpha>(CLOSING)).toBe(first);
+    expect(root.resolve<Alpha[]>(ARRAY_OF)[0]).toBe(first);
+  });
+});

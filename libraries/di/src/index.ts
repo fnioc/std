@@ -56,8 +56,6 @@ export type {
   // The named reference capability analogs IResolver composes.
   IRequiredResolver,
   IResolver,
-  // Backwards-compat alias.
-  IResolveScope,
   IScopeFactory,
   // The public provider surface — the abstractions interface (di.core), not the
   // impl class. What `build()` / `createScope()` return.
@@ -75,10 +73,16 @@ export type {
   ServiceProviderOptions,
 } from './types.js';
 
-export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError,
-  FactoryTargetError, MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError,
-  OpenTokenRegistrationError, OpenTokenResolutionError, RegistrationValidationError, ScopeValidationError,
-  UnregisteredTokenError } from './errors.js';
+// The WHOLE error taxonomy lives in @rhombus-std/di.core — a library that
+// references only the abstractions has to be able to classify what a caller's
+// container threw at it. di re-exports it so the taxonomy stays reachable
+// through one @rhombus-std/di import, and — because di keeps di.core external in
+// its bundle — both imports name the SAME class object, so `instanceof` holds
+// across the seam (§130).
+export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
+  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
+  OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
+  UnregisteredTokenError } from '@rhombus-std/di.core';
 
 // The slot/token RUNTIME helpers live in @rhombus-std/di.core (its slot/token
 // ABI). di re-exports them for one-import authoring ergonomics — a di consumer
@@ -87,16 +91,15 @@ export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredErr
 // slot shapes as plain data literals instead.
 export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from '@rhombus-std/di.core';
 export { typeArg, union } from '@rhombus-std/di.core';
-export { closeToken, isOpenToken, parseToken } from '@rhombus-std/di.core';
+export { closeToken, isOpenToken, parseToken, unkeyedToken } from '@rhombus-std/di.core';
 // The intrinsic provider token — a `IResolver`-typed param derives it, and the
 // engine resolves it to the live provider view.
 export { isProviderToken, RESOLVER_TOKEN } from '@rhombus-std/di.core';
 
-// The activator helper + the null-object provider — authored in di.core, re-exported
-// for one-import reach (a di consumer expects `ActivatorUtilities` /
-// `EmptyServiceProvider` from the runtime package, as in the reference DI namespace).
-export { ActivatorUtilities, EmptyServiceProvider } from '@rhombus-std/di.core';
-export type { ObjectFactory } from '@rhombus-std/di.core';
+// The null-object provider — authored in di.core, re-exported for one-import
+// reach (a di consumer expects `EmptyServiceProvider` from the runtime package,
+// as in the reference DI namespace).
+export { EmptyServiceProvider } from '@rhombus-std/di.core';
 
 // The ABI TYPES stay in @rhombus-std/di.core (pure types); di re-exports them so the whole
 // surface is reachable through one @rhombus-std/di import.

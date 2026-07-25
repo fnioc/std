@@ -189,17 +189,6 @@ export interface IServiceProvider<S extends string = string>
 }
 
 /**
- * @deprecated Use `IResolver` instead. Kept for backwards compatibility.
- *
- * The resolution surface a factory receives when it declares a provider-typed
- * parameter. Like `IResolver`, its token is intrinsic — the engine fills the
- * parameter with the live provider view — with `createScope` added.
- */
-export interface IResolveScope extends IResolver {
-  createScope(name: string): IServiceProvider;
-}
-
-/**
  * The named lifetime tag for a registration. `"singleton"` and `"transient"`
  * are the built-in names; `U` is the user-declared scope-name union (defaults
  * to `"scoped"`). Transient is represented by the ABSENCE of a lifetime tag

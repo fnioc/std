@@ -73,8 +73,9 @@ export interface ProviderNode {
 }
 
 /** A set of alternative slots tried in declaration order — the wire `Union`.
- * Materialised into concrete overloads at registration, so it is authoring-only
- * and never reaches resolution. */
+ * It reaches the engine union-bearing and is resolved per-param at RESOLVE time,
+ * falling through on a member's runtime failure; the registration-time blow-up
+ * to concrete overloads was abandoned (§112). */
 export interface UnionNode {
   readonly kind: 'union';
   readonly members: readonly TokenNode[];

@@ -15,7 +15,10 @@
 //   - `removeAll(token)` -- returns a manifest with EVERY registration bound to
 //     `token` dropped (the reference `RemoveAll(Type)` / `RemoveAll<T>()`; a token
 //     is our service-type analog). Required by logging's `clearProviders`, which
-//     strips all `ILoggerProvider` registrations.
+//     strips all `ILoggerProvider` registrations. An OPEN registration answers to
+//     both of its names here -- its template (`pkg:IRepo<$1>`) and the canonical
+//     base it buckets under (`pkg:IRepo`) -- deliberately broader than the
+//     identity-exact `tryAdd*` dedup (see `removeRegistrations`).
 //   - `tryAdd` / `tryAddFactory` / `tryAddValue` -- conditional registration: add
 //     only when `token` has NO registration yet (the reference `TryAdd*` family).
 //     When the token was ALREADY registered they return the receiver UNCHANGED --
@@ -28,6 +31,13 @@
 // EVERY verb here returns a NEW manifest -- the manifest is immutable, so a
 // discarded result is a silent no-op. Callers thread it:
 // `services = services.removeAll(token)`.
+//
+// KEYED verbs probe the EFFECTIVE token. A keyed registration lands under
+// `base#key` (`keyedToken`), so the `tryAdd*` dedup probe and the `replace*`
+// removal have to name that same composed token -- probing the bare base instead
+// would drop a keyed add whenever the UNKEYED token happened to be registered,
+// and a keyed replace would delete the unkeyed registrations while merely
+// appending a second keyed one.
 //
 // The class/factory verbs mirror `addClass`/`addFactory`'s POSITIONAL shape
 // (`signatures` required, then optional `scope`, then optional `key`) rather than
@@ -67,10 +77,13 @@ import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primit
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-// Type-only: the const references `ServiceManifestClass` solely in type position
-// (the `satisfies` bound and the receiver annotation); the runtime install goes
-// through the registry, not a direct `applyAugmentations(ServiceManifestClass, …)`.
-import type { IServiceManifest, ServiceManifestClass } from '../IServiceManifest.js';
+// `keyedToken` is the one place the `base#key` grammar is spelled; the verbs
+// below share it with the add path so a probe and the registration it guards can
+// never disagree. The const otherwise references `ServiceManifestClass` solely in
+// type position (the `satisfies` bound and the receiver annotation); the runtime
+// install goes through the registry, not a direct
+// `applyAugmentations(ServiceManifestClass, …)`.
+import { type IServiceManifest, keyedToken, type ServiceManifestClass } from '../IServiceManifest.js';
 import type { DepSignatures, Token } from '../types.js';
 
 // The authored verbs merge onto core's `IServiceManifestBase` interface -- the
@@ -319,7 +332,7 @@ export const ServiceManifestDescriptorAugmentations = {
     // Already registered: hand the receiver back UNCHANGED. Under an immutable
     // manifest that IS the no-op -- the caller threads the result either way, so
     // there is nothing to swallow and no fake continuation to fabricate.
-    if (manifest.hasRegistrations(token)) {
+    if (manifest.hasRegistrations(keyedToken(token, key))) {
       return manifest;
     }
     return addClassTo(manifest, token, ctor, signatures, scope, key);
@@ -333,7 +346,7 @@ export const ServiceManifestDescriptorAugmentations = {
     scope?: string,
     key?: string,
   ): IServiceManifest<string> {
-    if (manifest.hasRegistrations(token)) {
+    if (manifest.hasRegistrations(keyedToken(token, key))) {
       return manifest;
     }
     return addFactoryTo(manifest, token, factory, signatures, scope, key);
@@ -345,7 +358,7 @@ export const ServiceManifestDescriptorAugmentations = {
     value: unknown,
     key?: string,
   ): IServiceManifest<string> {
-    if (manifest.hasRegistrations(token)) {
+    if (manifest.hasRegistrations(keyedToken(token, key))) {
       return manifest;
     }
     return key === undefined
@@ -361,7 +374,14 @@ export const ServiceManifestDescriptorAugmentations = {
     scope?: string,
     key?: string,
   ): IServiceManifest<string> {
-    return addClassTo(manifest.removeRegistrations(token), token, ctor, signatures, scope, key);
+    return addClassTo(
+      manifest.removeRegistrations(keyedToken(token, key)),
+      token,
+      ctor,
+      signatures,
+      scope,
+      key,
+    );
   },
 
   replaceFactory(
@@ -373,7 +393,7 @@ export const ServiceManifestDescriptorAugmentations = {
     key?: string,
   ): IServiceManifest<string> {
     return addFactoryTo(
-      manifest.removeRegistrations(token),
+      manifest.removeRegistrations(keyedToken(token, key)),
       token,
       factory,
       signatures,
@@ -388,7 +408,7 @@ export const ServiceManifestDescriptorAugmentations = {
     value: unknown,
     key?: string,
   ): IServiceManifest<string> {
-    const kept = manifest.removeRegistrations(token);
+    const kept = manifest.removeRegistrations(keyedToken(token, key));
     return key === undefined ? kept.addValue(token, value) : kept.addValue(token, value, key);
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;

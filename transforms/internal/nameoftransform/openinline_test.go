@@ -74,7 +74,7 @@ export const ManifestInline = {
 	linkPkg(t, app, "@rhombus-std/di.core", core)
 
 	// The sugar overload arrives through the standard consumer declare-module
-	// augmentation, so `services.addClass<I<$1>>(C<$1>)` anchors on the di.core member.
+	// augmentation, so `services.addClass<I<$<1>>>(C<$<1>>)` anchors on the di.core member.
 	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
   interface IServiceManifestBase {
     addClass<T>(ctor: unknown): unknown;

@@ -10,7 +10,7 @@
 // param typed `IResolver` and this constant unify on the same string.
 
 import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IResolver, IResolveScope } from './provider.js';
+import type { IResolver } from './provider.js';
 import type { Token } from './types.js';
 
 /**
@@ -23,22 +23,10 @@ import type { Token } from './types.js';
 export const RESOLVER_TOKEN: Token = tokenfor<IResolver>();
 
 /**
- * The deprecated `IResolveScope` contract token — still recognized so a param
- * typed with that non-generic alias resolves to the provider view too.
- */
-const RESOLVE_SCOPE_TOKEN: Token = tokenfor<IResolveScope>();
-
-/** The set of tokens the engine treats as the intrinsic provider. */
-const PROVIDER_TOKENS: ReadonlySet<Token> = new Set([
-  RESOLVER_TOKEN,
-  RESOLVE_SCOPE_TOKEN,
-]);
-
-/**
  * True when `token` is an intrinsic provider token — one the engine resolves to
  * the live provider view instead of a registration. Always satisfiable during
  * signature selection, and reported as a service by `isService`.
  */
 export function isProviderToken(token: Token): boolean {
-  return PROVIDER_TOKENS.has(token);
+  return token === RESOLVER_TOKEN;
 }

@@ -35,8 +35,7 @@ import { OpenTokenRegistrationError } from './errors.js';
 import type { IServiceProvider } from './provider.js';
 import type { Ctor, Factory, ManifestEntry, OpenRegistration, Registration, SealedManifest } from './registrations.js';
 import type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-import { HOLE_PATTERN, isOpenToken, parseToken } from './token/index.js';
-import { TokenNode } from './token/index.js';
+import { isOpenToken, TokenNode, unkeyedToken } from './token/index.js';
 import type { DepSignatures, DepSlot, Token } from './types.js';
 
 // The authoring TYPE-machinery — the `AddChain` slot algebra and the collection
@@ -82,8 +81,13 @@ const KEY_SEPARATOR = '#';
  * exactly as before. A non-empty key suffixes `#<key>`, landing on the same
  * string the transformer's di direct stage composes into arg0 for
  * `addClass<Keyed<T, K>>(Impl)` — inline (base + key) and direct (composed) agree.
+ *
+ * Exported for the descriptor verbs (`ServiceManifestDescriptorAugmentations`),
+ * which must probe / remove under the SAME token their add path registers under.
+ * Package-internal: it is not re-exported from the barrel, so it never reaches
+ * di.core's published surface.
  */
-function keyedToken(token: Token, key?: string): Token {
+export function keyedToken(token: Token, key?: string): Token {
   return [token, key].filter(Boolean).join(KEY_SEPARATOR);
 }
 
@@ -123,6 +127,23 @@ type PendingProducer =
  */
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
+  // Classify off the UNKEYED base, never the key-composed token. A key suffix
+  // can neither introduce nor remove a hole, and `unkeyedToken` covers the key
+  // SPELLED INTO the token as well as the one passed as the tail argument, so
+  // the two spellings of one keyed template agree here rather than relying on
+  // `isOpenToken`'s internals to see past a key. The typed side has always
+  // handled keys — `TokenNode` parses `base<args>#key`, `baseKey` yields the
+  // `base#key` the engine's open table is indexed by, and `Matcher` compares
+  // template key against ground key.
+  //
+  // THIS IS THE ONLY PLACE A TEMPLATE IS ROUTED. `openEntry`'s "reject a
+  // template nothing could ever match" guard runs only on the branch this
+  // classification picks, so a template mis-read as closed lands in the exact
+  // map as a literal holey token — silently, with no error, resolvable by
+  // nothing. That is why `isOpenToken` answers off the typed tree and not off
+  // raw arg slices: `pkg:IRepo<pkg:IA, $1>` must classify like the canonical
+  // spelling it parses to.
+  const open = isOpenToken(unkeyedToken(pending.base));
   // Union slots reach the engine union-bearing: per-param `#resolveUnion` resolves
   // each union at RESOLVE time and falls through on a member's runtime failure (a
   // ctor that throws at build, a Promise that rejects — union.test's GAP2 /
@@ -134,10 +155,10 @@ function materialise(pending: PendingRegistration): ManifestEntry {
   const producer = pending.producer;
   switch (producer.kind) {
     case 'class': {
-      // An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes
-      // into the open-registration table instead of the exact map; resolution
-      // closes it per requested token.
-      if (isOpenToken(token)) {
+      // An OPEN template token (`pkg:IRepo<$1>`, `pkg:IRepo<pkg:IA,$1>` — any
+      // type arg a hole, at any depth) routes into the open-registration table
+      // instead of the exact map; resolution closes it per requested token.
+      if (open) {
         return openEntry(token, producer.ctor, signatures, pending.scope);
       }
       // Wrap the ctor into a producer. `name`/`arity` are read off the ctor and
@@ -157,7 +178,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
     case 'factory': {
       // Open registrations are class-only: a template must synthesize per-closing
       // class registrations, which a factory/value shape cannot express in v1.
-      if (isOpenToken(token)) {
+      if (open) {
         throw new OpenTokenRegistrationError(token, 'addFactory');
       }
       // The factory IS the producer. `arity` is the factory's OWN declared
@@ -174,7 +195,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
       return Object.freeze({ kind: 'exact', token, registration } satisfies ManifestEntry);
     }
     case 'value': {
-      if (isOpenToken(token)) {
+      if (open) {
         throw new OpenTokenRegistrationError(token, 'addValue');
       }
       // The value collapses to a producer that returns it verbatim. `scope` stays
@@ -198,9 +219,22 @@ function materialise(pending: PendingRegistration): ManifestEntry {
 
 /**
  * Builds the OPEN entry for a class registration whose token is a template.
- * Enforces the v1 all-holes rule: every top-level type argument of the service
- * template must be exactly a hole (`$N`); repeats (`IFoo<$<1>,$<1>>`) are allowed
- * and constrain a match to equal args.
+ * It CLASSIFIES nothing — `materialise` already routed here off the base's
+ * `isOpenToken` — it only parses the template into the tree the engine unifies
+ * against and buckets it under the engine's lookup key. `token` is the
+ * key-COMPOSED string, so a keyed template buckets under `base#key`, which is
+ * exactly the key `#lookup` derives from a keyed closing.
+ *
+ * Any mix of concrete args and holes is legal (`pkg:IRepo<pkg:IA,$1>`,
+ * `pkg:IRepo<app/IBox<$1>>`): a hole binds whatever the closing carries in that
+ * position, a concrete arg must match the closing's exactly, and a repeated hole
+ * label (`IFoo<$1,$1>`) constrains a match to equal args. The v1 all-holes rule
+ * this function used to enforce is retired.
+ *
+ * What is still rejected is a template no closed token could ever match: one the
+ * typed grammar refuses (`"a b<$1>"` — trailing text after the base), and a bare
+ * hole (`"$1"`), which has no base to bucket under and so is never reached by
+ * `#lookup`. Both would otherwise register a silent never-matches.
  */
 function openEntry(
   token: Token,
@@ -208,27 +242,21 @@ function openEntry(
   signatures: DepSignatures | undefined,
   scope: string | undefined,
 ): ManifestEntry {
-  const parsed = parseToken(token);
-  if (parsed === undefined || !parsed.args.every((arg) => HOLE_PATTERN.test(arg))) {
+  const node = TokenNode.tryParse(token);
+  if (node === undefined || node.kind !== 'concrete' || !node.args.length) {
     throw new OpenTokenRegistrationError(token, 'addClass');
   }
-  // The parsed template tree the engine unifies against (`match`). The
-  // string-grammar `parseToken`/`HOLE_PATTERN` above stays the all-holes
-  // classification guard; `TokenNode.tryParse` never throws — an all-holes
-  // template that passed the guard always parses.
-  const node = TokenNode.tryParse(token);
   // Key the open table by the SAME canonical `baseKey` the engine looks it up
   // by (`TokenNode.baseKey(ground)` in `ServiceProviderClass.#lookup`). Deriving
-  // the key from the typed node — not the raw `parseToken` base — keeps
-  // registration and lookup on one canonicalisation: for every canonical template
-  // the two agree (`pkg:IRepo`), and a non-canonical base spelling (`t:IR <$1>`)
-  // now registers under the same stripped key its ground spelling resolves to,
-  // instead of a raw space-bearing key the canonical lookup could never find.
-  const base = node !== undefined ? TokenNode.baseKey(node) : parsed.base;
+  // the key from the typed node keeps registration and lookup on one
+  // canonicalisation: for every canonical template the two agree (`pkg:IRepo`),
+  // and a non-canonical base spelling (`t:IR <$1>`) registers under the same
+  // stripped key its ground spelling resolves to, instead of a raw space-bearing
+  // key the canonical lookup could never find.
+  const base = TokenNode.baseKey(node);
   const open: OpenRegistration = {
     template: token,
     base,
-    pattern: parsed.args,
     ctor,
     scope,
     signatures,
@@ -343,10 +371,11 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * `scope` and `key` are the positional forms of the `.as()` / `.withKey()`
    * modifiers; whichever are omitted stay reachable on the returned chain.
    *
-   * An OPEN template token (`pkg:IRepo<$1>` — every type arg a hole) routes into
-   * the open-registration table instead of the exact map; resolution closes it
-   * per requested token. Mixing concrete args and holes in the service token
-   * throws (v1 all-holes rule).
+   * An OPEN template token (`pkg:IRepo<$1>` — any type arg a hole, at any depth)
+   * routes into the open-registration table instead of the exact map; resolution
+   * closes it per requested token. Concrete args and holes MIX freely
+   * (`pkg:IRepo<pkg:IUser,$1>`, `pkg:IRepo<app/IBox<$1>>`): a concrete arg must
+   * match the closing's exactly, a hole binds whatever the closing carries.
    *
    * Returns a NEW manifest — this one is unchanged.
    */
@@ -487,14 +516,22 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
   }
 
   /**
-   * Returns a manifest with EVERY registration bound to `token` dropped — both
-   * the exact entries under that token AND the open entries whose canonical BASE
-   * is that token. The removal PRIMITIVE behind the
+   * Returns a manifest with EVERY registration bound to `token` dropped: the
+   * exact entries under that token, plus the open entries `token` names — by
+   * their TEMPLATE (`pkg:IRepo<$1>`) or by the canonical BASE they bucket under
+   * (`pkg:IRepo`). The removal PRIMITIVE behind the
    * `ServiceManifestDescriptorAugmentations.removeAll` augmentation, which cannot
    * reach this node's internals from a separate module. Not part of the public
    * authoring interface (`IServiceManifestBase`) — a consumer reaches removal
    * through the fluent `removeAll` augmentation, exactly as `build()` is reached
    * through the di runtime, never as a raw method on the collection surface.
+   *
+   * An open entry answering to BOTH names is DELIBERATELY broader than
+   * `hasRegistrations`, which identifies it by its template alone: removal is the
+   * "drop everything filed under this name" verb (the reference
+   * `RemoveAll(IRepo<>)` affordance — clear a base and every template on it goes),
+   * while dedup is identity-exact, since `pkg:IRepo` and `pkg:IRepo<$1>` are
+   * different services and a bare base must never dedup a template away.
    *
    * It REBASES rather than filters in place: the survivors become the inner list
    * of a fresh root, collapsing the chain walked so far into one frozen array.
@@ -502,13 +539,17 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * returned manifest.
    */
   public removeRegistrations(token: Token): IServiceManifest<Scopes> {
-    const kept = [...this].filter((entry) => entry.kind === 'exact' ? entry.token !== token : entry.base !== token);
+    const kept = [...this].filter((entry) =>
+      entry.kind === 'exact'
+        ? entry.token !== token
+        : entry.open.template !== token && entry.base !== token
+    );
     return new ServiceManifestClass<Scopes>(Object.freeze(kept));
   }
 
   /**
    * True when `token` already has at least one registration — an exact entry, or
-   * (for an open template token) a matching template among the open entries. The
+   * (for an open template token) the same template among the open entries. The
    * "already registered?" PRIMITIVE behind the `tryAdd*` augmentations
    * (`ServiceManifestDescriptorAugmentations`), which cannot reach this node's
    * internals from a separate module. Like `removeRegistrations`, it is not part
@@ -518,22 +559,17 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * The token is our service-type key (the reference `TryAdd` dedups by
    * `ServiceType`). Matching is exact — an open template dedups against the same
-   * template string, never against a closing it could synthesize.
+   * template string, never against a closing it could synthesize and never
+   * against the bare base it buckets under.
    */
   public hasRegistrations(token: Token): boolean {
-    // An open template dedups against the same template STRING only (never a
-    // closing it could synthesize). Classification stays on the string predicate;
-    // the `parseToken !== undefined` guard reproduces the old behavior (a bare
-    // hole is open but unparseable, so it dedups against nothing).
-    const openQuery = isOpenToken(token) && parseToken(token) !== undefined;
+    // Plain string equality on BOTH arms. An open entry's template always carries
+    // a hole and a bare hole never registers (`openEntry` rejects it), so no
+    // classification guard is needed to keep a closed query off the open arm —
+    // and a guard built on `isOpenToken` would miss a KEYED template outright,
+    // since the string grammar cannot see a hole past a `#key` suffix.
     for (const entry of this) {
-      if (entry.kind === 'exact') {
-        if (entry.token === token) {
-          return true;
-        }
-        continue;
-      }
-      if (openQuery && entry.open.template === token) {
+      if (entry.kind === 'exact' ? entry.token === token : entry.open.template === token) {
         return true;
       }
     }
@@ -549,12 +585,15 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    * list keeps registration order, so `#resolveKeyed`'s iteration order and the
    * last-wins semantics are exactly what the authoring order implies.
    *
-   * Deep-freezing the maps and each per-token list means a provider's view is
-   * fixed at build time. Nothing can invalidate it after the fact anyway — a
-   * later `add()` returns a DIFFERENT manifest and leaves this chain untouched —
-   * but the freeze keeps the snapshot honest against the engine, which adds its
-   * own MUTABLE closed-registration memo separately (synthesized closings land
-   * there, never in these sealed maps).
+   * Each per-token LIST is frozen, so a provider can never grow or reorder the
+   * registrations of one token. The two MAPS are read-only by type only:
+   * `Object.freeze` seals a Map's own properties, not its internal entry slots,
+   * so a frozen Map still accepts `set` — freezing them would assert a runtime
+   * guarantee that does not exist. The `ReadonlyMap` in `SealedManifest` is what
+   * holds the line, and nothing can invalidate the snapshot anyway: a later
+   * `add()` returns a DIFFERENT manifest and leaves this chain untouched, and
+   * the engine keeps its synthesized closings in its own MUTABLE memo rather
+   * than in these maps.
    *
    * This is the collection's own concern, so it lives here in di.core. The
    * ENGINE-CONSTRUCTING half — turning this snapshot into a `IServiceProvider` —
@@ -577,8 +616,6 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
     for (const list of openRegistrations.values()) {
       Object.freeze(list);
     }
-    Object.freeze(registrations);
-    Object.freeze(openRegistrations);
 
     return { registrations, openRegistrations };
   }

@@ -21,14 +21,14 @@
 // one's cached instance — when no matching frame encloses the owner, the dep
 // resolves transiently (a fresh instance) instead.
 
-import { closeSignatures, closeToken, type DepSlot, type FactoryRef, isFactoryRef, isLiteralRef, isOpenToken,
-  isProviderToken, isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, type ServiceProviderOptions, type Token,
-  TokenNode, type TypeArgRef, type Union } from '@rhombus-std/di.core';
+import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, closeSignatures, closeToken,
+  type DepSlot, type FactoryRef, FactoryTargetError, isFactoryRef, isLiteralRef, isOpenToken, isProviderToken,
+  isTypeArgRef, isUnionSlot, type LiteralRef, Matcher, MissingMetadataError, NoSatisfiableSignatureError,
+  NoSatisfiableUnionError, OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError,
+  ScopeValidationError, type ServiceProviderOptions, Specificity, type Token, TokenNode, type TypeArgRef, type Union,
+  unkeyedToken, UnregisteredTokenError } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
-  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
-  RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
 import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Registration } from './types.js';
 
 /**
@@ -37,6 +37,50 @@ import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Regi
  * serves every provider — the tree-op replacement for the former free `match`.
  */
 const MATCHER = new Matcher();
+
+/**
+ * The most-specific-wins metric behind `rankTemplates`. Stateful only WITHIN one
+ * `measure` call (it resets its own hole tally), so one module-level instance
+ * serves every provider, exactly like `MATCHER`.
+ */
+const SPECIFICITY = new Specificity();
+
+/** One ranked open-template candidate — its parsed tree paired with the
+ * registration it came from, so the caller never re-derives either. */
+interface RankedTemplate {
+  readonly template: TokenNode;
+  readonly open: OpenRegistration;
+}
+
+/**
+ * Orders the open templates bucketed under one base MOST-SPECIFIC FIRST, ties
+ * broken by LATEST registration (bucket order is registration order), and drops
+ * any whose template does not parse. See §125 for why the engine needs the rule
+ * once a template may mix concrete args and holes.
+ *
+ * The tree comes off the registration when present; a hand-built
+ * `OpenRegistration` literal that omitted `node` is reparsed here (an
+ * unparseable one is simply not a candidate, matching the old `continue`).
+ * `#lookup` memoizes its result per closed token, so this runs once per closing.
+ */
+function rankTemplates(candidates: readonly OpenRegistration[]): RankedTemplate[] {
+  const ranked: Array<RankedTemplate & { readonly index: number; readonly score: number; }> = [];
+  for (let i = 0; i < candidates.length; i++) {
+    const open = candidates[i]!;
+    const template = open.node ?? TokenNode.tryParse(open.template);
+    if (template === undefined) {
+      continue;
+    }
+    ranked.push({ template, open, index: i, score: SPECIFICITY.measure(template) });
+  }
+  ranked.sort((a, b) => b.score - a.score || b.index - a.index);
+  return ranked;
+}
+
+/** The shared empty closing list — the miss result of `#closings`, never
+ * memoized (misses are unbounded, so caching them would grow the memo without
+ * limit). */
+const NO_CLOSINGS: readonly Registration[] = Object.freeze([]);
 
 /** True when a value implements the native synchronous `Disposable`. */
 function isDisposable(value: unknown): value is Disposable {
@@ -286,6 +330,14 @@ class Scope {
   /** Owned instances in construction order — disposed in reverse. */
   readonly owned: unknown[] = [];
 
+  /**
+   * Set when the provider that opened this frame closed it. Disposal does NOT
+   * cascade to child scopes, so a child outlives its parent's frame and would
+   * otherwise keep caching into it — the flag is what lets `#resolveWith` refuse
+   * a CLOSED owner rather than own an instance nothing will ever drain.
+   */
+  disposed = false;
+
   public constructor(
     /** This scope's name — must match the registration's lifetime tag. */
     public readonly name: string,
@@ -328,12 +380,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
 
   /**
    * The memo of registrations synthesized from open matches, keyed by closed
-   * token. Deliberately MUTABLE and shared across ALL providers of one tree
-   * (`build()` creates it once and every `createScope` passes the same Map),
-   * so a closing resolved in one frame reuses the identical Registration
-   * object everywhere. The sealed maps are never touched.
+   * token — the FULL ranked closing list per token, since a closed token may be
+   * covered by several overlapping templates and a collection resolution wants
+   * them all. Deliberately MUTABLE and shared across ALL providers of one tree
+   * (`build()` creates it once and every `createScope` passes the same Map), so
+   * a closing resolved in one frame reuses the identical Registration object
+   * everywhere. The sealed maps are never touched.
    */
-  readonly #closedMemo: Map<Token, Registration>;
+  readonly #closedMemo: Map<Token, readonly Registration[]>;
 
   /**
    * The provider options (`ServiceProviderOptions`), shared across the tree —
@@ -345,7 +399,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public constructor(
     registrations: ReadonlyMap<Token, Registration[]>,
     openRegistrations: ReadonlyMap<Token, readonly OpenRegistration[]>,
-    closedMemo: Map<Token, Registration>,
+    closedMemo: Map<Token, readonly Registration[]>,
     /** This provider's scope frame, if any. */
     frame?: Scope,
     /** The provider's validation options; omitted ⇒ no validation. */
@@ -377,6 +431,22 @@ export class ServiceProviderClass<S extends string = string> implements IService
     return this.#frame.name as S;
   }
 
+  /**
+   * The use-after-dispose guard every public entry point opens with — the
+   * reference container's `ObjectDisposedException` check.
+   *
+   * `dispose()` drains the frame's `owned` list and is idempotent, so an
+   * instance constructed after teardown would be cached and owned by a frame
+   * nothing will ever drain again: built, never disposed, silently leaked. The
+   * guard makes that loud instead. `dispose`/`disposeAsync` themselves stay
+   * unguarded — a second close is a no-op by contract.
+   */
+  #assertLive(operation: string): void {
+    if (this.#disposed) {
+      throw new ProviderDisposedError(operation);
+    }
+  }
+
   // ── IScopeFactory ─────────────────────────────────────────────────────────────
 
   /**
@@ -390,6 +460,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public createScope(
     ...args: 'scoped' extends S ? [name?: S] : [name: S]
   ): IServiceProvider<S> {
+    this.#assertLive('createScope');
     return this.#childScope((args[0] ?? 'scoped') as string, this.#frame);
   }
 
@@ -424,6 +495,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolve<T>(token: Token, key?: string): T;
   public resolve(token: Token, key?: string): unknown;
   public resolve<T>(token?: Token, key: string | RegExp = ''): T | T[] {
+    this.#assertLive('resolve');
     if (token === undefined) {
       throw new TypeError(
         'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
@@ -451,6 +523,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolveAsync<T>(token: Token): Promise<T>;
   public resolveAsync(token: Token): Promise<unknown>;
   public async resolveAsync<T>(token?: Token): Promise<T> {
+    this.#assertLive('resolveAsync');
     if (token === undefined) {
       throw new TypeError(
         'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no token '
@@ -475,6 +548,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public tryResolve<T>(token: Token, key?: string): T | undefined;
   public tryResolve(token: Token, key?: string): unknown;
   public tryResolve<T>(token?: Token, key: string | RegExp = ''): T | T[] | undefined {
+    this.#assertLive('tryResolve');
     if (token === undefined) {
       throw new TypeError(
         'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
@@ -506,6 +580,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * registered token whose dependencies are missing still reports `true`.
    */
   public isService(token: Token): boolean {
+    this.#assertLive('isService');
     return this.#isKnown(token);
   }
 
@@ -539,50 +614,48 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolveFactory<F>(type: Token, params?: readonly Token[]): F;
   public resolveFactory(type: Token, params?: readonly Token[]): unknown;
   public resolveFactory(type: Token, params?: readonly Token[]): unknown {
+    this.#assertLive('resolveFactory');
     return this.#makeFactory({ type, params }, this.#frame);
   }
 
   // ── Registration lookup ─────────────────────────────────────────────────────
 
   /**
-   * Returns the most-recent registration for `token` from the sealed map.
-   * The sealed map is shared across all providers in the tree; local overrides
-   * are not supported in the new model (scope-local registration is deleted).
+   * Every registration `token` can be served by, MOST-SPECIFIC FIRST — the
+   * synthesized closings of every open template whose base bucket `token` falls
+   * into and whose shape it unifies with. The result is memoized under the closed
+   * token and the memo is shared across the whole provider tree, so one closing
+   * is synthesized ONCE: singular resolution and a collection element that name
+   * the same template get the identical `Registration` object, and the frame
+   * cache (keyed by registration) therefore keys them together.
    *
-   * The single lookup funnel — instance resolution, factory injection, and
-   * satisfiability all come through here. On an exact miss the open-generic
-   * fallback chain runs: memo hit → parse as closed-generic → open-table match
-   * → substitute → synthesize a class `Registration` → memoize. Exact beats
-   * open (this order IS the precedence rule). Never throws: a holey token
-   * simply misses (so `#isResolvable` is false for it); the dedicated error is
-   * raised by `#resolve`.
+   * The chain: memo hit → reject a holey token (letting one reach the open table
+   * would "close" a template with its own holes) → parse as a closed generic →
+   * ranked open-table candidates → match → substitute → synthesize. Never throws:
+   * a malformed token, a non-generic one, and an empty bucket all miss cleanly.
+   * A miss is NOT memoized — misses are unbounded (every `Promise<T>` probe is
+   * one), so caching them would grow the map without limit.
    */
-  #lookup(token: Token): Registration | undefined {
-    const list = this.#registrations.get(token);
-    if (list !== undefined && list.length) {
-      return list[list.length - 1];
-    }
-
+  #closings(token: Token): readonly Registration[] {
     const memoized = this.#closedMemo.get(token);
     if (memoized !== undefined) {
       return memoized;
     }
 
-    // An open template is not resolvable — and letting it reach the open table
-    // would "close" the template with its own holes. Classification stays on the
-    // string predicate (the registration-boundary grammar). Miss, never throw.
-    if (isOpenToken(token)) {
-      return undefined;
+    // An open template is not resolvable. Classification runs through the SAME
+    // `isOpenToken` the registration boundary uses — so a request and a
+    // registration never disagree about what is a template — over the UNKEYED
+    // token so a keyed one is seen for what it is. Miss, never throw.
+    if (isOpenToken(unkeyedToken(token))) {
+      return NO_CLOSINGS;
     }
 
     // Parse the closed GROUND token into the typed model. A malformed or
     // non-generic token is not an open-template closing — miss cleanly.
-    // `tryParse` never throws, so `#lookup` never throws (a parse failure that
-    // the old `parseToken` returned `undefined` for now becomes a `tryParse`
-    // miss).
+    // `tryParse` never throws, so this never throws.
     const ground = TokenNode.tryParse(token);
     if (ground === undefined || ground.kind !== 'concrete' || !ground.args.length) {
-      return undefined;
+      return NO_CLOSINGS;
     }
 
     // The open table is keyed by the template's base; `TokenNode.baseKey(ground)`
@@ -590,22 +663,18 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // matching key.
     const candidates = this.#openRegistrations.get(TokenNode.baseKey(ground));
     if (candidates === undefined) {
-      return undefined;
+      return NO_CLOSINGS;
     }
 
-    // Scan from the END so the most-recently-registered matching template wins,
-    // mirroring the exact map's last-wins list semantics. Pure recency — NO
-    // specificity ranking / most-specific-wins (gated; downstream open
-    // registrations are all single-hole, so this is exactly today's behavior).
-    for (let i = candidates.length - 1; i >= 0; i--) {
-      const open = candidates[i]!;
-      // The parsed template tree — carried on the registration, or reparsed for a
-      // hand-built `OpenRegistration` literal that omitted `node`. `match` gates
-      // arity positionally and binds holes with repeated-hole equality.
-      const template = open.node ?? TokenNode.tryParse(open.template);
-      if (template === undefined) {
-        continue;
-      }
+    // MOST-SPECIFIC-FIRST, ties to the latest registration (§125). Since a
+    // template may mix concrete args and holes (§124), overlap on one base is
+    // normal — `IRepo<IUser,$1>` and `IRepo<$1,$2>` both live under `IRepo` —
+    // and pure recency would silently serve the general template to an author
+    // who registered the specific one first. Identical templates score equally
+    // and fall through to the latest index, so the exact map's last-wins list
+    // semantics are preserved where they were the only rule in play.
+    const synthesized: Registration[] = [];
+    for (const { template, open } of rankTemplates(candidates)) {
       const bind = MATCHER.match(template, ground);
       if (!bind) {
         continue;
@@ -618,16 +687,21 @@ export class ServiceProviderClass<S extends string = string> implements IService
       //
       // Substitution can fail when a mis-authored template references a hole the
       // service token never binds (e.g. `IX<$1,$3>` carrying a dep on `$2`) —
-      // `closeSignatures` throws `RangeError` then. #lookup must NEVER throw (so
+      // `closeSignatures` throws `RangeError` then. This must NEVER throw (so
       // `#isResolvable` can probe safely and greedy selection can fall back), so
-      // treat a substitution failure as a plain miss: no synthesis, no memo entry.
+      // a template that cannot be closed simply is not a candidate FOR THIS
+      // closing — the same `continue` a `match` miss takes. Aborting the whole
+      // scan instead would let one mis-authored template delete the closings
+      // already synthesized from its better-ranked siblings. With every
+      // candidate skipped the list ends up empty, which is the miss the sole
+      // mis-authored template case wants.
       let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
       if (open.signatures !== undefined) {
         try {
           signatures = closeSignatures(open.signatures, bind);
         } catch (err) {
           if (err instanceof RangeError) {
-            return undefined;
+            continue;
           }
           throw err;
         }
@@ -635,20 +709,44 @@ export class ServiceProviderClass<S extends string = string> implements IService
 
       // Synthesize the closed producer record. Wrap the template ctor exactly as
       // the builder does for an exact class, carrying `name`/`arity` off the ctor
-      // (the wrapper itself reports `""`/`0`). Memoize under the ORIGINAL token
-      // string.
+      // (the wrapper itself reports `""`/`0`).
       const ctor = open.ctor;
-      const registration: Registration = {
+      synthesized.push({
         produce: (...a: unknown[]) => new ctor(...a),
         scope: open.scope,
         signatures,
         name: ctor.name,
         arity: ctor.length,
-      };
-      this.#closedMemo.set(token, registration);
-      return registration;
+      });
     }
-    return undefined;
+
+    if (!synthesized.length) {
+      return NO_CLOSINGS;
+    }
+    // Memoize under the ORIGINAL token string.
+    const closings = Object.freeze(synthesized);
+    this.#closedMemo.set(token, closings);
+    return closings;
+  }
+
+  /**
+   * Returns the ONE registration singular resolution of `token` uses: the
+   * most-recent exact registration, else the most-specific open-template closing.
+   * The sealed map is shared across all providers in the tree; local overrides
+   * are not supported in the new model (scope-local registration is deleted).
+   *
+   * The single lookup funnel — instance resolution, factory injection, and
+   * satisfiability all come through here. Exact beats open (this order IS the
+   * precedence rule). Never throws: a holey token simply misses (so
+   * `#isResolvable` is false for it); the dedicated error is raised by
+   * `#resolve`.
+   */
+  #lookup(token: Token): Registration | undefined {
+    const list = this.#registrations.get(token);
+    if (list !== undefined && list.length) {
+      return list[list.length - 1];
+    }
+    return this.#closings(token)[0];
   }
 
   /**
@@ -734,8 +832,13 @@ export class ServiceProviderClass<S extends string = string> implements IService
           | Pending<T>;
       }
       // A holey token can never resolve — it is a template naming a FAMILY of
-      // tokens. Distinguish that from a plain miss so the fix is actionable.
-      if (isOpenToken(token)) {
+      // tokens. Distinguish that from a plain miss so the fix is actionable, for
+      // every spelling of the template and not just the canonical one
+      // (`resolve("pkg:IRepo< $1 >")` used to answer `UnregisteredTokenError`).
+      // Over the UNKEYED token: `resolve("pkg:IRepo<$1>", "redis")` composes
+      // `pkg:IRepo<$1>#redis`, and the unbound hole — not the key — is the
+      // actionable half of that diagnosis.
+      if (isOpenToken(unkeyedToken(token))) {
         throw new OpenTokenResolutionError(token);
       }
       throw new UnregisteredTokenError(token);
@@ -779,6 +882,18 @@ export class ServiceProviderClass<S extends string = string> implements IService
     const owner = registration.scope
       ? ServiceProviderClass.#findOwner(vantage, registration.scope)
       : undefined;
+
+    // ── The owning frame must still be OPEN. `#assertLive` guards THIS provider,
+    // but disposal does not cascade, so a live child scope can still reach a
+    // parent frame whose provider was closed — and an instance cached there is
+    // the exact leak the dispose guard exists to prevent (a second, idempotent
+    // `dispose()` never re-drains it). Refuse loudly instead. A transient
+    // registration has no owner and so cannot leak; it is unaffected.
+    if (owner?.disposed) {
+      throw new ProviderDisposedError(
+        `resolve "${token}" into the closed "${owner.name}" scope`,
+      );
+    }
 
     // ── Scope validation (`validateScopes`). A scope tag with no matching open
     // frame would fall back to a transient — the central-principle fallback —
@@ -884,19 +999,27 @@ export class ServiceProviderClass<S extends string = string> implements IService
   }
 
   /**
-   * The registrations to aggregate for a collection's element token, in
-   * registration order. The exact per-token list when present; otherwise the
-   * single open-generic closing `#lookup` synthesizes (so `Iterable<IRepo<X>>`
-   * enumerates the one closed `IRepo<X>` a template produces), or none — an
+   * The registrations to aggregate for a collection's element token: EVERY
+   * open-template closing the element unifies with, then the exact per-token
+   * list. Both contribute — an open template is a registration of its closings,
+   * so `Array<IHandler<Cmd>>` enumerates the closings of every `IHandler<$1>`
+   * template alongside any exact `IHandler<Cmd>`. Neither present ⇒ an
    * unregistered element aggregates to EMPTY.
+   *
+   * ORDER. The aggregate's LAST element must be the instance bare-`T` resolution
+   * yields, since that is what last-wins means to a caller holding both. So the
+   * exact list (whose last entry `#lookup` returns) comes last, and the closings
+   * — ranked most-specific-first — are REVERSED, putting the most specific one
+   * `#lookup` would pick nearest the end. Within each group registration order
+   * is preserved.
    */
   #collectionRegistrations(element: Token): readonly Registration[] {
-    const exact = this.#registrations.get(element);
-    if (exact !== undefined && exact.length) {
+    const exact = this.#registrations.get(element) ?? [];
+    const closings = this.#closings(element);
+    if (!closings.length) {
       return exact;
     }
-    const synthesized = this.#lookup(element);
-    return synthesized ? [synthesized] : [];
+    return [...closings].reverse().concat(exact);
   }
 
   /**
@@ -914,8 +1037,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * the bare token; a specific pattern matches those keys. 0 matches is `[]`,
    * never a throw.
    *
-   * Keyed registrations are ordinary exact registrations, so only the exact
-   * `#registrations` map is scanned — open-generic synthesis is not keyed.
+   * BOTH tables feed the scan. Keyed registrations are ordinary exact
+   * registrations, but an open template may be keyed too, so a matching key
+   * whose only registration is a template closing must appear here exactly as it
+   * appears under the singular `resolve(base, key)` — otherwise the two views of
+   * one registration disagree. Each matching key resolves through
+   * `#collectionRegistrations`, which is the same closings-then-exact rule
+   * `Array<T>` aggregates by; for a key with no template it returns the exact
+   * list untouched.
    */
   #resolveKeyed<T>(
     base: Token,
@@ -925,30 +1054,70 @@ export class ServiceProviderClass<S extends string = string> implements IService
   ): T[] {
     const prefix = base + KEY_SEPARATOR;
     const matches: T[] = [];
-    for (const [token, list] of this.#registrations) {
-      let keyPortion: string;
-      if (token === base) {
-        keyPortion = '';
-      } else if (token.startsWith(prefix)) {
-        keyPortion = token.slice(prefix.length);
+    // The pattern belongs to the CALLER. A `/…/g` regex advances `lastIndex` on
+    // every `test`, so the scan zeroes it before each key to stay stateless
+    // across the keys — and restores what the caller handed in on the way out,
+    // so a resolve never mutates an argument it was lent.
+    const callerLastIndex = pattern.lastIndex;
+    try {
+      for (const token of this.#keySpace(base, prefix)) {
+        pattern.lastIndex = 0;
+        if (!pattern.test(token === base ? '' : token.slice(prefix.length))) {
+          continue;
+        }
+        for (const registration of this.#collectionRegistrations(token)) {
+          const result = this.#resolveWith<T>(token, registration, vantage, stack, false);
+          if (isPending(result)) {
+            throw new AsyncResolutionRequiredError(token);
+          }
+          matches.push(result);
+        }
+      }
+    } finally {
+      pattern.lastIndex = callerLastIndex;
+    }
+    return matches;
+  }
+
+  /**
+   * The tokens making up `base`'s key-space — `base` itself and every
+   * `base + "#" + <k>` anything is registered under — in registration order,
+   * exact registrations first.
+   *
+   * The exact map is keyed by the token itself, so its arm is a prefix test. The
+   * open table is keyed by the TEMPLATE's `baseKey` (`pkg:IRepo#redis`), which
+   * shares the ground token's base but not its generic args, so its arm maps each
+   * matching bucket back to the closed token that bucket would serve — the key is
+   * carried across, the generics come from `base`.
+   */
+  *#keySpace(base: Token, prefix: string): Generator<Token> {
+    const yielded = new Set<Token>();
+    for (const token of this.#registrations.keys()) {
+      if (token === base || token.startsWith(prefix)) {
+        yielded.add(token);
+        yield token;
+      }
+    }
+    const ground = TokenNode.tryParse(base);
+    if (ground === undefined) {
+      return;
+    }
+    const groundBase = TokenNode.baseKey(ground);
+    const openPrefix = groundBase + KEY_SEPARATOR;
+    for (const bucket of this.#openRegistrations.keys()) {
+      let token: Token;
+      if (bucket === groundBase) {
+        token = base;
+      } else if (bucket.startsWith(openPrefix)) {
+        token = prefix + bucket.slice(openPrefix.length);
       } else {
         continue;
       }
-      // Reset `lastIndex` so a caller's `/…/g` regex is stateless across the
-      // per-key tests (a global regex advances `lastIndex` on every `test`).
-      pattern.lastIndex = 0;
-      if (!pattern.test(keyPortion)) {
-        continue;
-      }
-      for (const registration of list) {
-        const result = this.#resolveWith<T>(token, registration, vantage, stack, false);
-        if (isPending(result)) {
-          throw new AsyncResolutionRequiredError(token);
-        }
-        matches.push(result);
+      if (!yielded.has(token)) {
+        yielded.add(token);
+        yield token;
       }
     }
-    return matches;
   }
 
   /**
@@ -1017,6 +1186,11 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * `IResolver` / `IScopeFactory` typed parameter). A IServiceProvider-like view
    * that continues the active cycle `stack` and resolves relative to
    * `owningFrame`.
+   *
+   * A view is typically held by a long-lived instance and called long after the
+   * resolve that minted it, so each of its members opens with the same
+   * use-after-dispose guard the public entry points do — it reads the very same
+   * `#disposed` flag, since the view is a face on THIS provider.
    */
   #makeProviderView(
     owningFrame: Scope | undefined,
@@ -1026,6 +1200,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
     const sp = this;
     return {
       resolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] => {
+        sp.#assertLive('resolve');
         if (depToken === undefined) {
           throw new TypeError(
             'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
@@ -1039,6 +1214,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
         return sp.#resolve<U>(composeKeyed(depToken, key), owningFrame, stack, false, captor) as U;
       },
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
+        sp.#assertLive('resolveAsync');
         if (depToken === undefined) {
           throw new TypeError(
             'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no '
@@ -1048,6 +1224,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
         return settle(sp.#resolve<U>(depToken, owningFrame, stack, true, captor)) as Promise<U>;
       },
       tryResolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] | undefined => {
+        sp.#assertLive('tryResolve');
         if (depToken === undefined) {
           throw new TypeError(
             'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token '
@@ -1064,11 +1241,18 @@ export class ServiceProviderClass<S extends string = string> implements IService
         // Sync mode never yields a Pending — the spine throws on a cached one.
         return sp.#resolve<U>(lookupToken, owningFrame, stack, false, captor) as U;
       },
-      isService: (depToken: Token): boolean => sp.#isKnown(depToken),
-      resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
-        sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
-      createScope: (...args: ['scoped'?] | [S]): IServiceProvider<S> =>
-        sp.#childScope((args[0] ?? 'scoped') as string, owningFrame),
+      isService: (depToken: Token): boolean => {
+        sp.#assertLive('isService');
+        return sp.#isKnown(depToken);
+      },
+      resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown => {
+        sp.#assertLive('resolveFactory');
+        return sp.#makeFactory({ type: depToken, params: depParams }, owningFrame);
+      },
+      createScope: (...args: ['scoped'?] | [S]): IServiceProvider<S> => {
+        sp.#assertLive('createScope');
+        return sp.#childScope((args[0] ?? 'scoped') as string, owningFrame);
+      },
     } as IResolver & IScopeFactory<S>;
   }
 
@@ -1096,6 +1280,13 @@ export class ServiceProviderClass<S extends string = string> implements IService
    *
    * The closure captures `owningFrame`. §5.4 holds at call time: the target's
    * deps resolve relative to the scope that owns the factory-holding instance.
+   *
+   * Both returned callables open with the same use-after-dispose guard the
+   * public entry points and the provider view do. A factory is minted during one
+   * resolve and INVOKED arbitrarily later — typically off a slot injected into a
+   * long-lived instance — so the guard on the minting call says nothing about the
+   * call that builds; without it a closed scope keeps constructing into a frame
+   * nothing will drain again.
    */
   #makeFactory(
     ref: FactoryRef,
@@ -1118,7 +1309,10 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // stored instance every call) and the strict zero-arg factory alike — with
     // the kinds collapsed, no target-shape branch is needed.
     if (callerParams === undefined) {
-      return () => sp.#resolve<unknown>(ref.type, owningFrame, [], false);
+      return () => {
+        sp.#assertLive(`invoke the factory for "${ref.type}"`);
+        return sp.#resolve<unknown>(ref.type, owningFrame, [], false);
+      };
     }
 
     // Parameterized mode: the target's signatures ride on its registration
@@ -1134,8 +1328,9 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // params-claimed slots and resolving the remainder from the container.
     // A fresh cycle stack per call — the factory runs outside the resolve that
     // created it.
-    return (...callArgs: unknown[]) =>
-      sp.#buildPartitioned(
+    return (...callArgs: unknown[]) => {
+      sp.#assertLive(`invoke the factory for "${ref.type}"`);
+      return sp.#buildPartitioned(
         ref.type,
         target,
         targetSignature as readonly DepSlot[] | undefined,
@@ -1143,6 +1338,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
         callArgs,
         owningFrame,
       );
+    };
   }
 
   /**
@@ -1220,7 +1416,8 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * Greedy signature selection. Scans signatures longest → shortest and returns
    * the first SATISFIABLE one. A slot is satisfiable when it is:
    *
-   *   - a `FactoryRef` — always satisfiable; injected as a callable;
+   *   - a `FactoryRef` — satisfiable iff its TARGET token resolves (injection
+   *     itself raises `FactoryTargetError` on a miss);
    *   - a `LiteralRef` — always satisfiable; injected as its value (Rule 2);
    *   - a `Union` — satisfiable iff at least one member is resolvable; or
    *   - a string token whose registration exists in the sealed map, the
@@ -1239,10 +1436,27 @@ export class ServiceProviderClass<S extends string = string> implements IService
     async: boolean,
   ): readonly DepSlot[] {
     const unsatisfiable = new Set<Token>();
+    // Factory-target misses are tracked apart from the plain unsatisfiable
+    // tokens so the more actionable `FactoryTargetError` still surfaces when an
+    // unregistered target is the ONLY thing standing in the way.
+    const factoryMisses = new Set<Token>();
     for (const sig of orderByArityDesc(signatures)) {
       let satisfiable = true;
       for (const slot of sig) {
-        if (isFactoryRef(slot) || isLiteralRef(slot)) {
+        if (isLiteralRef(slot)) {
+          continue;
+        }
+        if (isFactoryRef(slot)) {
+          // A factory slot is satisfiable iff its TARGET is registered —
+          // `#makeFactory` raises `FactoryTargetError` on a miss, and a signature
+          // that is going to throw is not one greedy selection should pick over a
+          // shorter one that builds. `#validateSlot` has always tested the target
+          // this way; selection used to accept the slot unconditionally and then
+          // hard-fail at construction.
+          if (this.#lookup(slot.type) === undefined) {
+            satisfiable = false;
+            factoryMisses.add(slot.type);
+          }
           continue;
         }
         if (isTypeArgRef(slot)) {
@@ -1275,6 +1489,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
       }
     }
 
+    // Nothing built. When every obstacle was an unregistered factory TARGET,
+    // raise the error `#makeFactory` used to — it names the one token to
+    // register, against the signature-level "some dependency is missing". A run
+    // that also hit a plain unregistered token is not a factory problem, so it
+    // keeps the general error.
+    if (factoryMisses.size && !unsatisfiable.size) {
+      throw new FactoryTargetError([...factoryMisses][0]!, 'unregistered');
+    }
     throw new NoSatisfiableSignatureError(token, targetName, [...unsatisfiable]);
   }
 
@@ -1318,14 +1540,19 @@ export class ServiceProviderClass<S extends string = string> implements IService
 
   /**
    * True when a slot is resolvable in ANY form:
-   *   - `FactoryRef` / `LiteralRef` — always satisfiable (injected);
+   *   - `LiteralRef` — always satisfiable (its value is injected verbatim);
+   *   - `FactoryRef` — satisfiable iff its TARGET token resolves, since
+   *     `#makeFactory` raises `FactoryTargetError` otherwise;
    *   - `Union` — satisfiable iff at least one member is resolvable (recursive);
    *   - string token — the intrinsic provider token, a registration in the
    *     sealed map, or (async) the `Promise<T>` fallback.
    */
   #isResolvableSlot(slot: DepSlot, async: boolean): boolean {
-    if (isFactoryRef(slot) || isLiteralRef(slot)) {
+    if (isLiteralRef(slot)) {
       return true;
+    }
+    if (isFactoryRef(slot)) {
+      return this.#lookup(slot.type) !== undefined;
     }
     if (isTypeArgRef(slot)) {
       return false;
@@ -1684,9 +1911,11 @@ export class ServiceProviderClass<S extends string = string> implements IService
     throwDisposalFailures(failures);
   }
 
-  /** Drops owned references after disposal so they can be collected. */
+  /** Drops owned references after disposal so they can be collected, and marks
+   * the frame closed so a still-live CHILD scope cannot cache into it. */
   #clear(): void {
     if (this.#frame) {
+      this.#frame.disposed = true;
       this.#frame.cache.clear();
       this.#frame.owned.length = 0;
     }

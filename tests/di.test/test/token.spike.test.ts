@@ -4,8 +4,8 @@
 // parse/canon/match against ground truth, so the tests aren't self-confirming.
 
 import { describe, expect, test } from 'bun:test';
-import { type Descriptor, Matcher, RESOLVER_TOKEN_STRING, Specificity, Substituter, TokenManifest, TokenNode,
-  TokenProvider } from '../../../libraries/di.core/src/token/index.ts';
+import { Matcher, RESOLVER_TOKEN_STRING, Specificity, Substituter,
+  TokenNode } from '../../../libraries/di.core/src/token/index.ts';
 
 // The module's former free-function surface was folded into the `TokenNode` static
 // companion + the visitor ops. These thin adapters re-expose the old names so this
@@ -394,9 +394,14 @@ describe('canonicalisation — parse → stringify is canonical, idempotent, ora
     expect(canonicalise('IFoo<72#k>')).toBe('IFoo<72#k>');
   });
 
-  test('hole labels canonicalise (leading zeros) but reject out-of-range', () => {
-    expect(canonicalise('$01')).toBe('$1');
-    expect(canonicalise('IFoo<$007>')).toBe('IFoo<$7>');
+  test('hole labels are 1-based, leading-zero-free, and in safe-integer range', () => {
+    // One spelling per label: a leading zero is a parse error, not a second
+    // spelling canonicalisation has to fold away.
+    expect(() => parse('$01')).toThrow();
+    expect(() => parse('IFoo<$007>')).toThrow();
+    expect(() => parse('$0')).toThrow();
+    expect(canonicalise('$1')).toBe('$1');
+    expect(canonicalise('IFoo<$7>')).toBe('IFoo<$7>');
     // Beyond the safe-integer range a label would lose precision / emit
     // e-notation the grammar can't re-parse — reject at parse instead.
     expect(() => parse('$9007199254740993')).toThrow();
@@ -539,165 +544,5 @@ describe('specificity + substitute', () => {
     // A non-canonical base spelling strips to the same canonical key, so an open
     // registration and its closing agree on one open-table key.
     expect(baseKey(parse('pkg:IRepo <$1>'))).toBe('pkg:IRepo');
-  });
-});
-
-// ── Manifest + lookup ─────────────────────────────────────────────────────────
-
-describe('TokenManifest — decorator, toArray-at-seal, split indexes', () => {
-  test('add canonicalises the token; toArray preserves registration order', () => {
-    const manifest = new TokenManifest<string>();
-    manifest.add('pkg:IFoo< pkg:IA >', 'a');
-    manifest.add('pkg:IFoo<pkg:IB>', 'b');
-    const descriptors = manifest.toArray();
-    expect(descriptors).toHaveLength(2);
-    expect(descriptors[0]!.token).toBe('pkg:IFoo<pkg:IA>');
-    expect(descriptors.map((d) => d.producer)).toEqual(['a', 'b']);
-  });
-
-  test('seal splits exact registrations from open templates', () => {
-    const manifest = new TokenManifest<string>();
-    manifest.add('pkg:IService', 'svc');
-    manifest.add('pkg:IRepo<$1>', 'repo-open');
-    const sealed = manifest.seal();
-    expect([...sealed.exact.keys()]).toEqual(['pkg:IService']);
-    expect([...sealed.templates.keys()]).toEqual(['pkg:IRepo']);
-    expect(Object.isFrozen(sealed.exact)).toBe(true);
-    expect(Object.isFrozen(sealed.templates)).toBe(true);
-    expect(Object.isFrozen(sealed.exact.get('pkg:IService'))).toBe(true);
-  });
-});
-
-describe('TokenProvider.lookup', () => {
-  function provider(build: (m: TokenManifest<string>) => void): TokenProvider<string> {
-    const manifest = new TokenManifest<string>();
-    build(manifest);
-    return new TokenProvider(manifest.seal());
-  }
-
-  test('exact raw hit — no parse, last-wins over the retained list', () => {
-    const p = provider((m) => {
-      m.add('pkg:IService', 'first');
-      m.add('pkg:IService', 'second');
-    });
-    expect(p.lookup('pkg:IService')!.producer).toBe('second');
-  });
-
-  test('canon-on-miss recovers whitespace / quote / number variance', () => {
-    const p = provider((m) => {
-      m.add('pkg:IRepo<pkg:IA>', 'closed');
-    });
-    // Registered canonical, looked up with whitespace + variance — no exact-raw hit.
-    const hit = p.lookup('pkg:IRepo<  pkg:IA  >');
-    expect(hit!.producer).toBe('closed');
-    // Memoised under the raw key: same descriptor object on the second call.
-    expect(p.lookup('pkg:IRepo<  pkg:IA  >')).toBe(hit);
-  });
-
-  test('open-template synthesis substitutes the impl signatures on close', () => {
-    const p = provider((m) => {
-      m.add('pkg:IRepo<$1>', 'repo', [[parse('$1'), parse('pkg:IDb')]]);
-    });
-    const hit = p.lookup('pkg:IRepo<pkg:IA>')!;
-    expect(hit.token).toBe('pkg:IRepo<pkg:IA>');
-    expect(hit.producer).toBe('repo');
-    expect(hit.signatures!.map((s) => s.map(stringify))).toEqual([['pkg:IA', 'pkg:IDb']]);
-    // Memoised under the closed canonical string.
-    expect(p.lookup('pkg:IRepo<pkg:IA>')).toBe(hit);
-  });
-
-  test('reordered / subset holes synthesise correctly', () => {
-    const p = provider((m) => {
-      m.add('pkg:IFoo<$7,pkg:IB,$3>', 'foo', [[parse('$3')], [parse('$7')]]);
-    });
-    const hit = p.lookup('pkg:IFoo<pkg:IX,pkg:IB,pkg:IY>')!;
-    expect(hit.signatures!.map((s) => s.map(stringify))).toEqual([['pkg:IY'], ['pkg:IX']]);
-  });
-
-  test('partial closing — a concrete template arg gates the match', () => {
-    const p = provider((m) => {
-      m.add('pkg:IFoo<$7,pkg:IB,$3>', 'foo');
-    });
-    expect(p.lookup('pkg:IFoo<pkg:IX,pkg:IB,pkg:IY>')).toBeDefined();
-    expect(p.lookup('pkg:IFoo<pkg:IX,pkg:IC,pkg:IY>')).toBeUndefined();
-  });
-
-  test('most-specific template wins among overlapping templates', () => {
-    const p = provider((m) => {
-      m.add('pkg:IFoo<$1,$2>', 'general');
-      m.add('pkg:IFoo<$1,pkg:IST>', 'specific');
-    });
-    expect(p.lookup('pkg:IFoo<pkg:IX,pkg:IST>')!.producer).toBe('specific');
-    expect(p.lookup('pkg:IFoo<pkg:IX,pkg:IY>')!.producer).toBe('general');
-  });
-
-  test('keyed open template gates by base-plus-key', () => {
-    const p = provider((m) => {
-      m.add('pkg:IRepo<$1>#primary', 'keyed', [[parse('$1')]]);
-    });
-    const hit = p.lookup('pkg:IRepo<pkg:IA>#primary')!;
-    expect(hit.token).toBe('pkg:IRepo<pkg:IA>#primary');
-    expect(hit.signatures!.map((s) => s.map(stringify))).toEqual([['pkg:IA']]);
-    // A differently-keyed close does not match the primary template.
-    expect(p.lookup('pkg:IRepo<pkg:IA>#secondary')).toBeUndefined();
-  });
-
-  test('a non-generic miss short-circuits before template synthesis', () => {
-    const p = provider((m) => {
-      m.add('pkg:IRepo<$1>', 'repo');
-    });
-    expect(p.lookup('pkg:IUnknown')).toBeUndefined();
-  });
-
-  test('a descriptor carries its scope through synthesis', () => {
-    const p = provider((m) => {
-      m.add('pkg:IRepo<$1>', 'repo', undefined, 'scoped');
-    });
-    const hit: Descriptor<string> = p.lookup('pkg:IRepo<pkg:IA>')!;
-    expect(hit.scope).toBe('scoped');
-  });
-
-  test('a repeated-hole template wins over a distinct-hole peer, add-order-independent', () => {
-    const general = provider((m) => {
-      m.add('pkg:IPair<$1,$2>', 'general');
-      m.add('pkg:IPair<$1,$1>', 'equality');
-    });
-    const flipped = provider((m) => {
-      m.add('pkg:IPair<$1,$1>', 'equality');
-      m.add('pkg:IPair<$1,$2>', 'general');
-    });
-    // On the diagonal the equality template must win, whichever order they were added.
-    expect(general.lookup('pkg:IPair<pkg:IA,pkg:IA>')!.producer).toBe('equality');
-    expect(flipped.lookup('pkg:IPair<pkg:IA,pkg:IA>')!.producer).toBe('equality');
-    // Off the diagonal only the general template matches.
-    expect(general.lookup('pkg:IPair<pkg:IA,pkg:IB>')!.producer).toBe('general');
-  });
-
-  test('duplicate open templates resolve last-wins, matching the exact map', () => {
-    const p = provider((m) => {
-      m.add('pkg:IRepo<$1>', 'first');
-      m.add('pkg:IRepo<$1>', 'second');
-    });
-    expect(p.lookup('pkg:IRepo<pkg:IA>')!.producer).toBe('second');
-  });
-
-  test('distinct large-integer literal registrations do not conflate', () => {
-    const p = provider((m) => {
-      m.add('pkg:IFoo<9007199254740992>', 'A');
-      m.add('pkg:IFoo<9007199254740993>', 'B');
-    });
-    expect(p.lookup('pkg:IFoo<9007199254740992>')!.producer).toBe('A');
-    expect(p.lookup('pkg:IFoo<9007199254740993>')!.producer).toBe('B');
-  });
-
-  test('an open or partially-open query misses (never synthesises an unbound hole)', () => {
-    const p = provider((m) => {
-      m.add('pkg:IPair<$1,$2>', 'pair', [[parse('$1'), parse('$2')]]);
-      m.add('pkg:IRepo<$1>', 'repo');
-    });
-    // Partially open — one arg is still a hole.
-    expect(p.lookup('pkg:IPair<pkg:IA,$5>')).toBeUndefined();
-    // Wholly open.
-    expect(p.lookup('pkg:IRepo<$99>')).toBeUndefined();
   });
 });

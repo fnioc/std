@@ -1,4 +1,4 @@
-import { OpenTokenRegistrationError, ServiceManifest } from '@rhombus-std/di';
+import { OpenTokenRegistrationError, ServiceManifest, UnregisteredTokenError } from '@rhombus-std/di';
 import type { IServiceManifest, ManifestEntry, Token } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 import { G, T } from './fixtures.js';
@@ -349,9 +349,63 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     expect(() => services.addValue(G.RepoTemplate, 'x')).toThrow(OpenTokenRegistrationError);
   });
 
-  test('a mixed concrete/hole service token throws from the addClass call', () => {
+  test('a mixed concrete/hole service token registers as an OPEN entry, no throw', () => {
     const services = new ServiceManifest<'singleton'>();
-    expect(() => services.addClass('app/IR<pkg:IA,$1>', Alpha, [[]])).toThrow(
+    expect(() => services.addClass('app/IR<pkg:IA,$1>', Alpha, [[]])).not.toThrow();
+  });
+
+  test('an unmatchable open service token throws from the addClass call', () => {
+    const services = new ServiceManifest<'singleton'>();
+    // A bare hole names no base to bucket under, so no closing could reach it.
+    expect(() => services.addClass('$1', Alpha, [[]])).toThrow(
+      OpenTokenRegistrationError,
+    );
+  });
+
+  test('withKey on an open template registers a KEYED open entry the closings reach', () => {
+    // Classification runs on the BASE token, so the `#k` suffix cannot hide the
+    // hole from it. The entry buckets under `pkg:IRepo#k` — the key a keyed
+    // closing derives — so only the matching key resolves through it.
+    const services = new ServiceManifest<'singleton'>();
+    const sp = services.addClass(G.RepoTemplate, Alpha, [[]]).withKey('k').build();
+
+    expect(sp.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
+    expect(() => sp.resolve('pkg:IRepo<pkg:IA>')).toThrow(UnregisteredTokenError);
+    expect(() => sp.resolve('pkg:IRepo<pkg:IA>', 'other')).toThrow(UnregisteredTokenError);
+  });
+
+  test('the key SPELLED INTO the token registers exactly as the tail argument does', () => {
+    // The two spellings of one keyed template must agree, so classification
+    // strips the key off the token before asking the string grammar — which
+    // otherwise stops at the `#` and reads the whole thing as closed.
+    const composed = new ServiceManifest<'singleton'>()
+      .addClass('pkg:IRepo<$1>#k', Alpha, [[]])
+      .build();
+    const split = new ServiceManifest<'singleton'>()
+      .addClass(G.RepoTemplate, Alpha, [[]], 'singleton', 'k')
+      .build();
+
+    expect(composed.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
+    expect(split.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
+    expect(() => composed.resolve('pkg:IRepo<pkg:IA>')).toThrow(UnregisteredTokenError);
+  });
+
+  test('the composed spelling reaches the factory and value rejections too', () => {
+    const services = new ServiceManifest<'singleton'>();
+    expect(() => services.addFactory('pkg:IRepo<$1>#k', () => 1, [[]])).toThrow(
+      OpenTokenRegistrationError,
+    );
+    expect(() => services.addValue('pkg:IRepo<$1>#k', 'x')).toThrow(
+      OpenTokenRegistrationError,
+    );
+  });
+
+  test('a keyed open template still rejects the factory and value verbs', () => {
+    const services = new ServiceManifest<'singleton'>();
+    expect(() => services.addFactory(G.RepoTemplate, () => 1, [[]]).withKey('k')).toThrow(
+      OpenTokenRegistrationError,
+    );
+    expect(() => services.addValue(G.RepoTemplate, 'x', 'k')).toThrow(
       OpenTokenRegistrationError,
     );
   });

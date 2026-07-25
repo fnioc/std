@@ -1,11 +1,14 @@
 # `@rhombus-std/di`
 
-`di.core` (the abstractions and the concrete `ServiceManifest` registration builder, registration-time
-errors, `ActivatorUtilities`, the `EmptyServiceProvider` null-object singleton) ← `di` (the resolution
+`di.core` (the abstractions and the concrete `ServiceManifest` registration builder, the whole error
+taxonomy — registration-time and resolution-time alike — and the `EmptyServiceProvider` null-object
+singleton) ← `di` (the resolution
 engine: scopes, resolution, captive-dependency protection, `ServiceProviderOptions`-gated
-`validateScopes`/`validateOnBuild`, and aggregated disposal). `di.transformer` (token derivation,
+`validateScopes`/`validateOnBuild`, and aggregated disposal; it re-exports the taxonomy so both
+imports name the same classes). A library references `di.core`; only an entry point references `di`.
+`di.extras` (token derivation,
 dependency extraction, registration lowering, factory-signature diagnostic) depends on `di.core`
-types only, never the `di` runtime. `di.transformer.options` is a satellite lowering the
+types only, never the `di` runtime. `di.extras.options` is a satellite lowering the
 `addOptions<T>()` sugar.
 
 ## Justified divergences
@@ -147,11 +150,13 @@ services = services.addClass('pkg:IRepository<$1>', Repository, [[{
 
 ### 7. Factory resolution with caller-supplied params
 
-The reference container's `ActivatorUtilities` builds a factory via reflection over a
-constructor's parameter types. Here, a `(...params) => T` factory is derived from a typed
-parameter (the transformer partitions the target's own constructor against the factory's declared
-parameters) or from `resolveFactory(token, params?)` directly — no reflection anywhere, and a
-param the caller claims always wins over a container registration for that same token.
+The reference container serves this through a static activator helper that reflects over a
+constructor's parameter types to build a factory. That helper has no counterpart here — there is
+no runtime reflection to build it on, and the job it exists for is already covered: a
+`(...params) => T` factory is derived from a typed parameter (the transformer partitions the
+target's own constructor against the factory's declared parameters) or from
+`resolveFactory(token, params?)` directly — no reflection anywhere, and a param the caller claims
+always wins over a container registration for that same token.
 
 ```ts
 class Report {
@@ -314,7 +319,9 @@ services = services.addClass<ICache>(RedisCache).withSignature<
 One more cross-cutting difference: every failure mode here is a typed subclass of `DiError`
 (`UnregisteredTokenError`, `NoSatisfiableSignatureError`, `CircularDependencyError`,
 `AsyncDisposalRequiredError`, `ScopeValidationError`, `RegistrationValidationError`, …), so callers
-branch on `instanceof` instead of parsing an exception message.
+branch on `instanceof` instead of parsing an error message. The whole taxonomy is declared in
+`di.core`, so a library that references only the abstractions can classify what a caller's container
+threw at it.
 
 ## Design notes
 
@@ -365,7 +372,7 @@ not appear anywhere in `libraries/di*`):
   second resolution channel in the rejected sense.
 - **A separate ABI package** — the ABI types and the token/registration machinery that reads and
   writes them are one intrinsic unit; splitting them buys no decoupling. (Package boundaries have
-  since evolved into `di.core`/`di`/`di.transformer`/`di.transformer.options` — a different split
+  since evolved into `di.core`/`di`/`di.extras`/`di.extras.options` — a different split
   than the PRD's original three-package `core`/`di`/`transformer`, but the "no separate ABI
   package" reasoning still applies to why there's no fifth `di.abi` package today.)
 
@@ -373,7 +380,7 @@ not appear anywhere in `libraries/di*`):
 
 The PRD's exact token-derivation grammar (package-public vs. app-internal path rules, nested-type
 qualification, the `<source>:<exportName>` format) plausibly still holds in spirit — the same
-concept names (`tokenfor`, app-internal fallback) exist in `libraries/primitives.transformer/src` —
+concept names (`tokenfor`, app-internal fallback) exist in `libraries/primitives.extras/src` —
 but wasn't diffed rule-by-rule against the current implementation here. Same caveat for the exact
 factory-signature diagnostic rules and the full token-derivation edge-case table. Verify against
-`libraries/primitives.transformer/src` before citing exact behavior.
+`libraries/primitives.extras/src` before citing exact behavior.

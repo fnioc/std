@@ -164,10 +164,60 @@ describe('isOpenToken', () => {
     expect(isOpenToken('pkg:IFoo<pkg:IBar<./src/Baz>,number>')).toBe(false);
   });
 
-  test('hole-lookalikes are not holes: quoted literal, $0, prefix/suffix text', () => {
+  test('hole-lookalikes are not holes: quoted literal, prefix/suffix text', () => {
     expect(isOpenToken('pkg:IFoo<"$1">')).toBe(false);
-    expect(isOpenToken('pkg:IFoo<$0>')).toBe(false);
     expect(isOpenToken('pkg:IFoo<x$1>')).toBe(false);
     expect(isOpenToken('pkg:IFoo<$1x>')).toBe(false);
+  });
+
+  // Classification is SPELLING-INDEPENDENT: it reads the typed tree, so every
+  // spelling that parses to one template classifies alike. Reading raw arg
+  // slices used to hide the hole in all of these, and `materialise` then filed
+  // the template in the exact map as a literal holey token nothing can resolve.
+  test('whitespace around a hole does not hide it', () => {
+    expect(isOpenToken('pkg:IFoo< $1 >')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<pkg:IBar, $1>')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<$1 , $2>')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<pkg:IBar< $1 >>')).toBe(true);
+  });
+
+  // The hole grammar is 1-based and leading-zero-free, and it is stated ONCE —
+  // in the tree parser. `isOpenToken` reads its answer back off the tree rather
+  // than carrying a pattern of its own, so there is no second grammar that could
+  // drift from it. `$0` / `$01` / `$007` are ordinary text, not holes.
+  test('hole labels are 1-based: $0 is not a hole', () => {
+    expect(isOpenToken('$0')).toBe(false);
+    expect(isOpenToken('pkg:IFoo<$0>')).toBe(false);
+    expect(isOpenToken('pkg:IFoo<pkg:IBar<$0>>')).toBe(false);
+  });
+
+  test('a leading-zero label is not a hole either', () => {
+    expect(isOpenToken('$01')).toBe(false);
+    expect(isOpenToken('pkg:IFoo<$01>')).toBe(false);
+    expect(isOpenToken('pkg:IFoo<$007>')).toBe(false);
+    // `$1` is untouched — only the alternative spellings of it are gone.
+    expect(isOpenToken('pkg:IFoo<$1>')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<$7>')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<$10>')).toBe(true);
+  });
+
+  test('a keyed template is open; classification sees past the key', () => {
+    expect(isOpenToken('pkg:IRepo<$1>#redis')).toBe(true);
+    expect(isOpenToken('pkg:IRepo<pkg:IA>#redis')).toBe(false);
+  });
+
+  test('a token the tree grammar refuses falls back to the shallow scan', () => {
+    // Trailing text after the base — no tree to read. The shallow scan splits
+    // the args and asks the same predicate about each, so it still calls this
+    // open, which is what routes it to `openEntry`'s rejection.
+    expect(isOpenToken('a b<$1>')).toBe(true);
+    expect(isOpenToken('a b<pkg:IBar<$1>>')).toBe(true);
+  });
+
+  test('the fallback uses the parser hole grammar, not a looser one of its own', () => {
+    // Same refused-by-the-tree shape as above, but the label is not a hole. If
+    // the fallback carried its own pattern this is where the two could part.
+    expect(isOpenToken('a b<$0>')).toBe(false);
+    expect(isOpenToken('a b<$01>')).toBe(false);
   });
 });

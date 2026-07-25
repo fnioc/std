@@ -110,3 +110,67 @@ describe('replace (unconditional)', () => {
     expect(services.build().resolve<Second>(T.Service).which).toBe('second');
   });
 });
+
+// A keyed verb registers under the COMPOSED token `base#key`, so its dedup probe
+// and its removal have to name that same composed token. Probing the bare base
+// instead made a keyed add collide with an unrelated unkeyed registration.
+describe('the keyed verbs probe and remove the COMPOSED token', () => {
+  test('a keyed tryAdd registers even when the UNKEYED token is taken', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, First, [[]]);
+    services = services.tryAdd(T.Service, Second, [[]], 'singleton', 'alt');
+
+    const sp = services.build();
+    expect(sp.resolve<First>(T.Service).which).toBe('first');
+    expect(sp.resolve<Second>(T.Service, 'alt').which).toBe('second');
+  });
+
+  test('two tryAdds under DIFFERENT keys both register', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.tryAddValue(T.Config, { v: 1 }, 'a');
+    services = services.tryAddValue(T.Config, { v: 2 }, 'b');
+
+    const sp = services.build();
+    expect(sp.resolve<{ v: number; }>(T.Config, 'a')).toEqual({ v: 1 });
+    expect(sp.resolve<{ v: number; }>(T.Config, 'b')).toEqual({ v: 2 });
+  });
+
+  test('a keyed tryAdd is still a no-op when the KEYED token is taken', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, { v: 1 }, 'a');
+    services = services.tryAddValue(T.Config, { v: 2 }, 'a');
+
+    const all = services.build().resolve<Array<{ v: number; }>>(`Array<${T.Config}#a>`);
+    expect(all).toEqual([{ v: 1 }]);
+  });
+
+  test('a keyed replace swaps the KEYED registration and leaves the unkeyed one alone', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass(T.Service, First, [[]]);
+    services = services.addClass(T.Service, First, [[]], 'singleton', 'alt');
+    services = services.replace(T.Service, Second, [[]], 'singleton', 'alt');
+
+    const sp = services.build();
+    expect(sp.resolve<First>(T.Service).which).toBe('first');
+    const keyed = sp.resolve<Second[]>(`Array<${T.Service}#alt>`);
+    expect(keyed).toHaveLength(1);
+    expect(keyed[0]!.which).toBe('second');
+  });
+
+  test('replaceValue / replaceFactory honor the key too', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, { v: 1 });
+    services = services.addValue(T.Config, { v: 2 }, 'a');
+    services = services.replaceValue(T.Config, { v: 9 }, 'a');
+    const sp = services.build();
+    expect(sp.resolve<{ v: number; }>(T.Config)).toEqual({ v: 1 });
+    expect(sp.resolve<{ v: number; }>(T.Config, 'a')).toEqual({ v: 9 });
+
+    let other = new ServiceManifest<'singleton'>();
+    other = other.addClass(T.Service, First, [[]]);
+    other = other.replaceFactory(T.Service, () => new Second(), [[]], 'singleton', 'alt');
+    const otherSp = other.build();
+    expect(otherSp.resolve<First>(T.Service).which).toBe('first');
+    expect(otherSp.resolve<Second>(T.Service, 'alt').which).toBe('second');
+  });
+});

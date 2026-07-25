@@ -76,25 +76,22 @@ export interface Registration {
 }
 
 /**
- * An OPEN registration — a class bound to an open template token whose type
- * arguments are all holes (`pkg:IRepo<$1>`). It never resolves directly;
- * resolving a closed token that misses the exact map matches against these
- * (base + arity + repeated-hole equality, last registered wins), substitutes
- * the closing's arg tokens through the carried signatures, and synthesizes an
- * ordinary class `Registration` (a ctor-wrapping producer) memoized per closed
- * token.
+ * An OPEN registration — a class bound to an open template token, i.e. one
+ * carrying a hole in some type-argument position at some depth (`pkg:IRepo<$1>`,
+ * `pkg:IRepo<pkg:IUser,$1>`, `pkg:IRepo<app/IBox<$1>>`). It never resolves
+ * directly; resolving a closed token that misses the exact map unifies it against
+ * these (base + key + arity, then per-arg: a concrete arg must match exactly, a
+ * hole binds, a repeated hole label must bind equal), substitutes the binding
+ * through the carried signatures, and synthesizes an ordinary class
+ * `Registration` (a ctor-wrapping producer) memoized per closed token. Templates
+ * overlapping on one base are tried MOST-SPECIFIC-FIRST, ties to the latest
+ * registered (§125).
  */
 export interface OpenRegistration {
   /** The full template token as registered (`pkg:IRepo<$1>`). */
   readonly template: Token;
-  /** The template's base (`pkg:IRepo`) — the open-table key. */
+  /** The template's canonical base + key (`pkg:IRepo`) — the open-table key. */
   readonly base: Token;
-  /**
-   * The parsed top-level args of the template — each exactly a hole (`$N`).
-   * Length is the arity; repeated holes (`["$1","$1"]`) constrain a match to
-   * equal arg tokens.
-   */
-  readonly pattern: readonly Token[];
   readonly ctor: Ctor;
   /** The lifetime tag, applied per closing. `undefined` means transient. */
   readonly scope: string | undefined;
@@ -135,7 +132,8 @@ export type ManifestEntry =
 /**
  * The sealed, immutable snapshot a `ServiceManifestClass` hands to the engine.
  * `ServiceManifestClass.seal()` materialises its entry stream into these two
- * deep-frozen tables; `@rhombus-std/di`'s `build()` extension reads it to construct the
+ * read-only tables (each per-token list frozen; the Maps are read-only by TYPE,
+ * since `Object.freeze` does not seal a Map's entry slots); `@rhombus-std/di`'s `build()` extension reads it to construct the
  * provider (the engine-constructing half stays in the runtime package). This is
  * the seam that lets the collection live in di.core while provider construction
  * lives in di.

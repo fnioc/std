@@ -87,11 +87,11 @@ class SqlRepository<T> implements IRepository<T> {
 }
 ```
 
-A service token's type arguments must be **all holes or all concrete** — mixing the two (`IRepository<$<1>, User>`) is a compile error. Dependency types inside the constructor body may mix holes and concrete types freely.
+A service token's type arguments may mix holes and concrete types freely (`IRepository<$<1>, User>`) — a concrete argument has to match the requested closing exactly, a hole binds whatever the closing carries there. Dependency types inside the constructor body mix the two freely as well.
 
 ### Diagnostics
 
-The transformer surfaces several statically-detectable mistakes as compile-time diagnostics, each anchored at the offending source location — a factory whose declared parameter count doesn't match its target constructor, an anonymous type it can't derive a token for, an unbound generic type parameter, a service token that mixes holes and concrete arguments, and a dependency hole that isn't bound anywhere in the service token. Every check is conservative: it fires only when a mismatch is statically certain.
+The transformer surfaces its own lowering failures as compile-time diagnostics, each anchored at the offending source location — an anonymous type it can't derive a token for, an unbound generic type parameter, a non-tuple signature, an unsupported field shape. It does not police your design: what a registration means is the container's business, and the runtime raises those errors at the registration or resolve call. Every check is conservative: it fires only when the transformer is statically certain it cannot lower the call.
 
 ### The manual escape hatch
 

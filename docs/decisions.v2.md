@@ -500,9 +500,9 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 
 - **Holes are labels, not indices.** `$N` binds by label, so a template may use non-sequential, reordered holes (`add<IFoo<$7, SomeType, $3>>(Foo<$3, $7>)`): `match` records a label→token map, a repeated label must bind consistently (canonical compare), and `substituteSignaturesByLabel` closes the carried dep signatures by that map — throwing `RangeError` on an unbound label so a gappy template (`IX<$1,$3>` depending on `$2`) stays a clean miss, not a crash.
 - **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
-- **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
+- **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. (`HOLE_PATTERN` was deleted by §129 — the hole grammar is stated once, by the tree parser.) That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
-- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up.
+- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **SUPERSEDED:** both are now live — the all-holes registration guard is retired so partial closing works (§124), and template selection is most-specific-first (§125). The string-grammar-as-classifier half is superseded too: `isOpenToken` reads the typed tree now (§127), so `materialise` and `#lookup` classify off `TokenNode` and the shallow scan survives only as the fallback for a token the tree grammar refuses.
 
 Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
 
@@ -753,3 +753,442 @@ backstop that catches one that never got pruned or lowered. A SOURCE-WRITTEN use
 call directly) has no later rescue, so it emits a targeted diagnostic naming the problem
 immediately. This retires the prior split behavior where different code paths independently chose
 `""` vs `null` vs no diagnostic for the same underlying "can't derive this" condition.
+
+---
+
+## §124 — The all-holes open-registration rule is retired; a template mixes concrete args and holes freely
+
+`ServiceManifestClass.openEntry` used to enforce a v1 rule that every top-level type argument of
+an open service template be exactly a hole (`$N`), throwing `OpenTokenRegistrationError` on
+`addClass("pkg:IRepo<pkg:IUser,$1>", …)`. That rule is retired. The typed matcher (§106) has
+always been fully recursive on its concrete arm — a concrete template arg requires an equal ground
+arg, a hole binds — so partial closing worked end-to-end on the resolve side and only registration
+blocked it. §118 killed the transform-side twin (diagnostics 990008/990009/990010) on the ruling
+that validating a user's design is not a transform's job; this retires the runtime guard §118 left
+standing.
+
+`openEntry` now classifies nothing — `materialise` already routed to it off `isOpenToken` — and
+only parses the template into the tree the engine unifies against. What it still rejects is a
+template no closed token could ever match: one the typed grammar refuses (`"a b<$1>"`, whose base
+stops at the space, leaving trailing text) and a bare hole (`"$1"`), which names no base to bucket
+under. Both previously registered a **silent never-matches** — the unparseable one through
+`openEntry`'s `node !== undefined ? … : parsed.base` fallback, so that phantom is fixed by the same
+change. `OpenRegistration.pattern` (the parsed top-level args, documented as "each exactly a hole")
+is deleted: it was written at registration and read nowhere, and its contract is exactly the
+retired rule.
+
+One known gap stayed OPEN at the time, pinned by a test rather than fixed: `materialise`
+classified with the string-grammar `isOpenToken`, which requires the closing `>` to be the token's
+last character, so a KEYED open template (`pkg:IRepo<$1>#k`, reachable via `.withKey`) read as
+closed and registered as an exact holey entry no closing could resolve. Moving the classifier onto
+`TokenNode.tryParse` + `TokenNode.isOpen` would fix that and drop the string grammar's second
+parser, but it also flips `$0` from not-a-hole (`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole
+(the typed parser accepts any digits), which `token-grammar.test.ts` pins. — **CLOSED by §126**,
+which classifies the UNKEYED token instead: a key suffix can neither introduce nor remove a hole,
+so stripping it needs no new parser and leaves the `$0` question untouched. — **§127 then took the
+`tryParse` route anyway**, because the key was only one of several spellings the raw-slice scan
+could not see; `$0` is still held back by an explicit 1-based rule in the classifier, so the
+`token-grammar.test.ts` pin stands. — **§129 closed the `$0` question the other way round**: the
+tree parser adopted the 1-based, leading-zero-free grammar, so there is no laxer grammar left for a
+classifier rule to hold back against and `HOLE_PATTERN` is deleted.
+
+_Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
+guard's shape (reject only what can never match, on the typed tree) is Claude's.
+
+---
+
+## §125 — Overlapping open templates are selected most-specific-first, not by recency
+
+`ServiceProviderClass.#lookup` scanned the open-template bucket from the end — pure recency, which
+§106 gated deliberately because under the all-holes rule the only possible overlap was
+repeated-hole vs distinct-hole. §124 makes overlap the normal case: `IRepo<User,$1>` and
+`IRepo<$1,$2>` share the `IRepo` bucket, and under recency an author who registers the specific
+template first and the general one second silently resolves through the general one — a wrong
+instance, not an error, and not discoverable. So the ranking §106 named as "a one-guard-removal,
+ME-divergent follow-up" lands with the guard removal.
+
+Candidates are ordered by `Specificity.measure` descending, ties broken by descending registration
+index — the exact rule di.core's gated reference manifest already implemented and unit-tested
+(that reference is gone as of §127; the engine's own `rankTemplates` is the only statement of the
+rule now). Ranking is per closing and its result memoizes into `#closedMemo`, so
+the sort is paid once per distinct closed token. Every pre-existing open-generic behaviour survives
+by construction: identical templates score equally and fall to the latest index (last-wins, and
+`.as()`'s scoped copy with it), `IPair<$1,$1>` (score 2) already outranked `IPair<$1,$2>` (1) by
+registration order and now does so regardless of order, and distinct arities never share a bucket
+slot to contend for. _ME-divergent: the reference DI has no most-specific-wins rule (its open
+generics cannot carry a concrete arg at all, so nothing overlaps)._
+
+---
+
+## §126 — The di correctness sweep: keyed identity, open-template identity, and use-after-dispose
+
+A general audit of `libraries/di.core` and `libraries/di` for correctness bugs and vestigial code,
+run on top of §124/§125. Everything below was reproduced against the built bundle before it was
+touched. The findings cluster: most of them are one identity question — _what token, exactly, does
+this operation name?_ — answered inconsistently by two sides of the same seam.
+
+**Keyed registration.** A keyed registration lives under the composed token `base#key`
+(`keyedToken`), but three places named the bare base instead.
+
+- `materialise` asked `isOpenToken` about the COMPOSED token. The string grammar cannot see a hole
+  past a key, so a keyed open template classified CLOSED and landed as an exact entry on a literal
+  holey string — a dead registration, no error. Classification moves to the BASE token, which the
+  key cannot affect, and everything downstream already handled the keyed case (`TokenNode` parses
+  `base<args>#key`, `openEntry`'s `baseKey` yields the `base#key` the open table is indexed by,
+  `Matcher` compares template key against ground key). `addFactory`/`addValue` gain the same reach.
+  This is the §124 gap, closed without the parser swap that entry contemplated.
+- `tryAdd*` probed `hasRegistrations(base)` and `replace*` called `removeRegistrations(base)` while
+  their add path composed `base#key`. So a keyed `tryAdd` was dropped whenever the UNKEYED token
+  happened to be registered, two `tryAdd`s under different keys collided, and a keyed `replace`
+  DELETED the unkeyed registrations while merely appending a second keyed one. All six verbs now
+  compose through `keyedToken`, which di.core exports package-internally for them.
+
+**Open-entry identity.** An open entry has two names — its TEMPLATE (`pkg:IRepo<$1>`) and the
+canonical BASE it buckets under (`pkg:IRepo`). `removeRegistrations` matched only the base,
+`hasRegistrations` only the template, so no query could satisfy both: `removeAll` handed a template
+removed nothing, and `replace` on a template therefore accumulated duplicates without bound
+(masked at resolve time by the ranked scan). Removal now accepts EITHER name; dedup still accepts
+the template alone. The asymmetry is deliberate: removal is the "drop everything filed under this
+name" verb (the reference `RemoveAll(IRepo<>)` affordance, already pinned by a test), while dedup
+is identity-exact — `pkg:IRepo` and `pkg:IRepo<$1>` are different services.
+
+**Collections aggregate every matching template.** `#collectionRegistrations` reached the open
+table through `#lookup`, which returns at most ONE registration and only when the exact list is
+empty. So several templates covering one closing collapsed to the winner, and an exact registration
+of the closing suppressed the open closings entirely. `#lookup` splits into `#closings(token)` —
+every match, ranked most-specific-first, memoized per closed token — and a thin `#lookup` returning
+`closings[0]`, so singular resolution is unchanged and the memo still guarantees ONE `Registration`
+object per closing (bare-`T` and the aggregate element therefore share a frame-cache slot). ORDER
+is the new rule: the aggregate's last element must be what bare-`T` yields, so the exact list comes
+LAST and the closings are reversed out of their rank; registration order holds within each group.
+
+**Use after dispose.** `#disposed` was read only by `dispose`/`disposeAsync` themselves. A closed
+scope kept resolving, and anything it built landed in the `owned` list that a second (idempotent)
+`dispose()` never re-drains — constructed, cached, silently leaked undisposed. Every entry point,
+`createScope` and the injected `IResolver` view included, now raises `ProviderDisposedError`, the
+reference's `ObjectDisposedException` behaviour. `dispose`/`disposeAsync` stay unguarded.
+
+**Smaller repairs.** A `FactoryRef` slot is satisfiable only when its TARGET resolves — greedy
+selection used to accept it unconditionally and then hard-fail, where an unregistered plain token
+makes it fall through to a shorter signature; the more actionable `FactoryTargetError` is still
+raised when a missing target is the sole obstacle. `EmptyServiceProvider`'s keyed PLURAL overloads
+return `[]` instead of throwing / returning `undefined` (`IRequiredResolver`: "0 matches yields
+`[]` — never throws on count"). `#resolveKeyed` restores the caller's `pattern.lastIndex`.
+`seal()`'s `Object.freeze` on the two Maps is deleted — it seals a Map's own properties, not its
+entry slots, so a "frozen" sealed map still accepts `set`; the per-token LISTS are the real
+immutability and `ReadonlyMap` is the rest. `FactoryTargetError.reason` narrows to
+`"unregistered"`: `"not-a-class"` lost its referent when the three authoring kinds collapsed into
+one `produce` closure, and nothing has ever constructed it.
+
+**A second pass over the sweep's own diff** found five more, each reproduced against the built
+bundle before it was touched. The first is a regression the sweep itself introduced.
+
+- **One mis-authored template poisoned every sibling on its base.** Splitting `#lookup` into
+  `#closings` turned a return-on-first-match scan into a full one, but the `RangeError` arm kept its
+  `return` — so a gappy template reached AFTER a valid winner was already synthesized discarded that
+  winner and every other closing with it, un-memoized, on every resolve. A template that cannot be
+  closed is simply not a candidate FOR THIS closing: the arm now `continue`s, exactly as a `match`
+  miss does, and the empty list at the end is what the sole-gappy-template case (pinned by an
+  existing test) wants. It also keeps a collection from losing the elements a gappy sibling cannot
+  contribute.
+- **Factory callables bypassed the dispose guard.** `#makeFactory`'s two returned closures called
+  the private spine directly. A factory is minted during one resolve and INVOKED arbitrarily later —
+  the guard on the minting call says nothing about the call that builds — so a closed scope kept
+  constructing through a `FactoryRef` slot injected into a long-lived instance. Both closures now
+  open with `#assertLive`.
+- **A live child scope could still cache into a disposed parent frame.** The guard was
+  per-PROVIDER, but disposal deliberately does not cascade, so `#findOwner` still walked up into a
+  closed frame and owned an instance there — the exact leak the guard exists to prevent, one level
+  down. `Scope` carries a `disposed` flag set by `#clear()`, and `#resolveWith` refuses a closed
+  owner. A transient registration owns nothing and is unaffected, as is anything the child's own
+  frame owns.
+- **The key SPELLED INTO the token still classified closed.** `materialise` moved onto the base
+  token, which fixed `.withKey` and the 5-arg form but not `addClass("pkg:IRepo<$1>#k", …)`, where
+  the key is part of the authored token. `unkeyedToken(token)` — a new string-grammar edge that
+  takes the key boundary from the tree parser rather than restating the key grammar — is now the
+  pre-step of every open-vs-closed classification, at the registration boundary and at both of the
+  engine's. That also fixes the diagnosis of `resolve("pkg:IRepo<$1>", "k")`, which raised
+  `UnregisteredTokenError` where the unbound hole was the actionable half of the answer.
+- **`ActivatorUtilities.slotResolvable` drifted from the mirror it documents.** The engine learned
+  that a `FactoryRef` is satisfiable only when its target resolves; the public mirror kept returning
+  `true` unconditionally, so an unregistered factory target raised `FactoryTargetError` instead of
+  falling through to the caller-supplied arguments the way an unregistered plain token does. —
+  **MOOT under §128**: the whole activation surface is deleted, so the hand-kept mirror this fix
+  repaired no longer exists. The drift is what §128 cites as the upkeep the surface was charging.
+
+**The keyed PLURAL scan sees template closings.** `#resolveKeyed` read only the exact map, so a
+keyed template — newly registrable above — answered `resolve(t, "redis")` but not
+`resolve(t, /redis/)`, and an unkeyed template answered bare `resolve(t)` and `Array<t>` but not
+`resolve(t, /.*/)`. The scan now walks `base`'s key-space across BOTH tables and resolves each
+matching key through `#collectionRegistrations`, which is the same closings-then-exact rule
+`Array<T>` aggregates by and returns the exact list untouched for a key with no template. Exact
+registrations still come first in the key order, so every pre-existing plural ordering holds.
+
+**Breaking public surface**, for the next publish pass to version on: `OpenRegistration.pattern` is
+deleted (the field's whole contract was the retired all-holes rule); `FactoryTargetError.reason`
+narrows from `"unregistered" | "not-a-class"` to `"unregistered"`, so an external
+`reason === "not-a-class"` comparison stops compiling; and `ServiceProviderClass`'s `closedMemo`
+constructor parameter widens from `Map<Token, Registration>` to `Map<Token, readonly
+Registration[]>`, which matters because the class is documented as exported for white-box use. All
+three are dead in-repo — nothing constructed `"not-a-class"` even before this branch. `unkeyedToken`
+is added to di.core's and di's barrels.
+
+**Three findings deliberately NOT acted on**, all being design calls rather than defects:
+
+- `validateScopes` is defeated inside a `Union` slot. A member's `ScopeValidationError` is caught
+  by `#resolveUnion`'s fall-through and the next member wins, so the violation is silently skipped.
+  Whether a validation failure should be a hard stop or a soft miss inside a union is a semantics
+  question about what "the first member that BUILDS" means, not an implementation slip.
+- A non-canonical spelling of a closed token bypasses its exact registration. `#lookup` probes the
+  exact map with the RAW request string but reaches the open table through the CANONICALISED parse,
+  so `resolve("app:IR< app:User >")` is served by the `app:IR<$1>` template even though an exact
+  `app:IR<app:User>` is registered — exact-beats-open violated, two identities for one service.
+  The honest fix is to canonicalise at the registration boundary, which changes the stored map key
+  and therefore what `hasRegistrations`, `removeRegistrations`, and `#resolveKeyed`'s prefix scan
+  all compare against. That is a wire-grammar decision, not a patch.
+- The two grammars disagree about `$0`, `$01`, and whitespace spellings (`pkg:IZ< $1 >`):
+  `HOLE_PATTERN` is `/^\$[1-9][0-9]*$/` and the tree parser accepts any digits, so those tokens
+  classify CLOSED and register exact. That is not a dead entry — each resolves under the same
+  spelling it registered under — so it is the canonicalisation question above wearing a different
+  hat, not a separate defect. `token-grammar.test.ts` pins the `$0` half. — **WRONG, and corrected
+  by §127**: the "resolves under its own spelling" test holds only for a template with no hole
+  DEPS. Give `pkg:IZ<pkg:IA, $1>` the `[['$1']]` signature that motivates it and the entry resolves
+  under nothing — the closing misses the exact map, and its own spelling raises
+  `NoSatisfiableSignatureError` on the un-substituted `$1`. The whitespace and `$01` halves were a
+  separate defect; only `$0` is the canonicalisation question. — **CLOSED by §129**: the two
+  grammars are one, `$0` and `$01` are not holes on either side, and `HOLE_PATTERN` is gone.
+
+`Validator`, `parseSlot`/`serialiseSlot`, and `TokenManifest`/`TokenProvider` were audited as
+suspected vestigial and DELIBERATELY kept. Each is exported, correct, and (for the manifest pair)
+exercised by `token.spike.test.ts`; unused-but-correct public API is not a defect, and deleting it
+is a semver call rather than a repair. Their comments — which advertised jobs the live path no
+longer does — are corrected instead. — **PARTLY REVERSED by §127**: the manifest pair was never
+public API (absent from the rolled `.d.ts`), so keeping it shipped unreachable runtime on a policy
+argument that did not apply to it, and it is deleted. `Validator` and `parseSlot`/`serialiseSlot`
+ARE public and stay, pending an owner call.
+
+_Claude's calls throughout, on the owner's direction to sweep the family; the collection ordering
+rule, the removal/dedup asymmetry, and the keyed-plural key order are the three that chose between
+defensible alternatives._
+
+---
+
+## §127 — Open-template classification is spelling-independent; the gated token reference is deleted
+
+A second sweep of `libraries/di.core` / `libraries/di`, run because §126's pass applied hard
+pressure to over-deletion and only soft pressure to under-deletion — over-deletion is loud (the
+gate catches it), under-deletion is silent forever.
+
+**`isOpenToken` reads the typed tree.** It classified off raw arg slices: `HOLE_PATTERN`
+(`/^\$[1-9][0-9]*$/`) tested against an un-trimmed slice, while the tree parser skips whitespace
+and normalises hole labels. So `IRepo<IA, $1>` — a space after the comma, the natural hand spelling
+of a §124 mixed template — plus `IRepo< $1 >` and `IRepo<$01>` all read CLOSED. `materialise` is
+the ONLY place a template is routed and `openEntry`'s "reject a template nothing could ever match"
+guard runs only on the branch classification picks, so each landed in the exact map as a literal
+holey token: silent, no error, resolvable by nothing. Not by the closing, and — once the template
+carries a hole dep, which is the whole point of a template — not under its own spelling either,
+since the un-substituted `$1` dep is unsatisfiable. That last part is what §126 got wrong when it
+declined the fix.
+
+Classification now parses, and falls back to the shallow scan only for a token the tree grammar
+REFUSES (`"a b<$1>"`), which is what keeps that case classified open and therefore routed to
+`openEntry` where its rejection lives. A `$`-free token short-circuits ahead of the parser, so the
+engine's resolve-time guard stays off the parse path for ordinary tokens. Registration and both
+engine sites run the one predicate, so a request and a registration can no longer disagree about
+what is a template; `resolve("pkg:IRepo< $1 >")` now raises `OpenTokenResolutionError` instead of
+an unhelpful `UnregisteredTokenError`. `unkeyedToken` stays the documented pre-step at each site —
+the tree sees past a key on its own, but the agreement between a composed key and a tail-argument
+key should not rest on the classifier's internals, and the fallback path still needs it.
+
+**`$0` is deliberately held back.** Hole labels are 1-based, the parser will build a hole node for
+any digit run, and the classifier states the 1-based rule explicitly rather than adopting the laxer
+grammar. So one divergence survives, on purpose and in one commented line: whether `$0` is a legal
+hole is a grammar decision, not a repair. `$01` is NOT in that class — it parses to the same node
+`$1` does, so treating it as a hole is the canonicalisation contract, not a new semantic. —
+**SUPERSEDED by §129**, which took the grammar decision: the parser is now 1-based and
+leading-zero-free, `$01` joins `$0` as not-a-hole, and the classifier's duplicate rule is deleted
+rather than kept in step.
+
+**`token/manifest.ts` is deleted.** `TokenManifest` / `TokenProvider` / `Descriptor` /
+`SealedTokenManifest` were package-PRIVATE — di.core declares one export and `src/index.ts` omits
+all four — so no consumer could name them and the rolled `.d.ts` carried none of them, while ~120
+lines of the JS bundle were theirs. Their only exercise was a mirror: `token.spike.test.ts` reached
+past the package by raw relative path to assert their own behaviour, and every rule it pinned is
+pinned on the live path in `open-generics.test.ts`. §126 kept them under "unused-but-correct public
+API is not a defect" — an argument that never applied, because they were not public API. Of the two
+behaviours §126 called still-gated there, negative memoization is REJECTED doctrine (`#closings`
+states misses are unbounded and deliberately not memoized), and canon-on-miss variance recovery
+stays described in §126's prose as part of the pending wire-grammar question.
+
+**Referred to the owner, untouched.** `Validator` and `parseSlot`/`serialiseSlot` are genuinely
+public (both in the rolled `.d.ts`) with zero consumers anywhere — no call site, test, example or
+fixture. Cutting unused-but-correct public API is cheap now and expensive after the first publish,
+but it is a policy call, not a repair. Same for the example set's coverage holes: no example opens
+a scope, registers an open template, uses a key, injects a factory, uses a union or literal slot,
+or uses the descriptor verbs — which under the kitchen-sink doctrine is a gap in `examples/`, and
+additive work to scope separately.
+
+_Claude's calls; the `$0` hold-back and the public-API deferrals are the two that deliberately
+stop short of a decision the owner should make. 2026-07-24._
+
+---
+
+## §128 — `ActivatorUtilities` is porting noise; the whole activation surface is removed
+
+`ActivatorUtilities` (`createInstance` / `createFactory` / `getServiceOrCreateInstance`), its
+`ObjectFactory` return type, and `ActivationError` are deleted outright.
+
+They existed for exactly one reason: the reference exposes a static activator helper, and §56
+ported it because the mirror said to. Nothing here ever called it — no library, no example, no
+transform fixture — and its only exercise was `tests/di.test/test/activator.test.ts`, a test
+written to cover the mirror rather than to pin a consumer's behaviour. That is what porting noise
+looks like under the "faithfulness is a disposable starting discipline" rule: a reference shape
+carried across with no job on this side.
+
+It was not free to keep. Activation deliberately never enters the resolution engine, so it shipped
+`slotResolvable`/`resolveSlot` — a di.core-local synchronous MIRROR of the engine's private
+`#resolveSlot`, kept in step with it by hand. §126 caught that mirror after it had already drifted
+(an unregistered factory target raised `FactoryTargetError` instead of falling through to the
+caller-supplied arguments). Deleting the surface retires that standing obligation with it.
+
+`ActivationError` goes too. `ActivatorUtilities` was its ONLY thrower — verified across the whole
+repo, engine included — so no other failure mode loses the error it reports with.
+
+**What §56 (v1) no longer describes.** §56 records three things landing together; the descriptor
+`tryAdd*`/`replace*` verbs and `EmptyServiceProvider` are untouched and still current. Its
+`ActivatorUtilities` bullet, and every deliberate divergence hanging off it — positional argument
+matching in place of type-assignability, no constructor selection, no
+`[ActivatorUtilitiesConstructor]` preferred-ctor marking, no keyed-parameter paths — are now
+historical record only. They describe adaptations of something the repo does not contain. §56 stays
+in the retiring v1 doc unedited; this entry is the correction.
+
+The capability the reference reaches for the activator to get — construct something the container
+does not own, with its dependencies filled in — is already served here by factory injection and
+`resolveFactory(token, params?)`, neither of which needs reflection (`docs/libraries/di.md`,
+divergence 7). Removing the helper removes a second, weaker way to do it, not a capability.
+
+The surface was present in the published `@rhombus-std/di.core` alphas, which have no users; no
+migration path or deprecation cycle is owed to anyone.
+
+_Owner-directed 2026-07-24._
+
+---
+
+## §129 — One hole grammar: 1-based, leading-zero-free, stated only by the tree parser
+
+Two things were spelled `$N` in di.core and only one of them survives in each position.
+
+**`$1` … `$9` as TYPES are deleted.** `brands.ts` declared both the generic `$<N>` and nine
+pre-instantiated aliases; the barrel exported all ten. The aliases saved one pair of angle brackets
+and charged a permanent ambiguity for it, because `$1` is also the WIRE text of a hole inside a
+token string (`"pkg:IRepo<$1>"`). One name, two grammars, and a reader had to check for surrounding
+quotes to know which one was in front of them — in a package whose whole job is the boundary
+between a type and the token it derives. `$<N>` is now the only type-position spelling, at every
+label; a bare `$1` is only ever wire text. Nothing outside di.core used the aliases: every
+type-position site in the libraries, tests, examples, docs and the Go fixtures already wrote
+`$<N>`, so the deletion touched `brands.ts`, `src/index.ts` and the di.core README and nothing else.
+
+**Hole LABELS are 1-based with no leading zero, and `token/parse.ts` is the only place that says
+so.** Two implementations disagreed: `edges.ts`'s `HOLE_PATTERN` (`/^\$[1-9][0-9]*$/`) rejected `$0`
+and `$01`, while the tree parser's `#parseHole` consumed any digit run and built a hole node for
+both, folding `$01` onto label 1. §127 documented the split as a deliberate hold-back — "whether
+`$0` is a legal hole is a grammar decision, not a repair" — and left it as one commented line of
+divergence. That is the entry this supersedes: the answer is that a grammar with two
+implementations is wrong regardless of which one wins, and the `Hole<N>` brand already documents
+its own domain as 1-based, so the parser was the side that disagreed with the design.
+
+`#parseHole` now rejects `$0` ("hole labels are 1-based") and any leading zero, alongside the
+out-of-safe-integer-range check it already had. One spelling reaches each label, so canonicalisation
+has nothing to fold and the parser cannot mint a node the brand could not have produced. The Go
+engine's `tokentext.isHoleNode` had implemented exactly this grammar all along, so this closes a
+cross-engine divergence rather than opening one — no token any transform emits, or any author writes
+with `$<N>`, changes shape.
+
+**`HOLE_PATTERN` is gone.** Its only consumer was `isOpenToken`'s fallback for a token the tree
+grammar REFUSES (`"a b<$1>"` — trailing text after the base, which must still classify OPEN so
+`openEntry` can reject it). That fallback now splits the top-level args with the shallow scan and
+puts each one back through `isOpenToken`, so the hole grammar it consults is the parser's.
+`holdsHole` — the tree walk that re-applied the 1-based rule the parser did not enforce — collapses
+into `TokenNode.isOpen` for the same reason. Recursion terminates because every arg slice is
+strictly shorter than the token it came from. `isOpenToken` is now the one predicate and it states
+no grammar of its own.
+
+**What changes for a caller.** `$0` behaves exactly as it always did. `$01` and `$007` join it: not
+holes, so a token carrying one is not a template and files as an ordinary exact registration. A
+would-be template written that way therefore fails at resolve rather than at registration — the
+closing misses, and the token's own spelling raises on the un-substituted dep. That is the standing
+shape `$0` has had since §127 signed it off, not a new hazard, and turning it into a loud
+registration error would mean teaching `isOpenToken` to answer `true` for something that is not a
+template. A "you probably meant a hole" diagnostic belongs at the registration boundary, not in the
+classifier; it is a separate design question and deliberately not taken here.
+
+_Owner-directed 2026-07-24 ("delete all of the `$N` in favour of `$<…>`" / "just make it right" on
+the two hole grammars). The `HOLE_PATTERN` collapse and the residual-hazard call above are Claude's._
+
+---
+
+## §130 — A library references the abstractions package; only an entry point references the engine
+
+The whole di error taxonomy is DECLARED in `@rhombus-std/di.core` and re-exported from
+`@rhombus-std/di`. `UnregisteredTokenError`, `OpenTokenResolutionError`,
+`CircularDependencyError`, `MissingMetadataError`, `NoSatisfiableSignatureError`,
+`NoSatisfiableUnionError`, `FactoryTargetError`, `AsyncResolutionRequiredError`,
+`AsyncDisposalRequiredError`, `RegistrationValidationError`, `ScopeValidationError` and
+`ProviderDisposedError` join the `DiError` root and `OpenTokenRegistrationError` that were already
+there. `libraries/di/src/errors.ts` is deleted; the barrel re-export replaces it, so every existing
+`from '@rhombus-std/di'` import keeps working unchanged.
+
+**The rule this enforces.** A library references the abstractions package; only an entry point
+references the engine. It is repo-wide, not an examples-only convention. `examples.lib.*` are its
+existence proof — they declare registrations and take an `IResolver`, and neither one has a runtime
+dependency on `@rhombus-std/di`; the application packages that build a provider are the only things
+in `examples/` that do.
+
+**Why the split was a defect, not tidying.** The di.core / di boundary exists to make one claim: a
+library can do everything a library needs with only a `di.core` reference. Classifying what a
+caller's container threw at it — branching on the failure, adding context, re-raising, or degrading
+gracefully — is ordinary library work. With the taxonomy split, a di.core-only library could branch
+on the root `DiError` and nothing else, so it had to take a reference on the engine purely to READ
+an error class. Nothing about that reference is used at runtime, which is exactly what makes it the
+wrong dependency: the boundary was claiming an independence it did not actually deliver.
+
+**Nothing moved gains an engine dependency.** The moved classes import `DiError`, `Token` and
+`DepSlot` — di.core's own types — and reference no engine internal, which is what made the move
+mechanical. di.core stays the zero-engine-dependency package.
+
+**Runtime identity holds (§9/§38).** These are `instanceof` classes, so there must be exactly one
+copy. di keeps di.core external in its bundle, so `libraries/di/dist/bundle/index.js` declares none
+of them and imports all of them from `@rhombus-std/di.core`, whose bundle declares each once; the
+rolled `.d.ts` re-exports rather than inlining. Verified live: `core.X === engine.X` for all
+fourteen classes, and an error thrown by the engine satisfies `instanceof` against the class
+imported from `di.core`.
+
+**Two residuals, deliberately not taken here.** `examples.lib.*` still `import type` from
+`@rhombus-std/di` (a devDependency) for `IServiceManifest` / `IResolver`. Those are erased at
+compile time, so no runtime reference survives and the existence proof stands, but a library
+reaching for the engine's name to spell a type it could spell from `di.core` is the same instinct
+this entry rules out. Separately, `examples.lib.*` should spell those types from `di.core`; that is a
+follow-up, not a hole in the rule.
+
+**`logging` is an exception. The rule stands.** `logging` and `hosting` are the only libraries
+carrying a RUNTIME `@rhombus-std/di` dependency, both for the constructible `ServiceManifest` value
+(di.core ships `ServiceManifestClass`; di ships the value and the `build()` patch). `hosting` is an
+entry point by job description, so it is not an exception at all. `logging` is: `LoggerFactory.create`
+stands up a manifest, builds a provider, opens the singleton scope and resolves the factory out of
+it — entry-point work by this entry's letter, inside a library.
+
+It stays. The API is a legitimate convenience for a consumer who wants logging without composing a
+container, and the ownership problem it creates is solved rather than ignored: the returned
+`DisposingLoggerFactory` owns the scope it made, so disposing the factory disposes everything it
+built. The reference reached the same conclusion independently — its logging assembly takes a full
+dependency on the DI assembly, not just the abstractions, for precisely this one API.
+
+**The exception is `logging`, by name. The list is closed.** The paragraph above explains why
+`logging` earned it; it is not a test anyone else may apply. No other library builds a container,
+and a second exception requires a new decision here — not an argument that some new case resembles
+this one. Stated deliberately as a name rather than as a shape: a shape ("a library may own a
+container it creates itself…") reads as a general permission and invites each author to decide their
+own case qualifies, which is how an invariant erodes without anyone ever choosing to weaken it.
+
+_Owner-directed 2026-07-24 ("move the errors"), the rule stated in the owner's words, and the
+`logging` carve-out ruled 2026-07-25 ("the rule stands, logging is an exception")._
