@@ -53,8 +53,22 @@ function unregistered(token: Token): DiError {
  * identical and stateless.
  */
 export class EmptyServiceProvider implements IServiceProvider<string> {
-  /** The shared empty-provider singleton (the reference `Instance`). */
-  public static readonly instance: EmptyServiceProvider = new EmptyServiceProvider();
+  /**
+   * The shared empty-provider singleton (the reference `Instance`).
+   *
+   * Typed as the INTERFACE, not as this class, and that is load-bearing rather
+   * than stylistic. The tokenless authoring forms (`resolve<T>()`,
+   * `tryResolve<T>()`, `resolveAsync<T>()`) are DECLARATION-MERGED onto
+   * `IResolver` by `@rhombus-std/di.extras`; a class never picks up a merged
+   * interface overload, so in any program carrying that augmentation the
+   * concrete `EmptyServiceProvider` type is NOT assignable to `IResolver` —
+   * "target signature provides too few arguments". Handing the singleton out as
+   * the class would therefore make it unusable for the one thing it exists for:
+   * standing in wherever a provider is required. Publishing the interface keeps
+   * it drop-in with or without the transformer, and matches the interface-first
+   * rule that no concrete impl appears in a public type.
+   */
+  public static readonly instance: IServiceProvider<string> = new EmptyServiceProvider();
 
   private constructor() {}
 
