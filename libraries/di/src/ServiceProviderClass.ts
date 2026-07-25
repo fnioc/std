@@ -749,8 +749,8 @@ export class ServiceProviderClass<S extends string = string> implements IService
    *
    * A value folds into this path: its producer is `() => value` with no scope,
    * so it takes the transient branch (no owner, no cache) and `#instantiate`
-   * returns `produce()` verbatim (a value that IS a Promise is returned raw,
-   * never awaited — §"Async as values").
+   * returns `produce()` verbatim — a value that IS a Promise is returned raw,
+   * never awaited.
    *
    * THE CENTRAL PRINCIPLE: a scope tag with no matching OPEN frame yields no
    * owner, and no owner means transient — fresh instance, no cache, no error.
