@@ -40,8 +40,10 @@ recognizes and rewrites it, without descending into what it just produced. A cha
 `addClass<I>(C).withSignature<T>().as<Scope>()` peels one call per pass — `addClass` lowers on
 pass 1, which exposes `.withSignature<T>()` for pass 2, which exposes `.as<Scope>()` for pass 3.
 Nobody had to write a receiver-recursive visitor for that; the loop supplies the recursion for
-free, and every already-lowered position stays an ordinary, checker-bound AST node (no re-parse,
-no re-check) because nothing ever rewrites twice.
+free, and nothing is ever rewritten twice. What a lowered position is NOT is checker-bound — the
+node a stage mints is unknown to the binder, and asking the checker about a tree containing one is
+the engine's live hazard (see
+[The guard's blind spot](#the-guards-blind-spot-a-checked-node-with-a-rewritten-neighbor--open)).
 
 ```ts
 // what you write
@@ -497,6 +499,49 @@ checker-anchored matcher added to the engine needs this same guard, on the same 
 using synthetic fixture nodes can pass while the real pipeline's actual synthetic-node shape still
 breaks it, since a hand-built fixture doesn't necessarily reproduce which specific node in the
 chain ends up synthetic.
+
+### The guard's blind spot: a checked node with a rewritten neighbor — OPEN
+
+The guard above protects the node a matcher hands the checker. It does **not** protect the nodes
+the checker walks to _answer_ the question, and that is a live, unfixed crash.
+
+A slot for an **optional** (or defaulted) constructor parameter lowers to a union slot — the
+object literal `{ union: [token, { value: undefined }] }` — minted through the emit factory, so
+the binder never saw it and it carries no symbol. Then:
+
+```ts
+// authored: Widget's second constructor parameter is optional
+manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).as('singleton');
+```
+
+Pass 1 lowers `signatureof(Widget)` into that minted object literal. Pass 2 reaches the trailing
+`.as('singleton')` — a source-written call with a perfectly good `Pos()`, so the guard passes it
+through — and asks the checker to resolve it. Answering means typing the receiver, which means
+resolving the `addClass` overload, which means contextually typing the minted object literal, and
+`getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every element has:
+
+```go
+symbol := c.getSymbolOfDeclaration(element)                       // nil: the binder never saw it
+return c.getTypeOfPropertyOfContextualTypeEx(t, symbol.Name, …)   // nil pointer dereference
+```
+
+It takes **both** halves — a minted object literal in the argument list _and_ a later query over
+the chain containing it. Either alone is fine: a registration with nothing chained after it lowers
+cleanly, and a constructor whose parameters are all required derives bare token strings with no
+object literal to type. Pinned in `transforms/internal/stdhost/syntheticnode_test.go`, with a
+control case for each half.
+
+Widening the guard to "skip any call whose subtree contains a minted node" is **not** the fix — it
+would strand legitimate work, since the checker walks arguments too, and a sugar call whose
+argument holds an already-lowered primitive is an ordinary, currently-working case. The general
+repair is architectural: resolve every checker-dependent fact against the **pristine** tree once
+per file, before the loop mutates anything, instead of re-querying a tree the loop has already
+rewritten. Bumping `ttsc` does not help — 0.18.1 and 0.21.0 vendor the same typescript-go commit.
+
+Until that lands, what is guaranteed is the **report**, not the absence of the crash: the whole
+per-file pipeline runs under a recover (`stdhost.transformFileToTypeScript`), so the failure
+arrives as a `STAGE_PANIC` diagnostic naming the source file, the stage that was running, the
+recovered value, and the stack — never as an anonymous Go trace on stderr.
 
 ## The artifacts hand-off
 
