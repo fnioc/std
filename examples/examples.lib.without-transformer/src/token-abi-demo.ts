@@ -36,10 +36,11 @@
 import { ServiceManifest } from '@rhombus-std/di';
 import type { IServiceManifest } from '@rhombus-std/di';
 import { closeSignatures, closeToken, isFactoryRef, isLiteralRef, isOpenToken, isTypeArgRef, isUnionSlot, Matcher,
-  parseSlot, parseToken, serialiseSlot, Specificity, Substituter, TokenNode, TokenRewriter, TokenWalker, typeArg, union,
-  Validator } from '@rhombus-std/di.core';
-import type { ConcreteNode, DepSignatures, DepSlot, FactoryRef, LiteralRef, ManifestEntry, OpenRegistration,
-  ParsedToken, Registration, Token, TypeArgRef, Union } from '@rhombus-std/di.core';
+  parseSlot, parseToken, RESOLVER_TOKEN, serialiseSlot, Specificity, Substituter, TokenNode, TokenRewriter, TokenWalker,
+  typeArg, union, Validator } from '@rhombus-std/di.core';
+import type { ConcreteNode, DepSignatures, DepSlot, FactoryNode, FactoryRef, HoleNode, LiteralNode, LiteralRef,
+  ManifestEntry, OpenRegistration, ParsedToken, ProviderNode, Registration, Token, TypeArgRef, Union,
+  UnionNode } from '@rhombus-std/di.core';
 
 // ── the container being inspected ────────────────────────────────────────────
 
@@ -341,6 +342,54 @@ export function describeSlot(slot: DepSlot): string {
 }
 
 /**
+ * Names a NODE's kind — the tree-side counterpart of `describeSlot`, and the
+ * whole six-kind vocabulary in one switch.
+ *
+ * Worth doing as a `switch (node.kind)` rather than a chain of guards: the union
+ * is discriminated, so each arm narrows to exactly one node interface and TypeScript
+ * will reject the function outright if a seventh kind is ever added. That is the
+ * property a tool wants from a published AST — a new node kind should break the
+ * build, not get silently skipped.
+ *
+ * The split that matters: `concrete`, `hole` and `provider` are TOKEN-shaped and
+ * serialise back to a token string; `union`, `literal` and `factory` are
+ * slot-only, have no token-string form at all, and are exactly what `Validator`
+ * rejects when they turn up where a resolvable token was expected.
+ */
+export function describeNode(node: TokenNode): string {
+  switch (node.kind) {
+    case 'concrete': {
+      const concrete: ConcreteNode = node;
+      const key = concrete.key === undefined ? '' : `, key ${concrete.key}`;
+      return `concrete ${concrete.base} (${concrete.args.length} argument(s)${key})`;
+    }
+    case 'hole': {
+      const hole: HoleNode = node;
+      // `index` is a LABEL, not an ordinal: holes are reorderable, and a repeated
+      // label is what constrains two arguments to be equal.
+      const flavour = hole.typeArg === true ? 'typeArg — reifies to the bound token STRING' : 'plain';
+      return `hole $${hole.index} (${flavour})`;
+    }
+    case 'provider': {
+      const provider: ProviderNode = node;
+      return `${provider.kind} — the intrinsic resolver slot, no registration behind it`;
+    }
+    case 'union': {
+      const alternatives: UnionNode = node;
+      return `union of ${alternatives.members.length} (slot-only, no token form)`;
+    }
+    case 'literal': {
+      const literal: LiteralNode = node;
+      return `literal ${JSON.stringify(literal.value)} (slot-only, supplies its own value)`;
+    }
+    case 'factory': {
+      const factory: FactoryNode = node;
+      return `factory of ${TokenNode.toString(factory.type)} (slot-only, injects a callable)`;
+    }
+  }
+}
+
+/**
  * Round-trips a slot through the tree and reports whether it survived.
  *
  * `parseSlot` is the wire→tree edge and `serialiseSlot` is tree→wire. That they
@@ -493,6 +542,12 @@ export function demonstrateTokenAbi(): readonly string[] {
     lines.push(`  ${describeSlot(slot)}`);
   }
   lines.push(`every slot survives parseSlot -> serialiseSlot: ${reportSlots.every(slotRoundTrips)}`);
+  // The same five slots as TREE nodes, plus the intrinsic provider — the six node
+  // kinds the whole module is written against.
+  lines.push('the six node kinds a tree can hold:');
+  for (const slot of [...reportSlots, RESOLVER_TOKEN]) {
+    lines.push(`  ${describeNode(parseSlot(slot))}`);
+  }
   const resolvable = reportSlots.filter(isResolvableSlot).length;
   lines.push(`${resolvable} of ${reportSlots.length} are RESOLVED as tokens; the rest supply their own value`);
 

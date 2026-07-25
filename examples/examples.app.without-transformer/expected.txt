@@ -163,6 +163,13 @@ the five slot kinds, told apart by the published guards:
   union of 2 — tried in order, first resolvable wins
   typeArg $1 — the closing's argument token, as a value
 every slot survives parseSlot -> serialiseSlot: true
+the six node kinds a tree can hold:
+  concrete reports:IConnection (0 argument(s))
+  literal "eu-west" (slot-only, supplies its own value)
+  factory of reports:IRepository<reports:User> (slot-only, injects a callable)
+  union of 2 (slot-only, no token form)
+  hole $1 (typeArg — reifies to the bound token STRING)
+  provider — the intrinsic resolver slot, no registration behind it
 2 of 5 are RESOLVED as tokens; the rest supply their own value
 and what the engine does with all of it — closing a template:
   template reports:IRepository<$1> closes to reports:IRepository<reports:User>

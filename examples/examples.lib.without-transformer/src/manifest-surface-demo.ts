@@ -27,7 +27,7 @@
 
 import { ServiceManifest, ServiceManifestContainerBuilderAugmentations, ServiceProviderClass } from '@rhombus-std/di';
 import type { AddChain, IAsBuilder, IResolver, IResolveScope, IServiceManifest, IServiceProvider, IWithKeyBuilder,
-  IWithSignatureBuilder, IWithSignaturesBuilder, Token } from '@rhombus-std/di';
+  IWithSignatureBuilder, IWithSignaturesBuilder, ServiceManifestCtor, Token } from '@rhombus-std/di';
 import { overrideSignatures, ServiceManifestClass, ServiceManifestDescriptorAugmentations, SIGNATUREFOR_NAME,
   SIGNATURESFOR_NAME } from '@rhombus-std/di.core';
 import type { Ctor, DepSignatures, DepTarget, Factory, IRequiredResolver, IScopeFactory, IServiceManifestBase,
@@ -110,6 +110,22 @@ export function addShopServices(services: IServiceManifest<'singleton'>): IServi
     lifetime,
   );
   return composed;
+}
+
+/**
+ * Starts a fresh manifest from the CONSTRUCTOR rather than from the value.
+ *
+ * `ServiceManifestCtor` is the static side of the public `ServiceManifest` — the
+ * type of `new ServiceManifest<S>()` — and taking it as a parameter is how a
+ * host lets its caller decide which collection to build into. A test host is the
+ * obvious consumer: the production entry point hands it the same constructor the
+ * application uses, so the test cannot accidentally compose into a different
+ * collection type than the one that ships.
+ *
+ * @param Manifest The registration-builder constructor to instantiate.
+ */
+export function freshManifest(Manifest: ServiceManifestCtor): IServiceManifest<'singleton'> {
+  return new Manifest<'singleton'>();
 }
 
 // ── 1. the receiver every augmentation lands on ──────────────────────────────
@@ -385,7 +401,7 @@ export function forTests(services: IServiceManifest<'singleton'>): IServiceManif
  * @returns One line per observation, in a fixed order.
  */
 export function demonstrateManifestSurface(): readonly string[] {
-  const production = addShopServices(new ServiceManifest<'singleton'>());
+  const production = addShopServices(freshManifest(ServiceManifest));
   const lines: string[] = ['=== di manifest surface (dialect-independent) ==='];
 
   // The receiver identity.
