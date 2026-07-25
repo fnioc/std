@@ -86,27 +86,27 @@ export class CircularDependencyError extends DiError {
 
 /**
  * A constructor parameter is typed as a factory of some token (a `FactoryRef`),
- * but that token cannot be turned into a factory: either it is not registered,
- * or it is registered as a `useValue` / `useFactory` override rather than a
- * class. A factory injects a callable that constructs the target class on
- * demand, so the target must be a class registration.
+ * but that token has no registration, so there is nothing for the injected
+ * callable to build.
+ *
+ * `reason` carries the single value `"unregistered"`. It once also admitted
+ * `"not-a-class"` — the old engine refused a factory over a value / factory
+ * target because it built with a bare `new`. The three authoring kinds have
+ * since collapsed into one `produce` closure, so a value target is simply a
+ * zero-arg thunk returning the stored instance and the distinction has no
+ * referent; the field stays (it is public surface, and it reads at a catch site)
+ * rather than being dropped outright.
  */
 export class FactoryTargetError extends DiError {
   public constructor(
     public readonly factoryToken: Token,
-    public readonly reason: 'unregistered' | 'not-a-class',
+    public readonly reason: 'unregistered',
   ) {
     super(
-      reason === 'unregistered'
-        ? `Cannot inject a factory for "${factoryToken}": no registration `
-          + `found for it. A factory parameter (typed \`() => IFoo\`) needs `
-          + `the target registered as a class with `
-          + `services.addClass(...) before it can build instances.`
-        : `Cannot inject a factory for "${factoryToken}": it is registered `
-          + `as a useValue/useFactory override, not a class. A factory builds `
-          + `its target with \`new\`, so the target must be a class `
-          + `registration. Resolve it directly instead of as a factory, or `
-          + `register the class with services.addClass(...).`,
+      `Cannot inject a factory for "${factoryToken}": no registration found `
+        + `for it. A factory parameter (typed \`() => IFoo\`) needs the target `
+        + `registered with services.addClass(...) before it can build `
+        + `instances.`,
     );
   }
 }
