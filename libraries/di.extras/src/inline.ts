@@ -17,14 +17,19 @@
 // the program), but nothing lowers or ships it. `signatureof` (the authoring-time
 // dependency-signature primitive) and `keyof` (the authoring-time
 // keyed-registration-key primitive) live alongside these bodies here in
-// di.extras (`./signatureof.js`, `./keyof.js`), not in the runtime
-// `@rhombus-std/primitives` leaf; `tokenfor` stays in that leaf, since runtime source
-// imports it directly.
+// di.extras (`./signatureof.js`, `./keyof.js`); `tokenfor` / `tokenof` come from
+// `@rhombus-std/primitives.extras`, the shared authoring home of the token grammar.
+//
+// The "rhombus.inline" list named at the top is the ONLY thing pointing at these
+// sets, so each one carries a `registerInlineBodies(...)` marker beside it — a
+// module-level no-op that says in code what package.json says in configuration. See
+// `@rhombus-std/primitives.extras`'s `registerInlineBodies.ts` for why it exists and
+// why it must stay outside the bodies.
 
 import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
   Token } from '@rhombus-std/di.core';
 import { overrideSignatures, signaturefor, signaturesfor } from '@rhombus-std/di.core';
-import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
+import { registerInlineBodies, tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.extras';
 import { keyedtokenfor } from './keyedtokenfor.js';
 import { keyof } from './keyof.js';
@@ -99,6 +104,7 @@ export const ServiceQueryInline = {
     return this.isService(keyedtokenfor<T>());
   },
 };
+registerInlineBodies(ServiceQueryInline);
 
 /**
  * The POSITIONAL-TAIL view of the resolve-family verbs the resolve sugar bodies
@@ -190,6 +196,7 @@ export const ResolverInline = {
     return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>());
   },
 };
+registerInlineBodies(ResolverInline);
 
 /**
  * The type-driven registration sugar bodies — the `addClass<T>(ctor)`,
@@ -239,6 +246,7 @@ export const ServiceManifestInline = {
     return this.addValue(tokenfor<I>(), value, keyof<I>());
   },
 };
+registerInlineBodies(ServiceManifestInline);
 
 /**
  * The registration-time OVERRIDE sugar body — the `addClass<I>(ctor, overrides)`
@@ -273,6 +281,7 @@ export const ServiceManifestOverrideInline = {
     return this.addClass(tokenfor<I>(), ctor, overrideSignatures(signatureof(ctor), overrides), void 0, keyof<I>());
   },
 };
+registerInlineBodies(ServiceManifestOverrideInline);
 
 /**
  * The no-type-arg SELF-registration sugar bodies — the `addClass(ctor)`,
@@ -322,6 +331,7 @@ export const ServiceManifestSelfInline = {
     return this.addValue(tokenof(value), value);
   },
 };
+registerInlineBodies(ServiceManifestSelfInline);
 
 /**
  * The POSITIONAL-TAIL view of the three chain-continuation modifiers the
@@ -374,3 +384,4 @@ export const ManifestChainInline = {
     return this.as(valueof<Scope>());
   },
 };
+registerInlineBodies(ManifestChainInline);

@@ -177,3 +177,47 @@ export const QueryInline = {
 		}
 	})
 }
+
+// TestExtractIgnoresAuthoringMarker: an impl file carrying the module-level
+// `registerInlineBodies(QueryInline)` marker (the in-code statement of the
+// package.json "rhombus.inline" registration) extracts exactly as it would without
+// it. The extra import must not land in the body-external TYPE-import map — it is a
+// VALUE — and the extra top-level statement must not disturb the declaration lookup
+// or the free-identifier walk, which read only the impl's own declaration.
+func TestExtractIgnoresAuthoringMarker(t *testing.T) {
+	inline := `import { registerInlineBodies, tokenfor } from '@rhombus-std/primitives.extras';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return this.isService(tokenfor<T>()); },
+};
+registerInlineBodies(QueryInline);
+`
+	dir := oneImplPackage(t, indexStub, inline)
+
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	if err != nil {
+		t.Fatalf("Extract with an authoring marker present: %v", err)
+	}
+	if rb.PrimitiveImports["tokenfor"] != "tokenfor" {
+		t.Fatalf("tokenfor should still be a recorded primitive import, got %+v", rb.PrimitiveImports)
+	}
+	if ref, recorded := rb.TypeImports["registerInlineBodies"]; recorded {
+		t.Fatalf("the authoring marker must not be recorded as a type import, got %+v", ref)
+	}
+}
+
+// TestExtractRejectsMarkerInsideBody: the marker is MODULE LEVEL ONLY. Referenced
+// from inside a body it is just an unknown identifier, and the free-identifier walk
+// refuses it like any other — there is no allowance that would let a body call it.
+func TestExtractRejectsMarkerInsideBody(t *testing.T) {
+	inline := `import { registerInlineBodies } from '@rhombus-std/primitives.extras';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return this.isService(registerInlineBodies); },
+};
+`
+	dir := oneImplPackage(t, indexStub, inline)
+
+	_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_FREE_IDENTIFIER") {
+		t.Fatalf("want INLINE_BODY_FREE_IDENTIFIER for a marker reference inside a body, got %v", err)
+	}
+}

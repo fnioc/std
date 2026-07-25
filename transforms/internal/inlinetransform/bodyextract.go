@@ -86,6 +86,24 @@ var knownRuntimeCallees = map[string]string{
 	"overrideSignatures": "@rhombus-std/di.core",
 }
 
+// knownAuthoringMarkers maps each MODULE-LEVEL authoring marker an impl file may
+// import to its HOME module. A marker is the third category alongside the
+// compile-time primitives and the runtime callees above, and the only one that
+// never appears INSIDE a body: it is a no-op call placed BESIDE a body set
+// (`registerInlineBodies(ManifestChainInline)`) stating in code that the set is
+// published in its package's package.json "rhombus.inline" list — the one
+// relationship a reader would otherwise have to open the manifest to discover.
+//
+// It is named here for one reason: a marker is a VALUE import, so without this
+// exclusion bodyTypeImports would record it in the body-external TYPE-import map
+// as a phantom composed-generic base. Nothing else in the extractor consults it —
+// a marker call is a top-level statement, invisible to the declaration lookup, and
+// a body that references one is rejected by checkFreeIdentifiers like any other
+// unknown identifier.
+var knownAuthoringMarkers = map[string]string{
+	"registerInlineBodies": "@rhombus-std/primitives.extras",
+}
+
 // Discriminator is the structural overload key: (type-parameter count, value
 // parameter count + encodings). A `this` parameter is excluded from both count
 // and list; a binding-pattern parameter encodes as "<pattern>"; a rest
@@ -521,10 +539,11 @@ func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]st
 // a known primitive — the body-external TYPE imports a sugar body may reference in
 // a type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
 // used as `tokenfor<IOptions<T>>()`). Primitives are excluded (they are recorded
-// separately by primitiveImports as CALLEES, never composed-generic bases), and
-// relative specifiers are excluded (a body-external base is always a package the
-// consumer program can resolve by name). Aliasing is honored: the recorded Export
-// is the specifier's property name.
+// separately by primitiveImports as CALLEES, never composed-generic bases), as are
+// runtime callees and the module-level authoring markers (all three are VALUE
+// imports, never types), and relative specifiers are excluded (a body-external base
+// is always a package the consumer program can resolve by name). Aliasing is
+// honored: the recorded Export is the specifier's property name.
 func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
 	out := map[string]TypeImportRef{}
 	if sf == nil {
@@ -557,6 +576,9 @@ func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
 				continue
 			}
 			if _, isRuntimeCallee := knownRuntimeCallees[exported]; isRuntimeCallee {
+				continue
+			}
+			if _, isMarker := knownAuthoringMarkers[exported]; isMarker {
 				continue
 			}
 			out[el.Name().Text()] = TypeImportRef{Module: module, Export: exported}

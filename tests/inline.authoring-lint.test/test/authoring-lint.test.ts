@@ -121,6 +121,25 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toContain('noNesting');
   });
 
+  test('module-level registerInlineBodies marker reports nothing', () => {
+    // The marker states in code that the set is published in package.json's
+    // "rhombus.inline" list. It sits BESIDE the set, at module level, so the rule —
+    // which only walks listed bodies — must leave both it and its import alone.
+    const src = PRIMITIVE_IMPORT
+      + `import { registerInlineBodies } from '@rhombus-std/primitives.extras';\n`
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(tokenfor<T>()); },\n};\n`
+      + `registerInlineBodies(Foo);\n`;
+    expect(lintInline(src)).toEqual([]);
+  });
+
+  test('registerInlineBodies referenced INSIDE a body → freeIdentifier', () => {
+    // The marker is module-level only: it is not a primitive, so inside a body it
+    // is just an unknown identifier. Mirrors the Go extractor's own rejection.
+    const src = `import { registerInlineBodies } from '@rhombus-std/primitives.extras';\n`
+      + `export const Foo = {\n  bar<T>(this: any): boolean { return this.isService(registerInlineBodies); },\n};\n`;
+    expect(lintInline(src)).toContain('freeIdentifier');
+  });
+
   test('malformed publish list → entryShape at Program', () => {
     // A type-only entry is malformed; loadInlineEntries throws and the rule
     // reports entryShape once at the Program node, regardless of the body.

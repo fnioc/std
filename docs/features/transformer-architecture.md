@@ -269,6 +269,43 @@ identifier must be a parameter, `this`, a type parameter, or an unaliased primit
 `rhombus-inline` ESLint rule enforces all of this, including which package each primitive name is
 allowed to be imported from (its one authoring home, per the table above).
 
+### The body marker — `registerInlineBodies`
+
+The publish list above is the **only** thing that points at a body set: no TypeScript anywhere
+imports `ManifestChainInline`, so nothing in the code says the object has a role at all. Each set
+therefore carries a marker beside its declaration, at module level:
+
+```ts
+export const ManifestChainInline = {
+  as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
+    return this.as(valueof<Scope>());
+  },
+};
+registerInlineBodies(ManifestChainInline);
+```
+
+It is the inline-body sister of the augmentation registry's `registerAugmentations` — a statement
+next to the declaration that names its registered role — and it is a deliberate runtime **no-op**:
+the register it refers to is the `package.json` entry, and `src/inline.ts` is never bundled or
+executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
+package every body-carrying package already depends on).
+
+**Two reasons, and the shape follows from having both.** One is readability, above. The other is
+that the repo's mechanical dead-code scan counts real references only — so without the marker every
+body set is a permanent known-false "unused export", in a scan whose whole value is that a finding
+means something. Either reason alone would buy something cheaper and worse (a comment; a per-file
+exemption in the scan's config). A marker in the source is the one form that pays both: it states
+the role where the body is read, and it is a real reference, so the scan needs no exemption to stay
+honest here. **Nothing enforces it** — the lint walks only the bodies the manifest lists and the Go
+extractor ignores the call — so add the marker whenever a set is added, or the set goes back to
+being invisible and gets reported.
+
+**Module level only, never wrapping the set.** The Go side-parser finds a set by its top-level
+`const` declaration and its members by walking that declaration, and the body validator rejects any
+identifier inside a body that is not a parameter, type parameter, or known primitive — the marker
+included. Both the ESLint rule and the Go extractor pin this: a module-level call is clean, a
+reference from inside a body is a free identifier.
+
 ## The sugar bodies, family by family
 
 Everything below is ordinary TypeScript, side-parsed by the inline stage out of each package's

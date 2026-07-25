@@ -20,13 +20,19 @@
 // resolves its base symbol against the consumer program and composes the wrapper
 // token `IOptions<element>`. The owner guarantee holds by construction — a
 // consumer that spells `addOptions<T>()` has `@rhombus-std/options` in its program
-// (this package peers it), so the base always resolves. `tokenfor` / `tokenof` are
-// the runtime-leaf token primitives (`@rhombus-std/primitives`); both lower to
-// inline token literals and their imports elide.
+// (this package peers it), so the base always resolves. `tokenfor` / `tokenof` come
+// from `@rhombus-std/primitives.extras`, the shared authoring home of the token
+// grammar; both lower to inline token literals and their imports elide.
+//
+// The "rhombus.inline" list named at the top is the ONLY thing pointing at the set
+// below, so the set carries a `registerInlineBodies(...)` marker beside it — a
+// module-level no-op that says in code what package.json says in configuration. See
+// `@rhombus-std/primitives.extras`'s `registerInlineBodies.ts` for why it exists and
+// why it must stay outside the body.
 
 import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
+import { registerInlineBodies, tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 
 /**
  * The two-token view of the `addOptions` verb the sugar body lowers against — the
@@ -66,3 +72,4 @@ export const ServiceOptionsInline = {
     return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
   },
 };
+registerInlineBodies(ServiceOptionsInline);
