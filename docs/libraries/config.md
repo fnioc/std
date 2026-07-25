@@ -4,7 +4,7 @@
 (builder/root/section engine + reload tokens; `ConfigManager` seeds a default memory
 source; `ChainedConfigSource` wraps an existing `IConfig` as a source) ← providers
 `config.json` / `config.env` / `config.commandline`, and the file-configuration sub-family
-`config.file` ← `config.json`/`config.ini`/`config.xml`. `config.transformer` rewrites
+`config.file` ← `config.json`/`config.ini`/`config.xml`. `config.extras` rewrites
 `.withType<T>()` and is standalone — di-independent.
 
 ## Justified divergences
@@ -46,7 +46,7 @@ walk a real runtime type via reflection, invisible to the compiler and trim-host
 is a hand-written, runtime-inspectable `Schema` (leaf kind strings, plain-object nesting, an
 `OPTIONAL`-symbol wrapper) that DOUBLES as the coercion driver AND — via `Infer<S>` — the static
 type `build()` returns. No DTO class, no reflection. Tier 2 layers `.withType<T>()` +
-`config.transformer` codegen on top, generating the Tier-1 schema literal from an authored
+`config.extras` codegen on top, generating the Tier-1 schema literal from an authored
 interface, so hand-authoring stays the base case and codegen is optional sugar.
 
 ```ts
@@ -64,7 +64,7 @@ config.Server.Port; // number, not string -- COERCED, not just typed
 // a missing Server.Host or an unparseable Port throws SchemaCoercionError,
 // listing every offending path in one error, not just the first
 
-// Tier 2, with config.transformer's compile-time codegen:
+// Tier 2, with config.extras's compile-time codegen:
 interface AppConfig {
   Server: { Host: string; Port: number; };
   Ssl?: boolean;
@@ -210,7 +210,7 @@ new CommandLineConfigSource(process.argv.slice(2), {
 
 The reference engine's reflective binder discovers unsupported shapes at RUNTIME -- throwing, or
 in some cases silently skipping them -- since it has no compile-time view of the target type at
-all. `config.transformer`'s `.withType<T>()` codegen has the opposite failure mode: an unsupported
+all. `config.extras`'s `.withType<T>()` codegen has the opposite failure mode: an unsupported
 field type is a hard COMPILE error with a stable numeric `DiagnosticCode`
 (`UnsupportedType`/`NonObjectRoot`) tests can assert on directly, and a failed call is left
 completely un-rewritten rather than partially lowered -- there is no silent-partial state to debug.
@@ -228,7 +228,7 @@ new ConfigBuilder().withType<BadConfig>().build();
 
 One more cross-cutting note: every capability above is fully usable by hand, with zero build step
 -- `withSchema`, `IndexedSection`, `toObject`, the typed accessors, and every `add*` augmentation
-are all plain, hand-writable APIs. `config.transformer` is strictly boilerplate deletion on top of
+are all plain, hand-writable APIs. `config.extras` is strictly boilerplate deletion on top of
 `withSchema`: `.withType<T>()` lowers to EXACTLY the `withSchema({...})` call a plugin-less author
 would have written by hand, never adding a capability of its own.
 

@@ -12,7 +12,7 @@ Recorded here only so the departure from ME's extension-method mechanism is on t
 
 ### MECB (configuration Binder) — not ported
 
-We do not port ME's reflective `ConfigurationBinder` (`Get<T>` / `Bind` / `GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1) plus `config.transformer`'s `withType<T>` codegen (Tier 2), and the factory-driven `IConfig.get<T>(path, factory)` — is documented as a positive feature in `docs/libraries/config.md` §2 and §6.
+We do not port ME's reflective `ConfigurationBinder` (`Get<T>` / `Bind` / `GetValue<T>`). Reflective binding is impossible in TypeScript: types are erased at runtime, so there is no shape to reflect over. What we built instead — a runtime-inspectable `Schema` (Tier 1) plus `config.extras`'s `withType<T>` codegen (Tier 2), and the factory-driven `IConfig.get<T>(path, factory)` — is documented as a positive feature in `docs/libraries/config.md` §2 and §6.
 
 ### Environment-agnosticism, declared via `types[]`
 

@@ -3,9 +3,9 @@
 `di.core` (the abstractions and the concrete `ServiceManifest` registration builder, registration-time
 errors, the `EmptyServiceProvider` null-object singleton) ← `di` (the resolution
 engine: scopes, resolution, captive-dependency protection, `ServiceProviderOptions`-gated
-`validateScopes`/`validateOnBuild`, and aggregated disposal). `di.transformer` (token derivation,
+`validateScopes`/`validateOnBuild`, and aggregated disposal). `di.extras` (token derivation,
 dependency extraction, registration lowering, factory-signature diagnostic) depends on `di.core`
-types only, never the `di` runtime. `di.transformer.options` is a satellite lowering the
+types only, never the `di` runtime. `di.extras.options` is a satellite lowering the
 `addOptions<T>()` sugar.
 
 ## Justified divergences
@@ -367,7 +367,7 @@ not appear anywhere in `libraries/di*`):
   second resolution channel in the rejected sense.
 - **A separate ABI package** — the ABI types and the token/registration machinery that reads and
   writes them are one intrinsic unit; splitting them buys no decoupling. (Package boundaries have
-  since evolved into `di.core`/`di`/`di.transformer`/`di.transformer.options` — a different split
+  since evolved into `di.core`/`di`/`di.extras`/`di.extras.options` — a different split
   than the PRD's original three-package `core`/`di`/`transformer`, but the "no separate ABI
   package" reasoning still applies to why there's no fifth `di.abi` package today.)
 
@@ -375,7 +375,7 @@ not appear anywhere in `libraries/di*`):
 
 The PRD's exact token-derivation grammar (package-public vs. app-internal path rules, nested-type
 qualification, the `<source>:<exportName>` format) plausibly still holds in spirit — the same
-concept names (`tokenfor`, app-internal fallback) exist in `libraries/primitives.transformer/src` —
+concept names (`tokenfor`, app-internal fallback) exist in `libraries/primitives.extras/src` —
 but wasn't diffed rule-by-rule against the current implementation here. Same caveat for the exact
 factory-signature diagnostic rules and the full token-derivation edge-case table. Verify against
-`libraries/primitives.transformer/src` before citing exact behavior.
+`libraries/primitives.extras/src` before citing exact behavior.
