@@ -1,0 +1,290 @@
+// OPEN GENERICS, tokenless dialect — one registration, unbounded closings.
+//
+// The problem: a persistence layer with N entity types should not need N
+// repository registrations. Register the repository ONCE against a token that
+// still has a HOLE in it — `IRepository<$1>` — and the container mints a closed
+// registration on demand for whichever closing is asked for. Adding a fourth
+// entity later costs one `Seed<T>` value and nothing else.
+//
+// Authored with @rhombus-std/di.extras, so the tokens are DERIVED. A generic
+// implementation is registered as an INSTANTIATION EXPRESSION —
+// `addClass<ITable<$<1>>>(InMemoryTable<$<1>>)` — because that is what binds the
+// class's own type parameter to the hole; a bare `InMemoryTable` would leave
+// `TEntity` unbound and its dependency slots underivable. The type arguments are
+// compile-time only and are stripped from the emitted call, which lowers to
+// exactly the hand-written form in ../../examples.app.without-transformer/src/
+// open-generics-demo.ts. Diff the two files: same scenario, same output, only
+// the dialect differs.
+//
+// THREE SPELLINGS OF A HOLE appear below, and the choice between them is not
+// cosmetic:
+//   $<1>            the general form, `Hole<1>` — an UNCONSTRAINED hole
+//   $1              the same thing with one fewer pair of angle brackets; the
+//                   bare aliases $1…$9 cover the common arities, and $<N> stays
+//                   the only spelling for N >= 10
+//   Hole<1, Entity> a CONSTRAINED hole. `InMemoryRepository<TEntity extends
+//                   Entity>` needs `.id`, so its type argument must satisfy that
+//                   bound — and a bare `$1` (unconstrained) does not. The second
+//                   parameter is the constraint carrier: `Hole<1, Entity>` IS an
+//                   `Entity`, so the bound is met while the hole survives.
+//
+// WHAT AN OPEN TEMPLATE MAY LOOK LIKE (as of this branch): every top-level type
+// argument of the SERVICE token must be a hole. `IRepository<$1>` and
+// `IJoin<$1,$2>` are templates; a partially-open `IJoin<User,$2>` is rejected at
+// registration. Holes inside a DEPENDENCY slot have no such restriction — that
+// is what makes the propagation below work.
+
+import { OpenTokenResolutionError, ServiceManifest } from '@rhombus-std/di';
+// The compile-time authoring brands. They have zero runtime footprint — this
+// import erases — and reaching them through di.extras is the documented idiom: a
+// single dependency brings both the lowering and the brands into scope.
+import type { $, $1, $2, Hole, Typeof } from '@rhombus-std/di.extras';
+
+import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
+  User } from '@rhombus-std/examples.contracts';
+
+// ── the data each closing bottoms out at ────────────────────────────────────
+
+// Registered CLOSED, one value per entity: `Seed<User>`, `Seed<Order>`,
+// `Seed<AuditEvent>` are three ordinary registrations with no holes in them.
+// They are the floor of the template's recursion.
+const USER_SEED: Seed<User> = {
+  rows: [
+    { id: 'u-1', name: 'Ada' },
+    { id: 'u-2', name: 'Grace' },
+  ],
+};
+const ORDER_SEED: Seed<Order> = {
+  rows: [
+    { id: 'o-1', total: 19 },
+    { id: 'o-2', total: 5 },
+    { id: 'o-3', total: 42 },
+  ],
+};
+const AUDIT_SEED: Seed<AuditEvent> = {
+  rows: [
+    { id: 'a-1', action: 'login' },
+    { id: 'a-2', action: 'export' },
+  ],
+};
+
+// ── the implementations ─────────────────────────────────────────────────────
+
+/**
+ * The middle link. Registered as the open template `ITable<$1>`, so it is only
+ * ever reached as a closed dependency of a closed repository.
+ *
+ * Both of its parameters carry the hole, in the two different ways a parameter
+ * can:
+ *   - `seed: Seed<TEntity>` is an ordinary dependency whose TOKEN contains the
+ *     hole (`…:Seed<$1>`), substituted per closing into `…:Seed<User>`;
+ *   - `entityToken: Typeof<TEntity>` is not a dependency at all — it asks for
+ *     the TOKEN STRING of the type argument. That is how a generic
+ *     implementation learns which closing it is, which it otherwise cannot know:
+ *     a type parameter is erased, so there is nothing to reflect on at runtime.
+ */
+class InMemoryTable<TEntity> implements ITable<TEntity> {
+  readonly #seed: Seed<TEntity>;
+  public readonly entityToken: string;
+
+  public constructor(seed: Seed<TEntity>, entityToken: Typeof<TEntity>) {
+    this.#seed = seed;
+    this.entityToken = entityToken;
+  }
+
+  public rows(): readonly TEntity[] {
+    return this.#seed.rows;
+  }
+}
+
+/**
+ * The template a consumer actually asks for. `TEntity extends Entity` is why the
+ * registration below spells its hole `Hole<1, Entity>` rather than `$1`:
+ * `describe()` reads `.id` off each row, so the skolem has to satisfy the bound.
+ */
+class InMemoryRepository<TEntity extends Entity> implements IRepository<TEntity> {
+  readonly #table: ITable<TEntity>;
+  public readonly entityToken: string;
+
+  public constructor(table: ITable<TEntity>, entityToken: Typeof<TEntity>) {
+    this.#table = table;
+    this.entityToken = entityToken;
+  }
+
+  public all(): readonly TEntity[] {
+    return this.#table.rows();
+  }
+
+  public describe(): string {
+    const ids = this.all().map((row) => row.id).join(', ');
+    return `${this.entityToken} -> ${ids}`;
+  }
+}
+
+/**
+ * The escape hatch. Audit rows must never leave the process with their ids
+ * attached, so `AuditEvent` gets its own implementation registered at the CLOSED
+ * token `IRepository<AuditEvent>`. An exact registration outranks the template,
+ * so this one wins for that single closing and the template still serves every
+ * other entity — the reason you can adopt a template without giving up
+ * per-type behaviour.
+ *
+ * It depends on `ITable<AuditEvent>`, which is itself minted from the `ITable`
+ * template: an exact registration and an open one compose freely.
+ */
+class AuditRepository implements IRepository<AuditEvent> {
+  readonly #table: ITable<AuditEvent>;
+  public readonly entityToken: string;
+
+  public constructor(table: ITable<AuditEvent>) {
+    this.#table = table;
+    this.entityToken = table.entityToken;
+  }
+
+  public all(): readonly AuditEvent[] {
+    return this.#table.rows();
+  }
+
+  public describe(): string {
+    return `${this.entityToken} -> ${this.#table.rows().length} event(s), ids redacted`;
+  }
+}
+
+/**
+ * An ARITY-2 template. Holes are numbered, not positional wildcards: `$1` and
+ * `$2` bind independently, and each side then resolves through the ordinary
+ * precedence rules — so asking for `IJoin<User,AuditEvent>` gets a
+ * template-minted left side and the exact `AuditRepository` on the right.
+ */
+class RepositoryJoin<TLeft, TRight> implements IJoin<TLeft, TRight> {
+  public constructor(
+    public readonly left: IRepository<TLeft>,
+    public readonly right: IRepository<TRight>,
+  ) {}
+
+  public describe(): string {
+    return `${this.left.entityToken} (${this.left.all().length}) `
+      + `joined with ${this.right.entityToken} (${this.right.all().length})`;
+  }
+}
+
+// ── the registrations ───────────────────────────────────────────────────────
+//
+// Kept at module top level, the shape a composition root has. The manifest is
+// IMMUTABLE — every verb returns a NEW manifest — so each call is threaded back
+// into `manifest`; a bare `manifest.addClass(...)` statement would register
+// nothing.
+
+let manifest = new ServiceManifest();
+
+// The three closed value registrations the templates bottom out at. Nothing
+// generic about them: `addValue<Seed<User>>` derives the ordinary closed token
+// `…:Seed<…:User>`.
+manifest = manifest.addValue<Seed<User>>(USER_SEED);
+manifest = manifest.addValue<Seed<Order>>(ORDER_SEED);
+manifest = manifest.addValue<Seed<AuditEvent>>(AUDIT_SEED);
+
+// Template 1 — `ITable<$1>`, spelled with the general `$<1>`. The instantiation
+// expression `InMemoryTable<$<1>>` binds the class's own `TEntity` to the hole,
+// which is what makes its `Seed<TEntity>` parameter derive the hole-carrying
+// token `…:Seed<$1>` instead of failing on an unbound type parameter.
+manifest = manifest.addClass<ITable<$<1>>>(InMemoryTable<$<1>>).as<'singleton'>();
+
+// Template 2 — `IRepository<$1>`, the one a consumer asks for. Its hole is
+// CONSTRAINED (`Hole<1, Entity>`) because the implementation's type parameter
+// is: swap in a bare `$1` here and the instantiation expression stops
+// type-checking.
+manifest = manifest
+  .addClass<IRepository<Hole<1, Entity>>>(InMemoryRepository<Hole<1, Entity>>)
+  .as<'singleton'>();
+
+// The one exact override. Registered at a fully CLOSED token, so it takes
+// precedence over template 2 for `AuditEvent` and only for `AuditEvent`.
+manifest = manifest.addClass<IRepository<AuditEvent>>(AuditRepository).as<'singleton'>();
+
+// Template 3 — arity 2, spelled with the bare `$1` / `$2` aliases.
+manifest = manifest.addClass<IJoin<$1, $2>>(RepositoryJoin<$1, $2>).as<'singleton'>();
+
+// The ONE hand-written token in this file. There is no point asking the
+// container for a template — the token still has a hole in it, so there is
+// nothing to construct — and the line below exists purely to show that the
+// engine says so out loud rather than resolving something surprising.
+const REPOSITORY_TEMPLATE = '@rhombus-std/examples.contracts:IRepository<$1>';
+
+// ── the demonstration ───────────────────────────────────────────────────────
+
+/**
+ * Resolves several closings of the templates registered above and returns the
+ * report as lines. Returns rather than prints so the caller owns the output.
+ *
+ * Deliberately order-stable: fixed seed rows, no timestamps, no iteration over
+ * an unordered collection.
+ */
+export function demonstrateOpenGenerics(): readonly string[] {
+  // Registrations are `singleton`, so a frame has to be open for them to have
+  // an owner to cache in; the provider straight from `build()` is frameless and
+  // would resolve everything transiently.
+  const app = manifest.build().createScope('singleton');
+  try {
+    // Two closings of ONE registration. Neither token was ever registered.
+    const users = app.resolve<IRepository<User>>();
+    const orders = app.resolve<IRepository<Order>>();
+
+    // The middle template, resolved directly. Its `entityToken` came from the
+    // `Typeof<TEntity>` parameter, filled in by the engine with the argument
+    // this closing was minted for.
+    const userTable = app.resolve<ITable<User>>();
+
+    // The exact registration for the one entity that needed different
+    // behaviour.
+    const audit = app.resolve<IRepository<AuditEvent>>();
+
+    // Arity 2: the left hole closes onto the template, the right onto the exact
+    // registration.
+    const join = app.resolve<IJoin<User, AuditEvent>>();
+
+    // A minted closing is a registration like any other, so the lifetime tag on
+    // the template applies PER CLOSING: `IRepository<User>` is a singleton, and
+    // `IRepository<Order>` is a different singleton.
+    const usersAgain = app.resolve<IRepository<User>>();
+
+    // The registration probe understands the template too: it answers for
+    // anything the container COULD mint, not just what was registered
+    // literally.
+    const orderRepositoryIsKnown = app.isService<IRepository<Order>>();
+
+    let templateOutcome = 'unexpectedly resolved';
+    try {
+      app.resolve(REPOSITORY_TEMPLATE);
+    } catch (error) {
+      if (error instanceof OpenTokenResolutionError) {
+        templateOutcome = 'threw OpenTokenResolutionError';
+      }
+    }
+
+    return [
+      '=== di open generics — with transformer ===',
+      'IRepository<$1> is registered ONCE; every closing below is minted from it:',
+      `  IRepository<User>: ${users.describe()}`,
+      `  IRepository<Order>: ${orders.describe()}`,
+      'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:',
+      `  ITable<User> reports the closing it was minted for: ${userTable.entityToken}`,
+      `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`,
+      'an EXACT closed registration outranks the template:',
+      `  IRepository<AuditEvent>: ${audit.describe()}`,
+      'arity 2 — $1 and $2 close independently, each side keeping its own precedence:',
+      `  IJoin<User,AuditEvent>: ${join.describe()}`,
+      'every closing is its own singleton:',
+      `  IRepository<User> resolved twice is one instance: ${Object.is(users, usersAgain)}`,
+      `  IRepository<User> and IRepository<Order> are separate instances: ${!Object.is(users, orders)}`,
+      'a closing nobody registered still answers the registration probe:',
+      `  isService(IRepository<Order>): ${orderRepositoryIsKnown}`,
+      'the template itself is NOT resolvable — a hole is not a service:',
+      `  resolving ${REPOSITORY_TEMPLATE} ${templateOutcome}`,
+    ];
+  } finally {
+    // The scope owns every singleton it cached, including the ones minted from
+    // the templates; disposing it releases each closing.
+    app.dispose();
+  }
+}
