@@ -22,6 +22,7 @@
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
@@ -31,7 +32,6 @@
         "@rhombus-std/options.augmentations": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/di.extras.options": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
@@ -68,10 +68,10 @@
       "name": "@rhombus-std/examples.lib.with-transformer",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
@@ -84,10 +84,10 @@
       "name": "@rhombus-std/examples.lib.without-transformer",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
         "typescript": "^5.9.0",
       },
     },

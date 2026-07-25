@@ -30,3 +30,102 @@ info: Rhombus.Examples.InteropWorker[0]
       stopped
 dbug: Rhombus.Hosting.Host[4]
       Hosting stopped
+
+=== di registration — with transformer ===
+immutability: the discarded call registered 0, the threaded one registered 1
+defaults: applying them twice leaves 1 sink (tryAdd* only registers what is missing)
+defaults: an application that registered its own sink keeps it (recording)
+override: replace* swapped all three defaults; the host sink is recording, it captured 1 message, and 1 registration is left at its token
+teardown: removeAll left 0 sinks on the new manifest, and 1 on the original (nothing mutates)
+notify: [production] 2024-05-01T09:00:00Z order-42 shipped
+audit: 1 entry, sink echo enabled=true
+keyed sink (key "email"): to:orders@example.test 2024-05-01T09:00:00Z welcome
+keyed value (key "vendor"): 2024-05-01T09:00:00Z
+open template, closed per entity: Order {"id":"order-42"} at 2024-05-01T09:00:00Z
+2 sinks share the IMessageSink token; the last one registered wins a single resolve
+fork: removeAll left 0 sinks (the original still has 2), so the audit log's optional sink slot resolved to undefined and it recorded 1 entry anyway
+
+=== di resolution — with transformer ===
+required vs optional lookup
+  resolve(IPaymentRouter): resolved PaymentRouter
+  resolve(IFraudScreen): UnregisteredTokenError — a required miss is loud
+  tryResolve(IAuditTrail): present
+  tryResolve(IFraudScreen): undefined
+  isService(IFraudScreen): false — a probe, nothing is built
+collection resolution — 3 registrations share one token, all of them run
+  A-1001: total-within-limit → ok
+  A-1001: amount-is-positive → ok
+  A-1001: method-is-configured → ok
+  X-9009: total-within-limit → over the 250000 limit
+  X-9009: amount-is-positive → ok
+  X-9009: method-is-configured → no gateway for "crypto"
+keyed resolution — one base token, three keys
+  configured methods (plural scan /.+/): card, wallet, invoice
+  A-1001 checkout (key "wallet"): wallet debited 4250 for A-1001 → #1001 A-1001 via wallet
+  B-2002 checkout (key "card"): card authorised 990 for B-2002 → #1002 B-2002 via card
+  tryResolve at key "crypto": undefined
+factory resolution — the caller supplies what the container cannot know
+  mint C-3003: #1003 C-3003 via invoice
+  mint C-3003 again: #1004 C-3003 via invoice — never cached
+  zero-arg factory honours the target lifetime: true
+async resolution — satisfied by the Promise<T> registration
+  rates as of 2026-01-01, EUR at 0.85
+the provider as a service — usually a smell, occasionally correct
+  isProviderToken(RESOLVER_TOKEN): true
+  isService(RESOLVER_TOKEN): true — intrinsic, nothing registered it
+  the injected view IS the live container: true
+optional audit trail: 2 entries, last B-2002
+
+=== di lifetimes and disposal — with transformer ===
+open frames: "singleton" > "request"
+request 1: 2 validator resolves -> 2 instances (no scope tag = transient)
+request 1 closed -> outbox flushed, unit of work committed
+request 2 closed -> outbox flushed, unit of work committed
+each request had its own unit of work: true; both shared one pool: true
+shutdown -> pool closed
+a "singleton" tag with no open frame is not an error: 2 resolves -> 2 pools
+  ...because build() opens no frame at all: it has no scope name (true)
+captive dependency (a singleton holding a request-scoped unit of work):
+  build() plain             -> held a unit of work owned by no request: true
+  build({ validateScopes }) -> ScopeValidationError: a "singleton" consumer cannot hold a "request" service
+a dependency that was never registered:
+  build() plain              -> built fine; the first resolve threw NoSatisfiableSignatureError
+  build({ validateOnBuild }) -> AggregateError naming 1 broken registration (NoSatisfiableSignatureError)
+disposal is aggregated, never abort-on-first-throw:
+  every teardown still ran -> search index closed, outbox flushed, unit of work committed
+  the caller got AggregateError carrying 2 failures
+
+=== di open generics — with transformer ===
+IRepository<$1> is registered ONCE; every closing below is minted from it:
+  IRepository<User>: @rhombus-std/examples.contracts:User -> u-1, u-2
+  IRepository<Order>: @rhombus-std/examples.contracts:Order -> o-1, o-2, o-3
+the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:
+  ITable<User> reports the closing it was minted for: @rhombus-std/examples.contracts:User
+  IRepository<User>.all() is the array registered as Seed<User>: true
+an EXACT closed registration outranks the template:
+  IRepository<AuditEvent>: @rhombus-std/examples.contracts:AuditEvent -> 2 event(s), ids redacted
+arity 2 — $1 and $2 close independently, each side keeping its own precedence:
+  IJoin<User,AuditEvent>: @rhombus-std/examples.contracts:User (2) joined with @rhombus-std/examples.contracts:AuditEvent (2)
+every closing is its own singleton:
+  IRepository<User> resolved twice is one instance: true
+  IRepository<User> and IRepository<Order> are separate instances: true
+a closing nobody registered still answers the registration probe:
+  isService(IRepository<Order>): true
+the template itself is NOT resolvable — a hole is not a service:
+  resolving @rhombus-std/examples.contracts:IRepository<$1> threw OpenTokenResolutionError
+
+=== di infrastructure (library-author surface) — with transformer ===
+app registered no stationery:
+  stationery overridden: false
+  card: -- Hello, Ada --
+app registered its own stationery:
+  stationery overridden: true
+  card: *** Hello, Grace ***
+no container at all (EmptyServiceProvider):
+  provider reports itself a service: true
+  probing an ordinary token: undefined
+  stationery overridden: false
+  card failed: ActivationError building "GreetingCard"
+  ... and it is a DiError: true
+registering a value at an open template: caught a DiError (OpenTokenRegistrationError)
+resolving an unregistered token: caught a DiError (UnregisteredTokenError)

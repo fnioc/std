@@ -37,7 +37,16 @@ import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { fetchBanner, FormalGreeting, makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
-import { addCasualServices, GREETING_TOKEN } from '@rhombus-std/examples.lib.without-transformer';
+import { addCasualServices, demonstrateInfrastructure,
+  GREETING_TOKEN } from '@rhombus-std/examples.lib.without-transformer';
+
+// The five chapters of the di tour that runs after the host has shut down. Each
+// returns its lines rather than printing, so this file owns the ordering and the
+// spacing — see the tour at the bottom.
+import { demonstrateLifetimes } from './lifetimes-demo.js';
+import { demonstrateOpenGenerics } from './open-generics-demo.js';
+import { demonstrateRegistration } from './registration-demo.js';
+import { demonstrateResolution } from './resolution-demo.js';
 
 // The tokens the transformer would derive, hand-written. GREETING_TOKEN is
 // re-used from the without-transformer library so both greetings register at the
@@ -230,3 +239,33 @@ builder.services = services.addHostedService(InteropWorker, [
 
 const host = builder.build();
 await host.runAsync();
+
+// ── the di tour ───────────────────────────────────────────────────────────────
+//
+// The host scenario above is ONE application seen end to end. What follows is a
+// guided tour of the di surface itself, in the order a reader meets it: what you
+// can put IN a container, how you get things OUT, how long what you got lives,
+// how one registration serves every closing of a generic, and finally the pieces
+// a LIBRARY author (rather than an application) reaches for.
+//
+// Each chapter owns its own container, so nothing here can perturb the host's —
+// and each returns its lines rather than printing, which is what lets this file
+// decide the order and the spacing. The whole run is deterministic (fixed
+// clocks, fixed seed data, no filesystem, no randomness): the app's checked-in
+// `expected.txt` is a byte-for-byte diff of this output.
+const tour: readonly (readonly string[])[] = [
+  demonstrateRegistration(),
+  await demonstrateResolution(),
+  await demonstrateLifetimes(),
+  demonstrateOpenGenerics(),
+  // From the LIBRARY, not the app: the infrastructure surface exists for library
+  // authors, so it is demonstrated from inside one.
+  demonstrateInfrastructure(),
+];
+
+for (const chapter of tour) {
+  console.log('');
+  for (const line of chapter) {
+    console.log(line);
+  }
+}

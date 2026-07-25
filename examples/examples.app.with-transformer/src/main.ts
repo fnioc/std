@@ -55,8 +55,17 @@ import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@
 import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IGreeting, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
-import { fetchBanner, FormalGreeting, makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
+import { demonstrateInfrastructure, fetchBanner, FormalGreeting,
+  makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
 import { addCasualServices } from '@rhombus-std/examples.lib.without-transformer';
+
+// The five chapters of the di tour that runs after the host has shut down. Each
+// returns its lines rather than printing, so this file owns the ordering and the
+// spacing — see the tour at the bottom.
+import { demonstrateLifetimes } from './lifetimes-demo.js';
+import { demonstrateOpenGenerics } from './open-generics-demo.js';
+import { demonstrateRegistration } from './registration-demo.js';
+import { demonstrateResolution } from './resolution-demo.js';
 
 // The ONE hand-written token in this file — see the header note. It has no
 // transformer-derived counterpart to match; it exists purely to thread the
@@ -248,3 +257,36 @@ builder.services = services.addHostedService(InteropWorker, [
 
 const host = builder.build();
 await host.runAsync();
+
+// ── the di tour ───────────────────────────────────────────────────────────────
+//
+// The host scenario above is ONE application seen end to end. What follows is a
+// guided tour of the di surface itself, in the order a reader meets it: what you
+// can put IN a container, how you get things OUT, how long what you got lives,
+// how one registration serves every closing of a generic, and finally the pieces
+// a LIBRARY author (rather than an application) reaches for.
+//
+// Every chapter has a line-for-line twin in the without-transformer app, and the
+// two print the SAME lines apart from the "with"/"without transformer" header —
+// which is the no-transformer-first rule made checkable, since both apps' output
+// is byte-diffed against a checked-in `expected.txt`.
+//
+// Each chapter owns its own container, so nothing here can perturb the host's —
+// and each returns its lines rather than printing, which is what lets this file
+// decide the order and the spacing.
+const tour: readonly (readonly string[])[] = [
+  demonstrateRegistration(),
+  await demonstrateResolution(),
+  await demonstrateLifetimes(),
+  demonstrateOpenGenerics(),
+  // From the LIBRARY, not the app: the infrastructure surface exists for library
+  // authors, so it is demonstrated from inside one.
+  demonstrateInfrastructure(),
+];
+
+for (const chapter of tour) {
+  console.log('');
+  for (const line of chapter) {
+    console.log(line);
+  }
+}
