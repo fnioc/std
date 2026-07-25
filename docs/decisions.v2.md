@@ -1167,11 +1167,28 @@ imported from `di.core`.
 `@rhombus-std/di` (a devDependency) for `IServiceManifest` / `IResolver`. Those are erased at
 compile time, so no runtime reference survives and the existence proof stands, but a library
 reaching for the engine's name to spell a type it could spell from `di.core` is the same instinct
-this entry rules out. Separately, `logging` and `hosting` are the only libraries carrying a RUNTIME
-`@rhombus-std/di` dependency, both for the constructible `ServiceManifest` value (di.core ships
-`ServiceManifestClass`; di ships the value and the `build()` patch). `hosting` is an entry point by
-job description, but `LoggerFactory.create` builds its own provider, which is entry-point work
-inside a library. Both are separate changes and need an owner call.
+this entry rules out. Separately, `examples.lib.*` should spell those types from `di.core`; that is a
+follow-up, not a hole in the rule.
 
-_Owner-directed 2026-07-24 ("move the errors"), and the rule stated in the owner's words. The
-residual note above is Claude's._
+**`logging` is an exception. The rule stands.** `logging` and `hosting` are the only libraries
+carrying a RUNTIME `@rhombus-std/di` dependency, both for the constructible `ServiceManifest` value
+(di.core ships `ServiceManifestClass`; di ships the value and the `build()` patch). `hosting` is an
+entry point by job description, so it is not an exception at all. `logging` is: `LoggerFactory.create`
+stands up a manifest, builds a provider, opens the singleton scope and resolves the factory out of
+it — entry-point work by this entry's letter, inside a library.
+
+It stays. The API is a legitimate convenience for a consumer who wants logging without composing a
+container, and the ownership problem it creates is solved rather than ignored: the returned
+`DisposingLoggerFactory` owns the scope it made, so disposing the factory disposes everything it
+built. The reference reached the same conclusion independently — its logging assembly takes a full
+dependency on the DI assembly, not just the abstractions, for precisely this one API.
+
+**The exception is `logging`, by name. The list is closed.** The paragraph above explains why
+`logging` earned it; it is not a test anyone else may apply. No other library builds a container,
+and a second exception requires a new decision here — not an argument that some new case resembles
+this one. Stated deliberately as a name rather than as a shape: a shape ("a library may own a
+container it creates itself…") reads as a general permission and invites each author to decide their
+own case qualifies, which is how an invariant erodes without anyone ever choosing to weaken it.
+
+_Owner-directed 2026-07-24 ("move the errors"), the rule stated in the owner's words, and the
+`logging` carve-out ruled 2026-07-25 ("the rule stands, logging is an exception")._
