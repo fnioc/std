@@ -22,6 +22,7 @@
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
@@ -31,7 +32,6 @@
         "@rhombus-std/options.augmentations": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/di.extras.options": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
@@ -68,13 +68,13 @@
       "name": "@rhombus-std/examples.lib.with-transformer",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -84,10 +84,10 @@
       "name": "@rhombus-std/examples.lib.without-transformer",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di": "workspace:*",
         "typescript": "^5.9.0",
       },
     },
@@ -764,6 +764,15 @@
         "typescript": "^7.0.2",
       },
     },
+    "tests/di.extras.test": {
+      "name": "@rhombus-std/di.extras.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
+      },
+    },
     "tests/di.signatureof.ttsc.e2e": {
       "name": "@rhombus-std/di.signatureof.ttsc.e2e",
       "version": "0.0.0",
@@ -1367,6 +1376,8 @@
     "@rhombus-std/di.extras": ["@rhombus-std/di.extras@workspace:libraries/di.extras"],
 
     "@rhombus-std/di.extras.options": ["@rhombus-std/di.extras.options@workspace:libraries/di.extras.options"],
+
+    "@rhombus-std/di.extras.test": ["@rhombus-std/di.extras.test@workspace:tests/di.extras.test"],
 
     "@rhombus-std/di.signatureof.ttsc.e2e": ["@rhombus-std/di.signatureof.ttsc.e2e@workspace:tests/di.signatureof.ttsc.e2e"],
 

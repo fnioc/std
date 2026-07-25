@@ -1,0 +1,10 @@
+{
+  "//": "The point of this program is the `types` entry: it pulls the @rhombus-std/di.extras declare-module augmentation in as a compile-time inclusion (never a runtime import), so the assertions here are checked against the MERGED IResolver / IServiceManifestBase surface a transformer consumer actually sees. Every other di test package types without it, which is why a compile-time regression that only bites under the augmentation has to live in its own program.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "types": ["bun", "@rhombus-std/di.extras"]
+  },
+  "include": ["test/**/*"]
+}

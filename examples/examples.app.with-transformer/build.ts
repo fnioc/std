@@ -44,6 +44,16 @@ const js = await Bun.build({
   external: [
     '@rhombus-std/config',
     '@rhombus-std/di',
+    // di.core is external because the LOWERING materializes a runtime import of
+    // it: the §99 override form `addClass<I>(C, overrides)` in
+    // src/registration-demo.ts lowers to
+    // `addClass(token, C, overrideSignatures(signatureof(C), overrides), …)`,
+    // and `overrideSignatures` is a di.core RUNTIME helper the inline stage
+    // imports into the emitted file. Inline it and Bun pulls di.core (and
+    // transitively @rhombus-std/primitives) into dist/main.js, forking
+    // `ServiceManifestClass` identity and the augmentation registry — the exact
+    // fork §9/§38 forbid. Nothing in the AUTHORED source imports di.core.
+    '@rhombus-std/di.core',
     '@rhombus-std/examples.contracts',
     '@rhombus-std/examples.lib.with-transformer',
     '@rhombus-std/examples.lib.without-transformer',

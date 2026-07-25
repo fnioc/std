@@ -11,11 +11,12 @@
  * extension). Cross-package fluent-authoring augmentations prototype-patch this
  * class, and depend on di.core ALONE, never the runtime.
  *
- * Runtime footprint: the slot/token helpers, the registration builder, and the
- * whole error taxonomy — registration-time AND resolution-time, so a library
- * that references only the abstractions can classify a container failure without
- * pulling the engine (§130). Only the resolution engine itself
- * (`ServiceProviderClass`) lives in `@rhombus-std/di`.
+ * Runtime footprint: the slot/token helpers, the registration builder, the
+ * `EmptyServiceProvider` null-object singleton, and the whole error taxonomy —
+ * registration-time AND resolution-time, so a library that references only the
+ * abstractions can classify a container failure without pulling the engine
+ * (§130). Only the resolution engine itself (`ServiceProviderClass`) lives in
+ * `@rhombus-std/di`.
  */
 
 export type { DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,

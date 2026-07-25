@@ -67,13 +67,39 @@ export interface IBanner {
 }
 
 /**
- * The report the with-transformer library assembles from the whole container:
- * the aggregated greetings (#48), the live server options (#6/#40), the greeting
- * policy (#34), and whether a health check is present (#23/#25). Its factory
- * pulls every input through an injected `IResolver` (#49), resolving each
- * TOKENLESSLY — which is why that library must ship its build (the raw source's
- * un-lowered `resolve<T>()` calls would throw).
+ * The report the with-transformer library assembles: the aggregated greetings
+ * (#48), the live server options (#6/#40), the greeting policy (#34), and
+ * whether a health check is present (#23/#25).
+ *
+ * Every one of those arrives as a FACTORY PARAMETER — a collection, two
+ * `IOptions<T>` wrappers and an optional union — so the factory's dependencies
+ * are exactly what its signature says and it never asks the container a
+ * question. Deriving those four slots from the parameter types is the densest
+ * piece of boilerplate the sugar removes anywhere in these examples; that
+ * derivation is also why the library must ship its BUILD rather than its source,
+ * since the un-lowered registration call has no signatures in it yet.
  */
 export interface IServerReport {
   readonly lines: readonly string[];
 }
+
+// ── the di feature tour's contracts ──────────────────────────────────────────
+//
+// The types above belong to the interop scenario the two apps boot through the
+// Generic Host. The two modules below belong to the guided di tour those apps
+// run afterwards, and they are re-exported HERE rather than declared inside an
+// app for one load-bearing reason: a transformer derives a token from a type's
+// PACKAGE-PUBLIC path, so `IRepository<User>` reached through this barrel derives
+// `@rhombus-std/examples.contracts:IRepository<@rhombus-std/examples.contracts:User>`
+// — the exact string the without-transformer app hand-writes. Declared inside an
+// app they would derive an app-private token instead, the two dialects would
+// stop meeting on the string, and the pair could no longer be diffed line for
+// line.
+
+// The checkout pipeline the RESOLUTION demonstration is built on.
+export type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway,
+  IPaymentRouter, IReceipt, IReceiptNumbering } from './resolution-contracts.js';
+
+// The three-deep entity/table/repository chain the OPEN-GENERICS demonstration
+// closes one hole at a time.
+export type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from './open-generics-contracts.js';
