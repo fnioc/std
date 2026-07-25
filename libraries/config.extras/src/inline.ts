@@ -19,7 +19,14 @@
 // stage lowers it to the runtime schema literal (and materializes the OPTIONAL
 // import a wrapped field needs). It is imported via a package-relative specifier —
 // its home IS this package.
+//
+// The "rhombus.inline" list named at the top is the ONLY thing pointing at the set
+// below, so the set carries a `registerInlineBodies(...)` marker beside it — a
+// module-level no-op that says in code what package.json says in configuration. See
+// `@rhombus-std/primitives.extras`'s `registerInlineBodies.ts` for why it exists and
+// why it must stay outside the body.
 
+import { registerInlineBodies } from '@rhombus-std/primitives.extras';
 import { schemaof } from './schemaof.js';
 
 /**
@@ -50,3 +57,4 @@ export const ConfigBuilderInline = {
     return this.withSchema(schemaof<T>());
   },
 };
+registerInlineBodies(ConfigBuilderInline);
