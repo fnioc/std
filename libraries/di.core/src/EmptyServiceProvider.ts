@@ -17,6 +17,12 @@
 //     / `IServiceProviderIsService`. `isService` reports true for it alone;
 //   - every other token is unregistered: `tryResolve` → `undefined`, `resolve` /
 //     `resolveAsync` throw, `resolveFactory` throws (no target to build);
+//   - the keyed PLURAL forms (`resolve(token, /…/)`) return `[]`. Their contract
+//     is "0 matches yields `[]` — never throws on count", and a provider with no
+//     registrations has an empty key-space for every token, so the empty scan IS
+//     the honest answer. This is NOT the empty-collection divergence below: that
+//     one is about the `Array<T>` wrapper grammar, which di.core does not own;
+//     the keyed key-space is a plain property of having no registrations;
 //   - `createScope` returns this same empty provider (the reference's empty scope
 //     returns itself); `dispose` / `disposeAsync` are no-ops.
 //
@@ -57,10 +63,23 @@ export class EmptyServiceProvider implements IServiceProvider<string> {
     throw new TypeError('The EmptyServiceProvider has no scope frame open.');
   }
 
-  public resolve<T>(token: Token): T;
-  public resolve(token: Token): unknown;
-  public resolve(token: Token): unknown {
-    if (isProviderToken(token)) {
+  public resolve<T>(token: Token, pattern: RegExp): T[];
+  public resolve(token: Token, pattern: RegExp): unknown[];
+  public resolve<T>(token: Token, key?: string): T;
+  public resolve(token: Token, key?: string): unknown;
+  public resolve(token: Token, key?: string | RegExp): unknown {
+    // Keyed PLURAL: the contract is "0 matches yields `[]` — never throws on
+    // count" (`IRequiredResolver`). The empty provider has no key-space at all,
+    // so every pattern scan is the empty one. The intrinsic provider is NOT in
+    // it: a keyed scan is confined to `token`'s own key-space, and the provider
+    // token has none.
+    if (key instanceof RegExp) {
+      return [];
+    }
+    // Keyed SINGULAR: a key composes an ORDINARY token, and every token but the
+    // intrinsic provider is unregistered here — so a keyed request misses even
+    // when its base is the provider token.
+    if (isProviderToken(token) && !key) {
       return this;
     }
     throw unregistered(token);
@@ -72,10 +91,15 @@ export class EmptyServiceProvider implements IServiceProvider<string> {
     return this.resolve(token);
   }
 
-  public tryResolve<T>(token: Token): T | undefined;
-  public tryResolve(token: Token): unknown;
-  public tryResolve(token: Token): unknown {
-    return isProviderToken(token) ? this : undefined;
+  public tryResolve<T>(token: Token, pattern: RegExp): T[];
+  public tryResolve(token: Token, pattern: RegExp): unknown[];
+  public tryResolve<T>(token: Token, key?: string): T | undefined;
+  public tryResolve(token: Token, key?: string): unknown;
+  public tryResolve(token: Token, key?: string | RegExp): unknown {
+    if (key instanceof RegExp) {
+      return [];
+    }
+    return isProviderToken(token) && !key ? this : undefined;
   }
 
   public isService(token: Token): boolean {
