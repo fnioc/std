@@ -1,6 +1,7 @@
 # `@rhombus-std/config`
 
-`config.core` (the `IConfig*` types, pure types/zero runtime emit) ← `config`
+`config.core` (the `IConfig*` types plus the abstraction-level runtime that belongs with them —
+the `configPath` helpers, the convenience augmentation sets, and the `isConfigSection` brand) ← `config`
 (builder/root/section engine + reload tokens; `ConfigManager` seeds a default memory
 source; `ChainedConfigSource` wraps an existing `IConfig` as a source) ← providers
 `config.json` / `config.env` / `config.commandline`, and the file-configuration sub-family

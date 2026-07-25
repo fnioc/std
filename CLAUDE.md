@@ -6,10 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Project-specific rules only. General git/commit/worktree conventions live in user prefs, not here.
 
-**`docs/decisions.md` is the living design record** — every load-bearing package boundary and
-invariant below is numbered and justified there (cited as "§N"). Read it for the _why_ before
-changing a boundary, and append to it when a decision lands. The root `README.md` is
-scaffolding-era and stale — ignore it.
+**`docs/decisions.v2.md` is the living design record** — every load-bearing package boundary and
+invariant below is numbered and justified there (cited as "§N"). `docs/decisions.md` is its
+**retiring** predecessor: still worth reading for the _why_, but entries migrate out of it one at a
+time, so **never write to it** and never let an un-migrated entry there govern a decision without
+the owner ratifying it first. A newly settled decision is recorded in `decisions.v2.md` only. The
+root `README.md` is scaffolding-era and stale — ignore it.
 
 ## Issue coding gate
 
@@ -48,28 +50,31 @@ Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` 
 - **`bun run test` is the full gate.** It runs every package's `test`, then every package's
   `test:e2e` — the ttsc parity e2es join the gate (they self-skip only on a Go-less machine). It
   includes the `examples.app.*` output-diff e2e: build with the Go/ttsc engine, run, `diff` stdout
-  against the checked-in `expected.txt` (§16). CI's `verify` job (`.github/workflows/ci.yml`) runs
-  `build`/`test`/`lint`/`format:check` plus the Go gates on every push/PR/merge_group and is a
-  required status check on the `main` merge-queue ruleset — but it's the same local gate running
-  remotely, not a separate suite; `bun run test` locally is still authoritative.
+  against the checked-in `expected.txt` (§16). CI splits that gate across jobs
+  (`.github/workflows/ci.yml`): `main-gate` runs `build`/`test`/`lint`/`format:check` plus the Go
+  gates, `transform-shards` runs the ttsc e2es (both behind a `changes` filter), and `verify` only
+  aggregates their results — `verify` is the required status check on the `main` merge-queue
+  ruleset. It's the same local gate running remotely, not a separate suite; `bun run test` locally
+  is still authoritative.
 - **Typecheck is per-package**, inside each package's `build`/`lint` (`tsc --noEmit -p tsconfig.ci.json`).
   Each package's `tsconfig.json` is the **editor** config instead — a whole-repo src-refs program (all
   `libraries/*/src` in one program, `@rhombus-std/*` → source) so IDE rename / find-refs span every
   package; the build and gate never read it (extends `/tsconfig.editor.json`).
   The root `typecheck` script (`tsc -b`) points at an empty solution stub and checks nothing — don't
   rely on it.
-- **Lint** is eslint (typescript-eslint, type-aware) over `libraries|examples/*/src`; but
-  transformer-consuming packages lint by _typechecking_ (`tsc --noEmit`) — the authored tokenless
-  forms type-check against the transformer's `declare module` augmentation (pulled in via `types`),
-  with no plugin, since `tokenfor` and the sugar forms have no type-level footprint. Formatting is
-  **dprint** (`useBraces: always`).
+- **Lint** is `tsc --noEmit` for almost every package (28 of 32 libraries; `-p tsconfig.ci.json`).
+  Typechecking suffices because the authored tokenless forms type-check against the sugar package's
+  `declare module` augmentation — pulled in by a `types` array in the consuming package's
+  `tsconfig.json` / `tsconfig.ttsc.json` — with no plugin, since `tokenfor` and the sugar forms have
+  no type-level footprint. Only `di`, `di.core`, `di.extras` and `hosting.core` run `eslint .`
+  (typescript-eslint, type-aware). Formatting is **dprint** (`useBraces: always`).
 - **Go gates** (the ttsc engine's own): `node scripts/gen-go-work.mjs` then, from `transforms/`,
   `go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on PATH; the
   generator rebuilds the gitignored `go.work` against the installed ttsc shim modules).
 
 ## Architecture
 
-Four package families **mirror the `ME.*` reference dependency graph**
+The package families **mirror the `ME.*` reference dependency graph**
 (`docs/reference/me-extensions-dependencies.md`) package-for-package and edge-for-edge; the
 API surface _within_ a package may deviate where TS/bun justifies it, but the graph is faithful
 first and a distinction is collapsed only after it's shown unjustified (§0). Naming below in
@@ -183,8 +188,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   augmentation; ← `config.core` + `di.core` + `diagnostics.core` + `fileproviders.core` +
   `logging.core`) ← `hosting` (the Generic Host runtime — classic `HostBuilder` and modern
   `HostApplicationBuilder`, the static `Host` factory, `HostOptions`, `ConsoleLifetime`,
-  `HostingEnvironment`; ← the concrete `config`/`di`/`diagnostics`/`logging` packages +
-  `options` + `options.augmentations` + the new `logging.console` console sink). The host→app
+  `HostingEnvironment`; ← the concrete `config`/`di`/`logging` packages + `diagnostics.core` +
+  `options` + `options.augmentations` + the `logging.console` console sink). The host→app
   configuration composition is a live `addConfiguration` chain, not a `flattenConfiguration`
   snapshot (§37). Full reference parity, no stubs inside hosting itself (§23); the builder parity
   surface is now finished (§67): `addHostedService`'s factory overload, a real
@@ -236,8 +241,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ILogger<$1> → Logger<$1>` registration, `ISupportExternalScope` +
   `LoggerExternalScopeProvider` (`AsyncLocalStorage`-backed), the `LoggerRuleSelector`
   filter-selection engine actually consulted at log time, and the `addLogging` augmentation onto
-  `di.core`'s `ServiceManifestClass`; ← `logging.core` + `options` + `options.augmentations`,
-  `di` + `di.core` as peers — `setMinimumLevel` and `LoggerFactory.create` are real, no longer
+  `di.core`'s `ServiceManifestClass`; ← `logging.core` + `options` + `options.augmentations` + `di`,
+  with `di.core` as its peer — `setMinimumLevel` and `LoggerFactory.create` are real, no longer
   stubs, §62) ← `logging.config` (config-tree → `LoggerFilterOptions` binding via a lazy
   `addOptions`/`ConfigChangeTokenSource` pipeline, `addConfiguration`, and the full
   `ILoggerProviderConfigFactory`/`ILoggerProviderConfig<T>` provider-configuration
@@ -282,7 +287,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   stays deliberately deferred — `fileproviders.physical`'s `watch` ports only the reference's
   non-glob branch, §73.
 
-Cross-cutting invariants (each spans several packages — confirm against `docs/decisions.md`
+Cross-cutting invariants (each spans several packages — confirm against the decisions docs
 before touching):
 
 - **di ⊥ config** — neither imports the other; the only bridge is `options.augmentations` (§4.3).
@@ -304,7 +309,7 @@ before touching):
   `ServiceManifestClass` cross-package augmentations install onto is the same object everywhere;
   a private inlined copy forks identity and breaks the install (§9). config keeps providers
   external for the same reason. **Every bundling package keeps `@rhombus-std/primitives`
-  external** — an inlined copy forks the augmentation registry's Map + event bus (§38). The same
+  external** — an inlined copy forks the augmentation registry's Map + subscriber list (§38). The same
   holds for the rolled `.d.ts`: a package that inlines di.core's types forks
   `IServiceManifestBase`, so every di.core dependent keeps it external in `rollup.dts.mjs` (§114).
 - **Augmentations** — one named object literal per augmentation set (`satisfies
@@ -313,9 +318,9 @@ before touching):
   matches sugar calls at the receiver's declaration site, never by type name or call shape. Full
   mechanics, authoring steps, and gotchas: `docs/features/augmentations.md` (§89).
 
-**Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
+**Keep this digest in step with `docs/decisions.v2.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
-Architecture section above. `decisions.md` is the full record; this file is the digest.
+Architecture section above. The decisions docs are the full record; this file is the digest.
 
 ## Package naming
 
@@ -333,8 +338,9 @@ Architecture section above. `decisions.md` is the full record; this file is the 
     `di.extras.options`, `config.extras`. `primitives.extras` also homes the shared
     authoring-time token primitives (`tokenfor`/`tokenof` moved out of the runtime
     `primitives` leaf, plus `isSingular`/`singularValue`/`isFactory`/etc.).
-  - Config providers keep their own name instead of a generic qualifier:
-    `config.json`, `config.env`, `config.commandline`. Concrete providers in other families
+  - Config providers keep their own name instead of a generic qualifier — `config.json`,
+    `config.env`, `config.commandline`, plus the file sub-family `config.file`/`config.ini`/
+    `config.xml` (the Architecture section above is the authoritative roster). Concrete providers in other families
     follow the same pattern — `logging.console` and `logging.browserconsole` are the console
     sinks for `logging`; `.browser` (`hosting.browser`) names a page-hosted runtime target rather
     than a provider, distinct from the qualifiers above.
@@ -352,6 +358,43 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
 (`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
 
+## Comments
+
+**A comment explains the code in front of the reader — never the history of how it got there.**
+This is a port, so comments accreted a running commentary on the porting process: lineage, decision
+citations, rejected alternatives, superseded designs. None of that helps someone reading the code;
+it occupies the space an explanation should. Where a case isn't covered below, decide by asking
+_does this help someone understand the code in front of them?_
+
+**Never write:**
+
+- **Any allusion to `ME.*` / the reference implementation, however oblique** — "ported from `ME.X`",
+  "the reference's Y", "reference parity", "mirrors the reference", ".NET", "Microsoft". This is
+  judgment, not pattern-matching: an **intra-repo cross-reference is not lineage** ("the tracing
+  counterpart of `MeterScope`" is fine — `MeterScope` is ours), and neither is ordinary English
+  ("no POSIX **analog** — a documented no-op on Linux" is a platform fact a caller needs; "the
+  **original**-cased key"). Naming an `ME.*` type that exists only there is lineage — cut it.
+- `§N` decision refs, issue/PR numbers, version lore.
+- Superseded designs and decided-against alternatives — "the old X", "previously", "retired".
+- Transformer / plugin / "no-transformer" / "lowers to" framing — a token-arg signature already
+  implies the plugin-less path, so there is nothing to say.
+- Engine or architecture lore, _unless_ it directly helps a CALLER call the member.
+- Restatements of visible code, the member name reworded, what a callee does at its call site, and
+  what a NAME already conveys ("tryParse never throws" — `try` says it).
+- Stale build-layout narration. src-referencing survives only **internally** (the `./tokens/*` and
+  `./private/*` seams, the per-core `<pkg>-source` condition, the editor program) — **verify against
+  the package's `exports` before citing it**, and never claim a package's runtime resolution is src.
+
+**Write** only what helps a caller use a public member, or is genuinely hard to grok on a quick
+read. When torn, delete. Form is real TSDoc — `@remarks` for prose, `@param`/`@returns` OMITTED when
+the signature already says it, `@typeParam`, `@example`; don't hand-write what the types generate; a
+good error message replaces a comment; a trivially-simple function gets none. File-level headers are
+not automatically wrong — keep a trimmed orienting one, cut it when it merely restates the type's
+own docs below it.
+
+`libraries/primitives/src/augmentation-registry.ts` is the canonical swept file — match it. Never
+delete a comment when doing so loses the answer to "why does this exist at all"; rewrite it instead.
+
 ## Build layout — dist-referencing (§72)
 
 **Every runtime library is dist-referenced (#68 complete).** Type-facing
@@ -367,37 +410,26 @@ surface the derivation reads) and, for a lowering package, `./private/*` (`types
 the lowered `./dist/stage/*.js` a white-box test executes). Neither is published (both scrubbed from
 `publishConfig.exports`).
 
-**Landed:** `primitives`, `options`, `fileproviders.core`, `fileproviders.composite`, `config.core`
-(tiers 1–2, §72), and — following §74's token-derivation fix — `di.core`, `di`, `config.json`,
-`config.env`, `config.commandline`, `diagnostics.core`, `diagnostics`, `logging.core`, `logging`,
-`logging.config`, `logging.console`, `logging.browserconsole`, `caching.core`,
-`caching.memory`, `hosting.core`, `hosting`, `hosting.browser`, `options.augmentations` (tier 3+,
-§78). All: `.`-export type-facing conditions (and, for runtime-emitting libs, `bun`) point at
-`dist/bundle`; root `main`/`types` point at `dist/bundle`. The three self-augmenting cores among them —
-`di.core`, `diagnostics.core`, `hosting.core`, each of which `declare module`s its own public
-receiver — carry a package-unique `<pkg>-source` condition (`di-core-source`/
-`diagnostics-core-source`/`hosting-core-source`), listed first in the `.` export ahead of `types`,
-so the core's OWN program resolves back to its not-yet-built src (the §72 TS2664 self-typecheck
-fix) while every external consumer resolves the built dist; `hosting.core.test`'s white-box
-program needs the same condition in its own tsconfig, since it pulls hosting.core's src through
-`./private/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's `.`
-export and from `customConditions` in all nine downstream consumer tsconfigs that used to force
-dist-resolution with it (the `di.extras` pair, the example/app programs, and the di + config
-transformer test programs) — the per-core `-source` conditions above are its narrower replacement.
+Uniformly: a `.`-export's type-facing conditions (and, for runtime-emitting libs, `bun`) point at
+`dist/bundle`, as do root `main`/`types`.
 
-**`config` is converted — #68 complete.** Its `.` export resolves `bun`/`import`/`default` → dist
-like every runtime lib; a package-unique `config-source` condition routes config's OWN program back
-to `./src/*` for its `with-type-augment.ts` self-`declare module` (the same self-compile pattern as
-the cores). Only its `./tokens/*` white-box subpath is src. No src-referenced runtime consumers
-remain.
+**A package that `declare module`s its own public receiver carries a package-unique `<pkg>-source`
+condition** — `di-core-source`, `diagnostics-core-source`, `hosting-core-source`, `config-source` —
+listed first in the `.` export ahead of `types`, so that package's OWN program resolves back to its
+not-yet-built src (the §72 TS2664 self-typecheck fix) while every external consumer resolves the
+built dist. `config`'s routes its `with-type-augment.ts` self-`declare module`; `hosting.core.test`'s
+white-box program needs `hosting-core-source` in its own tsconfig, since it pulls hosting.core's src
+through `./private/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's
+`.` export and from `customConditions` in all nine downstream consumer tsconfigs that used to force
+dist-resolution with it (the `di.extras` pair, the example/app programs, and the di + config
+transformer test programs) — the per-package `-source` conditions above are its narrower replacement.
 
 One further deviation, because a **transformer** is in play — now a single **Go/`ttsc`** engine
 (the ts-patch/TS5 track was removed; restore tag `pre-tspatch-removal`):
 
-- **Lint/typecheck is plain `tsc`.** Transformer-active packages type-check with `tsc --noEmit`; a
-  `types` array in `tsconfig.ci.json` pulls the transformer's `declare module` augmentation into the
-  program, so the authored tokenless forms type-check with no plugin (`tokenfor` and the sugar forms
-  have no type-level footprint). `rollup` + `rollup-plugin-dts` live at the repo root.
+- **Lint/typecheck is plain `tsc`** — no plugin (see the Lint bullet under [Commands](#commands) for
+  how the `declare module` augmentation reaches the program). `rollup` + `rollup-plugin-dts` live at
+  the repo root.
 - **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `tokenfor<T>()` (etc.)
   ships it LOWERED: `buildPackage` runs a per-file `Bun.build` with the `@ttsc/unplugin/bun` adapter
   active — every `src/**/*.ts` its own entrypoint, all imports external — so each file is lowered
@@ -436,9 +468,10 @@ tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise 
 - **Descriptor wiring — one always-on stage table, NO selection (§119).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
-  the host runs its WHOLE stage table on every file in a fixed canonical order (inline → mergesynth →
-  nameof → signatureof → keyof → valueof → singular → factory → fold → schemaof), looped to a fixed
-  point; a stage that matches nothing is a cheap no-op (disjoint match sets). The bespoke di /
+  the host runs its WHOLE stage table on every file: `mergesynth` first, once, as a pre-pass, then
+  the rest in a fixed canonical order (inline → nameof → signatureof → keyof → valueof → singular →
+  factory → fold → schemaof) looped to a fixed point; a stage that matches nothing is a cheap no-op
+  (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
   di.core's preset `./ttsc` descriptor are all GONE — the authoring forms (`add`/`addOptions`/
   `withType`/resolve-family) lower as `rhombus.inline` sugar bodies the inline stage substitutes and
@@ -474,9 +507,7 @@ tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise 
   rebuilds it against the installed ttsc shim modules (`ttsc` also makes its own during a build, so
   `go.mod` has no `replace`). Parity: `tests/*.ttsc.e2e` (script `test:e2e`, now IN the default
   `bun run test` gate — self-skip only without Go) + the app example `expected.txt` byte-diff.
-- **Go gates** — `node scripts/gen-go-work.mjs` then
-  `cd transforms && go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on
-  PATH).
+- **Go gates** — see the Go-gates bullet under [Commands](#commands).
 
 ## Publishing
 
