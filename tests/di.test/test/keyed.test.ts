@@ -227,3 +227,24 @@ describe('keyed / collection isolation', () => {
     expect(services.build().resolve<object[]>(ARRAY)).toEqual([]);
   });
 });
+
+describe('the keyed-plural pattern belongs to the CALLER', () => {
+  test('a /g pattern matches every key and comes back unmutated', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(CACHE, 'bare');
+    services = services.addValue(CACHE_REDIS, 'R');
+    services = services.addValue(CACHE_MEMORY, 'M');
+
+    const sp = services.build();
+    // A global regex advances `lastIndex` on every `test`, so without the
+    // per-key reset the second key would miss.
+    const pattern = /^(redis|memory)$/g;
+    expect(sp.resolve<string[]>(CACHE, pattern)).toEqual(['R', 'M']);
+    // ...and the caller's regex is handed back exactly as it went in.
+    expect(pattern.lastIndex).toBe(0);
+
+    pattern.lastIndex = 3;
+    sp.resolve<string[]>(CACHE, pattern);
+    expect(pattern.lastIndex).toBe(3);
+  });
+});

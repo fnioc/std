@@ -1018,28 +1018,35 @@ export class ServiceProviderClass<S extends string = string> implements IService
   ): T[] {
     const prefix = base + KEY_SEPARATOR;
     const matches: T[] = [];
-    for (const [token, list] of this.#registrations) {
-      let keyPortion: string;
-      if (token === base) {
-        keyPortion = '';
-      } else if (token.startsWith(prefix)) {
-        keyPortion = token.slice(prefix.length);
-      } else {
-        continue;
-      }
-      // Reset `lastIndex` so a caller's `/…/g` regex is stateless across the
-      // per-key tests (a global regex advances `lastIndex` on every `test`).
-      pattern.lastIndex = 0;
-      if (!pattern.test(keyPortion)) {
-        continue;
-      }
-      for (const registration of list) {
-        const result = this.#resolveWith<T>(token, registration, vantage, stack, false);
-        if (isPending(result)) {
-          throw new AsyncResolutionRequiredError(token);
+    // The pattern belongs to the CALLER. A `/…/g` regex advances `lastIndex` on
+    // every `test`, so the scan zeroes it before each key to stay stateless
+    // across the keys — and restores what the caller handed in on the way out,
+    // so a resolve never mutates an argument it was lent.
+    const callerLastIndex = pattern.lastIndex;
+    try {
+      for (const [token, list] of this.#registrations) {
+        let keyPortion: string;
+        if (token === base) {
+          keyPortion = '';
+        } else if (token.startsWith(prefix)) {
+          keyPortion = token.slice(prefix.length);
+        } else {
+          continue;
         }
-        matches.push(result);
+        pattern.lastIndex = 0;
+        if (!pattern.test(keyPortion)) {
+          continue;
+        }
+        for (const registration of list) {
+          const result = this.#resolveWith<T>(token, registration, vantage, stack, false);
+          if (isPending(result)) {
+            throw new AsyncResolutionRequiredError(token);
+          }
+          matches.push(result);
+        }
       }
+    } finally {
+      pattern.lastIndex = callerLastIndex;
     }
     return matches;
   }
