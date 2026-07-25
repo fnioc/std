@@ -77,8 +77,8 @@ export type {
 
 export { ActivationError, AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError,
   FactoryTargetError, MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError,
-  OpenTokenRegistrationError, OpenTokenResolutionError, RegistrationValidationError, ScopeValidationError,
-  UnregisteredTokenError } from './errors.js';
+  OpenTokenRegistrationError, OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError,
+  ScopeValidationError, UnregisteredTokenError } from './errors.js';
 
 // The slot/token RUNTIME helpers live in @rhombus-std/di.core (its slot/token
 // ABI). di re-exports them for one-import authoring ergonomics — a di consumer

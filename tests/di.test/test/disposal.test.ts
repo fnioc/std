@@ -1,4 +1,5 @@
-import { AsyncDisposalRequiredError, ServiceManifest } from '@rhombus-std/di';
+import { AsyncDisposalRequiredError, type IResolver, type IServiceProvider, ProviderDisposedError, RESOLVER_TOKEN,
+  ServiceManifest } from '@rhombus-std/di';
 import { describe, expect, test } from 'bun:test';
 import { AsyncDisposableThing, DisposeLog, NonDisposable, SyncDisposable, T } from './fixtures.js';
 
@@ -330,5 +331,68 @@ describe('native using / await using', () => {
       expect(log.order).toEqual([]);
     }
     expect(log.order).toEqual(['req']);
+  });
+});
+
+// Use after dispose. A disposed frame has already drained its `owned` list and
+// a second `dispose()` is idempotent, so anything built afterwards would be
+// cached and owned by a frame nothing drains again — constructed, then leaked
+// undisposed. Every entry point rejects instead (the reference container's
+// `ObjectDisposedException` behavior).
+describe('a disposed provider rejects further use', () => {
+  function disposedScope(): IServiceProvider<'singleton'> {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, { v: 1 });
+    services = services.addClass(T.Service, NonDisposable, [[]], 'singleton');
+    const scope = services.build().createScope('singleton');
+    scope.dispose();
+    return scope;
+  }
+
+  test('resolve / tryResolve / isService / resolveFactory / createScope all throw', () => {
+    const scope = disposedScope();
+
+    expect(() => scope.resolve(T.Config)).toThrow(ProviderDisposedError);
+    expect(() => scope.tryResolve(T.Config)).toThrow(ProviderDisposedError);
+    expect(() => scope.isService(T.Config)).toThrow(ProviderDisposedError);
+    expect(() => scope.resolveFactory(T.Service)).toThrow(ProviderDisposedError);
+    expect(() => scope.createScope('singleton')).toThrow(ProviderDisposedError);
+  });
+
+  test('resolveAsync rejects rather than throwing synchronously', async () => {
+    const scope = disposedScope();
+    await expect(scope.resolveAsync(T.Config)).rejects.toThrow(ProviderDisposedError);
+  });
+
+  test('an instance built after dispose would never be disposed — so it is refused', () => {
+    const log = new DisposeLog();
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addFactory(T.A, () => new SyncDisposable('A', log), [[]], 'singleton');
+
+    const scope = services.build().createScope('singleton');
+    scope.dispose();
+
+    expect(() => scope.resolve(T.A)).toThrow(ProviderDisposedError);
+    scope.dispose(); // idempotent — and there is nothing stranded to drain.
+    expect(log.order).toEqual([]);
+  });
+
+  test('a held provider VIEW is guarded too — it is a face on the same provider', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addValue(T.Config, { v: 1 });
+    services = services.addFactory(T.Service, (sp: IResolver) => sp, [[RESOLVER_TOKEN]], 'singleton');
+
+    const scope = services.build().createScope('singleton');
+    const view = scope.resolve<IResolver>(T.Service);
+    expect(view.resolve(T.Config)).toEqual({ v: 1 });
+
+    scope.dispose();
+    expect(() => view.resolve(T.Config)).toThrow(ProviderDisposedError);
+    expect(() => view.isService(T.Config)).toThrow(ProviderDisposedError);
+  });
+
+  test('dispose stays idempotent — closing twice is still a no-op', () => {
+    const scope = disposedScope();
+    expect(() => scope.dispose()).not.toThrow();
   });
 });

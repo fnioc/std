@@ -28,7 +28,7 @@ import type { Func } from '@rhombus-toolkit/func';
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, FactoryTargetError,
   MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
-  RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
+  ProviderDisposedError, RegistrationValidationError, ScopeValidationError, UnregisteredTokenError } from './errors.js';
 import type { IResolver, IScopeFactory, IServiceProvider, OpenRegistration, Registration } from './types.js';
 
 /**
@@ -417,6 +417,22 @@ export class ServiceProviderClass<S extends string = string> implements IService
     return this.#frame.name as S;
   }
 
+  /**
+   * The use-after-dispose guard every public entry point opens with — the
+   * reference container's `ObjectDisposedException` check.
+   *
+   * `dispose()` drains the frame's `owned` list and is idempotent, so an
+   * instance constructed after teardown would be cached and owned by a frame
+   * nothing will ever drain again: built, never disposed, silently leaked. The
+   * guard makes that loud instead. `dispose`/`disposeAsync` themselves stay
+   * unguarded — a second close is a no-op by contract.
+   */
+  #assertLive(operation: string): void {
+    if (this.#disposed) {
+      throw new ProviderDisposedError(operation);
+    }
+  }
+
   // ── IScopeFactory ─────────────────────────────────────────────────────────────
 
   /**
@@ -430,6 +446,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public createScope(
     ...args: 'scoped' extends S ? [name?: S] : [name: S]
   ): IServiceProvider<S> {
+    this.#assertLive('createScope');
     return this.#childScope((args[0] ?? 'scoped') as string, this.#frame);
   }
 
@@ -464,6 +481,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolve<T>(token: Token, key?: string): T;
   public resolve(token: Token, key?: string): unknown;
   public resolve<T>(token?: Token, key: string | RegExp = ''): T | T[] {
+    this.#assertLive('resolve');
     if (token === undefined) {
       throw new TypeError(
         'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
@@ -491,6 +509,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolveAsync<T>(token: Token): Promise<T>;
   public resolveAsync(token: Token): Promise<unknown>;
   public async resolveAsync<T>(token?: Token): Promise<T> {
+    this.#assertLive('resolveAsync');
     if (token === undefined) {
       throw new TypeError(
         'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no token '
@@ -515,6 +534,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public tryResolve<T>(token: Token, key?: string): T | undefined;
   public tryResolve(token: Token, key?: string): unknown;
   public tryResolve<T>(token?: Token, key: string | RegExp = ''): T | T[] | undefined {
+    this.#assertLive('tryResolve');
     if (token === undefined) {
       throw new TypeError(
         'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
@@ -546,6 +566,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * registered token whose dependencies are missing still reports `true`.
    */
   public isService(token: Token): boolean {
+    this.#assertLive('isService');
     return this.#isKnown(token);
   }
 
@@ -579,6 +600,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
   public resolveFactory<F>(type: Token, params?: readonly Token[]): F;
   public resolveFactory(type: Token, params?: readonly Token[]): unknown;
   public resolveFactory(type: Token, params?: readonly Token[]): unknown {
+    this.#assertLive('resolveFactory');
     return this.#makeFactory({ type, params }, this.#frame);
   }
 
@@ -1053,6 +1075,11 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * `IResolver` / `IScopeFactory` typed parameter). A IServiceProvider-like view
    * that continues the active cycle `stack` and resolves relative to
    * `owningFrame`.
+   *
+   * A view is typically held by a long-lived instance and called long after the
+   * resolve that minted it, so each of its members opens with the same
+   * use-after-dispose guard the public entry points do — it reads the very same
+   * `#disposed` flag, since the view is a face on THIS provider.
    */
   #makeProviderView(
     owningFrame: Scope | undefined,
@@ -1062,6 +1089,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
     const sp = this;
     return {
       resolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] => {
+        sp.#assertLive('resolve');
         if (depToken === undefined) {
           throw new TypeError(
             'resolve<T>() requires the @rhombus-std/di.extras plugin (no token at '
@@ -1075,6 +1103,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
         return sp.#resolve<U>(composeKeyed(depToken, key), owningFrame, stack, false, captor) as U;
       },
       resolveAsync: async <U>(depToken?: Token): Promise<U> => {
+        sp.#assertLive('resolveAsync');
         if (depToken === undefined) {
           throw new TypeError(
             'resolveAsync<T>() requires the @rhombus-std/di.extras plugin (no '
@@ -1084,6 +1113,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
         return settle(sp.#resolve<U>(depToken, owningFrame, stack, true, captor)) as Promise<U>;
       },
       tryResolve: <U>(depToken?: Token, key: string | RegExp = ''): U | U[] | undefined => {
+        sp.#assertLive('tryResolve');
         if (depToken === undefined) {
           throw new TypeError(
             'tryResolve<T>() requires the @rhombus-std/di.extras plugin (no token '
@@ -1100,11 +1130,18 @@ export class ServiceProviderClass<S extends string = string> implements IService
         // Sync mode never yields a Pending — the spine throws on a cached one.
         return sp.#resolve<U>(lookupToken, owningFrame, stack, false, captor) as U;
       },
-      isService: (depToken: Token): boolean => sp.#isKnown(depToken),
-      resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown =>
-        sp.#makeFactory({ type: depToken, params: depParams }, owningFrame),
-      createScope: (...args: ['scoped'?] | [S]): IServiceProvider<S> =>
-        sp.#childScope((args[0] ?? 'scoped') as string, owningFrame),
+      isService: (depToken: Token): boolean => {
+        sp.#assertLive('isService');
+        return sp.#isKnown(depToken);
+      },
+      resolveFactory: (depToken: Token, depParams?: readonly Token[]): unknown => {
+        sp.#assertLive('resolveFactory');
+        return sp.#makeFactory({ type: depToken, params: depParams }, owningFrame);
+      },
+      createScope: (...args: ['scoped'?] | [S]): IServiceProvider<S> => {
+        sp.#assertLive('createScope');
+        return sp.#childScope((args[0] ?? 'scoped') as string, owningFrame);
+      },
     } as IResolver & IScopeFactory<S>;
   }
 

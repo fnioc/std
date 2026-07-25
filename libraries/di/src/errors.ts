@@ -228,6 +228,25 @@ export class AsyncDisposalRequiredError extends DiError {
 }
 
 /**
+ * A provider was used after `dispose()` / `disposeAsync()` closed it — the
+ * reference container's `ObjectDisposedException` analog.
+ *
+ * Every resolution entry point is guarded, `createScope` included. A disposed
+ * frame has already drained the instances it owned, and its bookkeeping is not
+ * re-drained by a second `dispose()` (which is idempotent), so anything built
+ * afterwards would be constructed, cached, and then silently leaked undisposed.
+ */
+export class ProviderDisposedError extends DiError {
+  public constructor(public readonly operation: string) {
+    super(
+      `Cannot ${operation} on a disposed IServiceProvider. The scope has been `
+        + `closed and its owned instances disposed; resolve from a live scope, `
+        + `or open a fresh one with createScope(name).`,
+    );
+  }
+}
+
+/**
  * Sync `resolve()` met an async result: a cached in-flight async construction
  * (a concurrent `resolveAsync` is mid-build). The instance cannot be produced
  * synchronously — use `resolveAsync()`.
