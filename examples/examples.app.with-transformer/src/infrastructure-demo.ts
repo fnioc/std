@@ -29,9 +29,17 @@
 
 import { ServiceManifest } from '@rhombus-std/di';
 import type { IServiceManifest } from '@rhombus-std/di';
-import { describeDiError, ManifestServiceProviderFactory } from '@rhombus-std/examples.app.shared';
 import { addGreetingWorkshop, demonstrateNullProvider, GreetingWorkshop, LocatorGreetingWorkshop,
   WorkshopGreeting } from '@rhombus-std/examples.lib.with-transformer';
+// The classifier comes from the without-transformer library because that is
+// where the DIALECT-INDEPENDENT chapters live — an error class has no
+// type-driven form, so there is only ever one copy of this one. Classifying what
+// a container threw needs di.core and nothing more;
+// `ManifestServiceProviderFactory` is this root's, because building the
+// container does need the engine.
+import { describeDiError } from '@rhombus-std/examples.lib.without-transformer';
+
+import { ManifestServiceProviderFactory } from './provider-factory.js';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): IServiceManifest<'singleton'> {

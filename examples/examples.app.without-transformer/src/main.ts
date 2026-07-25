@@ -61,17 +61,20 @@ import { addWithTransformerExamples, EXAMPLE_TOKENS } from '@rhombus-std/example
 import { addReportingFixture, addWithoutTransformerExamples,
   demonstrateTokenAbi } from '@rhombus-std/examples.lib.without-transformer';
 
-// The two DIALECT-INDEPENDENT chapters that need a container to run. They are
-// composition-root work, so they live in a composition-root package rather than
-// in either library — and both example apps import the SAME functions, which is
-// what keeps their output identical by construction rather than by discipline.
-import { demonstrateErrors, demonstrateManifestSurface } from '@rhombus-std/examples.app.shared';
-
 // The app-side chapters of the di tour that runs after the host has shut down.
 // Each returns its lines rather than printing, so this file owns the ordering
 // and the spacing — see the tour at the bottom.
+//
+// Two of them are DIALECT-INDEPENDENT and are still here rather than in a
+// library: staging a container failure and reading a built provider both need a
+// `build()`, and `build()` is the engine. What the libraries keep is everything
+// those two chapters do that is NOT the container — the error classifier, the
+// manifest read as a value — so each file below is the composition-root half of
+// a chapter whose other half is one package over.
+import { demonstrateErrors } from './errors-demo.js';
 import { demonstrateInfrastructure } from './infrastructure-demo.js';
 import { demonstrateLifetimes } from './lifetimes-demo.js';
+import { demonstrateManifestSurface } from './manifest-surface-demo.js';
 import { demonstrateOpenGenerics } from './open-generics-demo.js';
 import { demonstrateRegistration } from './registration-demo.js';
 import { demonstrateResolution } from './resolution-demo.js';
@@ -324,9 +327,11 @@ const tour: readonly (readonly string[])[] = [
   demonstrateOpenGenerics(),
   // Three chapters with no dialect: an error class, a token string and the
   // manifest's own data structure read the same whether or not a transformer
-  // ran, so there is nothing for a with-transformer twin to differ in and both
-  // apps run these same three functions. Their header lines say so rather than
-  // naming a dialect.
+  // ran, so there is nothing for a with-transformer twin to differ in. The
+  // token-ABI tour is one library function both apps call; the other two are
+  // written at each root because each stages a container, and the two copies
+  // are identical for want of anything to differ in. Their header lines say so
+  // rather than naming a dialect.
   await demonstrateErrors(),
   demonstrateTokenAbi(reporting),
   demonstrateManifestSurface(),

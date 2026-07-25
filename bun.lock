@@ -16,18 +16,6 @@
         "typescript-eslint": "^8.60.1",
       },
     },
-    "examples/examples.app.shared": {
-      "name": "@rhombus-std/examples.app.shared",
-      "version": "0.0.0",
-      "dependencies": {
-        "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/examples.lib.without-transformer": "workspace:*",
-      },
-      "devDependencies": {
-        "typescript": "^5.9.0",
-      },
-    },
     "examples/examples.app.with-transformer": {
       "name": "@rhombus-std/examples.app.with-transformer",
       "version": "0.0.0",
@@ -35,7 +23,6 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
-        "@rhombus-std/examples.app.shared": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
@@ -60,7 +47,6 @@
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
-        "@rhombus-std/examples.app.shared": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
@@ -1404,8 +1390,6 @@
     "@rhombus-std/diagnostics.core.test": ["@rhombus-std/diagnostics.core.test@workspace:tests/diagnostics.core.test"],
 
     "@rhombus-std/diagnostics.test": ["@rhombus-std/diagnostics.test@workspace:tests/diagnostics.test"],
-
-    "@rhombus-std/examples.app.shared": ["@rhombus-std/examples.app.shared@workspace:examples/examples.app.shared"],
 
     "@rhombus-std/examples.app.with-transformer": ["@rhombus-std/examples.app.with-transformer@workspace:examples/examples.app.with-transformer"],
 

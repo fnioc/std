@@ -28,10 +28,11 @@
 // is reading and rewriting a manifest, which is library work, and all of it is
 // here. Running the result is not: `build()`, `createScope()`, `resolve()` and
 // `dispose()` are the composition root's verbs. So the test host's second half —
-// swap the fakes in, stand the container up, exercise it — is staged by
-// `@rhombus-std/examples.app.shared` and appended to these lines. It calls back
-// into `forTests`, `missingFrom`, `requireCheckout` and `inScope` below, so the
-// library still owns every piece of that test host except the container itself.
+// swap the fakes in, stand the container up, exercise it — is staged by each
+// example app's own `manifest-surface-demo.ts` and appended to these lines. It
+// calls back into `forTests`, `missingFrom`, `requireCheckout` and `inScope`
+// below, so the library still owns every piece of that test host except the
+// container itself.
 //
 // The three capability helpers stay because they are exactly what those di.core
 // interfaces are FOR: a per-request pipeline really does take an `IScopeFactory`
@@ -418,7 +419,7 @@ export function authoringMintsIn(source: string): readonly string[] {
 // What a test host actually IS, once the container is taken out of it: a
 // manifest-to-manifest function. `forTests` is the whole of it. Building the
 // result and running something against it is the caller's half, and the caller
-// is a composition root — see `@rhombus-std/examples.app.shared`.
+// is a composition root — see either example app's `manifest-surface-demo.ts`.
 
 /**
  * Takes the application's wiring and returns it with the outside world replaced.

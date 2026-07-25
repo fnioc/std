@@ -14,7 +14,6 @@
   "dependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/di": "workspace:*",
-    "@rhombus-std/examples.app.shared": "workspace:*",
     "@rhombus-std/examples.lib.with-transformer": "workspace:*",
     "@rhombus-std/examples.lib.without-transformer": "workspace:*",
     "@rhombus-std/hosting": "workspace:*",

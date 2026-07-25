@@ -5,16 +5,18 @@
 // A library contributes REGISTRATIONS. It is handed a manifest, it adds to it,
 // it hands it back; it never decides when the container is built, with which
 // options, or how long the root scope stays open. Those are the three things
-// this class decides, and they are the composition root's calls to make. That is
-// also why the reference seam is consumed by a HOST — `IHostBuilder`'s
-// `useServiceProviderFactory` / `configureContainer` are typed against exactly
-// this interface, and the implementations in the wild are container ADAPTERS
-// plugged in at the entry point.
+// this class decides, and they are the composition root's calls to make. It is
+// also why a HOST is the seam's natural consumer: `IHostBuilder`'s
+// `useServiceProviderFactory` and `IHostApplicationBuilder`'s
+// `configureContainer` are typed against exactly this interface, and an
+// implementation of it is a container adapter plugged in at the entry point.
 //
 // The interface itself (`IServiceProviderFactory`) is `@rhombus-std/di.core`, so
 // a library is free to ACCEPT one as a parameter. What it cannot do — and what
 // pins this file here — is write one: `createServiceProvider` has to call
 // `build()`, and `build()` is the engine.
+//
+// Dialect-independent: the sibling app's copy of this file is identical to it.
 
 import type { IResolver, IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di';
 
@@ -30,16 +32,17 @@ import type { IResolver, IServiceManifest, IServiceProviderFactory } from '@rhom
  * is that the BUILD OPTIONS live in one place instead of at every `build()`
  * call site — which is exactly what a root wants to own.
  *
- * Two things a reader should notice about the seam's current shape, because they
- * bound what an implementation can do:
+ * Two things about the seam's shape a reader should notice, because they say
+ * what an implementation is for:
  *
- *   - `createServiceProvider` hands back `IResolver`, the minimal resolution
- *     surface — scope creation and disposal are NOT part of it, so a host that
- *     went through the seam could not open a scope or close the container down.
- *   - `createBuilder`'s parameter is `IServiceManifest` with the DEFAULT
- *     `'singleton'` scope union baked in, so this class cannot be generic over
- *     an application's own scope names; an app declaring extra scopes has to
- *     cast on the way in.
+ *   - `createServiceProvider` hands back `IResolver`, the resolution surface and
+ *     nothing else. Scope creation and disposal stay with whoever owns the
+ *     container's lifetime, which is the root that installed the factory rather
+ *     than the code that went through it.
+ *   - `createBuilder`'s parameter is `IServiceManifest` at the default
+ *     `'singleton'` scope union: one type serves every application, so a root
+ *     that declares its own scope names names them at the manifest and hands the
+ *     seam the shape it publishes.
  */
 export class ManifestServiceProviderFactory implements IServiceProviderFactory<IServiceManifest> {
   public createBuilder(services: IServiceManifest): IServiceManifest {
@@ -56,11 +59,11 @@ export class ManifestServiceProviderFactory implements IServiceProviderFactory<I
     //
     // Deliberately NOT `build({ validateOnBuild: true })`, tempting as that
     // looks. The eager pass dry-runs every EXACT registration, and the greeting
-    // workshop ships one that can never satisfy it: `GreetingCard`'s recipient
-    // slot is the CALLER's, handed over through the injected card factory, and no
-    // registration stands behind it. A whole-graph check cannot tell a
-    // deliberately caller-supplied slot apart from a wiring hole, so a container
-    // that uses the partition has to opt out of it.
+    // workshop ships one slot that is not a registration at all: `GreetingCard`'s
+    // recipient is the CALLER's, handed over through the injected card factory
+    // when a card is asked for. A container that uses the partition builds
+    // without the whole-graph pass, which is the choice this factory makes once
+    // for every container it hands out.
     return containerBuilder.build().createScope('singleton');
   }
 }

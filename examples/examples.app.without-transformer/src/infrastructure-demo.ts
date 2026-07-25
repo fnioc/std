@@ -28,10 +28,14 @@
 
 import { ServiceManifest } from '@rhombus-std/di';
 import type { IServiceManifest } from '@rhombus-std/di';
-import { describeDiError, ManifestServiceProviderFactory } from '@rhombus-std/examples.app.shared';
-import { addGreetingWorkshop, demonstrateNullProvider, GREETING_WORKSHOP_TOKEN, GreetingWorkshop,
+// `describeDiError` is the LIBRARY's — classifying what a container threw needs
+// di.core and nothing more. `ManifestServiceProviderFactory` is this root's,
+// because building the container does need the engine.
+import { addGreetingWorkshop, demonstrateNullProvider, describeDiError, GREETING_WORKSHOP_TOKEN, GreetingWorkshop,
   LOCATOR_GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop,
   WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
+
+import { ManifestServiceProviderFactory } from './provider-factory.js';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): IServiceManifest<'singleton'> {

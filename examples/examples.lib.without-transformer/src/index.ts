@@ -61,10 +61,14 @@ export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from '
 // structure are all the same in either dialect — so both example apps run these
 // rather than a with-transformer mirror, and their header lines say so.
 
-// The registration-time failures, provoked on purpose against a manifest this
-// library was handed. The rest of the taxonomy belongs to the engine, so the
-// apps stage it and prepend these lines to theirs.
-export { demonstrateRegistrationErrors, diagnoseRegistration } from './registration-errors-demo.js';
+// The error taxonomy, CLASSIFIED. Every class the container can throw is a
+// di.core export, so the whole branch table fits here — `diagnose` reads any of
+// them, `describeDiError` answers the cheaper "is this ours at all". What a
+// library cannot do is PROVOKE most of them, since that takes a built container,
+// so each app stages those and calls back in through `stagedFailure`. The two
+// registration-time failures throw from the registration call itself and need
+// nothing built, so they are staged here.
+export { demonstrateRegistrationErrors, describeDiError, diagnose, stagedFailure } from './errors-demo.js';
 
 // The token/slot ABI, exercised as a container-diagnostics tool would: classify,
 // parse, walk, rewrite, match, rank, and close a template. The fixture it reports

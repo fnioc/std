@@ -28,12 +28,12 @@
 // least obvious — reading a manifest looks like tooling, and tooling is exactly
 // the kind of code that reaches for an engine it does not need.
 //
-// Dialect-independent: none of this has a type-driven form. Both example apps
-// import THIS function rather than twinning it, so their output cannot drift.
+// Dialect-independent: none of this has a type-driven form, so the sibling app's
+// copy of this file is identical to it and the chapter header names neither
+// dialect.
 
 import { ServiceManifest, ServiceManifestContainerBuilderAugmentations, ServiceProviderClass } from '@rhombus-std/di';
-import type { IServiceManifest, IServiceProvider, ServiceManifestCtor } from '@rhombus-std/di';
-import type { ServiceManifestClass } from '@rhombus-std/di.core';
+import type { IServiceManifest, IServiceProvider, ServiceManifestClass, ServiceManifestCtor } from '@rhombus-std/di';
 import { addShopServices, demonstrateManifestSurface as inspectManifestSurface, forTests, inScope, missingFrom,
   requireCheckout, SHOP_SELF_CHECK_TOKENS } from '@rhombus-std/examples.lib.without-transformer';
 
@@ -49,7 +49,7 @@ import { addShopServices, demonstrateManifestSurface as inspectManifestSurface, 
  *
  * @param Manifest The registration-builder constructor to instantiate.
  */
-export function freshManifest(Manifest: ServiceManifestCtor): IServiceManifest<'singleton'> {
+function freshManifest(Manifest: ServiceManifestCtor): IServiceManifest<'singleton'> {
   return new Manifest<'singleton'>();
 }
 
@@ -82,7 +82,7 @@ function asBuilder<S extends string>(services: IServiceManifest<S>): ServiceMani
  * between the collection and the engine — and a composition root is the layer
  * that is allowed to stand on both sides of it.
  */
-export function buildProvider(services: IServiceManifest<'singleton'>): IServiceProvider<'singleton'> {
+function buildProvider(services: IServiceManifest<'singleton'>): IServiceProvider<'singleton'> {
   // The receiver-first members are typed against the CLASS and the widest scope
   // union, because an augmentation set is authored once for every manifest there
   // will ever be. A caller with a narrower union re-narrows on the way out; the
