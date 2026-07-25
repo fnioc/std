@@ -6,10 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Project-specific rules only. General git/commit/worktree conventions live in user prefs, not here.
 
-**`docs/decisions.md` is the living design record** — every load-bearing package boundary and
-invariant below is numbered and justified there (cited as "§N"). Read it for the _why_ before
-changing a boundary, and append to it when a decision lands. The root `README.md` is
-scaffolding-era and stale — ignore it.
+**`docs/decisions.v2.md` is the living design record** — every load-bearing package boundary and
+invariant below is numbered and justified there (cited as "§N"). `docs/decisions.md` is its
+**retiring** predecessor: still worth reading for the _why_, but entries migrate out of it one at a
+time, so **never write to it** and never let an un-migrated entry there govern a decision without
+the owner ratifying it first. A newly settled decision is recorded in `decisions.v2.md` only. The
+root `README.md` is scaffolding-era and stale — ignore it.
 
 ## Issue coding gate
 
@@ -282,7 +284,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   stays deliberately deferred — `fileproviders.physical`'s `watch` ports only the reference's
   non-glob branch, §73.
 
-Cross-cutting invariants (each spans several packages — confirm against `docs/decisions.md`
+Cross-cutting invariants (each spans several packages — confirm against the decisions docs
 before touching):
 
 - **di ⊥ config** — neither imports the other; the only bridge is `options.augmentations` (§4.3).
@@ -313,9 +315,9 @@ before touching):
   matches sugar calls at the receiver's declaration site, never by type name or call shape. Full
   mechanics, authoring steps, and gotchas: `docs/features/augmentations.md` (§89).
 
-**Keep this digest in step with `docs/decisions.md`.** When a decision lands there that adds or
+**Keep this digest in step with `docs/decisions.v2.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
-Architecture section above. `decisions.md` is the full record; this file is the digest.
+Architecture section above. The decisions docs are the full record; this file is the digest.
 
 ## Package naming
 
