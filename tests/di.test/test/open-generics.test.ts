@@ -689,6 +689,46 @@ describe('gappy open template whose signature references an unbound hole', () =>
     );
   });
 
+  test('a mis-authored template does not delete a BETTER-RANKED sibling closing', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addValue(T.B, 'B!');
+    // The specific template is well-formed and outranks the general one; the
+    // general one is gappy. The gappy candidate is reached AFTER the winner has
+    // already been synthesized, and must not take the winner down with it.
+    services = services.addClass('app/IY<pkg:IA,$1>', SqlRepo, [['$1']]);
+    services = services.addClass('app/IY<$1,$2>', MemRepo, [['$3']]);
+
+    const repo = services.build().resolve<SqlRepo>('app/IY<pkg:IA,pkg:IB>');
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('B!');
+  });
+
+  test('a gappy template registered FIRST does not shadow the later well-formed one', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IZ<$1,$2>', MemRepo, [['$3']]);
+    services = services.addClass('app/IZ<$1,$2>', SqlRepo, [['$1']]);
+
+    const repo = services.build().resolve<SqlRepo>('app/IZ<pkg:IA,pkg:IA>');
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('A!');
+  });
+
+  test('a collection keeps the closings the gappy sibling cannot contribute', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IW<$1,$2>', MemRepo, [['$3']]);
+    services = services.addClass('app/IW<$1,$2>', SqlRepo, [['$1']]);
+
+    const all = services.build().resolve<object[]>('Array<app/IW<pkg:IA,pkg:IA>>');
+
+    expect(all).toHaveLength(1);
+    expect(all[0]).toBeInstanceOf(SqlRepo);
+  });
+
   test('greedy selection falls back past a signature naming the unbound-hole dep', () => {
     class Host {
       public constructor(...args: unknown[]) {

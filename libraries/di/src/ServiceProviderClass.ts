@@ -679,16 +679,20 @@ export class ServiceProviderClass<S extends string = string> implements IService
       // Substitution can fail when a mis-authored template references a hole the
       // service token never binds (e.g. `IX<$1,$3>` carrying a dep on `$2`) —
       // `closeSignatures` throws `RangeError` then. This must NEVER throw (so
-      // `#isResolvable` can probe safely and greedy selection can fall back), and
-      // a mis-authored template aborts the whole synthesis rather than quietly
-      // handing the closing to a more general sibling: no closings, no memo.
+      // `#isResolvable` can probe safely and greedy selection can fall back), so
+      // a template that cannot be closed simply is not a candidate FOR THIS
+      // closing — the same `continue` a `match` miss takes. Aborting the whole
+      // scan instead would let one mis-authored template delete the closings
+      // already synthesized from its better-ranked siblings. With every
+      // candidate skipped the list ends up empty, which is the miss the sole
+      // mis-authored template case wants.
       let signatures: ReadonlyArray<readonly DepSlot[]> | undefined;
       if (open.signatures !== undefined) {
         try {
           signatures = closeSignatures(open.signatures, bind);
         } catch (err) {
           if (err instanceof RangeError) {
-            return NO_CLOSINGS;
+            continue;
           }
           throw err;
         }
