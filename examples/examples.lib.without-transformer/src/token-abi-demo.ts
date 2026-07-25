@@ -28,13 +28,19 @@
 //
 // Dialect-independent, and deliberately so: this is string-and-tree work with no
 // types in sight, so there is nothing for a transformer to derive and no
-// tokenless twin to write. Both example apps run THIS chapter. Imports come from
-// `@rhombus-std/di.core` rather than `@rhombus-std/di` on purpose — a tool that
-// reads registrations has no reason to pull in the resolution engine, and the
-// abstractions package is exactly the dependency a library author wants.
+// tokenless twin to write. Both example apps run THIS chapter. Every import
+// comes from `@rhombus-std/di.core` — a tool that reads registrations has no
+// reason to pull in the resolution engine, and the abstractions package is
+// exactly the dependency a library author wants.
+//
+// Note how the chapter is SHAPED by that, and is better for it. The fixture
+// container is an `add*` function like any other library contribution
+// (`addReportingFixture`), and the inspector takes the registrations it is handed
+// (`demonstrateTokenAbi(services)`) rather than composing its own. Which is what
+// a real diagnostics tool does anyway: it reports on a container somebody else
+// built.
 
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di';
+import type { IServiceManifest } from '@rhombus-std/di.core';
 import { closeSignatures, closeToken, isFactoryRef, isLiteralRef, isOpenToken, isTypeArgRef, isUnionSlot, Matcher,
   parseSlot, parseToken, RESOLVER_TOKEN, serialiseSlot, Specificity, Substituter, TokenNode, TokenRewriter, TokenWalker,
   typeArg, union, Validator } from '@rhombus-std/di.core';
@@ -109,11 +115,18 @@ const USER_REPOSITORY_TOKEN = closeToken('reports:IRepository', USER_TOKEN);
 const AUDIT_REPOSITORY_TOKEN = closeToken('reports:IRepository', AUDIT_TOKEN);
 
 /**
- * The container the inspector reads. Nothing is ever resolved from it; the whole
- * point is that a manifest can be examined without being built.
+ * The registrations the inspector reads. Nothing is ever resolved from them; the
+ * whole point of the chapter is that a manifest can be examined without being
+ * built.
+ *
+ * Shaped as an ordinary `add*` entry — it REGISTERS INTO a manifest the caller
+ * supplies rather than constructing one — because that is what this library is
+ * allowed to do, and the split costs the demonstration nothing. Constructing the
+ * collection is composition-root work; filling it is the library's.
+ *
+ * @param services The registration builder to add the fixture to.
  */
-function buildReportingManifest(): IServiceManifest<'singleton'> {
-  let services = new ServiceManifest<'singleton'>();
+export function addReportingFixture(services: IServiceManifest<'singleton'>): IServiceManifest<'singleton'> {
   services = services.addClass(CONNECTION_TOKEN, Connection, [[]], 'singleton');
   services = services.addClass(MEMORY_CACHE_TOKEN, Connection, [[]], 'singleton');
   // The open template. `typeArg(1)` is the slot that asks for the TOKEN STRING
@@ -507,10 +520,16 @@ export function describeRegistrations(services: Iterable<ManifestEntry>): readon
 /**
  * Runs the whole token-ABI tour and returns the report lines.
  *
+ * Takes the registrations rather than composing them: `Iterable<ManifestEntry>`
+ * is the narrowest thing this tour actually needs, and asking for it says out
+ * loud that the tour cannot register, cannot build and cannot resolve — it only
+ * READS. Hand it `addReportingFixture(<a fresh manifest>)`, or any other
+ * manifest whose wiring you want explained.
+ *
+ * @param services The registrations to report on, in authoring order.
  * @returns One line per observation, in a fixed order.
  */
-export function demonstrateTokenAbi(): readonly string[] {
-  const services = buildReportingManifest();
+export function demonstrateTokenAbi(services: Iterable<ManifestEntry>): readonly string[] {
   const lines: string[] = ['=== di token ABI (dialect-independent) ==='];
 
   // What is in the container, read as data.

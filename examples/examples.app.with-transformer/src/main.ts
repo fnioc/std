@@ -1,51 +1,65 @@
-// The with-transformer composition root — ONE integrated story, authored in the
-// tokenless dialect with the @rhombus-std/di.extras + di.extras.options
-// plugins. Every `add`/`addValue`/`addOptions` in the CONTAINER SETUP below is
-// authored tokenlessly and lowered during the build. Registration lowering is
-// NOT confined to a module's top level — the inline stage rewrites a sugar call
-// wherever it appears, so a library function can be authored tokenlessly too
-// (see `addGreetingWorkshop` in @rhombus-std/examples.lib.with-transformer, and
-// the tour's own `buildOrderContainer`). This file keeps its registrations at the
-// top level because that is what a composition ROOT looks like, not because the
-// engine requires it. The ONE exception is the hosted-worker wiring at the very
-// bottom: there is no `@rhombus-std/di.extras` plugin for the hosting
-// family yet, so `addHostedService(...)` and the small `ConfigRoot` value
-// it needs are registered with EXPLICIT, hand-written tokens — the guard test in
-// di.extras.test only requires every `resolve<T>()` / `resolveAsync<T>()` /
-// `tryResolve<T>()` CALL to stay tokenless (see below), which the hosted worker
-// still honors.
+// THE COMPOSITION ROOT — the tokenless dialect.
+//
+// This file is an ENTRY POINT, and that is a different kind of package from the
+// two example libraries it consumes. The libraries reference
+// `@rhombus-std/di.core` (plus `@rhombus-std/di.extras`, which is the AUTHORING
+// surface — declare-module sugar that peers on di.core, not the engine) and
+// nothing else: they are handed a manifest, they contribute registrations to it,
+// they hand it back. Only a root references `@rhombus-std/di` — the resolution
+// engine — because only a root is allowed to make a container, build it, open a
+// scope, or resolve out of it. Grep this file for `@rhombus-std/di` and then
+// grep either library for it; the difference is the architecture the two
+// packages exist to express.
+//
+// THE FIVE STEPS, and they are the shape to copy. See "the composition root"
+// below, where each one is marked:
+//
+//   1. make the manifest       — here the Generic Host makes it, and hands it
+//                                over as `builder.services`;
+//   2. hand it to each library — one `add<PackageName>(services)` call apiece,
+//                                threaded, because the manifest is immutable;
+//   3. add what the APP owns   — its config, its options, its hosted worker;
+//   4. build the provider      — `builder.build()`;
+//   5. one top-level resolve   — `host.runAsync()`, which resolves the hosted
+//                                services and starts them. Nothing else in this
+//                                file resolves anything, and nothing in either
+//                                library resolves anything at all.
+//
+// Authored in the TOKENLESS dialect with the `@rhombus-std/di.extras` +
+// `di.extras.options` plugins: every `addValue`/`addOptions` in step 3 and every
+// `resolve`/`resolveAsync` in the hosted worker is lowered during the build into
+// exactly the explicit-token call the without-transformer app's `main.ts`
+// hand-writes. Diff the two files and the only difference is the dialect.
+//
+// The ONE explicit-token island is the hosted-worker wiring at the bottom: there
+// is no `@rhombus-std/di.extras` plugin for the hosting family yet, so
+// `addHostedService(...)` and the small `ConfigRoot` value it needs name their
+// tokens by hand.
 //
 // The scenario, everything in concert:
 //   - config sources feed a reactive IOptions<ServerOptions> through the full
-//     configure → post-configure → validate pipeline (#41);
-//   - both example libraries' services are registered into ONE container — the
-//     with-transformer lib's FormalGreeting + report factory + async banner, and
-//     the without-transformer lib's CasualGreeting + health check (its manual
-//     registration function);
-//   - the report factory (from the built with-transformer lib) resolves the
-//     IGreeting COLLECTION aggregating BOTH libraries (#48), the live options,
-//     the policy wrap, and probes the health check (#23/#25) — all TOKENLESSLY
-//     through an injected IResolver (#49);
-//   - the async banner is reached with resolveAsync (#45);
-//   - a config reload fires a live options update through the subscription
-//     (#6/#40).
+//     configure → post-configure → validate pipeline;
+//   - both example libraries' registrations land in ONE container, each through
+//     its own package-named entry function;
+//   - the with-transformer library's report factory receives the IGreeting
+//     COLLECTION aggregating BOTH libraries, the live options, the policy wrap
+//     and an optional health probe — all as ordinary constructor-style
+//     PARAMETERS, filled by the container;
+//   - the async banner is reached with resolveAsync;
+//   - a config reload fires a live options update through the subscription.
 //
-// BOOTS VIA THE GENERIC HOST (@rhombus-std/hosting): the container above is
-// registered onto the host's own `ServiceManifest`, and the scenario itself runs
-// inside a hosted worker (`InteropWorker`) that implements
-// `IHostedLifecycleService` and logs its ordered lifecycle callbacks through an
-// injected `ILogger` — mirroring the canonical worker+lifecycle sample in
-// tests/hosting.test/test/index.test.ts. Its `resolve<T>()` / `resolveAsync<T>()`
-// calls stay tokenless (the transformer lowers them, same as the library's own
-// factory); only its CONSTRUCTOR SIGNATURE (an `addHostedService` concept the
-// transformer does not cover) names explicit tokens. The worker calls
+// BOOTS VIA THE GENERIC HOST (@rhombus-std/hosting): the scenario runs inside a
+// hosted worker (`InteropWorker`) that implements `IHostedLifecycleService` and
+// logs its ordered lifecycle callbacks through an injected `ILogger` —
+// mirroring the canonical worker+lifecycle sample in
+// tests/hosting.test/test/index.test.ts. The worker calls
 // `IHostApplicationLifetime.stopApplication()` once its work is done, so
 // `runAsync` returns deterministically with no reliance on Ctrl+C / signals.
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { ConfigRoot } from '@rhombus-std/config';
-import { RESOLVER_TOKEN } from '@rhombus-std/di';
-import type { IResolver } from '@rhombus-std/di';
+import { RESOLVER_TOKEN, ServiceManifest } from '@rhombus-std/di';
+import type { IResolver, IServiceManifest } from '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
@@ -58,15 +72,21 @@ import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@
 // prototype patch to land.
 import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
-import type { GreetingPolicy, IBanner, IGreeting, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
-import { demonstrateInfrastructure, fetchBanner, FormalGreeting,
-  makeServerReport } from '@rhombus-std/examples.lib.with-transformer';
-import { addCasualServices, demonstrateErrors, demonstrateManifestSurface,
+import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
+import { addWithTransformerExamples } from '@rhombus-std/examples.lib.with-transformer';
+import { addReportingFixture, addWithoutTransformerExamples,
   demonstrateTokenAbi } from '@rhombus-std/examples.lib.without-transformer';
+
+// The two DIALECT-INDEPENDENT chapters that need a container to run. They are
+// composition-root work, so they live in a composition-root package rather than
+// in either library — and both example apps import the SAME functions, which is
+// what keeps their output identical by construction rather than by discipline.
+import { demonstrateErrors, demonstrateManifestSurface } from '@rhombus-std/examples.app.shared';
 
 // The app-side chapters of the di tour that runs after the host has shut down.
 // Each returns its lines rather than printing, so this file owns the ordering
 // and the spacing — see the tour at the bottom.
+import { demonstrateInfrastructure } from './infrastructure-demo.js';
 import { demonstrateLifetimes } from './lifetimes-demo.js';
 import { demonstrateOpenGenerics } from './open-generics-demo.js';
 import { demonstrateRegistration } from './registration-demo.js';
@@ -137,6 +157,13 @@ function makeServerOptions(config: ConfigRoot): IOptions<ServerOptions> {
  * injected `ILogger` — mirroring the canonical worker+lifecycle sample. Its
  * `resolve`/`resolveAsync` calls stay TOKENLESS (transformer-lowered); only its
  * constructor signature (below, at `addHostedService`) names explicit tokens.
+ *
+ * This is the one class in the example set that takes the provider and is not
+ * apologised for: it is the ROOT's own top-level service, the thing the single
+ * `runAsync` resolve lands on, and reaching further into the container from
+ * there is the composition root doing its job. The rule the libraries live under
+ * ("declare what you need as a parameter") is about LIBRARY code; a root is the
+ * one place that is allowed to know the container exists.
  */
 class InteropWorker implements IHostedLifecycleService {
   readonly #resolver: IResolver;
@@ -215,33 +242,49 @@ class InteropWorker implements IHostedLifecycleService {
   }
 }
 
-// ── host + container (registrations tokenless, at module top level) ───────────
+// ── the composition root ──────────────────────────────────────────────────────
 
 const config = buildConfig();
 const serverOptions = makeServerOptions(config);
 
+// STEP 1 — make the manifest. The Generic Host owns it here and hands it over as
+// a writable slot; a container-only app would write `new ServiceManifest()`
+// instead, exactly as the tour's chapters do further down. Either way it is the
+// ROOT that starts the chain.
 const builder = Host.createApplicationBuilder();
 let services = builder.services;
 
-// The with-transformer library's greeting, plus the without-transformer
-// library's greeting + health check via its manual registration function. Both
-// greetings land in the one IGreeting collection. The manifest is immutable, so
-// every registration call is threaded back into `services` — a bare
-// `services.addClass(...)` statement would silently register nothing.
-services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>();
-services = addCasualServices(services);
+// STEP 2 — hand the manifest to each library, one `add*` call apiece.
+//
+// This is the whole consumer-facing shape of a library that ships services: one
+// exported function, named after the package, taking a manifest and returning
+// one. Neither call below knows or cares what the other registered — both
+// greetings land in the same `IGreeting` collection because both libraries chose
+// the same contract token, which is what a shared contracts package is for.
+//
+// Worth noticing that the two calls read identically even though one library is
+// authored tokenlessly and the other by hand: the sugar lowers to what the other
+// wrote out, so a consumer cannot tell which is which and does not need to.
+//
+// The manifest is IMMUTABLE, so every call is threaded back into `services`; a
+// bare `addWithoutTransformerExamples(services)` statement would register
+// nothing at all.
+services = addWithTransformerExamples(services);
+services = addWithoutTransformerExamples(services);
 
-// The async banner (Promise<IBanner>) and the report factory, both from the
-// built with-transformer library.
-services = services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
-services = services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
+// STEP 3 — add what the APPLICATION owns.
+//
+// Configuration, the options pipeline built over it, and the policy this
+// deployment chose are the root's, not any library's: they are the answers a
+// library asks questions about. A library that registered its own config would
+// be deciding for every consumer it will ever have.
 
 // The reactive server options — registered as a value so every consumer shares
 // the one live instance.
 services = services.addValue<IOptions<ServerOptions>>(serverOptions);
 
 // A config-independent policy, delivered as a static IOptions<GreetingPolicy>
-// through the explicit-wrap addOptions<T>() sugar (#34). The satellite lowers
+// through the explicit-wrap addOptions<T>() sugar. The satellite lowers
 // `addOptions<T>()` but not the trailing `.as<>()`, so the lifetime is named in
 // the value form (`"singleton"` is a scope name, not a token).
 services = services.addValue<GreetingPolicy>({ excitement: '!' });
@@ -260,7 +303,12 @@ builder.services = services.addHostedService(InteropWorker, [
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 
+// STEP 4 — build the provider.
 const host = builder.build();
+// STEP 5 — the one top-level resolve. `runAsync` resolves the registered
+// `IHostedService` collection and drives it through its lifecycle; every other
+// object in the application is constructed because something above it declared a
+// dependency on it. That single entry is what a container is FOR.
 await host.runAsync();
 
 // ── the di tour ───────────────────────────────────────────────────────────────
@@ -275,12 +323,20 @@ await host.runAsync();
 // without-transformer app, and the two print the SAME lines apart from the
 // "with"/"without transformer" header — which is the no-transformer-first rule
 // made checkable, since both apps' output is byte-diffed against a checked-in
-// `expected.txt`. The three dialect-independent chapters are not twinned: they
-// are the same function, imported by both apps.
+// `expected.txt`. The dialect-independent chapters are not twinned: they are the
+// same functions, imported by both apps.
 //
 // Each chapter owns its own container, so nothing here can perturb the host's —
 // and each returns its lines rather than printing, which is what lets this file
 // decide the order and the spacing.
+
+// The token-ABI chapter reads a manifest as DATA — nothing in it is ever built
+// or resolved. The library owns the fixture's REGISTRATIONS and the report;
+// MAKING the manifest to put them in is the root's job, which is this whole
+// restructure in two lines.
+let reporting: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
+reporting = addReportingFixture(reporting);
+
 const tour: readonly (readonly string[])[] = [
   demonstrateRegistration(),
   await demonstrateResolution(),
@@ -289,13 +345,14 @@ const tour: readonly (readonly string[])[] = [
   // Three chapters with no dialect: an error class, a token string and the
   // manifest's own data structure read the same whether or not a transformer
   // ran, so there is nothing for a with-transformer twin to differ in and both
-  // apps run these same four functions. Their header lines say so rather than
+  // apps run these same three functions. Their header lines say so rather than
   // naming a dialect.
   await demonstrateErrors(),
-  demonstrateTokenAbi(),
+  demonstrateTokenAbi(reporting),
   demonstrateManifestSurface(),
-  // From the LIBRARY, not the app: the infrastructure surface exists for library
-  // authors, so it is demonstrated from inside one.
+  // The library-author infrastructure surface, driven from here — because the
+  // half of it that needs a provider IS root work, and the half that does not
+  // stayed in the library where it belongs.
   demonstrateInfrastructure(),
 ];
 

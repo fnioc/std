@@ -11,10 +11,12 @@
 //
 //   - `ServiceManifestClass` — the class every cross-package augmentation is
 //     installed onto. A test host does not construct it; it recognises it.
-//   - `ServiceManifestDescriptorAugmentations` / `ServiceManifestContainerBuilderAugmentations`
-//     — the STANDALONE call surface behind the fluent `removeAll(…)` / `build()`
-//     verbs, which is what a caller reaches for when it has an ordinary function
-//     rather than a receiver in hand.
+//   - `ServiceManifestDescriptorAugmentations` — the STANDALONE call surface
+//     behind the fluent `removeAll(…)` verb, which is what a caller reaches for
+//     when it has an ordinary function rather than a receiver in hand. (Its
+//     sibling `ServiceManifestContainerBuilderAugmentations`, behind `build()`,
+//     is the ENGINE's contribution and therefore lives with the composition
+//     root — see the app's own chapter.)
 //   - `hasRegistrations` / `removeRegistrations` / `seal` — the intrinsic
 //     primitives those augmentations are built ON, present so that a tool can
 //     ask the same questions without going through the fluent layer.
@@ -24,14 +26,20 @@
 //
 // Dialect-independent: none of this has a type-driven form. Both example apps
 // run THIS chapter rather than a with-transformer mirror.
+//
+// Every import is `@rhombus-std/di.core`, this library's only di dependency, and
+// that constraint is visible in the tour's signature: a test host that cannot
+// name the engine cannot CONSTRUCT a manifest and cannot BUILD a provider, so
+// `demonstrateManifestSurface` asks for both as plain function parameters. That
+// inversion is the same one this whole library is built on, applied one level
+// down — need a container? take a way to make one, do not reach for the engine.
 
-import { ServiceManifest, ServiceManifestContainerBuilderAugmentations, ServiceProviderClass } from '@rhombus-std/di';
-import type { AddChain, IAsBuilder, IResolver, IResolveScope, IServiceManifest, IServiceProvider, IWithKeyBuilder,
-  IWithSignatureBuilder, IWithSignaturesBuilder, ServiceManifestCtor, Token } from '@rhombus-std/di';
 import { overrideSignatures, ServiceManifestClass, ServiceManifestDescriptorAugmentations, SIGNATUREFOR_NAME,
   SIGNATURESFOR_NAME } from '@rhombus-std/di.core';
-import type { Ctor, DepSignatures, DepTarget, Factory, IRequiredResolver, IScopeFactory, IServiceManifestBase,
-  IServiceQuery, Lifetime, Producer, Slot } from '@rhombus-std/di.core';
+import type { AddChain, Ctor, DepSignatures, DepTarget, Factory, IAsBuilder, IRequiredResolver, IResolver,
+  IResolveScope, IScopeFactory, IServiceManifest, IServiceManifestBase, IServiceProvider, IServiceQuery,
+  IWithKeyBuilder, IWithSignatureBuilder, IWithSignaturesBuilder, Lifetime, Producer, Slot,
+  Token } from '@rhombus-std/di.core';
 
 // ── the application being tested ─────────────────────────────────────────────
 
@@ -112,22 +120,6 @@ export function addShopServices(services: IServiceManifest<'singleton'>): IServi
   return composed;
 }
 
-/**
- * Starts a fresh manifest from the CONSTRUCTOR rather than from the value.
- *
- * `ServiceManifestCtor` is the static side of the public `ServiceManifest` — the
- * type of `new ServiceManifest<S>()` — and taking it as a parameter is how a
- * host lets its caller decide which collection to build into. A test host is the
- * obvious consumer: the production entry point hands it the same constructor the
- * application uses, so the test cannot accidentally compose into a different
- * collection type than the one that ships.
- *
- * @param Manifest The registration-builder constructor to instantiate.
- */
-export function freshManifest(Manifest: ServiceManifestCtor): IServiceManifest<'singleton'> {
-  return new Manifest<'singleton'>();
-}
-
 // ── 1. the receiver every augmentation lands on ──────────────────────────────
 
 /**
@@ -198,18 +190,13 @@ export function withoutToken(
   ) as IServiceManifest<'singleton'>;
 }
 
-/**
- * Builds a provider, called through the container-builder augmentation const.
- *
- * `build()` is the same shape: di.core ships the collection with a `build()` that
- * only throws, and `@rhombus-std/di` supplies the real one through the
- * augmentation registry when it is imported. Reaching the standalone form makes
- * the two halves visible — the collection is one package, the engine is another,
- * and the method is the seam between them.
- */
-export function buildProvider(services: IServiceManifest<'singleton'>): IServiceProvider<string> {
-  return ServiceManifestContainerBuilderAugmentations.build(asBuilder<string>(services));
-}
+// `build()`'s standalone form is the same shape one package over: di.core ships
+// the collection with a `build()` that only throws, and `@rhombus-std/di`
+// supplies the real one through the augmentation registry when it is imported.
+// Which is exactly why it is NOT demonstrated here — the augmentation set IS the
+// engine, so naming it would make this library depend on the thing it exists to
+// show a library never needs. The app's chapter reaches it instead, where the
+// two halves are visible from the side that owns both.
 
 // ── 3. the intrinsic primitives ──────────────────────────────────────────────
 
@@ -398,10 +385,25 @@ export function forTests(services: IServiceManifest<'singleton'>): IServiceManif
 /**
  * Runs the whole manifest-surface tour and returns the report lines.
  *
+ * The two parameters ARE the chapter's real lesson, so read them before the
+ * body. This library depends on `@rhombus-std/di.core` alone, and the tour needs
+ * two things the abstractions package cannot give it: a composed manifest (only
+ * a root constructs one) and a way to turn a manifest into a provider (`build()`
+ * is the engine's contribution). So it asks for both, as plain function
+ * parameters rather than DI slots. Something that needs a container takes a way
+ * to make one; it does not reach for the engine and settle its consumer's
+ * container choice on their behalf.
+ *
+ * @param production The wiring under test, already composed — pass
+ *   `addShopServices(<a fresh manifest>)`.
+ * @param buildProvider Turns a finished manifest into a provider. `build()`,
+ *   which `@rhombus-std/di` installs onto the collection di.core ships.
  * @returns One line per observation, in a fixed order.
  */
-export function demonstrateManifestSurface(): readonly string[] {
-  const production = addShopServices(freshManifest(ServiceManifest));
+export function demonstrateManifestSurface(
+  production: IServiceManifest<'singleton'>,
+  buildProvider: (services: IServiceManifest<'singleton'>) => IServiceProvider<'singleton'>,
+): readonly string[] {
   const lines: string[] = ['=== di manifest surface (dialect-independent) ==='];
 
   // The receiver identity.
@@ -433,12 +435,12 @@ export function demonstrateManifestSurface(): readonly string[] {
     }`,
   );
 
-  // The concrete engine class, named for what it is.
-  lines.push(
-    `  what build() handed back: an IServiceProvider, backed by ${
-      provider instanceof ServiceProviderClass ? 'ServiceProviderClass' : 'something else'
-    } — a consumer holds the interface, never this class`,
-  );
+  // What `build()` actually handed back is a question this chapter deliberately
+  // does NOT answer, and the silence is the answer: naming the concrete provider
+  // class would need `@rhombus-std/di`, so a library cannot even write the check.
+  // "A consumer holds the interface, never the class" is proved structurally here
+  // rather than asserted — the caller makes the observation instead, from the
+  // layer that is allowed to.
 
   // Capability narrowing.
   const missing = missingFrom(scope, [GATEWAY_TOKEN, LEDGER_TOKEN, METRICS_TOKEN]);
@@ -449,8 +451,11 @@ export function demonstrateManifestSurface(): readonly string[] {
     }`,
   );
 
-  // The chain as a value.
-  const policy = asSingleton(new ServiceManifest<'singleton'>().addClass(METRICS_TOKEN, FixedClock, [[]]));
+  // The chain as a value, started from the manifest this tour was HANDED. Safe
+  // for exactly the reason the chapter keeps making: every verb returns a NEW
+  // manifest, so branching off `production` here cannot disturb the wiring the
+  // lines above were reported from.
+  const policy = asSingleton(production.addClass(METRICS_TOKEN, FixedClock, [[]]));
   lines.push(
     `a house policy applied to a pending registration (AddChain): IMetrics registered as ${
       [...policy].filter((entry) => entry.kind === 'exact' && entry.token === METRICS_TOKEN)

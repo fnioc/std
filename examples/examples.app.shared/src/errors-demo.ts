@@ -1,10 +1,10 @@
 // THE ERROR TAXONOMY — every way a container can be wrong, provoked on purpose.
 //
-// The scenario is a DEPLOYMENT SELF-CHECK: a small diagnostic a service runs
-// against its own container before it starts taking traffic, turning whatever
-// the container throws into a line an operator can act on. That is the honest
-// reason to know these classes apart — an error you cannot branch on is an error
-// you can only log.
+// The scenario is a DEPLOYMENT SELF-CHECK: a small diagnostic an application
+// runs against its own container before it starts taking traffic, turning
+// whatever the container throws into a line an operator can act on. That is the
+// honest reason to know these classes apart — an error you cannot branch on is
+// an error you can only log.
 //
 // Why branch on the CLASS and never on the message: messages name tokens, and a
 // token is a moving target (it changes when a type is renamed, and the two
@@ -13,21 +13,35 @@
 // no source, the path that closed the cycle, the constructor that could not be
 // built — so `diagnose` below never has to parse a string.
 //
+// WHY THE CHAPTER IS SPLIT, and it is the whole restructure in one file. Every
+// failure below the registration line needs a BUILT CONTAINER to happen at all —
+// a `build()`, a `createScope()`, a `resolve()`, a `dispose()`. Those are the
+// composition root's verbs, not a library's, and the classes they throw
+// (`UnregisteredTokenError`, `CircularDependencyError`, `AsyncDisposalRequiredError`
+// and seven more) are exported by `@rhombus-std/di` — the engine — and not by
+// `@rhombus-std/di.core`. A library cannot name them, so a library cannot
+// diagnose them. What a library CAN do is everything that happens before the
+// build, and `@rhombus-std/examples.lib.without-transformer` keeps exactly that
+// half: `demonstrateRegistrationErrors` provokes the two registration-time
+// failures against a manifest it was handed, and `diagnoseRegistration` reads
+// them. This file extends that table rather than restating it — see `diagnose`.
+//
 // Dialect-independent, and deliberately so: an error class has no type-driven
-// form to have a twin of. Both example apps run THIS chapter rather than a
-// with-transformer mirror of it, which is why the header line names neither
-// dialect. (`@rhombus-std/di.extras` changes how you ASK for a service; it
+// form to have a twin of. Both example apps import THIS chapter rather than
+// twinning it, which is why the header line names neither dialect, and why the
+// two apps' output cannot drift apart here by construction rather than by
+// discipline. (`@rhombus-std/di.extras` changes how you ASK for a service; it
 // changes nothing about what happens when the answer is no.)
 //
 // The one failure not staged here is `ScopeValidationError` — the captive
 // dependency — because it needs a two-level scope chain to be worth reading, and
-// the lifetimes chapter already builds one.
+// each app's lifetimes chapter already builds one.
 
 import { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
-  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
-  OpenTokenResolutionError, RegistrationValidationError, ServiceManifest, union,
-  UnregisteredTokenError } from '@rhombus-std/di';
+  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenResolutionError,
+  RegistrationValidationError, ServiceManifest, union, UnregisteredTokenError } from '@rhombus-std/di';
 import type { IServiceManifest } from '@rhombus-std/di';
+import { demonstrateRegistrationErrors, diagnoseRegistration } from '@rhombus-std/examples.lib.without-transformer';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -56,6 +70,11 @@ interface RemoteConfig {
 }
 
 // ── tokens ───────────────────────────────────────────────────────────────────
+//
+// The `selfcheck:` namespace is shared with the library's registration half, so
+// the two sets of lines read as one catalogue. Nothing resolves across the
+// boundary — each half builds its own throwaway container — so agreement here is
+// about the REPORT, not about wiring.
 
 const REPORT_TOKEN = 'selfcheck:IReportService';
 const STORE_TOKEN = 'selfcheck:IStore';
@@ -65,8 +84,6 @@ const AUDIT_TOKEN = 'selfcheck:IAuditLog';
 const CONFIG_TOKEN = 'selfcheck:RemoteConfig';
 const CONFIG_PROMISE_TOKEN = `Promise<${CONFIG_TOKEN}>`;
 const REPOSITORY_TEMPLATE = 'selfcheck:IRepository<$1>';
-/** A hole with no base around it — a template that names nothing to look up. */
-const BARE_HOLE_TOKEN = '$1';
 
 // ── the diagnostic ───────────────────────────────────────────────────────────
 
@@ -75,26 +92,16 @@ const BARE_HOLE_TOKEN = '$1';
  *
  * The order of the branches is `instanceof`-narrowest first, which matters:
  * every class below extends `DiError`, so a `DiError` test placed early would
- * swallow all of them. The final `DiError` arm is the honest catch-all for a
- * failure this diagnostic has not been taught yet — it says "the container is
- * unhappy" without pretending to know why.
+ * swallow all of them. The last arm is the interesting one — instead of
+ * restating the registration-time branch and the two catch-alls, it hands the
+ * value to the LIBRARY's `diagnoseRegistration`. The root's table is a strict
+ * EXTENSION of the library's, and it composes rather than copies, so a fix to
+ * either half lands once.
  *
  * @param error Whatever the container threw.
  * @returns A single line naming the failure and what to do about it.
  */
 export function diagnose(error: unknown): string {
-  // ── registration time ──────────────────────────────────────────────────────
-  if (error instanceof OpenTokenRegistrationError) {
-    // One class, two causes — told apart by `method` rather than by reading the
-    // message, which is the point of carrying the field.
-    if (error.method === 'addClass') {
-      return `OpenTokenRegistrationError — "${error.token}" is a template no closed token could ever match; `
-        + 'give it a base and at least one argument, so a closing has something to be looked up under';
-    }
-    return `OpenTokenRegistrationError — "${error.token}" still has a hole in it, and ${error.method}() `
-      + 'cannot stand behind a family of tokens; only a class can be built afresh per closing';
-  }
-
   // ── build time ─────────────────────────────────────────────────────────────
   if (error instanceof AggregateError) {
     // `validateOnBuild` reports EVERY broken registration at once rather than
@@ -147,10 +154,13 @@ export function diagnose(error: unknown): string {
       + 'settle; await disposeAsync';
   }
 
-  if (error instanceof DiError) {
-    return `DiError (${error.name}) — the container is unhappy in a way this check has not been taught`;
-  }
-  return 'not a DiError at all — this diagnostic would rethrow rather than guess';
+  // ── registration time, and the two catch-alls ──────────────────────────────
+  //
+  // Everything left is reachable from `@rhombus-std/di.core` alone, so the
+  // library half already knows how to read it: the `OpenTokenRegistrationError`
+  // branch with its `method` discrimination, the honest `DiError` arm for a
+  // failure neither half has been taught yet, and the "not ours at all" arm.
+  return diagnoseRegistration(error);
 }
 
 // ── the staged failures ──────────────────────────────────────────────────────
@@ -187,31 +197,13 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
 
   // ── registration time: the manifest refuses before anything is built ───────
   //
-  // The cheapest failures to have, because they happen at the call that made
-  // the mistake rather than at some later resolve. An OPEN template names a
-  // FAMILY of tokens — one per closing — so only a class can stand behind it;
-  // a value has one already-built instance and no way to produce one per
-  // closing.
-  lines.push(staged(
-    'registering a value at an open template',
-    () => new ServiceManifest<'singleton'>().addValue(REPOSITORY_TEMPLATE, { rows: [] }),
-  ));
-
-  // The OTHER cause of the same error, and the whole of what `addClass`
-  // refuses: a template no closed token could ever match. A template is found
-  // under a base and then unified against a closing, so it needs a base and at
-  // least one argument. A bare hole has neither — nothing is ever looked up
-  // under `$1` — and a token the grammar cannot read as a generic application
-  // is out for the same reason. Either would otherwise sit in the manifest
-  // matching nothing, forever, in silence.
-  //
-  // Note what is NOT here: a template that mixes concrete arguments with holes.
-  // `IRepository<User,$1>` is an ordinary template, registers fine, and is what
-  // the open-generics chapter is about.
-  lines.push(staged(
-    'registering a class at a bare hole',
-    () => new ServiceManifest<'singleton'>().addClass(BARE_HOLE_TOKEN, ReportService, [[STORE_TOKEN]]),
-  ));
+  // The library's half, and the reason it can BE a library's half: a rejected
+  // registration throws from the call that made it, so nothing has to be built
+  // for it to happen — and the manifest handed in comes back untouched, because
+  // the node that would have carried the bad registration never materialised.
+  // Making the manifest is still the root's job, which is why one arrives as an
+  // argument.
+  lines.push(...demonstrateRegistrationErrors(new ServiceManifest<'singleton'>()));
 
   // ── build time: the eager whole-graph check ────────────────────────────────
   //
@@ -325,7 +317,8 @@ export async function demonstrateErrors(): Promise<readonly string[]> {
 
   // ── and the escape hatch ───────────────────────────────────────────────────
   //
-  // Everything above extends ONE root, so a consumer that does not want to
+  // Everything above extends ONE root, and that root is a di.core export — which
+  // is what lets the library half catch it too. A consumer that does not want to
   // enumerate the taxonomy can catch `DiError` and be sure it has caught a
   // container problem rather than swallowed a bug in its own code.
   lines.push(`every failure above shares one root: ${new UnregisteredTokenError(REPORT_TOKEN) instanceof DiError}`);

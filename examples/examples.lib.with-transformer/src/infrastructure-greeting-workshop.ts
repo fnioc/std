@@ -12,9 +12,9 @@
 //     (`addClass<GreetingWorkshop>(…)` / `resolve<GreetingWorkshop>()`), because
 //     both sides derive the same token from the same type; and
 //   - the dependency signatures are MINTED from type tuples —
-//     `signaturesfor<[[A, B]]>()` for the card's whole set, `signaturefor<[A]>()`
-//     for the workshop's one appended overload — instead of being written out as
-//     slot arrays.
+//     `signaturesfor<[[A, B]]>()` for the card's whole set, `withSignature<[A, B]>()`
+//     for the workshop's one appended overload, `signaturefor<[A]>()` for the
+//     locator's — instead of being written out as slot arrays.
 //
 // Everything else is identical, and deliberately so. Where a token names
 // something that has no type to derive from — a ctor arriving as a runtime
@@ -24,12 +24,20 @@
 // only removes boilerplate where there is a type to remove it from.
 //
 // The scenario is one small library — a "greeting workshop" a consuming
-// application configures and then asks for a rendered greeting card. It is
-// deliberately self-contained: it builds and owns its OWN container, so nothing
-// here lands in (or perturbs) the interop container the example apps assemble.
+// application configures and then asks for a rendered greeting card. Nothing in
+// this file builds a container: `addGreetingWorkshop` registers into the manifest
+// it was handed and gives it back, and the application decides what to do with
+// the result. That is the rule the whole package holds to, and it is why the only
+// di-family import below is `@rhombus-std/di.core`.
+//
+// The file also carries the ONE deliberately-discouraged shape in the package:
+// {@link LocatorGreetingWorkshop} is {@link GreetingWorkshop} rewritten to take
+// the live provider and look its dependencies up. It is registered beside the
+// good one and prints the identical card, so a reader can hold the two
+// constructors side by side. The comparison IS the lesson; neither class is
+// interesting without the other.
 
-import { RESOLVER_TOKEN, ServiceManifest } from '@rhombus-std/di';
-import type { IResolver, IServiceManifest, IServiceManifestHolder, IServiceProviderFactory } from '@rhombus-std/di';
+import type { IResolver, IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
 // The type-driven dependency-signature MINT primitives. They have no runtime
 // footprint: the build lowers `signaturefor<[A, B]>()` / `signaturesfor<[[A]]>()`
 // to the slot arrays a hand author would have written, and elides this import
@@ -86,9 +94,9 @@ export class WorkshopGreeting implements IGreeting {
  * One rendered greeting card. There is a fresh one per recipient, and one of its
  * constructor arguments — the recipient — is data the container has no way to
  * know. It is registered anyway, because a registration is what carries the
- * DEPENDENCY SIGNATURE; `resolveFactory` then splits that signature in two,
- * filling the greeting slot from the container and leaving the recipient slot to
- * the caller.
+ * DEPENDENCY SIGNATURE; a FACTORY slot then splits that signature in two, filling
+ * the greeting slot from the container and leaving the recipient slot to whoever
+ * calls the factory.
  */
 export class GreetingCard {
   readonly #greeting: IGreeting;
@@ -123,78 +131,157 @@ export class GreetingCard {
 const CARD_SIGNATURES = signaturesfor<[[IGreeting, ICardRecipient]]>();
 
 /**
- * The workshop's signature, minted with the SINGULAR `signaturefor<[…]>()` — one
- * type tuple in, one `DepSlot[]` out, appended by the REPEATABLE `withSignature`.
- * The two modifiers say opposite things about a registration's future: the bulk
- * form above forbids further overloads, this one invites them, which is how a
- * library builds a set up conditionally.
+ * The locator twin's signature, minted with the SINGULAR `signaturefor<[…]>()` —
+ * one type tuple in, one `DepSlot[]` out, appended by the REPEATABLE
+ * `withSignature`. The two mint primitives say opposite things about a
+ * registration's future: the bulk form above forbids further overloads, this one
+ * invites them, which is how a library builds a set up conditionally.
  *
- * Pinning at all is a deliberate library-author choice: `addClass<T>(C)` would
- * derive this from the constructor, and a derived signature TRACKS the
- * constructor — so adding a defaulted parameter later would silently become a new
- * injected slot, and a new way for the registration to stop being satisfiable.
+ * `IResolver` derives the intrinsic provider token, so even the "give me the
+ * container" slot never has to be spelled — which is worth seeing precisely
+ * because it is the slot this file argues against reaching for.
+ *
+ * Held as a const and SPREAD into the call, rather than written as the
+ * `withSignature<T>()` sugar the workshop below uses: the two forms lower to the
+ * same append, and having one of each keeps both the source-written primitive and
+ * the sugar visible in one file.
  */
-const WORKSHOP_SIGNATURE = signaturefor<[IResolver]>();
+const LOCATOR_SIGNATURE = signaturefor<[IResolver]>();
 
 /**
- * The library's one registered service. It mints {@link GreetingCard}s on
- * demand, which is why it takes the live `IResolver` (the intrinsic provider
- * slot) rather than the greeting directly: a card is built later, per recipient,
- * against whatever the container holds at that moment.
+ * The library's one real service, and the model citizen of the package: it mints
+ * {@link GreetingCard}s on demand WITHOUT ever holding the container.
+ *
+ * "On demand" is what usually pushes a class into taking the provider. A card is
+ * built later, once per recipient, from data the container cannot know — so the
+ * obvious move is to keep the provider around and ask it for a card factory when
+ * one is wanted. The obvious move is wrong, for a reason worth stating plainly: a
+ * class holding the provider has dependencies its constructor does not declare.
+ * Nobody reading the signature can see what it needs, no test can supply them
+ * without standing up a container, and an eager whole-graph validation has
+ * nothing to check.
+ *
+ * The answer is to ask for the FACTORY as a parameter. `mintCard` is an ordinary
+ * function the container hands over at construction — already partitioned, so
+ * calling it supplies only the recipient — and `stationery` is an ordinary
+ * optional parameter. Both are visible in the constructor, both arrive filled,
+ * and the class never learns that a container exists.
+ *
+ * {@link LocatorGreetingWorkshop} is this same class written the other way. It
+ * produces identical cards and is registered right beside this one so the two can
+ * be resolved and compared; it is there as the counter-example, not as an
+ * alternative.
  */
 export class GreetingWorkshop {
+  /**
+   * The card factory, handed over ALREADY BUILT. The container worked the slot
+   * plan out once, at registration — which slot the caller fills, which it
+   * resolves — so there is nothing to memoise and no first-use branch. The lazy
+   * `#mintCard ??= …` this class used to carry existed only because the provider
+   * arrived where the factory should have.
+   *
+   * The factory deliberately does not cache its RESULT either: the arguments
+   * differ per call, so a fresh card every time is the only correct answer.
+   */
+  readonly #mintCard: (recipient: ICardRecipient) => GreetingCard;
+
+  /**
+   * The stationery in force. The optional parameter carries the whole "use the
+   * app's registration if there is one, otherwise build my default" idiom by
+   * itself — absence arrives as `undefined` rather than as a throw, which is what
+   * makes an unregistered stationery a legitimate deployment shape instead of a
+   * wiring bug.
+   */
+  public readonly stationery: ICardStationery;
+
+  /**
+   * Whether the app registered its own stationery, or the library default is in
+   * force. Settled at construction, because the answer arrived with the argument:
+   * there is no container to re-ask, and a singleton could not see a different
+   * answer later anyway.
+   */
+  public readonly stationeryIsOverridden: boolean;
+
+  public constructor(
+    mintCard: (recipient: ICardRecipient) => GreetingCard,
+    stationery?: ICardStationery,
+  ) {
+    this.#mintCard = mintCard;
+    this.stationeryIsOverridden = stationery !== undefined;
+    this.stationery = stationery ?? new PlainStationery();
+  }
+
+  /**
+   * Renders a card for `name`. The greeting comes from the container, the
+   * recipient from the caller — and which is which was decided by the factory
+   * slot pinned by {@link addGreetingWorkshop}, not by anything this method does.
+   */
+  public card(name: string): string {
+    return this.#mintCard({ name }).render(this.stationery.border);
+  }
+}
+
+/**
+ * THE DISCOURAGED SHAPE, kept on purpose. {@link GreetingWorkshop} above is the
+ * answer; this is what the same library looks like when it takes the container
+ * instead, registered beside the good one so an application can resolve both and
+ * watch them print the identical card.
+ *
+ * Everything wrong with it is visible in the constructor: `resolver: IResolver`.
+ * From that signature you cannot tell that this class needs a `GreetingCard`
+ * registration and consults `ICardStationery` — you have to read the body. Every
+ * other cost follows from that one fact: a test has to stand up a container
+ * rather than pass two arguments, an eager whole-graph validation has no slots to
+ * check, and a missing registration surfaces at the first `card()` call instead
+ * of at construction. Reaching into the container for whatever you need is the
+ * service-locator pattern, and taking the provider as a dependency is how it gets
+ * in.
+ *
+ * It is not always wrong, which is why this is a comparison rather than a
+ * prohibition: it is the shape you are forced into when what you need is chosen
+ * by a KEY that does not exist until runtime, and no fixed factory slot can
+ * express that. `@rhombus-std/examples.lib.without-transformer`'s `PaymentRouter`
+ * is exactly that case, and says so. This class has no such excuse — every lookup
+ * below has a parameter form sitting above it — which is what makes it the
+ * counter-example.
+ *
+ * As a side effect it keeps `resolveFactory` / `tryResolve` / `isService` and the
+ * intrinsic provider slot demonstrated from inside a library, in the tokenless
+ * dialect, which is where a reader is most likely to meet them.
+ */
+export class LocatorGreetingWorkshop {
   readonly #resolver: IResolver;
 
-  /**
-   * The card factory, built on FIRST USE and then reused. `resolveFactory` works
-   * the slot plan out once — which slot the caller fills, which the container
-   * resolves — so paying for that per card would be waste.
-   *
-   * Lazy rather than eager because a workshop has to be CONSTRUCTIBLE against a
-   * provider that holds no cards at all; see the `EmptyServiceProvider` section
-   * of the demo, where exactly that happens and the failure surfaces at the first
-   * `card()` call instead of taking the constructor down with it.
-   */
+  /** Built on FIRST USE — the provider offers no way to be handed one earlier. */
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
-  /**
-   * The stationery in force. `tryResolve` + `??` is the whole "use the app's
-   * registration if there is one, otherwise build my default" idiom: `tryResolve`
-   * is the verb whose miss is `undefined` rather than a throw, which is what makes
-   * absence a legitimate deployment shape instead of a wiring bug. Resolved ONCE
-   * at construction — the workshop is a singleton, so the answer cannot change
-   * under it.
-   */
   public readonly stationery: ICardStationery;
 
   public constructor(resolver: IResolver) {
     this.#resolver = resolver;
     // Explicit-token: `ICardStationery` is registered under a token the app may
-    // or may not have written, and the workshop names it back — the same string
+    // or may not have written, and this class names it back — the same string
     // the builder's `useStationery` registers it under.
     this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN)
       ?? new PlainStationery();
   }
 
   /**
-   * Renders a card for `name`. The greeting comes from the container; the
-   * recipient is the caller's.
-   *
-   * In this dialect the whole partition rides on ONE function type:
-   * `resolve<(recipient: ICardRecipient) => GreetingCard>()` lowers to
-   * `resolveFactory("…:GreetingCard", ["…:ICardRecipient"])` — the RETURN type
-   * names what gets built, the PARAMETER types name what the caller supplies, and
-   * every other slot in the target's signature resolves from the container.
-   *
-   * A parameterized factory deliberately does NOT cache: the arguments differ per
-   * call, so a fresh card every time is the only correct answer.
+   * In this dialect the whole caller/container partition rides on ONE function
+   * type: `resolve<(recipient: ICardRecipient) => GreetingCard>()` lowers to
+   * `resolveFactory("…:GreetingCard", ["…:ICardRecipient"])`. It is the SAME type
+   * {@link GreetingWorkshop} states as a constructor parameter — the only
+   * difference is whether the container is asked for it or hands it over.
    */
   public card(name: string): string {
     this.#mintCard ??= this.#resolver.resolve<(recipient: ICardRecipient) => GreetingCard>();
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
-  /** Whether the app registered its own stationery, or the library default is in force. */
+  /**
+   * Re-asks the container on every read, because a locator has no other way to
+   * know. The good class answers the same question from a field it was handed.
+   */
   public get stationeryIsOverridden(): boolean {
     return this.#resolver.isService(CARD_STATIONERY_TOKEN);
   }
@@ -249,8 +336,9 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
   }
 
   public useStationery(stationery: ICardStationery): IGreetingWorkshopBuilder {
-    // Same story from the other side: the workshop's `tryResolve` names this
-    // token back explicitly, so the registration has to agree with it by hand.
+    // Same story from the other side: the workshop's optional slot and the
+    // locator's `tryResolve` both name this token, so the registration has to
+    // agree with it by hand.
     this.#holder.services = this.#holder.services.addValue(CARD_STATIONERY_TOKEN, stationery);
     return this;
   }
@@ -263,6 +351,9 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * but everything the callback did lands in one place regardless of what the
  * callback returned, because the callback wrote into the holder rather than into
  * a manifest it had to hand back.
+ *
+ * Like every `add*` in this repo it takes the caller's manifest and hands one
+ * back. It never makes one, and it never builds one.
  *
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
@@ -284,74 +375,42 @@ export function addGreetingWorkshop<S extends string>(
     .addClass<GreetingCard>(GreetingCard)
     .withSignatures(...CARD_SIGNATURES);
 
-  // The workshop itself goes on last so a consumer cannot forget it — and this
-  // one is fully tokenless. The demo resolves it with `resolve<GreetingWorkshop>()`,
-  // which derives the same token from the same class type; `withSignature`
-  // appends the pinned single overload (see `WORKSHOP_SIGNATURE`), so the
-  // intrinsic provider slot never has to be named either.
+  // The workshop itself goes on next so a consumer cannot forget it — and this
+  // one is fully tokenless, right down to its dependency signature. The demo
+  // resolves it with `resolve<GreetingWorkshop>()`, which derives the same token
+  // from the same class type; `withSignature<[…]>()` PINS the overload from a type
+  // tuple, so neither the factory slot nor the optional stationery slot is ever
+  // named at a call site.
+  //
+  // Pinning is a deliberate choice, and this constructor is the case that earns
+  // the line: `addClass<T>(C)` DERIVES the signature from the ctor, and a derived
+  // signature TRACKS the ctor — so the day someone adds a third, defaulted
+  // parameter it silently becomes a third injected slot, and a new way for the
+  // registration to stop being satisfiable. Stating the two slots makes that an
+  // edit a reviewer sees. Both are worth reading, because neither is a plain
+  // token: `(recipient: ICardRecipient) => GreetingCard` lowers to the factory
+  // slot `{ type: "…:GreetingCard", params: ["…:ICardRecipient"] }` — return type
+  // names what gets built, parameter types name what the CALLER supplies — and
+  // `ICardStationery | undefined` lowers to the union slot
+  // `{ union: ["…:ICardStationery", { value: undefined }] }`, which is how an
+  // OPTIONAL dependency is DECLARED rather than probed for.
   //
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
   holder.services = holder.services
     .addClass<GreetingWorkshop>(GreetingWorkshop)
-    .withSignature(...WORKSHOP_SIGNATURE)
+    .withSignature<[(recipient: ICardRecipient) => GreetingCard, ICardStationery | undefined]>()
     .as<'singleton'>();
+
+  // The counter-example, at its own derived token so a caller can resolve both
+  // from one container and compare the cards. Its one slot is the intrinsic
+  // provider — spread in from `LOCATOR_SIGNATURE` rather than stated inline, so
+  // the file shows both ways of supplying a pinned overload.
+  holder.services = holder.services
+    .addClass<LocatorGreetingWorkshop>(LocatorGreetingWorkshop)
+    .withSignature(...LOCATOR_SIGNATURE)
+    .as<'singleton'>();
+
   return holder.services;
-}
-
-// ── the provider-factory seam ────────────────────────────────────────────────
-
-/**
- * An `IServiceProviderFactory` over this repo's own container — the seam
- * `IHostBuilder.useServiceProviderFactory` and `configureContainer` are typed
- * against.
- *
- * The seam splits container construction in two: `createBuilder` adapts the
- * collected registrations into whatever object the container wants to be
- * configured through, and `createServiceProvider` turns that (by then
- * caller-configured) object into the provider everything resolves from. A
- * third-party container would do real adapting in the first step; with one
- * container type here the builder IS the manifest, and the value the seam adds
- * is that the BUILD OPTIONS live in one place instead of at every `build()`
- * call site — which is exactly what a host wants to own.
- *
- * Two things a reader should notice about the seam's current shape, because they
- * bound what an implementation can do:
- *
- *   - `createServiceProvider` hands back `IResolver`, the minimal resolution
- *     surface — scope creation and disposal are NOT part of it, so a host that
- *     went through the seam could not open a scope or close the container down.
- *   - `createBuilder`'s parameter is `IServiceManifest` with the DEFAULT
- *     `'singleton'` scope union baked in, so this class cannot be generic over
- *     an application's own scope names; an app declaring extra scopes has to
- *     cast on the way in.
- */
-export class ManifestServiceProviderFactory implements IServiceProviderFactory<IServiceManifest> {
-  public createBuilder(services: IServiceManifest): IServiceManifest {
-    return services;
-  }
-
-  public createServiceProvider(containerBuilder: IServiceManifest): IResolver {
-    // The one policy this factory imposes: every container it builds runs inside
-    // an OPEN root scope. `build()` on its own is frameless, so a
-    // `'singleton'`-tagged registration has no frame to be cached in and quietly
-    // resolves transiently instead — a mistake that costs nothing at startup and
-    // everything later. Deciding it once, here, rather than at each `build()`
-    // call site is exactly what the seam is for.
-    //
-    // Deliberately NOT `build({ validateOnBuild: true })`, tempting as that
-    // looks. The eager pass dry-runs every EXACT registration, and this library
-    // ships one that can never satisfy it: `GreetingCard`'s recipient slot is the
-    // CALLER's, handed over through `resolveFactory`, and no registration stands
-    // behind it. A whole-graph check cannot tell a deliberately caller-supplied
-    // slot apart from a wiring hole, so a container that uses the partition has
-    // to opt out of it.
-    return containerBuilder.build().createScope('singleton');
-  }
-}
-
-/** A fresh, empty manifest for this demo's own container. */
-export function newWorkshopManifest(): IServiceManifest<'singleton'> {
-  return new ServiceManifest<'singleton'>();
 }

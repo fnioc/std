@@ -13,8 +13,17 @@
 // exactly as `@rhombus-std/di.extras` derives them for the package-public
 // `@rhombus-std/examples.contracts` types, which is what lets the tokenless app
 // resolve the very same registrations without writing a token anywhere.
+//
+// Like every file in this library it imports `@rhombus-std/di.core` and never
+// `@rhombus-std/di`: it hands back registrations and leaves the container to the
+// application. Two classes below DO take the live provider as a dependency; the
+// comments on each say why that is legitimate rather than the usual smell, and
+// `PaymentRouter` deliberately sits the discouraged shape next to the correct
+// one — an ad-hoc FACTORY parameter — so the comparison is readable in one
+// constructor.
 
-import type { Inject, IResolver, IServiceManifest, Typeof } from '@rhombus-std/di';
+import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
+import type { Inject, IResolver, IServiceManifest, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt,
   IReceiptNumbering } from '@rhombus-std/examples.contracts';
 
@@ -55,12 +64,13 @@ export const CHECKOUT_TOKENS = {
    */
   spendLimit: '@rhombus-std/examples.contracts:CheckoutSpendLimitMinor',
   /**
-   * di's INTRINSIC provider token, hand-written. This library depends on di's
-   * TYPES only, so it never imports the `RESOLVER_TOKEN` runtime constant; the
-   * string is the token the transformer derives for `IResolver`, and the engine
-   * recognises it without any registration existing for it.
+   * di's INTRINSIC provider token — the ONE token in this bag that is not
+   * hand-written, because di.core exports the constant. Reach for the constant
+   * rather than the string: it is the token the transformer derives for
+   * `IResolver`, the engine recognises it without any registration existing for
+   * it, and a hand-written copy is one more place for the two to drift apart.
    */
-  resolver: '@rhombus-std/di.core:IResolver',
+  resolver: RESOLVER_TOKEN,
 } as const;
 
 /** The separator between a base token and a resolution key — `base#key`. */
@@ -113,11 +123,17 @@ export class AmountIsPositive implements IOrderValidator {
  *
  * This validator takes the CONTAINER as a dependency, which is normally a smell —
  * it hides the real dependencies from anyone reading the constructor. It is the
- * right call here for a specific reason: the question being asked ("is a gateway
- * registered under the key THIS order names?") cannot be answered until the order
- * arrives, so there is no constructor parameter that could express it. Note what
- * it does NOT do: it never resolves a gateway, only probes for one, so it cannot
- * accidentally become a service locator for the rest of the checkout.
+ * right call here for a specific reason, and the test is worth stating as a rule:
+ * ASK WHETHER THE DEPENDENCY COULD HAVE BEEN A PARAMETER. Almost always it could
+ * — a thing needed on demand is an ad-hoc FACTORY parameter, not a provider
+ * (`PaymentRouter` below has one of each, side by side). Here it could not: the
+ * question being asked is "is a gateway registered under the key THIS order
+ * names?", and the key does not exist until the order arrives, so no parameter —
+ * factory or otherwise — could express it. A `FactoryRef`'s target token is fixed
+ * at registration time; this one is not.
+ *
+ * Note what it does NOT do: it never resolves a gateway, only probes for one, so
+ * it cannot quietly become a service locator for the rest of the checkout.
  *
  * The gateway BASE token arrives as a `Typeof<IPaymentGateway>` parameter — a
  * brand that means "inject the TOKEN STRING of this type, not an instance of it".
@@ -236,22 +252,27 @@ export async function fetchExchangeRates(): Promise<IExchangeRates> {
 /**
  * Picks a gateway per order and mints a receipt for it.
  *
- * Two dependencies here are worth reading closely:
+ * READ THIS CONSTRUCTOR AS A COMPARISON. Both parameters answer "I need
+ * something later, not now", and they answer it two different ways — the
+ * discouraged one and the correct one, in one signature:
  *
- *   - `resolver` — the live container. Injecting it is USUALLY the wrong move: it
- *     turns a class's real dependencies invisible, defers every wiring mistake to
- *     runtime, and makes tests set up a container instead of passing fakes. It is
- *     right here for the same reason as in `MethodIsConfigured`: the gateway is
- *     chosen by a KEY that only exists once an order is in hand. The honest test
- *     for "is this legitimate?" is whether the dependency could have been a
- *     constructor parameter. Here it could not.
+ *   - `mintReceipt` — THE CORRECT ANSWER, and the one to reach for by default. A
+ *     dependency that is itself a FACTORY: a parameter typed as a function is not
+ *     resolved as an instance; the container injects a callable that builds one
+ *     on demand. Because this factory declares a parameter, it is PARAMETERIZED:
+ *     `order` comes from the caller, `numbering` from the container, and a fresh
+ *     receipt is built per call (a cached receipt would be wrong — the arguments
+ *     differ every time). The dependency stays VISIBLE in the constructor, a test
+ *     passes a stub function, and no container is involved.
  *
- *   - `mintReceipt` — a dependency that is itself a FACTORY. A parameter typed as
- *     a function is not resolved as an instance; the container injects a callable
- *     that builds one on demand. Because this factory declares a parameter, it is
- *     PARAMETERIZED: `order` comes from the caller, `numbering` from the
- *     container, and a fresh receipt is built per call (a cached receipt would be
- *     wrong — the arguments differ every time).
+ *   - `resolver` — the live container, and USUALLY the wrong move: it turns a
+ *     class's real dependencies invisible, defers every wiring mistake to
+ *     runtime, and makes tests stand up a container instead of passing fakes.
+ *     Legitimate here for the same reason as in `MethodIsConfigured`: the gateway
+ *     is chosen by a KEY that only exists once an order is in hand, and a factory
+ *     slot's target token is FIXED at registration time, so `mintReceipt`'s shape
+ *     genuinely cannot express it. That is the whole bar — if a factory parameter
+ *     could have done the job, it should have.
  *
  * Note the parameter is spelled as a bare arrow type. That is deliberate and
  * load-bearing: the transformer recognises a factory slot from the SYNTACTIC
@@ -298,6 +319,12 @@ export class PaymentRouter implements IPaymentRouter {
  * with those registrations added. The manifest is IMMUTABLE, so the caller must
  * thread the result back in (`services = addCheckoutServices(services)`); the
  * passed-in manifest is left untouched.
+ *
+ * Kept as its own `add*` entry rather than folded into
+ * `addWithoutTransformerExamples`, because the resolution chapter deliberately
+ * gets its OWN container: these registrations exist to be resolved against in
+ * isolation, and putting them in the application's host container would perturb
+ * what every other chapter sees.
  *
  * Registration ORDER is observable and therefore part of the contract: a
  * collection yields its elements in registration order, and so does a keyed

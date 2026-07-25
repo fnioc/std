@@ -1,95 +1,62 @@
-// Runs the greeting-workshop scenario end to end and returns the lines it
-// produced, so a caller (an example app, a test) decides where they go. Nothing
-// here prints, and nothing here reads a clock, the filesystem or a random
-// source — the output is byte-stable, which the apps' checked-in `expected.txt`
-// diff depends on.
+// THE NULL-OBJECT PROVIDER — the one section of the infrastructure chapter that
+// needs no container at all, which is exactly why it is the section a LIBRARY
+// keeps.
+//
+// The chapter as a whole has four parts, and the split between this file and the
+// example apps is not arbitrary: the other three build providers and resolve out
+// of them, which is composition-root work, so each app owns its own
+// `infrastructure-demo.ts` orchestrator and calls back into this function to keep
+// the chapter's line order intact. What remains here is the part where the
+// absence of a container IS the subject.
+//
+// Nothing here prints, and nothing here reads a clock, the filesystem or a
+// random source — the output is byte-stable, which the apps' checked-in
+// `expected.txt` diff depends on.
 //
 // Read alongside `./infrastructure-greeting-workshop.ts`, which defines every
-// type used below. The four sections mirror the four things a library author
-// actually needs from the infrastructure surface:
-//
-//   1. a container assembled through the `configure(builder)` seam, built via
-//      `IServiceProviderFactory`;
-//   2. the same library against an app that OVERRODE a default;
-//   3. the same library against `EmptyServiceProvider` — no container at all,
-//      where the defaultable half degrades and the rest fails loudly;
-//   4. `DiError`, the taxonomy root one catch covers the whole lifecycle with.
-//
-// The exhaustive error catalogue — every failure the container can raise, each
-// one provoked on purpose — is its own chapter: `./errors-demo.ts`.
-//
-// The with-transformer sibling produces IDENTICAL lines from the type-driven
-// dialect: `../../examples.lib.with-transformer/src/infrastructure-demo.ts`.
+// type used below. The with-transformer sibling produces IDENTICAL lines from
+// the type-driven dialect.
 
-import { DiError, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di';
-import type { IResolver } from '@rhombus-std/di';
+import { DiError, EmptyServiceProvider, RESOLVER_TOKEN } from '@rhombus-std/di.core';
+import type { IResolver } from '@rhombus-std/di.core';
 
-import { addGreetingWorkshop, GREETING_WORKSHOP_TOKEN, GreetingWorkshop, ManifestServiceProviderFactory,
-  newWorkshopManifest, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
+import { GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop } from './infrastructure-greeting-workshop.js';
 
 /**
- * Exercises the di.core infrastructure surface and returns the report lines.
+ * Runs the greeting workshop against no container at all, and returns the lines
+ * it produced.
+ *
+ * `EmptyServiceProvider` is a shared null-object provider that holds no
+ * application services. Reach for it when a provider is REQUIRED but none is
+ * meaningful: a unit test for a class that only optionally consults the
+ * container, a tool that runs one piece of a library outside any host, a default
+ * parameter. It beats standing up an empty real container (no engine, no
+ * allocation) and it beats a bespoke stub (it is the whole `IServiceProvider`
+ * surface, kept honest by di.core).
+ *
+ * It answers `isService` true for exactly one token — the intrinsic provider
+ * itself — so a class whose only dependency is the provider still constructs.
  *
  * @returns One line per observation, in a fixed order.
  */
-export function demonstrateInfrastructure(): readonly string[] {
-  const lines: string[] = [
-    '=== di infrastructure (library-author surface) — without transformer ===',
-  ];
-
-  // The factory is the library's/host's single point of container construction:
-  // both containers below are built through it, so both get `validateOnBuild`
-  // without either call site asking for it.
-  const containers = new ManifestServiceProviderFactory();
-
-  // ── 1. the configure(builder) seam ─────────────────────────────────────────
-  // The consumer never sees a manifest: `useGreeting` writes into the holder
-  // slot, and `addGreetingWorkshop` reads the finished chain back out.
-  const defaults = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
-    workshop.useGreeting(WorkshopGreeting);
-  });
-  const defaultProvider = containers.createServiceProvider(containers.createBuilder(defaults));
-  const defaultWorkshop = defaultProvider.resolve<GreetingWorkshop>(GREETING_WORKSHOP_TOKEN);
-
-  lines.push('app registered no stationery:');
-  lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
-  lines.push(`  card: ${defaultWorkshop.card('Ada')}`);
-
-  // ── 2. the same library, with the app overriding a default ─────────────────
-  // The workshop's `tryResolve` now finds a registration and uses it instead of
-  // building `PlainStationery`. Same library code, both branches.
-  const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
-    workshop
-      .useGreeting(WorkshopGreeting)
-      .useStationery({ border: '***' });
-  });
-  const customProvider = containers.createServiceProvider(containers.createBuilder(customised));
-  const customWorkshop = customProvider.resolve<GreetingWorkshop>(GREETING_WORKSHOP_TOKEN);
-
-  lines.push('app registered its own stationery:');
-  lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
-  lines.push(`  card: ${customWorkshop.card('Grace')}`);
-
-  // ── 3. EmptyServiceProvider — the degenerate host ──────────────────────────
-  // A shared null-object provider that holds no application services. Reach for
-  // it when a provider is REQUIRED but none is meaningful: a unit test for a
-  // class that only optionally consults the container, a tool that runs one
-  // piece of a library outside any host, a default parameter. It beats standing
-  // up an empty real container (no engine, no allocation) and it beats a bespoke
-  // stub (it is the whole `IServiceProvider` surface, kept honest by di.core).
-  //
-  // It answers `isService` true for exactly one token — the intrinsic provider
-  // itself — so a class whose only dependency is the provider still constructs.
-  //
+export function demonstrateNullProvider(): readonly string[] {
   // Held as the `IResolver` INTERFACE, not the concrete class: that is the
   // surface library code should program against, and it is what makes the null
   // object drop-in wherever a real provider would go.
   const nowhere: IResolver = EmptyServiceProvider.instance;
-  const emptyWorkshop = new GreetingWorkshop(nowhere);
+  // The LOCATOR workshop, deliberately — this is the one job it can do that the
+  // parameter-injected `GreetingWorkshop` cannot, because it defers every lookup
+  // to first use. The good class takes its card factory as a constructor
+  // argument, and there is no card factory to be had here, so it could not be
+  // built at all. That is not a shortcoming: failing when the wiring is missing,
+  // rather than when a request arrives, is the whole benefit being traded for.
+  const emptyWorkshop = new LocatorGreetingWorkshop(nowhere);
 
-  lines.push('no container at all (EmptyServiceProvider):');
-  lines.push(`  provider reports itself a service: ${nowhere.isService(RESOLVER_TOKEN)}`);
-  lines.push(`  probing an ordinary token: ${nowhere.tryResolve(GREETING_WORKSHOP_TOKEN)}`);
+  const lines: string[] = [
+    'no container at all (EmptyServiceProvider):',
+    `  provider reports itself a service: ${nowhere.isService(RESOLVER_TOKEN)}`,
+    `  probing an ordinary token: ${nowhere.tryResolve(GREETING_WORKSHOP_TOKEN)}`,
+  ];
   // Nothing is registered, so the workshop falls back to the library default —
   // which is the useful half of a null-object provider: code that degrades to
   // its defaults instead of throwing.
@@ -99,6 +66,10 @@ export function demonstrateInfrastructure(): readonly string[] {
   // card needs a `GreetingCard` registration to build from, and the empty
   // provider has none — so the first `card()` call throws rather than inventing
   // one. Degrade what has a default; refuse what does not.
+  //
+  // `DiError` is the taxonomy ROOT, and it lives in di.core precisely so a
+  // library can catch container failures without depending on the engine that
+  // raises most of them.
   try {
     lines.push(`  card: ${emptyWorkshop.card('Linus')}`);
   } catch (error) {
@@ -109,42 +80,5 @@ export function demonstrateInfrastructure(): readonly string[] {
     }
   }
 
-  // ── 4. the taxonomy root ───────────────────────────────────────────────────
-  // `DiError` is shared by di.core (registration time) and the resolution engine,
-  // so ONE `instanceof DiError` catch covers a consumer's whole container
-  // lifecycle. The two failures below come from opposite ends of it; the full
-  // catalogue, with each error class named and caught individually, is
-  // `./errors-demo.ts`.
-  //
-  // Registration time: an OPEN template names a FAMILY of tokens, one per
-  // closing, so only a class can stand behind it — `addValue` has a single
-  // already-built instance and no way to produce one per closing.
-  try {
-    newWorkshopManifest().addValue('@rhombus-std/examples.contracts:IGreeting<$1>', new WorkshopGreeting());
-  } catch (error) {
-    lines.push(`registering a value at an open template: ${describeDiError(error)}`);
-  }
-
-  // Resolution time: an unregistered token. `resolve` throws (against
-  // `tryResolve`'s `undefined`), and the throw is the same `DiError` family.
-  try {
-    defaultProvider.resolve('@rhombus-std/examples.contracts:IHealthCheck');
-  } catch (error) {
-    lines.push(`resolving an unregistered token: ${describeDiError(error)}`);
-  }
-
   return lines;
-}
-
-/**
- * Reports whether a caught value belongs to the di taxonomy. Deliberately does
- * NOT print the message: messages name tokens, and the two example dialects
- * spell those differently (hand-written against transformer-derived), while the
- * shapes below are identical in both.
- */
-function describeDiError(error: unknown): string {
-  if (error instanceof DiError) {
-    return `caught a DiError (${error.name})`;
-  }
-  return 'not a DiError — this library would rethrow';
 }

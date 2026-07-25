@@ -193,12 +193,12 @@ the standalone call surface — the same verbs, receiver-first:
 the test host swaps the outside world and leaves the rest alone:
   2024-05-01T09:00:00Z pretended to charge 1250 -> memory ledger
   the production manifest is untouched: live
-  what build() handed back: an IServiceProvider, backed by ServiceProviderClass — a consumer holds the interface, never this class
 a self-check that can only ASK (IServiceQuery): missing shop:IMetrics
 a request scope that can only OPEN frames (IScopeFactory): 2024-05-01T09:00:00Z pretended to charge 99 -> memory ledger
 a house policy applied to a pending registration (AddChain): IMetrics registered as singleton
 overrideSignatures pins slot 0 and keeps the rest: ["shop:IPaymentGateway#sandbox","shop:ILedger"]
 the mint names tooling matches on: signaturefor, signaturesfor
+what build() handed back: an IServiceProvider, backed by ServiceProviderClass — a consumer holds the interface, never this class
 
 === di infrastructure (library-author surface) — without transformer ===
 app registered no stationery:
@@ -207,6 +207,9 @@ app registered no stationery:
 app registered its own stationery:
   stationery overridden: true
   card: *** Hello, Grace ***
+the same card, two ways to reach its dependencies:
+  parameters (GreetingWorkshop): -- Hello, Linus --
+  injected provider (LocatorGreetingWorkshop): -- Hello, Linus --
 no container at all (EmptyServiceProvider):
   provider reports itself a service: true
   probing an ordinary token: undefined

@@ -54,6 +54,7 @@ const js = await Bun.build({
     // `ServiceManifestClass` identity and the augmentation registry — the exact
     // fork §9/§38 forbid. Nothing in the AUTHORED source imports di.core.
     '@rhombus-std/di.core',
+    '@rhombus-std/examples.app.shared',
     '@rhombus-std/examples.contracts',
     '@rhombus-std/examples.lib.with-transformer',
     '@rhombus-std/examples.lib.without-transformer',

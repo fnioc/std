@@ -16,6 +16,18 @@
         "typescript-eslint": "^8.60.1",
       },
     },
+    "examples/examples.app.shared": {
+      "name": "@rhombus-std/examples.app.shared",
+      "version": "0.0.0",
+      "dependencies": {
+        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/examples.lib.without-transformer": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.0",
+      },
+    },
     "examples/examples.app.with-transformer": {
       "name": "@rhombus-std/examples.app.with-transformer",
       "version": "0.0.0",
@@ -23,6 +35,7 @@
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/examples.app.shared": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
@@ -47,6 +60,7 @@
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/examples.app.shared": "workspace:*",
         "@rhombus-std/examples.lib.with-transformer": "workspace:*",
         "@rhombus-std/examples.lib.without-transformer": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
@@ -68,13 +82,13 @@
       "name": "@rhombus-std/examples.lib.with-transformer",
       "version": "0.0.0",
       "dependencies": {
-        "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^5.9.0",
@@ -84,7 +98,6 @@
       "name": "@rhombus-std/examples.lib.without-transformer",
       "version": "0.0.0",
       "dependencies": {
-        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
       },
@@ -1391,6 +1404,8 @@
     "@rhombus-std/diagnostics.core.test": ["@rhombus-std/diagnostics.core.test@workspace:tests/diagnostics.core.test"],
 
     "@rhombus-std/diagnostics.test": ["@rhombus-std/diagnostics.test@workspace:tests/diagnostics.test"],
+
+    "@rhombus-std/examples.app.shared": ["@rhombus-std/examples.app.shared@workspace:examples/examples.app.shared"],
 
     "@rhombus-std/examples.app.with-transformer": ["@rhombus-std/examples.app.with-transformer@workspace:examples/examples.app.with-transformer"],
 

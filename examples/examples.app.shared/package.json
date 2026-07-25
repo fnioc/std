@@ -1,8 +1,8 @@
 {
-  "name": "@rhombus-std/examples.lib.without-transformer",
+  "name": "@rhombus-std/examples.app.shared",
   "private": true,
   "version": "0.0.0",
-  "description": "Example dependency library authored in the manual di dialect (explicit tokens + plain-data signatures). Depends on @rhombus-std/di.core ALONE — no resolution engine — which is the property it exists to prove. Gets a real build for consistency and genuine consumption; ordinary source-libs conditions are fine.",
+  "description": "The composition-root chapters both example apps run unchanged: the dialect-independent error and manifest-surface tours, and the IServiceProviderFactory both infrastructure chapters build through. It references @rhombus-std/di (the resolution engine), which is exactly what makes it an entrypoint-family package rather than a library.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,8 +24,9 @@
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/examples.contracts": "workspace:*"
+    "@rhombus-std/examples.lib.without-transformer": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.0"

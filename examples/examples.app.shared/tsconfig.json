@@ -1,0 +1,15 @@
+{
+  "//": "Plain tsc emit src -> dist. Nothing here is authored tokenlessly — this package is the DIALECT-INDEPENDENT half of the two composition roots, so it must compile and run with no transformer in the program at all. module:ESNext keeps relative .js specifiers verbatim for node ESM at runtime; moduleResolution:Bundler resolves the @rhombus-std/* workspace siblings at compile time.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "composite": false
+  },
+  "include": ["src/**/*"]
+}
