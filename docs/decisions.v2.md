@@ -502,7 +502,7 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 - **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
 - **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
-- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **SUPERSEDED:** both are now live — the all-holes registration guard is retired so partial closing works (§124), and template selection is most-specific-first (§125). The rest of this entry stands: the string grammar remains `materialise`'s and `#lookup`'s open-vs-closed classifier.
+- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **SUPERSEDED:** both are now live — the all-holes registration guard is retired so partial closing works (§124), and template selection is most-specific-first (§125). The string-grammar-as-classifier half is superseded too: `isOpenToken` reads the typed tree now (§127), so `materialise` and `#lookup` classify off `TokenNode` and the shallow scan survives only as the fallback for a token the tree grammar refuses.
 
 Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
 
@@ -785,7 +785,10 @@ closed and registered as an exact holey entry no closing could resolve. Moving t
 parser, but it also flips `$0` from not-a-hole (`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole
 (the typed parser accepts any digits), which `token-grammar.test.ts` pins. — **CLOSED by §126**,
 which classifies the UNKEYED token instead: a key suffix can neither introduce nor remove a hole,
-so stripping it needs no new parser and leaves the `$0` question untouched.
+so stripping it needs no new parser and leaves the `$0` question untouched. — **§127 then took the
+`tryParse` route anyway**, because the key was only one of several spellings the raw-slice scan
+could not see; `$0` is still held back by an explicit 1-based rule in the classifier, so the
+`token-grammar.test.ts` pin stands.
 
 _Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
 guard's shape (reject only what can never match, on the typed tree) is Claude's.
@@ -803,8 +806,9 @@ instance, not an error, and not discoverable. So the ranking §106 named as "a o
 ME-divergent follow-up" lands with the guard removal.
 
 Candidates are ordered by `Specificity.measure` descending, ties broken by descending registration
-index — the exact rule `TokenProvider.#rankTemplates` (di.core's gated reference manifest) already
-implemented and unit-tested. Ranking is per closing and its result memoizes into `#closedMemo`, so
+index — the exact rule di.core's gated reference manifest already implemented and unit-tested
+(that reference is gone as of §127; the engine's own `rankTemplates` is the only statement of the
+rule now). Ranking is per closing and its result memoizes into `#closedMemo`, so
 the sort is paid once per distinct closed token. Every pre-existing open-generic behaviour survives
 by construction: identical templates score equally and fall to the latest index (last-wins, and
 `.as()`'s scoped copy with it), `IPair<$1,$1>` (score 2) already outranked `IPair<$1,$2>` (1) by
@@ -942,14 +946,79 @@ is added to di.core's and di's barrels.
   `HOLE_PATTERN` is `/^\$[1-9][0-9]*$/` and the tree parser accepts any digits, so those tokens
   classify CLOSED and register exact. That is not a dead entry — each resolves under the same
   spelling it registered under — so it is the canonicalisation question above wearing a different
-  hat, not a separate defect. `token-grammar.test.ts` pins the `$0` half.
+  hat, not a separate defect. `token-grammar.test.ts` pins the `$0` half. — **WRONG, and corrected
+  by §127**: the "resolves under its own spelling" test holds only for a template with no hole
+  DEPS. Give `pkg:IZ<pkg:IA, $1>` the `[['$1']]` signature that motivates it and the entry resolves
+  under nothing — the closing misses the exact map, and its own spelling raises
+  `NoSatisfiableSignatureError` on the un-substituted `$1`. The whitespace and `$01` halves were a
+  separate defect; only `$0` is the canonicalisation question.
 
 `Validator`, `parseSlot`/`serialiseSlot`, and `TokenManifest`/`TokenProvider` were audited as
 suspected vestigial and DELIBERATELY kept. Each is exported, correct, and (for the manifest pair)
 exercised by `token.spike.test.ts`; unused-but-correct public API is not a defect, and deleting it
 is a semver call rather than a repair. Their comments — which advertised jobs the live path no
-longer does — are corrected instead.
+longer does — are corrected instead. — **PARTLY REVERSED by §127**: the manifest pair was never
+public API (absent from the rolled `.d.ts`), so keeping it shipped unreachable runtime on a policy
+argument that did not apply to it, and it is deleted. `Validator` and `parseSlot`/`serialiseSlot`
+ARE public and stay, pending an owner call.
 
 _Claude's calls throughout, on the owner's direction to sweep the family; the collection ordering
 rule, the removal/dedup asymmetry, and the keyed-plural key order are the three that chose between
 defensible alternatives._
+
+---
+
+## §127 — Open-template classification is spelling-independent; the gated token reference is deleted
+
+A second sweep of `libraries/di.core` / `libraries/di`, run because §126's pass applied hard
+pressure to over-deletion and only soft pressure to under-deletion — over-deletion is loud (the
+gate catches it), under-deletion is silent forever.
+
+**`isOpenToken` reads the typed tree.** It classified off raw arg slices: `HOLE_PATTERN`
+(`/^\$[1-9][0-9]*$/`) tested against an un-trimmed slice, while the tree parser skips whitespace
+and normalises hole labels. So `IRepo<IA, $1>` — a space after the comma, the natural hand spelling
+of a §124 mixed template — plus `IRepo< $1 >` and `IRepo<$01>` all read CLOSED. `materialise` is
+the ONLY place a template is routed and `openEntry`'s "reject a template nothing could ever match"
+guard runs only on the branch classification picks, so each landed in the exact map as a literal
+holey token: silent, no error, resolvable by nothing. Not by the closing, and — once the template
+carries a hole dep, which is the whole point of a template — not under its own spelling either,
+since the un-substituted `$1` dep is unsatisfiable. That last part is what §126 got wrong when it
+declined the fix.
+
+Classification now parses, and falls back to the shallow scan only for a token the tree grammar
+REFUSES (`"a b<$1>"`), which is what keeps that case classified open and therefore routed to
+`openEntry` where its rejection lives. A `$`-free token short-circuits ahead of the parser, so the
+engine's resolve-time guard stays off the parse path for ordinary tokens. Registration and both
+engine sites run the one predicate, so a request and a registration can no longer disagree about
+what is a template; `resolve("pkg:IRepo< $1 >")` now raises `OpenTokenResolutionError` instead of
+an unhelpful `UnregisteredTokenError`. `unkeyedToken` stays the documented pre-step at each site —
+the tree sees past a key on its own, but the agreement between a composed key and a tail-argument
+key should not rest on the classifier's internals, and the fallback path still needs it.
+
+**`$0` is deliberately held back.** Hole labels are 1-based, the parser will build a hole node for
+any digit run, and the classifier states the 1-based rule explicitly rather than adopting the laxer
+grammar. So one divergence survives, on purpose and in one commented line: whether `$0` is a legal
+hole is a grammar decision, not a repair. `$01` is NOT in that class — it parses to the same node
+`$1` does, so treating it as a hole is the canonicalisation contract, not a new semantic.
+
+**`token/manifest.ts` is deleted.** `TokenManifest` / `TokenProvider` / `Descriptor` /
+`SealedTokenManifest` were package-PRIVATE — di.core declares one export and `src/index.ts` omits
+all four — so no consumer could name them and the rolled `.d.ts` carried none of them, while ~120
+lines of the JS bundle were theirs. Their only exercise was a mirror: `token.spike.test.ts` reached
+past the package by raw relative path to assert their own behaviour, and every rule it pinned is
+pinned on the live path in `open-generics.test.ts`. §126 kept them under "unused-but-correct public
+API is not a defect" — an argument that never applied, because they were not public API. Of the two
+behaviours §126 called still-gated there, negative memoization is REJECTED doctrine (`#closings`
+states misses are unbounded and deliberately not memoized), and canon-on-miss variance recovery
+stays described in §126's prose as part of the pending wire-grammar question.
+
+**Referred to the owner, untouched.** `Validator` and `parseSlot`/`serialiseSlot` are genuinely
+public (both in the rolled `.d.ts`) with zero consumers anywhere — no call site, test, example or
+fixture. Cutting unused-but-correct public API is cheap now and expensive after the first publish,
+but it is a policy call, not a repair. Same for the example set's coverage holes: no example opens
+a scope, registers an open template, uses a key, injects a factory, uses a union or literal slot,
+or uses the descriptor verbs — which under the kitchen-sink doctrine is a gap in `examples/`, and
+additive work to scope separately.
+
+_Claude's calls; the `$0` hold-back and the public-API deferrals are the two that deliberately
+stop short of a decision the owner should make. 2026-07-24._
