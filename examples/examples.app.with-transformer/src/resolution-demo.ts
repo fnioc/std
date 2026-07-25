@@ -137,8 +137,12 @@ async function tour(resolver: IResolver): Promise<string[]> {
   //   - a parameterized factory builds a FRESH instance per call (caching would
   //     be wrong — the arguments differ every time), so the receipt numbers below
   //     keep advancing; and
-  //   - the target must be a class registration, since the factory builds it
-  //     with `new`.
+  //   - the ONLY thing that can go wrong with the target is that it is
+  //     UNREGISTERED. Any registration kind is a legal target — the factory calls
+  //     the registration's producer, and `addClass` / `addFactory` / `addValue`
+  //     all have one. Reaching for a factory over a token nobody registered
+  //     throws `FactoryTargetError` at the moment the callable is built, not on
+  //     first call, so a mis-wired factory slot surfaces during construction.
   // The same slot shape can be INJECTED rather than resolved: `PaymentRouter`
   // takes `mintReceipt: (order) => IReceipt` as a constructor parameter, which is
   // how the checkout lines above minted receipts #1001 and #1002.

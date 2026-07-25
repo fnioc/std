@@ -335,9 +335,11 @@ export function addCheckoutServices<S extends string>(
   services = services.addClass(t.gateway, WalletGateway, [[]], 'singleton', 'wallet');
   services = services.addClass(t.gateway, InvoiceGateway, [[]], 'singleton', 'invoice');
 
-  // The factory target must be a CLASS registration — a factory builds its target
-  // with `new`. `…:CheckoutOrder` stays unregistered on purpose: it is the
-  // caller-supplied half of the partition.
+  // The factory target only has to BE registered — `addClass` here, but a factory
+  // or a value registration would serve just as well, since the callable runs the
+  // registration's producer rather than `new`-ing the target itself.
+  // `…:CheckoutOrder` stays unregistered on purpose: it is the caller-supplied
+  // half of the partition.
   services = services.addClass(t.numbering, ReceiptNumbering, [[]], 'singleton');
   services = services.addClass(t.receipt, Receipt, [[t.order, t.numbering]], 'singleton');
 
