@@ -45,6 +45,12 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
+		// Which primitive a callee is, and what a registration's value argument is,
+		// are facts about SOURCE-WRITTEN syntax; they are resolved against the parse
+		// node so no checker query ever walks the tree this loop has rewritten (see
+		// plugin.CheckerAnchor — a rewritten registration holds the minted union slot
+		// that nil-derefs the checker).
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		extractor := signatures.NewExtractor(ctx, checker, ec, sf, emit)
 		// minted records the slot-array literals this stage produced from a
 		// signaturefor / signaturesfor lowering, so a spread of one inside a
@@ -57,7 +63,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
-				if arg, ok := signatureofArg(checker, artifacts, node); ok {
+				if arg, ok := signatureofArg(checker, parseAnchor, artifacts, node); ok {
 					if lit, ok := extractor.SignatureArray(arg); ok {
 						return lit
 					}
@@ -65,7 +71,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				// The type-argument minting siblings: lower a signaturefor / signaturesfor
 				// call to its slot-array literal and record it, so the enclosing
 				// `withSignature(...)` / `withSignatures(...)` call flattens its spread below.
-				if lit, ok := lowerSignatureFor(extractor, checker, artifacts, node); ok {
+				if lit, ok := lowerSignatureFor(extractor, checker, parseAnchor, artifacts, node); ok {
 					minted[lit] = true
 					return lit
 				}
@@ -88,39 +94,46 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 // signatureofArg returns the value argument of a signatureof call at node — from
 // the inline artifacts for a substituted (synthetic-callee) call, else by
 // resolving a source-written `signatureof(x)` callee to the primitive symbol.
-func signatureofArg(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimast.Node, bool) {
+func signatureofArg(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+) (*shimast.Node, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok && use.Name == signatureofName && use.ValueArg != nil {
 			return use.ValueArg, true
 		}
 	}
-	return sourceWrittenArg(checker, node)
+	return sourceWrittenArg(checker, parseAnchor, node)
 }
 
 // sourceWrittenArg returns the single value argument of a source-written
 // `signatureof(x)` — a one-argument call whose callee resolves (following an
-// import alias) to the `signatureof` symbol. It anchors on the checker, which
-// panics on a SYNTHETIC callee (no program position — e.g. the inline stage's
-// substituted clone); such nodes are handled via artifacts above, so a negative
-// position is a clean skip, not a nil-deref inside GetSymbolAtLocation.
+// import alias) to the `signatureof` symbol.
 //
-// A node can also carry a real position but an unset `Parent` — a property
-// access the inline substitution rebuilt because its OBJECT child changed
-// (mirroring nameoftransform.isNameofCall's `.as`-chain hazard: this stage's
-// visitor, like nameof's, walks every call expression in the file
-// unconditionally, so it reaches the SAME kind of node). The checker's
-// GetSymbolAtLocation derefs `Parent.Parent` unconditionally, so this needs the
-// same clean-skip guard.
-func sourceWrittenArg(checker *shimchecker.Checker, node *shimast.Node) (*shimast.Node, bool) {
-	call := node.AsCallExpression()
+// Both the callee AND the returned argument come off the PARSE node. The callee is
+// a checker input (GetSymbolAtLocation) and so is the argument — the extractor
+// resolves it to a class and derives the signature from its constructor, then mints
+// a fresh array literal — so neither may come from the tree the loop has rewritten.
+// This stage was the SECOND crash site: with only nameof anchored, a trailing chain
+// call over a registration holding this stage's own minted union slot still walked
+// the checker into that literal (plugin.CheckerAnchor has the mechanism). A call
+// with no anchor is minted or is a substituted body clone; the substituted form is
+// handled via artifacts above, so it is a clean skip here.
+func sourceWrittenArg(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+) (*shimast.Node, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, false
 	}

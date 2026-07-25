@@ -5,6 +5,7 @@ import (
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 
+	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -30,12 +31,13 @@ func NewExtractor(
 	addDiag func(Diagnostic),
 ) *Extractor {
 	return &Extractor{c: &context{
-		tokens:  ctx,
-		checker: checker,
-		factory: ec.Factory.AsNodeFactory(),
-		sf:      sf,
-		addDiag: addDiag,
-		ec:      ec,
+		tokens:      ctx,
+		checker:     checker,
+		factory:     ec.Factory.AsNodeFactory(),
+		sf:          sf,
+		addDiag:     addDiag,
+		ec:          ec,
+		parseAnchor: plugin.NewCheckerAnchor(ec, sf),
 	}}
 }
 
@@ -43,6 +45,14 @@ func NewExtractor(
 // class or factory VALUE would lower to, or ok=false for a value that is neither
 // constructable nor callable (a caller then leaves the primitive call in place,
 // which the emit sweep flags as an unlowered primitive).
+//
+// CALLER CONTRACT: arg must be a PARSE node. Both callers satisfy it — the
+// signatureof stage reads its source-written argument off the parse-anchored call,
+// and the inline stage anchored the argument it recorded in its artifacts — which
+// is what keeps the type queries below off a tree the loop has rewritten
+// (plugin.CheckerAnchor). signaturesForValue re-applies the anchor on entry, ahead
+// of its first checker query, so a future caller that forgets gets a clean miss
+// rather than a crash.
 func (e *Extractor) SignatureArray(arg *shimast.Node) (*shimast.Node, bool) {
 	sigs, ok := e.c.signaturesForValue(arg)
 	if !ok {
@@ -97,7 +107,19 @@ func (e *Extractor) SignaturesForTuple(t *shimchecker.Type, anchor *shimast.Node
 // so this reproduces exactly the signatures the di stage renders for a bare
 // `addClass<I>(C)` / `addFactory<I>(fn)` — the two forms Wave-1 authors as inline
 // bodies. The branch order mirrors planAddRegistration's value branches.
+//
+// The anchor is applied HERE, not deeper: every branch below is a checker query
+// (GetTypeAtLocation on a call expression is the very one that resolves overloads
+// and walks into a minted literal), so the ONE place that makes the extractor safe
+// for a caller who hands it a rewritten node is ahead of the first of them. No
+// anchor in this file means a minted or foreign-file node — a clean "not a
+// constructable or callable value" miss, which the caller leaves in place for the
+// emit sweep to report.
 func (c *context) signaturesForValue(arg *shimast.Node) ([]signature, bool) {
+	arg = c.parseAnchor(arg)
+	if arg == nil {
+		return nil, false
+	}
 	if isFactoryArg(arg) {
 		return c.extractSignatureFromFunction(arg), true
 	}

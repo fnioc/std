@@ -32,6 +32,16 @@ import (
 // It returns the settled file, the number of CHANGED passes it took, and whether
 // it hit maxPasses without settling (exhausted). The caller turns exhaustion into
 // a loud per-file diagnostic — never a silent cap.
+//
+// THE CAP BOUNDS PRODUCTIVE PASSES, AND EXHAUSTION IS ONLY EVER OBSERVED. A pass
+// that changes the file says nothing about whether the NEXT one would; only a
+// no-op pass proves the file has settled. So the cap is checked after the pass
+// that exceeds it, not on the last one it allows: a file that uses its whole
+// budget still gets its confirming pass and is reported settled. Checking at
+// `>= maxPasses` instead made the effective capacity maxPasses-1 and failed the
+// run on byte-correct output — with a diagnostic accusing a stage of rewriting the
+// same node back and forth, when in fact the file had finished lowering on exactly
+// the last allowed pass.
 func RunToFixedPoint(ec *shimprinter.EmitContext, transforms []FileTransform, sf *shimast.SourceFile, maxPasses int) (result *shimast.SourceFile, passes int, exhausted bool) {
 	result = sf
 	for {
@@ -46,7 +56,7 @@ func RunToFixedPoint(ec *shimprinter.EmitContext, transforms []FileTransform, sf
 		}
 		passes++
 		shimast.SetParentInChildrenUnset(result.AsNode())
-		if passes >= maxPasses {
+		if passes > maxPasses {
 			return result, passes, true
 		}
 	}

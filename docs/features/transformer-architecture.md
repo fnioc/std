@@ -40,8 +40,10 @@ recognizes and rewrites it, without descending into what it just produced. A cha
 `addClass<I>(C).withSignature<T>().as<Scope>()` peels one call per pass — `addClass` lowers on
 pass 1, which exposes `.withSignature<T>()` for pass 2, which exposes `.as<Scope>()` for pass 3.
 Nobody had to write a receiver-recursive visitor for that; the loop supplies the recursion for
-free, and every already-lowered position stays an ordinary, checker-bound AST node (no re-parse,
-no re-check) because nothing ever rewrites twice.
+free, and nothing is ever rewritten twice. What a lowered position is NOT is checker-bound — the
+node a stage mints is unknown to the binder — so a stage never asks the checker about the tree the
+loop hands it; it resolves back to the parse node first (see
+[Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-syntax)).
 
 ```ts
 // what you write
@@ -459,7 +461,7 @@ the `OPTIONAL` wrapper it emits for an optional field, threaded through as data 
 unsupported construct, and leaves the `schemaof<T>()` call un-lowered rather than emitting a wrong
 schema.
 
-## Checker-anchoring: why every matcher guards synthetic nodes
+## Parse-anchoring: the checker only ever sees pass-0 syntax
 
 A primitive stage anchors a call two different ways depending on where the call came from: a
 **source-written** call (`tokenfor<IWidget>()`, typed by hand) resolves its callee symbol through
@@ -468,9 +470,77 @@ inline stage from a sugar body) has no checker symbol of its own — its callee 
 from the body's source file, and the stage instead reads the type/value the inline stage already
 bound and recorded in its **artifacts** (see below).
 
-Every checker-anchored matcher must guard against being handed a **synthetic** node — one built by
-a later stage in the same run, never seen by the original parse/check — because
-`checker.GetResolvedSignature` (and friends) panics on a node with no real position. The guard is:
+The rule for the first kind is one line: **anchor = checker input, current node = rewrite input.**
+Before a stage asks the checker anything it resolves the node back to the **parse node** — the
+pristine node the binder saw — and asks about that; the receiver and arguments it splices still
+come from the current tree. `plugin.CheckerAnchor` is the helper, built once per file per pass:
+
+```go
+parseAnchor := plugin.NewCheckerAnchor(ec, sf)
+
+call := parseAnchor.AnchoredCall(node)   // nil ⇒ minted, or a foreign-file clone: clean skip
+if call == nil {
+    return nil, false
+}
+symbol := checker.GetSymbolAtLocation(call.Expression)
+```
+
+`ec.ParseNode` walks the `EmitContext`'s Original links back to the parse node — the Go equivalent
+of TypeScript's own `getParseTreeNode`, which transformers have always been expected to call before
+consulting the checker. Two nodes get no anchor and are skipped: one a stage **minted** through
+`factory.New*` (synthesized flag, no Original link), and one whose Original lands in a **different
+file** — which is exactly the inline stage's deep-cloned sugar bodies, since the clone hook records
+the side-parsed body node as the clone's original. Both belong to the artifacts path, so the two
+mechanisms partition cleanly: a minted node has no parse anchor by construction, and the artifacts
+path answers for the rest.
+
+### Artifacts entries are not automatically pass-0 — anchor what you RECORD
+
+It is tempting to read "the inline stage resolved this at the original call site" as "so it is
+pristine". It is not. Substitution happens on whatever pass the inline visitor first **reaches** a
+sugar call, and the visitor does not descend past a match — so a registration sitting in receiver
+(or argument) position under another sugar call waits a pass, and the primitive stages rewrite
+what is inside its arguments while it waits:
+
+```ts
+services
+  .addValue({ clockToken: tokenfor<IClock>(), retries: 3 }) // waits: it is the receiver
+  .addClass<IWidget>(Widget); // inlines on pass 0
+```
+
+On pass 0 the outer `addClass` substitutes and the receiver is spliced verbatim; also on pass 0
+the token stage lowers the `tokenfor<IClock>()` inside that object literal, rebuilding the literal
+through `factory.Update*`. Only on pass 1 does `addValue` substitute — and `callArguments(call)`
+now hands back the **rebuilt** literal.
+
+That matters for any artifacts field holding a **node** rather than a resolved type.
+`PrimitiveUse.ValueArg` is the only one, and its two consumers (the token stage's
+`tokenfor(value)` / `tokenof(value)` branches and the signature stage's artifacts branch) hand it
+straight to the checker. Typing a rebuilt node resolves the enclosing call's overloads, which
+contextually types the minted symbol-less literals downstream stages produced, and
+`getContextualTypeForObjectLiteralElement` nil-derefs — the same crash parse-anchoring exists to
+prevent, arriving by a route no matcher guard can see. So the rule extends: **anchor the node you
+RECORD, not only the node you match.** `fileState.anchorValueArg` does that, pairing each spliced
+argument with the pass-0 argument at the same index and falling back to the Original chain;
+a shape with no parse node behind it records `nil`, every consumer reads that as "not a registered
+value argument", and the emit sweep names the surviving primitive instead of the process dying.
+
+Anchoring costs nothing in expressiveness, because **every checker question this engine asks is a
+question about source-written syntax** — which primitive is this callee, which overload does this
+sugar call bind to, what type is this argument. None of those answers can change as the loop lowers
+the tree underneath them, so asking about the pass-0 node is the question the stage meant to ask.
+The stages that genuinely depend on rewritten state — `fold`'s boolean-literal ternaries,
+`flattenSignatureForSpreads`' minted arrays, the inline stage's `elideUnkeyedKeyArg` — use no
+checker at all. Repeat queries are cheap: the checker memoizes per node, and the anchor makes every
+pass ask about the same node.
+
+`mergesynth` is exempt only because of **where** it runs — a one-shot pre-pass before the loop
+mutates anything, so its nodes are still pristine by placement. Its documented rejoin condition
+(a sugar body that starts emitting install calls) has to take the anchor at the same time.
+
+### Why the old synthetic-node guard was not enough
+
+Each matcher used to carry a positional guard instead:
 
 ```go
 if node.Pos() < 0 || node.Parent == nil {
@@ -478,25 +548,65 @@ if node.Pos() < 0 || node.Parent == nil {
 }
 ```
 
-This looks obvious in isolation, but it caught a real bug: after the fixed-point loop landed, the
-inline matcher was re-matching **its own already-lowered output** on the next pass.
-`.withSignature<[]>()` lowered correctly to `.withSignature()` on pass 1, and on pass 2 the
-matcher tried to resolve that zero-arg call against the sugar overload again — `RecoverTypeArguments`
-failed on a call with no type arguments to recover, and the build failed with a spurious
-"inferred type argument" diagnostic despite the emitted code being byte-correct. The fix wasn't
-where it first looked: the _callee_ of the re-matched call turned out to have a non-negative
-`Pos()` (the substitution step clones the sugar body's AST and preserves the clone's foreign but
-still-non-negative source positions), so a callee-only guard never fired. The **call expression
-itself** was the synthetic node — rebuilt fresh by the signature stage when it elided an empty
-spread — with `Pos() < 0`. The guard has to sit on the call node passed to
-`GetResolvedSignature`, not on its callee, and `node.Parent` has to be re-checked every pass
-(`SetParentInChildrenUnset` re-links it after each changed pass) — a stale parent from an earlier
-pass is exactly the kind of thing that looks fine until it silently isn't. Every new
-checker-anchored matcher added to the engine needs this same guard, on the same kind of node
-(whatever it feeds to the checker), verified against a real `ttsc` build — a Go-level unit test
-using synthetic fixture nodes can pass while the real pipeline's actual synthetic-node shape still
-breaks it, since a hand-built fixture doesn't necessarily reproduce which specific node in the
-chain ends up synthetic.
+It caught a real bug — after the fixed-point loop landed, the inline matcher was re-matching **its
+own already-lowered output** on the next pass. `.withSignature<[]>()` lowered correctly to
+`.withSignature()` on pass 1, and on pass 2 the matcher tried to resolve that zero-arg call against
+the sugar overload again; `RecoverTypeArguments` failed with no type argument to recover, and the
+build failed with a spurious "inferred type argument" diagnostic despite a byte-correct emit. That
+call was rebuilt fresh (`Pos() < 0`), so the guard on the **call** node stopped it — while a guard
+on its _callee_ never fired, because the substitution clones the sugar body and preserves the
+clone's foreign but still-non-negative positions. Parse-anchoring subsumes that case for a stated
+reason rather than an accident: a `factory.New*` call has no Original link, so it has no anchor.
+
+What the guard could never see is the node the checker walks to **answer**. A slot for an
+**optional** (or defaulted) constructor parameter lowers to a union slot — the object literal
+`{ union: [token, { value: undefined }] }` — minted through the emit factory, so it carries no
+symbol. Then:
+
+```ts
+// authored: Widget's second constructor parameter is optional
+manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).as('singleton');
+```
+
+Pass 1 lowers `signatureof(Widget)` into that minted object literal. Pass 2 reaches the trailing
+`.as('singleton')` and asks the checker to resolve it. Answering means typing the receiver, which
+means resolving the `addClass` overload, which means contextually typing the minted object literal,
+and `getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every element
+has:
+
+```go
+symbol := c.getSymbolOfDeclaration(element)                       // nil: the binder never saw it
+return c.getTypeOfPropertyOfContextualTypeEx(t, symbol.Name, …)   // nil pointer dereference
+```
+
+The positional guard is structurally blind to this: `ast.updateNode` copies the original's `Loc`
+and `Flags` onto a rebuilt node, so a rebuild keeps a real `Pos()` and loses the synthesized flag —
+it looks source-written, because in every sense that matters it _is_. And the guard cannot be
+widened to "skip any call whose subtree contains a minted node": the checker walks arguments too,
+so that would strand the ordinary mid-loop state, where a sugar call legitimately sits over
+already-lowered arguments. What the rebuild does leave behind is the Original link, which is what
+the anchor follows.
+
+It took **both** halves — a minted object literal in the argument list _and_ a later query over the
+chain containing it. Either alone was always fine: a registration with nothing chained after it
+lowers cleanly, and a constructor whose parameters are all required derives bare token strings with
+no object literal to type. Both crashing shapes and both controls are pinned in
+`transforms/internal/stdhost/syntheticnode_test.go`, asserting the lowered bytes (a repair that
+merely stopped crashing while lowering _less_ would pass an exit-code check and fail those); the
+anchor's own behavior — identity on a parse node, nil on a minted one, resolution through repeated
+rebuilds, rejection across files — is pinned in `transforms/internal/plugin/anchor_test.go`.
+
+**Adding a stage: use `Update*`, not `New*`, for a node the checker must still answer about.** A
+`factory.New*` reconstruction gets no Original link, so it has no anchor and silently stops
+matching; call `ec.SetOriginal` explicitly if a fresh build is unavoidable. And verify a new matcher
+against a real `ttsc` build — a Go unit test over hand-built fixture nodes can pass while the real
+pipeline's node shapes still break it.
+
+Independently of all this, the whole per-file pipeline runs under a recover
+(`stdhost.transformFileToTypeScript`), so any FUTURE engine panic arrives as a `STAGE_PANIC`
+diagnostic naming the source file, the stage that was running, the recovered value, and the stack —
+never as an anonymous Go trace on stderr. That net is the backstop for the next unknown crash, not
+scaffolding for this one.
 
 ## The artifacts hand-off
 
@@ -541,6 +651,16 @@ never emits an empty string, `null`, or any other silent placeholder. It either:
 The sweep is the backstop for the first case: a synthetic use that never got pruned and never got
 lowered is exactly what the sweep exists to catch. Nothing in the loop ever silently succeeds with
 a wrong or empty answer.
+
+A **panic** inside the per-file pipeline is held to the same standard. The whole pipeline runs
+under a recover, and a crash — in a stage, the emit sweep, or the printer — becomes a
+`STAGE_PANIC` error diagnostic carrying the source file, the phase that was running, the recovered
+value, and the stack, after which the run **aborts**: the panic escaped the shared checker, whose
+resolution bookkeeping is left in an indeterminate state, so every later file's lowering would be
+untrustworthy and lowering that is quietly wrong is worse than none. A panic outside the per-file
+loop — the dependency scan, program load, the linked-plugin handoff — has no file to name and is
+reported on stderr as `HOST_PANIC` against the host itself. Either way the process exits non-zero
+with something to report, never with a bare runtime trace.
 
 ## Why one pass per file, not a chained pipeline
 
@@ -665,10 +785,14 @@ A few decisions here came from bugs found empirically during the rewrite, not fr
 design — recorded because the _reason_ they're shaped this way isn't obvious from the code alone.
 Each is recorded in `docs/decisions.v2.md` (§115–§123).
 
-- **The re-match guard** (see [Checker-anchoring](#checker-anchoring-why-every-matcher-guards-synthetic-nodes)
-  above) — the fixed-point loop's own re-matching of its prior pass's output was the first
-  concrete proof that "guard every checker call against a synthetic node" needed to be an
-  engine-wide rule, not a per-stage judgment call.
+- **The re-match guard, then parse-anchoring** (see
+  [Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-syntax) above) — the
+  fixed-point loop's own re-matching of its prior pass's output was the first concrete proof that
+  keeping the checker off the loop's own output needed to be an engine-wide rule, not a per-stage
+  judgment call. The positional guard that answered it turned out to cover only the node a matcher
+  HANDS the checker, not the nodes the checker WALKS TO, and a minted union slot in a chained
+  registration crashed the process through the second route — which is what replaced the guard
+  with the parse anchor.
 - **The `addValue` raw-type split** — an early single-primitive design for the no-type-arg
   self-registration forms used the _produced_-type derivation (`tokenfor(value)`) for `addValue`
   too, which silently diverged from the by-hand form for a function-valued `addValue` (it would

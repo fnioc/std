@@ -39,13 +39,17 @@ func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Art
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
+		// Which primitive a callee is, and what its type argument means, are facts
+		// about SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of
+		// a tree the loop has rewritten (plugin.CheckerAnchor).
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
-				if t, ok := valueofType(checker, artifacts, node); ok {
+				if t, ok := valueofType(checker, parseAnchor, artifacts, node); ok {
 					if lit, ok := literalExpression(factory, t); ok {
 						return lit
 					}
@@ -66,31 +70,39 @@ func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Art
 // inline artifacts for a substituted (synthetic-callee) call, else by resolving a
 // source-written `valueof<T>()` callee to the primitive symbol and reading its type
 // argument through the checker.
-func valueofType(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimchecker.Type, bool) {
+func valueofType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+) (*shimchecker.Type, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok && use.Name == valueofName && len(use.TypeArgs) != 0 {
 			return use.TypeArgs[0], true
 		}
 	}
-	return sourceWrittenValueof(checker, node)
+	return sourceWrittenValueof(checker, parseAnchor, node)
 }
 
 // sourceWrittenValueof resolves a source-written `valueof<T>()` — a
 // single-type-argument call whose callee resolves (following an import alias) to
-// the `valueof` symbol — and returns the checker type of its type argument. It
-// guards the callee's position / parent as nameof does: the checker's
-// GetSymbolAtLocation panics on a synthetic callee (no program position) or an
-// inline-rebuilt property access (an unset Parent), so both are a clean skip.
-func sourceWrittenValueof(checker *shimchecker.Checker, node *shimast.Node) (*shimchecker.Type, bool) {
-	call := node.AsCallExpression()
+// the `valueof` symbol — and returns the checker type of its type argument. Callee
+// and type argument are read off the PARSE node, as nameof does, so no query walks
+// a tree the loop has rewritten (plugin.CheckerAnchor). A substituted call has no
+// anchor in this file and is handled via artifacts above.
+func sourceWrittenValueof(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+) (*shimchecker.Type, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, false
 	}

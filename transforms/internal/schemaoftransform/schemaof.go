@@ -76,13 +76,17 @@ func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Art
 			},
 		}
 
+		// Which primitive a callee is, and what its type argument means, are facts
+		// about SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of
+		// a tree the loop has rewritten (plugin.CheckerAnchor).
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
-				if t, ok := schemaofType(checker, artifacts, node); ok {
+				if t, ok := schemaofType(checker, parseAnchor, artifacts, node); ok {
 					// A call whose failure was already reported keeps its identity and
 					// is not re-attempted (the loop hands it back every pass until the
 					// file settles) — no duplicate diagnostic, no wasted walk.
@@ -128,31 +132,39 @@ func anchorPos(anchor *shimast.Node) int {
 // schemaofType returns the bound type argument of a schemaof call at node — from
 // the inline artifacts for a substituted (synthetic-callee) call, else by
 // resolving a source-written `schemaof<T>()` callee to the primitive symbol.
-func schemaofType(checker *shimchecker.Checker, artifacts *inlinetransform.Artifacts, node *shimast.Node) (*shimchecker.Type, bool) {
+func schemaofType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	artifacts *inlinetransform.Artifacts,
+	node *shimast.Node,
+) (*shimchecker.Type, bool) {
 	if artifacts != nil {
 		if use, ok := artifacts.PrimitiveCalls[node]; ok && use.Name == schemaofName && len(use.TypeArgs) == 1 {
 			return use.TypeArgs[0], true
 		}
 	}
-	return sourceWrittenType(checker, node)
+	return sourceWrittenType(checker, parseAnchor, node)
 }
 
 // sourceWrittenType returns the single type argument of a source-written
 // `schemaof<T>()` — a one-type-argument call whose callee resolves (following an
-// import alias) to the schemaof symbol. It anchors on the checker, which panics on
-// a SYNTHETIC callee (no program position — the inline stage's substituted clone),
-// so a negative position or an unlinked Parent is a clean skip (those are handled
-// via artifacts above), mirroring keyof's guard.
-func sourceWrittenType(checker *shimchecker.Checker, node *shimast.Node) (*shimchecker.Type, bool) {
-	call := node.AsCallExpression()
+// import alias) to the schemaof symbol. Callee and type argument are read off the
+// PARSE node, mirroring keyof, so no checker query walks a tree the loop has
+// rewritten (plugin.CheckerAnchor). A substituted call has no anchor in this file
+// and is handled via artifacts above.
+func sourceWrittenType(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+) (*shimchecker.Type, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(callee)
+	symbol := checker.GetSymbolAtLocation(call.Expression)
 	if symbol == nil {
 		return nil, false
 	}

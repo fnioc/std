@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -43,6 +44,20 @@ const (
 	categoryError   = "error"
 	categoryWarning = "warning"
 )
+
+// stagePanicCode is the diagnostic code for a recovered panic inside the
+// per-file transform pipeline. It is an ENGINE bug every time — a stage, the
+// emit sweep, or the printer crashed — and the diagnostic exists so the report
+// names the file and the stage instead of arriving as an anonymous Go stack
+// trace on stderr.
+const stagePanicCode = "STAGE_PANIC"
+
+// hostPanicCode is the diagnostic code for a panic recovered OUTSIDE the
+// per-file loop — the dependency scan, program load, linked-plugin handoff, or
+// envelope encode. There is no file to name at that point, so it is reported on
+// stderr rather than in the envelope, but it still carries the host name and the
+// stack.
+const hostPanicCode = "HOST_PANIC"
 
 var (
 	stdout io.Writer = os.Stdout
@@ -114,7 +129,29 @@ func DiagFromDi(d signatures.Diagnostic) Diag {
 // Run dispatches the host command line: the transform-stage contract the ttsc
 // host relies on plus `check`, `version`, and `help` for standalone use,
 // mirroring the shared sidecar scaffolding's router.
-func Run(host Host, args []string) int {
+func Run(host Host, args []string) (code int) {
+	// The outer half of the no-anonymous-crash guarantee. The per-file loop
+	// recovers its own panics with a file and a stage to name (see
+	// transformFileToTypeScript); everything AROUND it — the dependency scan,
+	// driver.LoadProgram, the linked-plugin handoff, the envelope encode — has no
+	// file to attribute a crash to, so a panic there lands here and is reported
+	// against the host itself. It is still a named, prefixed report with a stack
+	// rather than a bare runtime trace, and it exits non-zero rather than dying.
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		fmt.Fprintf(
+			stderr,
+			"%s: %s: panicked outside the per-file transform loop: %v\n\n%s\n",
+			host.Name,
+			hostPanicCode,
+			rec,
+			debug.Stack(),
+		)
+		code = 3
+	}()
 	if len(args) == 0 {
 		return runTransform(host, nil)
 	}
@@ -228,13 +265,14 @@ func runTransform(host Host, args []string) int {
 	// partitionStages for the why. The prePass runs once before the loop; the loop
 	// runs the rest to a fixed point.
 	prePassStages, loopStages := partitionStages(selected)
+	tracker := &phaseTracker{}
 	prePass := make([]plugin.FileTransform, 0, len(prePassStages))
 	for _, stage := range prePassStages {
-		prePass = append(prePass, stage.Build(prog, ctx, env, emit))
+		prePass = append(prePass, tracker.watch(stage.Name, stage.Build(prog, ctx, env, emit)))
 	}
 	loop := make([]plugin.FileTransform, 0, len(loopStages))
 	for _, stage := range loopStages {
-		loop = append(loop, stage.Build(prog, ctx, env, emit))
+		loop = append(loop, tracker.watch(stage.Name, stage.Build(prog, ctx, env, emit)))
 	}
 
 	for _, sf := range prog.SourceFiles() {
@@ -245,7 +283,25 @@ func runTransform(host Host, args []string) int {
 		if filepath.IsAbs(key) || key == ".." || strings.HasPrefix(key, "../") {
 			continue
 		}
-		out.TypeScript[key] = transformFileToTypeScript(prog, prePass, loop, sf, artifacts, emit)
+		lowered, survived := transformFileToTypeScript(prog, prePass, loop, sf, artifacts, emit, tracker)
+		if !survived {
+			// ABORT THE WHOLE RUN on the first panicking file rather than
+			// reporting it and lowering the rest.
+			//
+			// Why abort: the panic escaped the SHARED typescript-go checker, which
+			// every remaining file's stages go on to query. A panic unwinds straight
+			// past the checker's own bookkeeping (its type-resolution stack is
+			// pushed and popped around each resolution, and the pop is skipped),
+			// so from here on its memo tables and resolution state are in an
+			// indeterminate condition. A lowering derived from a checker in that
+			// state is not trustworthy, and silently-wrong lowered output is a far
+			// worse failure than no output — parity with the hand-written form is
+			// the whole contract. The run already fails (the panic diagnostic is a
+			// hard error), so continuing would only manufacture more diagnostics of
+			// unknown quality on top of the one that actually matters.
+			break
+		}
+		out.TypeScript[key] = lowered
 	}
 
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
@@ -341,9 +397,42 @@ func flagBase(arg string) (string, bool) {
 // infinite spin.
 const maxLoopPasses = 16
 
+// phaseTracker names what the per-file pipeline is doing RIGHT NOW, so the
+// recover in transformFileToTypeScript can say which stage crashed. A panic
+// unwinds past every local variable, so the answer has to live somewhere the
+// deferred function can still read — this value, owned by the run and
+// overwritten step by step.
+type phaseTracker struct {
+	phase string
+}
+
+// watch wraps one built stage transform so the tracker records the stage's name
+// for the duration of its run. Wrapping at build time (rather than naming the
+// stage inside the loop) keeps plugin.RunToFixedPoint's contract untouched: it
+// still takes bare FileTransforms and knows nothing about diagnostics.
+func (t *phaseTracker) watch(name string, transform plugin.FileTransform) plugin.FileTransform {
+	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
+		t.phase = "stage " + name
+		return transform(ec, sf)
+	}
+}
+
 // transformFileToTypeScript lowers one file to its fixed point in a single
 // EmitContext and prints the result back as TypeScript for the ttsc host to
-// type-strip.
+// type-strip. It returns the lowered source and whether the file SURVIVED — a
+// false second result means a panic was recovered and reported, and the caller
+// must abandon the run.
+//
+// PANIC RECOVERY. Every stage queries the shared typescript-go checker, and the
+// checker nil-derefs on some synthetic nodes a prior pass minted (it expects a
+// bound symbol on every object-literal element, and a node the parser never saw
+// has none). Without recovery that reaches the user as a bare Go stack trace
+// naming no file and no stage — the single least actionable failure this engine
+// can produce. So the whole per-file pipeline runs under a recover that reports
+// the SOURCE FILE, the phase (which stage, or the sweep / the print), the
+// recovered value, and the stack as one ordinary hard diagnostic, and the run
+// fails cleanly through the envelope instead of dying. It is an engine bug every
+// time, never a user error, but the user is the one who has to report it.
 //
 // Mergesynth is a ONE-SHOT PRE-PASS, run once before the loop (Open issue 2): it
 // is augmentation-side, its matches are only ever the SOURCE-WRITTEN
@@ -361,7 +450,41 @@ const maxLoopPasses = 16
 // stage returns the identical *SourceFile on a no-op). Only after the loop settles
 // does the emit sweep run (tripwire 2) — once, over the fully-lowered, fully-
 // parented output — so a synthetic node can walk to a positioned ancestor.
-func transformFileToTypeScript(prog *driver.Program, prePass, loop []plugin.FileTransform, sf *shimast.SourceFile, artifacts *inlinetransform.Artifacts, emit Sink) string {
+func transformFileToTypeScript(
+	prog *driver.Program,
+	prePass, loop []plugin.FileTransform,
+	sf *shimast.SourceFile,
+	artifacts *inlinetransform.Artifacts,
+	emit Sink,
+	tracker *phaseTracker,
+) (lowered string, survived bool) {
+	file := filepath.ToSlash(sf.FileName())
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		// debug.Stack() inside a deferred function of a panicking call still
+		// carries the frames the panic came from, so this is the crash site's
+		// stack — the trace the anonymous failure used to print, now attached to
+		// the file and stage that produced it.
+		emit(Diag{
+			File: file,
+			Code: stagePanicCode,
+			Message: fmt.Sprintf(
+				"the transform host panicked while lowering this file, during %s: %v\n\n%s",
+				tracker.phase,
+				rec,
+				debug.Stack(),
+			),
+		})
+		lowered, survived = "", false
+	}()
+
+	// A starting phase so the report is never blank: a host with an empty stage
+	// table reaches the sweep and the print without watch ever firing.
+	tracker.phase = "the transform stage table"
+
 	options := prog.TSProgram.Options()
 	ec := shimprinter.NewEmitContext()
 	result := sf
@@ -388,14 +511,16 @@ func transformFileToTypeScript(prog *driver.Program, prePass, loop []plugin.File
 	}
 
 	if artifacts != nil && artifacts.Active {
+		tracker.phase = "the inline emit sweep"
 		for _, d := range inlinetransform.Sweep(result, artifacts) {
 			emit(DiagFromPlugin(d))
 		}
 	}
+	tracker.phase = "printing the lowered file"
 	writer := shimprinter.NewTextWriter(options.NewLine.GetNewLineCharacter(), 0)
 	printer := shimprinter.NewPrinter(shimprinter.PrinterOptions{NewLine: options.NewLine}, shimprinter.PrintHandlers{}, ec)
 	printer.Write(result.AsNode(), result, writer, nil)
-	return writer.String()
+	return writer.String(), true
 }
 
 type projectEnvelope struct {

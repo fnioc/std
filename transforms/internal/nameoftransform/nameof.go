@@ -94,7 +94,7 @@ const composedUnlowerableCode = "990020"
 // artifacts is the inline stage's per-run state (nil when the inline stage did
 // not run — behavior is then bit-for-bit the original). A substituted `nameof`
 // call carries no checker symbol (its callee is a side-parsed clone), so
-// isNameofCall can never anchor it; instead the inline stage registered it in
+// typeArgCall can never anchor it; instead the inline stage registered it in
 // artifacts.PrimitiveCalls with the type it resolved at the original call site,
 // and this stage derives the SAME token from that registered type.
 func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
@@ -107,24 +107,28 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	sourceFiles := prog.TSProgram.GetSourceFiles()
 	baseCache := map[string]composedBase{}
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
+		// Every checker query below is a question about SOURCE-WRITTEN syntax — which
+		// primitive is this callee, what type is this argument — so it is asked about
+		// the PARSE node, resolved once per file here. Re-querying the rewritten tree
+		// is what crashed the checker (see plugin.CheckerAnchor); the answers cannot
+		// change as the loop lowers around them, so there is nothing to gain by asking
+		// late.
+		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
 				return nil
 			}
 			if node.Kind == shimast.KindCallExpression {
-				call := node.AsCallExpression()
 				// TYPE-argument tokenfor<T>() — source-written.
-				if isNameofCall(checker, call) {
-					typeNode := call.TypeArguments.Nodes[0]
-					t := checker.GetTypeFromTypeNode(typeNode)
-					token, ok := tokens.ServiceBaseTokenFor(ctx, t)
-					return lowerTypeArgToken(ec, emit, node, token, ok, true)
+				if t, ok := typeArgCall(checker, parseAnchor, node, nameofName); ok {
+					token, derived := tokens.ServiceBaseTokenFor(ctx, t)
+					return lowerTypeArgToken(ec, emit, node, token, derived, true)
 				}
 				// TYPE-argument tokenof<T>() — RAW derivation, source-written. The
 				// checker-anchored twin of the synthetic path above: derives the token
 				// exactly as spelled (DeriveTokenF, no keyed strip).
-				if t, ok := tokenofTypeCall(checker, call); ok {
+				if t, ok := typeArgCall(checker, parseAnchor, node, tokenofName); ok {
 					token, derived := tokens.DeriveTokenF(ctx, t, nil)
 					return lowerTypeArgToken(ec, emit, node, token, derived, true)
 				}
@@ -150,7 +154,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				// an unkeyed T (DeriveTokenF) so it is byte-identical to tokenfor<T>()
 				// there. It is the token the keyed `isService` / `resolveAsync` bodies
 				// need, since those verbs take one token and no key parameter (§98).
-				if t, ok := keyedTokenforTypeCall(checker, call); ok {
+				if t, ok := typeArgCall(checker, parseAnchor, node, keyedTokenforName); ok {
 					token, derived := keyedOrRawTokenFor(ctx, t)
 					return lowerTypeArgToken(ec, emit, node, token, derived, true)
 				}
@@ -176,7 +180,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 					return lowerValueArg(ec, ctx, emit, node, arg, produced)
 				}
 				// VALUE-argument tokenfor(value), PRODUCED semantics — source-written.
-				if arg, ok := valueArgCall(checker, call, nameofName); ok {
+				if arg, ok := valueArgCall(checker, parseAnchor, node, nameofName); ok {
 					produced := tokens.ProducedTypeOf(checker, checker.GetTypeAtLocation(arg))
 					return lowerValueArg(ec, ctx, emit, node, arg, produced)
 				}
@@ -187,7 +191,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 					return lowerValueArg(ec, ctx, emit, node, arg, checker.GetTypeAtLocation(arg))
 				}
 				// VALUE-argument tokenof(value), RAW semantics — source-written.
-				if arg, ok := valueArgCall(checker, call, tokenofName); ok {
+				if arg, ok := valueArgCall(checker, parseAnchor, node, tokenofName); ok {
 					return lowerValueArg(ec, ctx, emit, node, arg, checker.GetTypeAtLocation(arg))
 				}
 			}
@@ -465,7 +469,7 @@ func elideNameofImports(factory *shimast.NodeFactory, sf *shimast.SourceFile) *s
 // unchanged. Both primitives lower to inline token literals leaving no runtime
 // reference, so both must elide.
 //
-// Matching mirrors isNameofCall's / valueArgCall's looseness: any named-import
+// Matching mirrors typeArgCall's / valueArgCall's looseness: any named-import
 // specifier whose EXPORTED name is a lowered primitive elides (so
 // `import { tokenfor as k }` elides too).
 func elideNameofImport(factory *shimast.NodeFactory, statement *shimast.Node) *shimast.Node {
@@ -524,140 +528,82 @@ func exportedName(element *shimast.Node) string {
 	return element.Name().Text()
 }
 
-// isNameofCall reports whether call is a single-type-argument call whose callee
-// resolves to the `nameof` symbol (following an import alias).
+// typeArgCall reports whether node is a source-written single-TYPE-argument call
+// to the primitive named primName — `tokenfor<T>()`, `tokenof<T>()` or
+// `keyedtokenfor<T>()` — and returns the type argument's checker type. The three
+// are disjoint by callee symbol, so a call matches at most one primName; and they
+// are disjoint from the value-argument forms by type-argument count.
 //
-// It anchors on the checker, which panics on a SYNTHETIC callee (a node with no
-// program position — e.g. one the inline stage substituted). Such nodes are
-// never a source-written nameof; a substituted nameof is handled via the inline
-// artifacts instead. Guard on the callee's position so a synthetic node is a
-// clean skip, not a nil-deref inside GetSymbolAtLocation.
-//
-// A second, subtler hazard shares the same failure mode: a call whose callee is
-// a SOURCE-POSITIONED property access (e.g. the `.as` in `addClass(...).as<"x">()`)
-// but whose OBJECT expression was just replaced by the inline stage's
-// substitution (`addClass<T>(ctor)` → `addClass(nameof<T>(), ctor, signatureof(ctor))`).
-// The factory's `Update...` call rebuilds the property-access node because its
-// child changed, so the node itself keeps a real position, but the rebuild never
-// re-links its `Parent` pointer (that linking only happens for a fresh parse or
-// an explicit re-parent pass) — and the checker's `GetSymbolAtLocation` derefs
-// `node.Parent.Parent` unconditionally, nil-panicking on the unlinked pointer.
-// Guard on Parent for the same reason as Pos: an unlinked node was never
-// checked, so it can never BE the checker's nameof, and a clean skip defers to
-// whatever already lowered it (here, the di stage's own `.as` lowering).
-func isNameofCall(checker *shimchecker.Checker, call *shimast.CallExpression) bool {
-	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
-		return false
+// EVERYTHING IT HANDS THE CHECKER COMES OFF THE PARSE NODE. parseAnchor resolves
+// the call back to the pristine node the binder saw, and the callee and the type
+// argument are read from THAT — never from the rewritten tree the loop handed this
+// pass. A rewritten callee looks source-written (a rebuild keeps its position and
+// loses the synthesized flag) but dragging the checker into a rebuilt chain is how
+// it reaches a minted, symbol-less literal and nil-derefs; see
+// plugin.CheckerAnchor. No anchor means the call is minted or is a substituted body
+// clone — neither is a source-written primitive (the substituted forms come through
+// the inline artifacts instead), so it is a clean skip.
+func typeArgCall(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+	primName string,
+) (*shimchecker.Type, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
 	}
-	if call.Expression.Pos() < 0 || call.Expression.Parent == nil {
-		return false
-	}
-	symbol := checker.GetSymbolAtLocation(call.Expression)
-	if symbol == nil {
-		return false
-	}
-	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
-		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
-			symbol = aliased
-		}
-	}
-	return symbol.Name == nameofName
-}
-
-// tokenofTypeCall reports whether call is a source-written single-TYPE-argument
-// call whose callee resolves (following an import alias) to the `tokenof` symbol,
-// and returns the type argument's checker type. It is the type-arg twin of
-// valueArgCall (which matches a NO-type-argument tokenof over a value): the two are
-// disjoint by type-argument count, so a tokenof call matches at most one. It shares
-// isNameofCall's synthetic-node guard — a callee with no program position or an
-// unlinked Parent is never a source-written call (the synthetic form is handled via
-// registeredTokenofType) — so such a node is a clean skip, not a checker nil-deref.
-func tokenofTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression) (*shimchecker.Type, bool) {
 	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
 		return nil, false
 	}
-	if call.Expression.Pos() < 0 || call.Expression.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(call.Expression)
-	if symbol == nil {
-		return nil, false
-	}
-	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
-		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
-			symbol = aliased
-		}
-	}
-	if symbol.Name != tokenofName {
+	if !calleeIs(checker, call.Expression, primName) {
 		return nil, false
 	}
 	return checker.GetTypeFromTypeNode(call.TypeArguments.Nodes[0]), true
 }
 
-// keyedTokenforTypeCall reports whether call is a source-written single-TYPE-argument
-// call whose callee resolves (following an import alias) to the `keyedtokenfor`
-// symbol, and returns the type argument's checker type. It shares isNameofCall's
-// synthetic-node guard (a synthetic keyedtokenfor is handled via
-// registeredKeyedTokenforType) and is disjoint from the other type-arg primitives
-// by callee symbol.
-func keyedTokenforTypeCall(checker *shimchecker.Checker, call *shimast.CallExpression) (*shimchecker.Type, bool) {
-	if call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
-		return nil, false
-	}
-	if call.Expression.Pos() < 0 || call.Expression.Parent == nil {
-		return nil, false
-	}
-	symbol := checker.GetSymbolAtLocation(call.Expression)
-	if symbol == nil {
-		return nil, false
-	}
-	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
-		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
-			symbol = aliased
-		}
-	}
-	if symbol.Name != keyedTokenforName {
-		return nil, false
-	}
-	return checker.GetTypeFromTypeNode(call.TypeArguments.Nodes[0]), true
-}
-
-// valueArgCall reports whether call is a source-written VALUE-argument call to
+// valueArgCall reports whether node is a source-written VALUE-argument call to
 // primName (`tokenfor`'s produced form or `tokenof`'s raw form) — a
-// NO-type-argument, single-value-argument call whose callee resolves (following an
-// import alias) to the primName symbol — and returns its value argument. It is the
-// value-arg twin of isNameofCall: type-arg and value-arg calls are disjoint by the
-// type-argument count (a type-arg call has exactly one type argument, a value-arg
-// call none), so a call never matches both; and the two value-arg primitives are
-// disjoint by callee symbol, so a call matches at most one primName.
-//
-// It anchors on the checker, so it carries the same synthetic-node guard
-// isNameofCall documents: a callee with no program position (a substituted clone)
-// or an unlinked Parent is never a source-written call — the synthetic value-arg
-// form is handled via registeredValueArg — so a negative position or nil Parent
-// is a clean skip, not a nil-deref inside GetSymbolAtLocation.
-func valueArgCall(checker *shimchecker.Checker, call *shimast.CallExpression, primName string) (*shimast.Node, bool) {
+// NO-type-argument, single-value-argument call — and returns its value argument.
+// It is the value-arg twin of typeArgCall and shares its parse-anchoring: the
+// callee AND the returned argument both come off the pristine call, since the
+// argument is only ever a checker input (the caller derives a token from its type
+// and mints a fresh string literal), so it must be the node the binder saw.
+func valueArgCall(
+	checker *shimchecker.Checker,
+	parseAnchor plugin.CheckerAnchor,
+	node *shimast.Node,
+	primName string,
+) (*shimast.Node, bool) {
+	call := parseAnchor.AnchoredCall(node)
+	if call == nil {
+		return nil, false
+	}
 	if call.TypeArguments != nil && len(call.TypeArguments.Nodes) != 0 {
 		return nil, false
 	}
 	if call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
 		return nil, false
 	}
-	callee := call.Expression
-	if callee.Pos() < 0 || callee.Parent == nil {
+	if !calleeIs(checker, call.Expression, primName) {
 		return nil, false
 	}
+	return call.Arguments.Nodes[0], true
+}
+
+// calleeIs reports whether callee resolves (following an import alias) to the
+// primitive named primName. callee must be a PARSE node — every caller takes it
+// off a parse-anchored call, which is what keeps GetSymbolAtLocation off a
+// rewritten chain.
+func calleeIs(checker *shimchecker.Checker, callee *shimast.Node, primName string) bool {
 	symbol := checker.GetSymbolAtLocation(callee)
 	if symbol == nil {
-		return nil, false
+		return false
 	}
 	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
 		if aliased := checker.GetAliasedSymbol(symbol); aliased != nil {
 			symbol = aliased
 		}
 	}
-	if symbol.Name != primName {
-		return nil, false
-	}
-	return call.Arguments.Nodes[0], true
+	return symbol.Name == primName
 }

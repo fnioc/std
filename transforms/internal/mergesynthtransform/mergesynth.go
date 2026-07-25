@@ -188,6 +188,16 @@ func (s *synthesizer) maybeRewrite(call *shimast.CallExpression) *shimast.Node {
 // isInstallCall reports whether call's callee resolves (through import
 // aliases) to `registerAugmentations` or `applyAugmentations`. The checker
 // panics on a synthetic callee, so a position-less node is a clean skip.
+//
+// THIS STAGE NEEDS NO PARSE ANCHOR, because of WHERE it runs, not what it does.
+// It is a one-shot PRE-PASS (stdhost.partitionStages) executed before the
+// fixed-point loop mutates anything, so every node it queries is still the node
+// the binder saw — there is no rewritten tree to be walked into, which is the
+// hazard plugin.CheckerAnchor exists for. If mergesynth ever REJOINS the loop
+// (the documented rejoin condition: a sugar body starts emitting install calls),
+// it must take the anchor at the same time, or it inherits the crash: this
+// predicate and resolveObjectLiteral below are exactly the syntax-driven
+// GetSymbolAtLocation queries the anchor governs everywhere else.
 func (s *synthesizer) isInstallCall(call *shimast.CallExpression) bool {
 	if call.Expression.Pos() < 0 {
 		return false
