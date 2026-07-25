@@ -43,8 +43,8 @@ its own barrel line is reported at both sites in a single run. See
 
 | Bucket                                                             | Distinct symbols                                                                                      | Confidence                                                                                 |
 | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **(a) Genuinely dead** — internal machinery, nothing should use it | **36**                                                                                                | High for 31; medium for the 5 in `di.core` (see [Provisional](#provisional-di-and-dicore)) |
-| **(b) Kitchen-sink gap** — real public API no example exercises    | **320**                                                                                               | High that they are unexercised; the _decision_ (demonstrate vs. delete) is the owner's     |
+| **(a) Genuinely dead** — internal machinery, nothing should use it | **31**                                                                                                | High for 26; medium for the 5 in `di.core` (see [Provisional](#provisional-di-and-dicore)) |
+| **(b) Kitchen-sink gap** — real public API no example exercises    | **325**                                                                                               | High that they are unexercised; the _decision_ (demonstrate vs. delete) is the owner's     |
 | **(c) False positive** — structurally invisible reference          | **10 symbols + 3 files** left visible on purpose, plus 74 findings the config now suppresses outright | High                                                                                       |
 
 Raw tool output before triage: 328 unused exports, 176 unused types, 1 unused enum member
@@ -58,7 +58,9 @@ rewriting. **Treat every di finding in this report as provisional.**
 
 ## (a) Genuinely dead — recommend removal
 
-Two distinct failure modes, which want different edits.
+Two distinct failure modes, which want different edits. A flag site is not automatically the
+symbol's home: check whether the flagged line DEFINES the name or merely re-exports it, and whether
+the file carries import side effects, before deciding what to cut.
 
 ### a.1 — Referenced nowhere at all: delete the symbol
 
@@ -81,14 +83,24 @@ enforces nothing.
 | `di.extras`         | `SIGNATUREOF_NAME`, `KEYOF_NAME`, `VALUEOF_NAME`, `KEYEDTOKENFOR_NAME`                                                                        |
 | `di.core`           | `SIGNATUREFOR_NAME`, `SIGNATURESFOR_NAME`                                                                                                     |
 
-**Dead sub-barrels.** Three internal `index.ts` files re-export names nothing imports through them;
-the underlying symbols are alive and reached directly.
+**The gated token-manifest reference — `di.core/src/token/`** _(provisional — PR #275)_. Five names
+sit behind `token/index.ts` with no consumer anywhere. The sub-barrel FILE is very much alive —
+`di.core/src/index.ts:74-78` reaches `TokenNode`, the visitor classes and the slot/grammar edge
+through it — so the edit is per-name, not per-file. Two different shapes:
 
-- `config/src/chained/index.ts` — `ChainedConfigSource`, `ChainedConfigProvider`,
-  `ChainedBuilderExtensions`
-- `config/src/memory/index.ts` — `MemoryConfigProvider`, `MemoryConfigBuilderExtensions`
-- `di.core/src/token/index.ts` — `TokenManifest`, `TokenProvider`, `Descriptor`,
-  `SealedTokenManifest`, `RESOLVER_TOKEN_STRING` _(provisional — PR #275)_
+- `TokenManifest`, `TokenProvider`, `Descriptor`, `SealedTokenManifest` — flagged at their
+  DEFINITION site (`token/manifest.ts:45/:103/:25/:36`) as well as at the sub-barrel line, and
+  `di.core`'s public barrel never re-exports them. Dead outright: nothing constructs a
+  `TokenManifest`, and `manifest.ts` is the whole of their reachable graph. This is the
+  most-specific-wins machinery the module header calls "GATED at the engine" — ported, never
+  wired up.
+- `RESOLVER_TOKEN_STRING` — the symbol is ALIVE (defined in `token/constants.ts:8`,
+  imported directly by `token/stringify.ts:8`). What is dead is the pair of re-export lines
+  carrying it outward, `token/node.ts:47` and `token/index.ts:9`; the definition site is not
+  flagged. Delete the two lines, keep the constant.
+
+There are no other dead sub-barrels. `config/src/chained/index.ts` and `config/src/memory/index.ts`
+look like this shape and are not — see [b.8](#b8--options-primitives-and-the-config-core-27-symbols).
 
 **Individually dead symbols.**
 
@@ -127,7 +139,7 @@ These are used exactly once, inside their own file. The symbol stays; the export
 
 ## (b) Kitchen-sink gap — the worklist
 
-**320 public barrel exports that no example demonstrates.** This is the interesting bucket and the
+**325 public barrel exports that no example demonstrates.** This is the interesting bucket and the
 one the scan exists to produce. The shape of it is stark: the example apps exercise `config` (memory
 source + reload), `di`, `options` (full configure → post-configure → validate pipeline), `hosting`
 (`Host` + a hosted lifecycle service) and `logging` (factory + `logInformation`) — and _nothing
@@ -354,7 +366,7 @@ it, the honest alternative is to accept them as permanently-flagged and record w
 silence them in `knip.jsonc`, because an ignore here would also hide genuine rot in the same
 packages.
 
-### b.8 — Options, primitives and the config core (22 symbols)
+### b.8 — Options, primitives and the config core (27 symbols)
 
 Small, cheap, and worth closing first — these sit right next to code the apps already run.
 
@@ -374,11 +386,36 @@ Small, cheap, and worth closing first — these sit right next to code the apps 
   which is genuinely instructive. `ChangeTokenConsumer` is the async-consumer form of
   `ChangeToken.onChange`; the apps already do a config reload, so switching that callback to the
   async form covers it.
-- **`config`** (9, listed here rather than b.1 because they are the core builder's own surface) —
+- **`config`** (14, listed here rather than b.1 because they are the core builder's own surface) —
   `ConfigSection`, `ConfigReloadToken`, `compareConfigKeys`, `OPTIONAL`, `Schema`, `ObjectSchema`,
   `OptionalSchema`, `Infer`, `SchemaCoercionError`. The schema family is the `.withType<T>()`
   sugar's runtime; the apps never call it. `config.core`'s `isConfigSection` (1) is the branded
   runtime discriminant — one `if (isConfigSection(node))` in a config-walking helper covers it.
+
+  The other five are the in-package Memory and Chained providers — `MemoryConfigProvider`,
+  `MemoryConfigBuilderExtensions`, `ChainedConfigSource`, `ChainedConfigProvider`,
+  `ChainedBuilderExtensions` — and they are flagged at `config/src/memory/index.ts` and
+  `config/src/chained/index.ts` only because those are their nearest declaration sites, NOT because
+  the files are dead re-export shells. **Do not delete either file.** Each carries the `declare
+  module` merges plus a top-level `registerAugmentations(tokenfor<IConfigBuilder>(), …)` — deleting
+  one uninstalls `addInMemoryCollection` / `addConfig` from both `ConfigBuilder` and `ConfigManager`,
+  and both apps call `.addInMemoryCollection(...)`
+  (`examples.app.with-transformer/src/main.ts:72`, `examples.app.without-transformer/src/main.ts:60`).
+  Deleting only the flagged export LINES is the quieter mistake: `config/src/index.ts:42,47`
+  star-re-exports both sub-barrels, so all five names are in the published surface
+  (`config/dist/bundle/index.d.ts:686`) and removing them shrinks reference parity while every gate
+  stays green.
+
+  The two `*Extensions` constants are the standalone call surface of the dot-callable verb — the
+  same shape b.1 treats as the cheapest augmentation coverage, so
+  `MemoryConfigBuilderExtensions.addInMemoryCollection(builder, …)` in one app covers that pair.
+  `ChainedConfigSource` is the easy one: `builder.add(new ChainedConfigSource({ config: shared }))`
+  is the hand-written form of `addConfig`, and layering a second `IConfig` over the app's own is a
+  scenario worth showing anyway. The two `*Provider` classes are the awkward ones — both `build()`
+  methods return `IConfigProvider`, so no fluent usage ever names them, and covering them means an
+  explicit annotation or `instanceof` check purely for the scan's benefit. That is the case where
+  "delete it from the barrel" deserves a real hearing against reference parity, and it is an owner
+  call, not a fill-in.
 
 ### b.9 — The example libraries themselves (3 symbols)
 
@@ -480,7 +517,13 @@ Four things a reader of this report needs to know.
 an entry is by definition reachable. Only `config.extras` (which has no such seam) can be reported
 as an unused file. The information is not lost: with `includeEntryExports: true` a wholly dead
 module surfaces as _every one of its exports_ being flagged, which is the same fact at finer
-granularity. Read a file whose entire export list appears in this report as an unused file.
+granularity. Read a file whose entire export list appears in this report as an unused file — with
+one guard, because it has a live counter-example. A module can be imported for its SIDE EFFECTS
+rather than its names, and knip scores only the names. `config/src/chained/index.ts` has all three
+of its exports flagged and is nonetheless load-bearing: `config/src/index.ts:47` pulls it in so its
+top-level `registerAugmentations` call runs, installing `addConfig` on both concrete builders. So
+before reading a fully-flagged file as dead, check it for top-level statements and `declare module`
+blocks; if it has either, the exports are the question and the file is not.
 
 **2. The barrel fixed point closes; the dead-code-uses-dead-code fixed point does not.** knip never
 credits `export { X } from './x'` as a use, so barrel chains resolve in one pass (verified above).
@@ -502,11 +545,12 @@ _inputs_ with more suspicion than flags on classes, constants and functions.
 
 ## Suggested order of work
 
-1. **Bucket a.1 + a.2** — 31 non-di symbols, mechanical, no design content. Re-run afterwards
-   (limit 2).
+1. **Bucket a.1 + a.2** — 26 non-di symbols, mechanical apart from the four a.1 itself
+   flags as judgement calls (`toDistributedCacheEntryOptions`, `HOSTED_SERVICE_TOKEN`, `Ignore`,
+   and `RESOLVER_TOKEN_STRING`, where only the re-export lines go). Re-run afterwards (limit 2).
 2. **Bucket a.3** — four dependency lines; the `hosting → options.augmentations` one needs an owner
    answer first.
-3. **Bucket b.8** — options/primitives/config, 22 symbols sitting next to code the apps already
+3. **Bucket b.8** — options/primitives/config, 27 symbols sitting next to code the apps already
    run; the cheapest coverage per line of example.
 4. **Bucket b.1 + b.5** — config providers plus file providers, closed together as one layered
    configuration story (~34 symbols).
