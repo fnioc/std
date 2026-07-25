@@ -49,9 +49,8 @@
 import { overrideSignatures, ServiceManifestClass, ServiceManifestDescriptorAugmentations, SIGNATUREFOR_NAME,
   SIGNATURESFOR_NAME } from '@rhombus-std/di.core';
 import type { AddChain, Ctor, DepSignatures, DepTarget, Factory, IAsBuilder, IRequiredResolver, IResolver,
-  IResolveScope, IScopeFactory, IServiceManifest, IServiceManifestBase, IServiceProvider, IServiceQuery,
-  IWithKeyBuilder, IWithSignatureBuilder, IWithSignaturesBuilder, Lifetime, Producer, Slot,
-  Token } from '@rhombus-std/di.core';
+  IScopeFactory, IServiceManifest, IServiceManifestBase, IServiceProvider, IServiceQuery, IWithKeyBuilder,
+  IWithSignatureBuilder, IWithSignaturesBuilder, Lifetime, Producer, Slot, Token } from '@rhombus-std/di.core';
 
 // A note on what is NOT imported, since it is the constraint the whole chapter
 // is written against: `@rhombus-std/di` — the resolution engine — appears
@@ -519,10 +518,3 @@ export type NormalisedProducer = Producer;
 
 /** The public authoring surface, which the concrete collection implements. */
 export type AuthoringSurface = IServiceManifestBase<'singleton', IServiceProvider<'singleton'>>;
-
-/**
- * The deprecated alias for the resolution surface. Named here so a reader
- * meeting it in older code knows what it is: `IResolver` plus `createScope`,
- * superseded by `IServiceProvider`. New code should not reach for it.
- */
-export type LegacyScope = IResolveScope;

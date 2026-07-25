@@ -86,5 +86,4 @@ export { addReportingFixture, classify, closeAgainst, demonstrateTokenAbi, descr
 export { addShopServices, asSingleton, auditToken, authoringMintsIn, demonstrateManifestSurface, describeSeal, forTests,
   inScope, isRegistrationBuilder, missingFrom, repointFirstSlot, requireCheckout, SHOP_SELF_CHECK_TOKENS,
   withoutToken } from './manifest-surface-demo.js';
-export type { AuthoringSurface, IChainFaces, LegacyScope, NormalisedProducer,
-  Registerable } from './manifest-surface-demo.js';
+export type { AuthoringSurface, IChainFaces, NormalisedProducer, Registerable } from './manifest-surface-demo.js';
