@@ -1,16 +1,21 @@
 # Lockstep publish pipeline (semantic-release driven).
 #
-# This workflow is FULLY DEFINED BUT INERT: both jobs are gated behind the
-# `PUBLISHING_ENABLED` repository variable, which does not exist yet. Until it is
-# set to the string "true" (Settings -> Secrets and variables -> Actions ->
-# Variables), neither job can run even though their triggers are otherwise live.
-# This is intentional -- the release story is wired up but publishing is not yet
-# switched on.
+# The continuous release path (publish-next) and the promotion path (promote)
+# are FULLY DEFINED BUT INERT: both are gated behind the `PUBLISHING_ENABLED`
+# repository variable, which does not exist yet. Until it is set to the string
+# "true" (Settings -> Secrets and variables -> Actions -> Variables), neither
+# can run even though their triggers are otherwise live. This is intentional --
+# the release story is wired up but publishing is not yet switched on. The
+# dispatch-only smoke test (publish-dummy) is deliberately NOT gated on that
+# variable -- it fires only on an explicit workflow_dispatch with a non-empty
+# `dummy_version`, so it can run independently of the continuous release.
 #
 # EXTERNAL SETUP still required before OIDC publishing can actually succeed: each
 # publishable @rhombus-std package needs an npm "Trusted Publisher" configured on
-# npmjs.com pointing at this repo and the `publish-next` workflow. That is a
-# per-package human step this code cannot perform.
+# npmjs.com pointing at this repo and the `release.yml` workflow file, with the
+# environment field left blank -- `promote` runs under the `production`
+# environment while the other two jobs do not, so pinning one would break them.
+# That is a per-package human step this code cannot perform.
 
 name: Release
 
@@ -18,6 +23,14 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      dummy_version:
+        description: >-
+          Publish this exact version across the lockstep set to the `alpha`
+          dist-tag as an end-to-end test of the trusted-publishing pipeline.
+          Leave blank to run the promote job instead.
+        required: false
+        default: ''
 
 jobs:
   # Continuous prerelease: every push to main runs semantic-release, which (via
@@ -37,6 +50,28 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      # build-all.ts lowers 22 of the 32 libraries through the ttsc/Go engine,
+      # which needs the mise-pinned Go on PATH (resolved via `mise which go`).
+      - uses: jdx/mise-action@v2
+
+      - name: Restore ttsc sidecar binaries
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cache/fnioc-ttsc/cache
+            node_modules/.cache
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          restore-keys: |
+            ttsc-sidecar-${{ runner.os }}-
+
+      - name: Restore Go build objects
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-main-gate-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+          restore-keys: |
+            go-build-${{ runner.os }}-main-gate-
 
       - uses: actions/setup-node@v4
         with:
@@ -60,11 +95,75 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bun run release
 
+  # Pipeline smoke test: publishes an explicitly-typed version across the lockstep
+  # set on the `alpha` dist-tag, so the OIDC trusted-publishing path can be
+  # exercised end to end without arming the continuous release. Deliberately NOT
+  # gated on PUBLISHING_ENABLED: setting that variable would also arm publish-next,
+  # and the next push to main would cut a real semantic-release version.
+  publish-dummy:
+    if: github.event_name == 'workflow_dispatch' && inputs.dummy_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # build-all.ts lowers 22 of the 32 libraries through the ttsc/Go engine,
+      # which needs the mise-pinned Go on PATH (resolved via `mise which go`).
+      - uses: jdx/mise-action@v2
+
+      - name: Restore ttsc sidecar binaries
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cache/fnioc-ttsc/cache
+            node_modules/.cache
+          key: ttsc-sidecar-${{ runner.os }}-${{ hashFiles('transforms/**', 'mise.toml', 'bun.lock') }}
+          restore-keys: |
+            ttsc-sidecar-${{ runner.os }}-
+
+      - name: Restore Go build objects
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-main-gate-${{ hashFiles('transforms/go.sum', 'mise.toml') }}
+          restore-keys: |
+            go-build-${{ runner.os }}-main-gate-
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install pnpm (required for workspace:* rewrite + publishConfig.exports swap)
+        run: npm install -g pnpm@10.34.4
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build all packages
+        run: bun scripts/build-all.ts
+
+      - name: Publish the dummy version to the alpha dist-tag
+        env:
+          DUMMY_VERSION: ${{ inputs.dummy_version }}
+        run: bun scripts/publish-libraries.ts --version "$DUMMY_VERSION" --tag alpha
+
   # Manual promotion: move the current `next` prerelease to `latest`. Gated on the
   # `production` environment (a manual-approval gate that also does not exist yet;
   # until created the job simply stays pending).
   promote:
-    if: github.event_name == 'workflow_dispatch' && vars.PUBLISHING_ENABLED == 'true'
+    if: github.event_name == 'workflow_dispatch' && inputs.dummy_version == '' && vars.PUBLISHING_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
