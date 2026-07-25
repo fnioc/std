@@ -352,6 +352,43 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
 (`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
 
+## Comments
+
+**A comment explains the code in front of the reader — never the history of how it got there.**
+This is a port, so comments accreted a running commentary on the porting process: lineage, decision
+citations, rejected alternatives, superseded designs. None of that helps someone reading the code;
+it occupies the space an explanation should. Where a case isn't covered below, decide by asking
+_does this help someone understand the code in front of them?_
+
+**Never write:**
+
+- **Any allusion to `ME.*` / the reference implementation, however oblique** — "ported from `ME.X`",
+  "the reference's Y", "reference parity", "mirrors the reference", ".NET", "Microsoft". This is
+  judgment, not pattern-matching: an **intra-repo cross-reference is not lineage** ("the tracing
+  counterpart of `MeterScope`" is fine — `MeterScope` is ours), and neither is ordinary English
+  ("no POSIX **analog** — a documented no-op on Linux" is a platform fact a caller needs; "the
+  **original**-cased key"). Naming an `ME.*` type that exists only there is lineage — cut it.
+- `§N` decision refs, issue/PR numbers, version lore.
+- Superseded designs and decided-against alternatives — "the old X", "previously", "retired".
+- Transformer / plugin / "no-transformer" / "lowers to" framing — a token-arg signature already
+  implies the plugin-less path, so there is nothing to say.
+- Engine or architecture lore, _unless_ it directly helps a CALLER call the member.
+- Restatements of visible code, the member name reworded, what a callee does at its call site, and
+  what a NAME already conveys ("tryParse never throws" — `try` says it).
+- Stale build-layout narration. src-referencing survives only **internally** (the `./tokens/*` and
+  `./private/*` seams, the per-core `<pkg>-source` condition, the editor program) — **verify against
+  the package's `exports` before citing it**, and never claim a package's runtime resolution is src.
+
+**Write** only what helps a caller use a public member, or is genuinely hard to grok on a quick
+read. When torn, delete. Form is real TSDoc — `@remarks` for prose, `@param`/`@returns` OMITTED when
+the signature already says it, `@typeParam`, `@example`; don't hand-write what the types generate; a
+good error message replaces a comment; a trivially-simple function gets none. File-level headers are
+not automatically wrong — keep a trimmed orienting one, cut it when it merely restates the type's
+own docs below it.
+
+`libraries/primitives/src/augmentation-registry.ts` is the canonical swept file — match it. Never
+delete a comment when doing so loses the answer to "why does this exist at all"; rewrite it instead.
+
 ## Build layout — dist-referencing (§72)
 
 **Every runtime library is dist-referenced (#68 complete).** Type-facing
