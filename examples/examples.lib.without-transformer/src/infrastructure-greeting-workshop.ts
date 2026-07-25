@@ -159,10 +159,7 @@ export class GreetingWorkshop {
    */
   public readonly stationery: ICardStationery;
 
-  public constructor(
-    mintCard: (recipient: ICardRecipient) => GreetingCard,
-    stationery?: ICardStationery,
-  ) {
+  public constructor(mintCard: (recipient: ICardRecipient) => GreetingCard, stationery?: ICardStationery) {
     this.#mintCard = mintCard;
     // Recorded here rather than asked of the container later, which is the point:
     // "did the app override this?" is answerable from the parameter itself.
@@ -231,8 +228,7 @@ export class LocatorGreetingWorkshop {
 
   public constructor(resolver: IResolver) {
     this.#resolver = resolver;
-    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN)
-      ?? new PlainStationery();
+    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN) ?? new PlainStationery();
   }
 
   /**
@@ -244,10 +240,9 @@ export class LocatorGreetingWorkshop {
    * parameter, except stated here in a method body where nothing can check it.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.resolveFactory<(recipient: ICardRecipient) => GreetingCard>(
-      GREETING_CARD_TOKEN,
-      [CARD_RECIPIENT_TOKEN],
-    );
+    this.#mintCard ??= this.#resolver.resolveFactory<(recipient: ICardRecipient) => GreetingCard>(GREETING_CARD_TOKEN, [
+      CARD_RECIPIENT_TOKEN,
+    ]);
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
@@ -322,10 +317,9 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-  configure: (builder: IGreetingWorkshopBuilder) => void,
-): IServiceManifest<S | 'singleton'> {
+export function addGreetingWorkshop<S extends string>(services: IServiceManifest<S | 'singleton'>,
+  configure: (builder: IGreetingWorkshopBuilder) => void): IServiceManifest<S | 'singleton'>
+{
   const holder: IServiceManifestHolder<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
@@ -333,25 +327,15 @@ export function addGreetingWorkshop<S extends string>(
   // something built fresh per recipient. Its second slot names a token nothing
   // ever registers; that slot is the caller's, and the factory slot below is
   // what hands it over.
-  holder.services = holder.services.addClass(
-    GREETING_CARD_TOKEN,
-    GreetingCard,
-    [[GREETING_TOKEN, CARD_RECIPIENT_TOKEN]],
-  );
+  holder.services = holder.services.addClass(GREETING_CARD_TOKEN, GreetingCard, [[GREETING_TOKEN,
+    CARD_RECIPIENT_TOKEN]]);
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
   // dependency plan is right here, in the signature, where the container can
   // check it: a FACTORY slot for the card (with the recipient marked
   // caller-supplied) and an OPTIONAL stationery slot.
-  holder.services = holder.services.addClass(
-    GREETING_WORKSHOP_TOKEN,
-    GreetingWorkshop,
-    [[
-      { type: GREETING_CARD_TOKEN, params: [CARD_RECIPIENT_TOKEN] },
-      union(CARD_STATIONERY_TOKEN, { value: undefined }),
-    ]],
-    'singleton',
-  );
+  holder.services = holder.services.addClass(GREETING_WORKSHOP_TOKEN, GreetingWorkshop, [[{ type: GREETING_CARD_TOKEN,
+    params: [CARD_RECIPIENT_TOKEN] }, union(CARD_STATIONERY_TOKEN, { value: undefined })]], 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
@@ -359,12 +343,9 @@ export function addGreetingWorkshop<S extends string>(
   // provider — "I want the provider" is plain DI, not a special slot kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
-  holder.services = holder.services.addClass(
-    LOCATOR_GREETING_WORKSHOP_TOKEN,
-    LocatorGreetingWorkshop,
-    [[RESOLVER_TOKEN]],
-    'singleton',
-  );
+  holder.services = holder.services.addClass(LOCATOR_GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop, [[
+    RESOLVER_TOKEN,
+  ]], 'singleton');
   return holder.services;
 }
 

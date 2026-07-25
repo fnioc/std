@@ -9,10 +9,7 @@ import { expect, test } from 'bun:test';
 import { makeFakePage } from './fakes';
 
 test("createBrowserEnvironment: names from settings, content root '/', null file provider", () => {
-  const environment = createBrowserEnvironment({
-    environmentName: Environments.Development,
-    applicationName: 'spa',
-  });
+  const environment = createBrowserEnvironment({ environmentName: Environments.Development, applicationName: 'spa' });
 
   expect(environment.environmentName).toBe('Development');
   expect(environment.applicationName).toBe('spa');
@@ -26,15 +23,10 @@ test("createBrowserEnvironment: names from settings, content root '/', null file
 test('the facade composes settings config, browser environment, console logging, lifetime, and the bridge', () => {
   const page = makeFakePage();
 
-  const builder = BrowserHost.createApplicationBuilder({
-    environmentName: Environments.Development,
-    applicationName: 'spa',
-    initialData: { 'feature:flag': 'on' },
-    configureLifetime: (options) => {
+  const builder = BrowserHost.createApplicationBuilder({ environmentName: Environments.Development,
+    applicationName: 'spa', initialData: { 'feature:flag': 'on' }, configureLifetime: (options) => {
       options.stopOnPagehide = false;
-    },
-    pageContext: page.context,
-  });
+    }, pageContext: page.context });
 
   // Environment: browser-shaped through the ordinary builder settings.
   expect(builder.environment.environmentName).toBe('Development');
@@ -97,22 +89,16 @@ test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a termi
   const page = makeFakePage();
   const events: string[] = [];
 
-  const runPromise = BrowserHost.run(
-    { pageContext: page.context },
-    (builder) => {
-      builder.services = builder.services.addHostedService(
-        class Worker {
-          public async start(): Promise<void> {
-            events.push('start');
-          }
-          public async stop(): Promise<void> {
-            events.push('stop');
-          }
-        },
-        [[]],
-      );
-    },
-  );
+  const runPromise = BrowserHost.run({ pageContext: page.context }, (builder) => {
+    builder.services = builder.services.addHostedService(class Worker {
+      public async start(): Promise<void> {
+        events.push('start');
+      }
+      public async stop(): Promise<void> {
+        events.push('stop');
+      }
+    }, [[]]);
+  });
 
   // Wait until the host has started (the lifetime subscribes before hosted
   // services run, so an observed 'start' means the lifetime is listening).

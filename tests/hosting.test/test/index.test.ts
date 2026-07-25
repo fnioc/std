@@ -74,17 +74,8 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   await host.start();
   await host.stop();
 
-  expect(events).toEqual([
-    'starting',
-    'start',
-    'started',
-    'applicationStarted',
-    'stopping',
-    'applicationStopping',
-    'stop',
-    'stopped',
-    'applicationStopped',
-  ]);
+  expect(events).toEqual(['starting', 'start', 'started', 'applicationStarted', 'stopping', 'applicationStopping',
+    'stop', 'stopped', 'applicationStopped']);
 
   host[Symbol.dispose]();
 });

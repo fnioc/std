@@ -159,23 +159,11 @@ export interface ConfigBuilder<T = unknown> {
 const REAL_CONFIG_JS = `export class ConfigBuilder {}
 export const OPTIONAL = Symbol("OPTIONAL");
 `;
-const REAL_CONFIG_PKG = JSON.stringify({
-  name: '@rhombus-std/config',
-  version: '0.0.0',
-  type: 'module',
-  types: './index.d.ts',
-  main: './index.js',
-  exports: { '.': { types: './index.d.ts', import: './index.js', default: './index.js' } },
-});
-const INLINE_CONSUMER_PKG = JSON.stringify({
-  name: 'config-inline-consumer',
-  version: '0.0.0',
-  type: 'module',
-  dependencies: {
-    '@rhombus-std/config': '*',
-    '@rhombus-std/config.extras': '*',
-  },
-});
+const REAL_CONFIG_PKG = JSON.stringify({ name: '@rhombus-std/config', version: '0.0.0', type: 'module',
+  types: './index.d.ts', main: './index.js',
+  exports: { '.': { types: './index.d.ts', import: './index.js', default: './index.js' } } });
+const INLINE_CONSUMER_PKG = JSON.stringify({ name: 'config-inline-consumer', version: '0.0.0', type: 'module',
+  dependencies: { '@rhombus-std/config': '*', '@rhombus-std/config.extras': '*' } });
 
 /** Wire the inline-path consumer: shared toolchain + a real @rhombus-std/config. */
 function setupInlineProject(dir: string): void {
@@ -205,26 +193,15 @@ function setupInlineProject(dir: string): void {
 
 function tsconfig(withPlugin: boolean): string {
   return JSON.stringify({
-    compilerOptions: {
-      target: 'ES2022',
-      module: 'ESNext',
-      moduleResolution: 'Bundler',
-      lib: ['ES2022'],
-      strict: true,
-      outDir: 'dist',
-      rootDir: 'src',
-      skipLibCheck: true,
-      noEmitOnError: false,
-      ...(withPlugin ? { plugins: [{ transform: '@rhombus-std/config.extras/ttsc' }] } : {}),
-    },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+      ...(withPlugin ? { plugins: [{ transform: '@rhombus-std/config.extras/ttsc' }] } : {}) },
     include: ['src/**/*'],
   });
 }
 
-type Envelope = {
-  diagnostics?: Array<{ code: string; messageText: string; file: string | null; }>;
-  typescript: Record<string, string>;
-};
+type Envelope = { diagnostics?: Array<{ code: string; messageText: string; file: string | null; }>;
+  typescript: Record<string, string>; };
 
 let inlineEnv: Envelope = { typescript: {} };
 
@@ -240,27 +217,19 @@ beforeAll(() => {
   //    config.extras body lowers `.withType<T>()` via the primitive path.
   setupInlineProject(projInline);
   const isrc = join(projInline, 'src');
-  writeFileSync(
-    join(isrc, 'server.ts'),
+  writeFileSync(join(isrc, 'server.ts'),
     `${APP_HEADER}interface ServerConfig { host: string; port: number; ssl?: boolean }
 export const b = new ConfigBuilder().withType<ServerConfig>();
-`,
-  );
-  writeFileSync(
-    join(isrc, 'nested.ts'),
-    `${APP_HEADER}interface AppConfig {
+`);
+  writeFileSync(join(isrc, 'nested.ts'), `${APP_HEADER}interface AppConfig {
   Server: { Host: string; Port: number };
   Database: { Primary: { Host: string; PoolSize: number } };
 }
 export const b = new ConfigBuilder().withType<AppConfig>();
-`,
-  );
-  writeFileSync(
-    join(isrc, 'flags.ts'),
-    `${APP_HEADER}interface Flags { flag: boolean }
+`);
+  writeFileSync(join(isrc, 'flags.ts'), `${APP_HEADER}interface Flags { flag: boolean }
 export const b = new ConfigBuilder().withType<Flags>();
-`,
-  );
+`);
   // Receiver-discrimination positives (ported from the deleted config-stage
   // project): the inline body anchors on the REAL @rhombus-std/config
   // ConfigBuilder.withType member, so a builder chain and every ConfigBuilder-typed
@@ -269,16 +238,11 @@ export const b = new ConfigBuilder().withType<Flags>();
   // resolve_test/matcher_test: they carry a sugar-named `withType` call that the
   // inline stage's name-based INLINE_UNLOWERED_SUGAR sweep would flag on the emit
   // path, so they cannot ride an inline e2e fixture.)
-  writeFileSync(
-    join(isrc, 'chain.ts'),
-    `${APP_HEADER}interface Server { Host: string; Port: number }
+  writeFileSync(join(isrc, 'chain.ts'), `${APP_HEADER}interface Server { Host: string; Port: number }
 declare const src: unknown;
 export const b = new ConfigBuilder().add(src).withType<Server>();
-`,
-  );
-  writeFileSync(
-    join(isrc, 'shapes.ts'),
-    `${APP_HEADER}interface T { Host: string }
+`);
+  writeFileSync(join(isrc, 'shapes.ts'), `${APP_HEADER}interface T { Host: string }
 interface MySub extends ConfigBuilder {}
 declare const sub: MySub;
 export const viaSub = sub.withType<T>();
@@ -289,15 +253,11 @@ export const viaMerge = merged.withType<T>();
 export function useGeneric<B extends ConfigBuilder>(b: B) {
   return b.withType<T>();
 }
-`,
-  );
+`);
   writeFileSync(join(projInline, 'tsconfig.json'), tsconfig(true));
 
-  const inlineHost = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
-    cwd: projInline,
-    encoding: 'utf8',
-    env: goEnv(),
-  });
+  const inlineHost = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projInline, encoding: 'utf8',
+    env: goEnv() });
   if (inlineHost.status !== 0) {
     throw new Error(
       `inline ttsc host failed (status ${inlineHost.status}):\n${inlineHost.stdout}\n${inlineHost.stderr}`,

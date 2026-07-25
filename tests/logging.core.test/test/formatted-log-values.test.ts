@@ -15,11 +15,7 @@ describe('FormattedLogValues structured enumeration', () => {
     expect(values.get(0)).toEqual(['User', 'ada']);
     expect(values.get(1)).toEqual(['Address', '10.0.0.1']);
     expect(values.get(2)).toEqual(['{OriginalFormat}', template]);
-    expect([...values]).toEqual([
-      ['User', 'ada'],
-      ['Address', '10.0.0.1'],
-      ['{OriginalFormat}', template],
-    ]);
+    expect([...values]).toEqual([['User', 'ada'], ['Address', '10.0.0.1'], ['{OriginalFormat}', template]]);
   });
 
   test('renders the message via toString, independent of the structured view', () => {

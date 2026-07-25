@@ -74,10 +74,7 @@ describe('IniConfigSource file wiring', () => {
     dir = mkdtempSync(join(tmpdir(), 'rhombus-config-ini-'));
     writeFileSync(join(dir, 'app.ini'), '[Server]\nHost=localhost\nPort=8080');
 
-    const root = new ConfigBuilder()
-      .setBasePath(dir)
-      .addIniFile('app.ini')
-      .build();
+    const root = new ConfigBuilder().setBasePath(dir).addIniFile('app.ini').build();
 
     expect(root.get('Server:Host')).toBe('localhost');
     expect(root.get('Server:Port')).toBe('8080');
@@ -86,10 +83,7 @@ describe('IniConfigSource file wiring', () => {
   test('a missing optional INI file yields no keys', () => {
     dir = mkdtempSync(join(tmpdir(), 'rhombus-config-ini-'));
 
-    const root = new ConfigBuilder()
-      .setBasePath(dir)
-      .addIniFile('missing.ini', { optional: true })
-      .build();
+    const root = new ConfigBuilder().setBasePath(dir).addIniFile('missing.ini', { optional: true }).build();
 
     expect([...root.getChildren()]).toEqual([]);
   });

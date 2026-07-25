@@ -44,42 +44,22 @@ const REQUIRED_LABELS = ['signoff', 'claude-ready'];
 // Issues carrying any of these labels are never "ready to code" candidates,
 // regardless of what other labels (v0, v1, v2, ...) exist alongside them.
 // Blacklist, not whitelist -- new version/scope labels show up automatically.
-const EXCLUDED_LABELS = new Set([
-  'duplicate',
-  'invalid',
-  'wontfix',
-  'question',
-  'discussion',
-  'needs-triage',
-  'blocked-external',
-  'icebox',
-]);
+const EXCLUDED_LABELS = new Set(['duplicate', 'invalid', 'wontfix', 'question', 'discussion', 'needs-triage',
+  'blocked-external', 'icebox']);
 
 // One node's derived structure. status "unknown" is the placeholder state for a
 // referenced-but-not-yet-indexed issue; it is filled in properly once that
 // issue's own event fires. `labels` is attached by the script from the fetched
 // gh data (not the model) so ready.json's EXCLUDED_LABELS filter and label
 // output keep working on the incremental path without re-fetching every issue.
-const NODE_PROPERTIES = {
-  number: { type: 'integer' },
-  title: { type: 'string' },
+const NODE_PROPERTIES = { number: { type: 'integer' }, title: { type: 'string' },
   status: { type: 'string', enum: ['open', 'closed', 'unknown'] },
   blocked_by: { type: 'array', items: { type: 'integer' } },
-  conflict_risk_with: { type: 'array', items: { type: 'integer' } },
-  conflict_reason: { type: 'string' },
-};
-const NODE_ITEM = {
-  type: 'object',
-  properties: NODE_PROPERTIES,
-  required: ['number', 'title', 'status', 'blocked_by', 'conflict_risk_with'],
-  additionalProperties: false,
-};
-const NODES_SCHEMA = {
-  type: 'object',
-  properties: { nodes: { type: 'array', items: NODE_ITEM } },
-  required: ['nodes'],
-  additionalProperties: false,
-};
+  conflict_risk_with: { type: 'array', items: { type: 'integer' } }, conflict_reason: { type: 'string' } };
+const NODE_ITEM = { type: 'object', properties: NODE_PROPERTIES,
+  required: ['number', 'title', 'status', 'blocked_by', 'conflict_risk_with'], additionalProperties: false };
+const NODES_SCHEMA = { type: 'object', properties: { nodes: { type: 'array', items: NODE_ITEM } }, required: ['nodes'],
+  additionalProperties: false };
 
 // A compact, human-readable rendering of NODES_SCHEMA to embed in prompts. The
 // `claude` CLI can't enforce a response schema (no `output_config.format`), so
@@ -132,11 +112,12 @@ function extractJson(result) {
  * (spawn E2BIG). `claude -p` reads the prompt from stdin when none is given.
  */
 function deriveNodes(promptContent) {
-  const stdout = execFileSync(
-    'claude',
-    ['-p', '--output-format', 'json', '--permission-mode', 'bypassPermissions'],
-    { input: promptContent, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 300000 },
-  );
+  const stdout = execFileSync('claude', ['-p', '--output-format', 'json', '--permission-mode', 'bypassPermissions'], {
+    input: promptContent,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 300000,
+  });
   const run = JSON.parse(stdout);
   if (run.is_error || run.subtype !== 'success') {
     throw new Error(

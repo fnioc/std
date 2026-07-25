@@ -33,8 +33,7 @@ class LineStreamConfigurationSource extends StreamConfigSource {
 
 describe('StreamConfigProvider', () => {
   test("load() hands the source's payload to loadStream and serves the data", () => {
-    const root = new ConfigBuilder()
-      .add(new LineStreamConfigurationSource('Server:Port=8080\nServer:Host=localhost'))
+    const root = new ConfigBuilder().add(new LineStreamConfigurationSource('Server:Port=8080\nServer:Host=localhost'))
       .build();
 
     expect(root.get('Server:Port')).toBe('8080');

@@ -94,9 +94,7 @@ describe('structural sharing — branches off one manifest never contaminate', (
   });
 
   test('branching AFTER .as() — the refined node is a shareable prefix', () => {
-    const scoped = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .as('singleton');
+    const scoped = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).as('singleton');
 
     const withA = scoped.addValue(T.A, 'a');
     const withB = scoped.addValue(T.B, 'b');
@@ -112,9 +110,7 @@ describe('structural sharing — branches off one manifest never contaminate', (
   });
 
   test('branching AFTER .withKey() — the key does not leak across branches', () => {
-    const keyed = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]], 'singleton')
-      .withKey('redis');
+    const keyed = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]], 'singleton').withKey('redis');
 
     const withA = keyed.addValue(T.A, 'a');
     const withB = keyed.addClass(T.Service, Beta, [[]], 'singleton');
@@ -181,62 +177,41 @@ describe('modifiers are order-free and apply at most once', () => {
 
   test('as → withKey → withSignatures', () => {
     const chain = seed().addClass(T.Service, Holder);
-    expectKeyedSingletonWithSignature(
-      chain.as('singleton').withKey('k').withSignatures([T.B]),
-    );
+    expectKeyedSingletonWithSignature(chain.as('singleton').withKey('k').withSignatures([T.B]));
   });
 
   test('as → withSignatures → withKey', () => {
     const chain = seed().addClass(T.Service, Holder);
-    expectKeyedSingletonWithSignature(
-      chain.as('singleton').withSignatures([T.B]).withKey('k'),
-    );
+    expectKeyedSingletonWithSignature(chain.as('singleton').withSignatures([T.B]).withKey('k'));
   });
 
   test('withKey → as → withSignatures', () => {
     const chain = seed().addClass(T.Service, Holder);
-    expectKeyedSingletonWithSignature(
-      chain.withKey('k').as('singleton').withSignatures([T.B]),
-    );
+    expectKeyedSingletonWithSignature(chain.withKey('k').as('singleton').withSignatures([T.B]));
   });
 
   test('withKey → withSignatures → as', () => {
     const chain = seed().addClass(T.Service, Holder);
-    expectKeyedSingletonWithSignature(
-      chain.withKey('k').withSignatures([T.B]).as('singleton'),
-    );
+    expectKeyedSingletonWithSignature(chain.withKey('k').withSignatures([T.B]).as('singleton'));
   });
 
   test('withSignatures → as → withKey', () => {
     const chain = seed().addClass(T.Service, Holder);
-    expectKeyedSingletonWithSignature(
-      chain.withSignatures([T.B]).as('singleton').withKey('k'),
-    );
+    expectKeyedSingletonWithSignature(chain.withSignatures([T.B]).as('singleton').withKey('k'));
   });
 
   test('withSignatures → withKey → as', () => {
     const chain = seed().addClass(T.Service, Holder);
-    expectKeyedSingletonWithSignature(
-      chain.withSignatures([T.B]).withKey('k').as('singleton'),
-    );
+    expectKeyedSingletonWithSignature(chain.withSignatures([T.B]).withKey('k').as('singleton'));
   });
 });
 
 describe('positional and fluent spellings agree', () => {
   test('addClass(t, C, sig, scope, key) ≡ addClass(t, C, sig).as(scope).withKey(key)', () => {
-    const positional = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]], 'singleton', 'k');
-    const fluent = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .as('singleton')
-      .withKey('k');
-    const mixed = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]], 'singleton')
-      .withKey('k');
-    const reordered = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .withKey('k')
-      .as('singleton');
+    const positional = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]], 'singleton', 'k');
+    const fluent = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).as('singleton').withKey('k');
+    const mixed = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]], 'singleton').withKey('k');
+    const reordered = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).withKey('k').as('singleton');
 
     for (const manifest of [positional, fluent, mixed, reordered]) {
       expect(tokensOf(manifest)).toEqual([`${T.Service}#k`]);
@@ -249,12 +224,11 @@ describe('positional and fluent spellings agree', () => {
   });
 
   test('addFactory positional and fluent spellings agree too', () => {
-    const positional = new ServiceManifest<'singleton'>()
-      .addFactory(T.Service, () => new Alpha(), [[]], 'singleton', 'k');
-    const fluent = new ServiceManifest<'singleton'>()
-      .addFactory(T.Service, () => new Alpha(), [[]])
-      .withKey('k')
-      .as('singleton');
+    const positional = new ServiceManifest<'singleton'>().addFactory(T.Service, () => new Alpha(), [[]], 'singleton',
+      'k');
+    const fluent = new ServiceManifest<'singleton'>().addFactory(T.Service, () => new Alpha(), [[]]).withKey('k').as(
+      'singleton',
+    );
 
     for (const manifest of [positional, fluent]) {
       expect(tokensOf(manifest)).toEqual([`${T.Service}#k`]);
@@ -275,19 +249,14 @@ describe('positional and fluent spellings agree', () => {
   test('withKey recomposes off the BASE token, never suffixing an already-keyed one', () => {
     // Re-keying is not reachable (the slot is consumed once), but the positional
     // key and the fluent key must land on the SAME single `#` suffix.
-    const manifest = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .withKey('k')
-      .as('singleton');
+    const manifest = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).withKey('k').as('singleton');
 
     expect(tokensOf(manifest)).toEqual([`${T.Service}#k`]);
     expect(tokensOf(manifest)[0]).not.toContain('##');
   });
 
   test('an EMPTY key is unkeyed — the token is left bare', () => {
-    const manifest = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]], 'singleton')
-      .withKey('');
+    const manifest = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]], 'singleton').withKey('');
 
     expect(tokensOf(manifest)).toEqual([T.Service]);
     expect(manifest.build().resolve<Alpha>(T.Service)).toBeInstanceOf(Alpha);
@@ -339,9 +308,7 @@ describe('withSignature appends; withSignatures replaces in bulk', () => {
 describe('error timing — registration errors throw AT THE CALL, never at build()', () => {
   test('addFactory on an open token throws from the addFactory call', () => {
     const services = new ServiceManifest<'singleton'>();
-    expect(() => services.addFactory(G.RepoTemplate, () => 'x', [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addFactory(G.RepoTemplate, () => 'x', [[]])).toThrow(OpenTokenRegistrationError);
   });
 
   test('addValue on an open token throws from the addValue call', () => {
@@ -357,9 +324,7 @@ describe('error timing — registration errors throw AT THE CALL, never at build
   test('an unmatchable open service token throws from the addClass call', () => {
     const services = new ServiceManifest<'singleton'>();
     // A bare hole names no base to bucket under, so no closing could reach it.
-    expect(() => services.addClass('$1', Alpha, [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addClass('$1', Alpha, [[]])).toThrow(OpenTokenRegistrationError);
   });
 
   test('withKey on an open template registers a KEYED open entry the closings reach', () => {
@@ -378,12 +343,8 @@ describe('error timing — registration errors throw AT THE CALL, never at build
     // The two spellings of one keyed template must agree, so classification
     // strips the key off the token before asking the string grammar — which
     // otherwise stops at the `#` and reads the whole thing as closed.
-    const composed = new ServiceManifest<'singleton'>()
-      .addClass('pkg:IRepo<$1>#k', Alpha, [[]])
-      .build();
-    const split = new ServiceManifest<'singleton'>()
-      .addClass(G.RepoTemplate, Alpha, [[]], 'singleton', 'k')
-      .build();
+    const composed = new ServiceManifest<'singleton'>().addClass('pkg:IRepo<$1>#k', Alpha, [[]]).build();
+    const split = new ServiceManifest<'singleton'>().addClass(G.RepoTemplate, Alpha, [[]], 'singleton', 'k').build();
 
     expect(composed.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
     expect(split.resolve('pkg:IRepo<pkg:IA>', 'k')).toBeInstanceOf(Alpha);
@@ -392,22 +353,14 @@ describe('error timing — registration errors throw AT THE CALL, never at build
 
   test('the composed spelling reaches the factory and value rejections too', () => {
     const services = new ServiceManifest<'singleton'>();
-    expect(() => services.addFactory('pkg:IRepo<$1>#k', () => 1, [[]])).toThrow(
-      OpenTokenRegistrationError,
-    );
-    expect(() => services.addValue('pkg:IRepo<$1>#k', 'x')).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addFactory('pkg:IRepo<$1>#k', () => 1, [[]])).toThrow(OpenTokenRegistrationError);
+    expect(() => services.addValue('pkg:IRepo<$1>#k', 'x')).toThrow(OpenTokenRegistrationError);
   });
 
   test('a keyed open template still rejects the factory and value verbs', () => {
     const services = new ServiceManifest<'singleton'>();
-    expect(() => services.addFactory(G.RepoTemplate, () => 1, [[]]).withKey('k')).toThrow(
-      OpenTokenRegistrationError,
-    );
-    expect(() => services.addValue(G.RepoTemplate, 'x', 'k')).toThrow(
-      OpenTokenRegistrationError,
-    );
+    expect(() => services.addFactory(G.RepoTemplate, () => 1, [[]]).withKey('k')).toThrow(OpenTokenRegistrationError);
+    expect(() => services.addValue(G.RepoTemplate, 'x', 'k')).toThrow(OpenTokenRegistrationError);
   });
 
   test('the throw happens EAGERLY — before any build(), and it leaves no node behind', () => {

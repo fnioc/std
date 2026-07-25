@@ -32,22 +32,20 @@ import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.file';
 import '@rhombus-std/config.json';
 
-const config = new ConfigBuilder()
-  .setBasePath('/etc/myapp')
-  .addJsonFile('appsettings.json', { optional: true })
-  .build();
+const config = new ConfigBuilder().setBasePath('/etc/myapp').addJsonFile(
+  'appsettings.json',
+  { optional: true },
+).build();
 ```
 
 Install a load-error handler to decide, per failure, whether to swallow the
 error or let it throw:
 
 ```ts
-new ConfigBuilder()
-  .setFileLoadErrorHandler((ctx) => {
-    console.warn(`could not load config: ${ctx.error}`);
-    ctx.ignore = true; // swallow it; leave `ignore` false to rethrow
-  })
-  .addJsonFile('appsettings.json');
+new ConfigBuilder().setFileLoadErrorHandler((ctx) => {
+  console.warn(`could not load config: ${ctx.error}`);
+  ctx.ignore = true; // swallow it; leave `ignore` false to rethrow
+}).addJsonFile('appsettings.json');
 ```
 
 ## Reloading on change
@@ -56,8 +54,7 @@ A file source can watch its file and reload when it changes. Pair a
 file-format provider with a watching file provider and set `reloadOnChange`:
 
 ```ts
-new ConfigBuilder()
-  .addJsonFile('appsettings.json', { reloadOnChange: true });
+new ConfigBuilder().addJsonFile('appsettings.json', { reloadOnChange: true });
 ```
 
 A change coalesces through a short delay (250 ms by default, `reloadDelay`) so a

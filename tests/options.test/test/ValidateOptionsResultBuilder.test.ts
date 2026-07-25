@@ -66,11 +66,8 @@ describe('ValidateOptionsResultBuilder', () => {
   test("addResults folds every result's failures in", () => {
     const builder = new ValidateOptionsResultBuilder();
 
-    builder.addResults([
-      ValidateOptionsResult.fail('one'),
-      ValidateOptionsResult.success,
-      ValidateOptionsResult.fail(['two', 'three']),
-    ]);
+    builder.addResults([ValidateOptionsResult.fail('one'), ValidateOptionsResult.success,
+      ValidateOptionsResult.fail(['two', 'three'])]);
 
     expect(builder.build().failures).toEqual(['one', 'two', 'three']);
   });

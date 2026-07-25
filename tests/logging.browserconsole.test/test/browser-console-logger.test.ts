@@ -14,12 +14,10 @@ import { expect, test } from 'bun:test';
 function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
   const values: Array<[Token, unknown]> = [];
   const make = (): IServiceManifest => {
-    return {
-      addValue(token: Token, value: unknown): IServiceManifest {
-        values.push([token, value]);
-        return make();
-      },
-    } as unknown as IServiceManifest;
+    return { addValue(token: Token, value: unknown): IServiceManifest {
+      values.push([token, value]);
+      return make();
+    } } as unknown as IServiceManifest;
   };
   return { services: make(), values };
 }
@@ -32,15 +30,8 @@ function makeConsoleSpy(): { console: ConsoleLike; calls: Array<[string, unknown
       calls.push([method, args]);
     };
   };
-  return {
-    console: {
-      error: record('error'),
-      warn: record('warn'),
-      info: record('info'),
-      debug: record('debug'),
-    },
-    calls,
-  };
+  return { console: { error: record('error'), warn: record('warn'), info: record('info'), debug: record('debug') },
+    calls };
 }
 
 function write(logger: BrowserConsoleLogger, level: LogLevel, message: string, error?: Error): void {

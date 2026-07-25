@@ -42,23 +42,12 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
   });
 
   test('every member is a receiver-first function', () => {
-    for (
-      const set of [
-        JsonConfigAugmentations,
-        EnvironmentVariablesExtensions,
-        CommandLineConfigAugmentations,
-        MemoryConfigBuilderExtensions,
-        MetricsServiceExtensions,
-        TracingServiceExtensions,
-        LoggingServiceManifestAugmentations,
-        MemoryCacheServiceManifestAugmentations,
-        OptionsServiceManifestAugmentations,
-        OptionsConfigServiceManifestAugmentations,
-        LoggerFilterOptionsExtensions,
-        MetricsOptionsExtensions,
-        TracingOptionsExtensions,
-      ]
-    ) {
+    for (const set of [JsonConfigAugmentations, EnvironmentVariablesExtensions, CommandLineConfigAugmentations,
+      MemoryConfigBuilderExtensions, MetricsServiceExtensions, TracingServiceExtensions,
+      LoggingServiceManifestAugmentations, MemoryCacheServiceManifestAugmentations, OptionsServiceManifestAugmentations,
+      OptionsConfigServiceManifestAugmentations, LoggerFilterOptionsExtensions, MetricsOptionsExtensions,
+      TracingOptionsExtensions])
+    {
       for (const name of Object.keys(set)) {
         expect((set as Record<string, unknown>)[name]).toBeInstanceOf(Function);
       }

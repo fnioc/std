@@ -10,15 +10,11 @@ import { MemoryConfigProvider } from './MemoryConfigProvider';
  * an array of tuples, ...) or a plain `Record` of key -> value. Both are
  * accepted for ergonomics; a `Record` is the idiomatic literal form.
  */
-export type ConfigData =
-  | Iterable<readonly [string, string]>
-  | Record<string, string>;
+export type ConfigData = Iterable<readonly [string, string]> | Record<string, string>;
 
 /** Normalizes {@link ConfigData} to an iterable of `[key, value]` pairs. */
 export function toEntries(data: ConfigData): Iterable<readonly [string, string]> {
-  return Symbol.iterator in data
-    ? (data as Iterable<readonly [string, string]>)
-    : Object.entries(data);
+  return Symbol.iterator in data ? (data as Iterable<readonly [string, string]>) : Object.entries(data);
 }
 
 /** A configuration source backed by an in-memory key/value collection. */

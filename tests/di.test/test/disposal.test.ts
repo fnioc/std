@@ -168,11 +168,7 @@ describe('disposal failure aggregation', () => {
 
   /** A native `Disposable` that logs, then throws. */
   class ThrowingDisposable implements Disposable {
-    public constructor(
-      public readonly label: string,
-      private readonly log: DisposeLog,
-      private readonly err: Error,
-    ) {}
+    public constructor(public readonly label: string, private readonly log: DisposeLog, private readonly err: Error) {}
     public [Symbol.dispose](): void {
       this.log.order.push(this.label);
       throw this.err;
@@ -181,11 +177,7 @@ describe('disposal failure aggregation', () => {
 
   /** A native `AsyncDisposable` that logs, then rejects. */
   class ThrowingAsyncDisposable implements AsyncDisposable {
-    public constructor(
-      public readonly label: string,
-      private readonly log: DisposeLog,
-      private readonly err: Error,
-    ) {}
+    public constructor(public readonly label: string, private readonly log: DisposeLog, private readonly err: Error) {}
     public async [Symbol.asyncDispose](): Promise<void> {
       await Promise.resolve();
       this.log.order.push(this.label);

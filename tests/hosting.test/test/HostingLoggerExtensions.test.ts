@@ -21,13 +21,9 @@ class RecordingLogger implements ILogger {
   public readonly entries: Entry[] = [];
   public enabled = true;
 
-  public log<TState>(
-    logLevel: LogLevel,
-    eventId: EventId,
-    state: TState,
-    error: Error | undefined,
-    formatter: (state: TState, error: Error | undefined) => string,
-  ): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
+    formatter: (state: TState, error: Error | undefined) => string): void
+  {
     this.entries.push({ level: logLevel, eventId, message: formatter(state, error), error });
   }
 
@@ -42,52 +38,31 @@ class RecordingLogger implements ILogger {
 
 test('each member writes its fixed message at the reference level and event id', () => {
   const error = new Error('boom');
-  const cases: Array<[(logger: ILogger) => void, LogLevel, EventId, string, Error | undefined]> = [
-    [
-      (l) => HostingLoggerExtensions.starting(l),
-      LogLevel.Debug,
-      LoggerEventIds.starting,
-      'Hosting starting',
-      undefined,
-    ],
-    [(l) => HostingLoggerExtensions.started(l), LogLevel.Debug, LoggerEventIds.started, 'Hosting started', undefined],
-    [
-      (l) => HostingLoggerExtensions.stopping(l),
-      LogLevel.Debug,
-      LoggerEventIds.stopping,
-      'Hosting stopping',
-      undefined,
-    ],
-    [(l) => HostingLoggerExtensions.stopped(l), LogLevel.Debug, LoggerEventIds.stopped, 'Hosting stopped', undefined],
-    [
-      (l) => HostingLoggerExtensions.stoppedWithError(l, error),
-      LogLevel.Debug,
-      LoggerEventIds.stoppedWithError,
-      'Hosting shutdown error',
-      error,
-    ],
-    [
-      (l) => HostingLoggerExtensions.backgroundServiceFaulted(l, error),
-      LogLevel.Error,
-      LoggerEventIds.backgroundServiceFaulted,
-      'BackgroundService failed',
-      error,
-    ],
-    [
-      (l) => HostingLoggerExtensions.backgroundServiceStoppingHost(l, error),
-      LogLevel.Critical,
-      LoggerEventIds.backgroundServiceStoppingHost,
-      'A BackgroundService has thrown an unhandled error, and the host is stopping.',
-      error,
-    ],
-    [
-      (l) => HostingLoggerExtensions.hostedServiceStartupFaulted(l, error),
-      LogLevel.Error,
-      LoggerEventIds.hostedServiceStartupFaulted,
-      'Hosting failed to start',
-      error,
-    ],
-  ];
+  const cases: Array<[(logger: ILogger) => void, LogLevel, EventId, string, Error | undefined]> = [[
+    (l) => HostingLoggerExtensions.starting(l),
+    LogLevel.Debug,
+    LoggerEventIds.starting,
+    'Hosting starting',
+    undefined,
+  ], [(l) => HostingLoggerExtensions.started(l), LogLevel.Debug, LoggerEventIds.started, 'Hosting started', undefined],
+    [(l) => HostingLoggerExtensions.stopping(l), LogLevel.Debug, LoggerEventIds.stopping, 'Hosting stopping',
+      undefined], [(l) => HostingLoggerExtensions.stopped(l), LogLevel.Debug, LoggerEventIds.stopped, 'Hosting stopped',
+    undefined], [(l) => HostingLoggerExtensions.stoppedWithError(l, error), LogLevel.Debug,
+    LoggerEventIds.stoppedWithError, 'Hosting shutdown error', error], [
+    (l) => HostingLoggerExtensions.backgroundServiceFaulted(l, error),
+    LogLevel.Error,
+    LoggerEventIds.backgroundServiceFaulted,
+    'BackgroundService failed',
+    error,
+  ], [(l) => HostingLoggerExtensions.backgroundServiceStoppingHost(l, error), LogLevel.Critical,
+    LoggerEventIds.backgroundServiceStoppingHost,
+    'A BackgroundService has thrown an unhandled error, and the host is stopping.', error], [
+    (l) => HostingLoggerExtensions.hostedServiceStartupFaulted(l, error),
+    LogLevel.Error,
+    LoggerEventIds.hostedServiceStartupFaulted,
+    'Hosting failed to start',
+    error,
+  ]];
 
   for (const [invoke, level, eventId, message, expectedError] of cases) {
     const logger = new RecordingLogger();
@@ -122,12 +97,8 @@ test("applicationError writes at critical severity with the caller's event id", 
   const logger = new RecordingLogger();
   const error = new Error('listener failed');
 
-  HostingLoggerExtensions.applicationError(
-    logger,
-    LoggerEventIds.applicationStoppingError,
-    'An error occurred stopping the application',
-    error,
-  );
+  HostingLoggerExtensions.applicationError(logger, LoggerEventIds.applicationStoppingError,
+    'An error occurred stopping the application', error);
 
   expect(logger.entries).toHaveLength(1);
   const entry = logger.entries[0]!;
@@ -141,12 +112,7 @@ test('applicationError is unguarded — it writes even when the sink reports dis
   const logger = new RecordingLogger();
   logger.enabled = false;
 
-  HostingLoggerExtensions.applicationError(
-    logger,
-    LoggerEventIds.applicationStartupError,
-    'startup',
-    new Error('x'),
-  );
+  HostingLoggerExtensions.applicationError(logger, LoggerEventIds.applicationStartupError, 'startup', new Error('x'));
 
   expect(logger.entries).toHaveLength(1);
 });
@@ -164,12 +130,7 @@ test('applicationError appends each AggregateError inner message to the log mess
 test('applicationError coerces a non-Error thrown value for the sink', () => {
   const logger = new RecordingLogger();
 
-  HostingLoggerExtensions.applicationError(
-    logger,
-    LoggerEventIds.applicationStoppedError,
-    'stopped',
-    'plain string',
-  );
+  HostingLoggerExtensions.applicationError(logger, LoggerEventIds.applicationStoppedError, 'stopped', 'plain string');
 
   const entry = logger.entries[0]!;
   expect(entry.error).toBeInstanceOf(Error);

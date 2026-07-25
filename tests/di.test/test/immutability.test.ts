@@ -139,10 +139,7 @@ describe('nodes are frozen', () => {
   });
 
   test('a node produced by a modifier is frozen too', () => {
-    const refined = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]])
-      .as('singleton')
-      .withKey('k');
+    const refined = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]]).as('singleton').withKey('k');
 
     expect(Object.isFrozen(refined)).toBe(true);
     attemptWrite(refined, 'smuggled');
@@ -150,9 +147,9 @@ describe('nodes are frozen', () => {
   });
 
   test('a node produced by removeAll is frozen', () => {
-    const pruned = new ServiceManifest<'singleton'>()
-      .addClass(T.Service, Alpha, [[]], 'singleton')
-      .removeAll(T.Service);
+    const pruned = new ServiceManifest<'singleton'>().addClass(T.Service, Alpha, [[]], 'singleton').removeAll(
+      T.Service,
+    );
 
     expect(Object.isFrozen(pruned)).toBe(true);
     attemptWrite(pruned, 'smuggled');
@@ -298,10 +295,7 @@ describe('removeAll returns a NEW manifest', () => {
 // `SealedManifest`'s `ReadonlyMap` is what holds that line, at the type level.
 describe('seal() freezes what it actually promises', () => {
   test('each per-token registration list is frozen', () => {
-    const sealed = new ServiceManifest<'singleton'>()
-      .addValue(T.A, 'first')
-      .addValue(T.A, 'second')
-      .seal();
+    const sealed = new ServiceManifest<'singleton'>().addValue(T.A, 'first').addValue(T.A, 'second').seal();
 
     const list = sealed.registrations.get(T.A);
 
@@ -314,9 +308,7 @@ describe('seal() freezes what it actually promises', () => {
   });
 
   test('each per-base open-template list is frozen too', () => {
-    const sealed = new ServiceManifest<'singleton'>()
-      .addClass('pkg:IBox<$1>', Alpha, [[]], 'singleton')
-      .seal();
+    const sealed = new ServiceManifest<'singleton'>().addClass('pkg:IBox<$1>', Alpha, [[]], 'singleton').seal();
 
     const open = sealed.openRegistrations.get('pkg:IBox');
 

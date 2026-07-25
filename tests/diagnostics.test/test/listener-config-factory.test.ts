@@ -21,23 +21,12 @@ function configWith(data: Record<string, string>): IConfig {
 }
 
 const first = () =>
-  configWith({
-    'MyListener:Key': 'first',
-    'MyListener:OnlyFirst': 'yes',
-    'OtherListener:Key': 'elsewhere',
-  });
-const second = () =>
-  configWith({
-    'MyListener:Key': 'second',
-    'MyListener:OnlySecond': 'also',
-  });
+  configWith({ 'MyListener:Key': 'first', 'MyListener:OnlyFirst': 'yes', 'OtherListener:Key': 'elsewhere' });
+const second = () => configWith({ 'MyListener:Key': 'second', 'MyListener:OnlySecond': 'also' });
 
 describe('MetricListenerConfigFactory', () => {
   test("merges every configuration's listener section, later registrations winning", () => {
-    const factory = new MetricListenerConfigFactory([
-      new MetricsConfig(first()),
-      new MetricsConfig(second()),
-    ]);
+    const factory = new MetricListenerConfigFactory([new MetricsConfig(first()), new MetricsConfig(second())]);
 
     const merged = factory.getConfig('MyListener');
     expect(merged.get('Key')).toBe('second'); // conflict: later wins
@@ -71,10 +60,7 @@ describe('MetricListenerConfigFactory', () => {
 
 describe('DefaultActivityListenerConfigFactory', () => {
   test('is an ActivityListenerConfigFactory and merges like the metrics twin', () => {
-    const factory = new DefaultActivityListenerConfigFactory([
-      new TracingConfig(first()),
-      new TracingConfig(second()),
-    ]);
+    const factory = new DefaultActivityListenerConfigFactory([new TracingConfig(first()), new TracingConfig(second())]);
 
     expect(factory).toBeInstanceOf(ActivityListenerConfigFactory);
     const merged = factory.getConfig('MyListener');
@@ -93,16 +79,12 @@ describe('addMetrics registers the metrics factory', () => {
     // Singletons cache only inside an open scope frame; the frameless provider
     // `build()` returns resolves everything transiently (di.core §"frameless").
     const provider = manifest.build().createScope('singleton');
-    const factory = provider.resolve<IMetricListenerConfigFactory>(
-      METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-    );
+    const factory = provider.resolve<IMetricListenerConfigFactory>(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN);
     expect(factory).toBeInstanceOf(MetricListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
 
     // Singleton: repeated resolution yields the same instance.
-    expect(
-      provider.resolve<IMetricListenerConfigFactory>(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN),
-    ).toBe(factory);
+    expect(provider.resolve<IMetricListenerConfigFactory>(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN)).toBe(factory);
   });
 
   test('with no bound configuration the factory yields empty views', () => {
@@ -124,13 +106,9 @@ describe('addTracing registers the tracing factory', () => {
     });
 
     const provider = manifest.build().createScope('singleton');
-    const factory = provider.resolve<ActivityListenerConfigFactory>(
-      TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-    );
+    const factory = provider.resolve<ActivityListenerConfigFactory>(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN);
     expect(factory).toBeInstanceOf(DefaultActivityListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
-    expect(
-      provider.resolve<ActivityListenerConfigFactory>(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN),
-    ).toBe(factory);
+    expect(provider.resolve<ActivityListenerConfigFactory>(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN)).toBe(factory);
   });
 });

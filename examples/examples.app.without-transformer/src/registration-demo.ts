@@ -225,19 +225,14 @@ class SqlRepository<T> implements IRepository<T> {
  * log — a genuine either/or, registered as a union slot whose members are tried
  * in order.
  */
-function makeOrderNotifier(
-  sink: IMessageSink,
-  recorder?: IMetricsRecorder | IAuditLog,
-): IOrderNotifier {
-  return {
-    notify(orderId: string): string {
-      const message = sink.send(`${orderId} shipped`);
-      if (recorder !== undefined && 'record' in recorder) {
-        recorder.record(message);
-      }
-      return message;
-    },
-  };
+function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAuditLog): IOrderNotifier {
+  return { notify(orderId: string): string {
+    const message = sink.send(`${orderId} shipped`);
+    if (recorder !== undefined && 'record' in recorder) {
+      recorder.record(message);
+    }
+    return message;
+  } };
 }
 
 // ── tokens ───────────────────────────────────────────────────────────────────
@@ -336,19 +331,10 @@ function addOrderDefaults<S extends string>(
   // A default VALUE — the clock every other default depends on.
   services = services.tryAddValue(DEFAULT_CLOCK_TOKEN, new FixedClock());
   // A default CLASS.
-  services = services.tryAdd(
-    DEFAULT_SINK_TOKEN,
-    PlainTextSink,
-    [[DEFAULT_CLOCK_TOKEN, { value: 'production' }]],
-    'singleton',
-  );
+  services = services.tryAdd(DEFAULT_SINK_TOKEN, PlainTextSink, [[DEFAULT_CLOCK_TOKEN, { value: 'production' }]],
+    'singleton');
   // A default FACTORY.
-  services = services.tryAddFactory(
-    DEFAULT_NOTIFIER_TOKEN,
-    makeOrderNotifier,
-    [[DEFAULT_SINK_TOKEN]],
-    'singleton',
-  );
+  services = services.tryAddFactory(DEFAULT_NOTIFIER_TOKEN, makeOrderNotifier, [[DEFAULT_SINK_TOKEN]], 'singleton');
   return services;
 }
 
@@ -446,12 +432,7 @@ function buildOrderContainer(): IServiceManifest<'singleton'> {
   // one token is legal and useful — a collection resolve sees both — and a
   // single resolve takes the LAST one registered, so this is the sink the rest
   // of the scenario gets.
-  services = services.addClass(
-    SINK_TOKEN,
-    PlainTextSink,
-    [[CLOCK_TOKEN, { value: 'production' }]],
-    'singleton',
-  );
+  services = services.addClass(SINK_TOKEN, PlainTextSink, [[CLOCK_TOKEN, { value: 'production' }]], 'singleton');
 
   // The GATED 2-argument form: no signature is supplied, so the returned chain
   // WITHHOLDS the manifest face — `build`/`addClass` are absent until a
@@ -463,22 +444,15 @@ function buildOrderContainer(): IServiceManifest<'singleton'> {
   // The two overloads are tried longest-first: `[clock, options]` needs
   // `IEmailOptions`, which nothing registers, so the `[clock]` overload wins
   // and the sink falls back to its built-in address.
-  services = services
-    .addClass(SINK_TOKEN, EmailSink)
-    .withSignatures([CLOCK_TOKEN], [CLOCK_TOKEN, EMAIL_OPTIONS_TOKEN])
-    .withKey('email')
-    .as('singleton');
+  services = services.addClass(SINK_TOKEN, EmailSink).withSignatures([CLOCK_TOKEN], [CLOCK_TOKEN, EMAIL_OPTIONS_TOKEN])
+    .withKey('email').as('singleton');
 
   // An OPTIONAL dependency, spelled honestly: a union whose last member is the
   // literal `undefined`. Union members are tried in order and the first
   // resolvable one wins, so this yields the sink when one is registered and
   // `undefined` when none is — and the slot is never unsatisfiable.
-  services = services.addClass(
-    AUDIT_TOKEN,
-    AuditLog,
-    [[CLOCK_TOKEN, union(SINK_TOKEN, { value: undefined })]],
-    'singleton',
-  );
+  services = services.addClass(AUDIT_TOKEN, AuditLog, [[CLOCK_TOKEN, union(SINK_TOKEN, { value: undefined })]],
+    'singleton');
 
   // The gated form again, opened by `withSignature` — which APPENDS one
   // overload and is REPEATABLE, unlike the bulk `withSignatures` above. The
@@ -486,22 +460,14 @@ function buildOrderContainer(): IServiceManifest<'singleton'> {
   // factory's parameter is optional): the metrics recorder is preferred but
   // never registered, so resolution falls through to the audit log. The second
   // call appends a leaner fallback overload.
-  services = services
-    .addFactory(NOTIFIER_TOKEN, makeOrderNotifier)
-    .withSignature(SINK_TOKEN, union(METRICS_TOKEN, AUDIT_TOKEN, { value: undefined }))
-    .withSignature(SINK_TOKEN)
-    .as('singleton');
+  services = services.addFactory(NOTIFIER_TOKEN, makeOrderNotifier).withSignature(SINK_TOKEN,
+    union(METRICS_TOKEN, AUDIT_TOKEN, { value: undefined })).withSignature(SINK_TOKEN).as('singleton');
 
   // An OPEN template. `typeArg(1)` is the positional way to say "this parameter
   // receives the token string of the registration's first type argument"; when
   // a closing is resolved, substitution turns it into a literal carrying that
   // argument's token.
-  services = services.addClass(
-    REPOSITORY_TEMPLATE,
-    SqlRepository,
-    [[typeArg(1), CLOCK_TOKEN]],
-    'singleton',
-  );
+  services = services.addClass(REPOSITORY_TEMPLATE, SqlRepository, [[typeArg(1), CLOCK_TOKEN]], 'singleton');
 
   // A zero-dependency class. `[[]]` is not decoration: it STATES that the class
   // takes nothing, which is different from not having supplied a signature yet.
@@ -523,15 +489,12 @@ function describeOrderContainer(services: IServiceManifest<'singleton'>): string
   const repository = app.resolve<IRepository<Order>>(ORDER_REPOSITORY_TOKEN);
   const flags = app.resolve<FeatureFlags>(FLAGS_TOKEN);
 
-  return [
-    `notify: ${notifier.notify('order-42')}`,
+  return [`notify: ${notifier.notify('order-42')}`,
     `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`,
-    `keyed sink (key "email"): ${email.send('welcome')}`,
-    `keyed value (key "vendor"): ${vendorClock.now()}`,
+    `keyed sink (key "email"): ${email.send('welcome')}`, `keyed value (key "vendor"): ${vendorClock.now()}`,
     `open template, closed per entity: ${repository.describe({ id: 'order-42' })}`,
     `${countRegistrations(services, SINK_TOKEN)} sinks share the IMessageSink token; the last one `
-    + `registered wins a single resolve`,
-  ];
+    + `registered wins a single resolve`];
 }
 
 /**
@@ -559,11 +522,6 @@ function describeSinklessFork(services: IServiceManifest<'singleton'>): string {
 export function demonstrateRegistration(): readonly string[] {
   const services = buildOrderContainer();
 
-  return [
-    '=== di registration — without transformer ===',
-    demonstrateDiscardTrap(),
-    ...demonstrateDescriptorVerbs(),
-    ...describeOrderContainer(services),
-    describeSinklessFork(services),
-  ];
+  return ['=== di registration — without transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(),
+    ...describeOrderContainer(services), describeSinklessFork(services)];
 }

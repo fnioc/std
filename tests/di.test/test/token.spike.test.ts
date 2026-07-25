@@ -169,32 +169,30 @@ function topSplitPipe(s: string): string[] {
 }
 
 function oracleLiteral(s: string): string {
-  return topSplitPipe(s)
-    .map((part) => {
-      const q = part[0]!;
-      let content = '';
-      for (let i = 1; i < part.length; i++) {
-        const c = part[i]!;
-        if (c === '\\') {
-          const next = part[i + 1];
-          // Only `\\` and `\<quote>` are escapes; any other `\c` keeps the
-          // backslash verbatim (mirrors the module's `#parseLiteral`).
-          if (next === '\\' || next === q) {
-            content += next ?? '';
-          } else {
-            content += `\\${next ?? ''}`;
-          }
-          i++;
-          continue;
+  return topSplitPipe(s).map((part) => {
+    const q = part[0]!;
+    let content = '';
+    for (let i = 1; i < part.length; i++) {
+      const c = part[i]!;
+      if (c === '\\') {
+        const next = part[i + 1];
+        // Only `\\` and `\<quote>` are escapes; any other `\c` keeps the
+        // backslash verbatim (mirrors the module's `#parseLiteral`).
+        if (next === '\\' || next === q) {
+          content += next ?? '';
+        } else {
+          content += `\\${next ?? ''}`;
         }
-        if (c === q) {
-          break;
-        }
-        content += c;
+        i++;
+        continue;
       }
-      return `"${content.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-    })
-    .join(' | ');
+      if (c === q) {
+        break;
+      }
+      content += c;
+    }
+    return `"${content.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }).join(' | ');
 }
 
 // A bare number is not a grammar production of its own — it is an
@@ -244,11 +242,7 @@ function decompose(s: string): OracleParts {
   }
   const close = matchClose(s, open);
   const after = s.slice(close + 1);
-  return {
-    base: s.slice(0, open),
-    args: topSplit(s.slice(open + 1, close)),
-    key: after ? after.slice(1) : '',
-  };
+  return { base: s.slice(0, open), args: topSplit(s.slice(open + 1, close)), key: after ? after.slice(1) : '' };
 }
 
 function oracleMatch(rawTemplate: string, rawGround: string, bind: Map<string, string>): boolean {
@@ -307,28 +301,11 @@ function expectMatchesOracle(template: string, ground: string): void {
 // ── Canonicalisation ──────────────────────────────────────────────────────────
 
 describe('canonicalisation — parse → stringify is canonical, idempotent, oracle-checked', () => {
-  const battery: string[] = [
-    'pkg:IService',
-    'pkg:IRepo<pkg:IA>',
-    'pkg:IOuter<pkg:IMid<pkg:IInner<pkg:IA>>>',
-    'IPair< A , B >',
-    'IPair<A,B>',
-    'IFoo<"a b">',
-    'IPair<A,"x,y">',
-    "IFoo<'a'>",
-    'IFoo<"a" | "b">',
-    'IFoo<72>',
-    'IFoo<72.00>',
-    'IFoo<.5>',
-    'IArr<Array<pkg:IA>>',
-    'pkg:IFoo#primary',
-    'pkg:IRepo<pkg:IA>#primary',
-    '$7',
-    'pkg:IFoo<$7,SomeType,$3>',
-    RESOLVER_TOKEN_STRING,
-    'pkg:IRepo<@rhombus-std/di.core:IResolver>',
-    'IFoo<"a < b , c >">',
-  ];
+  const battery: string[] = ['pkg:IService', 'pkg:IRepo<pkg:IA>', 'pkg:IOuter<pkg:IMid<pkg:IInner<pkg:IA>>>',
+    'IPair< A , B >', 'IPair<A,B>', 'IFoo<"a b">', 'IPair<A,"x,y">', "IFoo<'a'>", 'IFoo<"a" | "b">', 'IFoo<72>',
+    'IFoo<72.00>', 'IFoo<.5>', 'IArr<Array<pkg:IA>>', 'pkg:IFoo#primary', 'pkg:IRepo<pkg:IA>#primary', '$7',
+    'pkg:IFoo<$7,SomeType,$3>', RESOLVER_TOKEN_STRING, 'pkg:IRepo<@rhombus-std/di.core:IResolver>',
+    'IFoo<"a < b , c >">'];
 
   for (const raw of battery) {
     test(`canon(${JSON.stringify(raw)}) matches the oracle and is idempotent`, () => {
@@ -516,9 +493,7 @@ describe('specificity + substitute', () => {
     // so it must score strictly higher for most-specific-wins to prefer it.
     expect(specificity(parse('pkg:IPair<$1,$1>'))).toBe(2);
     expect(specificity(parse('pkg:IPair<$1,$2>'))).toBe(1);
-    expect(specificity(parse('pkg:IPair<$1,$1>'))).toBeGreaterThan(
-      specificity(parse('pkg:IPair<$1,$2>')),
-    );
+    expect(specificity(parse('pkg:IPair<$1,$1>'))).toBeGreaterThan(specificity(parse('pkg:IPair<$1,$2>')));
     // Three-way repeat adds two constraints on top of the concrete root.
     expect(specificity(parse('pkg:ITriple<$1,$1,$1>'))).toBe(3);
   });

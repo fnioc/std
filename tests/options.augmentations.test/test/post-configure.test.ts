@@ -43,11 +43,9 @@ describe('postConfigure — bare form', () => {
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix = 'base';
     });
-    const step: IPostConfigureOptions<WidgetOptions> = {
-      postConfigure(options) {
-        options.suffix += '!';
-      },
-    };
+    const step: IPostConfigureOptions<WidgetOptions> = { postConfigure(options) {
+      options.suffix += '!';
+    } };
     services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, step);
 
     const provider = services.build().createScope('singleton');
@@ -62,11 +60,9 @@ describe('postConfigure — bare form', () => {
     services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix += '-a';
     });
-    services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, {
-      postConfigure(options) {
-        options.suffix += '-b';
-      },
-    });
+    services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, { postConfigure(options) {
+      options.suffix += '-b';
+    } });
 
     const provider = services.build().createScope('singleton');
     const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);

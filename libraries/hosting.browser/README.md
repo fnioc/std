@@ -23,16 +23,11 @@ import { BrowserHost } from '@rhombus-std/hosting.browser';
 
 // Builds the browser-composed host, starts it, waits for shutdown (a terminal
 // pagehide), then stops and disposes — all in one call.
-await BrowserHost.run(
-  {
-    environmentName: 'Production',
-    applicationName: 'my-app',
-  },
-  (builder) => {
-    // Register your services on the ordinary builder surface here.
-    builder.services.addHostedService(MyWorker, [[]]);
-  },
-);
+await BrowserHost.run({ environmentName: 'Production',
+  applicationName: 'my-app' }, (builder) => {
+  // Register your services on the ordinary builder surface here.
+  builder.services.addHostedService(MyWorker, [[]]);
+});
 ```
 
 > **Best-effort only:** on a real page close this async stop may be cut off

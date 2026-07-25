@@ -27,11 +27,9 @@ describe('layering: JSON + INI + XML on one builder (built dist)', () => {
   });
 
   test('a later source overrides a shared key while format-specific keys survive', () => {
-    const config = new ConfigBuilder()
-      .addJsonStream('{ "Shared": "json", "OnlyJson": "j" }')
-      .addIniStream('Shared=ini\nOnlyIni=i')
-      .addXmlStream('<settings><Shared>xml</Shared><OnlyXml>x</OnlyXml></settings>')
-      .build();
+    const config = new ConfigBuilder().addJsonStream('{ "Shared": "json", "OnlyJson": "j" }').addIniStream(
+      'Shared=ini\nOnlyIni=i',
+    ).addXmlStream('<settings><Shared>xml</Shared><OnlyXml>x</OnlyXml></settings>').build();
 
     // XML is last, so it wins the shared key.
     assert.equal(config.get('Shared'), 'xml');
@@ -42,11 +40,9 @@ describe('layering: JSON + INI + XML on one builder (built dist)', () => {
   });
 
   test('reordering the sources changes which value wins the shared key', () => {
-    const config = new ConfigBuilder()
-      .addXmlStream('<settings><Shared>xml</Shared></settings>')
-      .addIniStream('Shared=ini')
-      .addJsonStream('{ "Shared": "json" }')
-      .build();
+    const config = new ConfigBuilder().addXmlStream('<settings><Shared>xml</Shared></settings>').addIniStream(
+      'Shared=ini',
+    ).addJsonStream('{ "Shared": "json" }').build();
 
     // JSON is last here, so it wins.
     assert.equal(config.get('Shared'), 'json');

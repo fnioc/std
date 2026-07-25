@@ -295,12 +295,12 @@ providers per format.
 > would.
 
 ```ts
-const config = new ConfigBuilder()
-  .setBasePath(import.meta.dir) // config.file
+const config = new ConfigBuilder().setBasePath(import.meta.dir) // config.file
   .addJsonFile('appsettings.json', { optional: true, reloadOnChange: false })
-  .addIniFile('appsettings.ini', { optional: true })
-  .addXmlFile('appsettings.xml', { optional: true })
-  .addEnvironmentVariables({ prefix: 'RHOMBUS_' }) // config.env
+  .addIniFile('appsettings.ini', { optional: true }).addXmlFile(
+    'appsettings.xml',
+    { optional: true },
+  ).addEnvironmentVariables({ prefix: 'RHOMBUS_' }) // config.env
   .addCommandLine(process.argv.slice(2)) // config.commandline
   .build();
 ```
@@ -375,15 +375,12 @@ undemonstrated.
 
 ```ts
 manifest = manifest.addLogging(builder => {
-  builder
-    .addConsole() // logging.console
+  builder.addConsole() // logging.console
     .addSimpleConsole(o => {
       o.colorBehavior = LoggerColorBehavior.Enabled;
-    })
-    .addJsonConsole()
-    .addConfig(config.getSection('Logging')) // logging.config
-    .setMinimumLevel(LogLevel.Debug)
-    .addFilter('Rhombus.Hosting', LogLevel.Warning);
+    }).addJsonConsole().addConfig(config.getSection('Logging')) // logging.config
+    .setMinimumLevel(LogLevel.Debug).addFilter('Rhombus.Hosting',
+      LogLevel.Warning);
 });
 
 // in the worker, exercising the scope + message-template surface
@@ -415,9 +412,9 @@ config-binding pipeline and the rule-matching primitives.
 > pure functions over plain-data queries and cost nothing to show.
 
 ```ts
-manifest = manifest
-  .addMetrics(b => b.addMetricsConfig(config.getSection('Metrics')))
-  .addTracing(b => b.addTracingConfig(config.getSection('Tracing')));
+manifest = manifest.addMetrics(b =>
+  b.addMetricsConfig(config.getSection('Metrics'))
+).addTracing(b => b.addTracingConfig(config.getSection('Tracing')));
 
 // the family's documented selection primitive, exercised directly
 const rule = getMostSpecificInstrumentRule(rules, { meterName: 'app',

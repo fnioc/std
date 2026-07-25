@@ -68,24 +68,16 @@ export function makeFakePage(): FakePage {
   const transition = (persisted: boolean): PageTransitionEventLike => {
     return { persisted };
   };
-  return {
-    document,
-    window,
-    context: {
-      document: document as unknown as DocumentLike,
-      window: window as unknown as WindowLike,
-    },
+  return { document, window,
+    context: { document: document as unknown as DocumentLike, window: window as unknown as WindowLike },
     changeVisibility(state) {
       document.visibilityState = state;
       document.dispatch('visibilitychange');
-    },
-    pageHide(persisted) {
-      window.dispatch('pagehide', transition(persisted));
-    },
-    pageShow(persisted) {
-      window.dispatch('pageshow', transition(persisted));
-    },
-  };
+    }, pageHide(persisted) {
+    window.dispatch('pagehide', transition(persisted));
+  }, pageShow(persisted) {
+    window.dispatch('pageshow', transition(persisted));
+  } };
 }
 
 /** A recording IHostApplicationLifetime whose signals are real AbortSignals. */

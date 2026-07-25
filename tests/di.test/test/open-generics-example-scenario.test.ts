@@ -28,18 +28,14 @@ const JOIN = 'pkg:IJoin';
 
 /** The middle link: one dependency carrying the hole, one type-argument witness. */
 class Table {
-  public constructor(
-    public readonly seed: { readonly rows: readonly string[]; },
-    public readonly entityToken: string,
-  ) {}
+  public constructor(public readonly seed: { readonly rows: readonly string[]; },
+    public readonly entityToken: string)
+  {}
 }
 
 /** The template a consumer asks for; its dependency is another template's closing. */
 class Repository {
-  public constructor(
-    public readonly table: Table,
-    public readonly entityToken: string,
-  ) {}
+  public constructor(public readonly table: Table, public readonly entityToken: string) {}
 }
 
 /** The exact override registered at one CLOSED token, outranking the template. */
@@ -49,10 +45,7 @@ class AuditRepository {
 
 /** The arity-2 template: two deps, each closing on a different hole. */
 class Join {
-  public constructor(
-    public readonly left: Repository,
-    public readonly right: AuditRepository,
-  ) {}
+  public constructor(public readonly left: Repository, public readonly right: AuditRepository) {}
 }
 
 /** The example's container, verbatim in shape. */
@@ -61,30 +54,13 @@ function buildScenario() {
   manifest = manifest.addValue(closeToken(SEED, USER), { rows: ['u-1', 'u-2'] });
   manifest = manifest.addValue(closeToken(SEED, ORDER), { rows: ['o-1'] });
   manifest = manifest.addValue(closeToken(SEED, AUDIT), { rows: ['a-1', 'a-2'] });
-  manifest = manifest.addClass(
-    closeToken(TABLE, '$1'),
-    Table,
-    [[closeToken(SEED, '$1'), typeArg(1)]],
-    'singleton',
-  );
-  manifest = manifest.addClass(
-    closeToken(REPOSITORY, '$1'),
-    Repository,
-    [[closeToken(TABLE, '$1'), typeArg(1)]],
-    'singleton',
-  );
-  manifest = manifest.addClass(
-    closeToken(REPOSITORY, AUDIT),
-    AuditRepository,
-    [[closeToken(TABLE, AUDIT)]],
-    'singleton',
-  );
-  manifest = manifest.addClass(
-    closeToken(JOIN, '$1', '$2'),
-    Join,
-    [[closeToken(REPOSITORY, '$1'), closeToken(REPOSITORY, '$2')]],
-    'singleton',
-  );
+  manifest = manifest.addClass(closeToken(TABLE, '$1'), Table, [[closeToken(SEED, '$1'), typeArg(1)]], 'singleton');
+  manifest = manifest.addClass(closeToken(REPOSITORY, '$1'), Repository, [[closeToken(TABLE, '$1'), typeArg(1)]],
+    'singleton');
+  manifest = manifest.addClass(closeToken(REPOSITORY, AUDIT), AuditRepository, [[closeToken(TABLE, AUDIT)]],
+    'singleton');
+  manifest = manifest.addClass(closeToken(JOIN, '$1', '$2'), Join, [[closeToken(REPOSITORY, '$1'),
+    closeToken(REPOSITORY, '$2')]], 'singleton');
   return manifest.build().createScope('singleton');
 }
 

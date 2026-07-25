@@ -322,8 +322,8 @@ export const ServiceManifestInline = {
       keyof<T>());
   },
   addFactory<T>(this: IInlineRegistrationTarget,
-    factory: Factory): IServiceManifest
-  {
+    factory: Factory
+  ): IServiceManifest {
     return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0,
       keyof<T>());
   },
@@ -380,33 +380,27 @@ keyed lookup token with `keyedtokenfor<T>()` where the runtime member takes no s
 parameter, and with the split `tokenfor<T>() + keyof<T>()` pair where it does:
 
 ```ts
-export const ServiceQueryInline = {
-  isService<T>(this: IServiceQuery): boolean {
-    return this.isService(keyedtokenfor<T>());
-  },
-};
+export const ServiceQueryInline = { isService<T>(this: IServiceQuery): boolean {
+  return this.isService(keyedtokenfor<T>());
+} };
 
-export const ResolverInline = {
-  resolve<T>(this: IInlineResolveTarget): T {
-    return isSingular<T>()
-      ? singularValue<T>()
-      : isFactory<T>()
-      ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
-      : this.resolve(tokenfor<T>(), keyof<T>());
-  },
-  resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-    return isSingular<T>()
-      ? singularValue<T>()
-      : isFactory<T>()
-      ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
-      : this.resolveAsync(keyedtokenfor<T>());
-  },
-  tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-    return isSingular<T>()
-      ? singularValue<T>()
-      : this.tryResolve(tokenfor<T>(), keyof<T>());
-  },
-};
+export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
+  return isSingular<T>()
+    ? singularValue<T>()
+    : isFactory<T>()
+    ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
+    : this.resolve(tokenfor<T>(), keyof<T>());
+}, resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
+  return isSingular<T>()
+    ? singularValue<T>()
+    : isFactory<T>()
+    ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
+    : this.resolveAsync(keyedtokenfor<T>());
+}, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
+  return isSingular<T>()
+    ? singularValue<T>()
+    : this.tryResolve(tokenfor<T>(), keyof<T>());
+} };
 ```
 
 Reading the nested ternary top to bottom: a **singular** `T` (a literal, `null`, `undefined`, or
@@ -503,8 +497,7 @@ sugar call, and the visitor does not descend past a match — so a registration 
 what is inside its arguments while it waits:
 
 ```ts
-services
-  .addValue({ clockToken: tokenfor<IClock>(), retries: 3 }) // waits: it is the receiver
+services.addValue({ clockToken: tokenfor<IClock>(), retries: 3 }) // waits: it is the receiver
   .addClass<IWidget>(Widget); // inlines on pass 0
 ```
 

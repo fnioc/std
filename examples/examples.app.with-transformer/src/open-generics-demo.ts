@@ -59,25 +59,9 @@ import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
 // Registered CLOSED, one value per entity: `Seed<User>`, `Seed<Order>`,
 // `Seed<AuditEvent>` are three ordinary registrations with no holes in them.
 // They are the floor of the template's recursion.
-const USER_SEED: Seed<User> = {
-  rows: [
-    { id: 'u-1', name: 'Ada' },
-    { id: 'u-2', name: 'Grace' },
-  ],
-};
-const ORDER_SEED: Seed<Order> = {
-  rows: [
-    { id: 'o-1', total: 19 },
-    { id: 'o-2', total: 5 },
-    { id: 'o-3', total: 42 },
-  ],
-};
-const AUDIT_SEED: Seed<AuditEvent> = {
-  rows: [
-    { id: 'a-1', action: 'login' },
-    { id: 'a-2', action: 'export' },
-  ],
-};
+const USER_SEED: Seed<User> = { rows: [{ id: 'u-1', name: 'Ada' }, { id: 'u-2', name: 'Grace' }] };
+const ORDER_SEED: Seed<Order> = { rows: [{ id: 'o-1', total: 19 }, { id: 'o-2', total: 5 }, { id: 'o-3', total: 42 }] };
+const AUDIT_SEED: Seed<AuditEvent> = { rows: [{ id: 'a-1', action: 'login' }, { id: 'a-2', action: 'export' }] };
 
 // ── the implementations ─────────────────────────────────────────────────────
 
@@ -168,10 +152,7 @@ class AuditRepository implements IRepository<AuditEvent> {
  * template-minted left side and the exact `AuditRepository` on the right.
  */
 class RepositoryJoin<TLeft, TRight> implements IJoin<TLeft, TRight> {
-  public constructor(
-    public readonly left: IRepository<TLeft>,
-    public readonly right: IRepository<TRight>,
-  ) {}
+  public constructor(public readonly left: IRepository<TLeft>, public readonly right: IRepository<TRight>) {}
 
   public describe(): string {
     return `${this.left.entityToken} (${this.left.all().length}) `
@@ -193,10 +174,7 @@ class RepositoryJoin<TLeft, TRight> implements IJoin<TLeft, TRight> {
  * wins that closing by being the more specific of the two.
  */
 class OrderJoin<TRight> implements IJoin<Order, TRight> {
-  public constructor(
-    public readonly left: IRepository<Order>,
-    public readonly right: IRepository<TRight>,
-  ) {}
+  public constructor(public readonly left: IRepository<Order>, public readonly right: IRepository<TRight>) {}
 
   public describe(): string {
     const orders = this.left.all();
@@ -232,9 +210,7 @@ manifest = manifest.addClass<ITable<$<1>>>(InMemoryTable<$<1>>).as<'singleton'>(
 // CONSTRAINED (`Hole<1, Entity>`) because the implementation's type parameter
 // is: swap in a bare `$<1>` here and the instantiation expression stops
 // type-checking.
-manifest = manifest
-  .addClass<IRepository<Hole<1, Entity>>>(InMemoryRepository<Hole<1, Entity>>)
-  .as<'singleton'>();
+manifest = manifest.addClass<IRepository<Hole<1, Entity>>>(InMemoryRepository<Hole<1, Entity>>).as<'singleton'>();
 
 // The one exact override. Registered at a fully CLOSED token, so it takes
 // precedence over template 2 for `AuditEvent` and only for `AuditEvent`.
@@ -316,16 +292,13 @@ export function demonstrateOpenGenerics(): readonly string[] {
       }
     }
 
-    return [
-      '=== di open generics — with transformer ===',
+    return ['=== di open generics — with transformer ===',
       'IRepository<$1> is registered ONCE; every closing below is minted from it:',
-      `  IRepository<User>: ${users.describe()}`,
-      `  IRepository<Order>: ${orders.describe()}`,
+      `  IRepository<User>: ${users.describe()}`, `  IRepository<Order>: ${orders.describe()}`,
       'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:',
       `  ITable<User> reports the closing it was minted for: ${userTable.entityToken}`,
       `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`,
-      'an EXACT closed registration outranks the template:',
-      `  IRepository<AuditEvent>: ${audit.describe()}`,
+      'an EXACT closed registration outranks the template:', `  IRepository<AuditEvent>: ${audit.describe()}`,
       'arity 2 — $1 and $2 close independently, each side keeping its own precedence:',
       `  IJoin<User,AuditEvent>: ${join.describe()}`,
       'a template may pin some arguments; where two overlap, the MOST SPECIFIC wins:',
@@ -337,8 +310,7 @@ export function demonstrateOpenGenerics(): readonly string[] {
       'a closing nobody registered still answers the registration probe:',
       `  isService(IRepository<Order>): ${orderRepositoryIsKnown}`,
       'the template itself is NOT resolvable — a hole is not a service:',
-      `  resolving ${REPOSITORY_TEMPLATE} ${templateOutcome}`,
-    ];
+      `  resolving ${REPOSITORY_TEMPLATE} ${templateOutcome}`];
   } finally {
     // The scope owns every singleton it cached, including the ones minted from
     // the templates; disposing it releases each closing.

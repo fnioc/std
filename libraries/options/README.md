@@ -36,10 +36,8 @@ through a change token:
 import { CancellationChangeToken } from '@rhombus-std/primitives';
 
 const controller = new AbortController();
-const monitor = Options.watch(
-  () => currentConfig(),
-  () => new CancellationChangeToken(controller.signal),
-);
+const monitor = Options.watch(() => currentConfig(),
+  () => new CancellationChangeToken(controller.signal));
 
 const registration = monitor.subscribe!((value) =>
   console.log('changed', value)
@@ -67,14 +65,12 @@ const factory = new OptionsFactory<{ port: number; }>(
   () => ({ port: 0 }), // makeBase
   [{ configure: (o) => (o.port = 8080) }], // configure steps, in order
   [{ postConfigure: (o) => (o.port = o.port || 80) }], // guaranteed last word
-  [
-    {
-      validate: (o) =>
-        o.port > 0
-          ? ValidateOptionsResult.success
-          : ValidateOptionsResult.fail('port must be positive'),
-    },
-  ],
+  [{
+    validate: (o) =>
+      o.port > 0
+        ? ValidateOptionsResult.success
+        : ValidateOptionsResult.fail('port must be positive'),
+  }],
 );
 
 factory.create(); // { port: 8080 }

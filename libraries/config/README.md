@@ -18,12 +18,12 @@ interface AppConfig {
   Database: { Primary: { Host: string; PoolSize: number; }; };
 }
 
-const config = new ConfigBuilder()
-  .addJsonFile('appsettings.json')
-  .addJsonFile('appsettings.Development.json', { optional: true })
-  .addEnvironmentVariables({ prefix: 'APP_' })
-  .addCommandLine(process.argv.slice(2))
-  .withType<AppConfig>() // ← generates the schema from your interface. that's it.
+const config = new ConfigBuilder().addJsonFile('appsettings.json').addJsonFile(
+  'appsettings.Development.json',
+  { optional: true },
+).addEnvironmentVariables({ prefix: 'APP_' }).addCommandLine(
+  process.argv.slice(2),
+).withType<AppConfig>() // ← generates the schema from your interface. that's it.
   .build();
 
 config.Server.Port; // number — typed AND coerced from the string "8080"
@@ -101,10 +101,9 @@ not three functions deep into a request handler:
 
 ```ts
 // appsettings.json is missing Database.Primary.PoolSize
-const config = new ConfigBuilder()
-  .addJsonFile('appsettings.json')
-  .withType<AppConfig>()
-  .build();
+const config = new ConfigBuilder().addJsonFile('appsettings.json').withType<
+  AppConfig
+>().build();
 // throws SchemaCoercionError at build(), naming every missing/invalid key at
 // once — not silently `undefined` at 2am
 ```
@@ -131,15 +130,14 @@ import '@rhombus-std/config.json';
 import '@rhombus-std/config.env';
 import '@rhombus-std/config.commandline';
 
-const config = new ConfigBuilder()
-  .addInMemoryCollection({ 'Server:Port': '3000' }) // 1. baseline defaults
+const config = new ConfigBuilder().addInMemoryCollection({
+  'Server:Port': '3000',
+}) // 1. baseline defaults
   .addJsonFile('appsettings.json') // 2. checked-in config
   .addJsonFile('appsettings.Development.json', { optional: true }) // 2b. overlay, ok if absent
   .addEnvironmentVariables({ prefix: 'APP_' }) // 3. env vars, prefix stripped
-  .addCommandLine(process.argv.slice(2), {
-    '-p': 'Server:Port',
-    '-h': 'Server:Host',
-  }) // 4. short flags, highest wins
+  .addCommandLine(process.argv.slice(2), { '-p': 'Server:Port',
+    '-h': 'Server:Host' }) // 4. short flags, highest wins
   .build();
 ```
 
@@ -169,12 +167,9 @@ schema.
 ```ts
 import { ConfigBuilder, OPTIONAL } from '@rhombus-std/config';
 
-const config = new ConfigBuilder()
-  .addJsonFile('appsettings.json')
-  .withSchema({
-    Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } },
-  })
-  .build();
+const config = new ConfigBuilder().addJsonFile('appsettings.json').withSchema({
+  Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } },
+}).build();
 
 config.Server.Port; // number — same typed, coerced tree as the transformer path
 ```
@@ -182,9 +177,7 @@ config.Server.Port; // number — same typed, coerced tree as the transformer pa
 **Tier 0 — skip the schema, coerce ad hoc.**
 
 ```ts
-const config = new ConfigBuilder()
-  .addJsonFile('appsettings.json')
-  .build();
+const config = new ConfigBuilder().addJsonFile('appsettings.json').build();
 
 config.getNum('Server:Port'); // number
 config.getNum('Server:Port', 3000); // number, defaulted if the key is absent

@@ -22,9 +22,7 @@ const FIXTURES = 'test/fixtures/json-file';
  * ConfigBuilder -> JsonConfigSource -> ConfigRoot path
  * every test in this file exercises. */
 function rootFromFixture(name: string, options?: JsonConfigSourceOptions): IndexedSection {
-  return new ConfigBuilder()
-    .add(new JsonConfigSource(`${FIXTURES}/${name}`, options))
-    .build();
+  return new ConfigBuilder().add(new JsonConfigSource(`${FIXTURES}/${name}`, options)).build();
 }
 
 describe('JsonConfigProvider', () => {
@@ -53,8 +51,7 @@ describe('JsonConfigProvider', () => {
     const root = rootFromFixture('nested.json');
 
     expect(root.get('Server:Nullable')).toBeUndefined();
-    expect([...root.getSection('Server').getChildren()].some((c) => c.key === 'Nullable'))
-      .toBe(false);
+    expect([...root.getSection('Server').getChildren()].some((c) => c.key === 'Nullable')).toBe(false);
   });
 
   test('recurses into arrays of objects', () => {
@@ -85,9 +82,7 @@ describe('JsonConfigProvider', () => {
   });
 
   test('addJsonFile augmentation registers a JsonConfigSource on the builder', () => {
-    const root = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/nested.json`)
-      .build();
+    const root = new ConfigBuilder().addJsonFile(`${FIXTURES}/nested.json`).build();
 
     expect(root.get('Server:Host')).toBe('localhost');
   });
@@ -98,9 +93,7 @@ describe('JsonConfigProvider', () => {
   });
 
   test('addJsonFile honors the optional flag for a missing file', () => {
-    const root = new ConfigBuilder()
-      .addJsonFile(`${FIXTURES}/does-not-exist.json`, { optional: true })
-      .build();
+    const root = new ConfigBuilder().addJsonFile(`${FIXTURES}/does-not-exist.json`, { optional: true }).build();
 
     expect([...root.getChildren()]).toEqual([]);
   });
@@ -109,18 +102,21 @@ describe('JsonConfigProvider', () => {
     // A parse rejection now surfaces wrapped: the file base rethrows the
     // parser's FormatError inside an InvalidDataError (naming the file), so
     // the top-level-element message lives on the error chain, not the top.
-    expect(messageChain(catchOf(() => rootFromFixture('scalar.json'))))
-      .toMatch(/the top-level JSON element must be an object/);
+    expect(messageChain(catchOf(() => rootFromFixture('scalar.json')))).toMatch(
+      /the top-level JSON element must be an object/,
+    );
   });
 
   test('throws when the JSON root is null', () => {
-    expect(messageChain(catchOf(() => rootFromFixture('null-root.json'))))
-      .toMatch(/the top-level JSON element must be an object/);
+    expect(messageChain(catchOf(() => rootFromFixture('null-root.json')))).toMatch(
+      /the top-level JSON element must be an object/,
+    );
   });
 
   test('throws when the JSON root is a top-level array', () => {
-    expect(messageChain(catchOf(() => rootFromFixture('top-level-array.json'))))
-      .toMatch(/the top-level JSON element must be an object/);
+    expect(messageChain(catchOf(() => rootFromFixture('top-level-array.json')))).toMatch(
+      /the top-level JSON element must be an object/,
+    );
   });
 });
 

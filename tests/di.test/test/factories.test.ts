@@ -91,10 +91,7 @@ describe('parameterized factory', () => {
     // Target ctor: (dep: Dep, name: string). T_NAME is caller-supplied via params.
     class Greeter {
       public static built = 0;
-      public constructor(
-        public readonly dep: Dep,
-        public readonly name: string,
-      ) {
+      public constructor(public readonly dep: Dep, public readonly name: string) {
         Greeter.built += 1;
       }
     }
@@ -138,9 +135,7 @@ describe('parameterized factory', () => {
     defineDeps(Wide, [[T.A, T_B2, T.B, T_D4, T.C]]);
 
     class Holder {
-      public constructor(
-        public readonly make: (b: unknown, d: unknown) => Wide,
-      ) {}
+      public constructor(public readonly make: (b: unknown, d: unknown) => Wide) {}
     }
     // Factory params list = [T_B2, T_D4] — authored order is the call arg order.
     defineDeps(Holder, [[factoryOf(T.Service, [T_B2, T_D4])]]);
@@ -167,10 +162,7 @@ describe('parameterized factory', () => {
   test('a caller param that is also registered — caller wins (override)', () => {
     // T.A is registered, but T.A is also named in params — caller wins.
     class Pair {
-      public constructor(
-        public readonly dep: Dep,
-        public readonly extra: unknown,
-      ) {}
+      public constructor(public readonly dep: Dep, public readonly extra: unknown) {}
     }
     defineDeps(Pair, [[T.A, T_EXTRA]]);
 
@@ -226,9 +218,7 @@ describe('transformer-emitted params: declared named-service param → caller wi
     defineDeps(Repo, [[T_LOGGER]]);
 
     class Holder {
-      public constructor(
-        public readonly make: (log: Logger) => Repo,
-      ) {}
+      public constructor(public readonly make: (log: Logger) => Repo) {}
     }
     // Transformer would emit: { type: T_REPO, params: [T_LOGGER] }
     defineDeps(Holder, [[factoryOf(T_REPO, [T_LOGGER])]]);
@@ -330,20 +320,14 @@ describe('factory target errors', () => {
 
   test('a signature whose factory target is missing falls back to a shorter one', () => {
     class Holder {
-      public constructor(
-        public readonly makeFoo?: () => Foo,
-        public readonly dep?: unknown,
-      ) {}
+      public constructor(public readonly makeFoo?: () => Foo, public readonly dep?: unknown) {}
     }
     let services = new ServiceManifest<'singleton'>();
     services = services.addValue(T.Config, 'cfg');
     // The LONGER signature names an unregistered factory target, so greedy
     // selection has to reject it and take the shorter, buildable one — the same
     // fall-back it performs for an unregistered plain token slot.
-    services = services.addClass(T.Repo, Holder, [
-      [factoryOf(T.Service), T.Config],
-      [T.Config],
-    ], 'singleton');
+    services = services.addClass(T.Repo, Holder, [[factoryOf(T.Service), T.Config], [T.Config]], 'singleton');
 
     const holder = services.build().resolve<Holder>(T.Repo);
     expect(holder.makeFoo).toBe('cfg');
@@ -396,17 +380,9 @@ describe('factory registration carrying a signature (inline addFactory 3rd arg)'
     services = services.addClass(T.Logger, Logger, [[]], 'singleton');
     // Real 3-arg addFactory — a NON-empty signature, so the single param is
     // slot-injected from T.Logger.
-    services = services.addFactory(
-      T.Repo,
-      (log: unknown) => new Report(log),
-      [[T.Logger]],
-      'singleton',
-    );
+    services = services.addFactory(T.Repo, (log: unknown) => new Report(log), [[T.Logger]], 'singleton');
 
-    const report = services
-      .build()
-      .createScope('singleton')
-      .resolve<Report>(T.Repo);
+    const report = services.build().createScope('singleton').resolve<Report>(T.Repo);
 
     expect(report).toBeInstanceOf(Report);
     // The slot was resolved to the actual Logger instance...
@@ -424,12 +400,8 @@ describe('factory registration carrying a signature (inline addFactory 3rd arg)'
     // The slot's dep resolves ONLY via the async Promise<T> fallback, so under
     // resolveAsync it arrives as a Pending → the factory build takes the slow path.
     services = services.addFactory(promiseOf(T.Config), () => Promise.resolve({ n: 42 }), [[]]);
-    services = services.addFactory(
-      T.Repo,
-      (config: { n: number; }) => new AsyncReport(config),
-      [[T.Config]],
-      'singleton',
-    );
+    services = services.addFactory(T.Repo, (config: { n: number; }) => new AsyncReport(config), [[T.Config]],
+      'singleton');
 
     const scope = services.build().createScope('singleton');
 

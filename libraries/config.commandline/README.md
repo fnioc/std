@@ -22,9 +22,9 @@ package.
 import '@rhombus-std/config.commandline'; // unlocks .addCommandLine() on ConfigBuilder
 import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigBuilder()
-  .addCommandLine(process.argv.slice(2), { '-p': 'Server:Port' })
-  .build();
+const config = new ConfigBuilder().addCommandLine(process.argv.slice(2), {
+  '-p': 'Server:Port',
+}).build();
 
 // node app.js --Server:Port=8080
 // node app.js -p 8080
@@ -59,10 +59,8 @@ Importing the package installs `addCommandLine` onto `ConfigBuilder`
 duplicate registration.
 
 ```ts
-new ConfigBuilder().addCommandLine(process.argv.slice(2), {
-  '-p': 'Server:Port',
-  '-h': 'Server:Host',
-});
+new ConfigBuilder().addCommandLine(process.argv.slice(2), { '-p': 'Server:Port',
+  '-h': 'Server:Host' });
 ```
 
 ## Key exports

@@ -36,12 +36,10 @@ function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
 
 describe('addConfig — the LoggerFilterOptions pipeline', () => {
   test('binds global, per-provider, and Default-category rules plus captureScopes', () => {
-    const options = filterOptionsFor(rootWith({
-      CaptureScopes: 'false',
-      'LogLevel:Default': 'Information',
-      'LogLevel:MyApp': 'Debug',
-      'Console:LogLevel:Default': 'Warning',
-    }));
+    const options = filterOptionsFor(
+      rootWith({ CaptureScopes: 'false', 'LogLevel:Default': 'Information', 'LogLevel:MyApp': 'Debug',
+        'Console:LogLevel:Default': 'Warning' }),
+    );
 
     const value = options.value;
     expect(value).toBeInstanceOf(LoggerFilterOptions);

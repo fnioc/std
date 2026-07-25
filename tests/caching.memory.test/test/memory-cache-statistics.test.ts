@@ -14,10 +14,7 @@ class FakeClock implements ISystemClock {
   }
 }
 
-function makeCache(configure?: (options: MemoryCacheOptions) => void): {
-  cache: MemoryCache;
-  clock: FakeClock;
-} {
+function makeCache(configure?: (options: MemoryCacheOptions) => void): { cache: MemoryCache; clock: FakeClock; } {
   const clock = new FakeClock();
   const options = new MemoryCacheOptions();
   options.clock = clock;

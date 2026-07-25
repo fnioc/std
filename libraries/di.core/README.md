@@ -132,10 +132,7 @@ The brand is optional — a plain `T` is still assignable, and it costs nothing 
 
 ```ts
 class Handler {
-  constructor(
-    a: Inject<ICache, 'pkg:redis-cache'>,
-    b: ILogger,
-  ) {}
+  constructor(a: Inject<ICache, 'pkg:redis-cache'>, b: ILogger) {}
 }
 ```
 
@@ -179,10 +176,7 @@ The value type stays `Token` (a plain string) — the brand property is optional
 
 ```ts
 class SqlRepository<T> implements IRepository<T> {
-  constructor(
-    private db: IDbConnection,
-    private entityToken: Typeof<T>,
-  ) {}
+  constructor(private db: IDbConnection, private entityToken: Typeof<T>) {}
 }
 
 services = services.addClass<IRepository<$<1>>>(SqlRepository<$<1>>);
@@ -198,12 +192,7 @@ const userRepo = scope.resolve<IRepository<User>>();
 One positional slot in a constructor signature:
 
 ```ts
-export type DepSlot =
-  | Token
-  | FactoryRef
-  | Union
-  | LiteralRef
-  | TypeArgRef;
+export type DepSlot = Token | FactoryRef | Union | LiteralRef | TypeArgRef;
 ```
 
 - `Token` — a container-resolved dependency (registered), or a caller-supplied parameter (unregistered) — the live registration map decides which at resolve time. The intrinsic provider token resolves to the live provider view.
@@ -231,9 +220,8 @@ import { ServiceManifest } from '@rhombus-std/di';
 
 let services = new ServiceManifest();
 
-services = services.addClass('pkg:IHandler', Handler, [
-  ['pkg:ILogger', 'pkg:IDb'],
-]);
+services = services.addClass('pkg:IHandler', Handler, [['pkg:ILogger',
+  'pkg:IDb']]);
 ```
 
 Because the array is keyed on the **registration record**, not on the constructor function, one class can back any number of independent registrations with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template.
@@ -296,9 +284,7 @@ services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).as('singleton')
   .withKey('audit');
 services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).withKey(
   'audit',
-).as(
-  'singleton',
-);
+).as('singleton');
 ```
 
 Both register the same thing, and `.as(...).as(...)` is a compile error.

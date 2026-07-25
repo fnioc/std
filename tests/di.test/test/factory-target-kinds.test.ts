@@ -27,10 +27,7 @@ class Punctuation {
 }
 
 class Greeting {
-  public constructor(
-    public readonly punctuation: Punctuation,
-    public readonly recipient: string,
-  ) {}
+  public constructor(public readonly punctuation: Punctuation, public readonly recipient: string) {}
 }
 
 /** A container with `Punctuation` registered and `RECIPIENT` deliberately absent. */
@@ -40,8 +37,7 @@ function withPunctuation(): IServiceManifest<'singleton'> {
 
 describe('resolveFactory accepts any registration kind as its target', () => {
   test('a CLASS target builds a fresh instance per call, caller args filling the named params', () => {
-    const services = withPunctuation()
-      .addClass(GREETING, Greeting, [[PUNCTUATION, RECIPIENT]], 'singleton');
+    const services = withPunctuation().addClass(GREETING, Greeting, [[PUNCTUATION, RECIPIENT]], 'singleton');
     const provider = services.build().createScope('singleton');
 
     const mint = provider.resolveFactory<(recipient: string) => Greeting>(GREETING, [RECIPIENT]);
@@ -51,12 +47,9 @@ describe('resolveFactory accepts any registration kind as its target', () => {
   });
 
   test('a FACTORY target is equally valid — the callable runs the factory, not `new`', () => {
-    const services = withPunctuation().addFactory(
-      GREETING,
-      (punctuation: Punctuation, recipient: string) => new Greeting(punctuation, recipient),
-      [[PUNCTUATION, RECIPIENT]],
-      'singleton',
-    );
+    const services = withPunctuation().addFactory(GREETING,
+      (punctuation: Punctuation, recipient: string) => new Greeting(punctuation, recipient), [[PUNCTUATION, RECIPIENT]],
+      'singleton');
     const provider = services.build().createScope('singleton');
 
     const mint = provider.resolveFactory<(recipient: string) => Greeting>(GREETING, [RECIPIENT]);
@@ -79,8 +72,7 @@ describe('resolveFactory accepts any registration kind as its target', () => {
   });
 
   test('the zero-arg form over a scoped CLASS target honours the registered lifetime', () => {
-    const services = new ServiceManifest<'singleton'>()
-      .addClass(PUNCTUATION, Punctuation, [[]], 'singleton');
+    const services = new ServiceManifest<'singleton'>().addClass(PUNCTUATION, Punctuation, [[]], 'singleton');
     const provider = services.build().createScope('singleton');
 
     const get = provider.resolveFactory<() => Punctuation>(PUNCTUATION);

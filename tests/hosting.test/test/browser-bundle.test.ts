@@ -32,11 +32,7 @@ const compositionTail = import.meta.dir + '/../../../libraries/hosting/dist/stag
 
 function bundleForBrowser(entrypoint: string): { exitCode: number; bundle: string; stderr: string; } {
   const result = Bun.spawnSync(['bun', 'build', entrypoint, '--target', 'browser']);
-  return {
-    exitCode: result.exitCode,
-    bundle: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-  };
+  return { exitCode: result.exitCode, bundle: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
 test('hosting bundles for a browser target via the empty (defaults-disabled) builder path', () => {

@@ -18,14 +18,11 @@ import { describe, expect, test } from 'bun:test';
 /** A manually-fired reload source, backed by a real CancellationChangeToken. */
 function manualReloadSource() {
   let controller = new AbortController();
-  return {
-    produceToken: () => new CancellationChangeToken(controller.signal),
-    fire(): void {
-      const previous = controller;
-      controller = new AbortController();
-      previous.abort();
-    },
-  };
+  return { produceToken: () => new CancellationChangeToken(controller.signal), fire(): void {
+    const previous = controller;
+    controller = new AbortController();
+    previous.abort();
+  } };
 }
 
 describe('Options.of', () => {

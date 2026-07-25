@@ -27,11 +27,8 @@ const dir = import.meta.dir;
 const dist = join(dir, 'dist');
 rmSync(dist, { recursive: true, force: true });
 
-const dts = spawnSync(
-  'bun',
-  ['x', 'tsc', '-p', 'tsconfig.json', '--emitDeclarationOnly', '--declaration', '--outDir', 'dist'],
-  { cwd: dir, stdio: 'inherit' },
-);
+const dts = spawnSync('bun', ['x', 'tsc', '-p', 'tsconfig.json', '--emitDeclarationOnly', '--declaration', '--outDir',
+  'dist'], { cwd: dir, stdio: 'inherit' });
 if (dts.status !== 0) {
   throw new Error('examples.lib.with-transformer: d.ts emit failed');
 }

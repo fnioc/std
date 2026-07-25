@@ -11,13 +11,9 @@ import type { IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 function makeToken(): IChangeToken {
-  return {
-    hasChanged: false,
-    activeChangeCallbacks: false,
-    registerChangeCallback() {
-      return { [Symbol.dispose]() {} };
-    },
-  };
+  return { hasChanged: false, activeChangeCallbacks: false, registerChangeCallback() {
+    return { [Symbol.dispose]() {} };
+  } };
 }
 
 describe('MemoryCacheEntryExtensions — standalone member form', () => {
@@ -30,10 +26,8 @@ describe('MemoryCacheEntryExtensions — standalone member form', () => {
     const chained = MemoryCacheEntryExtensions.registerPostEvictionCallback(
       MemoryCacheEntryExtensions.addExpirationToken(
         MemoryCacheEntryExtensions.setSlidingExpiration(
-          MemoryCacheEntryExtensions.setSize(
-            MemoryCacheEntryExtensions.setPriority(options, CacheItemPriority.High),
-            42,
-          ),
+          MemoryCacheEntryExtensions.setSize(MemoryCacheEntryExtensions.setPriority(options, CacheItemPriority.High),
+            42),
           1_000,
         ),
         token,
@@ -65,9 +59,7 @@ describe('MemoryCacheEntryExtensions — standalone member form', () => {
 
   test("invalid values throw the bag's own RangeErrors", () => {
     expect(() => MemoryCacheEntryExtensions.setSize(new MemoryCacheEntryOptions(), -1)).toThrow(RangeError);
-    expect(() => MemoryCacheEntryExtensions.setSlidingExpiration(new MemoryCacheEntryOptions(), 0)).toThrow(
-      RangeError,
-    );
+    expect(() => MemoryCacheEntryExtensions.setSlidingExpiration(new MemoryCacheEntryOptions(), 0)).toThrow(RangeError);
     expect(() => MemoryCacheEntryExtensions.setAbsoluteExpiration(new MemoryCacheEntryOptions(), -5)).toThrow(
       RangeError,
     );
@@ -80,13 +72,9 @@ describe('MemoryCacheEntryExtensions — method form (CLOSED-set install)', () =
     const callback: PostEvictionDelegate = () => {};
     const when = new Date(Date.now() + 60_000);
 
-    const viaMethod = new MemoryCacheEntryOptions()
-      .setPriority(CacheItemPriority.Low)
-      .setSize(7)
-      .setSlidingExpiration(2_000)
-      .setAbsoluteExpiration(when)
-      .addExpirationToken(token)
-      .registerPostEvictionCallback(callback);
+    const viaMethod = new MemoryCacheEntryOptions().setPriority(CacheItemPriority.Low).setSize(7).setSlidingExpiration(
+      2_000,
+    ).setAbsoluteExpiration(when).addExpirationToken(token).registerPostEvictionCallback(callback);
 
     const viaMember = MemoryCacheEntryExtensions.registerPostEvictionCallback(
       MemoryCacheEntryExtensions.addExpirationToken(
@@ -122,12 +110,8 @@ describe('MemoryCacheEntryExtensions — end-to-end via setOptions', () => {
     const token = makeToken();
     const callback: PostEvictionDelegate = () => {};
 
-    const options = new MemoryCacheEntryOptions()
-      .setPriority(CacheItemPriority.NeverRemove)
-      .setSize(3)
-      .setSlidingExpiration(10_000)
-      .addExpirationToken(token)
-      .registerPostEvictionCallback(callback);
+    const options = new MemoryCacheEntryOptions().setPriority(CacheItemPriority.NeverRemove).setSize(3)
+      .setSlidingExpiration(10_000).addExpirationToken(token).registerPostEvictionCallback(callback);
 
     const entry: ICacheEntry = cache.createEntry('key').setOptions(options);
 

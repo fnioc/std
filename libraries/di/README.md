@@ -28,8 +28,8 @@ class ConsoleLogger implements ILogger {
 
 // A manifest is IMMUTABLE: every registration returns a NEW manifest and
 // leaves the receiver alone, so the result has to be kept.
-const services = new ServiceManifest<'singleton'>()
-  .addClass('app:ILogger', ConsoleLogger, [[]], 'singleton');
+const services = new ServiceManifest<'singleton'>().addClass('app:ILogger',
+  ConsoleLogger, [[]], 'singleton');
 
 const provider = services.build(); // frameless — nothing pre-opened
 const app = provider.createScope('singleton'); // open the singleton frame
@@ -146,20 +146,15 @@ import { RESOLVER_TOKEN } from '@rhombus-std/di';
 
 // Factory that wants the live IResolver: declare it as a provider-typed param
 // (its slot is the intrinsic RESOLVER_TOKEN), resolve its own deps by hand.
-services = services.addFactory(
-  'pkg:IDb',
-  (sp) => new PostgresDb(sp.resolve<IConfig>('pkg:IConfig')),
-  [[RESOLVER_TOKEN]],
-  'singleton',
-);
+services = services.addFactory('pkg:IDb',
+  (sp) => new PostgresDb(sp.resolve<IConfig>('pkg:IConfig')), [[
+  RESOLVER_TOKEN,
+]], 'singleton');
 
 // Factory with a signature: each param is injected by its slot, like `addClass`.
-services = services.addFactory(
-  'pkg:IDb',
-  (config) => new PostgresDb(config),
-  [['pkg:IConfig']],
-  'singleton',
-);
+services = services.addFactory('pkg:IDb', (config) => new PostgresDb(config), [[
+  'pkg:IConfig',
+]], 'singleton');
 
 // Value: a pre-constructed instance (re-used as-is, no lifetime)
 services = services.addValue('pkg:ICache', new NullCache());
@@ -269,12 +264,10 @@ No transformer required — template tokens are just strings with `$N` holes, an
 import { closeToken, typeArg } from '@rhombus-std/di';
 
 // Template registration — carried signatures include a TypeArgRef via typeArg(1)
-services = services.addClass(
-  'app:IRepository<$1>',
-  SqlRepository,
-  [['app:IDbConnection', typeArg(1)]],
-  'singleton',
-);
+services = services.addClass('app:IRepository<$1>', SqlRepository, [[
+  'app:IDbConnection',
+  typeArg(1),
+]], 'singleton');
 
 // Resolve closings by hand-closing the token
 const userToken = closeToken('app:IRepository', 'app:User'); // "app:IRepository<app:User>"
@@ -309,10 +302,10 @@ class MyService {
   constructor(logOrDb: ILogger | IDb, db?: IDb) {/* ... */}
 }
 
-services = services.addClass('pkg:myService', MyService, [
-  ['pkg:IDb'],
-  ['pkg:ILogger', 'pkg:IDb'],
-]);
+services = services.addClass('pkg:myService', MyService, [['pkg:IDb'], [
+  'pkg:ILogger',
+  'pkg:IDb',
+]]);
 ```
 
 If `ILogger` is registered, the two-parameter signature wins. If not, the one-parameter signature is used.

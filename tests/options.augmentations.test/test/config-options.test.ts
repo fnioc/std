@@ -66,10 +66,7 @@ describe('configure — section-to-options binding', () => {
   });
 
   test('two configure calls deep-merge their sections into one value', () => {
-    const config = rootWith({
-      'Widget:Url': 'http://a',
-      'Extra:Retries': '5',
-    });
+    const config = rootWith({ 'Widget:Url': 'http://a', 'Extra:Retries': '5' });
 
     let services = new ServiceManifest<'singleton'>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');

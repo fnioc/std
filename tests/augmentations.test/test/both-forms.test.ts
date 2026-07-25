@@ -26,8 +26,7 @@ import { describe, expect, test } from 'bun:test';
 describe('foreign-class direction — addInMemoryCollection', () => {
   test('method form and standalone form yield the same configuration', () => {
     const viaMethod = new ConfigBuilder().addInMemoryCollection({ Key: 'value' }).build();
-    const viaMember = MemoryConfigBuilderExtensions
-      .addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
+    const viaMember = MemoryConfigBuilderExtensions.addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
       .build();
 
     expect(viaMethod.get('Key')).toBe('value');
@@ -69,15 +68,10 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
     const make = (): IServiceManifestBase => {
-      return {
-        add: () => make(),
-        addFactory: () => make(),
-        addValue: (token: unknown, value: unknown) => {
-          recorded.push([token, value]);
-          return make();
-        },
-        build: () => undefined,
-      } as unknown as IServiceManifestBase;
+      return { add: () => make(), addFactory: () => make(), addValue: (token: unknown, value: unknown) => {
+        recorded.push([token, value]);
+        return make();
+      }, build: () => undefined } as unknown as IServiceManifestBase;
     };
 
     const builder = new MetricsBuilder(make());
@@ -86,10 +80,7 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     builder.addMetricsListener(listener); // method form
     MetricsBuilderExtensions.addMetricsListener(builder, listener); // standalone member form
 
-    expect(recorded).toEqual([
-      [METRICS_LISTENER_TOKEN, listener],
-      [METRICS_LISTENER_TOKEN, listener],
-    ]);
+    expect(recorded).toEqual([[METRICS_LISTENER_TOKEN, listener], [METRICS_LISTENER_TOKEN, listener]]);
   });
 });
 

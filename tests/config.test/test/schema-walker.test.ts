@@ -6,15 +6,8 @@ import { describe, expect, test } from 'bun:test';
 
 describe('withSchema(...).build()', () => {
   test('coerces leaves and threads the inferred type', () => {
-    const config = new ConfigBuilder()
-      .addInMemoryCollection({
-        'Server:Host': 'h',
-        'Server:Port': '8080',
-        'Server:Ssl': 'on',
-      })
-      .withSchema({
-        Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } },
-      })
+    const config = new ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'h', 'Server:Port': '8080',
+      'Server:Ssl': 'on' }).withSchema({ Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } } })
       .build();
 
     expect(config).toEqual({ Server: { Host: 'h', Port: 8080, Ssl: true } });
@@ -24,27 +17,19 @@ describe('withSchema(...).build()', () => {
   });
 
   test('an absent optional leaf coerces to undefined without raising an issue', () => {
-    const config = new ConfigBuilder()
-      .addInMemoryCollection({ Host: 'h', Port: '1' })
-      .withSchema({ Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } })
-      .build();
+    const config = new ConfigBuilder().addInMemoryCollection({ Host: 'h', Port: '1' }).withSchema({ Host: 'string',
+      Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } }).build();
 
     expect(config).toEqual({ Host: 'h', Port: 1, Ssl: undefined });
   });
 
   test('a missing required leaf throws SchemaCoercionError naming the path', () => {
     expect(() =>
-      new ConfigBuilder()
-        .addInMemoryCollection({ Port: '1' })
-        .withSchema({ Host: 'string', Port: 'number' })
-        .build()
+      new ConfigBuilder().addInMemoryCollection({ Port: '1' }).withSchema({ Host: 'string', Port: 'number' }).build()
     ).toThrow(SchemaCoercionError);
 
     try {
-      new ConfigBuilder()
-        .addInMemoryCollection({ Port: '1' })
-        .withSchema({ Host: 'string', Port: 'number' })
-        .build();
+      new ConfigBuilder().addInMemoryCollection({ Port: '1' }).withSchema({ Host: 'string', Port: 'number' }).build();
     } catch (err) {
       expect((err as SchemaCoercionError).issues.some((i) => i.includes('Host'))).toBe(true);
     }
@@ -52,13 +37,8 @@ describe('withSchema(...).build()', () => {
 
   test('aggregates a missing top-level key AND a bad deep number into one throw', () => {
     try {
-      new ConfigBuilder()
-        .addInMemoryCollection({ 'Server:Db:Pool': 'not-a-number' })
-        .withSchema({
-          Host: 'string',
-          Server: { Db: { Pool: 'number' } },
-        })
-        .build();
+      new ConfigBuilder().addInMemoryCollection({ 'Server:Db:Pool': 'not-a-number' }).withSchema({ Host: 'string',
+        Server: { Db: { Pool: 'number' } } }).build();
       throw new Error('expected a throw');
     } catch (err) {
       expect(err).toBeInstanceOf(SchemaCoercionError);
@@ -70,22 +50,15 @@ describe('withSchema(...).build()', () => {
   });
 
   test('coerces nested objects', () => {
-    const config = new ConfigBuilder()
-      .addInMemoryCollection({
-        'Database:Primary:Host': 'db',
-        'Database:Primary:PoolSize': '10',
-      })
-      .withSchema({ Database: { Primary: { Host: 'string', PoolSize: 'number' } } })
+    const config = new ConfigBuilder().addInMemoryCollection({ 'Database:Primary:Host': 'db',
+      'Database:Primary:PoolSize': '10' }).withSchema({ Database: { Primary: { Host: 'string', PoolSize: 'number' } } })
       .build();
 
     expect(config.Database.Primary.PoolSize).toBe(10);
   });
 
   test('resolves schema keys case-insensitively against the store', () => {
-    const config = new ConfigBuilder()
-      .addInMemoryCollection({ PORT: '8080' })
-      .withSchema({ Port: 'number' })
-      .build();
+    const config = new ConfigBuilder().addInMemoryCollection({ PORT: '8080' }).withSchema({ Port: 'number' }).build();
 
     expect(config).toEqual({ Port: 8080 });
   });

@@ -25,8 +25,7 @@ describe('HybridCacheEntryFlags', () => {
       HybridCacheEntryFlags.DisableLocalCacheRead | HybridCacheEntryFlags.DisableLocalCacheWrite,
     );
     expect(HybridCacheEntryFlags.DisableDistributedCache).toBe(
-      HybridCacheEntryFlags.DisableDistributedCacheRead
-        | HybridCacheEntryFlags.DisableDistributedCacheWrite,
+      HybridCacheEntryFlags.DisableDistributedCacheRead | HybridCacheEntryFlags.DisableDistributedCacheWrite,
     );
   });
 });
@@ -40,11 +39,8 @@ describe('HybridCacheEntryOptions', () => {
   });
 
   test('stores the init-bag values readonly', () => {
-    const options = new HybridCacheEntryOptions({
-      expiration: 60_000,
-      localCacheExpiration: 5_000,
-      flags: HybridCacheEntryFlags.DisableCompression,
-    });
+    const options = new HybridCacheEntryOptions({ expiration: 60_000, localCacheExpiration: 5_000,
+      flags: HybridCacheEntryFlags.DisableCompression });
     expect(options.expiration).toBe(60_000);
     expect(options.localCacheExpiration).toBe(5_000);
     expect(options.flags).toBe(HybridCacheEntryFlags.DisableCompression);
@@ -62,10 +58,7 @@ describe('HybridCacheEntryOptions', () => {
 class RecordingHybridCache extends HybridCache {
   public readonly calls: Array<{ member: string; arg: string; abortSignal: AbortSignal | undefined; }> = [];
 
-  public override getOrCreate<T>(
-    key: string,
-    factory: (abortSignal: AbortSignal) => Promise<T>,
-  ): Promise<T> {
+  public override getOrCreate<T>(key: string, factory: (abortSignal: AbortSignal) => Promise<T>): Promise<T> {
     this.calls.push({ member: 'getOrCreate', arg: key, abortSignal: undefined });
     return factory(new AbortController().signal);
   }
@@ -100,11 +93,8 @@ describe('HybridCache', () => {
 
     await cache.removeKeys(['a', 'b', 'c'], signal);
 
-    expect(cache.calls).toEqual([
-      { member: 'remove', arg: 'a', abortSignal: signal },
-      { member: 'remove', arg: 'b', abortSignal: signal },
-      { member: 'remove', arg: 'c', abortSignal: signal },
-    ]);
+    expect(cache.calls).toEqual([{ member: 'remove', arg: 'a', abortSignal: signal }, { member: 'remove', arg: 'b',
+      abortSignal: signal }, { member: 'remove', arg: 'c', abortSignal: signal }]);
   });
 
   test('removeKeys over an empty iterable removes nothing', async () => {
@@ -125,10 +115,8 @@ describe('HybridCache', () => {
 
     await cache.removeByTags(['t1', 't2'], signal);
 
-    expect(cache.calls).toEqual([
-      { member: 'removeByTag', arg: 't1', abortSignal: signal },
-      { member: 'removeByTag', arg: 't2', abortSignal: signal },
-    ]);
+    expect(cache.calls).toEqual([{ member: 'removeByTag', arg: 't1', abortSignal: signal }, { member: 'removeByTag',
+      arg: 't2', abortSignal: signal }]);
   });
 
   test('the batch defaults are independently overridable', async () => {
@@ -143,23 +131,18 @@ describe('HybridCache', () => {
     await cache.removeKeys(['a', 'b']);
     await cache.removeByTags(['t']);
 
-    expect(cache.calls).toEqual([
-      { member: 'removeKeys', arg: 'a,b', abortSignal: undefined },
-      { member: 'removeByTag', arg: 't', abortSignal: undefined },
-    ]);
+    expect(cache.calls).toEqual([{ member: 'removeKeys', arg: 'a,b', abortSignal: undefined }, { member: 'removeByTag',
+      arg: 't', abortSignal: undefined }]);
   });
 });
 
 describe('IHybridCacheSerializer / IHybridCacheSerializerFactory', () => {
   /** A hand-written string serializer: UTF-8 in, UTF-8 out. */
-  const stringSerializer: IHybridCacheSerializer<string> = {
-    deserialize(source) {
-      return new TextDecoder().decode(source);
-    },
-    serialize(value) {
-      return new TextEncoder().encode(value);
-    },
-  };
+  const stringSerializer: IHybridCacheSerializer<string> = { deserialize(source) {
+    return new TextDecoder().decode(source);
+  }, serialize(value) {
+    return new TextEncoder().encode(value);
+  } };
 
   /** A hand-written factory: supports only the string token (literal, docs §40). */
   const factory: IHybridCacheSerializerFactory = {

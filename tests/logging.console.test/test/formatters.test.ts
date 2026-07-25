@@ -18,29 +18,19 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 function entry(overrides?: Partial<LogEntry<string>>): LogEntry<string> {
-  return {
-    logLevel: LogLevel.Information,
-    category: 'Test.Category',
-    eventId: new EventId(10),
-    state: 'Request received',
-    error: undefined,
-    formatter: (state) => state,
-    ...overrides,
-  };
+  return { logLevel: LogLevel.Information, category: 'Test.Category', eventId: new EventId(10),
+    state: 'Request received', error: undefined, formatter: (state) => state, ...overrides };
 }
 
 /** A minimal scope stack implementing IExternalScopeProvider. */
 function scopeProviderWith(...scopes: unknown[]): IExternalScopeProvider {
-  return {
-    forEachScope<TState>(callback: (scope: unknown, state: TState) => void, state: TState): void {
-      for (const scope of scopes) {
-        callback(scope, state);
-      }
-    },
-    push(): Disposable {
-      return { [Symbol.dispose]: () => {} };
-    },
-  };
+  return { forEachScope<TState>(callback: (scope: unknown, state: TState) => void, state: TState): void {
+    for (const scope of scopes) {
+      callback(scope, state);
+    }
+  }, push(): Disposable {
+    return { [Symbol.dispose]: () => {} };
+  } };
 }
 
 // --- simple ---
@@ -56,14 +46,8 @@ test('simple: default multi-line format', () => {
 
 test('simple: level strings cover every writable level', () => {
   const formatter = new SimpleConsoleFormatter(Options.of(new SimpleConsoleFormatterOptions()));
-  const cases: Array<[LogLevel, string]> = [
-    [LogLevel.Trace, 'trce'],
-    [LogLevel.Debug, 'dbug'],
-    [LogLevel.Information, 'info'],
-    [LogLevel.Warning, 'warn'],
-    [LogLevel.Error, 'fail'],
-    [LogLevel.Critical, 'crit'],
-  ];
+  const cases: Array<[LogLevel, string]> = [[LogLevel.Trace, 'trce'], [LogLevel.Debug, 'dbug'], [LogLevel.Information,
+    'info'], [LogLevel.Warning, 'warn'], [LogLevel.Error, 'fail'], [LogLevel.Critical, 'crit']];
   for (const [logLevel, label] of cases) {
     const writer = new StringWriter();
     formatter.write(entry({ logLevel }), undefined, writer);
@@ -143,9 +127,7 @@ test('simple: includeScopes renders the scope chain', () => {
 
   formatter.write(entry(), scopeProviderWith('outer', 'inner'), writer);
 
-  expect(writer.toString()).toBe(
-    'info: Test.Category[10]\n      => outer => inner\n      Request received\n',
-  );
+  expect(writer.toString()).toBe('info: Test.Category[10]\n      => outer => inner\n      Request received\n');
 });
 
 test('simple: control characters in message and category are escaped', () => {
@@ -183,14 +165,8 @@ test('systemd: single-line <pri> format', () => {
 
 test('systemd: syslog severities per level', () => {
   const formatter = new SystemdConsoleFormatter(Options.of(new ConsoleFormatterOptions()));
-  const cases: Array<[LogLevel, string]> = [
-    [LogLevel.Trace, '<7>'],
-    [LogLevel.Debug, '<7>'],
-    [LogLevel.Information, '<6>'],
-    [LogLevel.Warning, '<4>'],
-    [LogLevel.Error, '<3>'],
-    [LogLevel.Critical, '<2>'],
-  ];
+  const cases: Array<[LogLevel, string]> = [[LogLevel.Trace, '<7>'], [LogLevel.Debug, '<7>'], [LogLevel.Information,
+    '<6>'], [LogLevel.Warning, '<4>'], [LogLevel.Error, '<3>'], [LogLevel.Critical, '<2>']];
   for (const [logLevel, priority] of cases) {
     const writer = new StringWriter();
     formatter.write(entry({ logLevel }), undefined, writer);
@@ -208,9 +184,7 @@ test('systemd: scopes and error stay on the one line', () => {
 
   formatter.write(entry({ error }), scopeProviderWith('outer'), writer);
 
-  expect(writer.toString()).toBe(
-    '<6>Test.Category[10] => outer Request received Error: boom     at somewhere\n',
-  );
+  expect(writer.toString()).toBe('<6>Test.Category[10] => outer Request received Error: boom     at somewhere\n');
 });
 
 // --- json ---
@@ -223,20 +197,9 @@ test('json: compact single-line JSON with the reference property order', () => {
 
   const output = writer.toString();
   expect(output.endsWith('\n')).toBeTrue();
-  expect(JSON.parse(output)).toEqual({
-    EventId: 10,
-    LogLevel: 'Information',
-    Category: 'Test.Category',
-    Message: 'Request received',
-    State: {},
-  });
-  expect(Object.keys(JSON.parse(output))).toEqual([
-    'EventId',
-    'LogLevel',
-    'Category',
-    'Message',
-    'State',
-  ]);
+  expect(JSON.parse(output)).toEqual({ EventId: 10, LogLevel: 'Information', Category: 'Test.Category',
+    Message: 'Request received', State: {} });
+  expect(Object.keys(JSON.parse(output))).toEqual(['EventId', 'LogLevel', 'Category', 'Message', 'State']);
 });
 
 test('json: state key/value pairs and differing state message are written', () => {
@@ -244,14 +207,7 @@ test('json: state key/value pairs and differing state message are written', () =
   const writer = new StringWriter();
   const state: Array<[string, unknown]> = [['User', 'ada'], ['Attempts', 3], ['Sticky', true], ['Extra', { a: 1 }]];
 
-  formatter.write(
-    entry({
-      state: state as never,
-      formatter: () => 'rendered message',
-    }),
-    undefined,
-    writer,
-  );
+  formatter.write(entry({ state: state as never, formatter: () => 'rendered message' }), undefined, writer);
 
   const parsed = JSON.parse(writer.toString()) as { State: Record<string, unknown>; };
   expect(parsed.State['User']).toBe('ada');
@@ -271,18 +227,11 @@ test('json: error and scopes are included', () => {
   const error = new Error('boom');
   error.stack = 'Error: boom\n    at somewhere';
 
-  formatter.write(
-    entry({ error }),
-    scopeProviderWith('plain scope', [['RequestId', 'r-1']]),
-    writer,
-  );
+  formatter.write(entry({ error }), scopeProviderWith('plain scope', [['RequestId', 'r-1']]), writer);
 
   const parsed = JSON.parse(writer.toString()) as { Error: string; Scopes: unknown[]; };
   expect(parsed.Error).toBe('Error: boom\n    at somewhere');
-  expect(parsed.Scopes).toEqual([
-    'plain scope',
-    { Message: 'RequestId,r-1', RequestId: 'r-1' },
-  ]);
+  expect(parsed.Scopes).toEqual(['plain scope', { Message: 'RequestId,r-1', RequestId: 'r-1' }]);
 });
 
 test('json: indented output honors the writer options', () => {

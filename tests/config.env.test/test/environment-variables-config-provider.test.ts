@@ -17,9 +17,7 @@ import { colonAndDotVariableNameTransformation,
 type EnvMap = Record<string, string | undefined>;
 
 function providerOf(env: EnvMap, options?: { prefix?: string; variableNameTransformation?: Func<[string], string>; }) {
-  const provider = new EnvironmentVariablesConfigProvider(
-    new EnvironmentVariablesConfigSource({ ...options, env }),
-  );
+  const provider = new EnvironmentVariablesConfigProvider(new EnvironmentVariablesConfigSource({ ...options, env }));
   provider.load();
   return provider;
 }
@@ -65,10 +63,8 @@ describe('EnvironmentVariablesConfigProvider transform-before-filter order', () 
   });
 
   test('a custom variableNameTransformation runs before prefix matching too', () => {
-    const provider = providerOf(
-      { 'custom-app-foo': 'custom' },
-      { prefix: 'CUSTOM:APP:', variableNameTransformation: (name) => name.replaceAll('-', ':') },
-    );
+    const provider = providerOf({ 'custom-app-foo': 'custom' }, { prefix: 'CUSTOM:APP:',
+      variableNameTransformation: (name) => name.replaceAll('-', ':') });
     expect(provider.tryGet('foo')).toEqual([true, 'custom']);
   });
 });
@@ -83,28 +79,21 @@ describe('colonAndDotVariableNameTransformation', () => {
   });
 
   test("usable directly as a source's variableNameTransformation", () => {
-    const provider = providerOf(
-      { App___Server__Port: '8080' },
-      { variableNameTransformation: colonAndDotVariableNameTransformation },
-    );
+    const provider = providerOf({ App___Server__Port: '8080' }, {
+      variableNameTransformation: colonAndDotVariableNameTransformation,
+    });
     expect(provider.tryGet('App.Server:Port')).toEqual([true, '8080']);
   });
 });
 
 describe('EnvironmentVariablesConfigProvider prefix normalized through the transform', () => {
   test("a raw double-underscore prefix now matches -- it's transformed like every variable name", () => {
-    const provider = providerOf(
-      { Logging__LogLevel__Default: 'Info' },
-      { prefix: 'Logging__' },
-    );
+    const provider = providerOf({ Logging__LogLevel__Default: 'Info' }, { prefix: 'Logging__' });
     expect(provider.tryGet('LogLevel:Default')).toEqual([true, 'Info']);
   });
 
   test('an existing colon-form prefix keeps matching unchanged (the transform is idempotent on it)', () => {
-    const provider = providerOf(
-      { Logging__LogLevel__Default: 'Info' },
-      { prefix: 'Logging:' },
-    );
+    const provider = providerOf({ Logging__LogLevel__Default: 'Info' }, { prefix: 'Logging:' });
     expect(provider.tryGet('LogLevel:Default')).toEqual([true, 'Info']);
   });
 });
@@ -126,16 +115,14 @@ describe('EnvironmentVariablesConfigProvider purity w.r.t. the injected map', ()
 
 describe('addEnvironmentVariables augmentation', () => {
   test('registers an EnvironmentVariablesConfigSource on the builder', () => {
-    const config = new ConfigBuilder()
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Foo: 'via-builder' } })
+    const config = new ConfigBuilder().addEnvironmentVariables({ prefix: 'APP_', env: { APP_Foo: 'via-builder' } })
       .build();
 
     expect(config.get('Foo')).toBe('via-builder');
   });
 
   test('installs on ConfigManager, not just ConfigBuilder', () => {
-    const manager = new ConfigManager()
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Foo: 'via-manager' } });
+    const manager = new ConfigManager().addEnvironmentVariables({ prefix: 'APP_', env: { APP_Foo: 'via-manager' } });
 
     expect(manager.get('Foo')).toBe('via-manager');
   });
@@ -167,15 +154,8 @@ describe('connection-string prefixes', () => {
   });
 
   test('recognizes all of the conventional connection-string prefixes', () => {
-    const provider = providerOf({
-      MYSQLCONNSTR_A: '1',
-      SQLAZURECONNSTR_B: '2',
-      APIHUBCONNSTR_C: '3',
-      DOCDBCONNSTR_D: '4',
-      EVENTHUBCONNSTR_E: '5',
-      NOTIFICATIONHUBCONNSTR_F: '6',
-      SERVICEBUSCONNSTR_G: '7',
-    });
+    const provider = providerOf({ MYSQLCONNSTR_A: '1', SQLAZURECONNSTR_B: '2', APIHUBCONNSTR_C: '3',
+      DOCDBCONNSTR_D: '4', EVENTHUBCONNSTR_E: '5', NOTIFICATIONHUBCONNSTR_F: '6', SERVICEBUSCONNSTR_G: '7' });
 
     expect(provider.tryGet('ConnectionStrings:A')).toEqual([true, '1']);
     expect(provider.tryGet('ConnectionStrings:B')).toEqual([true, '2']);

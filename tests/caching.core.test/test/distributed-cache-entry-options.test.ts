@@ -56,9 +56,7 @@ describe('DistributedCacheEntryOptions', () => {
 describe('DistributedCacheEntryExtensions — both forms', () => {
   test('method form chains and discriminates relative vs absolute', () => {
     const absolute = new Date('2030-01-01T00:00:00Z');
-    const options = new DistributedCacheEntryOptions()
-      .setAbsoluteExpiration(absolute)
-      .setSlidingExpiration(2_000);
+    const options = new DistributedCacheEntryOptions().setAbsoluteExpiration(absolute).setSlidingExpiration(2_000);
     expect(options.absoluteExpiration).toBe(absolute);
     expect(options.slidingExpiration).toBe(2_000);
 

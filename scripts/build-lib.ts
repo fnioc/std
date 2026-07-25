@@ -68,10 +68,7 @@ const overrides = manifest.rhombusBuild ?? {};
 
 // Typecheck gate first -- the publish pipeline never runs tsc itself
 // (bun build + rollup-plugin-dts), so this is where type errors fail the build.
-const typecheck = spawnSync('bun', ['x', 'tsc', '--noEmit', '-p', 'tsconfig.ci.json'], {
-  cwd: dir,
-  stdio: 'inherit',
-});
+const typecheck = spawnSync('bun', ['x', 'tsc', '--noEmit', '-p', 'tsconfig.ci.json'], { cwd: dir, stdio: 'inherit' });
 if (typecheck.status !== 0) {
   process.exit(typecheck.status ?? 1);
 }
@@ -111,10 +108,7 @@ for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
 // dependency entry for the type-level surface.
 const inline = new Set(['@rhombus-toolkit/type-guards', ...(overrides.inline ?? [])]);
 const external = [
-  ...new Set([
-    ...Object.keys(manifest.dependencies ?? {}),
-    ...Object.keys(manifest.peerDependencies ?? {}),
-  ]),
+  ...new Set([...Object.keys(manifest.dependencies ?? {}), ...Object.keys(manifest.peerDependencies ?? {})]),
 ].filter((name) => !inline.has(name));
 
 // Lowering engine: the Go/ttsc stage runs iff a tsconfig.ttsc.json exists.
@@ -135,17 +129,8 @@ if (ttscProject) {
   ttscTransforms = manual.length > 0 ? manual : undefined;
 }
 
-await buildPackage({
-  dir,
-  name: manifest.name,
-  entrypoints,
-  external,
-  dtsConfigs,
-  emitJs: !(overrides.typesOnly ?? false),
-  assertNoJs: overrides.typesOnly ?? false,
-  ttscProject,
-  ttscTransforms,
-});
+await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs,
+  emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
 
 // Guard: the emitted bundle must carry no real ESM import from the forbidden
 // specifiers. A literal occurrence as a STRING (e.g. a transformer's codegen'd

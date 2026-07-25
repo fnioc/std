@@ -210,40 +210,17 @@ beforeAll(async () => {
   // mergesynth included, exactly as a real augmentation package's build does. No
   // tsconfig `plugins` array (an explicit list would suppress discovery and never
   // spawn the host).
-  writeFileSync(
-    join(projDir, 'package.json'),
+  writeFileSync(join(projDir, 'package.json'),
+    JSON.stringify({ name: '@fixture/mergesynth-consumer', private: true,
+      devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' } }));
+  writeFileSync(join(projDir, 'tsconfig.json'),
     JSON.stringify({
-      name: '@fixture/mergesynth-consumer',
-      private: true,
-      devDependencies: {
-        '@rhombus-std/primitives.extras': '*',
-        '@rhombus-std/primitives': '*',
-      },
-    }),
-  );
-  writeFileSync(
-    join(projDir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: 'dist',
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-      },
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
       include: ['src/**/*'],
-    }),
-  );
+    }));
 
-  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
-    cwd: projDir,
-    encoding: 'utf8',
-    env: goEnv(),
-  });
+  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projDir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
     throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
   }

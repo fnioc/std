@@ -31,10 +31,7 @@ describe('addConfig() — provider-configuration services', () => {
     // The chain is immutable, so build the manifest the BUILDER holds after
     // both addConfig calls — not the one it was constructed with.
     const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
-    builder.addConfig(rootWith({
-      'FakeProvider:Format': 'json',
-      'FakeProvider:MaxDepth': '3',
-    }));
+    builder.addConfig(rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3' }));
     builder.addConfig(rootWith({
       'FakeProvider:Format': 'text', // later configuration wins on conflict
       'OtherProvider:Format': 'xml', // other providers' sections are invisible

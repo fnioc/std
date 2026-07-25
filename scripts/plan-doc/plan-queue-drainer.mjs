@@ -69,10 +69,7 @@ const MAX_TURNS = Number(process.env.DRAIN_MAX_TURNS) || 200;
 // eligible only if its `labels` intersect this set (any-match). Empty => no
 // filter, every ready issue is eligible.
 const LABEL_FILTER = new Set(
-  (process.argv[2] ?? '')
-    .split(',')
-    .map((label) => label.trim())
-    .filter((label) => label.length > 0),
+  (process.argv[2] ?? '').split(',').map((label) => label.trim()).filter((label) => label.length > 0),
 );
 
 // Per-worker console colors (256-color ANSI). Hand-picked to be mutually
@@ -205,9 +202,7 @@ function narrateEvent(n, ev) {
 
 /** Format a result's cost as `$x.xxxx` or `n/a`. */
 function fmtCost(result) {
-  return result && typeof result.total_cost_usd === 'number'
-    ? `$${result.total_cost_usd.toFixed(4)}`
-    : 'n/a';
+  return result && typeof result.total_cost_usd === 'number' ? `$${result.total_cost_usd.toFixed(4)}` : 'n/a';
 }
 
 /** Decide outcome from the terminal `result` event. */
@@ -238,21 +233,9 @@ function spawnWorker(n) {
     + `Read .claude/agents/plan-issue-worker.md and follow it exactly to drain issue #${n}. `
     + `Do the work autonomously; do not ask questions.`;
 
-  const child = spawn(
-    'claude',
-    [
-      '-p',
-      prompt,
-      '--permission-mode',
-      'bypassPermissions',
-      '--output-format',
-      'stream-json',
-      '--verbose',
-      '--max-turns',
-      String(MAX_TURNS),
-    ],
-    { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] },
-  );
+  const child = spawn('claude', ['-p', prompt, '--permission-mode', 'bypassPermissions', '--output-format',
+    'stream-json', '--verbose', '--max-turns', String(MAX_TURNS)], { cwd: REPO_ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'] });
 
   active.set(n, child);
   assignColor(n);
@@ -333,11 +316,8 @@ function spawnWorker(n) {
 async function readQueue() {
   try {
     await execFileAsync('git', ['fetch', 'origin', 'bot/plan-doc', '-q'], { cwd: REPO_ROOT });
-    const { stdout } = await execFileAsync(
-      'git',
-      ['show', 'origin/bot/plan-doc:ready.json'],
-      { cwd: REPO_ROOT, maxBuffer: 16 * 1024 * 1024 },
-    );
+    const { stdout } = await execFileAsync('git', ['show', 'origin/bot/plan-doc:ready.json'], { cwd: REPO_ROOT,
+      maxBuffer: 16 * 1024 * 1024 });
     const parsed = JSON.parse(stdout);
     const eligible = parsed.filter((entry) => {
       if (LABEL_FILTER.size === 0) {

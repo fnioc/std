@@ -12,12 +12,7 @@ function makeLifetime(configure?: (options: BrowserLifetimeOptions) => void) {
   // The bridge is the single DOM-listening component; the lifetime consumes it
   // as its event source.
   const bridge = new PageLifecycleEvents(page.context);
-  const lifetime = new BrowserLifetime(
-    options,
-    applicationLifetime,
-    NullLoggerFactory.instance,
-    bridge,
-  );
+  const lifetime = new BrowserLifetime(options, applicationLifetime, NullLoggerFactory.instance, bridge);
   return { page, applicationLifetime, bridge, lifetime };
 }
 

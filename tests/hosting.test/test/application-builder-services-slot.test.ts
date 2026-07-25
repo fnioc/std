@@ -20,10 +20,7 @@ const LOGGER_PROVIDER_TOKEN = '@rhombus-std/logging.core:ILoggerProvider';
 /** A do-nothing provider, present only so its registration can be observed. */
 class MarkerLoggerProvider implements ILoggerProvider {
   public createLogger(_categoryName: string): ILogger {
-    return {
-      isEnabled: () => false,
-      log: () => {},
-    } as unknown as ILogger;
+    return { isEnabled: () => false, log: () => {} } as unknown as ILogger;
   }
 
   public [Symbol.dispose](): void {}
@@ -37,9 +34,7 @@ test('builder.logging registrations reach the manifest build() reads', () => {
 
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
-  const providers = builder.services.build().resolve<ILoggerProvider[]>(
-    `Array<${LOGGER_PROVIDER_TOKEN}>`,
-  );
+  const providers = builder.services.build().resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
   expect(providers).toContain(marker);
 });
 
@@ -55,9 +50,7 @@ test('builder.services and builder.logging registrations both survive into the h
   const host = builder.build();
   expect(host.services.resolve<string>('test:First')).toBe('first');
   expect(host.services.resolve<string>('test:Second')).toBe('second');
-  expect(
-    host.services.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`),
-  ).toContain(marker);
+  expect(host.services.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`)).toContain(marker);
 
   host[Symbol.dispose]();
 });

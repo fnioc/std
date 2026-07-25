@@ -25,9 +25,10 @@ bun add @rhombus-std/config.xml @rhombus-std/config
 import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.xml';
 
-const config = new ConfigBuilder()
-  .addXmlFile('appsettings.xml', { optional: true, reloadOnChange: true })
-  .build();
+const config = new ConfigBuilder().addXmlFile('appsettings.xml', {
+  optional: true,
+  reloadOnChange: true,
+}).build();
 
 config.get('Server:Host');
 ```
@@ -35,9 +36,9 @@ config.get('Server:Host');
 Read an XML payload you already hold in memory with `addXmlStream`:
 
 ```ts
-new ConfigBuilder()
-  .addXmlStream('<settings><App><Name>demo</Name></App></settings>')
-  .build();
+new ConfigBuilder().addXmlStream(
+  '<settings><App><Name>demo</Name></App></settings>',
+).build();
 ```
 
 ## How XML maps to keys

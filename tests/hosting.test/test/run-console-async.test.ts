@@ -48,24 +48,18 @@ test('runConsoleAsync (configureOptions form) applies the options, and they reac
       // so observing it here observes exactly what the lifetime holds.
       const options = resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN);
       const lifetime = resolver.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
-      return {
-        async start(): Promise<void> {
-          seenSuppress = options.suppressStatusMessages;
-          lifetimeIsConsole = lifetime instanceof ConsoleLifetime;
-        },
-        async stop(): Promise<void> {},
-      };
+      return { async start(): Promise<void> {
+        seenSuppress = options.suppressStatusMessages;
+        lifetimeIsConsole = lifetime instanceof ConsoleLifetime;
+      }, async stop(): Promise<void> {} };
     });
     return services;
   });
 
   const controller = new AbortController();
-  const run = builder.runConsoleAsync(
-    (options) => {
-      options.suppressStatusMessages = true;
-    },
-    controller.signal,
-  );
+  const run = builder.runConsoleAsync((options) => {
+    options.suppressStatusMessages = true;
+  }, controller.signal);
 
   while (seenSuppress === undefined) {
     await Promise.resolve();
@@ -87,12 +81,9 @@ test('runConsoleAsync without a configureOptions delegate leaves the console lif
   builder.configureServices((_context, services) => {
     services = services.addHostedService((resolver) => {
       const options = resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN);
-      return {
-        async start(): Promise<void> {
-          seenSuppress = options.suppressStatusMessages;
-        },
-        async stop(): Promise<void> {},
-      };
+      return { async start(): Promise<void> {
+        seenSuppress = options.suppressStatusMessages;
+      }, async stop(): Promise<void> {} };
     });
     return services;
   });

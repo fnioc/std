@@ -233,10 +233,8 @@ export function demonstrateRegistrationErrors(services: IServiceManifest<'single
   // a value has one already-built instance and no way to produce one per
   // closing.
   const lines: string[] = [
-    stagedFailure(
-      'registering a value at an open template',
-      () => services.addValue(REPOSITORY_TEMPLATE, { rows: [] }),
-    ),
+    stagedFailure('registering a value at an open template',
+      () => services.addValue(REPOSITORY_TEMPLATE, { rows: [] })),
   ];
 
   // The OTHER cause of the same error, and the whole of what `addClass`
@@ -250,10 +248,10 @@ export function demonstrateRegistrationErrors(services: IServiceManifest<'single
   // Note what is NOT here: a template that mixes concrete arguments with holes.
   // `IRepository<User,$1>` is an ordinary template, registers fine, and is what
   // the open-generics chapter is about.
-  lines.push(stagedFailure(
-    'registering a class at a bare hole',
-    () => services.addClass(BARE_HOLE_TOKEN, ReportService, [[STORE_TOKEN]]),
-  ));
+  lines.push(
+    stagedFailure('registering a class at a bare hole', () =>
+      services.addClass(BARE_HOLE_TOKEN, ReportService, [[STORE_TOKEN]])),
+  );
 
   return lines;
 }

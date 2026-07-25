@@ -24,10 +24,8 @@ this is the real, complete form, and it works with plain `tsc`:
 ```ts
 import '@rhombus-std/options.augmentations'; // installs the runtime addOptions verb
 
-services = services.addOptions(
-  '@rhombus-std/options:IOptions<app:AppOptions>',
-  'app:AppOptions',
-).as('singleton');
+services = services.addOptions('@rhombus-std/options:IOptions<app:AppOptions>',
+  'app:AppOptions').as('singleton');
 ```
 
 Writing that wrapper token out by hand is what this plugin exists to remove. Importing

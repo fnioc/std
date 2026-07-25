@@ -96,11 +96,9 @@ class FixedClock {
 
 /** The service under test — the one thing a test host must NOT replace. */
 class Checkout {
-  public constructor(
-    public readonly gateway: LivePaymentGateway | FakePaymentGateway,
-    public readonly ledger: DiskLedger | MemoryLedger,
-    public readonly clock: FixedClock,
-  ) {}
+  public constructor(public readonly gateway: LivePaymentGateway | FakePaymentGateway,
+    public readonly ledger: DiskLedger | MemoryLedger, public readonly clock: FixedClock)
+  {}
 
   public run(amountMinor: number): string {
     return `${this.clock.now()} ${this.gateway.charge(amountMinor)} -> ${this.ledger.kind} ledger`;
@@ -138,12 +136,7 @@ export function addShopServices(services: IServiceManifest<'singleton'>): IServi
   composed = composed.addClass(GATEWAY_TOKEN, LivePaymentGateway, [[]], lifetime);
   composed = composed.addClass(LEDGER_TOKEN, DiskLedger, [[]], lifetime);
   composed = composed.addValue(CLOCK_TOKEN, new FixedClock());
-  composed = composed.addClass(
-    CHECKOUT_TOKEN,
-    Checkout,
-    [[GATEWAY_TOKEN, LEDGER_TOKEN, CLOCK_TOKEN]],
-    lifetime,
-  );
+  composed = composed.addClass(CHECKOUT_TOKEN, Checkout, [[GATEWAY_TOKEN, LEDGER_TOKEN, CLOCK_TOKEN]], lifetime);
   return composed;
 }
 
@@ -203,18 +196,14 @@ function asBuilder<S extends string>(services: IServiceManifest<S>): ServiceMani
  * here) used from a helper that must keep working even in a program that has not
  * imported the barrel whose side effect installs the methods.
  */
-export function withoutToken(
-  services: IServiceManifest<'singleton'>,
-  token: Token,
-): IServiceManifest<'singleton'> {
+export function withoutToken(services: IServiceManifest<'singleton'>, token: Token): IServiceManifest<'singleton'> {
   // The receiver-first members are typed against the CLASS and the widest scope
   // union, because an augmentation set is authored once for every manifest there
   // will ever be. A caller with a narrower scope union re-narrows on the way
   // out; the fluent method does that for you, which is most of why it exists.
-  return ServiceManifestDescriptorAugmentations.removeAll(
-    asBuilder<string>(services),
-    token,
-  ) as IServiceManifest<'singleton'>;
+  return ServiceManifestDescriptorAugmentations.removeAll(asBuilder<string>(services), token) as IServiceManifest<
+    'singleton'
+  >;
 }
 
 // `build()`'s standalone form is the same shape one package over: di.core ships
@@ -243,11 +232,9 @@ export function withoutToken(
  */
 export function auditToken(services: ServiceManifestClass<'singleton'>, token: Token): readonly string[] {
   const stripped = services.removeRegistrations(token);
-  return [
-    `  hasRegistrations(${token}): ${services.hasRegistrations(token)}`,
+  return [`  hasRegistrations(${token}): ${services.hasRegistrations(token)}`,
     `  after removeRegistrations: receiver ${services.hasRegistrations(token)}, `
-    + `result ${asBuilder(stripped).hasRegistrations(token)}`,
-  ];
+    + `result ${asBuilder(stripped).hasRegistrations(token)}`];
 }
 
 /**
@@ -286,9 +273,7 @@ export function describeSeal(services: ServiceManifestClass<'singleton'>): strin
  * safety of this helper: it cannot be handed a chain whose lifetime was already
  * named.
  */
-export function asSingleton(
-  chain: AddChain<'singleton', 'scope' | 'key', false>,
-): IServiceManifest<'singleton'> {
+export function asSingleton(chain: AddChain<'singleton', 'scope' | 'key', false>): IServiceManifest<'singleton'> {
   // Typed as the FACE rather than as the whole chain, so the body can only do
   // the one thing the policy is about. `Slot` names the four modifier slots the
   // type parameter ranges over — see `IChainFaces` below for all four faces.
@@ -409,8 +394,7 @@ export function repointFirstSlot(signatures: DepSignatures, token: Token): DepSi
  * @returns The mint names found, in the order they are declared.
  */
 export function authoringMintsIn(source: string): readonly string[] {
-  return [SIGNATUREFOR_NAME, SIGNATURESFOR_NAME]
-    .filter((name) => new RegExp(`\\b${name}\\s*<`).test(source));
+  return [SIGNATUREFOR_NAME, SIGNATURESFOR_NAME].filter((name) => new RegExp(`\\b${name}\\s*<`).test(source));
 }
 
 // ── 7. the test host ─────────────────────────────────────────────────────────
@@ -480,9 +464,9 @@ export function demonstrateManifestSurface(production: IServiceManifest<'singlet
   const policy = asSingleton(production.addClass(METRICS_TOKEN, FixedClock, [[]]));
   lines.push(
     `a house policy applied to a pending registration (AddChain): IMetrics registered as ${
-      [...policy].filter((entry) => entry.kind === 'exact' && entry.token === METRICS_TOKEN)
-        .map((entry) => (entry.kind === 'exact' ? entry.registration.scope : undefined))
-        .join('')
+      [...policy].filter((entry) => entry.kind === 'exact' && entry.token === METRICS_TOKEN).map((
+        entry,
+      ) => (entry.kind === 'exact' ? entry.registration.scope : undefined)).join('')
     }`,
   );
 

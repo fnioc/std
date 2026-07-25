@@ -52,11 +52,9 @@ export function demonstrateNullProvider(): readonly string[] {
   // rather than when a request arrives, is the whole benefit being traded for.
   const emptyWorkshop = new LocatorGreetingWorkshop(nowhere);
 
-  const lines: string[] = [
-    'no container at all (EmptyServiceProvider):',
+  const lines: string[] = ['no container at all (EmptyServiceProvider):',
     `  provider reports itself a service: ${nowhere.isService(RESOLVER_TOKEN)}`,
-    `  probing an ordinary token: ${nowhere.tryResolve(GREETING_WORKSHOP_TOKEN)}`,
-  ];
+    `  probing an ordinary token: ${nowhere.tryResolve(GREETING_WORKSHOP_TOKEN)}`];
   // Nothing is registered, so the workshop falls back to the library default —
   // which is the useful half of a null-object provider: code that degrades to
   // its defaults instead of throwing.

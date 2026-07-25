@@ -10,11 +10,7 @@ import { describe, expect, test } from 'bun:test';
 
 // A valid schema authored inline with the OPTIONAL symbol wrapper compiles, and
 // Infer yields the expected shape (required keys required, optional keys `?`).
-const serverSchema = {
-  Host: 'string',
-  Port: 'number',
-  Ssl: { [OPTIONAL]: 'boolean' },
-} as const satisfies Schema;
+const serverSchema = { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } } as const satisfies Schema;
 
 type ServerConfig = Infer<typeof serverSchema>;
 

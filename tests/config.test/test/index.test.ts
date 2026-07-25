@@ -73,9 +73,7 @@ describe('public entry point', () => {
   });
 
   test('addInMemoryCollection augmentation is installed on the prototype', () => {
-    const root = new ConfigBuilder()
-      .addInMemoryCollection({ 'Server:Port': '8080' })
-      .build();
+    const root = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080' }).build();
 
     expect(root.get('Server:Port')).toBe('8080');
   });
@@ -98,10 +96,10 @@ describe('public entry point', () => {
   });
 
   test('end-to-end: build a typed, coerced config through the public entry point alone', () => {
-    const typed = new ConfigBuilder()
-      .addInMemoryCollection({ Host: 'localhost', Port: '8080' })
-      .withSchema({ Host: 'string', Port: 'number' })
-      .build();
+    const typed = new ConfigBuilder().addInMemoryCollection({ Host: 'localhost', Port: '8080' }).withSchema({
+      Host: 'string',
+      Port: 'number',
+    }).build();
 
     expect(typed).toEqual({ Host: 'localhost', Port: 8080 });
     // The generic threads through so `Port` is statically a number.

@@ -13,9 +13,7 @@ describe('closeToken', () => {
   });
 
   test('renders base<a,b> for multiple args — no whitespace around separators', () => {
-    expect(closeToken('pkg:IMap', 'string', './src/User')).toBe(
-      'pkg:IMap<string,./src/User>',
-    );
+    expect(closeToken('pkg:IMap', 'string', './src/User')).toBe('pkg:IMap<string,./src/User>');
   });
 
   test('no args returns the base unchanged', () => {
@@ -41,59 +39,38 @@ describe('parseToken', () => {
   });
 
   test('single arg', () => {
-    expect(parseToken('pkg:IFoo<pkg:IBar>')).toEqual({
-      base: 'pkg:IFoo',
-      args: ['pkg:IBar'],
-    });
+    expect(parseToken('pkg:IFoo<pkg:IBar>')).toEqual({ base: 'pkg:IFoo', args: ['pkg:IBar'] });
   });
 
   test('multiple args split at top-level commas only', () => {
-    expect(parseToken('pkg:IMap<string,./src/User>')).toEqual({
-      base: 'pkg:IMap',
-      args: ['string', './src/User'],
-    });
+    expect(parseToken('pkg:IMap<string,./src/User>')).toEqual({ base: 'pkg:IMap', args: ['string', './src/User'] });
   });
 
   test('nested generics stay whole in the arg list', () => {
-    expect(parseToken('pkg:IFoo<pkg:IBar<./src/Baz>,number>')).toEqual({
-      base: 'pkg:IFoo',
-      args: ['pkg:IBar<./src/Baz>', 'number'],
-    });
+    expect(parseToken('pkg:IFoo<pkg:IBar<./src/Baz>,number>')).toEqual({ base: 'pkg:IFoo',
+      args: ['pkg:IBar<./src/Baz>', 'number'] });
   });
 
   test('deeply nested — only the top level splits', () => {
-    expect(parseToken('a<b<c<d,e>,f>,g>')).toEqual({
-      base: 'a',
-      args: ['b<c<d,e>,f>', 'g'],
-    });
+    expect(parseToken('a<b<c<d,e>,f>,g>')).toEqual({ base: 'a', args: ['b<c<d,e>,f>', 'g'] });
   });
 
   test('quoted literal arg keeps commas and spaces inside quotes', () => {
-    expect(parseToken('app/IValidator<"a,b" | "c d">')).toEqual({
-      base: 'app/IValidator',
-      args: ['"a,b" | "c d"'],
-    });
+    expect(parseToken('app/IValidator<"a,b" | "c d">')).toEqual({ base: 'app/IValidator', args: ['"a,b" | "c d"'] });
   });
 
   test('quoted literal arg containing angle brackets does not disturb depth', () => {
-    expect(parseToken('app/IParser<"<html>",./src/Doc>')).toEqual({
-      base: 'app/IParser',
-      args: ['"<html>"', './src/Doc'],
-    });
+    expect(parseToken('app/IParser<"<html>",./src/Doc>')).toEqual({ base: 'app/IParser',
+      args: ['"<html>"', './src/Doc'] });
   });
 
   test('nested generic with a quoted literal-union arg', () => {
-    expect(parseToken('pkg:IFoo<pkg:IMode<"dev" | "prod">,string>')).toEqual({
-      base: 'pkg:IFoo',
-      args: ['pkg:IMode<"dev" | "prod">', 'string'],
-    });
+    expect(parseToken('pkg:IFoo<pkg:IMode<"dev" | "prod">,string>')).toEqual({ base: 'pkg:IFoo',
+      args: ['pkg:IMode<"dev" | "prod">', 'string'] });
   });
 
   test('hole args parse like any other arg token', () => {
-    expect(parseToken('app/IRepository<$1,$2>')).toEqual({
-      base: 'app/IRepository',
-      args: ['$1', '$2'],
-    });
+    expect(parseToken('app/IRepository<$1,$2>')).toEqual({ base: 'app/IRepository', args: ['$1', '$2'] });
   });
 
   describe('malformed → undefined', () => {
@@ -132,10 +109,7 @@ describe('parseToken', () => {
 
   test('round-trip: parse of a closeToken render reproduces base and args', () => {
     const token = closeToken('pkg:IFoo', 'pkg:IBar<./src/Baz>', '"a" | "b"');
-    expect(parseToken(token)).toEqual({
-      base: 'pkg:IFoo',
-      args: ['pkg:IBar<./src/Baz>', '"a" | "b"'],
-    });
+    expect(parseToken(token)).toEqual({ base: 'pkg:IFoo', args: ['pkg:IBar<./src/Baz>', '"a" | "b"'] });
   });
 });
 

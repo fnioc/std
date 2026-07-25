@@ -26,9 +26,9 @@ import { describe, expect, test } from 'bun:test';
  * configure steps — only the one the builder now holds does.
  */
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
-  const services = builder.services
-    .addOptions(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions())
-    .as('singleton');
+  const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions()).as(
+    'singleton',
+  );
   const provider = services.build().createScope('singleton');
   return provider.resolve<IOptions<LoggerFilterOptions>>(LOGGER_FILTER_OPTIONS_TOKEN).value;
 }
@@ -79,9 +79,7 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
 
   test('repeated addFilter calls accumulate rules in call order', () => {
     const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
-    builder
-      .addFilter('First', LogLevel.Debug)
-      .addFilter('Second', LogLevel.Error);
+    builder.addFilter('First', LogLevel.Debug).addFilter('Second', LogLevel.Error);
 
     const options = resolveFilterOptions(builder);
 

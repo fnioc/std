@@ -23,9 +23,7 @@ manager expose a single-fire `IChangeToken`, and `ChangeToken.onChange` composes
 subscriber never has to manually re-subscribe after a reload swaps the token out from under it.
 
 ```ts
-const provider = new JsonConfigProvider(
-  new JsonConfigSource('app.json'),
-);
+const provider = new JsonConfigProvider(new JsonConfigSource('app.json'));
 const root = new ConfigRoot([provider]);
 
 using _sub = ChangeToken.onChange(() => root.getReloadToken(), () => {
@@ -50,15 +48,10 @@ type `build()` returns. No DTO class, no reflection. Tier 2 layers `.withType<T>
 interface, so hand-authoring stays the base case and codegen is optional sugar.
 
 ```ts
-const config = new ConfigBuilder()
-  .addJsonFile('appsettings.json')
-  .withSchema(
-    {
-      Server: { Host: 'string', Port: 'number' },
-      Ssl: { [OPTIONAL]: 'boolean' },
-    } as const,
-  )
-  .build();
+const config = new ConfigBuilder().addJsonFile('appsettings.json').withSchema(
+  { Server: { Host: 'string', Port: 'number' },
+    Ssl: { [OPTIONAL]: 'boolean' } } as const,
+).build();
 
 config.Server.Port; // number, not string -- COERCED, not just typed
 // a missing Server.Host or an unparseable Port throws SchemaCoercionError,
@@ -80,10 +73,10 @@ it ships INSIDE `config` itself, because an in-memory source is a basic building
 defaults, test fixtures, programmatic overrides -- not an optional add-on a consumer opts into.
 
 ```ts
-const config = new ConfigBuilder()
-  .addInMemoryCollection({ 'Server:Port': '8080' }) // no extra package needed
-  .addJsonFile('appsettings.json', { optional: true })
-  .build();
+const config = new ConfigBuilder().addInMemoryCollection({
+  'Server:Port': '8080',
+}) // no extra package needed
+  .addJsonFile('appsettings.json', { optional: true }).build();
 ```
 
 ### 4. Every builder-shaped receiver gets the same augmentation sugar
@@ -106,13 +99,8 @@ a generic dump). `toObject()` sits directly on `IConfig` and returns the whole (
 section's) subtree as an ordinary nested string record.
 
 ```ts
-const root = new ConfigBuilder()
-  .addInMemoryCollection({
-    'Server:Host': 'h',
-    'Server:Port': '8080',
-    Flag: 'on',
-  })
-  .build();
+const root = new ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'h',
+  'Server:Port': '8080', Flag: 'on' }).build();
 
 root.toObject();
 // { Server: { Host: "h", Port: "8080" }, Flag: "on" }
@@ -145,9 +133,10 @@ members (`get`, `value`, `getSection`, …) always win over the indexer, and the
 (not thenable, not iterable, `instanceof` intact) keep it from lying about what it is.
 
 ```ts
-const config = new ConfigBuilder()
-  .addInMemoryCollection({ 'Server:Host': 'localhost', 'Server:Port': '8080' })
-  .build(); // IndexedSection
+const config = new ConfigBuilder().addInMemoryCollection({
+  'Server:Host': 'localhost',
+  'Server:Port': '8080',
+}).build(); // IndexedSection
 
 config.Server.Port.value; // "8080" -- no getSection() chain needed
 config['Server']['Host'].value; // bracket form works too

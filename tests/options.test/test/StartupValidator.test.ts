@@ -14,24 +14,20 @@ type FakeResolver = ConstructorParameters<typeof StartupValidator>[0];
 
 /** A IResolver whose `resolve(token)` returns the token's mapped `Options`. */
 function resolverOf(map: Record<string, IOptions<unknown>>): FakeResolver {
-  return {
-    resolve(token: string): IOptions<unknown> {
-      const options = map[token];
-      if (options === undefined) {
-        throw new Error(`no registration for ${token}`);
-      }
-      return options;
-    },
-  } as unknown as FakeResolver;
+  return { resolve(token: string): IOptions<unknown> {
+    const options = map[token];
+    if (options === undefined) {
+      throw new Error(`no registration for ${token}`);
+    }
+    return options;
+  } } as unknown as FakeResolver;
 }
 
 /** An `Options` that throws `error` the moment `.value` is read. */
 function failing(error: unknown): IOptions<unknown> {
-  return {
-    get value(): unknown {
-      throw error;
-    },
-  };
+  return { get value(): unknown {
+    throw error;
+  } };
 }
 
 /**
@@ -41,22 +37,18 @@ function failing(error: unknown): IOptions<unknown> {
  * `.value` read.
  */
 function resolverThrowing(error: unknown): FakeResolver {
-  return {
-    resolve(): IOptions<unknown> {
-      throw error;
-    },
-  } as unknown as FakeResolver;
+  return { resolve(): IOptions<unknown> {
+    throw error;
+  } } as unknown as FakeResolver;
 }
 
 describe('StartupValidator.validate', () => {
   test('all targets pass -> does not throw, forcing each value', () => {
     let reads = 0;
-    const passing: IOptions<unknown> = {
-      get value(): unknown {
-        reads += 1;
-        return { ok: true };
-      },
-    };
+    const passing: IOptions<unknown> = { get value(): unknown {
+      reads += 1;
+      return { ok: true };
+    } };
     const validator = new StartupValidator(resolverOf({ a: passing, b: passing }), ['a', 'b']);
 
     expect(() => validator.validate()).not.toThrow();
@@ -73,10 +65,7 @@ describe('StartupValidator.validate', () => {
   test('multiple failures throw one AggregateError carrying each', () => {
     const first = new OptionsValidationError(['first bad']);
     const second = new OptionsValidationError(['second bad']);
-    const validator = new StartupValidator(
-      resolverOf({ a: failing(first), b: failing(second) }),
-      ['a', 'b'],
-    );
+    const validator = new StartupValidator(resolverOf({ a: failing(first), b: failing(second) }), ['a', 'b']);
 
     try {
       validator.validate();
@@ -103,12 +92,10 @@ describe('StartupValidator.validate', () => {
 
   test('duplicate tokens are forced only once', () => {
     let reads = 0;
-    const counted: IOptions<unknown> = {
-      get value(): unknown {
-        reads += 1;
-        return 1;
-      },
-    };
+    const counted: IOptions<unknown> = { get value(): unknown {
+      reads += 1;
+      return 1;
+    } };
     const validator = new StartupValidator(resolverOf({ a: counted }), ['a', 'a', 'a']);
 
     validator.validate();

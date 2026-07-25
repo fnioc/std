@@ -13,12 +13,8 @@ import { expect, test } from 'bun:test';
 // --- sanitizer ---
 
 test('sanitize escapes C0, DEL, and C1 but preserves tab/newline/CR', () => {
-  expect(ConsoleControlCharacterSanitizer.sanitize('a\x00b\x1bc\x7fd\x9fe')).toBe(
-    'a\\u0000b\\u001Bc\\u007Fd\\u009Fe',
-  );
-  expect(ConsoleControlCharacterSanitizer.sanitize('keep\tthese\nthree\rintact')).toBe(
-    'keep\tthese\nthree\rintact',
-  );
+  expect(ConsoleControlCharacterSanitizer.sanitize('a\x00b\x1bc\x7fd\x9fe')).toBe('a\\u0000b\\u001Bc\\u007Fd\\u009Fe');
+  expect(ConsoleControlCharacterSanitizer.sanitize('keep\tthese\nthree\rintact')).toBe('keep\tthese\nthree\rintact');
 });
 
 test('sanitize passes clean strings, empty strings, and undefined through', () => {
@@ -58,9 +54,7 @@ test('background codes: only the 8 base colors have codes', () => {
 test('writeColoredMessage wraps with set/reset pairs and skips absent colors', () => {
   const both = new StringWriter();
   TextWriterExtensions.writeColoredMessage(both, 'msg', ConsoleColor.Black, ConsoleColor.Yellow);
-  expect(both.toString()).toBe(
-    `\x1b[40m\x1b[1m\x1b[33mmsg${DEFAULT_FOREGROUND_COLOR}${DEFAULT_BACKGROUND_COLOR}`,
-  );
+  expect(both.toString()).toBe(`\x1b[40m\x1b[1m\x1b[33mmsg${DEFAULT_FOREGROUND_COLOR}${DEFAULT_BACKGROUND_COLOR}`);
 
   const none = new StringWriter();
   TextWriterExtensions.writeColoredMessage(none, 'msg', undefined, undefined);

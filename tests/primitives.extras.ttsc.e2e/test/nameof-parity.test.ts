@@ -118,30 +118,19 @@ beforeAll(() => {
   const lib = join(nm, 'your-lib');
   mkdirSync(join(lib, 'contracts'), { recursive: true });
   mkdirSync(join(lib, 'internal'), { recursive: true });
-  writeFileSync(
-    join(lib, 'package.json'),
-    JSON.stringify({
-      name: 'your-lib',
-      version: '3.4.5',
-      exports: { '.': './index.js', './contracts': './contracts/index.js' },
-    }),
-  );
+  writeFileSync(join(lib, 'package.json'),
+    JSON.stringify({ name: 'your-lib', version: '3.4.5',
+      exports: { '.': './index.js', './contracts': './contracts/index.js' } }));
   // Everything a token derives for is barrel-reachable: the strict derivation
   // rejects a token reachable only through a non-barrel, non-`./tokens/*` subpath.
-  writeFileSync(
-    join(lib, 'index.d.ts'),
-    `export { Deep } from "./internal/deep";\nexport { IFoo, Scoped } from "./contracts/index.js";\n`,
-  );
+  writeFileSync(join(lib, 'index.d.ts'),
+    `export { Deep } from "./internal/deep";\nexport { IFoo, Scoped } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'internal', 'deep.d.ts'), `export interface Deep {}\n`);
-  writeFileSync(
-    join(lib, 'contracts', 'index.d.ts'),
-    `export interface IFoo {}\nexport interface ScopedBase<S extends string> {}\nexport type Scoped<S extends string = "singleton"> = ScopedBase<S>;\n`,
-  );
+  writeFileSync(join(lib, 'contracts', 'index.d.ts'),
+    `export interface IFoo {}\nexport interface ScopedBase<S extends string> {}\nexport type Scoped<S extends string = "singleton"> = ScopedBase<S>;\n`);
 
   writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
-  writeFileSync(
-    join(projDir, 'src', 'app.ts'),
-    `
+  writeFileSync(join(projDir, 'src', 'app.ts'), `
 import { tokenfor } from "./tokenfor";
 import { IFoo, Scoped } from "your-lib/contracts";
 import { Deep } from "your-lib";
@@ -156,32 +145,16 @@ export const localDefaultAlias = tokenfor<Local>();
 export const localExplicitAlias = tokenfor<Local<"request">>();
 export const publicDefaultAlias = tokenfor<Scoped>();
 export const publicExplicitAlias = tokenfor<Scoped<"request">>();
-`,
-  );
-  writeFileSync(
-    join(projDir, 'tsconfig.json'),
+`);
+  writeFileSync(join(projDir, 'tsconfig.json'),
     JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        lib: ['ES2022'],
-        strict: true,
-        outDir: 'dist',
-        rootDir: 'src',
-        skipLibCheck: true,
-        noEmitOnError: false,
-        plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }],
-      },
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+        plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }] },
       include: ['src/**/*'],
-    }),
-  );
+    }));
 
-  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], {
-    cwd: projDir,
-    encoding: 'utf8',
-    env: goEnv(),
-  });
+  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projDir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
     throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
   }

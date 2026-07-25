@@ -67,17 +67,10 @@ class FakeFileProvider implements IFileProvider {
 
   public getFileInfo(): IFileInfo {
     const path = this.#physicalPath;
-    return {
-      exists: true,
-      length: -1,
-      physicalPath: path,
-      name: basename(path),
-      lastModified: new Date(0),
-      isDirectory: false,
-      createReadStream(): never {
-        throw new Error('unused');
-      },
-    };
+    return { exists: true, length: -1, physicalPath: path, name: basename(path), lastModified: new Date(0),
+      isDirectory: false, createReadStream(): never {
+      throw new Error('unused');
+    } };
   }
 
   public getDirectoryContents(): IDirectoryContents {
@@ -103,17 +96,15 @@ function afterReloadDelay(): Promise<void> {
 describe('JsonConfigSource provider-backed read', () => {
   test('reads the file through an injected file provider', () => {
     const { dir: root } = tempDirWith('app.json', JSON.stringify({ Server: { Host: 'injected' } }));
-    const root2 = new ConfigBuilder()
-      .add(new JsonConfigSource('app.json', { fileProvider: new PhysicalFileProvider(root) }))
-      .build();
+    const root2 = new ConfigBuilder().add(
+      new JsonConfigSource('app.json', { fileProvider: new PhysicalFileProvider(root) }),
+    ).build();
 
     expect(root2.get('Server:Host')).toBe('injected');
   });
 
   test('a relative path with no provider stays cwd-relative (back-compat)', () => {
-    const root = new ConfigBuilder()
-      .add(new JsonConfigSource(`${FIXTURES}/nested.json`, { optional: true }))
-      .build();
+    const root = new ConfigBuilder().add(new JsonConfigSource(`${FIXTURES}/nested.json`, { optional: true })).build();
 
     expect(root.get('Server:Host')).toBe('localhost');
   });
@@ -124,9 +115,9 @@ describe('JsonConfigSource reloadOnChange', () => {
     const { file } = tempDirWith('app.json', JSON.stringify({ Value: 'one' }));
     const fake = new FakeFileProvider(file);
 
-    const root = new ConfigBuilder()
-      .add(new JsonConfigSource('app.json', { fileProvider: fake, reloadOnChange: true, reloadDelay: 5 }))
-      .build();
+    const root = new ConfigBuilder().add(
+      new JsonConfigSource('app.json', { fileProvider: fake, reloadOnChange: true, reloadDelay: 5 }),
+    ).build();
     expect(root.get('Value')).toBe('one');
 
     writeFileSync(file, JSON.stringify({ Value: 'two', Added: 'yes' }));

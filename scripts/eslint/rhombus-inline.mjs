@@ -26,22 +26,12 @@ import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 // authoring-time-only and live in @rhombus-std/di.extras, imported by that
 // package's own bodies via a package-relative specifier. Mirrors the Go scanner's
 // knownPrimitives map.
-const PRIMITIVE_HOMES = {
-  tokenfor: '@rhombus-std/primitives.extras',
-  tokenof: '@rhombus-std/primitives.extras',
-  signaturefor: '@rhombus-std/di.core',
-  signaturesfor: '@rhombus-std/di.core',
-  signatureof: '@rhombus-std/di.extras',
-  keyof: '@rhombus-std/di.extras',
-  keyedtokenfor: '@rhombus-std/di.extras',
-  valueof: '@rhombus-std/di.extras',
-  isSingular: '@rhombus-std/primitives.extras',
-  singularValue: '@rhombus-std/primitives.extras',
-  isFactory: '@rhombus-std/primitives.extras',
-  returntokenfor: '@rhombus-std/primitives.extras',
-  paramtokensfor: '@rhombus-std/primitives.extras',
-  schemaof: '@rhombus-std/config.extras',
-};
+const PRIMITIVE_HOMES = { tokenfor: '@rhombus-std/primitives.extras', tokenof: '@rhombus-std/primitives.extras',
+  signaturefor: '@rhombus-std/di.core', signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras',
+  keyof: '@rhombus-std/di.extras', keyedtokenfor: '@rhombus-std/di.extras', valueof: '@rhombus-std/di.extras',
+  isSingular: '@rhombus-std/primitives.extras', singularValue: '@rhombus-std/primitives.extras',
+  isFactory: '@rhombus-std/primitives.extras', returntokenfor: '@rhombus-std/primitives.extras',
+  paramtokensfor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
 
 // Body-imported RUNTIME callees (§99, option B) — a bounded category distinct from
 // the compile-time primitives above: a body may CALL these, they SURVIVE lowering
@@ -49,9 +39,7 @@ const PRIMITIVE_HOMES = {
 // are allowed ONLY in callee position (never a bare value reference, no globals, no
 // arrows). Mirrors the Go scanner's knownRuntimeCallees map. `overrideSignatures`
 // (di.core) merges a sparse registration-override array at runtime.
-const RUNTIME_CALLEE_HOMES = {
-  overrideSignatures: '@rhombus-std/di.core',
-};
+const RUNTIME_CALLEE_HOMES = { overrideSignatures: '@rhombus-std/di.core' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -79,12 +67,9 @@ function readPackageName(/** @type {string} */ packageDir) {
 
 /** @type {import('eslint').Rule.RuleModule} */
 const rule = {
-  meta: {
-    type: 'problem',
-    docs: { description: 'Enforce inlineable sugar-body hygiene for the rhombus.inline stage.' },
+  meta: { type: 'problem', docs: { description: 'Enforce inlineable sugar-body hygiene for the rhombus.inline stage.' },
     schema: [],
-    messages: {
-      entryShape: 'rhombus.inline publish list is malformed: {{detail}}',
+    messages: { entryShape: 'rhombus.inline publish list is malformed: {{detail}}',
       singleReturn: 'An inlineable sugar body must be exactly one `return <expr>;`.',
       bannedSyntax: "A sugar body's returned expression may not use {{syntax}} (single compile-time expression only).",
       paramReuse:
@@ -93,9 +78,7 @@ const rule = {
       freeIdentifier: 'Identifier {{name}} is not a parameter, `this`, a type parameter, or a known primitive import.',
       noAlias: 'Primitive import {{name}} must be a direct unaliased named import.',
       noNesting:
-        'A sugar body may not reference another inlineable declaration ({{name}}); nesting is not yet supported.',
-    },
-  },
+        'A sugar body may not reference another inlineable declaration ({{name}}); nesting is not yet supported.' } },
 
   create(context) {
     const filename = context.filename ?? context.getFilename();
@@ -110,12 +93,10 @@ const rule = {
     try {
       entries = loadInlineEntries(pkgDir);
     } catch (err) {
-      return {
-        Program(node) {
-          context.report({ node, messageId: 'entryShape',
-            data: { detail: String(err instanceof Error ? err.message : err) } });
-        },
-      };
+      return { Program(node) {
+        context.report({ node, messageId: 'entryShape',
+          data: { detail: String(err instanceof Error ? err.message : err) } });
+      } };
     }
 
     // Impl → set of member names to check (member kind); free functions map their
@@ -269,44 +250,36 @@ function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedName
 
   // A stack marking whether the current position is inside a primitive call's
   // arguments (where a param may repeat and a type param is allowed).
-  walkExpression(expr, {
-    onBanned(node, syntax) {
-      context.report({ node, messageId: 'bannedSyntax', data: { syntax } });
-    },
-    onIdentifier(node, insidePrimitiveArgs) {
-      const name = node.name;
-      if (valueParams.has(name)) {
-        if (!insidePrimitiveArgs) {
-          paramRuntimeUses.set(name, (paramRuntimeUses.get(name) ?? 0) + 1);
-        }
-        return;
+  walkExpression(expr, { onBanned(node, syntax) {
+    context.report({ node, messageId: 'bannedSyntax', data: { syntax } });
+  }, onIdentifier(node, insidePrimitiveArgs) {
+    const name = node.name;
+    if (valueParams.has(name)) {
+      if (!insidePrimitiveArgs) {
+        paramRuntimeUses.set(name, (paramRuntimeUses.get(name) ?? 0) + 1);
       }
-      if (name === 'this' || typeParams.has(name) || primitiveLocals.has(name)) {
-        return;
-      }
-      // A member of another listed impl referenced by identifier → nesting.
-      if (listedNames.has(name)) {
-        context.report({ node, messageId: 'noNesting', data: { name } });
-        return;
-      }
-      context.report({ node, messageId: 'freeIdentifier', data: { name } });
-    },
-    onTypeArg(node, insidePrimitiveCall) {
-      // A type parameter used anywhere but a primitive call's type-arg position.
-      const names = collectTypeRefs(node);
-      for (const { name, node: ref } of names) {
-        if (typeParams.has(name) && !insidePrimitiveCall) {
-          context.report({ node: ref, messageId: 'typeParamPosition', data: { name } });
-        }
-      }
-    },
-    onNestedMember(node, name) {
+      return;
+    }
+    if (name === 'this' || typeParams.has(name) || primitiveLocals.has(name)) {
+      return;
+    }
+    // A member of another listed impl referenced by identifier → nesting.
+    if (listedNames.has(name)) {
       context.report({ node, messageId: 'noNesting', data: { name } });
-    },
-    primitiveLocals,
-    runtimeCalleeLocals,
-    listedMembers,
-  });
+      return;
+    }
+    context.report({ node, messageId: 'freeIdentifier', data: { name } });
+  }, onTypeArg(node, insidePrimitiveCall) {
+    // A type parameter used anywhere but a primitive call's type-arg position.
+    const names = collectTypeRefs(node);
+    for (const { name, node: ref } of names) {
+      if (typeParams.has(name) && !insidePrimitiveCall) {
+        context.report({ node: ref, messageId: 'typeParamPosition', data: { name } });
+      }
+    }
+  }, onNestedMember(node, name) {
+    context.report({ node, messageId: 'noNesting', data: { name } });
+  }, primitiveLocals, runtimeCalleeLocals, listedMembers });
 
   for (const [name, count] of paramRuntimeUses) {
     if (count > 1) {

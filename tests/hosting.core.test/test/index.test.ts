@@ -22,12 +22,8 @@ test('environment predicates compare case-insensitively', () => {
   // downstream concrete HostingEnvironment, which this package doesn't ship --
   // hence the cast. The standalone member form under test needs no methods on
   // its receiver.
-  const env = {
-    environmentName: 'development',
-    applicationName: 'app',
-    contentRootPath: '/',
-    contentRootFileProvider: new NullFileProvider(),
-  } as IHostEnvironment;
+  const env = { environmentName: 'development', applicationName: 'app', contentRootPath: '/',
+    contentRootFileProvider: new NullFileProvider() } as IHostEnvironment;
   expect(HostEnvironmentEnvExtensions.isEnvironment(env, 'Development')).toBe(true);
   expect(HostEnvironmentEnvExtensions.isDevelopment(env)).toBe(true);
   expect(HostEnvironmentEnvExtensions.isProduction(env)).toBe(false);

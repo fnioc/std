@@ -19,7 +19,6 @@ describe('withType() Tier 2 stub', () => {
   });
 
   test("throws the 'transform did not run' error when called without the transformer", () => {
-    expect(() => new ConfigBuilder().withType<{ Port: number; }>())
-      .toThrow(/@rhombus-std\/config.extras/);
+    expect(() => new ConfigBuilder().withType<{ Port: number; }>()).toThrow(/@rhombus-std\/config.extras/);
   });
 });

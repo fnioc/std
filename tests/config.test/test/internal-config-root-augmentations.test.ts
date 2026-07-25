@@ -13,8 +13,7 @@ describe('InternalConfigRootExtensions.getChildrenImplementation', () => {
   test("undefined path enumerates the root's immediate children", () => {
     const root = rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080', Mode: 'dev' });
 
-    const keys = InternalConfigRootExtensions.getChildrenImplementation(root, undefined)
-      .map((section) => section.key)
+    const keys = InternalConfigRootExtensions.getChildrenImplementation(root, undefined).map((section) => section.key)
       .sort();
 
     expect(keys).toEqual(['Mode', 'Server']);
@@ -30,13 +29,11 @@ describe('InternalConfigRootExtensions.getChildrenImplementation', () => {
   });
 
   test('dedups keys ordinal-ignore-case across providers -- one section per case-folded key', () => {
-    const root = new configBarrel.ConfigBuilder()
-      .addInMemoryCollection({ 'Server:Host': 'a' })
-      .addInMemoryCollection({ 'SERVER:Port': '1' })
-      .build() as unknown as configBarrel.IConfigRoot;
+    const root = new configBarrel.ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'a' }).addInMemoryCollection({
+      'SERVER:Port': '1',
+    }).build() as unknown as configBarrel.IConfigRoot;
 
-    const keys = InternalConfigRootExtensions.getChildrenImplementation(root, undefined)
-      .map((section) => section.key);
+    const keys = InternalConfigRootExtensions.getChildrenImplementation(root, undefined).map((section) => section.key);
 
     // Exactly one section survives for the two case-variant spellings; which
     // spelling wins is the fold order after the last provider's sort, not part

@@ -207,9 +207,7 @@ describe('validateOnBuild — eager all-registrations validation', () => {
       throw new Error('unreachable');
     } catch (err) {
       const aggregate = err as AggregateError;
-      expect((aggregate.errors[0] as RegistrationValidationError).cause).toBeInstanceOf(
-        MissingMetadataError,
-      );
+      expect((aggregate.errors[0] as RegistrationValidationError).cause).toBeInstanceOf(MissingMetadataError);
     }
   });
 
@@ -275,9 +273,7 @@ describe('validateOnBuild — eager all-registrations validation', () => {
       throw new Error('unreachable');
     } catch (err) {
       const aggregate = err as AggregateError;
-      expect((aggregate.errors[0] as RegistrationValidationError).cause).toBeInstanceOf(
-        FactoryTargetError,
-      );
+      expect((aggregate.errors[0] as RegistrationValidationError).cause).toBeInstanceOf(FactoryTargetError);
     }
   });
 

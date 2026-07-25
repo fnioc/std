@@ -87,9 +87,9 @@ function buildProvider(services: IServiceManifest<'singleton'>): IServiceProvide
   // union, because an augmentation set is authored once for every manifest there
   // will ever be. A caller with a narrower union re-narrows on the way out; the
   // fluent method does that for you, which is most of why it exists.
-  return ServiceManifestContainerBuilderAugmentations.build(
-    asBuilder<string>(services),
-  ) as IServiceProvider<'singleton'>;
+  return ServiceManifestContainerBuilderAugmentations.build(asBuilder<string>(services)) as IServiceProvider<
+    'singleton'
+  >;
 }
 
 /**

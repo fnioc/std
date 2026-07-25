@@ -34,12 +34,10 @@ export interface ForCtorBuilder {
   signature(...slots: DepSlot[]): ForCtorBuilder;
 }
 export function forCtor(ctor: object): ForCtorBuilder {
-  const builder: ForCtorBuilder = {
-    signature(...slots: DepSlot[]): ForCtorBuilder {
-      defineDeps(ctor, [slots]);
-      return builder;
-    },
-  };
+  const builder: ForCtorBuilder = { signature(...slots: DepSlot[]): ForCtorBuilder {
+    defineDeps(ctor, [slots]);
+    return builder;
+  } };
   return builder;
 }
 
@@ -52,12 +50,11 @@ function patchThirdArg(method: 'addClass' | 'addFactory'): void {
   const original = proto[method]!;
   proto[method] = function(this: unknown, ...args: unknown[]): unknown {
     const target = args[1];
-    if (
-      args.length === 2
+    if (args.length === 2
       && typeof args[0] === 'string'
       && (typeof target === 'object' || typeof target === 'function')
-      && target !== null
-    ) {
+      && target !== null)
+    {
       const stashed = testStore.get(target);
       if (stashed !== undefined) {
         return original.call(this, args[0], target, stashed);

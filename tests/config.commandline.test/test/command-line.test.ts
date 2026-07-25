@@ -18,10 +18,7 @@ import '@rhombus-std/config.commandline/private/index';
  * ConfigProvider has no public "dump everything" API -- so we walk the
  * top-level and nested keys explicitly through the same public surface a
  * ConfigRoot would use). */
-function load(
-  args: readonly string[],
-  switchMappings?: Record<string, string>,
-): Record<string, string> {
+function load(args: readonly string[], switchMappings?: Record<string, string>): Record<string, string> {
   const source = new CommandLineConfigSource(args, { switchMappings });
   const provider = source.build(new ConfigBuilder());
   provider.load();
@@ -73,10 +70,7 @@ describe('CommandLineConfigProvider -- long form (--Key)', () => {
     // is dropped entirely, corrupting both flags. A switch whose next token
     // is itself a long switch has no value -- treat it as a boolean flag
     // ("true", so downstream boolean coercion binds it to `true`).
-    expect(load(['--Verbose', '--Port', '8080'])).toEqual({
-      Verbose: 'true',
-      Port: '8080',
-    });
+    expect(load(['--Verbose', '--Port', '8080'])).toEqual({ Verbose: 'true', Port: '8080' });
   });
 
   test('a valueless switch followed by a registered short switch is boolean-true, not corrupted', () => {
@@ -84,10 +78,7 @@ describe('CommandLineConfigProvider -- long form (--Key)', () => {
     // `--Verbose` swallows `-p` as its value and `8080` becomes an unmapped
     // positional -- Port is lost. The registered short switch `-p` cannot be a
     // value, so `--Verbose` is a valueless boolean flag.
-    expect(load(['--Verbose', '-p', '8080'], { '-p': 'Port' })).toEqual({
-      Verbose: 'true',
-      Port: '8080',
-    });
+    expect(load(['--Verbose', '-p', '8080'], { '-p': 'Port' })).toEqual({ Verbose: 'true', Port: '8080' });
   });
 
   test('a valueless switch followed by any dash-led non-number token is boolean-true', () => {
@@ -111,23 +102,17 @@ describe('CommandLineConfigProvider -- long form (--Key)', () => {
     // `--` is the end-of-options marker: everything after it is positional
     // (and this source ignores positionals). It must not be treated as an
     // empty-key long switch that swallows the following token.
-    expect(load(['--Key', 'value', '--', '--NotASwitch', 'ignored'])).toEqual({
-      Key: 'value',
-    });
+    expect(load(['--Key', 'value', '--', '--NotASwitch', 'ignored'])).toEqual({ Key: 'value' });
   });
 });
 
 describe('CommandLineConfigProvider -- short form (-x)', () => {
   test('parses a mapped short switch with a space-separated value', () => {
-    expect(load(['-p', '8080'], { '-p': 'Server:Port' })).toEqual({
-      'Server:Port': '8080',
-    });
+    expect(load(['-p', '8080'], { '-p': 'Server:Port' })).toEqual({ 'Server:Port': '8080' });
   });
 
   test('parses a mapped short switch with an = value', () => {
-    expect(load(['-p=8080'], { '-p': 'Server:Port' })).toEqual({
-      'Server:Port': '8080',
-    });
+    expect(load(['-p=8080'], { '-p': 'Server:Port' })).toEqual({ 'Server:Port': '8080' });
   });
 
   test('throws synchronously naming an unmapped short switch', () => {
@@ -135,8 +120,7 @@ describe('CommandLineConfigProvider -- short form (-x)', () => {
   });
 
   test('throws for an unmapped short switch even when other switches are mapped', () => {
-    expect(() => load(['-p', '8080', '-z', 'value'], { '-p': 'Server:Port' }))
-      .toThrow(/-z/);
+    expect(() => load(['-p', '8080', '-z', 'value'], { '-p': 'Server:Port' })).toThrow(/-z/);
   });
 });
 
@@ -164,51 +148,36 @@ describe('CommandLineConfigProvider -- bare key=value tokens', () => {
   });
 
   test('combines with switches and other ignored positionals', () => {
-    expect(load(['deploy', 'Key=Value', '--Env', 'prod'])).toEqual({
-      Key: 'Value',
-      Env: 'prod',
-    });
+    expect(load(['deploy', 'Key=Value', '--Env', 'prod'])).toEqual({ Key: 'Value', Env: 'prod' });
   });
 });
 
 describe('CommandLineConfigProvider -- mixed', () => {
   test('combines long form, mapped short form, and ignored positionals', () => {
-    expect(
-      load(['deploy', '--Env=prod', '-p', '8080', 'extra'], { '-p': 'Server:Port' }),
-    ).toEqual({
-      Env: 'prod',
-      'Server:Port': '8080',
-    });
+    expect(load(['deploy', '--Env=prod', '-p', '8080', 'extra'], { '-p': 'Server:Port' })).toEqual({ Env: 'prod',
+      'Server:Port': '8080' });
   });
 });
 
 describe('CommandLineConfigSource -- switchMappings validation', () => {
   test("throws at construction when a mapping key does not start with '-'", () => {
-    expect(() => new CommandLineConfigSource([], { switchMappings: { p: 'Server:Port' } }))
-      .toThrow(/-/);
+    expect(() => new CommandLineConfigSource([], { switchMappings: { p: 'Server:Port' } })).toThrow(/-/);
   });
 
   test('throws at construction for case-insensitive duplicate mapping keys', () => {
-    expect(() =>
-      new CommandLineConfigSource([], {
-        switchMappings: { '-p': 'Server:Port', '-P': 'Other:Key' },
-      })
-    ).toThrow();
+    expect(() => new CommandLineConfigSource([], { switchMappings: { '-p': 'Server:Port', '-P': 'Other:Key' } }))
+      .toThrow();
   });
 
   test('does not throw for distinct mapping keys with mixed casing', () => {
-    expect(() =>
-      new CommandLineConfigSource([], {
-        switchMappings: { '-p': 'Server:Port', '-q': 'Other:Key' },
-      })
-    ).not.toThrow();
+    expect(() => new CommandLineConfigSource([], { switchMappings: { '-p': 'Server:Port', '-q': 'Other:Key' } })).not
+      .toThrow();
   });
 
   test('validation runs even for an empty args array (construction-time, not parse-time)', () => {
     // The malformed table is rejected before load() ever runs -- confirms
     // this isn't accidentally deferred to parse time.
-    expect(() => new CommandLineConfigSource([], { switchMappings: { p: 'x' } }))
-      .toThrow();
+    expect(() => new CommandLineConfigSource([], { switchMappings: { p: 'x' } })).toThrow();
   });
 });
 
@@ -230,10 +199,7 @@ describe("CommandLineConfigProvider -- '/switch' rewrite", () => {
   });
 
   test("a '/switch' followed by another switch is boolean-true, matching '--switch' behavior", () => {
-    expect(load(['/Verbose', '--Port', '8080'])).toEqual({
-      Verbose: 'true',
-      Port: '8080',
-    });
+    expect(load(['/Verbose', '--Port', '8080'])).toEqual({ Verbose: 'true', Port: '8080' });
   });
 });
 

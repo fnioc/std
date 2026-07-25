@@ -64,10 +64,7 @@ describe('ConfigRoot.get (reverse-order precedence)', () => {
   });
 
   test('a key defined only by an earlier provider still resolves (no eager overwrite)', () => {
-    const root = rootOfLayers(
-      { 'Server:Host': 'localhost', 'Server:Port': '8080' },
-      { 'Server:Port': '9090' },
-    );
+    const root = rootOfLayers({ 'Server:Host': 'localhost', 'Server:Port': '8080' }, { 'Server:Port': '9090' });
 
     // Host lives only in the first provider; reverse iteration falls through
     // the second provider's miss and finds it. Precedence is resolved lazily
@@ -119,10 +116,7 @@ describe('ConfigRoot.getSection (always returns, never null)', () => {
 
 describe('ConfigRoot.getChildren (root-level dedup + ordering)', () => {
   test('dedups a section key that appears across multiple providers (ordinal-ignore-case)', () => {
-    const root = rootOfLayers(
-      { 'Server:Port': '8080' },
-      { 'server:host': 'localhost' },
-    );
+    const root = rootOfLayers({ 'Server:Port': '8080' }, { 'server:host': 'localhost' });
 
     // Both providers contribute a top-level "Server"/"server" key; the root
     // dedups them ordinal-ignore-case into a single child section.
@@ -132,12 +126,7 @@ describe('ConfigRoot.getChildren (root-level dedup + ordering)', () => {
   });
 
   test('orders numeric child keys naturally (0,1,2,...,9,10), not lexicographically', () => {
-    const root = rootOf({
-      'items:0': 'a',
-      'items:1': 'b',
-      'items:2': 'c',
-      'items:10': 'd',
-    });
+    const root = rootOf({ 'items:0': 'a', 'items:1': 'b', 'items:2': 'c', 'items:10': 'd' });
 
     const indices = [...root.getSection('items').getChildren()].map((section) => section.key);
     expect(indices).toEqual(['0', '1', '2', '10']);
@@ -174,13 +163,8 @@ describe('ConfigRoot[Symbol.dispose] (releases registrations + disposable provid
   });
 
   test('dispose tolerates providers with no Symbol.dispose', () => {
-    const plain: IConfigProvider = {
-      tryGet: () => [false],
-      set: () => {},
-      getReloadToken: () => new ConfigReloadToken(),
-      load: () => {},
-      getChildKeys: (earlierKeys) => earlierKeys,
-    };
+    const plain: IConfigProvider = { tryGet: () => [false], set: () => {},
+      getReloadToken: () => new ConfigReloadToken(), load: () => {}, getChildKeys: (earlierKeys) => earlierKeys };
     const root = new ConfigRoot([plain]);
 
     expect(() => root[Symbol.dispose]()).not.toThrow();

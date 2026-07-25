@@ -102,10 +102,7 @@ describe('resolveUnion — first registered member wins', () => {
     const T_CALLER = 'test:union:caller' as const;
 
     class Target {
-      public constructor(
-        public readonly cache: unknown,
-        public readonly caller: unknown,
-      ) {}
+      public constructor(public readonly cache: unknown, public readonly caller: unknown) {}
     }
     // Signature: [union(T_UNION_A, T_UNION_B), T_CALLER].
     // T_CALLER is the caller-supplied param; the union slot has no registered members.
@@ -133,10 +130,7 @@ describe('resolveUnion — first registered member wins', () => {
     const T_CALLER = 'test:union:members:caller' as const;
 
     class Target {
-      public constructor(
-        public readonly cache: unknown,
-        public readonly caller: unknown,
-      ) {}
+      public constructor(public readonly cache: unknown, public readonly caller: unknown) {}
     }
     defineDeps(Target, [[union(T_UNION_A, T_UNION_B), T_CALLER]]);
 
@@ -164,10 +158,7 @@ describe('resolveUnion — first registered member wins', () => {
 
   test('union slot in a multi-slot signature resolves alongside other token slots', () => {
     class Consumer {
-      public constructor(
-        public readonly cache: unknown,
-        public readonly log: unknown,
-      ) {}
+      public constructor(public readonly cache: unknown, public readonly log: unknown) {}
     }
     // First slot: union of T.A / T.B; second slot: T.Logger (plain token).
     defineDeps(Consumer, [[union(T.A, T.B), T.Logger]]);
@@ -195,18 +186,12 @@ describe('Union satisfiability in selectSignature', () => {
         this.args = args;
       }
     }
-    defineDeps(Svc, [
-      [union(T.A, T.B), T.Logger],
-      [T.Logger],
-    ]);
+    defineDeps(Svc, [[union(T.A, T.B), T.Logger], [T.Logger]]);
 
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.B, MemoryCacheImpl, [[]], 'singleton');
     services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
-    services = services.addClass(T.Service, Svc, [
-      [union(T.A, T.B), T.Logger],
-      [T.Logger],
-    ], 'singleton');
+    services = services.addClass(T.Service, Svc, [[union(T.A, T.B), T.Logger], [T.Logger]], 'singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     // Longest satisfiable signature wins.
@@ -224,18 +209,12 @@ describe('Union satisfiability in selectSignature', () => {
     }
     // [union(A, B), Logger]: union unsatisfiable (neither registered) → skip.
     // [Logger]: satisfiable.
-    defineDeps(Svc, [
-      [union(T.A, T.B), T.Logger],
-      [T.Logger],
-    ]);
+    defineDeps(Svc, [[union(T.A, T.B), T.Logger], [T.Logger]]);
 
     let services = new ServiceManifest<'singleton'>();
     // Neither T.A nor T.B registered.
     services = services.addClass(T.Logger, LoggerImpl, [[]], 'singleton');
-    services = services.addClass(T.Service, Svc, [
-      [union(T.A, T.B), T.Logger],
-      [T.Logger],
-    ], 'singleton');
+    services = services.addClass(T.Service, Svc, [[union(T.A, T.B), T.Logger], [T.Logger]], 'singleton');
 
     const svc = services.build().resolve<Svc>(T.Service);
     expect(svc.args).toHaveLength(1);
@@ -271,9 +250,7 @@ describe('single-member union', () => {
     let services = new ServiceManifest<'singleton'>();
     services = services.addClass(T.Service, Svc, [[union(T.A)]], 'singleton');
 
-    expect(() => services.build().resolve(T.Service)).toThrow(
-      NoSatisfiableSignatureError,
-    );
+    expect(() => services.build().resolve(T.Service)).toThrow(NoSatisfiableSignatureError);
   });
 
   test('GAP8: single-member union happy path — member registered, resolves', () => {
@@ -289,9 +266,7 @@ describe('single-member union', () => {
     services = services.addClass(T.A, ImplA, [[]], 'singleton');
     services = services.addClass(T.Service, Svc, [[union(T.A)]], 'singleton');
 
-    expect((services.build().resolve<Svc>(T.Service).dep as ImplA).kind).toBe(
-      'impl-a',
-    );
+    expect((services.build().resolve<Svc>(T.Service).dep as ImplA).kind).toBe('impl-a');
   });
 });
 
@@ -457,10 +432,7 @@ describe('union runtime regression pins', () => {
     // registered — union falls through to T.B. T.Logger (plain token, adjacent
     // slot) resolves independently and normally.
     class Consumer {
-      public constructor(
-        public readonly cache: unknown,
-        public readonly log: unknown,
-      ) {}
+      public constructor(public readonly cache: unknown, public readonly log: unknown) {}
     }
     defineDeps(Consumer, [[union(T.A, T.B), T.Logger]]);
 
@@ -525,10 +497,7 @@ describe('IServiceProvider.resolveFactory(type, params)', () => {
 
     class Greeter {
       public static built = 0;
-      public constructor(
-        public readonly log: LoggerImpl,
-        public readonly name: string,
-      ) {
+      public constructor(public readonly log: LoggerImpl, public readonly name: string) {
         Greeter.built += 1;
       }
     }
@@ -581,10 +550,7 @@ describe('IServiceProvider.resolveFactory(type, params)', () => {
     const T_MISSING = 'test:resolveFactory:missing' as const;
 
     class Target {
-      public constructor(
-        public readonly log: LoggerImpl,
-        public readonly dep: unknown,
-      ) {}
+      public constructor(public readonly log: LoggerImpl, public readonly dep: unknown) {}
     }
     defineDeps(Target, [[T.Logger, T_MISSING]]);
 
