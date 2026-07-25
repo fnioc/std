@@ -68,11 +68,9 @@ export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } fr
 // token STRING is the wire identity; `TokenNode` is its transient parsed view.
 // The `TokenNode.*` companion carries the pure ops (parse / tryParse / toString /
 // canonicalise / baseKey / isOpen); the visitor CLASSES carry the mutating/query
-// ops. `closeToken`/`isOpenToken`/`parseToken`/`unkeyedToken` are the shallow
-// string-grammar classification/compose edge. Partial closing and
-// most-specific-wins have GRADUATED from the `TokenProvider` reference to the
-// engine (§124/§125); what stays gated there is canon-on-miss variance recovery
-// and negative memoization (see `token/`).
+// ops. `closeToken`/`isOpenToken`/`parseToken`/`unkeyedToken` are the
+// classification/compose edge — `isOpenToken` off the typed tree, the other
+// three shallow string work.
 export type { ConcreteNode, FactoryNode, HoleNode, LiteralNode, ProviderNode, UnionNode } from './token/index.js';
 export { TokenNode } from './token/index.js';
 export { Matcher, Specificity, Substituter, TokenRewriter, TokenWalker, Validator } from './token/index.js';

@@ -55,8 +55,7 @@ interface RankedTemplate {
 /**
  * Orders the open templates bucketed under one base MOST-SPECIFIC FIRST, ties
  * broken by LATEST registration (bucket order is registration order), and drops
- * any whose template does not parse. The rule di.core's reference
- * `TokenProvider.#rankTemplates` states — see §125 for why the engine needs it
+ * any whose template does not parse. See §125 for why the engine needs the rule
  * once a template may mix concrete args and holes.
  *
  * The tree comes off the registration when present; a hand-built

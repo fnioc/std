@@ -25,10 +25,7 @@ export { TokenRewriter, TokenWalker } from './visitor.js';
 // that used to sit alongside it was abandoned — §112.)
 export { closeSignatures, parseSlot, serialiseSlot } from './slot.js';
 
-// The shallow string-grammar classification/compose edge, plus the key strip
-// every classification runs first (the string grammar stops at a `#key`).
+// The classification/compose edge: `isOpenToken` (open template?, read off the
+// typed tree so it does not depend on spelling), the shallow `parseToken` /
+// `closeToken` string pair, and the key strip every classification runs first.
 export { closeToken, HOLE_PATTERN, isOpenToken, parseToken, unkeyedToken } from './edges.js';
-
-// The gated reference manifest/provider (not on the live resolution path).
-export type { Descriptor, SealedTokenManifest } from './manifest.js';
-export { TokenManifest, TokenProvider } from './manifest.js';
