@@ -1,0 +1,15 @@
+{
+  "//": "Resolution-only tsconfig, read by `bun run knip` (`--tsConfig tsconfig.knip.json`) and by NOTHING else -- it is not a build, gate, or editor program. Its whole job is the `paths` block: knip resolves module specifiers with oxc-resolver under the fixed condition set require/import/node/default, so a bare `@rhombus-std/x` would land on the package's `import` condition (./dist/bundle/index.js) and the scan would see zero references into any library's src. tsconfig `paths` take precedence over node_modules `exports` in that resolver, so mapping the scope back to src pins the analysis to source REGARDLESS of whether dist happens to be built -- the scan reads the same on a cold clone and after `bun run build`. tsconfig.editor.json does the same job for the editor via its `source` export condition; knip ignores customConditions, hence this file rather than reuse.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@rhombus-std/*": [
+        "./libraries/*/src/index.ts",
+        "./examples/*/src/index.ts"
+      ]
+    }
+  },
+  "files": [],
+  "include": []
+}

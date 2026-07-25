@@ -1,0 +1,128 @@
+// knip — the repo's dead-code detector. Run it with `bun run knip`.
+//
+// SEMANTICS THIS FILE ENCODES (owner-ruled, docs/decisions.md is the design record):
+//
+//   1. THE EXAMPLES ARE THE ENTRY POINTS. Reachability is computed from
+//      `examples/` inward. `examples/*` is the only workspace family that seeds
+//      the graph from its own source, so a public API an example exercises is
+//      reachable and silent, while one that neither an example demonstrates nor
+//      library code uses is flagged. The example projects are meant to be true
+//      kitchen sinks, so this makes that requirement the scan's actual
+//      semantics rather than a convention nobody can check.
+//
+//   2. TESTS DO NOT COUNT AS REFERENCES, AT ALL. A test that exists solely to
+//      exercise a symbol is a mirror, not a consumer -- it can keep a symbol
+//      alive forever without anything real depending on it. `tests/*` is
+//      dropped from the graph entirely (see `ignoreWorkspaces`), so a symbol
+//      whose only callers are its own tests is still reported.
+//
+//   3. REPORT ONLY. Never run this with `--fix`. Each flag is a binary owner
+//      decision: delete the symbol, or demonstrate it in an example.
+//
+// Every ignore below names the mechanism that makes the reference invisible.
+// An ignore without that explanation is how a detector rots -- do not add one.
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  // Rule 2. `ignoreWorkspaces` removes these workspaces from the graph before
+  // analysis, so their imports never mark anything as used -- it is not merely
+  // a report filter. Verified: `MemoryCache` is imported by six files under
+  // tests/caching.memory.test and is still reported.
+  "ignoreWorkspaces": ["tests/*"],
+
+  // LOAD-BEARING -- without this the scan reports almost nothing (11 findings
+  // instead of 512). knip exempts exports of ENTRY files by default, and every
+  // library's package.json exposes the white-box seam `"./tokens/*":
+  // "./src/*.ts"` (docs/decisions.md §7/§72), which knip expands to
+  // `./src/**/*.ts` and treats as a package entry point. That makes literally
+  // every library source file an entry, so the default exemption would silence
+  // the whole surface. Turning it on reports unused exports wherever they live.
+  //
+  // Consequence, stated so nobody is surprised by it: the `Unused files` bucket
+  // is near-useless here for the same reason -- an entry file is by definition
+  // reachable, so a wholly dead module cannot be reported as an unused FILE. It
+  // shows up instead as every one of its exports being flagged, which is the
+  // same information at finer granularity.
+  "includeEntryExports": true,
+
+  // Consumed by the `ttsc` toolchain, not by any import knip can follow:
+  //   - `ttsc` is named in each package's tsconfig.ttsc.json `plugins[].transform`
+  //     (a JSON descriptor no knip plugin models) and spawned by
+  //     scripts/build-package.ts;
+  //   - `@ttsc/unplugin` is imported by scripts/build-package.ts at the repo
+  //     root but must resolve from each package's own directory, because the
+  //     per-file lowering stage runs with that package as cwd under bun's
+  //     isolated linker.
+  // Both are therefore correctly declared per package and permanently
+  // invisible to a TypeScript-level analyser.
+  "ignoreDependencies": ["ttsc", "@ttsc/unplugin"],
+
+  // Binaries invoked from shell strings knip parses but cannot attribute to a
+  // package dependency: `gofmt` from the Go gate in .github/workflows/ci.yml,
+  // `diff` from the examples' output-diff e2e test scripts, `mise` from
+  // build-package.ts's `mise which go` toolchain probe, and `knip` itself --
+  // which, like Go, is a mise-pinned tool (mise.toml `[tools]`) rather than a
+  // package.json devDependency, per the repo's no-global-devtools rule.
+  "ignoreBinaries": ["gofmt", "diff", "mise", "knip"],
+
+  "ignoreIssues": {
+    // `<pkg>/ttsc.mjs` is a ttsc plugin descriptor: ttsc resolves it through the
+    // package's `./ttsc` export subpath and calls its default export. That call
+    // is made by the ttsc host at build time, so no TypeScript-visible import of
+    // it exists anywhere. `createTtscPlugin` + `default` being the same function
+    // is likewise deliberate (named form for typing, default form for ttsc's
+    // loader), so the duplicate-export report is noise too.
+    "**/ttsc.mjs": ["exports", "duplicates"],
+
+    // `rollup*.dts.mjs` is a rollup config, listed as an entry below so its
+    // `rollup-plugin-dts` import is counted. The config object it default-exports
+    // is read by the `rollup -c` CLI, never imported.
+    "**/rollup*.dts.mjs": ["exports"],
+  },
+
+  "workspaces": {
+    // The root workspace owns only repo tooling. The `project` glob is kept
+    // deliberately narrow rather than left at knip's `**/*.{js,ts,tsx}` default
+    // so that nothing outside the build/lint tooling is dragged in:
+    //   - `transforms/` is a Go module (zero .ts files) and stays out of the
+    //     graph entirely;
+    //   - `scripts/plan-doc/` is a self-contained tool with its own
+    //     package.json, so its dependencies would be misattributed to the root.
+    // (`eslint.config.mjs` is deliberately absent: knip's eslint plugin already
+    // picks it up, and listing it again earns a "redundant pattern" hint.)
+    ".": {
+      "entry": ["scripts/*.{ts,mjs}", "scripts/eslint/*.mjs"],
+      "project": ["scripts/*.{ts,mjs}", "scripts/eslint/*.mjs"],
+    },
+
+    // Rule 1: libraries seed NOTHING. Their source is reachable only through an
+    // example's import chain, which is the entire point of the scan.
+    //
+    // (knip still derives entry points from each package.json's `exports` map,
+    // which the `./tokens/*` seam makes exhaustive -- see `includeEntryExports`
+    // above. That affects which files can be called unused; it does not affect
+    // which exports are called unused, because a reference is only ever created
+    // by a real import.)
+    //
+    // `rollup*.dts.mjs` is listed so its `rollup-plugin-dts` import is seen. It
+    // adds no reachability: it names `src/index.ts` as a plain string path for
+    // the rollup CLI, not as an import, so it creates no edge into src.
+    // 31 of the 32 libraries have one; descriptor-only `config.extras` does not,
+    // which is the source of the two "no matches" configuration hints the run
+    // prints. Left as-is on purpose -- a per-package override to silence two
+    // cosmetic lines is more config than the noise is worth.
+    "libraries/*": {
+      "entry": ["rollup*.dts.mjs"],
+      "project": ["src/**/*.ts", "rollup*.dts.mjs"],
+    },
+
+    // Rule 1: the examples are where reachability starts. `build.ts` is NOT
+    // listed: knip already derives it from each with-transformer project's
+    // `"build": "bun build.ts"` script, and naming it again is either redundant
+    // (the two projects that have one) or a dead glob (the three that do not).
+    "examples/*": {
+      "entry": ["src/**/*.ts"],
+      "project": ["src/**/*.ts"],
+    },
+  },
+}
