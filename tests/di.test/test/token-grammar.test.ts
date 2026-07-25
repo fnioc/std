@@ -170,4 +170,32 @@ describe('isOpenToken', () => {
     expect(isOpenToken('pkg:IFoo<x$1>')).toBe(false);
     expect(isOpenToken('pkg:IFoo<$1x>')).toBe(false);
   });
+
+  // Classification is SPELLING-INDEPENDENT: it reads the typed tree, so every
+  // spelling that parses to one template classifies alike. Reading raw arg
+  // slices used to hide the hole in all of these, and `materialise` then filed
+  // the template in the exact map as a literal holey token nothing can resolve.
+  test('whitespace around a hole does not hide it', () => {
+    expect(isOpenToken('pkg:IFoo< $1 >')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<pkg:IBar, $1>')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<$1 , $2>')).toBe(true);
+    expect(isOpenToken('pkg:IFoo<pkg:IBar< $1 >>')).toBe(true);
+  });
+
+  test('a leading-zero hole label is the label it canonicalises to', () => {
+    // `$01` parses to hole 1 — the same node `$1` yields — so it is open.
+    expect(isOpenToken('pkg:IFoo<$01>')).toBe(true);
+    expect(isOpenToken('$01')).toBe(true);
+  });
+
+  test('a keyed template is open; classification sees past the key', () => {
+    expect(isOpenToken('pkg:IRepo<$1>#redis')).toBe(true);
+    expect(isOpenToken('pkg:IRepo<pkg:IA>#redis')).toBe(false);
+  });
+
+  test('a token the tree grammar refuses falls back to the shallow scan', () => {
+    // Trailing text after the base — no tree to read. The shallow scan still
+    // calls it open, which is what routes it to `openEntry`'s rejection.
+    expect(isOpenToken('a b<$1>')).toBe(true);
+  });
 });

@@ -58,6 +58,60 @@ describe('open-table matching', () => {
     expect(sp.resolve('app/IR<pkg:IA>')).toBeInstanceOf(ZeroRepo);
   });
 
+  // The base's whitespace (above) was always classified open — the string
+  // grammar reads it as part of the base. Whitespace AROUND THE HOLE was not:
+  // the raw arg slice `" $1 "` did not match the hole pattern, so the template
+  // registered as an EXACT entry on a literal holey token, silently, and no
+  // closing could ever reach it. Classification reads the typed tree now, so
+  // every spelling of one template behaves like the template it parses to.
+  test('whitespace around a hole does not strand the template', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IR< $1 >', SqlRepo, [['$1']]);
+
+    const sp = services.build();
+    const repo = sp.resolve<SqlRepo>(closeToken('app/IR', T.A));
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('A!');
+  });
+
+  test('a mixed concrete/hole template survives a space after the comma', () => {
+    // The natural hand spelling of a §124 mixed template. Registering it used to
+    // succeed and then resolve NOTHING — not under the closing, and not under
+    // its own spelling either (the un-substituted `$1` dep is unsatisfiable).
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IR<pkg:IUser, $1>', SqlRepo, [['$1']]);
+
+    const sp = services.build();
+    const repo = sp.resolve<SqlRepo>(closeToken('app/IR', 'pkg:IUser', T.A));
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('A!');
+  });
+
+  test('a leading-zero hole label is the label it canonicalises to', () => {
+    let services = new ServiceManifest();
+    services = services.addValue(T.A, 'A!');
+    services = services.addClass('app/IR<$01>', SqlRepo, [['$01']]);
+
+    const sp = services.build();
+    const repo = sp.resolve<SqlRepo>(closeToken('app/IR', T.A));
+
+    expect(repo).toBeInstanceOf(SqlRepo);
+    expect(repo.dep).toBe('A!');
+  });
+
+  test('resolving a non-canonical template spelling names the hole, not a miss', () => {
+    let services = new ServiceManifest();
+    services = services.addClass(G.RepoTemplate, SqlRepo, [['$1']]);
+
+    const sp = services.build();
+
+    expect(() => sp.resolve('pkg:IRepo< $1 >')).toThrow(OpenTokenResolutionError);
+  });
+
   test('repeated holes match only equal args', () => {
     let services = new ServiceManifest();
     services = services.addClass('app/IPair<$1,$1>', ZeroRepo, [[]]);

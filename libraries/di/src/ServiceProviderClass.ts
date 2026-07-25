@@ -643,9 +643,10 @@ export class ServiceProviderClass<S extends string = string> implements IService
       return memoized;
     }
 
-    // An open template is not resolvable. Classification stays on the string
-    // predicate (the registration-boundary grammar), over the UNKEYED token so a
-    // keyed template is seen for what it is. Miss, never throw.
+    // An open template is not resolvable. Classification runs through the SAME
+    // `isOpenToken` the registration boundary uses — so a request and a
+    // registration never disagree about what is a template — over the UNKEYED
+    // token so a keyed one is seen for what it is. Miss, never throw.
     if (isOpenToken(unkeyedToken(token))) {
       return NO_CLOSINGS;
     }
@@ -832,10 +833,12 @@ export class ServiceProviderClass<S extends string = string> implements IService
           | Pending<T>;
       }
       // A holey token can never resolve — it is a template naming a FAMILY of
-      // tokens. Distinguish that from a plain miss so the fix is actionable.
+      // tokens. Distinguish that from a plain miss so the fix is actionable, for
+      // every spelling of the template and not just the canonical one
+      // (`resolve("pkg:IRepo< $1 >")` used to answer `UnregisteredTokenError`).
       // Over the UNKEYED token: `resolve("pkg:IRepo<$1>", "redis")` composes
-      // `pkg:IRepo<$1>#redis`, whose hole the string grammar cannot see past the
-      // key, and the unbound hole is the actionable half of that diagnosis.
+      // `pkg:IRepo<$1>#redis`, and the unbound hole — not the key — is the
+      // actionable half of that diagnosis.
       if (isOpenToken(unkeyedToken(token))) {
         throw new OpenTokenResolutionError(token);
       }

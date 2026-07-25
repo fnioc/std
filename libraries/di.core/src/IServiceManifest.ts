@@ -128,15 +128,21 @@ type PendingProducer =
 function materialise(pending: PendingRegistration): ManifestEntry {
   const token = keyedToken(pending.base, pending.key);
   // Classify off the UNKEYED base, never the key-composed token. A key suffix
-  // can neither introduce nor remove a hole, but the string grammar cannot see
-  // past one: `parseToken` requires the closing `>` to be the token's LAST
-  // character, so `isOpenToken("pkg:IRepo<$1>#redis")` answers false and a keyed
-  // template used to land as an exact entry on a literal holey string no closing
-  // could ever resolve. `unkeyedToken` covers the key SPELLED INTO the token as
-  // well as the one passed as the tail argument, so the two spellings of one
-  // keyed template agree. The typed side has always handled it — `TokenNode`
-  // parses `base<args>#key`, `baseKey` yields the `base#key` the engine's open
-  // table is indexed by, and `Matcher` compares template key against ground key.
+  // can neither introduce nor remove a hole, and `unkeyedToken` covers the key
+  // SPELLED INTO the token as well as the one passed as the tail argument, so
+  // the two spellings of one keyed template agree here rather than relying on
+  // `isOpenToken`'s internals to see past a key. The typed side has always
+  // handled keys — `TokenNode` parses `base<args>#key`, `baseKey` yields the
+  // `base#key` the engine's open table is indexed by, and `Matcher` compares
+  // template key against ground key.
+  //
+  // THIS IS THE ONLY PLACE A TEMPLATE IS ROUTED. `openEntry`'s "reject a
+  // template nothing could ever match" guard runs only on the branch this
+  // classification picks, so a template mis-read as closed lands in the exact
+  // map as a literal holey token — silently, with no error, resolvable by
+  // nothing. That is why `isOpenToken` answers off the typed tree and not off
+  // raw arg slices: `pkg:IRepo<pkg:IA, $1>` must classify like the canonical
+  // spelling it parses to.
   const open = isOpenToken(unkeyedToken(pending.base));
   // Union slots reach the engine union-bearing: per-param `#resolveUnion` resolves
   // each union at RESOLVE time and falls through on a member's runtime failure (a
