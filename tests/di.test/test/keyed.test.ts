@@ -191,6 +191,68 @@ describe('keyed plural resolution', () => {
   });
 });
 
+// A keyed OPEN template is registrable, so a key whose only registration is a
+// template closing has to show up in the plural scan exactly as it shows up
+// under the singular `resolve(base, key)` — otherwise the two views of one
+// registration disagree.
+describe('keyed plural over open-template closings', () => {
+  const REPO_OF_A: Token = 'pkg:IRepo<pkg:IA>';
+
+  class Repo {
+    public readonly kind = 'repo';
+  }
+  class OtherRepo {
+    public readonly kind = 'other';
+  }
+
+  test('a keyed template closing appears in the plural scan, not just the singular', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('pkg:IRepo<$1>', Repo, [[]], 'singleton', 'redis');
+
+    const sp = services.build();
+    expect(sp.resolve<Repo>(REPO_OF_A, 'redis')).toBeInstanceOf(Repo);
+    expect(sp.resolve<object>(REPO_OF_A, /redis/)).toHaveLength(1);
+    expect(sp.resolve<object>(REPO_OF_A, /.+/)).toHaveLength(1);
+    // The bare token has no registration of its own.
+    expect(sp.resolve<object>(REPO_OF_A, /^$/)).toEqual([]);
+  });
+
+  test('/.*/ over an UNKEYED template includes the bare closing', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('pkg:IRepo<$1>', Repo, [[]], 'singleton');
+
+    const sp = services.build();
+    expect(sp.resolve<Repo>(REPO_OF_A)).toBeInstanceOf(Repo);
+    expect(sp.resolve<object>(REPO_OF_A, /.*/)).toHaveLength(1);
+    // …and the key-portion test still applies: a non-empty key matches nothing.
+    expect(sp.resolve<object>(REPO_OF_A, /.+/)).toEqual([]);
+  });
+
+  test('a key served by BOTH a template and an exact registration yields both', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('pkg:IRepo<$1>', Repo, [[]], 'singleton', 'redis');
+    services = services.addClass('pkg:IRepo<pkg:IA>#redis', OtherRepo, [[]], 'singleton');
+
+    const kinds = services.build()
+      .resolve<object>(REPO_OF_A, /redis/)
+      .map((r) => (r as { kind: string; }).kind);
+
+    // Same closings-then-exact order `Array<T>` aggregates by, so the last
+    // element is what the singular resolve yields.
+    expect(kinds).toEqual(['repo', 'other']);
+  });
+
+  test('the scan stays confined to the base — another template is not swept in', () => {
+    let services = new ServiceManifest<'singleton'>();
+    services = services.addClass('pkg:IRepo<$1>', Repo, [[]], 'singleton', 'redis');
+    services = services.addClass('pkg:IRepoOther<$1>', OtherRepo, [[]], 'singleton', 'redis');
+
+    const all = services.build().resolve<object>(REPO_OF_A, /.*/);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toBeInstanceOf(Repo);
+  });
+});
+
 describe('keyed / collection isolation', () => {
   const ARRAY: Token = 'Array<caching.core:ICache>';
   const ITERABLE: Token = 'Iterable<caching.core:ICache>';

@@ -1035,8 +1035,14 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * the bare token; a specific pattern matches those keys. 0 matches is `[]`,
    * never a throw.
    *
-   * Keyed registrations are ordinary exact registrations, so only the exact
-   * `#registrations` map is scanned — open-generic synthesis is not keyed.
+   * BOTH tables feed the scan. Keyed registrations are ordinary exact
+   * registrations, but an open template may be keyed too, so a matching key
+   * whose only registration is a template closing must appear here exactly as it
+   * appears under the singular `resolve(base, key)` — otherwise the two views of
+   * one registration disagree. Each matching key resolves through
+   * `#collectionRegistrations`, which is the same closings-then-exact rule
+   * `Array<T>` aggregates by; for a key with no template it returns the exact
+   * list untouched.
    */
   #resolveKeyed<T>(
     base: Token,
@@ -1052,20 +1058,12 @@ export class ServiceProviderClass<S extends string = string> implements IService
     // so a resolve never mutates an argument it was lent.
     const callerLastIndex = pattern.lastIndex;
     try {
-      for (const [token, list] of this.#registrations) {
-        let keyPortion: string;
-        if (token === base) {
-          keyPortion = '';
-        } else if (token.startsWith(prefix)) {
-          keyPortion = token.slice(prefix.length);
-        } else {
-          continue;
-        }
+      for (const token of this.#keySpace(base, prefix)) {
         pattern.lastIndex = 0;
-        if (!pattern.test(keyPortion)) {
+        if (!pattern.test(token === base ? '' : token.slice(prefix.length))) {
           continue;
         }
-        for (const registration of list) {
+        for (const registration of this.#collectionRegistrations(token)) {
           const result = this.#resolveWith<T>(token, registration, vantage, stack, false);
           if (isPending(result)) {
             throw new AsyncResolutionRequiredError(token);
@@ -1077,6 +1075,47 @@ export class ServiceProviderClass<S extends string = string> implements IService
       pattern.lastIndex = callerLastIndex;
     }
     return matches;
+  }
+
+  /**
+   * The tokens making up `base`'s key-space — `base` itself and every
+   * `base + "#" + <k>` anything is registered under — in registration order,
+   * exact registrations first.
+   *
+   * The exact map is keyed by the token itself, so its arm is a prefix test. The
+   * open table is keyed by the TEMPLATE's `baseKey` (`pkg:IRepo#redis`), which
+   * shares the ground token's base but not its generic args, so its arm maps each
+   * matching bucket back to the closed token that bucket would serve — the key is
+   * carried across, the generics come from `base`.
+   */
+  *#keySpace(base: Token, prefix: string): Generator<Token> {
+    const yielded = new Set<Token>();
+    for (const token of this.#registrations.keys()) {
+      if (token === base || token.startsWith(prefix)) {
+        yielded.add(token);
+        yield token;
+      }
+    }
+    const ground = TokenNode.tryParse(base);
+    if (ground === undefined) {
+      return;
+    }
+    const groundBase = TokenNode.baseKey(ground);
+    const openPrefix = groundBase + KEY_SEPARATOR;
+    for (const bucket of this.#openRegistrations.keys()) {
+      let token: Token;
+      if (bucket === groundBase) {
+        token = base;
+      } else if (bucket.startsWith(openPrefix)) {
+        token = prefix + bucket.slice(openPrefix.length);
+      } else {
+        continue;
+      }
+      if (!yielded.has(token)) {
+        yielded.add(token);
+        yield token;
+      }
+    }
   }
 
   /**
