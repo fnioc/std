@@ -4,7 +4,7 @@
 # Changes to this file ON THE DEFAULT BRANCH are synced to GitHub on push.
 # Editing it anywhere else does nothing until it lands on `main`.
 #
-# TWO THINGS TO KNOW BEFORE EDITING
+# THREE THINGS TO KNOW BEFORE EDITING
 #
 # 1. Every list section here is DESTRUCTIVE. `labels:` and `rulesets:` are
 #    diffed against what GitHub currently has: an entry present remotely but
@@ -16,6 +16,17 @@
 #    push rule restricting `.github/settings.yml`, but GitHub rejects push
 #    rules on public repos outright (see the note in `rulesets:` below), so
 #    the merge queue on `main` is the only thing standing in front of it.
+#
+# 3. A sync is SLOW and reports nothing. Measured at ~13 minutes from merge to
+#    the last section landing, and the app creates no check run, so a sync
+#    still in progress is indistinguishable from one that died. Give it 15
+#    minutes before concluding anything failed.
+#
+# The trigger set is narrow: a push to `main` whose commit touches THIS file,
+# repository creation, or a default-branch change. Nothing else — a label event
+# will not do it. So the app never reconciles drift: a setting changed by hand
+# stays changed until this file is pushed again. A comment-only edit is enough
+# to force a sync.
 #
 # Secrets and variables are NOT manageable here and never will be: secrets are
 # sealed client-side before upload, and a file in this repo is public plaintext.

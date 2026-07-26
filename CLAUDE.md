@@ -522,10 +522,17 @@ entry points and leaks the white-box `./tokens/*` + `./private/*` seams.
 ## Repository settings
 
 Repo settings, labels and rulesets are code: **`.github/settings.yml`**, applied by the Probot
-Settings app installed org-wide on `fnioc`. It syncs on every push to `main`, so **never change
-these through `gh api` or the web UI** — the next sync reverts it. Edit the file and PR it like any
-other change.
+Settings app installed org-wide on `fnioc`. **Change them by editing the file and PRing it**, never
+through `gh api` or the web UI — a hand-made change is invisible to the file, which then misdescribes
+the repo until someone reconciles it by hand.
 
+- **A sync takes ~13 minutes and reports nothing.** The app creates no check run, so one still in
+  progress is indistinguishable from one that died. Allow 15 minutes before concluding a section
+  failed to apply.
+- **It never reconciles drift, and the trigger set is narrow**: a push to `main` whose commit
+  touches `settings.yml`, repository creation, or a default-branch change. Nothing else — a label
+  event does not sync, despite the installation subscribing to `label`. A comment-only edit to the
+  file is enough to force one.
 - **Every list section is destructive.** `labels:` and `rulesets:` are diffed against the live repo:
   an entry present remotely but absent from the file is DELETED, not left alone. Dropping a label
   strips it from every issue and PR carrying it. Omitting a whole section is a safe no-op;
