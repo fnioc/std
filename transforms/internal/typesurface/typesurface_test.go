@@ -149,6 +149,74 @@ export interface I { host: string; port: number; }
 	}
 }
 
+// An accessor is directional, and consumers face opposite ways: a guard reads,
+// a schema writes. Both directions have to be reported, or one consumer emits a
+// member operation that can never succeed.
+func TestAccessorDirectionsAreReportedSeparately(t *testing.T) {
+	prog, checker, t0 := load(t, `
+export class C {
+  #a = 0;
+  #b = 0;
+  public get readOnly(): number { return this.#a; }
+  public set writeOnly(v: number) { this.#b = v; }
+  public get both(): number { return this.#a; }
+  public set both(v: number) { this.#a = v; }
+  public plain: string = "";
+}
+`, "C")
+	defer func() { _ = prog.Close() }()
+
+	surface := For(checker, t0, nil)
+	for _, tc := range []struct {
+		name               string
+		readable, writable bool
+	}{
+		{"readOnly", true, false},
+		{"writeOnly", false, true},
+		{"both", true, true},
+		{"plain", true, true},
+	} {
+		var found bool
+		for _, m := range surface.Members {
+			if m.Name != tc.name {
+				continue
+			}
+			found = true
+			if m.Readable != tc.readable || m.Writable != tc.writable {
+				t.Errorf("%s: readable/writable = %v/%v; want %v/%v", tc.name, m.Readable, m.Writable, tc.readable, tc.writable)
+			}
+		}
+		if !found {
+			t.Errorf("%s absent from the surface %v", tc.name, names(surface))
+		}
+	}
+	if got := len(surface.Readable()); got != 3 {
+		t.Errorf("Readable() = %d members; want 3", got)
+	}
+	if got := len(surface.Writable()); got != 3 {
+		t.Errorf("Writable() = %d members; want 3", got)
+	}
+}
+
+// HiddenOnly is the one refusal predicate every consumer shares: a type that has
+// members, none of which can be named from outside it.
+func TestHiddenOnly(t *testing.T) {
+	prog, checker, t0 := load(t, `
+export class Sealed { #a: number = 0; private b: string = ""; }
+export interface Empty {}
+`, "Sealed")
+	defer func() { _ = prog.Close() }()
+	if !For(checker, t0, nil).HiddenOnly() {
+		t.Error("a class whose every member is hidden does not report HiddenOnly")
+	}
+
+	prog2, checker2, t2 := load(t, `export interface Empty {}`, "Empty")
+	defer func() { _ = prog2.Close() }()
+	if For(checker2, t2, nil).HiddenOnly() {
+		t.Error("an empty type reports HiddenOnly; it hides nothing")
+	}
+}
+
 func TestUnderNodeModules(t *testing.T) {
 	cases := []struct {
 		fileName string

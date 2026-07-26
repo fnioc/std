@@ -23,9 +23,10 @@
 //   - Optionality is decided SOLELY by the `?` modifier (SymbolFlagsOptional).
 //     The inner type is stripped of null/undefined via GetNonNullableType before
 //     recursing.
-//   - Only a type's PUBLIC surface is walked (internal/typesurface). A type whose
-//     members are ALL hidden would yield `{}`, which coerces nothing — that is
-//     refused, not emitted.
+//   - Only a type's PUBLIC, WRITABLE surface is walked (internal/typesurface).
+//     Coercion assigns into the field, so a get-only accessor is no more of a
+//     target than a `#`-named field is. A type left with nothing to write to
+//     would yield `{}`, which coerces nothing — that is refused, not emitted.
 //   - Unsupported anything aborts the WHOLE literal (a failed flag) — never a
 //     silent partial.
 package schema
@@ -55,9 +56,9 @@ const (
 	// CodeNonObjectRoot marks a schema root type that is not an object type — a
 	// bare leaf or other non-record.
 	CodeNonObjectRoot = "992002"
-	// CodePrivateOnlySurface marks a type with no public, string-keyed members at
-	// all: every member is a `#`-named field, a `private`/`protected` one, or
-	// symbol-keyed. Its schema would be `{}`, which coerces nothing.
+	// CodePrivateOnlySurface marks a type nothing can be written into: every
+	// member is a `#`-named field, a `private`/`protected` one, symbol-keyed, or
+	// a get-only accessor. Its schema would be `{}`, which coerces nothing.
 	CodePrivateOnlySurface = "992003"
 )
 
@@ -72,10 +73,10 @@ const MessageUnsupportedType = "unsupported type for a configuration field. The 
 	"with one of those (unions, arrays, functions, and library types like Date " +
 	"have no schema representation)."
 
-const MessagePrivateOnlySurface = "no member of this type can be named from outside it -- each is a #-named " +
-	"field, a private or protected member, or symbol-keyed -- so there is no " +
-	"surface to build a schema from. Expose the fields as public properties or " +
-	"accessors."
+const MessagePrivateOnlySurface = "no member of this type can be written from outside it -- each is a #-named " +
+	"field, a private or protected member, symbol-keyed, or a get-only accessor " +
+	"-- so there is no surface to build a schema from. Expose the fields as " +
+	"public properties or settable accessors."
 
 // OptionalMarker is the runtime identity of the optional-field wrapper key — the
 // `OPTIONAL` unique symbol re-exported from the config barrel. It is the single
@@ -118,17 +119,20 @@ func LiteralForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Node) (*s
 }
 
 // objectLiteralForType builds the `{ key: schema, ... }` literal for an accepted
-// record type, over its PUBLIC surface only.
+// record type, over its PUBLIC, WRITABLE surface only.
 func objectLiteralForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Node, state *walkState) *shimast.Node {
 	f := ctx.Factory
 	surface := typesurface.For(ctx.Checker, t, anchor)
-	if len(surface.Members) == 0 && surface.Hidden() > 0 {
+	// Nothing to write into: either every member is hidden, or every one that
+	// survived is a get-only accessor. Both leave `{}`, which coerces nothing.
+	writable := surface.Writable()
+	if surface.HiddenOnly() || (len(surface.Members) > 0 && len(writable) == 0) {
 		state.failed = true
 		ctx.AddDiagnostic(CodePrivateOnlySurface, MessagePrivateOnlySurface, anchor)
 		return f.NewObjectLiteralExpression(f.NewNodeList(nil), true)
 	}
 	properties := []*shimast.Node{}
-	for _, member := range surface.Members {
+	for _, member := range writable {
 		decl := member.Decl
 		propType := ctx.Checker.GetTypeOfSymbolAtLocation(member.Symbol, decl)
 		key := propertyKey(f, member.Name)

@@ -98,6 +98,45 @@ export const s = schemaof<C>();
 	}
 }
 
+// Coercion assigns into the field, so a get-only accessor is no more of a target
+// than a `#`-named field. Its counterpart in the guard walk drops a SET-only
+// accessor, which cannot be read; each consumer filters by the direction it
+// actually uses.
+func TestGetOnlyAccessorIsNotInTheSchema(t *testing.T) {
+	literal, codes := literalFor(t, `class C {
+  #a: number = 0;
+  public get derived(): number { return this.#a; }
+  public host: string = "";
+}
+export const s = schemaof<C>();
+`)
+	if len(codes) != 0 {
+		t.Fatalf("unexpected diagnostics %v", codes)
+	}
+	if strings.Contains(literal, "derived") {
+		t.Errorf("emitted a key for a get-only accessor — coercion cannot assign to it:\n%s", literal)
+	}
+	if !strings.Contains(literal, `host: "string"`) {
+		t.Errorf("public member `host` missing from the schema:\n%s", literal)
+	}
+}
+
+// Nothing writable at all leaves nothing to coerce into.
+func TestGetOnlyAccessorOnlySurfaceIsRefused(t *testing.T) {
+	literal, codes := literalFor(t, `class C {
+  #a: number = 0;
+  public get derived(): number { return this.#a; }
+}
+export const s = schemaof<C>();
+`)
+	if len(codes) == 0 {
+		t.Fatalf("a surface with nothing writable must refuse, not emit %s", literal)
+	}
+	if codes[0] != schema.CodePrivateOnlySurface {
+		t.Errorf("diagnostic codes = %v; want %s", codes, schema.CodePrivateOnlySurface)
+	}
+}
+
 // A class whose ONLY members are `#private` fields has an empty public surface.
 // A schema built from it would be `{}`, which coerces nothing.
 func TestPrivateOnlySurfaceIsRefused(t *testing.T) {

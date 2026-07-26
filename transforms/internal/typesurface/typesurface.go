@@ -20,6 +20,13 @@
 // read its type through Member.Decl, which yields the accessor's declared type.
 // Static members never appear — an instance type's properties do not include
 // them.
+//
+// An accessor is DIRECTIONAL, and the two directions are reported separately
+// (Member.Readable / Member.Writable) because the consumers face opposite ways: a
+// runtime type guard READS a member, so a set-only accessor gives it nothing to
+// check; a schema WRITES one, so a get-only accessor gives it nowhere to put a
+// value. Filtering by the wrong direction yields a member operation that can
+// never succeed, so neither consumer may assume both.
 package typesurface
 
 import (
@@ -33,12 +40,16 @@ import (
 )
 
 // Member is one public member: its symbol, its property name, the declaration
-// node its type is read at, and whether it is `?`-optional.
+// node its type is read at, whether it is `?`-optional, and which directions it
+// supports. A plain property is both Readable and Writable; an accessor is
+// whichever halves it declares.
 type Member struct {
 	Symbol   *shimast.Symbol
 	Name     string
 	Decl     *shimast.Node
 	Optional bool
+	Readable bool
+	Writable bool
 }
 
 // Surface is a type's enumerated public surface plus what was skipped to reach
@@ -61,6 +72,36 @@ type Surface struct {
 // emitted for.
 func (s Surface) Hidden() int {
 	return s.PrivateNamed + s.ModifierHidden + s.SymbolKeyed
+}
+
+// HiddenOnly reports the shape every consumer must refuse: a type that HAS
+// members, none of which can be named from outside it. Whatever such a consumer
+// would emit — a guard, a schema — covers nothing while looking like it covers
+// the type.
+func (s Surface) HiddenOnly() bool {
+	return len(s.Members) == 0 && s.Hidden() > 0
+}
+
+// Readable returns the members a value can be read FROM, in declaration order —
+// the surface a type guard can check.
+func (s Surface) Readable() []Member {
+	return s.filter(func(m Member) bool { return m.Readable })
+}
+
+// Writable returns the members a value can be written TO, in declaration order —
+// the surface a coercion can populate.
+func (s Surface) Writable() []Member {
+	return s.filter(func(m Member) bool { return m.Writable })
+}
+
+func (s Surface) filter(keep func(Member) bool) []Member {
+	kept := make([]Member, 0, len(s.Members))
+	for _, m := range s.Members {
+		if keep(m) {
+			kept = append(kept, m)
+		}
+	}
+	return kept
 }
 
 // For enumerates t's public surface. anchor is the fallback node a member's type
@@ -86,7 +127,8 @@ func For(checker *shimchecker.Checker, t *shimchecker.Type, anchor *shimast.Node
 		if decl == nil {
 			decl = anchor
 		}
-		if sym.Flags&shimast.SymbolFlagsAccessor != 0 {
+		accessor := sym.Flags&shimast.SymbolFlagsAccessor != 0
+		if accessor {
 			surface.HasAccessor = true
 		}
 		surface.Members = append(surface.Members, Member{
@@ -94,6 +136,8 @@ func For(checker *shimchecker.Checker, t *shimchecker.Type, anchor *shimast.Node
 			Name:     sym.Name,
 			Decl:     decl,
 			Optional: sym.Flags&shimast.SymbolFlagsOptional != 0,
+			Readable: !accessor || sym.Flags&shimast.SymbolFlagsGetAccessor != 0,
+			Writable: !accessor || sym.Flags&shimast.SymbolFlagsSetAccessor != 0,
 		})
 	}
 	return surface
