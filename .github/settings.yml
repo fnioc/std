@@ -1,0 +1,333 @@
+# Repository settings as code, applied by the Probot "Settings" app
+# (https://github.com/apps/settings), installed org-wide on `fnioc`.
+#
+# Changes to this file ON THE DEFAULT BRANCH are synced to GitHub on push.
+# Editing it anywhere else does nothing until it lands on `main`.
+#
+# TWO THINGS TO KNOW BEFORE EDITING
+#
+# 1. Every list section here is DESTRUCTIVE. `labels:` and `rulesets:` are
+#    diffed against what GitHub currently has: an entry present remotely but
+#    absent from this file is DELETED, not left alone. Omitting a whole
+#    section is safe (it's skipped); half-populating one is not.
+#
+# 2. This app escalates anyone with `push` to effective admin, since pushing
+#    to `main` rewrites repo settings. The natural guard for that would be a
+#    push rule restricting `.github/settings.yml`, but GitHub rejects push
+#    rules on public repos outright (see the note in `rulesets:` below), so
+#    the merge queue on `main` is the only thing standing in front of it.
+#
+# Secrets and variables are NOT manageable here and never will be: secrets are
+# sealed client-side before upload, and a file in this repo is public plaintext.
+# Use `gh secret set` / `gh variable set`.
+
+repository:
+  name: std
+  description: Rhombus std monorepo — @rhombus-std/{di,config,hosting} package families (bun workspaces)
+  # homepage:
+  topics: typescript, dependency-injection, configuration, logging, hosting, monorepo, bun
+
+  private: false
+  default_branch: main
+
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  has_downloads: false
+  has_discussions: false
+  is_template: false
+
+  # Squash only. The `pull_request` ruleset rule below independently pins
+  # allowed_merge_methods to squash; these flags remove the other two from the
+  # UI so the restriction is visible rather than only enforced at merge time.
+  allow_squash_merge: true
+  allow_merge_commit: false
+  allow_rebase_merge: false
+
+  allow_auto_merge: true
+  delete_branch_on_merge: true
+  allow_update_branch: false
+  allow_forking: true
+
+  squash_merge_commit_title: COMMIT_OR_PR_TITLE
+  squash_merge_commit_message: COMMIT_MESSAGES
+
+  web_commit_signoff_required: false
+
+  # Dependabot stays off, both the PR-opening bot and the passive alerts.
+  # These are separable if you only meant the former: `enable_vulnerability_alerts`
+  # is notifications only and opens nothing, while `enable_automated_security_fixes`
+  # is the one that files PRs at you.
+  enable_vulnerability_alerts: false
+  enable_automated_security_fixes: false
+
+  security_and_analysis:
+    secret_scanning:
+      status: enabled
+    secret_scanning_push_protection:
+      status: enabled
+    secret_scanning_non_provider_patterns:
+      status: enabled
+    dependabot_security_updates:
+      status: disabled
+
+# Deleting a label from this list deletes it from the repo, taking it off every
+# issue and PR that carried it. Rename via `new_name:` rather than delete+add,
+# which preserves those associations.
+labels:
+  # GitHub stock set — listed so the sync doesn't delete them.
+  - name: bug
+    color: d73a4a
+    description: Something isn't working
+  - name: documentation
+    color: 0075ca
+    description: Improvements or additions to documentation
+  - name: duplicate
+    color: cfd3d7
+    description: This issue or pull request already exists
+  - name: enhancement
+    color: a2eeef
+    description: New feature or request
+  - name: good first issue
+    color: 7057ff
+    description: Good for newcomers
+  - name: help wanted
+    color: '008672'
+    description: Extra attention is needed
+  - name: invalid
+    color: e4e669
+    description: This doesn't seem right
+  - name: question
+    color: d876e3
+    description: Further information is requested
+  - name: wontfix
+    color: ffffff
+    description: This will not be worked on
+
+  # Workflow state.
+  - name: signoff
+    color: 1d76db
+    description: Owner has given explicit sign-off to proceed
+  - name: claude-ready
+    color: 0e8a16
+    description: Claude has a clear execution plan; ready to implement unattended
+  - name: punt
+    color: fbca04
+    description: Deferred; not part of the current unattended push
+  - name: v0
+    color: 5319e7
+    description: In scope for the next coding pass (ME-faithful first cut)
+  - name: v1
+    color: c5def7
+    description: Deferred enhancement pass (post-v0)
+
+  # Package families.
+  - name: primitives
+    color: 5319e7
+  - name: di
+    color: 1d76db
+  - name: options
+    color: fbca04
+  - name: config
+    color: 0e8a16
+  - name: hosting
+    color: 0e8a16
+  - name: logging
+    color: bfd4f2
+  - name: caching
+    color: f2e2b5
+  - name: diagnostics
+    color: f2b5d4
+  - name: fileproviders
+    color: b5f2c8
+  - name: tests
+    color: c2e0c6
+
+# Ruleset support in the Settings app is upstream-flagged as still in
+# development, so treat a sync failure here as expected-ish and check the app's
+# check-run output rather than assuming the file is wrong.
+#
+# The first ruleset below is the reference copy: every rule type GitHub offers
+# is present, commented out where unused, so the full menu is visible without a
+# docs round-trip. The other two carry only what they use.
+#
+# Parameters are written out in full (including API defaults) rather than
+# relying on server-side normalization. The app decides "changed?" by deep-equal
+# against what GitHub returns, so an omitted default reads as a difference and
+# re-PUTs the ruleset on every sync. Harmless, but noisy.
+rulesets:
+  - name: main-merge-queue
+    target: branch
+    enforcement: active
+    conditions:
+      ref_name:
+        include:
+          - '~DEFAULT_BRANCH'
+        exclude: []
+
+    # Empty = nobody bypasses, including org and repo admins. Adding an entry
+    # here is the ONLY way to permit a direct push to `main`; no repository
+    # setting grants it. `bypass_mode: pull_request` allows merging a PR that
+    # hasn't satisfied the rules but still forbids direct pushes; `always`
+    # permits both.
+    bypass_actors: []
+    # bypass_actors:
+    #   - actor_type: RepositoryRole   # OrganizationAdmin | RepositoryRole | Team | Integration | DeployKey
+    #     actor_id: 5                  # verify the role id against the API before trusting it
+    #     bypass_mode: pull_request    # always | pull_request
+
+    rules:
+      # --- ref lifecycle ---
+      - type: deletion
+      - type: non_fast_forward
+      # `creation` is meaningless on ~DEFAULT_BRANCH (main already exists); it
+      # earns its keep on the tag ruleset below.
+      # - type: creation
+      # `update` blocks all direct pushes. Redundant here — the merge queue
+      # already forces every change through a PR.
+      # - type: update
+      #   parameters:
+      #     update_allows_fetch_and_merge: false
+
+      # --- review and merge ---
+      - type: pull_request
+        parameters:
+          required_approving_review_count: 0
+          dismiss_stale_reviews_on_push: false
+          required_reviewers: []
+          require_code_owner_review: false
+          dismissal_restriction:
+            enabled: false
+            allowed_actors: []
+          require_last_push_approval: false
+          required_review_thread_resolution: false
+          allowed_merge_methods:
+            - squash
+
+      - type: merge_queue
+        parameters:
+          merge_method: SQUASH
+          max_entries_to_build: 5
+          min_entries_to_merge: 1
+          max_entries_to_merge: 5
+          min_entries_to_merge_wait_minutes: 0
+          grouping_strategy: ALLGREEN
+          check_response_timeout_minutes: 60
+
+      - type: required_status_checks
+        parameters:
+          strict_required_status_checks_policy: false
+          do_not_enforce_on_create: false
+          required_status_checks:
+            - context: verify
+
+      # --- commit integrity ---
+      # Matches on the string "verify" only, so any workflow reporting a check
+      # by that name satisfies the gate. `workflows` (below) would pin identity
+      # instead of name and close that, but it cannot be created on this repo.
+      - type: required_signatures
+
+      # Redundant while allowed_merge_methods is squash-only; the backstop if
+      # that is ever relaxed.
+      # - type: required_linear_history
+
+      # --- unavailable on this repo (verified against the API, 2026-07-25) ---
+      #
+      # `workflows` — requires a named workflow file to pass, pinned by repo id
+      # + path rather than by check name. Every well-formed request is rejected
+      # with "Invalid parameter workflows: Workflow error at index 0: " and an
+      # empty detail. A bogus repository_id gives a DIFFERENT, specific error
+      # ("Workflow source repository not found"), so the id resolves and the
+      # failure is downstream of it; a valid path fails identically to a
+      # nonexistent one. `code_scanning`, `required_signatures` and
+      # `required_linear_history` all create fine, so it is not blanket gating
+      # of advanced rules. Cause unknown; retest before assuming it still fails.
+      # - type: workflows
+      #   parameters:
+      #     workflows:
+      #       - repository_id: 1289783914
+      #         path: .github/workflows/ci.yml
+      #         ref: refs/heads/main
+      #
+      # `file_path_restriction`, `file_extension_restriction`,
+      # `max_file_path_length`, `max_file_size` — all push rules, needing a
+      # ruleset with `target: push`. GitHub rejects those on public repos
+      # outright: "Source public repos cannot have push rules". Not a plan
+      # limit; visibility. Nothing to enable.
+      # - type: file_path_restriction
+      #   parameters:
+      #     restricted_file_paths: []
+
+      # --- available but unused ---
+      #
+      # Inert until code scanning is set up (currently not-configured, though
+      # CodeQL default setup is free here and detects go/typescript/actions).
+      # Enabling scanning is not something this file can do.
+      # - type: code_scanning
+      #   parameters:
+      #     code_scanning_tools:
+      #       - tool: CodeQL
+      #         security_alerts_threshold: high_or_higher   # none|critical|high_or_higher|medium_or_higher|all
+      #         alerts_threshold: errors                    # none|errors|errors_and_warnings|all
+      #
+      # No environments defined and nothing deploys; npm publishing is not a
+      # GitHub deployment.
+      # - type: required_deployments
+      #   parameters:
+      #     required_deployment_environments: []
+      #
+      # Content patterns. `operator` is starts_with|ends_with|contains|regex.
+      # - type: commit_message_pattern
+      #   parameters:
+      #     operator: regex
+      #     pattern: '^(feat|fix|docs|chore|ci|refactor|test|perf)(\(.+\))?!?: '
+      #     name: conventional commits
+      #     negate: false
+      # - type: commit_author_email_pattern
+      #   parameters: { operator: ends_with, pattern: '@users.noreply.github.com', name: noreply author, negate: false }
+      # - type: committer_email_pattern
+      #   parameters: { operator: ends_with, pattern: '@users.noreply.github.com', name: noreply committer, negate: false }
+      #
+      # Ref-name patterns only bite on refs the ruleset's conditions match, so
+      # `branch_name_pattern` here would target `main` alone and do nothing.
+      # It lives in the all-branches ruleset below; `tag_name_pattern` would
+      # belong on the tag ruleset.
+      # - type: branch_name_pattern
+      # - type: tag_name_pattern
+
+  # Every branch except the default one. Currently permissive by design — the
+  # pattern accepts anything, so this enforces nothing and exists as the place
+  # to tighten branch naming later without restructuring.
+  - name: branch-naming
+    target: branch
+    enforcement: active
+    conditions:
+      ref_name:
+        include:
+          - '~ALL'
+        exclude:
+          - '~DEFAULT_BRANCH'
+    bypass_actors: []
+    rules:
+      - type: branch_name_pattern
+        parameters:
+          operator: regex
+          pattern: '.*'
+          name: any branch name
+          negate: false
+
+  # Release tags are cut by release-please. This stops one being deleted,
+  # moved, or hand-created outside that flow.
+  - name: release-tags
+    target: tag
+    enforcement: active
+    conditions:
+      ref_name:
+        include:
+          - 'refs/tags/v*'
+        exclude: []
+    bypass_actors: []
+    rules:
+      - type: creation
+      - type: deletion
+      - type: non_fast_forward
