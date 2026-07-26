@@ -27,16 +27,20 @@
 // check; a schema WRITES one, so a get-only accessor gives it nowhere to put a
 // value. Filtering by the wrong direction yields a member operation that can
 // never succeed, so neither consumer may assume both.
+//
+// EVERY test here is on the member's DECLARATIONS, never on its symbol flags. A
+// mapped type — `Partial<T>`, `Readonly<T>`, `{ [K in keyof T]: T[K] }` — remints
+// each member as a plain property symbol while keeping the original `get`/`set`
+// node as that symbol's declaration, so the flags say "property" exactly where
+// the declaration still says "accessor". Reading the flags makes an accessor
+// invisible behind any mapped type, which is the whole hazard this package
+// exists to close.
 package typesurface
 
 import (
-	"strings"
-
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
-
-	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
 // Member is one public member: its symbol, its property name, the declaration
@@ -74,12 +78,25 @@ func (s Surface) Hidden() int {
 	return s.PrivateNamed + s.ModifierHidden + s.SymbolKeyed
 }
 
-// HiddenOnly reports the shape every consumer must refuse: a type that HAS
-// members, none of which can be named from outside it. Whatever such a consumer
-// would emit — a guard, a schema — covers nothing while looking like it covers
-// the type.
-func (s Surface) HiddenOnly() bool {
-	return len(s.Members) == 0 && s.Hidden() > 0
+// NothingReadable and NothingWritable are the refusal predicates, one per
+// direction: the type DECLARES members, and none of them faces the way the
+// consumer needs. A guard over such a type would decide nothing about the type
+// it claims to check; a schema for it would be `{}`, which coerces nothing.
+//
+// A type that declares no members at all — `{}`, `object` — is neither: there is
+// nothing it fails to expose, and a consumer emitting the empty result for it is
+// correct rather than blind. Splitting the two apart is what keeps the guard walk
+// and the schema walk from reaching different verdicts on the same type.
+func (s Surface) NothingReadable() bool {
+	return s.declaresMembers() && len(s.Readable()) == 0
+}
+
+func (s Surface) NothingWritable() bool {
+	return s.declaresMembers() && len(s.Writable()) == 0
+}
+
+func (s Surface) declaresMembers() bool {
+	return len(s.Members) > 0 || s.Hidden() > 0
 }
 
 // Readable returns the members a value can be read FROM, in declaration order —
@@ -127,7 +144,7 @@ func For(checker *shimchecker.Checker, t *shimchecker.Type, anchor *shimast.Node
 		if decl == nil {
 			decl = anchor
 		}
-		accessor := sym.Flags&shimast.SymbolFlagsAccessor != 0
+		readable, writable, accessor := directionsOf(sym)
 		if accessor {
 			surface.HasAccessor = true
 		}
@@ -136,11 +153,32 @@ func For(checker *shimchecker.Checker, t *shimchecker.Type, anchor *shimast.Node
 			Name:     sym.Name,
 			Decl:     decl,
 			Optional: sym.Flags&shimast.SymbolFlagsOptional != 0,
-			Readable: !accessor || sym.Flags&shimast.SymbolFlagsGetAccessor != 0,
-			Writable: !accessor || sym.Flags&shimast.SymbolFlagsSetAccessor != 0,
+			Readable: readable,
+			Writable: writable,
 		})
 	}
 	return surface
+}
+
+// directionsOf reads a member's directions off its DECLARATIONS: a `get` node
+// makes it readable, a `set` node writable, and anything else — a property, a
+// method — both. A member with no declaration at all (a mapped type over a
+// literal key union synthesizes one) is an ordinary property.
+func directionsOf(sym *shimast.Symbol) (readable, writable, accessor bool) {
+	for _, decl := range sym.Declarations {
+		switch decl.Kind {
+		case shimast.KindGetAccessor:
+			accessor, readable = true, true
+		case shimast.KindSetAccessor:
+			accessor, writable = true, true
+		default:
+			readable, writable = true, true
+		}
+	}
+	if len(sym.Declarations) == 0 {
+		readable, writable = true, true
+	}
+	return readable, writable, accessor
 }
 
 // declarationOf picks the node a member's accessibility and type are read at: its
@@ -174,11 +212,6 @@ func isModifierHidden(decl *shimast.Node) bool {
 	return flags&(shimast.ModifierFlagsPrivate|shimast.ModifierFlagsProtected) != 0
 }
 
-// underNodeModules reports whether a file path has a node_modules segment.
-func underNodeModules(fileName string) bool {
-	return strings.Contains(fileName, "/node_modules/")
-}
-
 // isSymbolKeyed reports whether a declaration's name is computed — `[Symbol.x]`
 // and friends, which carry no string key.
 func isSymbolKeyed(decl *shimast.Node) bool {
@@ -189,30 +222,52 @@ func isSymbolKeyed(decl *shimast.Node) bool {
 	return name != nil && name.Kind == shimast.KindComputedPropertyName
 }
 
-// FromLibrary reports whether every declaration of t's symbol lives in a default
-// library file or under `node_modules` — a built-in or third-party type (Date,
-// Map, Promise, ...) rather than one declared in this project. Such a type is
-// nominal in practice: enumerating its members says nothing useful about whether
-// a value really is one.
+// FromLibrary reports whether t is a NOMINAL built-in: a class or interface
+// declared entirely in a default library file — `Date`, `Map`, `Promise`,
+// `Error`. Membership in one of those is an IDENTITY, not a shape, so
+// enumerating its members says nothing useful about whether a value really is
+// one; a consumer that emits per-member clauses has to treat it as opaque.
+//
+// Two kinds of type are deliberately NOT one, and both used to be:
+//
+//   - A STRUCTURAL type, wherever it is declared. `Partial<T>`, `Readonly<T>`,
+//     `Pick<T, K>` and `Record<K, V>` are mapped types whose declarations sit in
+//     `lib.es5.d.ts`, but they denote a shape: `Partial<Opts>` is exactly as
+//     checkable as `Opts` is. Only a class or interface declaration carries a
+//     nominal identity, so nothing else qualifies.
+//   - A type from an installed package. A third-party `interface` is a shape the
+//     same way a first-party one is, and treating `node_modules` as "library"
+//     made every non-primitive type an external consumer imports opaque — which
+//     is every such type, since in-repo packages resolve to real paths and
+//     published ones do not.
 func FromLibrary(prog *driver.Program, t *shimchecker.Type) bool {
 	if prog == nil || t == nil {
 		return false
 	}
 	symbol := t.Symbol()
-	if symbol == nil {
-		symbol = tokens.AliasSymbol(t)
-	}
 	if symbol == nil || len(symbol.Declarations) == 0 {
 		return false
 	}
+	nominal := false
 	for _, decl := range symbol.Declarations {
 		file := shimast.GetSourceFileOfNode(decl)
-		if file == nil {
+		if file == nil || !prog.TSProgram.IsSourceFileDefaultLibrary(file.Path()) {
 			return false
 		}
-		if !prog.TSProgram.IsSourceFileDefaultLibrary(file.Path()) && !underNodeModules(file.FileName()) {
-			return false
-		}
+		nominal = nominal || isNominalDeclaration(decl)
 	}
-	return true
+	return nominal
+}
+
+// isNominalDeclaration reports whether a declaration introduces a named type
+// whose membership is an identity — a class or an interface. A mapped type, a
+// type literal and an alias body all describe a shape instead. ANY of a symbol's
+// declarations qualifying is enough: a built-in merges its interface with the
+// `declare var` for its constructor, and both are the same identity.
+func isNominalDeclaration(decl *shimast.Node) bool {
+	switch decl.Kind {
+	case shimast.KindClassDeclaration, shimast.KindClassExpression, shimast.KindInterfaceDeclaration:
+		return true
+	}
+	return false
 }

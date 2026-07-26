@@ -126,7 +126,7 @@ func objectLiteralForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Nod
 	// Nothing to write into: either every member is hidden, or every one that
 	// survived is a get-only accessor. Both leave `{}`, which coerces nothing.
 	writable := surface.Writable()
-	if surface.HiddenOnly() || (len(surface.Members) > 0 && len(writable) == 0) {
+	if surface.NothingWritable() {
 		state.failed = true
 		ctx.AddDiagnostic(CodePrivateOnlySurface, MessagePrivateOnlySurface, anchor)
 		return f.NewObjectLiteralExpression(f.NewNodeList(nil), true)
@@ -191,10 +191,10 @@ func schemaForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Node, stat
 	return f.NewStringLiteral("string", shimast.TokenFlagsNone)
 }
 
-// isAcceptableRecord reports whether t is a plain user record the walk can recurse
+// isAcceptableRecord reports whether t is a plain record the walk can recurse
 // into: an object type with no call/construct signatures, not an array/tuple, no
-// index signature, and not a library / third-party global. Pure predicate — pushes
-// no diagnostics.
+// index signature, and not a nominal built-in. Pure predicate — pushes no
+// diagnostics.
 func isAcceptableRecord(ctx *Context, t *shimchecker.Type) bool {
 	if t == nil {
 		return false

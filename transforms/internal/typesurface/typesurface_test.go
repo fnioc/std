@@ -198,39 +198,88 @@ export class C {
 	}
 }
 
-// HiddenOnly is the one refusal predicate every consumer shares: a type that has
-// members, none of which can be named from outside it.
-func TestHiddenOnly(t *testing.T) {
+// The refusal predicates are per-direction, and a type that declares nothing is
+// neither: both consumers have to reach the same verdict on the same type.
+func TestNothingReadableAndNothingWritable(t *testing.T) {
 	prog, checker, t0 := load(t, `
 export class Sealed { #a: number = 0; private b: string = ""; }
-export interface Empty {}
 `, "Sealed")
 	defer func() { _ = prog.Close() }()
-	if !For(checker, t0, nil).HiddenOnly() {
-		t.Error("a class whose every member is hidden does not report HiddenOnly")
+	sealed := For(checker, t0, nil)
+	if !sealed.NothingReadable() || !sealed.NothingWritable() {
+		t.Error("a class whose every member is hidden is reported readable or writable")
 	}
 
 	prog2, checker2, t2 := load(t, `export interface Empty {}`, "Empty")
 	defer func() { _ = prog2.Close() }()
-	if For(checker2, t2, nil).HiddenOnly() {
-		t.Error("an empty type reports HiddenOnly; it hides nothing")
+	empty := For(checker2, t2, nil)
+	if empty.NothingReadable() || empty.NothingWritable() {
+		t.Error("an empty type is reported as hiding something; it declares nothing")
+	}
+
+	prog3, checker3, t3 := load(t, `
+export class Half { #v = 0; public set v(x: number) { this.#v = x; } }
+`, "Half")
+	defer func() { _ = prog3.Close() }()
+	half := For(checker3, t3, nil)
+	if !half.NothingReadable() {
+		t.Error("a set-only accessor is reported readable")
+	}
+	if half.NothingWritable() {
+		t.Error("a set-only accessor is reported unwritable")
 	}
 }
 
-func TestUnderNodeModules(t *testing.T) {
-	cases := []struct {
-		fileName string
-		want     bool
-	}{
-		{"/proj/node_modules/pkg/index.d.ts", true},
-		{"/home/x/node_modules/@scope/p/lib.d.ts", true},
-		{"/proj/src/main.ts", false},
-		{"/proj/node_modulesish/x.ts", false},
-		{"", false},
+// A mapped type reminds each member as a plain property symbol while keeping the
+// original accessor node as its declaration. Reading the SYMBOL's flags makes the
+// accessor invisible; reading the declaration keeps it visible, in both
+// directions.
+func TestMappedTypeKeepsAccessorsVisible(t *testing.T) {
+	prog, checker, t0 := load(t, `
+export class C {
+  #a = 0;
+  #b = 0;
+  public get readOnly(): number { return this.#a; }
+  public set writeOnly(v: number) { this.#b = v; }
+  public plain: string = "";
+}
+export type Mapped = { [K in keyof C]: C[K] };
+`, "Mapped")
+	defer func() { _ = prog.Close() }()
+
+	surface := For(checker, t0, nil)
+	if !surface.HasAccessor {
+		t.Errorf("HasAccessor = false through a mapped type; members = %v", names(surface))
 	}
-	for _, tc := range cases {
-		if got := underNodeModules(tc.fileName); got != tc.want {
-			t.Errorf("underNodeModules(%q) = %v, want %v", tc.fileName, got, tc.want)
+	for _, m := range surface.Members {
+		switch m.Name {
+		case "readOnly":
+			if !m.Readable || m.Writable {
+				t.Errorf("readOnly through a mapped type: readable/writable = %v/%v; want true/false", m.Readable, m.Writable)
+			}
+		case "writeOnly":
+			if m.Readable || !m.Writable {
+				t.Errorf("writeOnly through a mapped type: readable/writable = %v/%v; want false/true", m.Readable, m.Writable)
+			}
 		}
 	}
+}
+
+// Library-ness is about a NOMINAL identity, not a declaration site: a standard
+// mapped-type utility denotes a shape and is as checkable as its argument.
+func TestStandardUtilitiesAreNotNominalBuiltIns(t *testing.T) {
+	prog, checker, t0 := load(t, `
+export interface Opts { host: string; port: number; }
+`, "Partial<Opts>")
+	defer func() { _ = prog.Close() }()
+	if FromLibrary(prog, t0) {
+		t.Error("Partial<Opts> is reported a nominal built-in; it is a mapped type over a project type")
+	}
+
+	prog2, _, t2 := load(t, ``, "Map<string, number>")
+	defer func() { _ = prog2.Close() }()
+	if !FromLibrary(prog2, t2) {
+		t.Error("Map is not reported a nominal built-in")
+	}
+	_ = checker
 }
