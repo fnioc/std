@@ -34,10 +34,10 @@ transiently instead of throwing.
 ```ts
 let services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
 
-services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
-services = services.addClass<IRepo>(SqlRepo).as<'request'>();
-services = services.addClass<IUnitOfWork>(UnitOfWork).as<'transaction'>(); // nests deeper than "request"
-services = services.addClass<IAuditor>(Auditor); // no .as() at all — transient, never cached
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>().addClass<
+  IRepo
+>(SqlRepo).as<'request'>().addClass<IUnitOfWork>(UnitOfWork).as<'transaction'>() // nests deeper than "request"
+  .addClass<IAuditor>(Auditor); // no .as() at all — transient, never cached
 
 const app = services.build().createScope('singleton');
 const req = app.createScope('request');
@@ -74,8 +74,8 @@ registration's lifetime. An unregistered element type aggregates to an empty col
 element token still throws.
 
 ```ts
-services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>();
-services = services.addClass<IGreeting>(CasualGreeting).as<'singleton'>();
+services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>()
+  .addClass<IGreeting>(CasualGreeting).as<'singleton'>();
 
 resolver.resolve<IGreeting[]>(); // [formal, casual] — registration order
 resolver.resolve<Iterable<IGreeting>>(); // distinct wrapper, re-iterable, same elements
@@ -95,8 +95,8 @@ building; exhausting every member throws.
 class CacheConsumer {
   constructor(private readonly cache: IRedisCache | IMemoryCache) {}
 }
-services = services.addClass<IRedisCache>(RedisCache).as<'singleton'>();
-services = services.addClass<CacheConsumer>(CacheConsumer).as<'singleton'>();
+services = services.addClass<IRedisCache>(RedisCache).as<'singleton'>()
+  .addClass<CacheConsumer>(CacheConsumer).as<'singleton'>();
 // IMemoryCache is never registered — falls through to RedisCache, no error
 
 // manual dialect — the same signature, hand-written:
@@ -166,9 +166,9 @@ class Report {
 class Printer {
   constructor(private readonly makeReport: (customer: string) => Report) {}
 }
-services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
-services = services.addClass<Report>(Report).as<'singleton'>();
-services = services.addClass<Printer>(Printer).as<'singleton'>();
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>().addClass<
+  Report
+>(Report).as<'singleton'>().addClass<Printer>(Printer).as<'singleton'>();
 // makeReport("acme") resolves `log` from the container, threads "acme" straight
 // through to the ctor
 
@@ -193,8 +193,8 @@ class RequestContext {
 class Cache {
   constructor(private readonly ctx: RequestContext) {}
 }
-services = services.addClass<RequestContext>(RequestContext).as<'request'>();
-services = services.addClass<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
+services = services.addClass<RequestContext>(RequestContext).as<'request'>()
+  .addClass<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
 
 const req = app.createScope('request');
 const cache = req.resolve<Cache>();
@@ -237,9 +237,10 @@ some key" and `/.*/` means "keyed or not", a distinction the reference can't exp
 / `Iterable<T>` stay non-keyed-only, so the two aggregate forms never overlap.
 
 ```ts
-services = services.addClass<IStore>(RedisStore).as<'singleton'>(); // key '' — the plain registration
-services = services.addClass<Keyed<IStore, 'sql'>>(SqlStore).as<'singleton'>();
-services = services.addClass<Keyed<IStore, 'mem'>>(MemStore).as<'singleton'>();
+services = services.addClass<IStore>(RedisStore).as<'singleton'>() // key '' — the plain registration
+  .addClass<Keyed<IStore, 'sql'>>(SqlStore).as<'singleton'>().addClass<
+  Keyed<IStore, 'mem'>
+>(MemStore).as<'singleton'>();
 
 resolver.resolve<IStore>(); // RedisStore — the unkeyed one
 resolver.resolve<IStore>('sql'); // SqlStore — exact key
