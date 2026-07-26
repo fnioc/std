@@ -114,3 +114,90 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 		t.Errorf("the rest element lost its runtime-kind floor:\n%s", guard)
 	}
 }
+
+// A floor asserts only what is TRUE of every value the declared type admits.
+// These are the shapes where a tighter-looking clause is false for genuine
+// values: a function is a value of an object type, and an array is a value of
+// several.
+func TestFloorAdmitsEveryRuntimeKindItsTypeAdmits(t *testing.T) {
+	for name, paramType := range map[string]string{
+		"callable interface":  "Function",
+		"array of callables":  "Function[]",
+		"record of callables": "Record<string, Function>",
+		"member of one":       "FH",
+		"array-like":          "ArrayLike<string>",
+	} {
+		out, _ := run(t, setOptionsFixture(`
+export interface FH { fn: Function; label: string }
+`, paramType))
+		guard := strategyText(t, out, "setOptions")
+		if !strings.Contains(guard, `typeof input === "function"`) {
+			t.Errorf("%s: the guard rejects a function, which the type admits:\n%s", name, guard)
+		}
+		if strings.Contains(guard, "!Array.isArray(input)") {
+			t.Errorf("%s: the guard rejects an array, which the type admits:\n%s", name, guard)
+		}
+	}
+}
+
+// The `object` keyword used to reach no arm at all and lose its guard outright,
+// which let a number, a string and `null` dispatch to the extension. Its floor is
+// exactly its meaning — not a primitive, not null — and it has to survive every
+// position a type reaches through.
+func TestObjectKeywordKeepsItsFloor(t *testing.T) {
+	for name, paramType := range map[string]string{
+		"bare":     "object",
+		"in union": "object | string",
+		"in array": "object[]",
+	} {
+		out, diags := run(t, setOptionsFixture("", paramType))
+		if len(diags) != 0 {
+			t.Errorf("%s: unexpected diagnostics: %+v", name, diags)
+		}
+		guard := strategyText(t, out, "setOptions")
+		if !strings.Contains(guard, `typeof input === "object"`) || !strings.Contains(guard, `typeof input === "function"`) {
+			t.Errorf("%s: `object` carries no runtime-kind clause, so a primitive dispatches to the extension:\n%s", name, guard)
+		}
+		if !strings.Contains(guard, "input !== null") {
+			t.Errorf("%s: `object` admits null:\n%s", name, guard)
+		}
+	}
+}
+
+// The rest position over `object` keeps a guard because the ELEMENT carries one:
+// the slice itself is an array by construction and would decide nothing.
+func TestObjectKeywordRestParameterNarrowsByItsElements(t *testing.T) {
+	out, diags := run(t, `
+export const AlphaExtensions = {
+  setOptions(self: IAlpha, ...o: object[]): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	guard := strategyText(t, out, "setOptions")
+	if !strings.Contains(guard, "g0(args.slice(0))") || !strings.Contains(guard, "input.every") {
+		t.Errorf("the rest slice is unguarded, so a call of any shape dispatches to the extension:\n%s", guard)
+	}
+	if !strings.Contains(guard, `typeof e === "object"`) && !strings.Contains(guard, `typeof input === "object"`) {
+		t.Errorf("the rest element lost its runtime-kind floor:\n%s", guard)
+	}
+}
+
+// The report has to describe what the emit CONTAINS. Calling a position
+// "unchecked" when a clause was emitted for it is the same class of defect as
+// emitting a clause that decides nothing.
+func TestDiagnosticDoesNotCallAnEmittedClauseUnchecked(t *testing.T) {
+	out, diags := run(t, setOptionsFixture("", "Function"))
+	guard := strategyText(t, out, "setOptions")
+	if !strings.Contains(guard, `typeof input === "object"`) {
+		t.Fatalf("expected a floored guard to report on:\n%s", guard)
+	}
+	assertPrivateSurfaceWarning(t, diags)
+	for _, d := range diags {
+		if strings.Contains(d.Message, "unchecked") {
+			t.Errorf("a position carrying a clause is reported as unchecked: %s", d.Message)
+		}
+	}
+}

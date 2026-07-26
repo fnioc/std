@@ -482,9 +482,16 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string,
 		return nil, false
 	}
 	if built.reason != "" {
-		tail := "; that position is unchecked (the guard still narrows dispatch by the shape around it)"
-		if built.node == nil {
-			tail = "; dropped (that parameter is unguarded, but its arity bounds stand)"
+		// Each tail says what the emit actually contains. Calling a position
+		// "unchecked" when a clause was in fact emitted for it sends a reader
+		// looking for the wrong thing — and the whole point of the report is that
+		// what got emitted is weaker than the declared type, not absent.
+		tail := "; the guard checks every position it could reach, and the arity bounds stand"
+		switch {
+		case built.node == nil:
+			tail = "; dropped (that parameter carries no clause, but its arity bounds stand)"
+		case built.floor:
+			tail = "; the guard checks only that the value's runtime kind is one the type admits, and the arity bounds stand"
 		}
 		s.addDiagnostic(Diagnostic{
 			File:     s.file.FileName(),
@@ -572,6 +579,8 @@ func (s *synthesizer) guardForType(
 		return s.objectFloor(s.checker.TypeToString(t) + ", a built-in no structural clause can recognize")
 	case t.Flags()&shimchecker.TypeFlagsObject != 0:
 		return s.objectGuard(context, t, seen)
+	case t.Flags()&shimchecker.TypeFlagsNonPrimitive != 0:
+		return s.nonPrimitiveGuard()
 	}
 	return guard{reason: s.checker.TypeToString(t) + ", which has no runtime form to test"}
 }
@@ -581,6 +590,19 @@ func (s *synthesizer) guardForType(
 func (s *synthesizer) objectFloor(reason string) guard {
 	f := s.factory()
 	return guard{node: guardClosure(f, nil, objectKindCondition(f)), reason: reason, floor: true}
+}
+
+// nonPrimitiveGuard is the guard for the `object` KEYWORD, whose values are
+// everything that is not a primitive.
+//
+// It carries no weakening reason because none applies: `objectKindCondition` is
+// not a floor UNDER this type, it is the whole of it — an object and a function
+// inhabit `object`, a string and a number do not, and there is nothing further to
+// read off a value to decide it. It is still marked a floor, so a rest slice,
+// which is an array and therefore passes it by construction, drops it.
+func (s *synthesizer) nonPrimitiveGuard() guard {
+	f := s.factory()
+	return guard{node: guardClosure(f, nil, objectKindCondition(f)), floor: true}
 }
 
 // firstReason is the first non-empty of two weakening reasons — a guard reports
@@ -959,7 +981,7 @@ func (s *synthesizer) nominalGuard(
 	seen map[*shimchecker.Type]bool,
 ) guard {
 	f := s.factory()
-	name := typeSymbolName(t)
+	name := s.libraryNominalName(t)
 	condition := f.NewBinaryExpression(
 		nil,
 		f.NewIdentifier("input"),

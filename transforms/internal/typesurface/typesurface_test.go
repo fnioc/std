@@ -283,3 +283,31 @@ export interface Opts { host: string; port: number; }
 	}
 	_ = checker
 }
+
+// A COMPUTED name is not a symbol name. What the name evaluates to decides it:
+// a string literal and a string-typed const both name an ordinary key an element
+// access reads, while a `unique symbol` const names none.
+func TestComputedNameIsClassifiedByWhatItEvaluatesTo(t *testing.T) {
+	prog, checker, t0 := load(t, `
+const MARK: unique symbol = Symbol("m");
+const KEY = "fromConst";
+export class C {
+  ["a-b"]: string = "";
+  [KEY]: string = "";
+  [MARK]: string = "";
+  [Symbol.iterator](): Iterator<string> { return [][Symbol.iterator](); }
+  plain: string = "";
+}
+`, "C")
+	defer func() { _ = prog.Close() }()
+
+	surface := For(checker, t0, nil)
+	got := names(surface)
+	want := []string{"a-b", "fromConst", "plain"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("members = %v; want %v", got, want)
+	}
+	if surface.SymbolKeyed != 2 {
+		t.Errorf("SymbolKeyed = %d; want 2 (the `unique symbol` const and the well-known symbol)", surface.SymbolKeyed)
+	}
+}

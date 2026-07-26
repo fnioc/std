@@ -216,10 +216,17 @@ func assertNoMangledKey(t *testing.T, out string) {
 // assertObjectFloor pins the weakest honest check a guard over an object type
 // keeps whatever it had to leave unchecked: a value of the wrong runtime kind
 // still falls through to whatever held the member name before.
+//
+// Both `typeof` alternatives are required. A function is a value of an object
+// type, so a floor that admits only `"object"` is FALSE for genuine values —
+// which does not weaken dispatch, it inverts it.
 func assertObjectFloor(t *testing.T, guard string) {
 	t.Helper()
 	if !strings.Contains(guard, `typeof input === "object"`) || !strings.Contains(guard, "input !== null") {
 		t.Errorf("the guard dropped the object floor, so a non-object now dispatches to the extension:\n%s", guard)
+	}
+	if !strings.Contains(guard, `typeof input === "function"`) {
+		t.Errorf("the floor rejects a function, which is a value of an object type:\n%s", guard)
 	}
 }
 
@@ -234,4 +241,48 @@ func assertPrivateSurfaceWarning(t *testing.T, diags []Diagnostic) {
 		}
 	}
 	t.Errorf("no MERGESYNTH_PRIVATE_SURFACE diagnostic; got %+v", diags)
+}
+
+// A COMPUTED name is not a symbol name. `["a-b"]` evaluates to an ordinary
+// string, so the member has a key to read and belongs in the guard; only a name
+// that evaluates to a symbol has none.
+func TestStringComputedNameKeepsItsClause(t *testing.T) {
+	out, diags := run(t, `
+export class CK { ["a-b"]: string = ""; tag: string = ""; }
+export const AlphaExtensions = {
+  setOptions(self: IAlpha, o: CK): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	guard := strategyText(t, out, "setOptions")
+	if !strings.Contains(guard, `input["a-b"]`) {
+		t.Errorf("a string-named member was dropped as symbol-keyed:\n%s", guard)
+	}
+	if !strings.Contains(guard, "input.tag") {
+		t.Errorf("the sibling member lost its clause:\n%s", guard)
+	}
+}
+
+// The symbol case it has to stay distinct from: a `unique symbol` name carries
+// no string key, so the member is skipped and the refusal reported.
+func TestSymbolComputedNameIsStillRefused(t *testing.T) {
+	out, diags := run(t, `
+const MARK: unique symbol = Symbol("m");
+export class SK { [MARK]: string = ""; tag: string = ""; }
+export const AlphaExtensions = {
+  setOptions(self: IAlpha, o: SK): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	assertPrivateSurfaceWarning(t, diags)
+	guard := strategyText(t, out, "setOptions")
+	if strings.Contains(guard, "MARK") || strings.Contains(guard, "@@") {
+		t.Errorf("a symbol-named member reached the emit as a key:\n%s", guard)
+	}
+	if !strings.Contains(guard, "input.tag") {
+		t.Errorf("the sibling member lost its clause:\n%s", guard)
+	}
 }
