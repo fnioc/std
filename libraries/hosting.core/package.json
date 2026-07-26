@@ -1,6 +1,22 @@
 {
   "name": "@rhombus-std/hosting.core",
   "version": "0.0.0",
+  "description": "Hosting abstractions: IHost/IHostedService/IHostedLifecycleService/BackgroundService, IHostApplicationLifetime/IHostLifetime, the IHostBuilder/IHostApplicationBuilder builder contracts, HostBuilderContext/IHostEnvironment, and the addHostedService registration augmentation.",
+  "keywords": [
+    "hosting",
+    "generic-host",
+    "abstractions",
+    "hosted-service",
+    "lifetime",
+    "ioc",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/hosting.core"
+  },
   "type": "module",
   "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
@@ -25,6 +41,8 @@
     }
   },
   "publishConfig": {
+    "access": "public",
+    "provenance": true,
     "main": "./dist/bundle/index.js",
     "types": "./dist/bundle/index.d.ts",
     "exports": {
@@ -37,8 +55,7 @@
   },
   "files": [
     "dist",
-    "!dist/stage",
-    "src"
+    "!dist/stage"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
