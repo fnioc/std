@@ -1,12 +1,10 @@
 package tokens
 
-// Probes for the two property walks in holes.go — the phantom-brand detector
-// (isBrandObject) and the brand-payload reader (brandLiteralFor). Both consume
-// checker.GetPropertiesOfType with no accessibility filter, so these pin whether
-// a non-public member (an ECMAScript `#private` field, a `private`-modifier
-// member) can change either verdict. Both predicates only ever ACCEPT a
-// computed-symbol property signature, so a non-public member should be inert;
-// these exercise that rather than assume it.
+// The two property walks in holes.go — the phantom-brand detector (isBrandObject)
+// and the brand-payload reader (brandLiteralFor) — consume the whole property
+// list with no accessibility filter. Both only ever ACCEPT a computed-symbol
+// property signature, so a non-public member (a `#`-named field, a
+// `private`-modifier member) is inert to either verdict. These pin that.
 
 import (
 	"testing"
@@ -39,11 +37,10 @@ declare const injectedWithPrivate: Inject<WithPrivate, "tok">;
 declare const plainWithPrivate: WithPrivate;
 `
 
-// TestProbeBrandReadsIgnoreNonPublicMembers: the KEY / TOK brand payloads are
-// still read off a branded class that carries a `#private` field and a
-// `private`-modifier member — the extra property symbols in the walk are skipped,
-// not mistaken for a brand.
-func TestProbeBrandReadsIgnoreNonPublicMembers(t *testing.T) {
+// The KEY / TOK brand payloads are still read off a branded class that carries a
+// `#private` field and a `private`-modifier member — the extra property symbols
+// in the walk are skipped, not mistaken for a brand.
+func TestBrandReadsIgnoreNonPublicMembers(t *testing.T) {
 	prog, main := loadFixtureProgram(t, brandFixture, false)
 	defer func() { _ = prog.Close() }()
 	checker := prog.Checker
@@ -63,11 +60,11 @@ func TestProbeBrandReadsIgnoreNonPublicMembers(t *testing.T) {
 	}
 }
 
-// TestProbeBrandStripRecoversUnderlyingType: stripBrandMembers (via KeyedTokenFor)
-// must recover the underlying class from the branded intersection. A class
-// constituent whose members are ALL `#private` must still be classified as the
-// real type, never as a phantom-brand object to drop.
-func TestProbeBrandStripRecoversUnderlyingType(t *testing.T) {
+// stripBrandMembers (via KeyedTokenFor) must recover the underlying class from
+// the branded intersection. A class constituent whose members are ALL `#private`
+// must still be classified as the real type, never as a phantom-brand object to
+// drop.
+func TestBrandStripRecoversUnderlyingType(t *testing.T) {
 	prog, main := loadFixtureProgram(t, brandFixture, false)
 	defer func() { _ = prog.Close() }()
 	ctx := &Context{

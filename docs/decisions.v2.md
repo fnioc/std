@@ -1192,3 +1192,48 @@ own case qualifies, which is how an invariant erodes without anyone ever choosin
 
 _Owner-directed 2026-07-24 ("move the errors"), the rule stated in the owner's words, and the
 `logging` carve-out ruled 2026-07-25 ("the rule stands, logging is an exception")._
+
+## §131 — The emittable surface of a type is its public, string-keyed instance surface
+
+Every member walk in the engine that produces an EMITTED artifact — the `mergesynth` guard
+synthesizer and the `internal/schema` config-schema walk — enumerates the same thing: a type's
+public, string-keyed instance surface. Public properties and get/set accessors are in it, and an
+accessor is typed by the type IT declares. Three member shapes are outside it and never reach an
+emitted artifact:
+
+- an ECMAScript `#`-named field, which is not a string-keyed property at all — `Reflect.ownKeys` does
+  not list it and `obj["#x"]` is `undefined`;
+- a `private` / `protected` member, which a caller cannot supply;
+- a computed (symbol-keyed) member such as `[Symbol.iterator]`, which has no string key to emit.
+
+`internal/typesurface` is the one enumerator both walks consume. Its exclusions test the
+DECLARATION's shape — a private-identifier name, an accessibility modifier, a computed name — never
+the mangled internal property name the checker gives such members.
+
+**Why this was a correctness defect, not a tidiness one.** A guard clause keyed on a `#`-named field
+reads `undefined === undefined` and can never be false. `MemoryCacheEntryOptions` has five such
+members; its merge dispatcher validated all five vacuously while the public accessors that should
+have been checked contributed no clause at all, so the guard accepted objects that were not
+`MemoryCacheEntryOptions`. A schema keyed the same way describes fields no configuration source can
+ever populate.
+
+**Refuse loudly; never weaken silently.** Where filtering leaves a walk unable to do its job, it
+reports rather than emitting something that silently passes. The schema walk raises the hard error
+`992003` for a type with no members left. `mergesynth` raises the warning
+`MERGESYNTH_PRIVATE_SURFACE` and DROPS the whole parameter's guard — never a partial one — when a
+type whose public surface it must compose is reachable somewhere it cannot decompose (inside a
+tuple, a `Map`, an intersection, an index-signature record), when composition would cycle, or when
+any member's own guard cannot be built.
+
+**How the guard is built.** A type whose whole reachable shape typia renders faithfully still goes
+straight to typia's is-programmer, byte-identical to before. Only a type reaching an accessor or a
+`#`-named field is composed in-tree instead — unions disjunctively, arrays element-wise, objects and
+class instances clause-per-public-member. A library type (`Map`, `Set`, `Date`) is never composed:
+it is nominal in practice, so a structural clause per member would say nothing about whether a value
+really is one.
+
+**A consequence worth naming.** The checker's mangled internal name embeds a symbol id allocated in
+checking order, so it drifted between builds. No mangled name reaches an emitted artifact any more,
+which makes that non-determinism unobservable in output.
+
+_Ruled 2026-07-25 while fixing the vacuous `setOptions` guard in `caching.core`._

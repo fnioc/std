@@ -161,12 +161,43 @@ export const ZetaExtensions = {
   },
 };
 
+// A class whose public surface is accessors over #private backing fields — a
+// #private field is not a string-keyed property at runtime, so a guard keyed on
+// one can never be false. The guard must key on the accessors instead.
+export class EntryOptions {
+  #absoluteExpirationRelativeToNow: number | undefined = undefined;
+  public get absoluteExpirationRelativeToNow(): number | undefined {
+    return this.#absoluteExpirationRelativeToNow;
+  }
+  public set absoluteExpirationRelativeToNow(value: number | undefined) {
+    this.#absoluteExpirationRelativeToNow = value;
+  }
+  public label: string = "";
+  private internal: number = 0;
+}
+
+// First holder: mounts as a plain thunk, so it is what a failed guard falls
+// through to.
+export const EtaExtensions = {
+  setOptions(self: IAlpha, tag: string): string {
+    return \`ETA:\${String(tag)}\`;
+  },
+};
+// Collides on setOptions with the accessor-bearing class as its parameter.
+export const ThetaExtensions = {
+  setOptions(self: IAlpha, options: EntryOptions): string {
+    return \`THETA:\${String(options.label)}\`;
+  },
+};
+
 registerAugmentations(tokenfor<IAlpha>(), AlphaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), BetaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), DeltaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), GammaExtensions, gammaMerge);
 registerAugmentations(tokenfor<IAlpha>(), EpsilonExtensions);
 registerAugmentations(tokenfor<IAlpha>(), ZetaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), EtaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), ThetaExtensions);
 
 export class Alpha implements IAlpha {}
 augment(tokenfor<IAlpha>())(Alpha);
@@ -279,6 +310,17 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
     expect(spread).toBeGreaterThan(synthesized);
   });
 
+  test('an accessor-bearing class is guarded on its accessors, never a #private key', () => {
+    // The checker names a #private field with a mangled internal name whose
+    // leading byte prints as the replacement character. No emitted artifact may
+    // carry one, and the public accessor must be what the guard reads.
+    expect(app).not.toContain('\uFFFD');
+    expect(app).not.toContain('@#');
+    expect(app).toContain('.absoluteExpirationRelativeToNow');
+    // The `private`-modifier member is outside the public surface too.
+    expect(app).not.toContain('.internal');
+  });
+
   test('tokenfor lowering is byte-identical on the collapsed host', () => {
     expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
     expect(app).not.toContain('tokenfor');
@@ -309,6 +351,18 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     // call regardless of shape, chain order breaking the tie.
     expect(instance.pick('v')).toBe('D:pick');
     expect(instance.pick(123)).toBe('D:pick');
+  });
+
+  test('an accessor-shaped argument is accepted and a wrong-shaped one is not', () => {
+    // Theta's guard reads the PUBLIC accessor: an object carrying the public
+    // shape dispatches to Theta…
+    expect(instance.setOptions({ absoluteExpirationRelativeToNow: 5, label: 'x' })).toBe('THETA:x');
+    expect(instance.setOptions({ absoluteExpirationRelativeToNow: undefined, label: 'y' })).toBe('THETA:y');
+    // …and one whose accessor field holds the wrong type does not — it falls
+    // through to Eta, the plain thunk that held the name first. Under a guard
+    // keyed on the #private backing field this clause is `undefined === undefined`
+    // and the wrong-shaped object dispatches to Theta.
+    expect(instance.setOptions({ absoluteExpirationRelativeToNow: 'nope', label: 'x' })).toBe('ETA:[object Object]');
   });
 
   test('arity bounds discriminate same-typed leading parameters', () => {

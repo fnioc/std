@@ -8,16 +8,22 @@
 // signature the arguments actually match, falling through to whatever held the
 // name before.
 //
-// The guards are typia `createIs<T>()` validators, generated IN-PROCESS by
-// typia's native Go programmers (an embed, not a second compiler pass): this
-// stage mints a transient `createIs` call around each parameter's ORIGINAL
-// type node and hands it straight to typia's CreateIsTransformer over the same
-// loaded program, checker, and EmitContext. Driving typia per-call is the only
-// workable composition — typia's own per-file walk anchors on
-// GetResolvedSignature of the callee, which a synthesized call (in a program
-// that never imports typia) can never satisfy. The producer→consumer ordering
-// problem dissolves for the same reason: synthesis and lowering happen in one
-// function call, so nothing typia-shaped ever survives into the emitted tree.
+// The guards are typia is-validators, generated IN-PROCESS by typia's native Go
+// programmers (an embed, not a second compiler pass): this stage resolves each
+// parameter's ORIGINAL type node and hands the resulting type straight to
+// typia's is-programmer over the same loaded program, checker, and EmitContext.
+// Driving typia per-parameter is the only workable composition — typia's own
+// per-file walk anchors on GetResolvedSignature of the callee, which a
+// synthesized call (in a program that never imports typia) can never satisfy.
+// The producer→consumer ordering problem dissolves for the same reason:
+// synthesis and lowering happen in one function call, so nothing typia-shaped
+// ever survives into the emitted tree.
+//
+// A type whose PUBLIC surface typia does not render faithfully — one reaching an
+// accessor or a `#`-named field — is composed here instead (guardForType), over
+// the same public surface internal/typesurface enumerates. Where that
+// composition cannot reach (a diverging type inside a tuple, a Map, an
+// intersection), the guard is DROPPED with a warning rather than approximated.
 //
 // §87 containment: the emitted guards are self-contained plain JS. A guard
 // that would need one of typia's runtime helper imports is DROPPED (that
@@ -38,17 +44,20 @@
 package mergesynthtransform
 
 import (
+	"errors"
+	"strings"
+
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 	shimcore "github.com/microsoft/typescript-go/shim/core"
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
+	shimscanner "github.com/microsoft/typescript-go/shim/scanner"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 	nativecontext "github.com/samchon/typia/packages/typia/native/core/context"
 	nativeprogrammers "github.com/samchon/typia/packages/typia/native/core/programmers"
-	nativetransform "github.com/samchon/typia/packages/typia/native/transform"
-	nativefeatures "github.com/samchon/typia/packages/typia/native/transform/features"
 
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/typesurface"
 )
 
 // Category mirrors ditransform's advisory-vs-hard split: a Warning is reported
@@ -388,13 +397,12 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	return s.guardedStrategy(guards, minArity, maxArity, hasRest)
 }
 
-// synthesizeGuard runs typia's createIs programmer over one parameter's
-// ORIGINAL type node and returns the guard function expression. A typia
-// TransformerError (unsupported type, unresolved shape) surfaces as a panic;
-// it is recovered here and the parameter degrades to unguarded — under this
-// stage nothing ever fails the build over a merge guard. A guard that
-// requested a typia runtime helper import is likewise dropped (§87: the
-// emitted JS must stay typia-free), with a warning naming the member.
+// synthesizeGuard derives one parameter's guard function expression from its
+// ORIGINAL type node. A typia TransformerError (unsupported type, unresolved
+// shape) surfaces as a panic; it is recovered here and the parameter degrades to
+// unguarded — under this stage nothing ever fails the build over a merge guard.
+// A guard that requested a typia runtime helper import is likewise dropped (§87:
+// the emitted JS must stay typia-free), with a warning naming the member.
 func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string) (guard *shimast.Node, ok bool) {
 	importer := nativecontext.NewImportProgrammer(nativecontext.ImportProgrammer_IOptions{
 		InternalPrefix: "typia_transform_",
@@ -422,22 +430,25 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string)
 		}
 	}()
 
-	f := s.factory()
-	// A transient createIs call: never inserted into the tree, only the vehicle
-	// typia's GenericTransformer expects. Its single type argument is the
-	// parameter's original (checker-resolvable) type node.
-	minted := f.NewCallExpression(
-		f.NewIdentifier("createIs"),
-		nil,
-		f.NewNodeList([]*shimast.Node{typeNode}),
-		f.NewNodeList(nil),
-		shimast.NodeFlagsNone,
-	)
-	task := nativefeatures.CreateIsTransformer.Transform(nativeprogrammers.IsProgrammer_IConfig{})
-	out := task(nativetransform.ITransformProps{
-		Context:    context,
-		Expression: minted.AsCallExpression(),
-	})
+	if typeNode.Pos() < 0 {
+		return nil, false
+	}
+	t := s.checker.GetTypeFromTypeNode(typeNode)
+	if t == nil {
+		return nil, false
+	}
+
+	out, err := s.guardForType(context, t, typeNameOf(typeNode), map[*shimchecker.Type]bool{})
+	if err != nil {
+		s.addDiagnostic(Diagnostic{
+			File:     s.file.FileName(),
+			Category: Warning,
+			Code:     "MERGESYNTH_PRIVATE_SURFACE",
+			Message: "merge guard for \"" + memberName + "\" would have to validate " + err.Error() +
+				"; dropped (that parameter is unguarded)",
+		})
+		return nil, false
+	}
 	if out == nil || diagnosed {
 		return nil, false
 	}
@@ -451,6 +462,343 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string)
 		return nil, false
 	}
 	return out, true
+}
+
+// guardForType returns the guard function expression validating a value against
+// t.
+//
+// A type whose whole reachable shape typia renders faithfully is handed straight
+// to typia's is-programmer. A type that reaches an accessor or a `#`-named field
+// is composed here instead, over its PUBLIC surface — typia keys a `#`-named
+// field on a name no object can carry (an always-true clause) and skips accessors
+// entirely, so its guard for such a type accepts values that are not of that type.
+//
+// Composition covers unions, arrays, and plain object/class types. A diverging
+// type anywhere else — inside a tuple, a Map, an intersection, an index-signature
+// record, a function type — is refused with an error rather than guarded
+// approximately, as is a cycle and a member whose own guard cannot be built: a
+// partial object guard is never emitted.
+func (s *synthesizer) guardForType(
+	context nativecontext.ITypiaContext,
+	t *shimchecker.Type,
+	name string,
+	seen map[*shimchecker.Type]bool,
+) (*shimast.Node, error) {
+	if !s.containsDiverging(t, map[*shimchecker.Type]bool{}) {
+		return nativeprogrammers.IsProgrammer.Write(nativeprogrammers.IsProgrammer_IProps{
+			Context: context,
+			Type:    t,
+			Name:    &name,
+			Config:  nativeprogrammers.IsProgrammer_IConfig{},
+		}), nil
+	}
+	if seen[t] {
+		return nil, errors.New("a type that contains itself (" + s.checker.TypeToString(t) + ")")
+	}
+	seen[t] = true
+	defer delete(seen, t)
+
+	switch {
+	case t.Flags()&shimchecker.TypeFlagsUnion != 0:
+		return s.unionGuard(context, t, seen)
+	case s.arrayElementType(t) != nil:
+		return s.arrayGuard(context, t, seen)
+	case s.isComposableObject(t):
+		return s.objectGuard(context, t, seen)
+	}
+	return nil, errors.New(s.checker.TypeToString(t) + ", whose members are not all part of its public surface")
+}
+
+// unionGuard emits `(input) => u0(input) || u1(input)` over the constituents.
+func (s *synthesizer) unionGuard(
+	context nativecontext.ITypiaContext,
+	t *shimchecker.Type,
+	seen map[*shimchecker.Type]bool,
+) (*shimast.Node, error) {
+	f := s.factory()
+	declarations := make([]*shimast.Node, 0, len(t.Types()))
+	var condition *shimast.Node
+	for i, constituent := range t.Types() {
+		guard, err := s.guardForType(context, constituent, s.checker.TypeToString(constituent), seen)
+		if err != nil {
+			return nil, err
+		}
+		local := "u" + itoa(i)
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, guard))
+		call := f.NewCallExpression(
+			f.NewIdentifier(local),
+			nil,
+			nil,
+			f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}),
+			shimast.NodeFlagsNone,
+		)
+		if condition == nil {
+			condition = call
+			continue
+		}
+		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindBarBarToken), call)
+	}
+	if condition == nil {
+		return nil, errors.New("an empty union")
+	}
+	return guardClosure(f, declarations, condition), nil
+}
+
+// arrayGuard emits `(input) => Array.isArray(input) && input.every((e) => g(e))`.
+func (s *synthesizer) arrayGuard(
+	context nativecontext.ITypiaContext,
+	t *shimchecker.Type,
+	seen map[*shimchecker.Type]bool,
+) (*shimast.Node, error) {
+	element := s.arrayElementType(t)
+	guard, err := s.guardForType(context, element, s.checker.TypeToString(element), seen)
+	if err != nil {
+		return nil, err
+	}
+	f := s.factory()
+	declarations := []*shimast.Node{f.NewVariableDeclaration(f.NewIdentifier("e0"), nil, nil, guard)}
+
+	elementParam := f.NewParameterDeclaration(nil, nil, f.NewIdentifier("e"), nil, nil, nil)
+	predicate := f.NewArrowFunction(
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{elementParam}),
+		nil, nil,
+		f.NewToken(shimast.KindEqualsGreaterThanToken),
+		f.NewCallExpression(f.NewIdentifier("e0"), nil, nil, f.NewNodeList([]*shimast.Node{f.NewIdentifier("e")}), shimast.NodeFlagsNone),
+	)
+	every := f.NewCallExpression(
+		f.NewPropertyAccessExpression(f.NewIdentifier("input"), nil, f.NewIdentifier("every"), shimast.NodeFlagsNone),
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{predicate}),
+		shimast.NodeFlagsNone,
+	)
+	isArray := f.NewCallExpression(
+		f.NewPropertyAccessExpression(f.NewIdentifier("Array"), nil, f.NewIdentifier("isArray"), shimast.NodeFlagsNone),
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}),
+		shimast.NodeFlagsNone,
+	)
+	condition := f.NewBinaryExpression(nil, isArray, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), every)
+	return guardClosure(f, declarations, condition), nil
+}
+
+// objectGuard emits one clause per PUBLIC member over an object/class type:
+//
+//	(() => {
+//	    const m0 = <member guard>;
+//	    return (input) => typeof input === "object" && input !== null
+//	        && !Array.isArray(input) && m0(input.name);
+//	})()
+//
+// An `?`-optional member's clause admits an absent value directly.
+func (s *synthesizer) objectGuard(
+	context nativecontext.ITypiaContext,
+	t *shimchecker.Type,
+	seen map[*shimchecker.Type]bool,
+) (*shimast.Node, error) {
+	f := s.factory()
+	surface := typesurface.For(s.checker, t, nil)
+	if len(surface.Members) == 0 {
+		return nil, errors.New(s.checker.TypeToString(t) + ", none of whose members can be named from outside it")
+	}
+
+	condition := f.NewBinaryExpression(
+		nil,
+		f.NewBinaryExpression(
+			nil,
+			f.NewTypeOfExpression(f.NewIdentifier("input")),
+			nil,
+			f.NewToken(shimast.KindEqualsEqualsEqualsToken),
+			f.NewStringLiteral("object", shimast.TokenFlagsNone),
+		),
+		nil,
+		f.NewToken(shimast.KindAmpersandAmpersandToken),
+		f.NewBinaryExpression(
+			nil,
+			f.NewIdentifier("input"),
+			nil,
+			f.NewToken(shimast.KindExclamationEqualsEqualsToken),
+			f.NewKeywordExpression(shimast.KindNullKeyword),
+		),
+	)
+	and := func(next *shimast.Node) {
+		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), next)
+	}
+	and(f.NewPrefixUnaryExpression(
+		shimast.KindExclamationToken,
+		f.NewCallExpression(
+			f.NewPropertyAccessExpression(f.NewIdentifier("Array"), nil, f.NewIdentifier("isArray"), shimast.NodeFlagsNone),
+			nil, nil,
+			f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}),
+			shimast.NodeFlagsNone,
+		),
+	))
+
+	declarations := make([]*shimast.Node, 0, len(surface.Members))
+	for i, m := range surface.Members {
+		memberType := s.checker.GetTypeOfSymbolAtLocation(m.Symbol, m.Decl)
+		if memberType == nil {
+			return nil, errors.New("member \"" + m.Name + "\" of " + s.checker.TypeToString(t) + ", whose type does not resolve")
+		}
+		guard, err := s.guardForType(context, memberType, s.checker.TypeToString(memberType), seen)
+		if err != nil {
+			return nil, err
+		}
+		local := "m" + itoa(i)
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, guard))
+
+		read := func() *shimast.Node {
+			if isIdentifierName(m.Name) {
+				return f.NewPropertyAccessExpression(f.NewIdentifier("input"), nil, f.NewIdentifier(m.Name), shimast.NodeFlagsNone)
+			}
+			return f.NewElementAccessExpression(f.NewIdentifier("input"), nil, f.NewStringLiteral(m.Name, shimast.TokenFlagsNone), shimast.NodeFlagsNone)
+		}
+		checked := f.NewCallExpression(f.NewIdentifier(local), nil, nil, f.NewNodeList([]*shimast.Node{read()}), shimast.NodeFlagsNone)
+		if m.Optional {
+			absent := f.NewBinaryExpression(
+				nil,
+				read(),
+				nil,
+				f.NewToken(shimast.KindEqualsEqualsEqualsToken),
+				f.NewIdentifier("undefined"),
+			)
+			checked = f.NewParenthesizedExpression(
+				f.NewBinaryExpression(nil, absent, nil, f.NewToken(shimast.KindBarBarToken), checked),
+			)
+		}
+		and(checked)
+	}
+	return guardClosure(f, declarations, condition), nil
+}
+
+// guardClosure wraps a condition over `input` as a self-invoking closure binding
+// its sub-guards, so their names stay local:
+//
+//	(() => { const g = …; return (input) => <condition>; })()
+func guardClosure(f *shimast.NodeFactory, declarations []*shimast.Node, condition *shimast.Node) *shimast.Node {
+	predicate := f.NewArrowFunction(
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{f.NewParameterDeclaration(nil, nil, f.NewIdentifier("input"), nil, nil, nil)}),
+		nil, nil,
+		f.NewToken(shimast.KindEqualsGreaterThanToken),
+		condition,
+	)
+	if len(declarations) == 0 {
+		return predicate
+	}
+	body := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewVariableStatement(nil, f.NewVariableDeclarationList(f.NewNodeList(declarations), shimast.NodeFlagsConst)),
+		f.NewReturnStatement(predicate),
+	}), true)
+	closure := f.NewArrowFunction(nil, nil, f.NewNodeList(nil), nil, nil, f.NewToken(shimast.KindEqualsGreaterThanToken), body)
+	return f.NewCallExpression(
+		f.NewParenthesizedExpression(closure),
+		nil, nil,
+		f.NewNodeList(nil),
+		shimast.NodeFlagsNone,
+	)
+}
+
+// containsDiverging reports whether t's reachable shape includes a type whose
+// public surface differs from what typia would enumerate: a `#`-named field
+// (which typia keys on a name no object carries) or an accessor (which typia
+// skips). The walk covers unions, intersections, array/tuple elements, type
+// arguments, and member types.
+func (s *synthesizer) containsDiverging(t *shimchecker.Type, seen map[*shimchecker.Type]bool) bool {
+	if t == nil || seen[t] {
+		return false
+	}
+	seen[t] = true
+
+	if t.Flags()&shimchecker.TypeFlagsObject != 0 {
+		surface := typesurface.For(s.checker, t, nil)
+		if surface.PrivateNamed > 0 || surface.HasAccessor {
+			return true
+		}
+		for _, m := range surface.Members {
+			if s.containsDiverging(s.checker.GetTypeOfSymbolAtLocation(m.Symbol, m.Decl), seen) {
+				return true
+			}
+		}
+		if t.ObjectFlags()&shimchecker.ObjectFlagsReference != 0 {
+			for _, argument := range s.checker.GetTypeArguments(t) {
+				if s.containsDiverging(argument, seen) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if t.Flags()&(shimchecker.TypeFlagsUnion|shimchecker.TypeFlagsIntersection) != 0 {
+		for _, constituent := range t.Types() {
+			if s.containsDiverging(constituent, seen) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// arrayElementType returns the element type of an array (mutable or readonly),
+// or nil when t is not one. A tuple is NOT an array here — its elements are
+// positional, which the composer does not decompose.
+func (s *synthesizer) arrayElementType(t *shimchecker.Type) *shimchecker.Type {
+	if t == nil || shimchecker.IsTupleType(t) {
+		return nil
+	}
+	if !shimchecker.Checker_isArrayType(s.checker, t) && !isReadonlyArrayType(t) {
+		return nil
+	}
+	arguments := s.checker.GetTypeArguments(t)
+	if len(arguments) != 1 {
+		return nil
+	}
+	return arguments[0]
+}
+
+// isReadonlyArrayType reports whether t is a `readonly T[]` — a reference whose
+// target is the global ReadonlyArray, which Checker_isArrayType does not cover.
+func isReadonlyArrayType(t *shimchecker.Type) bool {
+	if t.ObjectFlags()&shimchecker.ObjectFlagsReference == 0 {
+		return false
+	}
+	target := t.Target()
+	if target == nil || target.Symbol() == nil {
+		return false
+	}
+	return target.Symbol().Name == "ReadonlyArray"
+}
+
+// isComposableObject reports whether t is a plain user object or class instance
+// the member walk can decompose: an object type with no call/construct
+// signatures, no index signature, not an array/tuple, and declared in this
+// project. A callable, an index-signature record and a library global (Map, Set,
+// Date) are all outside it — a library type is nominal in practice, so a
+// structural clause per member would say nothing about whether a value really is
+// one. A diverging type reached under any of them is refused, not approximated.
+func (s *synthesizer) isComposableObject(t *shimchecker.Type) bool {
+	if t == nil || t.Flags()&shimchecker.TypeFlagsObject == 0 {
+		return false
+	}
+	if len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindCall)) > 0 {
+		return false
+	}
+	if len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindConstruct)) > 0 {
+		return false
+	}
+	if shimchecker.Checker_isArrayType(s.checker, t) || shimchecker.IsTupleType(t) || isReadonlyArrayType(t) {
+		return false
+	}
+	if len(shimchecker.Checker_getIndexInfosOfType(s.checker, t)) > 0 {
+		return false
+	}
+	return !typesurface.FromLibrary(s.prog, t)
+}
+
+// typeNameOf is the guard's display name for a parameter's type node — the
+// source text typia itself names a generic argument by.
+func typeNameOf(typeNode *shimast.Node) string {
+	return strings.TrimSpace(shimscanner.GetTextOfNode(typeNode))
 }
 
 // alwaysPassStrategy emits the un-derivable-member fallback:
