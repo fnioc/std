@@ -23,8 +23,7 @@
 // whitelist (typiaFaithful): every reachable position must be one this stage
 // positively recognizes typia's output for. Anything else is composed here
 // instead (guardForType), over the public surface internal/typesurface
-// enumerates, or — where composition cannot reach — DROPPED with a warning
-// rather than approximated.
+// enumerates.
 //
 // The whitelist direction is the point. A guard is only worth emitting if its
 // clauses can decide something, and the ways typia's enumeration silently stops
@@ -47,9 +46,16 @@
 // `any`/`unknown`, or a reference to the member's own type parameters —
 // contributes no guard. A member whose EVERY parameter is un-derivable that way
 // gets the bare always-pass strategy: that extension wins and chain order breaks
-// ties. A REFUSAL is not that case — the type was known and simply could not be
-// guarded faithfully — so it keeps the arity bounds, which are derivable from the
-// signature alone. A refusal must never widen dispatch past what it replaced.
+// ties.
+//
+// A position the composer cannot decompose is NOT that case, and does not cost
+// the guard around it. It contributes no clause of its own; every clause beside
+// it stands, down to the runtime-KIND floor the type still implies
+// (`typeof input === "object" && input !== null`, `Array.isArray(input)`), and
+// the parameter's arity bounds — derivable from the signature alone — always
+// stand. A synthesized guard may be weaker than the type it checks, never
+// narrower: it must not reject a value the declared type admits, and it must not
+// widen dispatch past what it replaced. Every weakening is reported.
 //
 // A member whose name the call's own hand-authored merge object already covers is
 // left entirely alone (hand-authored WINS — enforced twice: covered names are
@@ -58,7 +64,6 @@
 package mergesynthtransform
 
 import (
-	"errors"
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -394,14 +399,14 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 		if referencesTypeParameter(typeNode, typeParams) {
 			continue
 		}
-		guard, ok := s.synthesizeGuard(typeNode, m.name)
+		node, ok := s.synthesizeGuard(typeNode, m.name, kind)
 		if !ok {
-			// The type was known; no faithful guard could be built from it. That
-			// is a refusal, not an un-derivable parameter.
+			// The type was known; nothing about a value of it could be checked.
+			// That is a refusal, not an un-derivable parameter.
 			refused = true
 			continue
 		}
-		guards = append(guards, guardedParam{index: i, kind: kind, guard: guard})
+		guards = append(guards, guardedParam{index: i, kind: kind, guard: node})
 	}
 
 	// No parameter type could be derived AND none was refused: nothing at all is
@@ -418,7 +423,11 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 // unguarded — under this stage nothing ever fails the build over a merge guard.
 // A guard that requested a typia runtime helper import is likewise dropped (§87:
 // the emitted JS must stay typia-free), with a warning naming the member.
-func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string) (guard *shimast.Node, ok bool) {
+//
+// Whatever the composer could not cover is reported here, whether or not a guard
+// survived it: a guard weaker than its type is emitted (it still narrows
+// dispatch) but never silently.
+func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string, kind paramKind) (node *shimast.Node, ok bool) {
 	importer := nativecontext.NewImportProgrammer(nativecontext.ImportProgrammer_IOptions{
 		InternalPrefix: "typia_transform_",
 	})
@@ -441,7 +450,7 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string)
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			guard, ok = nil, false
+			node, ok = nil, false
 		}
 	}()
 
@@ -453,21 +462,17 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string)
 		return nil, false
 	}
 
-	out, err := s.guardForType(context, t, typeNameOf(typeNode), map[*shimchecker.Type]bool{})
-	if err != nil {
-		s.addDiagnostic(Diagnostic{
-			File:     s.file.FileName(),
-			Category: Warning,
-			Code:     "MERGESYNTH_PRIVATE_SURFACE",
-			Message: "merge guard for \"" + memberName + "\" would have to validate " + err.Error() +
-				"; dropped (that parameter is unguarded)",
-		})
-		return nil, false
+	built := s.guardForType(context, t, typeNameOf(typeNode), map[*shimchecker.Type]bool{})
+	// A rest parameter's slice is an array by construction, so a guard that only
+	// establishes the value's runtime kind can never be false over one. Emitting
+	// it would look like a check while deciding nothing.
+	if kind == paramRest && built.floor {
+		built = guard{reason: built.reason}
 	}
-	if out == nil || diagnosed {
-		return nil, false
+	if diagnosed {
+		built = guard{reason: built.reason}
 	}
-	if len(importer.ToStatements()) != 0 {
+	if built.node != nil && len(importer.ToStatements()) != 0 {
 		s.addDiagnostic(Diagnostic{
 			File:     s.file.FileName(),
 			Category: Warning,
@@ -476,43 +481,76 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string)
 		})
 		return nil, false
 	}
-	return out, true
+	if built.reason != "" {
+		tail := "; that position is unchecked (the guard still narrows dispatch by the shape around it)"
+		if built.node == nil {
+			tail = "; dropped (that parameter is unguarded, but its arity bounds stand)"
+		}
+		s.addDiagnostic(Diagnostic{
+			File:     s.file.FileName(),
+			Category: Warning,
+			Code:     "MERGESYNTH_PRIVATE_SURFACE",
+			Message:  "merge guard for \"" + memberName + "\" cannot check " + built.reason + tail,
+		})
+	}
+	return built.node, built.node != nil
 }
 
-// guardForType returns the guard function expression validating a value against
-// t.
+// guard is one position's synthesized check.
+type guard struct {
+	// node is the guard function expression, or nil when NOTHING about a value of
+	// the type can be checked. A nil node is the one result a caller must drop
+	// rather than emit: a clause that is constantly `true` decides nothing while
+	// reading exactly like one that does, which is the shape this stage exists to
+	// keep out of the emit. Whenever node is nil, reason says why.
+	node *shimast.Node
+	// reason names the first position the guard could not cover, and is empty
+	// exactly when the guard covers the whole type. A guard with a reason is still
+	// emitted — it is weaker than its type but never narrower — and reported.
+	reason string
+	// floor is set when node establishes only the value's runtime KIND (that it is
+	// an object, that it is an array) and nothing about its contents.
+	floor bool
+}
+
+// guardForType returns the guard validating a value against t.
 //
 // A type typia renders faithfully is handed straight to its is-programmer.
 // Anything else is composed here, position by position, over the PUBLIC surface
-// internal/typesurface enumerates. Composition covers unions, intersections,
-// arrays, tuples, index-signature records, callables, symbols, and plain
-// object/class types; a shape it does not decompose — a diverging type inside a
-// Map or Set, a self-referencing diverging type, a member whose own guard cannot
-// be built — is refused with an error rather than approximated, since a partial
-// object guard reads as a whole one.
+// internal/typesurface enumerates: unions disjunctively, intersections
+// conjunctively, arrays element-wise, tuples positionally, index-signature
+// records over `Object.values`, nominal built-ins by `instanceof`, callables and
+// symbols by `typeof`, and objects and class instances clause-per-public-readable
+// member.
+//
+// A position none of that reaches costs its own clause and nothing more: the
+// guard around it stands, down to the runtime-kind floor the type still implies.
 func (s *synthesizer) guardForType(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	name string,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
 	if s.typiaFaithful(t, map[*shimchecker.Type]bool{}) {
-		return nativeprogrammers.IsProgrammer.Write(nativeprogrammers.IsProgrammer_IProps{
+		return guard{node: nativeprogrammers.IsProgrammer.Write(nativeprogrammers.IsProgrammer_IProps{
 			Context: context,
 			Type:    t,
 			Name:    &name,
 			Config:  nativeprogrammers.IsProgrammer_IConfig{},
-		}), nil
+		})}
 	}
 	if seen[t] {
-		return nil, errors.New("a type that contains itself (" + s.checker.TypeToString(t) + ")")
+		// Reached through itself. The composed guards are nested closures, so a
+		// self-reference has no name to call at this depth; the cycle's clause is
+		// dropped and every clause around it stands.
+		return guard{reason: "the recursion in " + s.checker.TypeToString(t)}
 	}
 	seen[t] = true
 	defer delete(seen, t)
 
 	switch {
 	case t.Flags()&shimchecker.TypeFlagsESSymbolLike != 0:
-		return typeofGuard(s.factory(), "symbol"), nil
+		return guard{node: typeofGuard(s.factory(), "symbol")}
 	case t.Flags()&shimchecker.TypeFlagsUnion != 0:
 		return s.unionGuard(context, t, seen)
 	case t.Flags()&shimchecker.TypeFlagsIntersection != 0:
@@ -522,13 +560,39 @@ func (s *synthesizer) guardForType(
 	case s.arrayElementType(t) != nil:
 		return s.arrayGuard(context, t, seen)
 	case s.isCallable(t):
-		return typeofGuard(s.factory(), "function"), nil
+		return guard{node: typeofGuard(s.factory(), "function")}
+	case s.nominalGlobalOf(t) != "":
+		return s.nominalGuard(context, t, seen)
 	case s.stringIndexValueType(t) != nil:
 		return s.recordGuard(context, t, seen)
-	case s.isComposableObject(t):
+	case typesurface.FromLibrary(s.prog, t):
+		// Some other built-in. Its members are an implementation of an identity,
+		// not the identity itself, so per-member clauses would say nothing about
+		// whether a value really is one.
+		return s.objectFloor(s.checker.TypeToString(t) + ", a built-in no structural clause can recognize")
+	case t.Flags()&shimchecker.TypeFlagsObject != 0:
 		return s.objectGuard(context, t, seen)
 	}
-	return nil, errors.New(s.checker.TypeToString(t) + ", whose shape has no faithful runtime check")
+	return guard{reason: s.checker.TypeToString(t) + ", which has no runtime form to test"}
+}
+
+// objectFloor is the guard for a value known to be a plain object and nothing
+// more — the weakest honest check, and what every composed object guard is built
+// on top of.
+func (s *synthesizer) objectFloor(reason string) guard {
+	f := s.factory()
+	return guard{node: guardClosure(f, nil, plainObjectCondition(f)), reason: reason, floor: true}
+}
+
+// firstReason is the first non-empty of two weakening reasons — a guard reports
+// the first position it could not cover, not every one.
+func firstReason(reasons ...string) string {
+	for _, reason := range reasons {
+		if reason != "" {
+			return reason
+		}
+	}
+	return ""
 }
 
 // typeofGuard emits `(input) => typeof input === "<kind>"` — the whole of what a
@@ -546,21 +610,41 @@ func typeofGuard(f *shimast.NodeFactory, kind string) *shimast.Node {
 
 // intersectionGuard emits `(input) => i0(input) && i1(input)` over the
 // constituents — a value is of the intersection exactly when it is of each.
+//
+// A BRAND is the exception. In `type UserId = string & { readonly __brand:
+// "UserId" }` the object constituent is phantom: a value of the type is a plain
+// string at runtime and carries no `__brand` member at all, so conjoining a check
+// for one yields a guard that rejects EVERY genuine value. Whenever a primitive
+// constituent is present it decides the whole intersection, which is also what a
+// hand-written check for such a type does. That costs nothing checkable, so it is
+// not reported as a weakening.
 func (s *synthesizer) intersectionGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
+	constituents := t.Types()
+	if primitives := primitiveConstituents(constituents); len(primitives) > 0 {
+		constituents = primitives
+	}
+
 	f := s.factory()
-	declarations := make([]*shimast.Node, 0, len(t.Types()))
+	declarations := make([]*shimast.Node, 0, len(constituents))
 	var condition *shimast.Node
-	for i, constituent := range t.Types() {
-		guard, err := s.guardForType(context, constituent, s.checker.TypeToString(constituent), seen)
-		if err != nil {
-			return nil, err
+	reason := ""
+	floor := true
+	for _, constituent := range constituents {
+		part := s.guardForType(context, constituent, s.checker.TypeToString(constituent), seen)
+		reason = firstReason(reason, part.reason)
+		if part.node == nil {
+			// A conjunct nobody can test simply drops out; the rest still narrow.
+			continue
 		}
-		local := "i" + itoa(i)
-		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, guard))
+		if !part.floor {
+			floor = false
+		}
+		local := "i" + itoa(len(declarations))
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, part.node))
 		call := f.NewCallExpression(
 			f.NewIdentifier(local),
 			nil,
@@ -575,9 +659,31 @@ func (s *synthesizer) intersectionGuard(
 		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), call)
 	}
 	if condition == nil {
-		return nil, errors.New("an empty intersection")
+		return guard{reason: firstReason(reason, "any constituent of "+s.checker.TypeToString(t))}
 	}
-	return guardClosure(f, declarations, condition), nil
+	return guard{node: guardClosure(f, declarations, condition), reason: reason, floor: floor}
+}
+
+// primitiveTypeFlags are the types whose values are not objects at runtime, so
+// no member of theirs can be read.
+const primitiveTypeFlags = shimchecker.TypeFlagsString | shimchecker.TypeFlagsNumber |
+	shimchecker.TypeFlagsBoolean | shimchecker.TypeFlagsBigInt | shimchecker.TypeFlagsESSymbolLike |
+	shimchecker.TypeFlagsUndefined | shimchecker.TypeFlagsNull | shimchecker.TypeFlagsVoid |
+	shimchecker.TypeFlagsLiteral | shimchecker.TypeFlagsEnumLike |
+	shimchecker.TypeFlagsTemplateLiteral | shimchecker.TypeFlagsStringMapping
+
+func isPrimitiveType(t *shimchecker.Type) bool {
+	return t != nil && t.Flags()&primitiveTypeFlags != 0
+}
+
+func primitiveConstituents(types []*shimchecker.Type) []*shimchecker.Type {
+	primitives := make([]*shimchecker.Type, 0, len(types))
+	for _, t := range types {
+		if isPrimitiveType(t) {
+			primitives = append(primitives, t)
+		}
+	}
+	return primitives
 }
 
 // tupleGuard emits, over a tuple of required-then-optional elements:
@@ -587,12 +693,12 @@ func (s *synthesizer) intersectionGuard(
 //	    && (input[1] === undefined || t1(input[1]))
 //
 // A rest or variadic element leaves the positions themselves unfixed, so no
-// per-index clause is meaningful and such a tuple is refused.
+// per-index clause is meaningful and only the array floor survives.
 func (s *synthesizer) tupleGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
 	elementFlags := t.TargetTupleType().ElementFlags()
 	required := 0
 	for _, flags := range elementFlags {
@@ -601,7 +707,12 @@ func (s *synthesizer) tupleGuard(
 			required++
 		case shimchecker.ElementFlagsOptional:
 		default:
-			return nil, errors.New(s.checker.TypeToString(t) + ", a tuple with a rest or variadic element")
+			f := s.factory()
+			return guard{
+				node:   guardClosure(f, nil, isArrayCall(f, f.NewIdentifier("input"))),
+				reason: s.checker.TypeToString(t) + ", a tuple whose rest or variadic element leaves no fixed position",
+				floor:  true,
+			}
 		}
 	}
 	elements := s.checker.GetTypeArguments(t)
@@ -624,13 +735,15 @@ func (s *synthesizer) tupleGuard(
 		f.NewBinaryExpression(nil, length(), nil, f.NewToken(shimast.KindLessThanEqualsToken), numericLiteral(f, len(elements))),
 	)
 	declarations := make([]*shimast.Node, 0, len(elements))
+	reason := ""
 	for i, element := range elements {
-		guard, err := s.guardForType(context, element, s.checker.TypeToString(element), seen)
-		if err != nil {
-			return nil, err
+		part := s.guardForType(context, element, s.checker.TypeToString(element), seen)
+		reason = firstReason(reason, part.reason)
+		if part.node == nil {
+			continue
 		}
 		local := "t" + itoa(i)
-		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, guard))
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, part.node))
 		at := func() *shimast.Node {
 			return f.NewElementAccessExpression(f.NewIdentifier("input"), nil, numericLiteral(f, i), shimast.NodeFlagsNone)
 		}
@@ -649,7 +762,9 @@ func (s *synthesizer) tupleGuard(
 		}
 		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), checked)
 	}
-	return guardClosure(f, declarations, condition), nil
+	// The length bounds pin the tuple's arity whatever its elements turn out to
+	// be, so this is never a bare runtime-kind check.
+	return guard{node: guardClosure(f, declarations, condition), reason: reason}
 }
 
 // recordGuard emits, for a string-index-signature type:
@@ -666,61 +781,72 @@ func (s *synthesizer) recordGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
 	valueType := s.stringIndexValueType(t)
-	guard, err := s.guardForType(context, valueType, s.checker.TypeToString(valueType), seen)
-	if err != nil {
-		return nil, err
-	}
+	value := s.guardForType(context, valueType, s.checker.TypeToString(valueType), seen)
+
 	f := s.factory()
-	declarations := []*shimast.Node{f.NewVariableDeclaration(f.NewIdentifier("v0"), nil, nil, guard)}
+	declarations := []*shimast.Node{}
 	condition := plainObjectCondition(f)
-
-	valueParam := f.NewParameterDeclaration(nil, nil, f.NewIdentifier("v"), nil, nil, nil)
-	predicate := f.NewArrowFunction(
-		nil, nil,
-		f.NewNodeList([]*shimast.Node{valueParam}),
-		nil, nil,
-		f.NewToken(shimast.KindEqualsGreaterThanToken),
-		f.NewCallExpression(f.NewIdentifier("v0"), nil, nil, f.NewNodeList([]*shimast.Node{f.NewIdentifier("v")}), shimast.NodeFlagsNone),
-	)
-	values := f.NewCallExpression(
-		f.NewPropertyAccessExpression(f.NewIdentifier("Object"), nil, f.NewIdentifier("values"), shimast.NodeFlagsNone),
-		nil, nil,
-		f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}),
-		shimast.NodeFlagsNone,
-	)
-	every := f.NewCallExpression(
-		f.NewPropertyAccessExpression(values, nil, f.NewIdentifier("every"), shimast.NodeFlagsNone),
-		nil, nil,
-		f.NewNodeList([]*shimast.Node{predicate}),
-		shimast.NodeFlagsNone,
-	)
-	condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), every)
-
-	memberDeclarations, memberCondition, err := s.memberClauses(context, t, condition, seen)
-	if err != nil {
-		return nil, err
+	if value.node != nil {
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier("v0"), nil, nil, value.node))
+		valueParam := f.NewParameterDeclaration(nil, nil, f.NewIdentifier("v"), nil, nil, nil)
+		predicate := f.NewArrowFunction(
+			nil, nil,
+			f.NewNodeList([]*shimast.Node{valueParam}),
+			nil, nil,
+			f.NewToken(shimast.KindEqualsGreaterThanToken),
+			f.NewCallExpression(f.NewIdentifier("v0"), nil, nil, f.NewNodeList([]*shimast.Node{f.NewIdentifier("v")}), shimast.NodeFlagsNone),
+		)
+		values := f.NewCallExpression(
+			f.NewPropertyAccessExpression(f.NewIdentifier("Object"), nil, f.NewIdentifier("values"), shimast.NodeFlagsNone),
+			nil, nil,
+			f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}),
+			shimast.NodeFlagsNone,
+		)
+		every := f.NewCallExpression(
+			f.NewPropertyAccessExpression(values, nil, f.NewIdentifier("every"), shimast.NodeFlagsNone),
+			nil, nil,
+			f.NewNodeList([]*shimast.Node{predicate}),
+			shimast.NodeFlagsNone,
+		)
+		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), every)
 	}
-	return guardClosure(f, append(declarations, memberDeclarations...), memberCondition), nil
+
+	memberDeclarations, memberCondition, clauses, memberReason := s.memberClauses(context, t, condition, seen)
+	return guard{
+		node:   guardClosure(f, append(declarations, memberDeclarations...), memberCondition),
+		reason: firstReason(value.reason, memberReason),
+		floor:  value.node == nil && clauses == 0,
+	}
 }
 
 // unionGuard emits `(input) => u0(input) || u1(input)` over the constituents.
+//
+// Unlike every other composition, a union cannot drop an arm: a value of an
+// unchecked arm IS a value of the union, so a disjunction missing that arm would
+// REJECT it. An arm with no guard therefore costs the whole union its guard.
 func (s *synthesizer) unionGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
 	f := s.factory()
 	declarations := make([]*shimast.Node, 0, len(t.Types()))
 	var condition *shimast.Node
+	reason := ""
+	floor := true
 	for i, constituent := range t.Types() {
-		guard, err := s.guardForType(context, constituent, s.checker.TypeToString(constituent), seen)
-		if err != nil {
-			return nil, err
+		arm := s.guardForType(context, constituent, s.checker.TypeToString(constituent), seen)
+		reason = firstReason(reason, arm.reason)
+		if arm.node == nil {
+			return guard{reason: reason}
+		}
+		if !arm.floor {
+			floor = false
 		}
 		local := "u" + itoa(i)
-		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, guard))
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, arm.node))
 		call := f.NewCallExpression(
 			f.NewIdentifier(local),
 			nil,
@@ -735,9 +861,9 @@ func (s *synthesizer) unionGuard(
 		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindBarBarToken), call)
 	}
 	if condition == nil {
-		return nil, errors.New("an empty union")
+		return guard{reason: "an empty union"}
 	}
-	return guardClosure(f, declarations, condition), nil
+	return guard{node: guardClosure(f, declarations, condition), reason: reason, floor: floor}
 }
 
 // arrayGuard emits `(input) => Array.isArray(input) && input.every((e) => g(e))`.
@@ -745,14 +871,18 @@ func (s *synthesizer) arrayGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
 	element := s.arrayElementType(t)
-	guard, err := s.guardForType(context, element, s.checker.TypeToString(element), seen)
-	if err != nil {
-		return nil, err
-	}
+	part := s.guardForType(context, element, s.checker.TypeToString(element), seen)
 	f := s.factory()
-	declarations := []*shimast.Node{f.NewVariableDeclaration(f.NewIdentifier("e0"), nil, nil, guard)}
+	if part.node == nil {
+		return guard{
+			node:   guardClosure(f, nil, isArrayCall(f, f.NewIdentifier("input"))),
+			reason: part.reason,
+			floor:  true,
+		}
+	}
+	declarations := []*shimast.Node{f.NewVariableDeclaration(f.NewIdentifier("e0"), nil, nil, part.node)}
 
 	elementParam := f.NewParameterDeclaration(nil, nil, f.NewIdentifier("e"), nil, nil, nil)
 	predicate := f.NewArrowFunction(
@@ -769,7 +899,108 @@ func (s *synthesizer) arrayGuard(
 		shimast.NodeFlagsNone,
 	)
 	condition := f.NewBinaryExpression(nil, isArrayCall(f, f.NewIdentifier("input")), nil, f.NewToken(shimast.KindAmpersandAmpersandToken), every)
-	return guardClosure(f, declarations, condition), nil
+	return guard{node: guardClosure(f, declarations, condition), reason: part.reason}
+}
+
+// nominalGlobals map a built-in whose membership is directly testable to the
+// global constructor to test it against. `instanceof` IS the check a hand-written
+// guard writes for one of these; enumerating members would test a shape where the
+// type means an identity.
+//
+// A READONLY view (`ReadonlyMap`, `ReadonlySet`, `Iterable`) is deliberately
+// absent: any object implementing the interface satisfies it, so `instanceof Map`
+// would reject genuine values.
+var nominalGlobals = map[string]string{
+	"Map": "Map", "Set": "Set", "WeakMap": "WeakMap", "WeakSet": "WeakSet",
+	"Date": "Date", "RegExp": "RegExp",
+	"Error": "Error", "EvalError": "EvalError", "RangeError": "RangeError",
+	"ReferenceError": "ReferenceError", "SyntaxError": "SyntaxError",
+	"TypeError": "TypeError", "URIError": "URIError",
+	"ArrayBuffer": "ArrayBuffer", "SharedArrayBuffer": "SharedArrayBuffer", "DataView": "DataView",
+}
+
+// nominalGlobalOf returns the constructor to test t against, or "" when t is not
+// one of the directly-testable built-ins.
+func (s *synthesizer) nominalGlobalOf(t *shimchecker.Type) string {
+	if !typesurface.FromLibrary(s.prog, t) {
+		return ""
+	}
+	return nominalGlobals[typeSymbolName(t)]
+}
+
+// nominalGuard emits `input instanceof Map`, plus an entry-wise or element-wise
+// clause where the container's contents decompose:
+//
+//	(() => {
+//	    const k0 = <key guard>, v0 = <value guard>;
+//	    return (input) => input instanceof Map
+//	        && [...input].every((e) => k0(e[0]) && v0(e[1]));
+//	})()
+func (s *synthesizer) nominalGuard(
+	context nativecontext.ITypiaContext,
+	t *shimchecker.Type,
+	seen map[*shimchecker.Type]bool,
+) guard {
+	f := s.factory()
+	name := typeSymbolName(t)
+	condition := f.NewBinaryExpression(
+		nil,
+		f.NewIdentifier("input"),
+		nil,
+		f.NewToken(shimast.KindInstanceOfKeyword),
+		f.NewIdentifier(nominalGlobals[name]),
+	)
+	if name != "Map" && name != "Set" {
+		return guard{node: guardClosure(f, nil, condition)}
+	}
+
+	// A Map iterates as `[key, value]` pairs and a Set as its elements, so one
+	// `every` over the spread covers either.
+	arguments := s.checker.GetTypeArguments(t)
+	declarations := make([]*shimast.Node, 0, len(arguments))
+	var element *shimast.Node
+	reason := ""
+	for i, argument := range arguments {
+		part := s.guardForType(context, argument, s.checker.TypeToString(argument), seen)
+		reason = firstReason(reason, part.reason)
+		if part.node == nil {
+			continue
+		}
+		local := "a" + itoa(i)
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, part.node))
+		subject := f.NewIdentifier("e")
+		if name == "Map" {
+			subject = f.NewElementAccessExpression(f.NewIdentifier("e"), nil, numericLiteral(f, i), shimast.NodeFlagsNone)
+		}
+		checked := f.NewCallExpression(f.NewIdentifier(local), nil, nil, f.NewNodeList([]*shimast.Node{subject}), shimast.NodeFlagsNone)
+		if element == nil {
+			element = checked
+			continue
+		}
+		element = f.NewBinaryExpression(nil, element, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), checked)
+	}
+	if element == nil {
+		return guard{node: guardClosure(f, nil, condition), reason: reason}
+	}
+	predicate := f.NewArrowFunction(
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{f.NewParameterDeclaration(nil, nil, f.NewIdentifier("e"), nil, nil, nil)}),
+		nil, nil,
+		f.NewToken(shimast.KindEqualsGreaterThanToken),
+		element,
+	)
+	spread := f.NewArrayLiteralExpression(
+		f.NewNodeList([]*shimast.Node{f.NewSpreadElement(f.NewIdentifier("input"))}),
+		false,
+	)
+	every := f.NewCallExpression(
+		f.NewPropertyAccessExpression(spread, nil, f.NewIdentifier("every"), shimast.NodeFlagsNone),
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{predicate}),
+		shimast.NodeFlagsNone,
+	)
+	condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), every)
+	return guard{node: guardClosure(f, declarations, condition), reason: reason}
 }
 
 // objectGuard emits one clause per PUBLIC, READABLE member over an object/class
@@ -781,31 +1012,33 @@ func (s *synthesizer) arrayGuard(
 //	        && !Array.isArray(input) && m0(input.name);
 //	})()
 //
-// An `?`-optional member's clause admits an absent value directly. A type with
-// nothing readable is refused: its guard would be a bare `typeof input ===
-// "object"`, which decides nothing about the type it claims to check. So is one
-// carrying a symbol-keyed member — a caller CAN supply that member, so leaving it
-// unchecked (there being no string key to read it by) would quietly widen the
-// guard, unlike a `#`-named or `private` member, which no caller can supply and
-// whose omission is the point.
+// An `?`-optional member's clause admits an absent value directly.
+//
+// A type nothing can be read from — every member `#`-named, `private` or a
+// set-only accessor — keeps the object floor and nothing else: per-member clauses
+// would be keyed on names no value carries. The same holds one member at a time:
+// a symbol-keyed member is one a caller CAN supply but no string key reads, so
+// the clauses around it stand while its absence is reported. `internal/schema`
+// refuses the mirror-image shape (nothing WRITABLE) on the same predicate.
 func (s *synthesizer) objectGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	seen map[*shimchecker.Type]bool,
-) (*shimast.Node, error) {
+) guard {
 	f := s.factory()
 	surface := typesurface.For(s.checker, t, nil)
+	if surface.NothingReadable() {
+		return s.objectFloor(s.checker.TypeToString(t) + ", none of whose members can be read from outside it")
+	}
+	declarations, condition, clauses, memberReason := s.memberClauses(context, t, plainObjectCondition(f), seen)
+	reason := memberReason
 	if surface.SymbolKeyed > 0 {
-		return nil, errors.New(s.checker.TypeToString(t) + ", which has a member no string key can name")
+		reason = firstReason(s.checker.TypeToString(t)+", which has a member no string key can name", reason)
 	}
-	if len(surface.Readable()) == 0 {
-		return nil, errors.New(s.checker.TypeToString(t) + ", none of whose members can be read from outside it")
+	if clauses == 0 {
+		return s.objectFloor(firstReason(reason, s.checker.TypeToString(t)+", which exposes no member to check"))
 	}
-	declarations, condition, err := s.memberClauses(context, t, plainObjectCondition(f), seen)
-	if err != nil {
-		return nil, err
-	}
-	return guardClosure(f, declarations, condition), nil
+	return guard{node: guardClosure(f, declarations, condition), reason: reason}
 }
 
 // plainObjectCondition is the shared prefix of every composed object guard:
@@ -849,29 +1082,34 @@ func isArrayCall(f *shimast.NodeFactory, subject *shimast.Node) *shimast.Node {
 }
 
 // memberClauses conjoins one `mN(input.name)` clause onto condition per public,
-// readable member of t, returning the sub-guard declarations alongside it. A
-// set-only accessor is skipped: it cannot be read, so a clause on it could never
-// pass on a genuine value.
+// readable member of t, returning the sub-guard declarations, the number of
+// clauses added, and the first member it could not cover. A set-only accessor is
+// skipped: it cannot be read, so a clause on it could never pass on a genuine
+// value. A member whose own type yields no guard is skipped the same way — the
+// remaining clauses still narrow.
 func (s *synthesizer) memberClauses(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
 	condition *shimast.Node,
 	seen map[*shimchecker.Type]bool,
-) ([]*shimast.Node, *shimast.Node, error) {
+) ([]*shimast.Node, *shimast.Node, int, string) {
 	f := s.factory()
 	members := typesurface.For(s.checker, t, nil).Readable()
 	declarations := make([]*shimast.Node, 0, len(members))
-	for i, m := range members {
+	reason := ""
+	for _, m := range members {
 		memberType := s.checker.GetTypeOfSymbolAtLocation(m.Symbol, m.Decl)
 		if memberType == nil {
-			return nil, nil, errors.New("member \"" + m.Name + "\" of " + s.checker.TypeToString(t) + ", whose type does not resolve")
+			reason = firstReason(reason, "member \""+m.Name+"\" of "+s.checker.TypeToString(t)+", whose type does not resolve")
+			continue
 		}
-		guard, err := s.guardForType(context, memberType, s.checker.TypeToString(memberType), seen)
-		if err != nil {
-			return nil, nil, err
+		part := s.guardForType(context, memberType, s.checker.TypeToString(memberType), seen)
+		reason = firstReason(reason, part.reason)
+		if part.node == nil {
+			continue
 		}
-		local := "m" + itoa(i)
-		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, guard))
+		local := "m" + itoa(len(declarations))
+		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier(local), nil, nil, part.node))
 
 		read := func() *shimast.Node {
 			if isIdentifierName(m.Name) {
@@ -894,7 +1132,7 @@ func (s *synthesizer) memberClauses(
 		}
 		condition = f.NewBinaryExpression(nil, condition, nil, f.NewToken(shimast.KindAmpersandAmpersandToken), checked)
 	}
-	return declarations, condition, nil
+	return declarations, condition, len(declarations), reason
 }
 
 // guardClosure wraps a condition over `input` as a self-invoking closure binding
@@ -987,11 +1225,21 @@ func (s *synthesizer) typiaFaithful(t *shimchecker.Type, seen map[*shimchecker.T
 	// a clause that can never be false. Composed instead.
 	case flags&shimchecker.TypeFlagsESSymbolLike != 0:
 		return false
-	// typia checks a union arm by arm and merges an intersection's constituents
-	// into one member set; either way each constituent's own rendering decides.
-	case flags&(shimchecker.TypeFlagsUnion|shimchecker.TypeFlagsIntersection) != 0:
+	// typia checks a union arm by arm, so each arm's own rendering decides.
+	case flags&shimchecker.TypeFlagsUnion != 0:
 		for _, constituent := range t.Types() {
 			if !s.typiaFaithful(constituent, seen) {
+				return false
+			}
+		}
+		return true
+	// typia merges an intersection's constituents into ONE member set, which
+	// works only while they are all objects. A primitive constituent — the
+	// `string` half of a brand like `string & { readonly __brand: "UserId" }` — is
+	// dropped instead, leaving a check the primitive's own values fail.
+	case flags&shimchecker.TypeFlagsIntersection != 0:
+		for _, constituent := range t.Types() {
+			if isPrimitiveType(constituent) || !s.typiaFaithful(constituent, seen) {
 				return false
 			}
 		}
@@ -1024,25 +1272,24 @@ func (s *synthesizer) objectFaithful(t *shimchecker.Type, seen map[*shimchecker.
 	if s.isCallable(t) {
 		return false
 	}
-	indexInfos := shimchecker.Checker_getIndexInfosOfType(s.checker, t)
-	// Anything else declared outside this project is nominal in practice: a
-	// structural clause per member says nothing about whether a value really is
-	// one, and the members typia reaches for are often symbol-keyed. An
-	// index-signature bag is exempt — `Record<K, V>` is declared in the standard
-	// library but denotes a structure, not an identity.
-	if len(indexInfos) == 0 && typesurface.FromLibrary(s.prog, t) {
+	// Any other nominal built-in: typia enumerates the members implementing an
+	// identity — often symbol-keyed ones — and calls the result a check.
+	if typesurface.FromLibrary(s.prog, t) {
 		return false
 	}
+	indexInfos := shimchecker.Checker_getIndexInfosOfType(s.checker, t)
 	surface := typesurface.For(s.checker, t, nil)
 	switch {
 	// Keyed on the checker's internal mangled name, which no object carries.
 	case surface.PrivateNamed > 0 || surface.SymbolKeyed > 0:
 		return false
-	// Skipped outright, so the member goes unchecked.
+	// Skipped outright, so the member goes unchecked. typia decides this on the
+	// member's DECLARATION, so it holds through a mapped type (`Partial<T>`,
+	// `{ [K in keyof T]: T[K] }`) that reminted the accessor as a property.
 	case surface.HasAccessor:
 		return false
 	// Nothing left to check: the guard collapses to a constant `true`.
-	case surface.HiddenOnly():
+	case surface.NothingReadable():
 		return false
 	}
 	for _, m := range surface.Members {
@@ -1147,29 +1394,6 @@ func isReadonlyArrayType(t *shimchecker.Type) bool {
 	return target.Symbol().Name == "ReadonlyArray"
 }
 
-// isComposableObject reports whether t is a plain user object or class instance
-// the member walk can decompose: an object type with no call/construct
-// signatures, no index signature, not an array/tuple, and declared in this
-// project. A library global (Map, Set, Promise) is outside it — such a type is
-// nominal in practice, so a structural clause per member would say nothing about
-// whether a value really is one. A diverging type reached under one is refused,
-// not approximated.
-func (s *synthesizer) isComposableObject(t *shimchecker.Type) bool {
-	if t == nil || t.Flags()&shimchecker.TypeFlagsObject == 0 {
-		return false
-	}
-	if s.isCallable(t) {
-		return false
-	}
-	if shimchecker.Checker_isArrayType(s.checker, t) || shimchecker.IsTupleType(t) || isReadonlyArrayType(t) {
-		return false
-	}
-	if len(shimchecker.Checker_getIndexInfosOfType(s.checker, t)) > 0 {
-		return false
-	}
-	return !typesurface.FromLibrary(s.prog, t)
-}
-
 // typeNameOf is the guard's display name for a parameter's type node — the
 // source text typia itself names a generic argument by.
 func typeNameOf(typeNode *shimast.Node) string {
@@ -1263,9 +1487,10 @@ func (s *synthesizer) guardedStrategy(guards []guardedParam, minArity, maxArity 
 	}
 
 	if condition == nil {
-		// A refused rest parameter with no lower bound leaves nothing to test:
-		// every call matches, which is the same dispatch the always-pass strategy
-		// produces.
+		// A member whose ONLY parameter is a rest parameter has no arity bounds to
+		// keep — a rest parameter is never required and never caps the count — so
+		// when its guard is dropped too there is genuinely nothing left to test.
+		// Every other refusal reaches here with at least one bound or one clause.
 		return s.alwaysPassStrategy()
 	}
 	dispatch := f.NewConditionalExpression(
