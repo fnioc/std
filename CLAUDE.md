@@ -541,6 +541,11 @@ the repo until someone reconciles it by hand.
   `topics` is a comma-separated **string**, not a list.
 - **Write ruleset parameters out in full**, API defaults included. The app decides "changed?" by
   deep-equal against what GitHub returns, so an omitted default re-PUTs the ruleset every sync.
+- **Two `repository:` keys are set by hand, not by the file** — `topics` and
+  `security_and_analysis`. Both are commented out in `settings.yml` with the reproduction and the
+  command to set them; keep the commented values in step when you change either. `security_and_analysis`
+  is unfixable in the app's design: GitHub silently drops the block when it arrives alongside other
+  repository fields, and the app sends exactly one PATCH containing all of them.
 - **Secrets and variables are not manageable there** and never will be — a file in this repo is
   public plaintext. Use `gh secret set` / `gh variable set`.
 - Two rules **cannot** exist here, both verified against the API: push rules (`target: push`, thus
