@@ -16,7 +16,9 @@
     "preferSingleLine": true
   },
   "json": {},
-  "markdown": {},
+  "markdown": {
+    "lineWidth": 120
+  },
   "excludes": [
     "**/node_modules",
     "**/dist",

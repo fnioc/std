@@ -68,8 +68,7 @@ which re-arms by calling your producer again after every change:
 import { ChangeToken } from '@rhombus-std/primitives';
 
 // An exact file: fires when config/app.json is created, changed, or deleted.
-ChangeToken.onChange(() => provider.watch('config/app.json'),
-  () => reloadConfig());
+ChangeToken.onChange(() => provider.watch('config/app.json'), () => reloadConfig());
 
 // A directory prefix (note the trailing slash): fires on any change in the
 // config/ subtree.
@@ -97,12 +96,10 @@ lookups and directory listings. Pass an `ExclusionFilters` value to change
 that:
 
 ```ts
-import { ExclusionFilters,
-  PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
+import { ExclusionFilters, PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 
 // See everything, including dotfiles.
-const provider = new PhysicalFileProvider('/srv/app/content',
-  ExclusionFilters.None);
+const provider = new PhysicalFileProvider('/srv/app/content', ExclusionFilters.None);
 ```
 
 ## Key exports

@@ -18,8 +18,7 @@ The modern, property-based builder is the easiest way in:
 
 ```ts
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
-import type { IHostApplicationLifetime,
-  IHostedService } from '@rhombus-std/hosting';
+import type { IHostApplicationLifetime, IHostedService } from '@rhombus-std/hosting';
 
 class Worker implements IHostedService {
   public constructor(private readonly lifetime: IHostApplicationLifetime) {}

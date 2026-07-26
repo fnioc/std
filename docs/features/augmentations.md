@@ -68,11 +68,9 @@ satisfying `AugmentationSet<Receiver>`:
 ```ts
 import type { AugmentationSet } from '@rhombus-std/primitives';
 
-export const JsonConfigExtensions = {
-  addJsonFile(builder: IConfigBuilder, path: string, optional = false) {
-    return builder.add(new JsonConfigSource(path, optional));
-  },
-} satisfies AugmentationSet<IConfigBuilder>;
+export const JsonConfigExtensions = { addJsonFile(builder: IConfigBuilder, path: string, optional = false) {
+  return builder.add(new JsonConfigSource(path, optional));
+} } satisfies AugmentationSet<IConfigBuilder>;
 ```
 
 This const **is** the callable surface — `JsonConfigExtensions.addJsonFile(builder, path)`

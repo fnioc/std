@@ -20,10 +20,9 @@ bun add @rhombus-std/config @rhombus-std/config.json
 import '@rhombus-std/config.json'; // unlocks .addJsonFile() on ConfigBuilder
 import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigBuilder().addJsonFile('appsettings.json').addJsonFile(
-  'appsettings.local.json',
-  { optional: true },
-).build();
+const config = new ConfigBuilder().addJsonFile('appsettings.json').addJsonFile('appsettings.local.json', {
+  optional: true,
+}).build();
 
 config.get('Server:Port');
 ```

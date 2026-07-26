@@ -26,8 +26,7 @@ against it is verbose, so the package also ships convenience wrappers that build
 the state/formatter for you:
 
 ```ts
-import { type ILogger, logError,
-  logInformation } from '@rhombus-std/logging.core';
+import { type ILogger, logError, logInformation } from '@rhombus-std/logging.core';
 
 function handleRequest(logger: ILogger, userId: string): void {
   logInformation(logger, 'Handling request for {UserId}', userId);

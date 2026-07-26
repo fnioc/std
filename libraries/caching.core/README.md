@@ -48,12 +48,9 @@ the `IMemoryCache` receiver.
 Build a reusable options bag fluently and apply it to many entries:
 
 ```ts
-import { CacheItemPriority,
-  MemoryCacheEntryOptions } from '@rhombus-std/caching.core';
+import { CacheItemPriority, MemoryCacheEntryOptions } from '@rhombus-std/caching.core';
 
-const options = new MemoryCacheEntryOptions().setSlidingExpiration(
-  5 * 60 * 1000,
-) // 5 minutes, in ms
+const options = new MemoryCacheEntryOptions().setSlidingExpiration(5 * 60 * 1000) // 5 minutes, in ms
   .setPriority(CacheItemPriority.High);
 
 cache.setWithOptions('session:abc', sessionData, options);

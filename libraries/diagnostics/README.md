@@ -61,9 +61,8 @@ builder:
 import '@rhombus-std/diagnostics';
 import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigBuilder().addInMemoryCollection({
-  'EnabledMetrics:MyApp.Http:request.duration': 'false',
-}).build();
+const config = new ConfigBuilder().addInMemoryCollection({ 'EnabledMetrics:MyApp.Http:request.duration': 'false' })
+  .build();
 
 manifest.addMetrics((builder) => {
   builder.addMetricsConfig(config);
