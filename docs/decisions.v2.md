@@ -1206,9 +1206,14 @@ emitted artifact:
 - a `private` / `protected` member, which a caller cannot supply;
 - a computed (symbol-keyed) member such as `[Symbol.iterator]`, which has no string key to emit.
 
-`internal/typesurface` is the one enumerator both walks consume. Its exclusions test the
-DECLARATION's shape — a private-identifier name, an accessibility modifier, a computed name — never
-the mangled internal property name the checker gives such members.
+`internal/typesurface` is the one enumerator both walks consume. EVERY test it makes is on the
+member's DECLARATIONS — a private-identifier name, an accessibility modifier, a computed name, a
+`get`/`set` node — never on the symbol's flags and never on the mangled internal property name the
+checker gives such members. The flags are not equivalent: a mapped type (`Partial<T>`, `{ [K in
+keyof T]: T[K] }`) remints each member as a plain property symbol while KEEPING the original
+declaration node, so the flags say "property" exactly where the declaration still says "accessor" —
+and typia, which filters on the declaration, drops the member. Reading the flags therefore made
+every accessor invisible behind any mapping, reopening the whole defect class one indirection away.
 
 **The surface is DIRECTIONAL, and the two consumers face opposite ways.** A guard READS a member, so
 a set-only accessor gives it nothing to check; a schema WRITES one, so a get-only accessor gives it
@@ -1217,8 +1222,7 @@ nowhere to put a value. `typesurface` therefore reports both directions per memb
 `Surface.Readable()` in `mergesynth`, `Surface.Writable()` in `internal/schema`. Filtering by the
 wrong direction, or by neither, yields a member operation that can never succeed: a
 `typeof input.x === "number"` clause on a set-only accessor is never true, and a schema key for a
-get-only accessor names an assignment that throws. `Surface.HiddenOnly()` is the one refusal
-predicate both share.
+get-only accessor names an assignment that throws.
 
 **Why this was a correctness defect, not a tidiness one.** A guard clause keyed on a `#`-named field
 reads `undefined === undefined` and can never be false. `MemoryCacheEntryOptions` has five such
@@ -1227,20 +1231,28 @@ have been checked contributed no clause at all, so the guard accepted objects th
 `MemoryCacheEntryOptions`. A schema keyed the same way describes fields no configuration source can
 ever populate.
 
-**Refuse loudly; never weaken silently.** Where filtering leaves a walk unable to do its job, it
-reports rather than emitting something that silently passes. The schema walk raises the hard error
-`992003` for a type with nothing writable left. `mergesynth` raises the warning
-`MERGESYNTH_PRIVATE_SURFACE` and DROPS the whole parameter's guard — never a partial one — when it
-reaches a shape it cannot decompose (a diverging type inside a `Map` or `Set`, a self-referencing
-diverging type, a symbol-keyed member, a type with nothing readable), or when any member's own guard
-cannot be built.
+**Both consumers refuse on the SAME predicate, one per direction.** `Surface.NothingReadable()` and
+`Surface.NothingWritable()` each say "this type DECLARES members, and none of them faces the way I
+need". The schema walk raises the hard error `992003` on the writable one; `mergesynth` stops
+emitting member clauses on the readable one. A type that declares nothing at all (`{}`, `object`) is
+neither: there is nothing it fails to expose, so the empty result is correct rather than blind, and
+the two walks cannot reach different verdicts on the same type.
 
-**A refusal must never widen dispatch.** Dropping a parameter's type guard does NOT drop the
-member's arity bounds: those are derivable from the signature alone, so the dispatcher still routes
-by argument count and still falls through to whatever held the name before. Only a member whose
-EVERY parameter is un-derivable in the first place — no annotation, `any`/`unknown`, or a reference
-to the member's own type parameters — gets the bare always-pass strategy, and that is a stated
-degradation, not a refusal.
+**A guard may be WEAKER than its type, never NARROWER — and never weaker than what it replaces.**
+Where `mergesynth` cannot decompose a position it costs that position its clause and nothing else.
+Every clause beside it stands, the parameter's arity bounds stand (derivable from the signature
+alone), and the runtime-KIND floor the type still implies stands: `typeof input === "object" &&
+input !== null && !Array.isArray(input)` for an object type, `Array.isArray(input)` for an array. So
+an undecomposable parameter still routes a wrong-KIND argument to whatever held the member name
+before, and one such member never disarms the guard on its siblings. Each weakening is reported as a
+`MERGESYNTH_PRIVATE_SURFACE` warning naming the position.
+
+The one thing never emitted is a clause that cannot decide anything. A guard with NO clause at all is
+dropped rather than written as `true`, and a floor is dropped in rest-parameter position, where
+`Array.isArray(args.slice(0))` is true by construction. A member whose EVERY parameter is
+un-derivable in the first place — no annotation, `any`/`unknown`, or a reference to the member's own
+type parameters — still gets the bare always-pass strategy; that is a stated degradation, not a
+weakening.
 
 **The fast path is a WHITELIST, and that direction is the whole design.** `typiaFaithful` asks
 "does typia render this — and every type reachable from it — the way a hand-written check would?"
@@ -1250,7 +1262,9 @@ are silently vacuous clauses that read exactly like correct ones, and every type
 forgets defaults to emitting one. Independent review found several such positions (a mapped type's
 value type, reachable through neither a property walk nor a type-argument walk; a symbol-keyed data
 property; a wholly `private`-modifier surface, which typia filters correctly and so renders as a
-constant `true`). A whitelist's misses default instead to a composed guard or a loud refusal, both
+constant `true`; an intersection of a primitive with an object, which typia drops rather than
+renders, giving the mirror-image defect of a clause that can never be TRUE). A whitelist's misses
+default instead to a composed guard or a loud weakening, both
 honest. Each faithful branch carries its justification in terms of what typia emits for that
 construct: a `typeof`/`===` leaf, a literal or enum comparison, a compiled template-literal pattern,
 a nominal `instanceof` for a class typia knows natively, `instanceof` plus element checks for
@@ -1260,12 +1274,28 @@ treated as faithful and settled by the type's finite positions.
 
 **What is composed in-tree.** Everything the whitelist rejects and the composer can decompose:
 unions disjunctively, intersections conjunctively, arrays element-wise, fixed-length tuples
-positionally, string-keyed index signatures over `Object.values`, callables and symbols as their
-`typeof` check (typia emits a constant `true` for both), and objects and class instances
-clause-per-public-readable-member. A library type (`Map`, `Set`, `Promise`) is never composed: it is
-nominal in practice, so a structural clause per member would say nothing about whether a value
-really is one. `Record<K, V>` is exempt from that — it is declared in the standard library but
-denotes a structure, not an identity.
+positionally, string-keyed index signatures over `Object.values`, nominal built-ins by `instanceof`
+(plus an entry-wise walk for `Map` and `Set`), callables and symbols as their `typeof` check (typia
+emits a constant `true` for both), and objects and class instances
+clause-per-public-readable-member. Two asymmetries are load-bearing. A UNION cannot drop an arm — a
+value of an unchecked arm IS a value of the union, so a disjunction missing it would REJECT that
+value — where every other composition can drop a position and stay sound. And an INTERSECTION
+containing a primitive is decided by the primitive alone: in `string & { readonly __brand: "UserId"
+}` the object half is phantom, a value of the type carries no `__brand` at runtime, and conjoining a
+check for one rejects every genuine value.
+
+**"Library type" means NOMINAL, not "declared elsewhere".** `typesurface.FromLibrary` reports only a
+class or interface declared in a default library file — `Date`, `Map`, `Promise`, `Error`.
+Membership in one is an identity, so per-member clauses say nothing about whether a value really is
+one, and the composer answers with `instanceof` where a global constructor exists and the object
+floor where none does (`ReadonlyMap` and friends: any object implementing the interface satisfies
+it, so `instanceof Map` would reject genuine values). Two things are deliberately NOT nominal. A
+STRUCTURAL type is not, wherever declared: `Partial<T>`, `Readonly<T>`, `Pick<T, K>` and `Record<K,
+V>` are mapped types whose declarations sit in `lib.es5.d.ts`, and `Partial<Opts>` is exactly as
+checkable as `Opts`. Nor is a type from an installed package: a third-party `interface` is a shape
+the same way a first-party one is, and counting `node_modules` as "library" disabled synthesis for
+every non-primitive type an external consumer imports — invisible in-repo, where workspace packages
+resolve to real paths.
 
 **A consequence worth naming.** The checker's mangled internal name embeds a symbol id allocated in
 checking order, so it drifted between builds. The whitelist makes that non-determinism unobservable:
@@ -1273,4 +1303,6 @@ typia enumerates members only for a type the whitelist admitted, and no admitted
 `#`-named or symbol-keyed member at any reachable position.
 
 _Ruled 2026-07-25 while fixing the vacuous `setOptions` guard in `caching.core`; the whitelist
-inversion and the arity-preserving refusal followed from the review of that fix._
+inversion followed from the review of that fix, and the declaration-over-flags rule, the
+nominal-not-elsewhere reading of "library type", and the weaker-never-narrower contract from the
+review after it._
