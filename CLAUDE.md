@@ -519,6 +519,31 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
 rewrites `exports` from that override at publish time. Publishing with anything else ships the wrong
 entry points and leaks the white-box `./tokens/*` + `./private/*` seams.
 
+## Repository settings
+
+Repo settings, labels and rulesets are code: **`.github/settings.yml`**, applied by the Probot
+Settings app installed org-wide on `fnioc`. It syncs on every push to `main`, so **never change
+these through `gh api` or the web UI** — the next sync reverts it. Edit the file and PR it like any
+other change.
+
+- **Every list section is destructive.** `labels:` and `rulesets:` are diffed against the live repo:
+  an entry present remotely but absent from the file is DELETED, not left alone. Dropping a label
+  strips it from every issue and PR carrying it. Omitting a whole section is a safe no-op;
+  half-populating one is not.
+- **`repository:` is a pass-through PATCH**, so any field the update-repo endpoint accepts works.
+  `topics` is a comma-separated **string**, not a list.
+- **Write ruleset parameters out in full**, API defaults included. The app decides "changed?" by
+  deep-equal against what GitHub returns, so an omitted default re-PUTs the ruleset every sync.
+- **Secrets and variables are not manageable there** and never will be — a file in this repo is
+  public plaintext. Use `gh secret set` / `gh variable set`.
+- Two rules **cannot** exist here, both verified against the API: push rules (`target: push`, thus
+  `file_path_restriction` and family) are rejected on public repos outright, and the `workflows`
+  rule fails with an empty error detail. The first ruleset in the file carries every rule type
+  commented out, with the evidence — read that before re-deriving either.
+
+Validate a ruleset change by POSTing it as `enforcement: disabled`, confirming it's accepted, then
+DELETEing it. That never touches the live `main-merge-queue`.
+
 ## Tests
 
 Tests live in sibling `tests/<lib>.test` packages (files under `tests/<lib>.test/test/`), not
