@@ -190,6 +190,32 @@ export const ThetaExtensions = {
   },
 };
 
+// The same class reached ONLY through a record's value type — a position no
+// property or type-argument walk passes through.
+export const IotaExtensions = {
+  configure(self: IAlpha, tag: string): string {
+    return \`IOTA:\${tag}\`;
+  },
+};
+export const KappaExtensions = {
+  configure(self: IAlpha, bag: Record<string, EntryOptions>): string {
+    return \`KAPPA:\${Object.keys(bag).join(",")}\`;
+  },
+};
+
+// A parameter type nothing faithful can be built for. The refusal must still
+// narrow dispatch by argument count rather than answer every call.
+export const LambdaExtensions = {
+  store(self: IAlpha, tag: string): string {
+    return \`LAMBDA:\${String(tag)}\`;
+  },
+};
+export const MuExtensions = {
+  store(self: IAlpha, entries: Map<string, EntryOptions>): string {
+    return "MU";
+  },
+};
+
 registerAugmentations(tokenfor<IAlpha>(), AlphaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), BetaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), DeltaExtensions);
@@ -198,6 +224,10 @@ registerAugmentations(tokenfor<IAlpha>(), EpsilonExtensions);
 registerAugmentations(tokenfor<IAlpha>(), ZetaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), EtaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), ThetaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), IotaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), KappaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), LambdaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), MuExtensions);
 
 export class Alpha implements IAlpha {}
 augment(tokenfor<IAlpha>())(Alpha);
@@ -321,6 +351,10 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
     expect(app).not.toContain('.internal');
   });
 
+  test('a record decomposes over its values rather than its own keys', () => {
+    expect(app).toContain('Object.values(');
+  });
+
   test('tokenfor lowering is byte-identical on the collapsed host', () => {
     expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
     expect(app).not.toContain('tokenfor');
@@ -363,6 +397,27 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     // keyed on the #private backing field this clause is `undefined === undefined`
     // and the wrong-shaped object dispatches to Theta.
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: 'nope', label: 'x' })).toBe('ETA:[object Object]');
+  });
+
+  test('a record value is checked through the value type, not waved through', () => {
+    // Kappa's guard reaches EntryOptions through the record's VALUE type: a bag
+    // whose entry carries the public shape dispatches to Kappa…
+    expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 5, label: 'x' } })).toBe('KAPPA:a');
+    // …and one whose entry holds the wrong type does not — it falls through to
+    // Iota, the plain thunk that held the name first.
+    expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 'nope', label: 'x' } })).toBe(
+      'IOTA:[object Object]',
+    );
+  });
+
+  test('a refused guard still narrows dispatch by argument count', () => {
+    // Mu's parameter type admits no faithful guard, so any single-argument call
+    // reaches it…
+    expect(instance.store(new Map())).toBe('MU');
+    // …but the arity bounds survive the refusal, so a call of any other length
+    // falls through to Lambda instead of being swallowed.
+    expect(instance.store()).toBe('LAMBDA:undefined');
+    expect(instance.store('a', 'b')).toBe('LAMBDA:a');
   });
 
   test('arity bounds discriminate same-typed leading parameters', () => {
