@@ -7,8 +7,9 @@
 //     (`Reflect.ownKeys(new C())` does not list it, `obj["#x"]` is `undefined`),
 //     so any emitted key for one is unmatchable at runtime;
 //   - a `private` / `protected` member, which a caller cannot supply;
-//   - a computed (symbol-keyed) member such as `[Symbol.iterator]`, which has no
-//     string key to emit either.
+//   - a SYMBOL-keyed member such as `[Symbol.iterator]`, which has no string key
+//     to emit either. A computed name is not the same thing: `["a-b"]` evaluates
+//     to a string, so it stays in the surface and is read by element access.
 //
 // Each is COUNTED as it is skipped, so a caller can tell "this type has no
 // members" from "this type's members are all outside the surface" and refuse
@@ -65,7 +66,7 @@ type Surface struct {
 	PrivateNamed int
 	// ModifierHidden counts skipped `private` / `protected` members.
 	ModifierHidden int
-	// SymbolKeyed counts skipped computed (symbol-keyed) members.
+	// SymbolKeyed counts skipped symbol-keyed members.
 	SymbolKeyed int
 	// HasAccessor reports whether any surviving member is a get/set accessor.
 	HasAccessor bool
@@ -137,7 +138,7 @@ func For(checker *shimchecker.Checker, t *shimchecker.Type, anchor *shimast.Node
 		case isModifierHidden(decl):
 			surface.ModifierHidden++
 			continue
-		case isSymbolKeyed(decl):
+		case isSymbolKeyed(checker, decl):
 			surface.SymbolKeyed++
 			continue
 		}
@@ -212,14 +213,42 @@ func isModifierHidden(decl *shimast.Node) bool {
 	return flags&(shimast.ModifierFlagsPrivate|shimast.ModifierFlagsProtected) != 0
 }
 
-// isSymbolKeyed reports whether a declaration's name is computed — `[Symbol.x]`
-// and friends, which carry no string key.
-func isSymbolKeyed(decl *shimast.Node) bool {
+// isSymbolKeyed reports whether a declaration's name carries no string key: what
+// the name EVALUATES to decides it, not that it is computed. `[Symbol.iterator]`
+// and `[MARK]` (a `unique symbol` const) name no string; `["a-b"]` and `[KEY]`
+// (a string const) name an ordinary one an element access reads, and belong to
+// the surface.
+//
+// A computed name whose type will not resolve counts as symbol-keyed. That is the
+// honest answer to "I could not tell": the member is skipped and COUNTED, so a
+// consumer reports it rather than emitting a key that may name nothing.
+func isSymbolKeyed(checker *shimchecker.Checker, decl *shimast.Node) bool {
 	if decl == nil {
 		return false
 	}
 	name := decl.Name()
-	return name != nil && name.Kind == shimast.KindComputedPropertyName
+	if name == nil || name.Kind != shimast.KindComputedPropertyName {
+		return false
+	}
+	expr := name.AsComputedPropertyName().Expression
+	if expr == nil {
+		return true
+	}
+	if shimast.IsStringLiteral(expr) || expr.Kind == shimast.KindNumericLiteral {
+		return false
+	}
+	if checker == nil || expr.Pos() < 0 {
+		return true
+	}
+	symbol := checker.GetSymbolAtLocation(expr)
+	if symbol == nil {
+		return true
+	}
+	nameType := shimchecker.Checker_getTypeOfSymbol(checker, symbol)
+	if nameType == nil {
+		return true
+	}
+	return nameType.Flags()&shimchecker.TypeFlagsESSymbolLike != 0
 }
 
 // FromLibrary reports whether t is a NOMINAL built-in: a class or interface

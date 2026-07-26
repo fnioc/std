@@ -576,12 +576,11 @@ func (s *synthesizer) guardForType(
 	return guard{reason: s.checker.TypeToString(t) + ", which has no runtime form to test"}
 }
 
-// objectFloor is the guard for a value known to be a plain object and nothing
-// more — the weakest honest check, and what every composed object guard is built
-// on top of.
+// objectFloor is the guard for a value known only to be of an object type — the
+// weakest honest check, and what every composed object guard is built on top of.
 func (s *synthesizer) objectFloor(reason string) guard {
 	f := s.factory()
-	return guard{node: guardClosure(f, nil, plainObjectCondition(f)), reason: reason, floor: true}
+	return guard{node: guardClosure(f, nil, objectKindCondition(f)), reason: reason, floor: true}
 }
 
 // firstReason is the first non-empty of two weakening reasons — a guard reports
@@ -771,8 +770,8 @@ func (s *synthesizer) tupleGuard(
 //
 //	(() => {
 //	    const v0 = <value guard>;
-//	    return (input) => typeof input === "object" && input !== null
-//	        && !Array.isArray(input) && Object.values(input).every((v) => v0(v));
+//	    return (input) => (typeof input === "object" || typeof input === "function")
+//	        && input !== null && Object.values(input).every((v) => v0(v));
 //	})()
 //
 // Named members declared alongside the index signature contribute their own
@@ -787,7 +786,7 @@ func (s *synthesizer) recordGuard(
 
 	f := s.factory()
 	declarations := []*shimast.Node{}
-	condition := plainObjectCondition(f)
+	condition := objectKindCondition(f)
 	if value.node != nil {
 		declarations = append(declarations, f.NewVariableDeclaration(f.NewIdentifier("v0"), nil, nil, value.node))
 		valueParam := f.NewParameterDeclaration(nil, nil, f.NewIdentifier("v"), nil, nil, nil)
@@ -902,30 +901,48 @@ func (s *synthesizer) arrayGuard(
 	return guard{node: guardClosure(f, declarations, condition), reason: part.reason}
 }
 
-// nominalGlobals map a built-in whose membership is directly testable to the
-// global constructor to test it against. `instanceof` IS the check a hand-written
-// guard writes for one of these; enumerating members would test a shape where the
-// type means an identity.
+// nominalGlobals map a built-in to the global constructor to test it against.
 //
-// A READONLY view (`ReadonlyMap`, `ReadonlySet`, `Iterable`) is deliberately
-// absent: any object implementing the interface satisfies it, so `instanceof Map`
-// would reject genuine values.
+// THE MEMBERSHIP RULE, which every future entry has to pass: only a type whose
+// values cannot exist without its constructor belongs here. Each one below carries
+// internal state no object literal can hold — a Map's entry table, a Date's time
+// value, a RegExp's pattern, an ArrayBuffer's bytes — so an object merely
+// implementing the interface is not a working value of the type, and `instanceof`
+// IS the check a hand-written guard writes.
+//
+// A STRUCTURALLY SATISFIABLE interface does not belong, however built-in it looks,
+// because `instanceof` on one REJECTS values the type admits. `Error` is the
+// trap: its whole declared surface is `name`, `message` and an optional `stack`,
+// all plain strings, so `const e: Error = { name: "a", message: "b" }` is a legal
+// value that `instanceof Error` refuses. A readonly view (`ReadonlyMap`,
+// `ReadonlySet`, `Iterable`) fails the rule the same way. Those types fall through
+// to the composer, which floors them.
 var nominalGlobals = map[string]string{
 	"Map": "Map", "Set": "Set", "WeakMap": "WeakMap", "WeakSet": "WeakSet",
 	"Date": "Date", "RegExp": "RegExp",
-	"Error": "Error", "EvalError": "EvalError", "RangeError": "RangeError",
-	"ReferenceError": "ReferenceError", "SyntaxError": "SyntaxError",
-	"TypeError": "TypeError", "URIError": "URIError",
 	"ArrayBuffer": "ArrayBuffer", "SharedArrayBuffer": "SharedArrayBuffer", "DataView": "DataView",
+}
+
+// libraryNominalName is the ONE place this stage turns a type into a built-in's
+// name, and it reads the name only AFTER typesurface.FromLibrary has admitted the
+// type as a nominal declaration of the default library.
+//
+// A name is not an identity. A first-party `interface Set { bag: Opts }` is named
+// "Set" and is not the global `Set`; anything keying on the name alone hands such
+// a type to a check written for the built-in. Every nominal decision in the engine
+// — the composer's `instanceof` and the fast path's whitelist alike — asks this
+// one function, so the two cannot answer differently.
+func (s *synthesizer) libraryNominalName(t *shimchecker.Type) string {
+	if !typesurface.FromLibrary(s.prog, t) {
+		return ""
+	}
+	return typeSymbolName(t)
 }
 
 // nominalGlobalOf returns the constructor to test t against, or "" when t is not
 // one of the directly-testable built-ins.
 func (s *synthesizer) nominalGlobalOf(t *shimchecker.Type) string {
-	if !typesurface.FromLibrary(s.prog, t) {
-		return ""
-	}
-	return nominalGlobals[typeSymbolName(t)]
+	return nominalGlobals[s.libraryNominalName(t)]
 }
 
 // nominalGuard emits `input instanceof Map`, plus an entry-wise or element-wise
@@ -1030,7 +1047,7 @@ func (s *synthesizer) objectGuard(
 	if surface.NothingReadable() {
 		return s.objectFloor(s.checker.TypeToString(t) + ", none of whose members can be read from outside it")
 	}
-	declarations, condition, clauses, memberReason := s.memberClauses(context, t, plainObjectCondition(f), seen)
+	declarations, condition, clauses, memberReason := s.memberClauses(context, t, objectKindCondition(f), seen)
 	reason := memberReason
 	if surface.SymbolKeyed > 0 {
 		reason = firstReason(s.checker.TypeToString(t)+", which has a member no string key can name", reason)
@@ -1041,18 +1058,41 @@ func (s *synthesizer) objectGuard(
 	return guard{node: guardClosure(f, declarations, condition), reason: reason}
 }
 
-// plainObjectCondition is the shared prefix of every composed object guard:
-// `typeof input === "object" && input !== null && !Array.isArray(input)`.
-func plainObjectCondition(f *shimast.NodeFactory) *shimast.Node {
-	condition := f.NewBinaryExpression(
-		nil,
-		f.NewBinaryExpression(
+// objectKindCondition is the shared prefix of every composed object guard, and the
+// whole of the floor:
+//
+//	(typeof input === "object" || typeof input === "function") && input !== null
+//
+// It is the widest runtime-kind assertion that holds for EVERY value an object
+// type admits, and asserting anything beyond it is what a floor may not do. Two
+// tighter clauses look obvious and are each false for values their own type
+// admits:
+//
+//   - `typeof input === "object"` on its own rejects a function, and `Function` —
+//     along with every interface a function carrying properties satisfies — admits
+//     one;
+//   - `!Array.isArray(input)` rejects an array, and `ArrayLike<T>`, `Iterable<T>`
+//     and `object` all admit one.
+//
+// A clause that is false for a genuine value does not weaken dispatch, it INVERTS
+// it: the call the extension was written for goes to whatever held the name
+// before. Giving up the narrowing is the cheaper mistake.
+func objectKindCondition(f *shimast.NodeFactory) *shimast.Node {
+	typeis := func(kind string) *shimast.Node {
+		return f.NewBinaryExpression(
 			nil,
 			f.NewTypeOfExpression(f.NewIdentifier("input")),
 			nil,
 			f.NewToken(shimast.KindEqualsEqualsEqualsToken),
-			f.NewStringLiteral("object", shimast.TokenFlagsNone),
-		),
+			f.NewStringLiteral(kind, shimast.TokenFlagsNone),
+		)
+	}
+	kind := f.NewParenthesizedExpression(
+		f.NewBinaryExpression(nil, typeis("object"), nil, f.NewToken(shimast.KindBarBarToken), typeis("function")),
+	)
+	return f.NewBinaryExpression(
+		nil,
+		kind,
 		nil,
 		f.NewToken(shimast.KindAmpersandAmpersandToken),
 		f.NewBinaryExpression(
@@ -1062,13 +1102,6 @@ func plainObjectCondition(f *shimast.NodeFactory) *shimast.Node {
 			f.NewToken(shimast.KindExclamationEqualsEqualsToken),
 			f.NewKeywordExpression(shimast.KindNullKeyword),
 		),
-	)
-	return f.NewBinaryExpression(
-		nil,
-		condition,
-		nil,
-		f.NewToken(shimast.KindAmpersandAmpersandToken),
-		f.NewPrefixUnaryExpression(shimast.KindExclamationToken, isArrayCall(f, f.NewIdentifier("input"))),
 	)
 }
 
@@ -1163,11 +1196,14 @@ func guardClosure(f *shimast.NodeFactory, declarations []*shimast.Node, conditio
 	)
 }
 
-// typiaNativeClasses are the classes typia's is-programmer recognizes BY NAME and
-// checks with a plain `instanceof`, never by enumerating members. Membership in
-// one of these is nominal, which is exactly what a hand-written check would test.
-// The list is a whitelist: a class typia later learns about but this table does
-// not merely gets composed or refused here, which is safe either way.
+// typiaNativeClasses are the classes typia's is-programmer checks with a plain
+// `instanceof`, never by enumerating members. Membership in one of these is
+// nominal, which is exactly what a hand-written check would test. The list is a
+// whitelist: a class typia later learns about but this table does not merely gets
+// composed or refused here, which is safe either way.
+//
+// It is keyed by name and read only through libraryNominalName, so a first-party
+// type sharing one of these names is not admitted by it.
 var typiaNativeClasses = map[string]bool{
 	"ArrayBuffer": true, "SharedArrayBuffer": true, "DataView": true,
 	"Blob": true, "File": true, "Date": true, "RegExp": true,
@@ -1259,7 +1295,11 @@ func (s *synthesizer) objectFaithful(t *shimchecker.Type, seen map[*shimchecker.
 	if shimchecker.IsTupleType(t) || shimchecker.Checker_isArrayType(s.checker, t) || isReadonlyArrayType(t) {
 		return s.typeArgumentsFaithful(t, seen)
 	}
-	name := typeSymbolName(t)
+	// Both of these admit a type by its NAME, so both read it through the same
+	// identity gate the composer's `instanceof` uses: a first-party type named
+	// `Set` is not the global `Set`, and handing one to typia's fast path is how a
+	// vacuous clause gets emitted for it.
+	name := s.libraryNominalName(t)
 	// A Map or Set is `instanceof` plus an entry-wise / element-wise check over
 	// the type arguments.
 	if name == "Map" || name == "Set" {
