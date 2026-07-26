@@ -87,10 +87,10 @@ func TestRecordInsideAnArrayIsNotWavedThrough(t *testing.T) {
 	}
 }
 
-// A required member with no string key cannot be checked, so the type cannot be
-// guarded at all — refuse rather than emit a clause on the checker's internal
-// mangled name.
-func TestSymbolKeyedMemberRefuses(t *testing.T) {
+// A symbol-keyed member has no string key to read it by, so it contributes no
+// clause — but the members beside it are still checkable, and dropping them too
+// would widen dispatch for nothing.
+func TestSymbolKeyedMemberCostsOnlyItsOwnClause(t *testing.T) {
 	out, diags := run(t, setOptionsFixture(`
 declare const MARK: unique symbol;
 export class R2 { public [MARK]: string = "t"; public host: string = ""; }
@@ -98,42 +98,37 @@ export class R2 { public [MARK]: string = "t"; public host: string = ""; }
 	assertNoMangledKey(t, out)
 	assertPrivateSurfaceWarning(t, diags)
 	guard := strategyText(t, out, "setOptions")
-	if strings.Contains(guard, "const g0") {
-		t.Errorf("a guard was emitted for a symbol-keyed type:\n%s", guard)
+	if !strings.Contains(guard, "input.host") {
+		t.Errorf("the string-keyed member lost its clause to the symbol-keyed one:\n%s", guard)
 	}
+	assertObjectFloor(t, guard)
 	assertArityGate(t, guard, "1", "1")
 }
 
-// A library type carrying a well-known symbol reaches the same refusal.
-func TestPromiseParameterRefuses(t *testing.T) {
+// A built-in whose membership is an identity no structural clause can test keeps
+// the object floor: a value of the wrong runtime kind must still fall through.
+func TestPromiseParameterKeepsTheObjectFloor(t *testing.T) {
 	out, diags := run(t, setOptionsFixture("", "Promise<string>"))
 	assertNoMangledKey(t, out)
 	assertPrivateSurfaceWarning(t, diags)
 	guard := strategyText(t, out, "setOptions")
+	assertObjectFloor(t, guard)
 	assertArityGate(t, guard, "1", "1")
 }
 
-// Every member hidden by a `private` modifier leaves nothing to check. typia
+// Every member hidden by a `private` modifier leaves nothing to name. typia
 // filters those members correctly and so emits a guard that is simply `true` —
-// which accepts every object. Refuse instead.
-func TestModifierHiddenOnlyClassRefuses(t *testing.T) {
+// which accepts every value. The floor accepts only an object.
+func TestModifierHiddenOnlyClassKeepsTheObjectFloor(t *testing.T) {
 	out, diags := run(t, setOptionsFixture(`
 export class P2 { private a: number = 1; private b: string = ""; }
 `, "P2"))
 	assertPrivateSurfaceWarning(t, diags)
 	guard := strategyText(t, out, "setOptions")
-	if strings.Contains(guard, "const g0") {
-		t.Errorf("a guard was emitted for a type with no nameable member:\n%s", guard)
+	if strings.Contains(guard, "input.a") || strings.Contains(guard, "input.b") {
+		t.Errorf("a clause was emitted for a member no caller can supply:\n%s", guard)
 	}
-	assertArityGate(t, guard, "1", "1")
-}
-
-// A refusal must never widen dispatch. Dropping the only guard used to fall back
-// to the bare always-pass strategy, which answers a call of ANY arity.
-func TestRefusalKeepsTheArityGate(t *testing.T) {
-	out, diags := run(t, setOptionsFixture(divergingInner, "Map<string, Inner>"))
-	assertPrivateSurfaceWarning(t, diags)
-	guard := strategyText(t, out, "setOptions")
+	assertObjectFloor(t, guard)
 	assertArityGate(t, guard, "1", "1")
 }
 
@@ -223,8 +218,9 @@ export class Half {
 	}
 }
 
-// Nothing readable at all means nothing to check.
-func TestSetOnlyAccessorOnlyClassRefuses(t *testing.T) {
+// Nothing readable at all means no member clause — and the object floor, which
+// is the whole of what such a type can still be checked for.
+func TestSetOnlyAccessorOnlyClassKeepsTheObjectFloor(t *testing.T) {
 	out, diags := run(t, setOptionsFixture(`
 export class AllWrite {
   #v = 0;
@@ -233,9 +229,10 @@ export class AllWrite {
 `, "AllWrite"))
 	assertPrivateSurfaceWarning(t, diags)
 	guard := strategyText(t, out, "setOptions")
-	if strings.Contains(guard, "const g0") {
-		t.Errorf("a guard was emitted for a type with no readable member:\n%s", guard)
+	if strings.Contains(guard, "input.v") {
+		t.Errorf("a set-only accessor produced a readable clause that can never pass:\n%s", guard)
 	}
+	assertObjectFloor(t, guard)
 	assertArityGate(t, guard, "1", "1")
 }
 

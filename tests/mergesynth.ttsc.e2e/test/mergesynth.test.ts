@@ -203,8 +203,9 @@ export const KappaExtensions = {
   },
 };
 
-// A parameter type nothing faithful can be built for. The refusal must still
-// narrow dispatch by argument count rather than answer every call.
+// A Map carrying a diverging value type: checked the way a hand-written guard
+// checks a Map — \`instanceof\` plus its entries — so a non-Map argument still
+// falls through to the plain thunk that held the name first.
 export const LambdaExtensions = {
   store(self: IAlpha, tag: string): string {
     return \`LAMBDA:\${String(tag)}\`;
@@ -213,6 +214,20 @@ export const LambdaExtensions = {
 export const MuExtensions = {
   store(self: IAlpha, entries: Map<string, EntryOptions>): string {
     return "MU";
+  },
+};
+
+// A type nothing structural can recognize. Its guard drops to the object floor,
+// which still rejects a value of the wrong runtime kind, and the arity bounds
+// stand on top of it.
+export const NuExtensions = {
+  fetch(self: IAlpha, tag: string): string {
+    return \`NU:\${String(tag)}\`;
+  },
+};
+export const XiExtensions = {
+  fetch(self: IAlpha, pending: Promise<EntryOptions>): string {
+    return "XI";
   },
 };
 
@@ -228,6 +243,8 @@ registerAugmentations(tokenfor<IAlpha>(), IotaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), KappaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), LambdaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), MuExtensions);
+registerAugmentations(tokenfor<IAlpha>(), NuExtensions);
+registerAugmentations(tokenfor<IAlpha>(), XiExtensions);
 
 export class Alpha implements IAlpha {}
 augment(tokenfor<IAlpha>())(Alpha);
@@ -410,14 +427,28 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     );
   });
 
-  test('a refused guard still narrows dispatch by argument count', () => {
-    // Mu's parameter type admits no faithful guard, so any single-argument call
-    // reaches it…
+  test('a Map parameter is checked nominally, not waved through', () => {
+    // Mu's guard is `instanceof Map` plus its entries, so a real Map reaches it…
     expect(instance.store(new Map())).toBe('MU');
-    // …but the arity bounds survive the refusal, so a call of any other length
-    // falls through to Lambda instead of being swallowed.
+    // …and a single argument that is NOT a Map falls through to Lambda. Under a
+    // refusal this clause is only `args.length === 1` and 'hello' reaches Mu.
+    expect(instance.store('hello')).toBe('LAMBDA:hello');
+    // The arity bounds stand alongside the guard.
     expect(instance.store()).toBe('LAMBDA:undefined');
     expect(instance.store('a', 'b')).toBe('LAMBDA:a');
+  });
+
+  test('a guard that had to drop to the object floor still narrows by runtime kind', () => {
+    // Xi's parameter is a type nothing structural recognizes, so its guard is the
+    // object floor: a promise (any object, in fact) reaches it…
+    expect(instance.fetch(Promise.resolve({}))).toBe('XI');
+    // …and a value of the wrong runtime kind does not. Dropping the floor makes
+    // this dispatch to Xi.
+    expect(instance.fetch('hello')).toBe('NU:hello');
+    expect(instance.fetch(42)).toBe('NU:42');
+    // The arity bounds survive on top of the floor.
+    expect(instance.fetch()).toBe('NU:undefined');
+    expect(instance.fetch('a', 'b')).toBe('NU:a');
   });
 
   test('arity bounds discriminate same-typed leading parameters', () => {

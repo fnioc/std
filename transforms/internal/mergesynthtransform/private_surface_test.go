@@ -132,10 +132,10 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 	}
 }
 
-// A class with no public members at all cannot be guarded: refuse loudly and
-// fall back to the always-pass strategy rather than emit a guard that passes
-// everything while looking like it checks something.
-func TestPrivateOnlyClassRefusesWithADiagnostic(t *testing.T) {
+// A class with no public members at all has no clause to key on: report it, and
+// keep the object floor rather than emit either a guard that passes everything or
+// no guard at all.
+func TestPrivateOnlyClassKeepsTheObjectFloorWithADiagnostic(t *testing.T) {
 	out, diags := run(t, `
 export class Sealed {
   #a: number = 0;
@@ -148,15 +148,14 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
 	assertPrivateSurfaceWarning(t, diags)
 	guard := strategyText(t, out, "setOptions")
-	if strings.Contains(guard, "const g0") {
-		t.Errorf("a guard was emitted for an unguardable type:\n%s", guard)
-	}
+	assertObjectFloor(t, guard)
 	assertNoMangledKey(t, out)
 }
 
-// A diverging type inside a container the composer does not decompose is refused
-// rather than approximated.
-func TestDivergingTypeInsideAMapRefuses(t *testing.T) {
+// A Map is checked the way a hand-written guard checks one — `instanceof` plus
+// its entries — so a diverging value type costs neither the container's check nor
+// the entry walk.
+func TestDivergingTypeInsideAMapComposes(t *testing.T) {
 	out, diags := run(t, `
 export class Opts {
   #value: number = 0;
@@ -167,11 +166,17 @@ export const AlphaExtensions = {
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
-	assertPrivateSurfaceWarning(t, diags)
-	guard := strategyText(t, out, "setOptions")
-	if strings.Contains(guard, "const g0") {
-		t.Errorf("a guard was emitted for an unguardable type:\n%s", guard)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
 	}
+	guard := strategyText(t, out, "setOptions")
+	if !strings.Contains(guard, "input instanceof Map") {
+		t.Errorf("the Map is not checked nominally:\n%s", guard)
+	}
+	if !strings.Contains(guard, "input.value") {
+		t.Errorf("the diverging value type's accessor is not guarded:\n%s", guard)
+	}
+	assertNoMangledKey(t, out)
 }
 
 // The fast path is untouched: a type with a wholly ordinary public surface still
@@ -205,6 +210,16 @@ func assertNoMangledKey(t *testing.T, out string) {
 	}
 	if strings.Contains(out, "@#") {
 		t.Errorf("a private-identifier index key reached the emit:\n%s", out)
+	}
+}
+
+// assertObjectFloor pins the weakest honest check a guard over an object type
+// keeps whatever it had to leave unchecked: a value of the wrong runtime kind
+// still falls through to whatever held the member name before.
+func assertObjectFloor(t *testing.T, guard string) {
+	t.Helper()
+	if !strings.Contains(guard, `typeof input === "object"`) || !strings.Contains(guard, "input !== null") {
+		t.Errorf("the guard dropped the object floor, so a non-object now dispatches to the extension:\n%s", guard)
 	}
 }
 
