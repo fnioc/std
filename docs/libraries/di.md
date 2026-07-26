@@ -34,9 +34,8 @@ transiently instead of throwing.
 ```ts
 let services = new ServiceManifest<'singleton' | 'request' | 'transaction'>();
 
-services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>().addClass<
-  IRepo
->(SqlRepo).as<'request'>().addClass<IUnitOfWork>(UnitOfWork).as<'transaction'>() // nests deeper than "request"
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>().addClass<IRepo>(SqlRepo).as<'request'>()
+  .addClass<IUnitOfWork>(UnitOfWork).as<'transaction'>() // nests deeper than "request"
   .addClass<IAuditor>(Auditor); // no .as() at all — transient, never cached
 
 const app = services.build().createScope('singleton');
@@ -74,8 +73,9 @@ registration's lifetime. An unregistered element type aggregates to an empty col
 element token still throws.
 
 ```ts
-services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>()
-  .addClass<IGreeting>(CasualGreeting).as<'singleton'>();
+services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>().addClass<IGreeting>(CasualGreeting).as<
+  'singleton'
+>();
 
 resolver.resolve<IGreeting[]>(); // [formal, casual] — registration order
 resolver.resolve<Iterable<IGreeting>>(); // distinct wrapper, re-iterable, same elements
@@ -95,14 +95,13 @@ building; exhausting every member throws.
 class CacheConsumer {
   constructor(private readonly cache: IRedisCache | IMemoryCache) {}
 }
-services = services.addClass<IRedisCache>(RedisCache).as<'singleton'>()
-  .addClass<CacheConsumer>(CacheConsumer).as<'singleton'>();
+services = services.addClass<IRedisCache>(RedisCache).as<'singleton'>().addClass<CacheConsumer>(CacheConsumer).as<
+  'singleton'
+>();
 // IMemoryCache is never registered — falls through to RedisCache, no error
 
 // manual dialect — the same signature, hand-written:
-services = services.addClass('pkg:CacheConsumer', CacheConsumer, [[
-  union('pkg:IRedisCache', 'pkg:IMemoryCache'),
-]]);
+services = services.addClass('pkg:CacheConsumer', CacheConsumer, [[union('pkg:IRedisCache', 'pkg:IMemoryCache')]]);
 ```
 
 ### 5. Literal-value slots
@@ -132,18 +131,14 @@ positionally with `{ typeArg: n }`.
 class Repository<T> {
   constructor(public readonly entityToken: Typeof<T>) {}
 }
-services = services.addClass<IRepository<$<1>>>(Repository<$<1>>).as<
-  'request'
->();
+services = services.addClass<IRepository<$<1>>>(Repository<$<1>>).as<'request'>();
 
 // closing IRepository<User> builds a Repository whose entityToken is the
 // literal string "pkg:User" — no reflection, no MakeGenericType
 resolver.resolve<IRepository<User>>().entityToken; // "pkg:User"
 
 // manual dialect:
-services = services.addClass('pkg:IRepository<$1>', Repository, [[{
-  typeArg: 1,
-}]]).as('request');
+services = services.addClass('pkg:IRepository<$1>', Repository, [[{ typeArg: 1 }]]).as('request');
 ```
 
 ### 7. Factory resolution with caller-supplied params
@@ -166,9 +161,8 @@ class Report {
 class Printer {
   constructor(private readonly makeReport: (customer: string) => Report) {}
 }
-services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>().addClass<
-  Report
->(Report).as<'singleton'>().addClass<Printer>(Printer).as<'singleton'>();
+services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>().addClass<Report>(Report).as<'singleton'>()
+  .addClass<Printer>(Printer).as<'singleton'>();
 // makeReport("acme") resolves `log` from the container, threads "acme" straight
 // through to the ctor
 
@@ -193,8 +187,7 @@ class RequestContext {
 class Cache {
   constructor(private readonly ctx: RequestContext) {}
 }
-services = services.addClass<RequestContext>(RequestContext).as<'request'>()
-  .addClass<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
+services = services.addClass<RequestContext>(RequestContext).as<'request'>().addClass<Cache>(Cache).as<'singleton'>(); // a captive dependency, by the reference's definition
 
 const req = app.createScope('request');
 const cache = req.resolve<Cache>();
@@ -216,9 +209,7 @@ plugin-less author would have written, never adding a capability.
 services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
 
 // exactly what it lowers to, and what a plugin-less author writes by hand
-services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).as(
-  'singleton',
-);
+services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).as('singleton');
 ```
 
 Every feature above has this same relationship: `union(...)`, `{ value }`, `{ typeArg }`, and
@@ -238,9 +229,9 @@ some key" and `/.*/` means "keyed or not", a distinction the reference can't exp
 
 ```ts
 services = services.addClass<IStore>(RedisStore).as<'singleton'>() // key '' — the plain registration
-  .addClass<Keyed<IStore, 'sql'>>(SqlStore).as<'singleton'>().addClass<
-  Keyed<IStore, 'mem'>
->(MemStore).as<'singleton'>();
+  .addClass<Keyed<IStore, 'sql'>>(SqlStore).as<'singleton'>().addClass<Keyed<IStore, 'mem'>>(MemStore).as<
+  'singleton'
+>();
 
 resolver.resolve<IStore>(); // RedisStore — the unkeyed one
 resolver.resolve<IStore>('sql'); // SqlStore — exact key
@@ -253,9 +244,7 @@ class Report {
 }
 // Keyed stacks with Inject — the base comes from Inject, the key from Keyed:
 class Audit {
-  constructor(
-    private readonly store: Keyed<Inject<IStore, 'pkg:IStore'>, 'sql'>,
-  ) {}
+  constructor(private readonly store: Keyed<Inject<IStore, 'pkg:IStore'>, 'sql'>) {}
 }
 
 // manual dialect — what Keyed<IStore, 'sql'> lowers to:
@@ -292,15 +281,13 @@ pending.build(); // compile error: `build` isn't on `pending`'s type until a sig
 services = pending.withSignature('pkg:IConnection').as('singleton'); // opens the gate
 
 // withSignature APPENDS and is repeatable — each call adds one more injectable overload:
-services = services.addClass('pkg:ICache', RedisOrMemCache).withSignature(
-  'pkg:IRedisClient',
-).withSignature('pkg:IMemoryStore');
+services = services.addClass('pkg:ICache', RedisOrMemCache).withSignature('pkg:IRedisClient').withSignature(
+  'pkg:IMemoryStore',
+);
 
 // withSignatures REPLACES the whole signature set in bulk, once — it cannot follow
 // a withSignature append, and (like withSignature) it opens the gate:
-services = services.addClass('pkg:ICache', RedisOrMemCache).withSignatures([
-  'pkg:IRedisClient',
-], ['pkg:IMemoryStore']);
+services = services.addClass('pkg:ICache', RedisOrMemCache).withSignatures(['pkg:IRedisClient'], ['pkg:IMemoryStore']);
 ```
 
 Under the transformer's type-driven sugar (`addClass<I>(C)`), the signature is derived from the
@@ -309,9 +296,7 @@ there are OVERRIDES of the derived signature, not gate-openers:
 
 ```ts
 services = services.addClass<ICache>(RedisCache).as<'singleton'>(); // manifest present immediately
-services = services.addClass<ICache>(RedisCache).withSignature<
-  [IRedisClient]
->(); // overrides the derived signature
+services = services.addClass<ICache>(RedisCache).withSignature<[IRedisClient]>(); // overrides the derived signature
 ```
 
 ---

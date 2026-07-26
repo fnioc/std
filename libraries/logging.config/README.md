@@ -82,11 +82,8 @@ after `addConfig` has run:
 ```ts
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 
-LoggerProviderOptions.registerProviderOptions<MyProviderOptions, MyProvider>(
-  services,
-  myProviderOptionsToken,
-  myProviderToken,
-);
+LoggerProviderOptions.registerProviderOptions<MyProviderOptions, MyProvider>(services, myProviderOptionsToken,
+  myProviderToken);
 ```
 
 That appends a configure step and a reload-reactive change-token source to

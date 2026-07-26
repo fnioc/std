@@ -50,9 +50,7 @@ function categoryFromToken(token: string): string {
 @augment(tokenfor<ILogger>())
 export class Logger<T> implements ILogger<T> {
   public constructor(factory: ILoggerFactory, categoryType: Typeof<T>) {
-    this.#logger = factory.createLogger(
-      categoryFromToken(categoryType as unknown as string),
-    );
+    this.#logger = factory.createLogger(categoryFromToken(categoryType as unknown as string));
   }
 }
 ```
@@ -61,9 +59,7 @@ Resolving a closed `ILogger<T>` yields a logger categorized by the closing type 
 string spelled by hand (`tests/logging.test/test/add-logging.test.ts`):
 
 ```ts
-const logger = root.resolve<ILogger>(
-  closeToken(ILOGGER_TOKEN, 'svc:PaymentService'),
-);
+const logger = root.resolve<ILogger>(closeToken(ILOGGER_TOKEN, 'svc:PaymentService'));
 logError(logger, 'boom');
 expect(levels(provider, 'PaymentService')).toEqual([LogLevel.Error]);
 ```
@@ -122,8 +118,7 @@ both emit it as the log state.
 
 ```ts
 // libraries/logging.core/src/logger-augmentations.ts
-logger.log(logLevel, EventId.from(0), new FormattedLogValues(message, args),
-  error, formatLogValues);
+logger.log(logLevel, EventId.from(0), new FormattedLogValues(message, args), error, formatLogValues);
 ```
 
 ### 6. Collapsed convenience-wrapper overloads with explicit `EventId.from`
@@ -139,10 +134,8 @@ C#'s implicit `int -> EventId` conversion.
 
 ```ts
 // libraries/logging.core/src/logger-augmentations.ts
-export function logInformation(logger: ILogger, message: string,
-  ...args: unknown[]): void;
-export function logInformation(logger: ILogger, error: Error, message: string,
-  ...args: unknown[]): void;
+export function logInformation(logger: ILogger, message: string, ...args: unknown[]): void;
+export function logInformation(logger: ILogger, error: Error, message: string, ...args: unknown[]): void;
 ```
 
 ### 7. A reload-reactive `LoggerFilterOptions` pipeline over one converged token
@@ -158,12 +151,9 @@ selection reachable at log time (`LoggerFactory` subscribes and re-selects via
 ```ts
 // libraries/logging.config/src/add-configuration.ts
 const optionsToken = tokenfor<IOptions<LoggerFilterOptions>>();
-builder.services.addOptions<LoggerFilterOptions>(optionsToken,
-  () => new LoggerFilterOptions()).as('singleton');
-builder.services.addValue(configureStepToken(optionsToken),
-  new LoggerFilterConfigureOptions(config));
-builder.services.addValue(changeTokenSourceToken(optionsToken),
-  new ConfigChangeTokenSource(config));
+builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions()).as('singleton');
+builder.services.addValue(configureStepToken(optionsToken), new LoggerFilterConfigureOptions(config));
+builder.services.addValue(changeTokenSourceToken(optionsToken), new ConfigChangeTokenSource(config));
 ```
 
 A reload delivers a fresh rule set and fires every subscriber
