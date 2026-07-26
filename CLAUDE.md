@@ -29,7 +29,9 @@ Maintain `claude-ready` **silently**: whenever you look at an issue, add or remo
 
 ## Commands
 
-Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`); `mise.toml` pins bun + Node 24.
+Runtime is **bun** (workspaces, isolated linker per `bunfig.toml`). `mise.toml` pins Node to 24 and
+pnpm/knip to exact versions; **bun and Go both track `latest` and are not pinned**, so a build here
+is not reproducible across time or across machines by toolchain version alone.
 
 | Task                    | Command                                                                        |
 | ----------------------- | ------------------------------------------------------------------------------ |
@@ -462,8 +464,9 @@ point per file (§115); the authoring surfaces (`add`/`addOptions`/`withType`/re
 as `rhombus.inline` sugar bodies the inline stage substitutes and the primitives lower — no bespoke
 per-family Go stage (§117). The lowered output equals what a no-transformer author would hand-write
 (the parity invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (restore
-tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only**
-(`mise.toml` pin), never system-wide. Full mechanics: `docs/features/transformer-architecture.md`.
+tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only**, never
+system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. Full mechanics:
+`docs/features/transformer-architecture.md`.
 
 - **Descriptor wiring — one always-on stage table, NO selection (§119).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
