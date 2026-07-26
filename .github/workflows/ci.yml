@@ -333,8 +333,8 @@ jobs:
         with:
           bun-version: latest
 
-      # build-all.ts lowers caching.core through the ttsc/Go engine, which needs
-      # the mise-pinned Go on PATH (resolved via `mise which go`).
+      # build-all.ts lowers 22 of the 32 libraries through the ttsc/Go engine,
+      # which needs the mise-pinned Go on PATH (resolved via `mise which go`).
       - uses: jdx/mise-action@v2
 
       - uses: actions/setup-node@v4
@@ -372,13 +372,4 @@ jobs:
       - name: Publish alpha verification round
         env:
           ALPHA_VERSION: ${{ inputs.alpha_version }}
-        run: |
-          set -euo pipefail
-          ORDER=(primitives config.core options di.core config config.env config.json config.commandline options.augmentations di di.extras config.extras di.extras.options)
-          for pkg in "${ORDER[@]}"; do
-            (
-              cd "libraries/$pkg"
-              pnpm pkg set version="$ALPHA_VERSION"
-              pnpm publish --tag alpha --provenance --no-git-checks
-            )
-          done
+        run: bun scripts/publish-libraries.ts --version "$ALPHA_VERSION" --tag alpha
