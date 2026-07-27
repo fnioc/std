@@ -30,8 +30,9 @@ interface ServerConfig {
   ssl?: boolean;
 }
 
-const config = new ConfigBuilder().addInMemoryCollection({ host: 'example.com',
-  port: '8443', ssl: 'true' }).withType<ServerConfig>() // ← rewritten to .withSchema({ host: "string", … })
+const config = new ConfigBuilder().addInMemoryCollection({ host: 'example.com', port: '8443', ssl: 'true' }).withType<
+  ServerConfig
+>() // ← rewritten to .withSchema({ host: "string", … })
   .build();
 
 config.port; // number — coerced at runtime from "8443"

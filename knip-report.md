@@ -296,11 +296,9 @@ providers per format.
 
 ```ts
 const config = new ConfigBuilder().setBasePath(import.meta.dir) // config.file
-  .addJsonFile('appsettings.json', { optional: true, reloadOnChange: false })
-  .addIniFile('appsettings.ini', { optional: true }).addXmlFile(
-    'appsettings.xml',
-    { optional: true },
-  ).addEnvironmentVariables({ prefix: 'RHOMBUS_' }) // config.env
+  .addJsonFile('appsettings.json', { optional: true, reloadOnChange: false }).addIniFile('appsettings.ini', {
+    optional: true,
+  }).addXmlFile('appsettings.xml', { optional: true }).addEnvironmentVariables({ prefix: 'RHOMBUS_' }) // config.env
   .addCommandLine(process.argv.slice(2)) // config.commandline
   .build();
 ```
@@ -348,10 +346,7 @@ const cached = CacheExtensions.getOrCreate(cache, 'server-report', entry => {
 
 // ... while MemoryCacheEntryExtensions is the value-object form, over
 // MemoryCacheEntryOptions -- both halves need a line to be covered.
-const defaults = MemoryCacheEntryExtensions.setSlidingExpiration(
-  new MemoryCacheEntryOptions(),
-  30_000,
-);
+const defaults = MemoryCacheEntryExtensions.setSlidingExpiration(new MemoryCacheEntryOptions(), 30_000);
 ```
 
 - **`caching.core`** (12) — `CacheExtensions`, `CacheEntryExtensions`, `MemoryCacheEntryExtensions`, `MemoryCacheEntryOptions`, `PostEvictionDelegate`, `DistributedCacheExtensions`, `DistributedCacheEntryExtensions`, `HybridCache`, `HybridCacheEntryOptions`, `HybridCacheEntryFlags`, `IHybridCacheSerializer`, `IHybridCacheSerializerFactory`
@@ -379,14 +374,12 @@ manifest = manifest.addLogging(builder => {
     .addSimpleConsole(o => {
       o.colorBehavior = LoggerColorBehavior.Enabled;
     }).addJsonConsole().addConfig(config.getSection('Logging')) // logging.config
-    .setMinimumLevel(LogLevel.Debug).addFilter('Rhombus.Hosting',
-      LogLevel.Warning);
+    .setMinimumLevel(LogLevel.Debug).addFilter('Rhombus.Hosting', LogLevel.Warning);
 });
 
 // in the worker, exercising the scope + message-template surface
 using scope = beginScope(logger, 'request {id}', requestId); // logging.core
-const logReady = LoggerMessage.define<string>(LogLevel.Information, 1,
-  'ready: {name}');
+const logReady = LoggerMessage.define<string>(LogLevel.Information, 1, 'ready: {name}');
 logReady(logger, name, undefined);
 ```
 
@@ -412,13 +405,12 @@ config-binding pipeline and the rule-matching primitives.
 > pure functions over plain-data queries and cost nothing to show.
 
 ```ts
-manifest = manifest.addMetrics(b =>
-  b.addMetricsConfig(config.getSection('Metrics'))
-).addTracing(b => b.addTracingConfig(config.getSection('Tracing')));
+manifest = manifest.addMetrics(b => b.addMetricsConfig(config.getSection('Metrics'))).addTracing(b =>
+  b.addTracingConfig(config.getSection('Tracing'))
+);
 
 // the family's documented selection primitive, exercised directly
-const rule = getMostSpecificInstrumentRule(rules, { meterName: 'app',
-  instrumentName: 'requests' });
+const rule = getMostSpecificInstrumentRule(rules, { meterName: 'app', instrumentName: 'requests' });
 ```
 
 - **`diagnostics.core`** (15) — `getMostSpecificInstrumentRule`, `getMostSpecificTracingRule`, `instrumentRuleMatches`, `tracingRuleMatches`, `isMoreSpecificInstrumentRule`, `isMoreSpecificTracingRule`, `InstrumentRuleQuery`, `TracingRuleQuery`, `MetricsBuilderExtensions`, `TracingBuilderExtensions`, `MetricsOptionsExtensions`, `TracingOptionsExtensions`, `METRICS_LISTENER_TOKEN`, `TRACING_LISTENER_TOKEN`, `IObservableInstrumentsSource`
@@ -437,13 +429,9 @@ but nothing constructs a real one.
 > pairing, since `setFileProvider` is what makes `addJsonFile` read from a composite root.
 
 ```ts
-const files = new CompositeFileProvider(
-  new PhysicalFileProvider(import.meta.dir, ExclusionFilters.DotPrefixed),
-  new PhysicalFileProvider(join(import.meta.dir, 'overrides')),
-);
-const config = new ConfigBuilder().setFileProvider(files).addJsonFile(
-  'appsettings.json',
-).build();
+const files = new CompositeFileProvider(new PhysicalFileProvider(import.meta.dir, ExclusionFilters.DotPrefixed),
+  new PhysicalFileProvider(join(import.meta.dir, 'overrides')));
+const config = new ConfigBuilder().setFileProvider(files).addJsonFile('appsettings.json').build();
 ```
 
 - **`fileproviders.composite`** (2) — `CompositeFileProvider`, `CompositeDirectoryContents`

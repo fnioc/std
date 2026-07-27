@@ -49,23 +49,18 @@ loop hands it; it resolves back to the parse node first (see
 // what you write
 class Startup {
   configure(m: IServiceManifest) {
-    return m.addClass<IUserRepo>(SqlUserRepo).withSignature<[IDb]>().as<
-      'singleton'
-    >();
+    return m.addClass<IUserRepo>(SqlUserRepo).withSignature<[IDb]>().as<'singleton'>();
   }
 }
 ```
 
 ```ts
 // pass 1: addClass lowers (nameof + signatureof fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0)
-  .withSignature<[IDb]>().as<'singleton'>();
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature<[IDb]>().as<'singleton'>();
 // pass 2: withSignature lowers (signaturefor fires on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0)
-  .withSignature('app:IDb').as<'singleton'>();
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb').as<'singleton'>();
 // pass 3: as lowers (valueof fires); pass 4 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0)
-  .withSignature('app:IDb').as('singleton');
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb').as('singleton');
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
@@ -426,11 +421,9 @@ imports `ManifestChainInline`, so nothing in the code says the object has a role
 therefore carries a marker beside its declaration, at module level:
 
 ```ts
-export const ManifestChainInline = {
-  as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
-    return this.as(valueof<Scope>());
-  },
-};
+export const ManifestChainInline = { as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
+  return this.as(valueof<Scope>());
+} };
 registerInlineBodies(ManifestChainInline);
 ```
 
@@ -464,23 +457,13 @@ Everything below is ordinary TypeScript, side-parsed by the inline stage out of 
 ### Registration (`di.extras`)
 
 ```ts
-export const ServiceManifestInline = {
-  addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0,
-      keyof<T>());
-  },
-  addFactory<T>(this: IInlineRegistrationTarget,
-    factory: Factory
-  ): IServiceManifest {
-    return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0,
-      keyof<T>());
-  },
-  addValue<I>(this: IInlineRegistrationTarget,
-    value: unknown): IServiceManifest
-  {
-    return this.addValue(tokenfor<I>(), value, keyof<I>());
-  },
-};
+export const ServiceManifestInline = { addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
+  return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+}, addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
+  return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0, keyof<T>());
+}, addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
+  return this.addValue(tokenfor<I>(), value, keyof<I>());
+} };
 ```
 
 `keyof<T>()` lowers to `undefined` for an unkeyed type, and the inline stage elides both that
@@ -502,14 +485,10 @@ The chain continuations follow the same shape:
 
 ```ts
 export const ManifestChainInline = {
-  withSignature<T extends readonly any[]>(
-    this: IInlineChainTarget,
-  ): IServiceManifest {
+  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
     return this.withSignature(...signaturefor<T>());
   },
-  withSignatures<T extends ReadonlyArray<readonly any[]>>(
-    this: IInlineChainTarget,
-  ): IServiceManifest {
+  withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): IServiceManifest {
     return this.withSignatures(...signaturesfor<T>());
   },
   as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
@@ -545,9 +524,7 @@ export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
     ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
     : this.resolveAsync(keyedtokenfor<T>());
 }, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-  return isSingular<T>()
-    ? singularValue<T>()
-    : this.tryResolve(tokenfor<T>(), keyof<T>());
+  return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>());
 } };
 ```
 
@@ -562,11 +539,9 @@ instead of the split pair — the same asymmetry `isService` has, for the same r
 ### Options (`di.extras.options`)
 
 ```ts
-export const ServiceOptionsInline = {
-  addOptions<T>(this: IInlineOptionsTarget): IServiceManifest {
-    return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
-  },
-};
+export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): IServiceManifest {
+  return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
+} };
 ```
 
 The two tokens are relationally locked: the wrapper (`IOptions<T>`) is a **composed generic**
@@ -588,11 +563,9 @@ compiles at all.
 ### Config (`config.extras`)
 
 ```ts
-export const ConfigBuilderInline = {
-  withType<T>(this: IWithSchemaTarget): unknown {
-    return this.withSchema(schemaof<T>());
-  },
-};
+export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unknown {
+  return this.withSchema(schemaof<T>());
+} };
 ```
 
 `schemaof<T>()` walks `T`'s member shape (nested records, casing, optionality) into the same

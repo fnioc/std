@@ -82,9 +82,7 @@ lower it, or add category-specific rules, from the builder:
 manifest.addLogging((builder) => {
   builder.setMinimumLevel(LogLevel.Information);
   builder.addFilter('App.Database', LogLevel.Debug);
-  builder.addFilter((providerName, category, level) =>
-    level >= LogLevel.Warning
-  );
+  builder.addFilter((providerName, category, level) => level >= LogLevel.Warning);
 });
 ```
 

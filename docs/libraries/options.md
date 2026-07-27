@@ -43,9 +43,7 @@ re-arms the next change token automatically after each fire.
 
 ```ts
 // libraries/options/src/options.ts
-function watch<T>(getValue: Func<[], T>,
-  produceToken: ChangeTokenProducer): IOptions<T>
-{
+function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): IOptions<T> {
   return { get value(): T {
     return getValue();
   }, subscribe(listener: Func<[T], void>): Disposable {
@@ -124,14 +122,11 @@ closures.
 
 ```ts
 // tests/options.augmentations.test/test/di-injected-steps.test.ts
-services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(
-  OPTIONS_TOKEN,
-  [URL_PROVIDER_TOKEN, RETRY_POLICY_TOKEN],
-  (options, urls, policy) => {
-    options.url = urls.base;
-    options.retries = policy.attempts;
-  },
-);
+services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN,
+  RETRY_POLICY_TOKEN], (options, urls, policy) => {
+  options.url = urls.base;
+  options.retries = policy.attempts;
+});
 ```
 
 The same variadic form serves `postConfigure` and `validate`.
@@ -169,9 +164,7 @@ function bindSection(config: IConfig, target: Record<string, unknown>): void {
     const grandchildren = [...child.getChildren()];
     if (grandchildren.length) {
       const existing = target[child.key];
-      const nested = (typeof existing === 'object' && existing !== null)
-        ? existing as Record<string, unknown>
-        : {};
+      const nested = (typeof existing === 'object' && existing !== null) ? existing as Record<string, unknown> : {};
       target[child.key] = nested;
       bindSection(child, nested); // recurse — compose, don't clobber
     } else if (child.value !== undefined) {

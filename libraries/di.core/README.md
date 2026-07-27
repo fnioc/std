@@ -93,9 +93,7 @@ The provider is an intrinsically resolvable type — no dedicated slot kind. A p
 ```ts
 import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
 
-services = services.addFactory('app/IReport', (sp) => buildReport(sp), [[
-  RESOLVER_TOKEN,
-]]);
+services = services.addFactory('app/IReport', (sp) => buildReport(sp), [[RESOLVER_TOKEN]]);
 ```
 
 `isProviderToken(token)` is the runtime predicate the engine uses.
@@ -113,10 +111,7 @@ export interface Union {
 Members are tried in array order (first = highest precedence). If no member is resolvable, resolution throws. Each member is itself a `DepSlot`, so nesting is allowed.
 
 ```ts
-services = services.addClass('pkg:IHandler', Handler, [[
-  union('pkg:IRedis', 'pkg:IMemoryCache'),
-  'pkg:ILogger',
-]]);
+services = services.addClass('pkg:IHandler', Handler, [[union('pkg:IRedis', 'pkg:IMemoryCache'), 'pkg:ILogger']]);
 ```
 
 ### `Inject<T, K extends Token>`
@@ -220,8 +215,7 @@ import { ServiceManifest } from '@rhombus-std/di';
 
 let services = new ServiceManifest();
 
-services = services.addClass('pkg:IHandler', Handler, [['pkg:ILogger',
-  'pkg:IDb']]);
+services = services.addClass('pkg:IHandler', Handler, [['pkg:ILogger', 'pkg:IDb']]);
 ```
 
 Because the array is keyed on the **registration record**, not on the constructor function, one class can back any number of independent registrations with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template.
@@ -280,11 +274,8 @@ A manifest never mutates. Every registration returns a **new** manifest that yie
 What a registration call returns is widened with a modifier face for each argument you didn't pass positionally — `withSignature` / `withSignatures` for the signature, `as` for `scope`, `withKey` for `key`. Each consumes its own slot, so `scope` and `key` can be set at most once, and the modifiers compose in any order:
 
 ```ts
-services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).as('singleton')
-  .withKey('audit');
-services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).withKey(
-  'audit',
-).as('singleton');
+services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).as('singleton').withKey('audit');
+services = services.addClass('pkg:ILogger', ConsoleLogger, [[]]).withKey('audit').as('singleton');
 ```
 
 Both register the same thing, and `.as(...).as(...)` is a compile error.

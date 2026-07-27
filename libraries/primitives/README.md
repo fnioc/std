@@ -23,10 +23,8 @@ import { CancellationChangeToken, ChangeToken } from '@rhombus-std/primitives';
 
 let controller = new AbortController();
 
-const disposable = ChangeToken.onChange(
-  () => new CancellationChangeToken(controller.signal),
-  () => console.log('changed'),
-);
+const disposable = ChangeToken.onChange(() => new CancellationChangeToken(controller.signal),
+  () => console.log('changed'));
 
 controller.abort(); // logs "changed"
 disposable[Symbol.dispose]();
