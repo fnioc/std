@@ -1192,3 +1192,160 @@ own case qualifies, which is how an invariant erodes without anyone ever choosin
 
 _Owner-directed 2026-07-24 ("move the errors"), the rule stated in the owner's words, and the
 `logging` carve-out ruled 2026-07-25 ("the rule stands, logging is an exception")._
+
+## §131 — The emittable surface of a type is its public, string-keyed instance surface
+
+Every member walk in the engine that produces an EMITTED artifact — the `mergesynth` guard
+synthesizer and the `internal/schema` config-schema walk — enumerates the same thing: a type's
+public, string-keyed instance surface. Public properties and get/set accessors are in it, and an
+accessor is typed by the type IT declares. Three member shapes are outside it and never reach an
+emitted artifact:
+
+- an ECMAScript `#`-named field, which is not a string-keyed property at all — `Reflect.ownKeys` does
+  not list it and `obj["#x"]` is `undefined`;
+- a `private` / `protected` member, which a caller cannot supply;
+- a SYMBOL-keyed member such as `[Symbol.iterator]`, which has no string key to emit either.
+
+A COMPUTED name is not the third of those. `["a-b"]` and `[KEY]` where `const KEY = "k"` evaluate to
+ordinary strings and name keys an element access reads, so they stay in the surface; only a name
+whose TYPE is a symbol leaves it. Deciding on the syntactic node kind instead dropped every
+string-computed member and reported it as one no string key can name.
+
+`internal/typesurface` is the one enumerator both walks consume. Every test it makes is on the
+member's DECLARATIONS — a private-identifier name, an accessibility modifier, a computed name, a
+`get`/`set` node — never on the symbol's flags and never on the mangled internal property name the
+checker gives such members. (The computed-name test reads the name expression's type to answer
+"symbol or string", which is the one question the node alone cannot.) The flags are not equivalent:
+a mapped type (`Partial<T>`, `{ [K in
+keyof T]: T[K] }`) remints each member as a plain property symbol while KEEPING the original
+declaration node, so the flags say "property" exactly where the declaration still says "accessor" —
+and typia, which filters on the declaration, drops the member. Reading the flags therefore made
+every accessor invisible behind any mapping, reopening the whole defect class one indirection away.
+
+**The surface is DIRECTIONAL, and the two consumers face opposite ways.** A guard READS a member, so
+a set-only accessor gives it nothing to check; a schema WRITES one, so a get-only accessor gives it
+nowhere to put a value. `typesurface` therefore reports both directions per member
+(`Member.Readable` / `Member.Writable`) and each consumer filters by the one it uses —
+`Surface.Readable()` in `mergesynth`, `Surface.Writable()` in `internal/schema`. Filtering by the
+wrong direction, or by neither, yields a member operation that can never succeed: a
+`typeof input.x === "number"` clause on a set-only accessor is never true, and a schema key for a
+get-only accessor names an assignment that throws.
+
+**Why this was a correctness defect, not a tidiness one.** A guard clause keyed on a `#`-named field
+reads `undefined === undefined` and can never be false. `MemoryCacheEntryOptions` has five such
+members; its merge dispatcher validated all five vacuously while the public accessors that should
+have been checked contributed no clause at all, so the guard accepted objects that were not
+`MemoryCacheEntryOptions`. A schema keyed the same way describes fields no configuration source can
+ever populate.
+
+**Both consumers refuse on the SAME predicate, one per direction.** `Surface.NothingReadable()` and
+`Surface.NothingWritable()` each say "this type DECLARES members, and none of them faces the way I
+need". The schema walk raises the hard error `992003` on the writable one; `mergesynth` stops
+emitting member clauses on the readable one. A type that declares nothing at all (`{}`, `object`) is
+neither: there is nothing it fails to expose, so the empty result is correct rather than blind.
+
+Sharing the enumerator is what keeps the two walks agreeing about a type's SURFACE; it does not by
+itself keep them agreeing about anything else. Every other question both walks ask — above all "is
+this a nominal built-in?" — has to be asked through one shared function too, or they drift. That is
+not hypothetical: `mergesynth` once admitted a type to typia's fast path by comparing its symbol's
+NAME against `"Set"` while `internal/schema` asked `typesurface.FromLibrary`, so a first-party
+`interface Set` was a library type to one walk and a first-party shape to the other — and the walk
+that answered by name handed it to a check that keyed on its `#`-named backing field.
+
+**A guard may be WEAKER than its type, never NARROWER — and never weaker than what it replaces.**
+Where `mergesynth` cannot decompose a position it costs that position its clause and nothing else.
+Every clause beside it stands, the parameter's arity bounds stand (derivable from the signature
+alone), and the runtime-KIND floor the type still implies stands. So an undecomposable parameter
+still routes a wrong-KIND argument to whatever held the member name before, and one such member
+never disarms the guard on its siblings. Each weakening is reported as a
+`MERGESYNTH_PRIVATE_SURFACE` warning naming the position and saying what the emit contains —
+never that a position is "unchecked" when a clause was in fact written for it.
+
+**A floor may assert only what is true of EVERY value the declared type admits.** For an object type
+that is `(typeof input === "object" || typeof input === "function") && input !== null`, and for an
+array `Array.isArray(input)`. Two tighter-looking clauses are each false for values their own type
+admits, and were emitted anyway: `typeof input === "object"` alone rejects a function, which
+`Function` and every interface a property-carrying function satisfies admit; `!Array.isArray(input)`
+rejects an array, which `ArrayLike<T>`, `Iterable<T>` and `object` admit. A clause that is false for
+a genuine value does not weaken dispatch, it INVERTS it — the call the augmentation was written for
+goes to whatever held the name before — so where no assertion holds of every inhabitant, the
+position gets NO clause rather than a wrong one. The `object` keyword is the floor's own type: its
+values are exactly the non-primitives, so that condition is not a floor under `object`, it is the
+whole of it, and `object` reaches it from a bare parameter, a union arm, an array element and a rest
+element alike. Falling through to no arm at all — which is what `object` used to do — let a number,
+a string and `null` dispatch to the augmentation.
+
+The one thing never emitted is a clause that cannot decide anything. A guard with NO clause at all is
+dropped rather than written as `true`, and a floor is dropped in rest-parameter position, where
+`Array.isArray(args.slice(0))` is true by construction. A member whose EVERY parameter is
+un-derivable in the first place — no annotation, `any`/`unknown`, or a reference to the member's own
+type parameters — still gets the bare always-pass strategy; that is a stated degradation, not a
+weakening.
+
+**The fast path is a WHITELIST, and that direction is the whole design.** `typiaFaithful` asks
+"does typia render this — and every type reachable from it — the way a hand-written check would?"
+and takes typia's is-programmer only on a positive yes at every position; its final branch is
+`return false`. The inverse — enumerating the shapes typia gets WRONG — is what failed: its misses
+are silently vacuous clauses that read exactly like correct ones, and every type position the walk
+forgets defaults to emitting one. Independent review found several such positions (a mapped type's
+value type, reachable through neither a property walk nor a type-argument walk; a symbol-keyed data
+property; a wholly `private`-modifier surface, which typia filters correctly and so renders as a
+constant `true`; an intersection of a primitive with an object, which typia drops rather than
+renders, giving the mirror-image defect of a clause that can never be TRUE). A whitelist's misses
+default instead to a composed guard or a loud weakening, both
+honest. Each faithful branch carries its justification in terms of what typia emits for that
+construct: a `typeof`/`===` leaf, a literal or enum comparison, a compiled template-literal pattern,
+a nominal `instanceof` for a class typia knows natively, `instanceof` plus element checks for
+`Map`/`Set`, positional checks for a tuple, `Object.keys` for an index signature, and a
+self-referencing helper with its own cycle detection for a recursive type — which is why a cycle is
+treated as faithful and settled by the type's finite positions.
+
+**What is composed in-tree.** Everything the whitelist rejects and the composer can decompose:
+unions disjunctively, intersections conjunctively, arrays element-wise, fixed-length tuples
+positionally, string-keyed index signatures over `Object.values`, nominal built-ins by `instanceof`
+(plus an entry-wise walk for `Map` and `Set`), callables and symbols as their `typeof` check (typia
+emits a constant `true` for both), and objects and class instances
+clause-per-public-readable-member. Two asymmetries are load-bearing. A UNION cannot drop an arm — a
+value of an unchecked arm IS a value of the union, so a disjunction missing it would REJECT that
+value — where every other composition can drop a position and stay sound. And an INTERSECTION
+containing a primitive is decided by the primitive alone: in `string & { readonly __brand: "UserId"
+}` the object half is phantom, a value of the type carries no `__brand` at runtime, and conjoining a
+check for one rejects every genuine value.
+
+**"Library type" means NOMINAL, not "declared elsewhere".** `typesurface.FromLibrary` reports only a
+class or interface declared in a default library file — `Date`, `Map`, `Promise`, `Error`.
+Membership in one is an identity, so per-member clauses say nothing about whether a value really is
+one, and the composer answers with `instanceof` for the built-ins whose values cannot exist without
+their constructor and the object floor for the rest. **That table's membership rule:** only a type
+carrying internal state no object literal can hold — a `Map`'s entry table, a `Date`'s time value, a
+`RegExp`'s pattern, an `ArrayBuffer`'s bytes — belongs in it. A structurally satisfiable interface
+does not, however built-in it looks, because `instanceof` on one REJECTS values the type admits:
+`ReadonlyMap` is satisfied by any object implementing it, and `Error`'s whole declared surface is
+`name`, `message` and an optional `stack`, all plain strings, so `const e: Error = { name: "a",
+message: "b" }` is a legal value that `instanceof Error` refuses. Both fall through to the floor.
+
+**Nominal admission is by IDENTITY, never by name.** Every place the engine turns a type into a
+built-in's name reads that name only after `typesurface.FromLibrary` has admitted the type, so a
+first-party `interface Set` — which is named `"Set"` and is not the global `Set` — is composed over
+its own public surface like any other first-party shape. Two things are deliberately NOT nominal. A
+STRUCTURAL type is not, wherever declared: `Partial<T>`, `Readonly<T>`, `Pick<T, K>` and `Record<K,
+V>` are mapped types whose declarations sit in `lib.es5.d.ts`, and `Partial<Opts>` is exactly as
+checkable as `Opts`. Nor is a type from an installed package: a third-party `interface` is a shape
+the same way a first-party one is, and counting `node_modules` as "library" disabled synthesis for
+every non-primitive type an external consumer imports — invisible in-repo, where workspace packages
+resolve to real paths.
+
+**A consequence worth naming.** The checker's mangled internal name embeds a symbol id allocated in
+checking order, so it drifted between builds. The whitelist is what makes that non-determinism
+unobservable: typia enumerates members only for a type the whitelist admitted, and admission at
+every position requires a surface with no `#`-named and no symbol-keyed member. The identity gate is
+load-bearing to that guarantee rather than incidental to it — a name-string admission let a
+first-party type with a `#`-named field onto the fast path, and a mangled key reached the emit for
+it.
+
+_Ruled 2026-07-25 while fixing the vacuous `setOptions` guard in `caching.core`; the whitelist
+inversion followed from the review of that fix, and the declaration-over-flags rule, the
+nominal-not-elsewhere reading of "library type", and the weaker-never-narrower contract from the
+review after it. The identity-not-name gate on nominal admission, the honest-floor rule and the
+evaluates-to test for a computed name came from the review after THAT — each one a place where two
+walks answered the same question separately and drifted._

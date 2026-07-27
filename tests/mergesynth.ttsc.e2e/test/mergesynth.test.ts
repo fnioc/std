@@ -161,12 +161,90 @@ export const ZetaExtensions = {
   },
 };
 
+// A class whose public surface is accessors over #private backing fields — a
+// #private field is not a string-keyed property at runtime, so a guard keyed on
+// one can never be false. The guard must key on the accessors instead.
+export class EntryOptions {
+  #absoluteExpirationRelativeToNow: number | undefined = undefined;
+  public get absoluteExpirationRelativeToNow(): number | undefined {
+    return this.#absoluteExpirationRelativeToNow;
+  }
+  public set absoluteExpirationRelativeToNow(value: number | undefined) {
+    this.#absoluteExpirationRelativeToNow = value;
+  }
+  public label: string = "";
+  private internal: number = 0;
+}
+
+// First holder: mounts as a plain thunk, so it is what a failed guard falls
+// through to.
+export const EtaExtensions = {
+  setOptions(self: IAlpha, tag: string): string {
+    return \`ETA:\${String(tag)}\`;
+  },
+};
+// Collides on setOptions with the accessor-bearing class as its parameter.
+export const ThetaExtensions = {
+  setOptions(self: IAlpha, options: EntryOptions): string {
+    return \`THETA:\${String(options.label)}\`;
+  },
+};
+
+// The same class reached ONLY through a record's value type — a position no
+// property or type-argument walk passes through.
+export const IotaExtensions = {
+  configure(self: IAlpha, tag: string): string {
+    return \`IOTA:\${tag}\`;
+  },
+};
+export const KappaExtensions = {
+  configure(self: IAlpha, bag: Record<string, EntryOptions>): string {
+    return \`KAPPA:\${Object.keys(bag).join(",")}\`;
+  },
+};
+
+// A Map carrying a diverging value type: checked the way a hand-written guard
+// checks a Map — \`instanceof\` plus its entries — so a non-Map argument still
+// falls through to the plain thunk that held the name first.
+export const LambdaExtensions = {
+  store(self: IAlpha, tag: string): string {
+    return \`LAMBDA:\${String(tag)}\`;
+  },
+};
+export const MuExtensions = {
+  store(self: IAlpha, entries: Map<string, EntryOptions>): string {
+    return "MU";
+  },
+};
+
+// A type nothing structural can recognize. Its guard drops to the object floor,
+// which still rejects a value of the wrong runtime kind, and the arity bounds
+// stand on top of it.
+export const NuExtensions = {
+  fetch(self: IAlpha, tag: string): string {
+    return \`NU:\${String(tag)}\`;
+  },
+};
+export const XiExtensions = {
+  fetch(self: IAlpha, pending: Promise<EntryOptions>): string {
+    return "XI";
+  },
+};
+
 registerAugmentations(tokenfor<IAlpha>(), AlphaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), BetaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), DeltaExtensions);
 registerAugmentations(tokenfor<IAlpha>(), GammaExtensions, gammaMerge);
 registerAugmentations(tokenfor<IAlpha>(), EpsilonExtensions);
 registerAugmentations(tokenfor<IAlpha>(), ZetaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), EtaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), ThetaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), IotaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), KappaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), LambdaExtensions);
+registerAugmentations(tokenfor<IAlpha>(), MuExtensions);
+registerAugmentations(tokenfor<IAlpha>(), NuExtensions);
+registerAugmentations(tokenfor<IAlpha>(), XiExtensions);
 
 export class Alpha implements IAlpha {}
 augment(tokenfor<IAlpha>())(Alpha);
@@ -279,6 +357,21 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
     expect(spread).toBeGreaterThan(synthesized);
   });
 
+  test('an accessor-bearing class is guarded on its accessors, never a #private key', () => {
+    // The checker names a #private field with a mangled internal name whose
+    // leading byte prints as the replacement character. No emitted artifact may
+    // carry one, and the public accessor must be what the guard reads.
+    expect(app).not.toContain('\uFFFD');
+    expect(app).not.toContain('@#');
+    expect(app).toContain('.absoluteExpirationRelativeToNow');
+    // The `private`-modifier member is outside the public surface too.
+    expect(app).not.toContain('.internal');
+  });
+
+  test('a record decomposes over its values rather than its own keys', () => {
+    expect(app).toContain('Object.values(');
+  });
+
   test('tokenfor lowering is byte-identical on the collapsed host', () => {
     expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
     expect(app).not.toContain('tokenfor');
@@ -309,6 +402,53 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     // call regardless of shape, chain order breaking the tie.
     expect(instance.pick('v')).toBe('D:pick');
     expect(instance.pick(123)).toBe('D:pick');
+  });
+
+  test('an accessor-shaped argument is accepted and a wrong-shaped one is not', () => {
+    // Theta's guard reads the PUBLIC accessor: an object carrying the public
+    // shape dispatches to Theta…
+    expect(instance.setOptions({ absoluteExpirationRelativeToNow: 5, label: 'x' })).toBe('THETA:x');
+    expect(instance.setOptions({ absoluteExpirationRelativeToNow: undefined, label: 'y' })).toBe('THETA:y');
+    // …and one whose accessor field holds the wrong type does not — it falls
+    // through to Eta, the plain thunk that held the name first. Under a guard
+    // keyed on the #private backing field this clause is `undefined === undefined`
+    // and the wrong-shaped object dispatches to Theta.
+    expect(instance.setOptions({ absoluteExpirationRelativeToNow: 'nope', label: 'x' })).toBe('ETA:[object Object]');
+  });
+
+  test('a record value is checked through the value type, not waved through', () => {
+    // Kappa's guard reaches EntryOptions through the record's VALUE type: a bag
+    // whose entry carries the public shape dispatches to Kappa…
+    expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 5, label: 'x' } })).toBe('KAPPA:a');
+    // …and one whose entry holds the wrong type does not — it falls through to
+    // Iota, the plain thunk that held the name first.
+    expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 'nope', label: 'x' } })).toBe(
+      'IOTA:[object Object]',
+    );
+  });
+
+  test('a Map parameter is checked nominally, not waved through', () => {
+    // Mu's guard is `instanceof Map` plus its entries, so a real Map reaches it…
+    expect(instance.store(new Map())).toBe('MU');
+    // …and a single argument that is NOT a Map falls through to Lambda. Under a
+    // refusal this clause is only `args.length === 1` and 'hello' reaches Mu.
+    expect(instance.store('hello')).toBe('LAMBDA:hello');
+    // The arity bounds stand alongside the guard.
+    expect(instance.store()).toBe('LAMBDA:undefined');
+    expect(instance.store('a', 'b')).toBe('LAMBDA:a');
+  });
+
+  test('a guard that had to drop to the object floor still narrows by runtime kind', () => {
+    // Xi's parameter is a type nothing structural recognizes, so its guard is the
+    // object floor: a promise (any object, in fact) reaches it…
+    expect(instance.fetch(Promise.resolve({}))).toBe('XI');
+    // …and a value of the wrong runtime kind does not. Dropping the floor makes
+    // this dispatch to Xi.
+    expect(instance.fetch('hello')).toBe('NU:hello');
+    expect(instance.fetch(42)).toBe('NU:42');
+    // The arity bounds survive on top of the floor.
+    expect(instance.fetch()).toBe('NU:undefined');
+    expect(instance.fetch('a', 'b')).toBe('NU:a');
   });
 
   test('arity bounds discriminate same-typed leading parameters', () => {

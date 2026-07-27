@@ -23,6 +23,10 @@
 //   - Optionality is decided SOLELY by the `?` modifier (SymbolFlagsOptional).
 //     The inner type is stripped of null/undefined via GetNonNullableType before
 //     recursing.
+//   - Only a type's PUBLIC, WRITABLE surface is walked (internal/typesurface).
+//     Coercion assigns into the field, so a get-only accessor is no more of a
+//     target than a `#`-named field is. A type left with nothing to write to
+//     would yield `{}`, which coerces nothing — that is refused, not emitted.
 //   - Unsupported anything aborts the WHOLE literal (a failed flag) — never a
 //     silent partial.
 package schema
@@ -30,7 +34,7 @@ package schema
 import (
 	"regexp"
 
-	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typesurface"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -52,6 +56,10 @@ const (
 	// CodeNonObjectRoot marks a schema root type that is not an object type — a
 	// bare leaf or other non-record.
 	CodeNonObjectRoot = "992002"
+	// CodePrivateOnlySurface marks a type nothing can be written into: every
+	// member is a `#`-named field, a `private`/`protected` one, symbol-keyed, or
+	// a get-only accessor. Its schema would be `{}`, which coerces nothing.
+	CodePrivateOnlySurface = "992003"
 )
 
 // MessageNonObjectRoot / MessageUnsupportedType are the exact diagnostic texts,
@@ -64,6 +72,11 @@ const MessageUnsupportedType = "unsupported type for a configuration field. The 
 	"string, number, boolean, and nested object types only -- name the field " +
 	"with one of those (unions, arrays, functions, and library types like Date " +
 	"have no schema representation)."
+
+const MessagePrivateOnlySurface = "no member of this type can be written from outside it -- each is a #-named " +
+	"field, a private or protected member, symbol-keyed, or a get-only accessor " +
+	"-- so there is no surface to build a schema from. Expose the fields as " +
+	"public properties or settable accessors."
 
 // OptionalMarker is the runtime identity of the optional-field wrapper key — the
 // `OPTIONAL` unique symbol re-exported from the config barrel. It is the single
@@ -106,17 +119,25 @@ func LiteralForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Node) (*s
 }
 
 // objectLiteralForType builds the `{ key: schema, ... }` literal for an accepted
-// record type.
+// record type, over its PUBLIC, WRITABLE surface only.
 func objectLiteralForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Node, state *walkState) *shimast.Node {
 	f := ctx.Factory
+	surface := typesurface.For(ctx.Checker, t, anchor)
+	// Nothing to write into: either every member is hidden, or every one that
+	// survived is a get-only accessor. Both leave `{}`, which coerces nothing.
+	writable := surface.Writable()
+	if surface.NothingWritable() {
+		state.failed = true
+		ctx.AddDiagnostic(CodePrivateOnlySurface, MessagePrivateOnlySurface, anchor)
+		return f.NewObjectLiteralExpression(f.NewNodeList(nil), true)
+	}
 	properties := []*shimast.Node{}
-	for _, sym := range shimchecker.Checker_getPropertiesOfType(ctx.Checker, t) {
-		decl := propertyDeclaration(sym, anchor)
-		propType := ctx.Checker.GetTypeOfSymbolAtLocation(sym, decl)
-		key := propertyKey(f, sym.Name)
-		optional := sym.Flags&shimast.SymbolFlagsOptional != 0
+	for _, member := range writable {
+		decl := member.Decl
+		propType := ctx.Checker.GetTypeOfSymbolAtLocation(member.Symbol, decl)
+		key := propertyKey(f, member.Name)
 
-		if optional {
+		if member.Optional {
 			// Strip null/undefined, then wrap: `{ [OPTIONAL]: innerSchema }`.
 			inner := ctx.Checker.GetNonNullableType(propType)
 			innerExpr := schemaForType(ctx, inner, decl, state)
@@ -139,18 +160,6 @@ func objectLiteralForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Nod
 		properties = append(properties, f.NewPropertyAssignment(nil, key, nil, nil, schemaForType(ctx, propType, decl, state)))
 	}
 	return f.NewObjectLiteralExpression(f.NewNodeList(properties), true)
-}
-
-// propertyDeclaration picks the AST node a property's type is read at: its value
-// declaration, else its first declaration, else the enclosing anchor.
-func propertyDeclaration(sym *shimast.Symbol, anchor *shimast.Node) *shimast.Node {
-	if sym.ValueDeclaration != nil {
-		return sym.ValueDeclaration
-	}
-	if len(sym.Declarations) > 0 {
-		return sym.Declarations[0]
-	}
-	return anchor
 }
 
 // schemaForType classifies a leaf/nested type into its schema expression. ORDER
@@ -182,10 +191,10 @@ func schemaForType(ctx *Context, t *shimchecker.Type, anchor *shimast.Node, stat
 	return f.NewStringLiteral("string", shimast.TokenFlagsNone)
 }
 
-// isAcceptableRecord reports whether t is a plain user record the walk can recurse
+// isAcceptableRecord reports whether t is a plain record the walk can recurse
 // into: an object type with no call/construct signatures, not an array/tuple, no
-// index signature, and not a library / third-party global. Pure predicate — pushes
-// no diagnostics.
+// index signature, and not a nominal built-in. Pure predicate — pushes no
+// diagnostics.
 func isAcceptableRecord(ctx *Context, t *shimchecker.Type) bool {
 	if t == nil {
 		return false
@@ -207,44 +216,10 @@ func isAcceptableRecord(ctx *Context, t *shimchecker.Type) bool {
 	if len(shimchecker.Checker_getIndexInfosOfType(ctx.Checker, t)) > 0 {
 		return false
 	}
-	if isLibraryOrExternal(ctx, t) {
+	if typesurface.FromLibrary(ctx.Program, t) {
 		return false
 	}
 	return true
-}
-
-// isLibraryOrExternal reports whether the type's symbol is declared entirely in a
-// default library file or under `node_modules` — i.e. a built-in / third-party
-// global (Date, Map, RegExp, Promise, ...) rather than a user interface / type
-// literal.
-func isLibraryOrExternal(ctx *Context, t *shimchecker.Type) bool {
-	symbol := t.Symbol()
-	if symbol == nil {
-		symbol = tokens.AliasSymbol(t)
-	}
-	if symbol == nil {
-		return false
-	}
-	declarations := symbol.Declarations
-	if len(declarations) == 0 {
-		return false
-	}
-	for _, decl := range declarations {
-		file := shimast.GetSourceFileOfNode(decl)
-		if file == nil {
-			return false
-		}
-		if !ctx.Program.TSProgram.IsSourceFileDefaultLibrary(file.Path()) && !isUnderNodeModules(file.FileName()) {
-			return false
-		}
-	}
-	return true
-}
-
-var nodeModulesSegment = regexp.MustCompile(`/node_modules/`)
-
-func isUnderNodeModules(fileName string) bool {
-	return nodeModulesSegment.MatchString(fileName)
 }
 
 var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)

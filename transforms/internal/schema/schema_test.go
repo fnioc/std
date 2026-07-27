@@ -1,11 +1,10 @@
 package schema
 
-// Pure, checker-free helper tests (isUnderNodeModules, jsIdentifier, propertyKey).
-// The checker-backed walk (LiteralForType / schemaForType / objectLiteralForType /
-// isAcceptableRecord / isLibraryOrExternal) is exercised end-to-end through the
-// config stage's parity suite (internal/configtransform) and the schemaof
-// primitive's parity suite (internal/nameoftransform), both of which drive this
-// same code.
+// Pure, checker-free helper tests (jsIdentifier, propertyKey). The checker-backed
+// walk (LiteralForType / schemaForType / objectLiteralForType / isAcceptableRecord)
+// is exercised end-to-end through the config stage's parity suite
+// (internal/configtransform) and the schemaof primitive's parity suite
+// (internal/nameoftransform), both of which drive this same code.
 
 import (
 	"testing"
@@ -16,24 +15,6 @@ import (
 
 func newFactory() *shimast.NodeFactory {
 	return shimprinter.NewEmitContext().Factory.AsNodeFactory()
-}
-
-func TestIsUnderNodeModules(t *testing.T) {
-	cases := []struct {
-		fileName string
-		want     bool
-	}{
-		{"/proj/node_modules/pkg/index.d.ts", true},
-		{"/home/x/node_modules/@scope/p/lib.d.ts", true},
-		{"/proj/src/main.ts", false},
-		{"/proj/node_modulesish/x.ts", false},
-		{"", false},
-	}
-	for _, tc := range cases {
-		if got := isUnderNodeModules(tc.fileName); got != tc.want {
-			t.Errorf("isUnderNodeModules(%q) = %v, want %v", tc.fileName, got, tc.want)
-		}
-	}
 }
 
 func TestJsIdentifierRegex(t *testing.T) {

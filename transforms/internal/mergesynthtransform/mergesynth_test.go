@@ -23,8 +23,18 @@ export interface IAlpha { id: number; }
 
 // loadFixture writes a one-file strict project and loads it.
 func loadFixture(t *testing.T, source string) (*driver.Program, *shimast.SourceFile) {
+	return loadFixtureWith(t, source, nil)
+}
+
+// loadFixtureWith writes the same project plus extra files, keyed by their path
+// relative to the project root — a `node_modules/...` entry makes the fixture an
+// installed package rather than project source.
+func loadFixtureWith(t *testing.T, source string, extra map[string]string) (*driver.Program, *shimast.SourceFile) {
 	t.Helper()
 	root := t.TempDir()
+	for path, content := range extra {
+		write(t, filepath.Join(root, filepath.FromSlash(path)), content)
+	}
 	write(t, filepath.Join(root, "app.ts"), fixturePrelude+source)
 	write(t, filepath.Join(root, "tsconfig.json"), `{
   "compilerOptions": {
@@ -52,8 +62,12 @@ func loadFixture(t *testing.T, source string) (*driver.Program, *shimast.SourceF
 // run applies the stage to the fixture and reprints, mirroring the host's emit
 // pipeline (parent fixup + printer bound to the same EmitContext).
 func run(t *testing.T, source string) (string, []Diagnostic) {
+	return runWith(t, source, nil)
+}
+
+func runWith(t *testing.T, source string, extra map[string]string) (string, []Diagnostic) {
 	t.Helper()
-	prog, sf := loadFixture(t, source)
+	prog, sf := loadFixtureWith(t, source, extra)
 	defer func() { _ = prog.Close() }()
 	var diags []Diagnostic
 	transform := New(prog, func(d Diagnostic) { diags = append(diags, d) })

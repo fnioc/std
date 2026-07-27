@@ -100,7 +100,7 @@ the input unchanged when they had nothing to do, specifically to hold this contr
 
 ### Mergesynth: a one-shot pre-pass, not a loop member
 
-`mergesynth` (the augmentation merge-strategy synthesizer, #213) runs **once per file, before the
+`mergesynth` (the augmentation merge-strategy synthesizer) runs **once per file, before the
 loop starts** — it is not one of the looped stages. Its matches
 (`registerAugmentations`/`applyAugmentations` calls) are always source-written; no sugar body or
 primitive ever mints a fresh one, so the loop could never generate new work for it, and giving it
@@ -110,6 +110,137 @@ spreads every pass, because its detector couldn't see inside the spread it had j
 one-shot placement sidesteps that class of bug entirely, not just the one instance of it. If a
 sugar body is ever added that emits an install call, `mergesynth` will need to rejoin the loop and
 gain spread-recursing detection — noted here as the rejoin condition, not implemented.)
+
+#### The guardable surface: public, string-keyed members only
+
+Guards are generated for **the public, string-keyed instance surface** — the members a caller
+can actually name on a value of the type. Three member shapes are outside that surface and never
+contribute a guard clause:
+
+- **`#`-named fields**: ECMAScript private names are not string-keyed properties at runtime.
+  `Reflect.ownKeys(new C())` does not list them and `obj["#x"]` is always `undefined`, so a key
+  derived from one could never match anything.
+- **`private`/`protected` members**: these cannot be supplied from outside the class.
+- **Symbol-keyed members** (e.g. `[Symbol.iterator]`): no string key can address them.
+
+This enumeration lives in `internal/typesurface`, which both `mergesynth` and the `schemaof`
+schema walk consume — the two walks share one surface definition, so they cannot reach different
+verdicts on the same type.
+
+The type of a member is read from its **accessor declaration** where one exists, not from its
+symbol flags. A mapped type (`Partial<T>`, `Readonly<T>`, `{ [K in keyof T]: T[K] }`) remints
+every member as a plain property symbol while keeping the original `get`/`set` node as that
+symbol's declaration. Reading `SymbolFlagsAccessor` makes an accessor invisible behind any
+mapping; reading the declarations does not.
+
+Accessors are **directional**: `Surface.Readable()` returns only members a value can be read
+from (the surface a guard can check); `Surface.Writable()` returns only members a value can be
+written to (the surface a schema can populate). A `set`-only accessor contributes no readable
+clause; a `get`-only accessor contributes no writable schema key. A type that declares members
+but exposes none in the needed direction (`NothingReadable()`/`NothingWritable()`) is refused
+rather than silently emitting an empty result.
+
+#### The whitelist: typia's fast path is decided by positive recognition
+
+Whether to hand a type's guard straight to typia's is-programmer is decided by `typiaFaithful`:
+a **whitelist**, deliberately total — it ends in `return false`, so every construct not
+positively recognized above it goes to the composer or is refused. The direction matters: a
+blacklist's unrecognized positions default to "emit anyway," so each forgotten case produces a
+silently vacuous clause. A whitelist's unrecognized positions default to the composer or a
+refusal, both of which are honest.
+
+Positions typia would render unfaithfully include:
+
+- **Symbol-keyed data properties**: typia keys a clause on the checker's internal mangled name,
+  which no runtime object carries.
+- **Accessors behind a mapped type**: typia reads symbol flags, so it sees "property" where the
+  declaration still says "accessor" and skips the member — emitting no clause, as if the member
+  weren't there.
+- **A wholly `private`-modifier surface**: typia filters those correctly, reducing the object to
+  an empty check that accepts every object.
+- **An intersection with a primitive constituent** (a branded primitive like
+  `string & { readonly __brand: "UserId" }`): typia drops the primitive half, leaving a check
+  whose clauses the primitive's own values fail.
+
+Anything not admitted by the whitelist goes to first-party composition.
+
+#### First-party composition: what `guardForType` builds instead
+
+For types typia would not render faithfully, `guardForType` composes a guard position by
+position:
+
+- **Unions** (`||`-disjunction): every arm must have a guard — a union cannot drop an arm
+  without accepting values the type does not admit.
+- **Intersections** (`&&`-conjunction): if any constituent is a primitive, the primitives alone
+  decide (the object half of a brand type is phantom at runtime — conjoining a check for it
+  would reject every genuine value).
+- **Arrays** (`Array.isArray(input) && input.every(e => g(e))`): element-wise.
+- **Tuples**: `Array.isArray` plus length bounds, then a positional clause per required/optional
+  element; a rest or variadic element leaves no fixed position, falling through to the array
+  floor.
+- **String-index-signature records** (`Object.values(input).every(v => g(v))`): the index
+  value type decides the per-value check; named members alongside the index contribute their own
+  clauses.
+- **Nominal built-ins** (`instanceof`): only for types whose values cannot exist without their
+  constructor — `Map`, `Set`, `Date`, `RegExp`, `ArrayBuffer`, `WeakMap`, `WeakSet`, and
+  similar. Structurally satisfiable interfaces (`Error`, `ReadonlyMap`, `Iterable`) do not belong
+  here: `const e: Error = { name: "a", message: "b" }` is a legal value that `instanceof Error`
+  refuses. Those fall through to per-member clause composition.
+- **Callables and symbols**: `typeof input === "function"` / `typeof input === "symbol"` — the
+  whole of what can be checked for them.
+- **Object and class types**: one clause per public, readable member — the same `typesurface`
+  enumeration as the whitelist test, so a `set`-only accessor contributes no clause and the
+  clauses around it stand.
+
+#### The identity gate: nominal admission is not name admission
+
+The one place `mergesynth` turns a type into a built-in's name is `libraryNominalName`, which
+first asks `typesurface.FromLibrary` about identity before reading the name. `FromLibrary`
+admits only a class or interface declared entirely in a default library file — not a structural
+type like `Partial<T>` (whose declaration is in `lib.es5.d.ts` but whose membership is a shape),
+and not a type from an installed package (whose declaration is in `node_modules`).
+
+This matters because name is not identity: a first-party `interface Set { bag: Opts }` is named
+`"Set"` but is not the global `Set`. Both the fast path and the composer route nominal decisions
+through `libraryNominalName`, so the two cannot answer differently for the same type.
+
+#### The floor contract and arity preservation
+
+A position the composer cannot decompose costs its own clause and nothing more — the guard
+around it still stands. The weakest honest check for an object type is `objectKindCondition`:
+
+```js
+(typeof input === 'object' || typeof input === 'function') && input !== null;
+```
+
+This is the shared prefix of every composed object guard, and the whole of the floor. Two
+tighter-looking alternatives are each false for values the type admits:
+
+- `typeof input === "object"` on its own rejects functions, which `Function` and every callable
+  interface admits.
+- `!Array.isArray(input)` rejects arrays, which `ArrayLike<T>`, `Iterable<T>`, and `object`
+  admit.
+
+The `object` keyword type gets a dedicated `nonPrimitiveGuard` that emits `objectKindCondition`
+without reporting it as a weakening — that condition is not a floor _under_ `object`, it is the
+whole of it.
+
+**No clause is ever emitted when it cannot decide.** A guard with nothing to say (`node == nil`)
+is dropped rather than written as `true`. A floor in rest-parameter position is also dropped:
+the rest slice is an array by construction, so `Array.isArray(args.slice(N))` is always true and
+emitting it would look like a check while deciding nothing.
+
+**The arity gate is preserved on every refusal.** When a parameter's type guard is dropped, the
+synthesized strategy still enforces `args.length` bounds derived from the signature. A dropped
+guard never widens dispatch beyond what the guarded original allowed. The only member that
+reaches the always-pass strategy (which imposes no bounds at all) is one whose every parameter
+was un-derivable in the first place — no annotation, `any`/`unknown`, or a type parameter.
+
+A synthesized guard may be **weaker** than the type it checks — it must not reject a value the
+declared type admits. It may never be **narrower** — it must not dispatch more broadly than the
+original it replaced. Every weakening is reported as a `MERGESYNTH_PRIVATE_SURFACE` warning
+naming what the emit actually contains: a floored position, an unchecked position beside other
+working clauses, or a dropped parameter guard with arity bounds standing.
 
 ## Domain lives in TypeScript, not in Go
 
@@ -155,32 +286,49 @@ check at compile time was never the transform's job to begin with.
 
 Every primitive is a throwing stub at runtime (calling it un-lowered fails loudly, never silently)
 and a real declaration the checker resolves against, so a sugar body typechecks as ordinary
-TypeScript with no plugin involved. Each has exactly one authoring home and one lowering stage.
+TypeScript with no plugin involved. Each has exactly one authoring home and one lowering stage. The
+Example/Result columns below are each one real lowering pulled from the engine's own test suite;
+`pkg:` stands in for whatever module the example type is declared in — a real token carries that
+module's actual name instead.
 
-| Primitive                 | Shape     | Lowers to                                                                                                                      | Home                | Stage         |
-| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------- | ------------- |
-| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `primitives.extras` | `nameof`      |
-| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `primitives.extras` | `nameof`      |
-| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `primitives.extras` | `nameof`      |
-| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `primitives.extras` | `nameof`      |
-| `keyedtokenfor<T>()`      | type-arg  | the single _composed_ `base#key` token for a `Keyed<T,K>`, or the plain base for an unkeyed `T`                                | `di.extras`         | `nameof`      |
-| `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `di.extras`         | `keyof`       |
-| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `di.extras`         | `signatureof` |
-| `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `di.core`           | `signatureof` |
-| `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `di.core`           | `signatureof` |
-| `valueof<T>()`            | type-arg  | a literal type's own value (the `.as<Scope>()` sugar's scope argument)                                                         | `di.extras`         | `valueof`     |
-| `isSingular<T>()`         | type-arg  | `true`/`false` — is `T` a literal/null/undefined/void (Rule-2 singular)                                                        | `primitives.extras` | `singular`    |
-| `singularValue<T>()`      | type-arg  | the literal value itself, for a singular `T`                                                                                   | `primitives.extras` | `singular`    |
-| `isFactory<T>()`          | type-arg  | `true`/`false` — does `T` carry a call signature                                                                               | `primitives.extras` | `factory`     |
-| `returntokenfor<T>()`     | type-arg  | the token of a factory type `T`'s _return_ type                                                                                | `primitives.extras` | `factory`     |
-| `paramtokensfor<T>()`     | type-arg  | the `[token, ...]` array of a factory type `T`'s parameter tokens (`Inject`-brand aware); elided when empty                    | `primitives.extras` | `factory`     |
-| `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `config.extras`     | `schemaof`    |
+| Primitive                 | Shape     | Lowers to                                                                                                                      | Example                                                      | Result                               | Home                | Stage         |
+| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------ | ------------------- | ------------- |
+| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                         | `primitives.extras` | `nameof`      |
+| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                          | `primitives.extras` | `nameof`      |
+| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                  | `primitives.extras` | `nameof`      |
+| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                    | `primitives.extras` | `nameof`      |
+| `keyedtokenfor<T>()`      | type-arg  | the single _composed_ `base#key` token for a `Keyed<T,K>`, or the plain base for an unkeyed `T`                                | `keyedtokenfor<Keyed<ICache, "redis">>()`                    | `"pkg:ICache#redis"`                 | `di.extras`         | `nameof`      |
+| `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                            | `di.extras`         | `keyof`       |
+| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                     | `di.extras`         | `signatureof` |
+| `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)  | `di.core`           | `signatureof` |
+| `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `...signaturesfor<[[IA], [IA, IB]]>()`                       | `["pkg:IA"], ["pkg:IA", "pkg:IB"]`   | `di.core`           | `signatureof` |
+| `valueof<T>()`            | type-arg  | a literal type's own value (the `.as<Scope>()` sugar's scope argument)                                                         | `valueof<'scoped'>()`                                        | `"scoped"`                           | `di.extras`         | `valueof`     |
+| `isSingular<T>()`         | type-arg  | `true`/`false` — is `T` a literal/null/undefined/void (Rule-2 singular)                                                        | `isSingular<'dev'>()`                                        | `true`                               | `primitives.extras` | `singular`    |
+| `singularValue<T>()`      | type-arg  | the literal value itself, for a singular `T`                                                                                   | `singularValue<'dev'>()`                                     | `"dev"`                              | `primitives.extras` | `singular`    |
+| `isFactory<T>()`          | type-arg  | `true`/`false` — does `T` carry a call signature                                                                               | `isFactory<(dep: IDep) => IThing>()`                         | `true`                               | `primitives.extras` | `factory`     |
+| `returntokenfor<T>()`     | type-arg  | the token of a factory type `T`'s _return_ type                                                                                | `returntokenfor<(dep: IDep) => IThing>()`                    | `"pkg:IThing"`                       | `primitives.extras` | `factory`     |
+| `paramtokensfor<T>()`     | type-arg  | the `[token, ...]` array of a factory type `T`'s parameter tokens (`Inject`-brand aware); elided when empty                    | `paramtokensfor<(dep: IDep) => IThing>()`                    | `["pkg:IDep"]`                       | `primitives.extras` | `factory`     |
+| `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `schemaof<{ ssl?: boolean }>()`                              | `{ ssl: { [OPTIONAL]: "boolean" } }` | `config.extras`     | `schemaof`    |
 
 `signaturefor`/`signaturesfor` sit in `di.core` rather than `di.extras` because they produce
 `di.core`'s own `DepSlot` shape and are legitimately callable from hand-written runtime source
 too — a homing choice about the _value_, not about which stage lowers it. Every other primitive in
 the table is authoring-only: it throws unconditionally if it ever runs, so it never needs a
 runtime-shaped home.
+
+**`schemaof<T>()` / `.withType<T>()` surface constraints.** The schema walk uses the same
+`typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
+assigns into a field, so a `get`-only accessor is as unusable as a `#`-named field. A type
+whose entire declared surface is unwritable (every member is `#`-named, `private`/`protected`,
+symbol-keyed, or a `get`-only accessor) is hard error 992003: its schema would be `{}`, which
+coerces nothing, and the schema is not emitted. Two boundary cases follow from this:
+
+- `Partial<T>`, `Readonly<T>`, and `Pick<T, K>` produce a schema. These are mapped types, and
+  a mapped type's reminted symbols still carry the original accessor declarations — so the
+  writable surface is faithfully enumerated through any of them.
+- A type whose only members are `get`-only accessors (nothing writable) is refused with hard
+  error 992003. The same type would succeed as a guard target (its accessors are readable), but
+  a schema for it would be `{}` — so the walk stops rather than emitting one.
 
 ### Constant-folding dead branches: the `fold` stage
 
