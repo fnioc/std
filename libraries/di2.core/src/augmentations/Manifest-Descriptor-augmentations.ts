@@ -1,8 +1,7 @@
-import { registerAugmentations, Token, Type } from '@rhombus-std/primitives';
+import { AugmentationSet2, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { AugmentationSet2 } from '@rhombus-std/primitives';
 import { type IManifest } from '../IManifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 import { keyedType, Signatures, TypeSignatures } from '../types';
@@ -39,47 +38,8 @@ declare module '@rhombus-std/di2.core' {
   interface IManifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
 }
 
-// Decoupled from the public overloads above -- see the matching comment in
-// Manifest-Service-augmentations.ts: `AugmentationSet2` reads a member's
-// params via `Parameters<Impl[K]>`, which only sees the LAST arm of a
-// genuinely overloaded signature, so a union-of-tuples rest parameter keeps
-// both arms visible instead. Every object-literal method below repeats these
-// same tuple types on its own `manifest`/`...args` parameters rather than
-// leaving them to infer from context -- see the same file's comment for why.
-type TryAddClassArgs<Scopes extends string> = [type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes,
-  key?: string] | [token: Token, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string];
-type TryAddFactoryArgs<Scopes extends string> = [type: Type, factory: Func<any[], unknown>, signatures: Signatures,
-  scope?: Scopes, key?: string] | [token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-  key?: string];
-type TryAddValueArgs = [type: Type, value: unknown, key?: string] | [token: Token, value: unknown, key?: string];
-
-type ReplaceClassArgs<Scopes extends string> = [type: Type, ctor: Ctor, signatures: Signatures,
-  scope: Scopes | undefined, key?: string] | [token: Token, ctor: Ctor, signatures: Signatures,
-  scope: Scopes | undefined, key?: string];
-type ReplaceFactoryArgs<Scopes extends string> = [type: Type, factory: Func<any[], unknown>, signatures: Signatures,
-  scope: Scopes | undefined, key?: string] | [token: Token, factory: Func<any[], unknown>, signatures: Signatures,
-  scope: Scopes | undefined, key?: string];
-type ReplaceValueArgs = [type: Type, value: unknown, key?: string] | [token: Token, value: unknown, key?: string];
-
-type RemoveAllArgs = [type: Type, key?: string] | [token: Token, key?: string];
-
-type IManifestDescriptorAugmentationsImpl<Scopes extends string> = {
-  addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
-  tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
-
-  tryAddClass(...args: TryAddClassArgs<Scopes>): IManifest<Scopes>;
-  tryAddFactory(...args: TryAddFactoryArgs<Scopes>): IManifest<Scopes>;
-  tryAddValue(...args: TryAddValueArgs): IManifest<Scopes>;
-
-  replaceClass(...args: ReplaceClassArgs<Scopes>): IManifest<Scopes>;
-  replaceFactory(...args: ReplaceFactoryArgs<Scopes>): IManifest<Scopes>;
-  replaceValue(...args: ReplaceValueArgs): IManifest<Scopes>;
-
-  removeAll(...args: RemoveAllArgs): IManifest<Scopes>;
-};
-
 export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>,
-  IManifestDescriptorAugmentationsImpl<any>> = {
+  IManifestDescriptorAugmentations<any>> = {
     addMany(manifest, descriptors) {
       return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), manifest);
     },
@@ -90,7 +50,9 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
         )
         .reduce((man, descriptor) => man.add(descriptor), manifest);
     },
-    tryAddClass(manifest: IManifest, ...args: TryAddClassArgs<string>): IManifest {
+    tryAddClass(manifest: IManifest,
+      ...args: [type: Type, ctor: Ctor, signatures: Signatures, scope?: string, key?: string] | [token: Token,
+        ctor: Ctor, signatures: Signatures, scope?: string, key?: string]) {
       const [token, ctor, signatures, scope, key] = args;
       if (typeof token === 'string') {
         return manifest.tryAddClass(Type.from(token), ctor, signatures, scope, key);
@@ -99,7 +61,14 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
         ServiceDescriptor.ctor(keyedType(token, key), ctor, TypeSignatures.from(signatures), scope),
       );
     },
-    tryAddFactory(manifest: IManifest, ...args: TryAddFactoryArgs<string>): IManifest {
+    tryAddFactory(manifest: IManifest,
+      ...args: [type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: string, key?: string] | [
+        token: Token,
+        factory: Func<any[], unknown>,
+        signatures: Signatures,
+        scope?: string,
+        key?: string,
+      ]) {
       const [token, factory, signatures, scope, key] = args;
       if (typeof token === 'string') {
         return manifest.tryAddFactory(Type.from(token), factory, signatures, scope, key);
@@ -108,7 +77,8 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
         ServiceDescriptor.factory(keyedType(token, key), factory, TypeSignatures.from(signatures), scope),
       );
     },
-    tryAddValue(manifest: IManifest, ...args: TryAddValueArgs): IManifest {
+    tryAddValue(manifest: IManifest,
+      ...args: [type: Type, value: unknown, key?: string] | [token: Token, value: unknown, key?: string]) {
       const [token, value, key] = args;
       if (typeof token === 'string') {
         return manifest.tryAddValue(Type.from(token), value, key);
@@ -116,29 +86,39 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
       return manifest.tryAdd(ServiceDescriptor.value(keyedType(token, key), value));
     },
 
-    replaceClass(manifest: IManifest, ...args: ReplaceClassArgs<string>): IManifest {
+    replaceClass(manifest: IManifest,
+      ...args: [type: Type, ctor: Ctor, signatures: Signatures, scope: string | undefined, key?: string] | [
+        token: Token,
+        ctor: Ctor,
+        signatures: Signatures,
+        scope: string | undefined,
+        key?: string,
+      ]) {
       const [token, ctor, signatures, scope, key] = args;
-      // `token`'s union type can't drive an overloaded call directly (neither
-      // overload accepts `Type | Token`), so each branch re-narrows it.
+      // Each branch re-narrows `token`: the union can't drive the overloaded calls directly.
       return typeof token === 'string'
         ? manifest.removeAll(token, key).addClass(token, ctor, signatures, scope, key)
         : manifest.removeAll(token, key).addClass(token, ctor, signatures, scope, key);
     },
 
-    replaceFactory(manifest: IManifest, ...args: ReplaceFactoryArgs<string>): IManifest {
+    replaceFactory(manifest: IManifest,
+      ...args: [type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope: string | undefined,
+        key?: string] | [token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope: string | undefined,
+        key?: string]) {
       const [token, factory, signatures, scope, key] = args;
       return typeof token === 'string'
         ? manifest.removeAll(token, key).addFactory(token, factory, signatures, scope, key)
         : manifest.removeAll(token, key).addFactory(token, factory, signatures, scope, key);
     },
-    replaceValue(manifest: IManifest, ...args: ReplaceValueArgs): IManifest {
+    replaceValue(manifest: IManifest,
+      ...args: [type: Type, value: unknown, key?: string] | [token: Token, value: unknown, key?: string]) {
       const [token, value, key] = args;
       return typeof token === 'string'
         ? manifest.removeAll(token, key).addValue(token, value, key)
         : manifest.removeAll(token, key).addValue(token, value, key);
     },
 
-    removeAll(manifest: IManifest, ...args: RemoveAllArgs): IManifest {
+    removeAll(manifest: IManifest, ...args: [type: Type, key?: string] | [token: Token, key?: string]) {
       const [token, key] = args;
       if (typeof token === 'string') {
         return manifest.removeAll(Type.from(token), key);

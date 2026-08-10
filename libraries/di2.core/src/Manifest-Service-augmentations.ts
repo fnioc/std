@@ -20,41 +20,24 @@ declare module '@rhombus-std/di2.core' {
   interface IManifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
 }
 
-// Decoupled from the public overloads above: `AugmentationSet2` reads a
-// member's params via `Parameters<Impl[K]>`, which only sees the LAST arm of
-// a genuinely overloaded signature. A single signature per member with a
-// union-of-tuples rest parameter carries both arms through `Parameters<>`
-// intact -- every arm returns the same `IManifest<Scopes>`, so nothing is
-// lost by not overloading the return type.
-//
-// Every object-literal method below repeats these same tuple types on its
-// own `receiver`/`...args` parameters rather than leaving them to infer from
-// the `AugmentationSet2<...>` context: a contextually-inferred
-// `(receiver, ...args)` split loses the union's per-branch positional
-// alignment and widens every slot to the union of ALL positions across both
-// branches instead of keeping each branch's own shape.
-type AddClassArgs<Scopes extends string> = [type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes,
-  key?: string] | [token: Token, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string];
-type AddFactoryArgs<Scopes extends string> = [type: Type, factory: Func<any[], unknown>, signatures: Signatures,
-  scope?: Scopes, key?: string] | [token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-  key?: string];
-type AddValueArgs = [type: Type, value: unknown, key?: string] | [token: Token, value: unknown, key?: string];
-
-type IManifestServiceAugmentationsImpl<Scopes extends string> = {
-  addClass(...args: AddClassArgs<Scopes>): IManifest<Scopes>;
-  addFactory(...args: AddFactoryArgs<Scopes>): IManifest<Scopes>;
-  addValue(...args: AddValueArgs): IManifest<Scopes>;
-};
-
-export const ManifestServiceAugmentations: AugmentationSet2<IManifest, IManifestServiceAugmentationsImpl<string>> = {
-  addClass(receiver: IManifest, ...args: AddClassArgs<string>): IManifest {
+export const ManifestServiceAugmentations: AugmentationSet2<IManifest, IManifestServiceAugmentations<string>> = {
+  addClass(receiver: IManifest,
+    ...args: [type: Type, ctor: Ctor, signatures: Signatures, scope?: string, key?: string] | [token: Token, ctor: Ctor,
+      signatures: Signatures, scope?: string, key?: string]) {
     const [token, ctor, signatures, scope, key] = args;
     if (typeof token === 'string') {
       return receiver.addClass(Type.from(token), ctor, signatures, scope, key);
     }
     return receiver.add(ServiceDescriptor.ctor(keyedType(token, key), ctor, TypeSignatures.from(signatures), scope));
   },
-  addFactory(receiver: IManifest, ...args: AddFactoryArgs<string>): IManifest {
+  addFactory(receiver: IManifest,
+    ...args: [type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: string, key?: string] | [
+      token: Token,
+      factory: Func<any[], unknown>,
+      signatures: Signatures,
+      scope?: string,
+      key?: string,
+    ]) {
     const [token, factory, signatures, scope, key] = args;
     if (typeof token === 'string') {
       return receiver.addFactory(Type.from(token), factory, signatures, scope, key);
@@ -63,7 +46,8 @@ export const ManifestServiceAugmentations: AugmentationSet2<IManifest, IManifest
       ServiceDescriptor.factory(keyedType(token, key), factory, TypeSignatures.from(signatures), scope),
     );
   },
-  addValue(receiver: IManifest, ...args: AddValueArgs): IManifest {
+  addValue(receiver: IManifest,
+    ...args: [type: Type, value: unknown, key?: string] | [token: Token, value: unknown, key?: string]) {
     const [token, value, key] = args;
     if (typeof token === 'string') {
       return receiver.addValue(Type.from(token), value, key);
