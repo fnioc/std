@@ -8,70 +8,63 @@
 import '@rhombus-std/options.augmentations';
 
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
-import { applyAugmentations, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
+import { Flatten } from '../../di2.core/src/utils';
 import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';
-
-export const LoggerFilterOptionsExtensions = {
-  /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
-  addFilter(options: LoggerFilterOptions,
-    ...rest: [category: string | undefined, level: LogLevel] | [
-      filter: Func<[string | undefined, string | undefined, LogLevel], boolean>,
-    ]): LoggerFilterOptions
-  {
-    const [categoryOrFilter, level] = rest;
-    if (typeof categoryOrFilter === 'function') {
-      options.rules.push(new LoggerFilterRule(undefined, undefined, undefined, categoryOrFilter));
-    } else {
-      options.rules.push(new LoggerFilterRule(undefined, categoryOrFilter, level, undefined));
-    }
-    return options;
-  },
-} satisfies AugmentationSet<LoggerFilterOptions>;
-
-declare module './LoggerFilterOptions' {
-  interface LoggerFilterOptions {
-    addFilter(category: string | undefined, level: LogLevel): this;
-    addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
-  }
+interface ILoggerFilterOptionsExtensions {
+  addFilter(category: string | undefined, level: LogLevel): this;
+  addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
 }
 
-applyAugmentations(LoggerFilterOptions, LoggerFilterOptionsExtensions);
-
-export const FilterLoggingBuilderExtensions = {
-  /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
-  addFilter(builder: ILoggingBuilder,
-    ...rest: [category: string | undefined, level: LogLevel] | [
+export const LoggerFilterOptionsExtensions: AugmentationSet2<LoggerFilterOptions,
+  Flatten<ILoggerFilterOptionsExtensions>> = {
+    /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
+    addFilter(options: LoggerFilterOptions, ...rest: [category: string | undefined, level: LogLevel] | [
       filter: Func<[string | undefined, string | undefined, LogLevel], boolean>,
-    ]): ILoggingBuilder
-  {
-    return configureFilter(builder, (options) => {
-      if (rest.length === 2) {
-        LoggerFilterOptionsExtensions.addFilter(options, rest[0], rest[1]);
+    ]): LoggerFilterOptions {
+      const [categoryOrFilter, level] = rest;
+      if (typeof categoryOrFilter === 'function') {
+        options.rules.push(new LoggerFilterRule(undefined, undefined, undefined, categoryOrFilter));
       } else {
-        LoggerFilterOptionsExtensions.addFilter(options, rest[0]);
+        options.rules.push(new LoggerFilterRule(undefined, categoryOrFilter, level, undefined));
       }
-    });
-  },
-} satisfies AugmentationSet<ILoggingBuilder>;
+      return options;
+    },
+  };
+
+declare module './LoggerFilterOptions' {
+  interface LoggerFilterOptions extends ILoggerFilterOptionsExtensions {}
+}
+
+registerAugmentations(tokenfor<LoggerFilterOptions>(), LoggerFilterOptionsExtensions);
+
+interface IFilterLoggingBuilderExtensions {
+  addFilter(category: string | undefined, level: LogLevel): this;
+  addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
+}
+declare module '@rhombus-std/logging.core' {
+  interface ILoggingBuilder extends IFilterLoggingBuilderExtensions {}
+}
+export const FilterLoggingBuilderExtensions: AugmentationSet2<ILoggingBuilder,
+  Flatten<IFilterLoggingBuilderExtensions>> = {
+    /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
+    addFilter(builder, ...rest) {
+      return configureFilter(builder, (options) => {
+        options.addFilter(...rest);
+      });
+    },
+  };
 
 /** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TOKEN} pipeline. */
 function configureFilter(builder: ILoggingBuilder,
-  configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder
-{
+  configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder {
   // The chain is immutable: `configure` hands back a NEW manifest, so it must be
   // written into the builder's slot -- a bare call would register nothing.
   builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
   return builder;
-}
-
-declare module '@rhombus-std/logging.core' {
-  interface ILoggingBuilder {
-    addFilter(category: string | undefined, level: LogLevel): this;
-    addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
-  }
 }
 
 registerAugmentations(tokenfor<ILoggingBuilder>(), FilterLoggingBuilderExtensions);
