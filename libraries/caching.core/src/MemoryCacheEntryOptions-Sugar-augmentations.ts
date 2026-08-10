@@ -3,7 +3,7 @@
 // returns it for chaining, so one reusable bag can be built fluently and applied
 // to many entries via `CacheEntrySugarAugmentations.setOptions`.
 
-import { applyAugmentations, type AugmentationSet, type IChangeToken } from '@rhombus-std/primitives';
+import { type AugmentationSet, type IChangeToken } from '@rhombus-std/primitives';
 import type { CacheItemPriority } from './CacheItemPriority';
 import { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 import { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
@@ -67,5 +67,3 @@ export const MemoryCacheEntryOptionsSugarAugmentations = {
     return options;
   },
 } satisfies AugmentationSet<MemoryCacheEntryOptions>;
-
-applyAugmentations(MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations);

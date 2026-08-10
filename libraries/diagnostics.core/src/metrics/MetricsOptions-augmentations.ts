@@ -1,7 +1,5 @@
 // The MetricsOptions-targeted rule mutators: the value-object counterparts of
-// the same-named IMetricsBuilder methods, distinguished only by receiver. A
-// CLOSED set -- MetricsOptions is this package's own concrete class -- so the
-// install is a direct applyAugmentations, in ../options-install.
+// the same-named IMetricsBuilder methods, distinguished only by receiver.
 //
 // `undefined` name arguments match anything.
 
