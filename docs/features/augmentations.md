@@ -1,36 +1,22 @@
 # Augmentations
 
-@rhombus-std ports reference libraries into TypeScript, a structurally-typed language with no
-native notion of "add a method to a type after the fact." C# has exactly this feature — extension
-methods — and large parts of the reference API surface are built on it. This doc describes the
-mechanism we built to reproduce that behavior in TypeScript: the behavior we're trying to observe,
-how to author one, how to consume one, how it actually works, and what to watch out for.
+An **augmentation** adds members to an interface after the fact — dot-callable on every value of
+that interface, without touching the interface's declaring package. This doc describes the
+mechanism: the behavior it guarantees, how to author one, how to consume one, how it actually
+works, and what to watch out for.
 
-## The behavior we're reproducing
+## The behavior
 
-C# lets you declare a **static method that behaves like an instance member of an interface it
-doesn't own**:
+Once an augmentation exists, `builder.addJsonFile('appsettings.json')` compiles for **every** value
+statically known as an `IConfigBuilder` — a concrete class that implements it, a subinterface of
+it, an interface-typed variable or field, a generic type parameter constrained to it. Nobody who
+writes a new `IConfigBuilder` implementation has to do anything for `addJsonFile` to show up on it;
+the member rides the **declared interface identity** (nominal dispatch, resolved at compile time
+against the interface, never against a concrete type's name or shape), and the receiver's declaring
+package never knows.
 
-```csharp
-public static class JsonConfigExtensions
-{
-    public static IConfigBuilder AddJsonFile(this IConfigBuilder builder, string path)
-    {
-        return builder.Add(new JsonConfigSource(path));
-    }
-}
-```
-
-Once this exists, `builder.AddJsonFile("appsettings.json")` compiles for **every** value statically
-known as an `IConfigBuilder` — a concrete class that implements it, a subinterface of it, an
-interface-typed variable or field, a generic type parameter constrained to it. Nobody who writes a
-new `IConfigBuilder` implementation has to do anything for `AddJsonFile` to show up on it;
-the dispatch is **nominal** (by declared interface identity), not structural, and it is resolved at
-compile time against the interface, never against a concrete type's name or shape.
-
-That's the target behavior. TypeScript has no extension-method syntax and its type system is
-structural rather than nominal, so we can't lean on the language feature directly — we have to
-build the equivalent ourselves:
+TypeScript's type system is structural and has no native after-the-fact member syntax, so the
+mechanism is built rather than borrowed:
 
 - A member declared once against an interface must appear, **typed**, on every value statically
   known as that interface — implementers, subinterfaces, interface-typed references, constrained
