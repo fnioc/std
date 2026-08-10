@@ -22,8 +22,7 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
   #signalHandler?: Func<[], void>;
 
   public constructor(options: ConsoleLifetimeOptions, environment: IHostEnvironment,
-    applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory)
-  {
+    applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory) {
     this.#options = options;
     this.#environment = environment;
     this.#applicationLifetime = applicationLifetime;

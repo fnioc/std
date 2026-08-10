@@ -28,15 +28,13 @@ import { MetricsOptions } from './MetricsOptions';
 export const MetricsOptionsExtensions = {
   /** Appends an ENABLE {@link InstrumentRule} directly to a {@link MetricsOptions}. */
   enableMetrics(options: MetricsOptions, meterName?: string, instrumentName?: string, listenerName?: string,
-    scopes: MeterScope = METER_SCOPE_ALL): MetricsOptions
-  {
+    scopes: MeterScope = METER_SCOPE_ALL): MetricsOptions {
     options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, true));
     return options;
   },
   /** Appends a DISABLE {@link InstrumentRule} directly to a {@link MetricsOptions}. */
   disableMetrics(options: MetricsOptions, meterName?: string, instrumentName?: string, listenerName?: string,
-    scopes: MeterScope = METER_SCOPE_ALL): MetricsOptions
-  {
+    scopes: MeterScope = METER_SCOPE_ALL): MetricsOptions {
     options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, false));
     return options;
   },
@@ -95,16 +93,14 @@ export const MetricsBuilderExtensions = {
    * appends an ENABLE {@link InstrumentRule} to the bound {@link MetricsOptions}.
    */
   enableMetrics(builder: IMetricsBuilder, meterName?: string, instrumentName?: string, listenerName?: string,
-    scopes: MeterScope = METER_SCOPE_ALL): IMetricsBuilder
-  {
+    scopes: MeterScope = METER_SCOPE_ALL): IMetricsBuilder {
     return configureMetrics(builder, (options) => {
       MetricsOptionsExtensions.enableMetrics(options, meterName, instrumentName, listenerName, scopes);
     });
   },
   /** Disables instruments via a deferred rule. */
   disableMetrics(builder: IMetricsBuilder, meterName?: string, instrumentName?: string, listenerName?: string,
-    scopes: MeterScope = METER_SCOPE_ALL): IMetricsBuilder
-  {
+    scopes: MeterScope = METER_SCOPE_ALL): IMetricsBuilder {
     return configureMetrics(builder, (options) => {
       MetricsOptionsExtensions.disableMetrics(options, meterName, instrumentName, listenerName, scopes);
     });

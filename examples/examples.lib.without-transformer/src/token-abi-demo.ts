@@ -71,8 +71,7 @@ class Connection {
 /** Reads reports. Its slots deliberately cover the whole slot vocabulary. */
 class ReportService {
   public constructor(public readonly connection: Connection, public readonly region: string,
-    public readonly mintRepository: () => unknown, public readonly cache: unknown)
-  {}
+    public readonly mintRepository: () => unknown, public readonly cache: unknown) {}
 }
 
 const CONNECTION_TOKEN = 'reports:IConnection';
@@ -555,8 +554,7 @@ export function demonstrateTokenAbi(services: Iterable<ManifestEntry>): readonly
   // and the fully-open one scores 1 and is tried last.
   lines.push('ranking overlapping templates most-specific-first (a Specificity):');
   for (const ranked of rankBySpecificity([closeToken('reports:IPair', '$1', '$2'),
-    closeToken('reports:IPair', '$1', '$1'), closeToken('reports:IPair', USER_TOKEN, '$2')]))
-  {
+    closeToken('reports:IPair', '$1', '$1'), closeToken('reports:IPair', USER_TOKEN, '$2')])) {
     lines.push(`  ${ranked}`);
   }
 

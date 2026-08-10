@@ -118,8 +118,7 @@ function walkRequired(node: IConfig, schema: Schema, key: string, path: readonly
 }
 
 function walkObject(node: IConfig, schema: Record<PropertyKey, Schema>, path: readonly string[],
-  issues: string[]): Record<string, unknown>
-{
+  issues: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   // Only string keys are walked -- OPTIONAL is a symbol and only ever appears
   // INSIDE a wrapper, never as a sibling of the object's string keys.

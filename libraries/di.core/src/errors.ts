@@ -74,8 +74,7 @@ export class MissingMetadataError extends DiError {
  */
 export class NoSatisfiableSignatureError extends DiError {
   public constructor(public readonly token: Token, public readonly ctorName: string,
-    public readonly unsatisfiable: readonly Token[])
-  {
+    public readonly unsatisfiable: readonly Token[]) {
     super(
       `No satisfiable constructor signature for ${ctorName} (resolving `
         + `"${token}"). Every candidate signature names a dependency that is `

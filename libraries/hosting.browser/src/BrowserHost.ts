@@ -94,8 +94,7 @@ export const BrowserHost = {
    * (synchronous), not a hosted service's `stop()`.
    */
   run(settings?: BrowserHostApplicationBuilderSettings,
-    configureApp?: Action<[HostApplicationBuilder]>): Promise<void>
-  {
+    configureApp?: Action<[HostApplicationBuilder]>): Promise<void> {
     const builder = BrowserHost.createApplicationBuilder(settings);
     configureApp?.(builder);
     return builder.build().runAsync();

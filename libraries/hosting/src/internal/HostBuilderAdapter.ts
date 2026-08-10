@@ -125,8 +125,8 @@ export class HostBuilderAdapter implements IHostBuilder {
       // path the environment was built with; anything else is unsupported.
       const currentContentRootConfig = config.get(HostDefaults.contentRootKey);
       if (!equalsIgnoreCase(previousContentRootConfig, currentContentRootConfig)
-        && !equalsIgnoreCase(previousContentRootPath, resolveContentRootPath(currentContentRootConfig, process.cwd())))
-      {
+        && !equalsIgnoreCase(previousContentRootPath,
+          resolveContentRootPath(currentContentRootConfig, process.cwd()))) {
         throw new Error(
           `The content root changed from "${previousContentRootConfig}" to `
             + `"${currentContentRootConfig}". Changing host settings after the host builder `

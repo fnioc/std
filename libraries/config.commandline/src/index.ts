@@ -53,8 +53,7 @@ declare module '@rhombus-std/config' {
 // ConfigBuilder<T>, so ConfigManager satisfies it too.
 export const CommandLineConfigAugmentations = {
   addCommandLine<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder, args: readonly string[],
-    switchMappings?: CommandLineConfigSourceOptions['switchMappings']): TBuilder
-  {
+    switchMappings?: CommandLineConfigSourceOptions['switchMappings']): TBuilder {
     return builder.add(new CommandLineConfigSource(args, { switchMappings }));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

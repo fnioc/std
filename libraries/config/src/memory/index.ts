@@ -56,8 +56,7 @@ declare module '../ConfigManager' {
 // the module doc comment above.
 export const MemoryConfigBuilderExtensions = {
   addInMemoryCollection<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
-    initialData?: ConfigData): TBuilder
-  {
+    initialData?: ConfigData): TBuilder {
     return builder.add(new MemoryConfigSource({ initialData }));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

@@ -24,8 +24,7 @@ export class OptionsFactory<T> {
    * value.
    */
   constructor(makeBase: Func<[], T>, configures: Iterable<IConfigureOptions<T>>,
-    postConfigures: Iterable<IPostConfigureOptions<T>>, validates: Iterable<IValidateOptions<T>> = [])
-  {
+    postConfigures: Iterable<IPostConfigureOptions<T>>, validates: Iterable<IValidateOptions<T>> = []) {
     this.#makeBase = makeBase;
     this.#configures = [...configures];
     this.#postConfigures = [...postConfigures];

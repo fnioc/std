@@ -20,8 +20,7 @@ function recordingLogger(enabled = true): { logger: ILogger; written: Written[];
   // the merged wrapper members (§80) it never calls.
   const logger = {
     log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-      formatter: (state: TState, error: Error | undefined) => string): void
-    {
+      formatter: (state: TState, error: Error | undefined) => string): void {
       written.push({ logLevel, eventId, message: formatter(state, error), error });
     },
     isEnabled(): boolean {

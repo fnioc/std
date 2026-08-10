@@ -19,8 +19,7 @@ const ENABLED_LOCAL_METRICS_KEY = 'EnabledLocalMetrics';
 
 /** Appends per-instrument rules from an object of `{InstrumentName} = bool` leaves. */
 function loadInstrumentRules(options: MetricsOptions, meterSection: IConfigSection, scopes: MeterScope,
-  listenerName: string | undefined): void
-{
+  listenerName: string | undefined): void {
   for (const [relativePath, rawValue] of flattenLeaves(meterSection)) {
     const enabled = parseBool(rawValue);
     if (enabled === undefined) {
@@ -33,8 +32,7 @@ function loadInstrumentRules(options: MetricsOptions, meterSection: IConfigSecti
 
 /** Appends per-meter rules (bool leaf) or recurses into per-instrument rules (object). */
 function loadMeterRules(options: MetricsOptions, scopeSection: IConfigSection, scopes: MeterScope,
-  listenerName: string | undefined): void
-{
+  listenerName: string | undefined): void {
   for (const meterSection of scopeSection.getChildren()) {
     if (hasChildren(meterSection)) {
       loadInstrumentRules(options, meterSection, scopes, listenerName);

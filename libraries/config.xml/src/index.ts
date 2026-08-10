@@ -38,13 +38,11 @@ declare module '@rhombus-std/config' {
 
 export const XmlConfigAugmentations = {
   addXmlFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder, path: string,
-    opts?: XmlConfigSourceOptions): TBuilder
-  {
+    opts?: XmlConfigSourceOptions): TBuilder {
     return builder.add(new XmlConfigSource(path, opts));
   },
   addXmlStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
-    stream: StreamPayload
-  ): TBuilder {
+    stream: StreamPayload): TBuilder {
     return builder.add(new XmlStreamConfigSource(stream));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

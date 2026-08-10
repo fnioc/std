@@ -23,8 +23,7 @@ export class RecordingLogger implements ILogger {
   public constructor(public readonly category: string) {}
 
   public log<TState>(logLevel: LogLevel, _eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+    formatter: Func<[TState, Error | undefined], string>): void {
     this.records.push({ level: logLevel, message: formatter(state, error) });
   }
 

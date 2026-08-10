@@ -115,8 +115,7 @@ export interface IScopeFactory<S extends string = string> {
  * @typeParam S - the user-declared scope-name union.
  */
 export interface IServiceProvider<S extends string = string>
-  extends IResolver, IScopeFactory<S>, Disposable, AsyncDisposable
-{
+  extends IResolver, IScopeFactory<S>, Disposable, AsyncDisposable {
   /**
    * The name of this provider's open scope frame. Throws if the provider is
    * frameless (no scope open — e.g. the provider straight from `build()`).

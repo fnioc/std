@@ -22,8 +22,7 @@ class RecordingLogger implements ILogger {
   public enabled = true;
 
   public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: (state: TState, error: Error | undefined) => string): void
-  {
+    formatter: (state: TState, error: Error | undefined) => string): void {
     this.entries.push({ level: logLevel, eventId, message: formatter(state, error), error });
   }
 

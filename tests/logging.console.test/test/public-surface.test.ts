@@ -30,8 +30,7 @@ class UpperFormatter extends ConsoleFormatter {
   }
 
   public override write<TState>(logEntry: LogEntry<TState>, _scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void
-  {
+    textWriter: TextWriter): void {
     textWriter.write(`${logEntry.formatter(logEntry.state, logEntry.error).toUpperCase()}\n`);
   }
 }

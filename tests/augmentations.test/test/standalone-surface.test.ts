@@ -46,8 +46,7 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
       MemoryConfigBuilderExtensions, MetricsServiceExtensions, TracingServiceExtensions,
       LoggingServiceManifestAugmentations, MemoryCacheServiceManifestAugmentations, OptionsServiceManifestAugmentations,
       OptionsConfigServiceManifestAugmentations, LoggerFilterOptionsExtensions, MetricsOptionsExtensions,
-      TracingOptionsExtensions])
-    {
+      TracingOptionsExtensions]) {
       for (const name of Object.keys(set)) {
         expect((set as Record<string, unknown>)[name]).toBeInstanceOf(Function);
       }

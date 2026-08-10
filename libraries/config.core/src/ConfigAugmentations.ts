@@ -62,8 +62,7 @@ export const ConfigAugmentations = {
    * {@link IConfig} root (empty `path`, not a section) contributes no entry.
    */
   *asIterable(config: IConfig,
-    makePathsRelative: boolean = false): Generator<[key: string, value: string | undefined], void, unknown>
-  {
+    makePathsRelative: boolean = false): Generator<[key: string, value: string | undefined], void, unknown> {
     const rootIsSection = isConfigSection(config);
     const prefixLength = makePathsRelative && rootIsSection ? config.path.length + 1 : 0;
 

@@ -27,7 +27,6 @@ import type { DepSignatures, DepSlot } from './types.js';
  * ```
  */
 export function overrideSignatures(signatures: DepSignatures,
-  overrides: ReadonlyArray<string | undefined>): DepSignatures
-{
+  overrides: ReadonlyArray<string | undefined>): DepSignatures {
   return signatures.map((signature) => Object.assign(signature.slice(), overrides) as readonly DepSlot[]);
 }

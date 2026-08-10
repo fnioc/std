@@ -13,8 +13,7 @@ export const TextWriterExtensions = {
    * reset — omitting each pair when its color is `undefined`.
    */
   writeColoredMessage(textWriter: TextWriter, message: string, background: ConsoleColor | undefined,
-    foreground: ConsoleColor | undefined): void
-  {
+    foreground: ConsoleColor | undefined): void {
     if (background !== undefined) {
       textWriter.write(getBackgroundColorEscapeCode(background));
     }

@@ -56,8 +56,7 @@ export function applyDefaultHostConfig(builder: IConfigBuilder, args?: readonly 
  * variables, then the command-line args.
  */
 export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHostEnvironment,
-  args?: readonly string[]): void
-{
+  args?: readonly string[]): void {
   builder.add(new JsonConfigSource('appsettings.json', { optional: true }));
   builder.add(new JsonConfigSource(`appsettings.${environment.environmentName}.json`, { optional: true }));
   builder.add(new EnvironmentVariablesConfigSource());

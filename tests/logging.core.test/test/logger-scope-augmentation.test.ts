@@ -36,8 +36,7 @@ class DecoratedRecordingLogger implements ILogger {
   public readonly scopes: unknown[] = [];
   public readonly logs: Array<{ eventId: EventId; state: unknown; }> = [];
   public log<TState>(_logLevel: LogLevel, eventId: EventId, state: TState, _error: Error | undefined,
-    _formatter: (state: TState, error: Error | undefined) => string): void
-  {
+    _formatter: (state: TState, error: Error | undefined) => string): void {
     this.logs.push({ eventId, state });
   }
   public isEnabled(): boolean {

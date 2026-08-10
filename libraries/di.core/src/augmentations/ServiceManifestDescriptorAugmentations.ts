@@ -137,8 +137,7 @@ declare module '@rhombus-std/di.core' {
 // that pick, shared by the `tryAdd*` and `replace*` pairs. They always pass
 // `signatures` positionally, so the manifest they hand back is ungated.
 function addClassTo(manifest: IServiceManifest<string>, token: Token, ctor: Ctor, signatures: DepSignatures,
-  scope?: string, key?: string): IServiceManifest<string>
-{
+  scope?: string, key?: string): IServiceManifest<string> {
   if (scope === undefined) {
     return manifest.addClass(token, ctor, signatures);
   }
@@ -149,8 +148,7 @@ function addClassTo(manifest: IServiceManifest<string>, token: Token, ctor: Ctor
 }
 
 function addFactoryTo(manifest: IServiceManifest<string>, token: Token, factory: Func<any[], unknown>,
-  signatures: DepSignatures, scope?: string, key?: string): IServiceManifest<string>
-{
+  signatures: DepSignatures, scope?: string, key?: string): IServiceManifest<string> {
   if (scope === undefined) {
     return manifest.addFactory(token, factory, signatures);
   }
@@ -169,8 +167,7 @@ export const ServiceManifestDescriptorAugmentations = {
   },
 
   tryAdd(manifest: ServiceManifestClass<string>, token: Token, ctor: Ctor, signatures: DepSignatures, scope?: string,
-    key?: string): IServiceManifest<string>
-  {
+    key?: string): IServiceManifest<string> {
     if (manifest.hasRegistrations(keyedToken(token, key))) {
       return manifest;
     }
@@ -178,8 +175,7 @@ export const ServiceManifestDescriptorAugmentations = {
   },
 
   tryAddFactory(manifest: ServiceManifestClass<string>, token: Token, factory: Func<any[], unknown>,
-    signatures: DepSignatures, scope?: string, key?: string): IServiceManifest<string>
-  {
+    signatures: DepSignatures, scope?: string, key?: string): IServiceManifest<string> {
     if (manifest.hasRegistrations(keyedToken(token, key))) {
       return manifest;
     }
@@ -187,8 +183,7 @@ export const ServiceManifestDescriptorAugmentations = {
   },
 
   tryAddValue(manifest: ServiceManifestClass<string>, token: Token, value: unknown,
-    key?: string): IServiceManifest<string>
-  {
+    key?: string): IServiceManifest<string> {
     if (manifest.hasRegistrations(keyedToken(token, key))) {
       return manifest;
     }
@@ -196,20 +191,17 @@ export const ServiceManifestDescriptorAugmentations = {
   },
 
   replace(manifest: ServiceManifestClass<string>, token: Token, ctor: Ctor, signatures: DepSignatures, scope?: string,
-    key?: string): IServiceManifest<string>
-  {
+    key?: string): IServiceManifest<string> {
     return addClassTo(manifest.removeRegistrations(keyedToken(token, key)), token, ctor, signatures, scope, key);
   },
 
   replaceFactory(manifest: ServiceManifestClass<string>, token: Token, factory: Func<any[], unknown>,
-    signatures: DepSignatures, scope?: string, key?: string): IServiceManifest<string>
-  {
+    signatures: DepSignatures, scope?: string, key?: string): IServiceManifest<string> {
     return addFactoryTo(manifest.removeRegistrations(keyedToken(token, key)), token, factory, signatures, scope, key);
   },
 
   replaceValue(manifest: ServiceManifestClass<string>, token: Token, value: unknown,
-    key?: string): IServiceManifest<string>
-  {
+    key?: string): IServiceManifest<string> {
     const kept = manifest.removeRegistrations(keyedToken(token, key));
     return key === undefined ? kept.addValue(token, value) : kept.addValue(token, value, key);
   },

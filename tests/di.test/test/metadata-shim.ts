@@ -53,8 +53,7 @@ function patchThirdArg(method: 'addClass' | 'addFactory'): void {
     if (args.length === 2
       && typeof args[0] === 'string'
       && (typeof target === 'object' || typeof target === 'function')
-      && target !== null)
-    {
+      && target !== null) {
       const stashed = testStore.get(target);
       if (stashed !== undefined) {
         return original.call(this, args[0], target, stashed);

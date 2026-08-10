@@ -31,15 +31,13 @@ import { TracingRule } from './TracingRule';
 export const TracingOptionsExtensions = {
   /** Appends an ENABLE {@link TracingRule} directly to a {@link TracingOptions}. */
   enableTracing(options: TracingOptions, sourceName?: string, operationName?: string, listenerName?: string,
-    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): TracingOptions
-  {
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): TracingOptions {
     options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, true));
     return options;
   },
   /** Appends a DISABLE {@link TracingRule} directly to a {@link TracingOptions}. */
   disableTracing(options: TracingOptions, sourceName?: string, operationName?: string, listenerName?: string,
-    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): TracingOptions
-  {
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): TracingOptions {
     options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, false));
     return options;
   },
@@ -64,8 +62,7 @@ export const TracingBuilderExtensions = {
    * @throws {@link Error} if `name` is empty.
    */
   addTracingListener(builder: ITracingBuilder, name: string,
-    configure: Func<[ActivityListenerBuilder], void>): ITracingBuilder
-  {
+    configure: Func<[ActivityListenerBuilder], void>): ITracingBuilder {
     if (!name) {
       throw new Error('A tracing listener name must be a non-empty string.');
     }
@@ -88,16 +85,14 @@ export const TracingBuilderExtensions = {
   },
   /** Enables activities via a deferred rule. */
   enableTracing(builder: ITracingBuilder, sourceName?: string, operationName?: string, listenerName?: string,
-    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): ITracingBuilder
-  {
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): ITracingBuilder {
     return configureTracing(builder, (options) => {
       TracingOptionsExtensions.enableTracing(options, sourceName, operationName, listenerName, scopes);
     });
   },
   /** Disables activities via a deferred rule. */
   disableTracing(builder: ITracingBuilder, sourceName?: string, operationName?: string, listenerName?: string,
-    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): ITracingBuilder
-  {
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): ITracingBuilder {
     return configureTracing(builder, (options) => {
       TracingOptionsExtensions.disableTracing(options, sourceName, operationName, listenerName, scopes);
     });

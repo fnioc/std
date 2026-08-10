@@ -57,8 +57,7 @@ function getHostLifecycles(hostedServices: readonly IHostedService[]): IHostedLi
  * collected into `errors` rather than thrown.
  */
 async function foreachService<T>(services: readonly T[], signal: AbortSignal, concurrent: boolean,
-  abortOnFirstError: boolean, errors: unknown[], operation: Func<[T, AbortSignal], Promise<void>>): Promise<void>
-{
+  abortOnFirstError: boolean, errors: unknown[], operation: Func<[T, AbortSignal], Promise<void>>): Promise<void> {
   if (concurrent) {
     const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
@@ -109,8 +108,7 @@ export class Host implements IHost, AsyncDisposable {
   #backgroundServiceErrors?: unknown[];
 
   public constructor(services: IServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger,
-    hostLifetime: IHostLifetime, options: HostOptions)
-  {
+    hostLifetime: IHostLifetime, options: HostOptions) {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
       throw new Error('Replacing IHostApplicationLifetime is not supported.');
     }

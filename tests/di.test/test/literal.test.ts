@@ -30,8 +30,7 @@ describe('LiteralRef — ctor argument value supply', () => {
   test('each value kind is injected verbatim into a ctor', () => {
     class Holder {
       public constructor(public readonly s: unknown, public readonly n: unknown, public readonly b: unknown,
-        public readonly big: unknown)
-      {}
+        public readonly big: unknown) {}
     }
     defineDeps(Holder, [[{ value: 'dev' }, { value: 42 }, { value: true }, { value: 7n }]]);
 

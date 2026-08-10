@@ -106,8 +106,7 @@ export const HostingHostBuilderAugmentations = {
    * convenience overload; the two are told apart by declared arity.
    */
   configureHostOptions(hostBuilder: IHostBuilder,
-    configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): IHostBuilder
-  {
+    configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): IHostBuilder {
     return hostBuilder.configureServices((context, services) =>
       services.addValue(HOST_OPTIONS_CONFIGURE_TOKEN, (options: HostOptions) => {
         if (configureOptions.length >= 2) {
@@ -126,8 +125,7 @@ export const HostingHostBuilderAugmentations = {
    */
   configureLogging(hostBuilder: IHostBuilder,
     configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder],
-      void>): IHostBuilder
-  {
+      void>): IHostBuilder {
     return hostBuilder.configureServices((context, services) => {
       const builder = new LoggingBuilder(services);
       if (configureLoggingDelegate.length >= 2) {
@@ -148,8 +146,7 @@ export const HostingHostBuilderAugmentations = {
    */
   configureMetrics(hostBuilder: IHostBuilder,
     configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder],
-      void>): IHostBuilder
-  {
+      void>): IHostBuilder {
     return hostBuilder.configureServices((context, services) => {
       const builder = new MetricsBuilder(services);
       if (configureMetricsDelegate.length >= 2) {
@@ -204,8 +201,7 @@ export const HostingHostBuilderAugmentations = {
    */
   runConsoleAsync(hostBuilder: IHostBuilder,
     ...args: [abortSignal?: AbortSignal] | [configureOptions: Func<[ConsoleLifetimeOptions], void>,
-      abortSignal?: AbortSignal]): Promise<void>
-  {
+      abortSignal?: AbortSignal]): Promise<void> {
     let configureOptions: Func<[ConsoleLifetimeOptions], void> | undefined;
     let abortSignal: AbortSignal | undefined;
     if (typeof args[0] === 'function') {

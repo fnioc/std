@@ -32,8 +32,7 @@ import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './t
  * passed in.
  */
 export function registerBrowserLifetime(services: IServiceManifest, options: BrowserLifetimeOptions,
-  context?: PageContext): IServiceManifest
-{
+  context?: PageContext): IServiceManifest {
   let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);

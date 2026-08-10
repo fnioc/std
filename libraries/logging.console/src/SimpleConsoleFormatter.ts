@@ -82,8 +82,7 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
   }
 
   public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void
-  {
+    textWriter: TextWriter): void {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
     this.#writeInternal(scopeProvider, textWriter, message, logEntry.logLevel, logEntry.eventId.id,
       logEntry.error === undefined ? undefined : logEntry.error.stack ?? String(logEntry.error), logEntry.category,
@@ -91,8 +90,7 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
   }
 
   #writeInternal(scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter, message: string,
-    logLevel: LogLevel, eventId: number, error: string | undefined, category: string, stamp: Date | undefined): void
-  {
+    logLevel: LogLevel, eventId: number, error: string | undefined, category: string, stamp: Date | undefined): void {
     message = ConsoleControlCharacterSanitizer.sanitize(message);
     error = ConsoleControlCharacterSanitizer.sanitize(error);
     category = ConsoleControlCharacterSanitizer.sanitize(category);
@@ -183,8 +181,7 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
   }
 
   #writeScopeInformation(textWriter: TextWriter, scopeProvider: IExternalScopeProvider | undefined,
-    singleLine: boolean): void
-  {
+    singleLine: boolean): void {
     if (!this.formatterOptions.includeScopes || scopeProvider === undefined) {
       return;
     }

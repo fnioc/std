@@ -56,13 +56,11 @@ declare module '@rhombus-std/config' {
 // for both classes while preserving each receiver's own concrete return type.
 export const JsonConfigAugmentations = {
   addJsonFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder, path: string,
-    opts?: JsonConfigSourceOptions): TBuilder
-  {
+    opts?: JsonConfigSourceOptions): TBuilder {
     return builder.add(new JsonConfigSource(path, opts));
   },
   addJsonStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
-    stream: StreamPayload
-  ): TBuilder {
+    stream: StreamPayload): TBuilder {
     return builder.add(new JsonStreamConfigSource(stream));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

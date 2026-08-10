@@ -32,13 +32,11 @@ declare module '@rhombus-std/config' {
 
 export const IniConfigAugmentations = {
   addIniFile<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder, path: string,
-    opts?: IniConfigSourceOptions): TBuilder
-  {
+    opts?: IniConfigSourceOptions): TBuilder {
     return builder.add(new IniConfigSource(path, opts));
   },
   addIniStream<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
-    stream: StreamPayload
-  ): TBuilder {
+    stream: StreamPayload): TBuilder {
     return builder.add(new IniStreamConfigSource(stream));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

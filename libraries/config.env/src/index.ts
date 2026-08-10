@@ -49,8 +49,7 @@ declare module '@rhombus-std/config' {
 // ConfigBuilder<T>, so ConfigManager satisfies it too.
 export const EnvironmentVariablesExtensions = {
   addEnvironmentVariables<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder,
-    options?: EnvironmentVariablesConfigSourceOptions): TBuilder
-  {
+    options?: EnvironmentVariablesConfigSourceOptions): TBuilder {
     return builder.add(new EnvironmentVariablesConfigSource(options));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

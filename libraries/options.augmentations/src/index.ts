@@ -152,8 +152,7 @@ declare module '@rhombus-std/di.core' {
 // unions.
 export const OptionsServiceManifestAugmentations = {
   addOptions<T>(manifest: ServiceManifestClass<string>, token: Token,
-    source: Token | Func<[], T>
-  ): AddChain<string, 'scope' | 'key', false> {
+    source: Token | Func<[], T>): AddChain<string, 'scope' | 'key', false> {
     // Two verbs share the name, disambiguated by the second argument:
     //   - a `Token` (string)      → wrap the already-bound `T` resolved from it.
     //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
@@ -165,8 +164,7 @@ export const OptionsServiceManifestAugmentations = {
   },
   postConfigure<T, Deps extends readonly unknown[]>(manifest: ServiceManifestClass<string>, token: Token,
     step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
-    configureWithDeps?: (options: T, ...deps: Deps) => void): IServiceManifest<string>
-  {
+    configureWithDeps?: (options: T, ...deps: Deps) => void): IServiceManifest<string> {
     // DI-injected form: `step` is the dep-token tuple and `configureWithDeps`
     // the callback. Registers a factory for the post-configure slot whose
     // injected params are the resolved deps; it produces an
@@ -189,8 +187,7 @@ export const OptionsServiceManifestAugmentations = {
   validate<T, Deps extends readonly unknown[]>(manifest: ServiceManifestClass<string>, token: Token,
     validateOrDeps: Func<[T], boolean> | DepTokens<Deps>,
     failureMessageOrValidate?: string | ((options: T, ...deps: Deps) => boolean),
-    failureMessage?: string
-  ): IServiceManifest<string> {
+    failureMessage?: string): IServiceManifest<string> {
     // DI-injected form: `validateOrDeps` is the dep-token tuple,
     // `failureMessageOrValidate` the predicate, `failureMessage` its message.
     // Registers a factory whose injected params are the resolved deps,
@@ -217,8 +214,7 @@ export const OptionsServiceManifestAugmentations = {
 export const OptionsConfigServiceManifestAugmentations = {
   configure<T, Deps extends readonly unknown[]>(manifest: ServiceManifestClass<string>, token: Token,
     source: IConfig | Func<[T], void> | DepTokens<Deps>,
-    configureWithDeps?: (options: T, ...deps: Deps) => void
-  ): IServiceManifest<string> {
+    configureWithDeps?: (options: T, ...deps: Deps) => void): IServiceManifest<string> {
     // DI-injected form: `source` is the dep-token tuple and
     // `configureWithDeps` the callback. Registers a factory for the configure
     // slot whose injected params are the resolved deps; it produces an

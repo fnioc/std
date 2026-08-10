@@ -37,8 +37,7 @@ export class ConsoleLogger implements ILogger {
   public options: ConsoleLoggerOptions;
 
   public constructor(name: string, loggerProcessor: ConsoleLoggerProcessor, formatter: ConsoleFormatter,
-    scopeProvider: IExternalScopeProvider | undefined, options: ConsoleLoggerOptions)
-  {
+    scopeProvider: IExternalScopeProvider | undefined, options: ConsoleLoggerOptions) {
     this.#name = name;
     this.#queueProcessor = loggerProcessor;
     this.formatter = formatter;
@@ -47,8 +46,7 @@ export class ConsoleLogger implements ILogger {
   }
 
   public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+    formatter: Func<[TState, Error | undefined], string>): void {
     if (!this.isEnabled(logLevel)) {
       return;
     }

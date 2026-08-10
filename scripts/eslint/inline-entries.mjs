@@ -82,8 +82,7 @@ export function loadInlineEntries(/** @type {string} */ packageDir) {
 
 /** @returns {InlineEntry[]} */
 function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /** @type {Set<string>} */ seen,
-  /** @type {string} */ from)
-{
+  /** @type {string} */ from) {
   /** @type {InlineEntry[]} */
   const out = [];
   const entries = Array.isArray(cfg.entries) ? cfg.entries : [];

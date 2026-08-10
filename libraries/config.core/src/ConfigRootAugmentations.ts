@@ -25,9 +25,9 @@ export type ConfigDebugViewContext = {
 };
 
 /** The value/provider that last defined `key`, scanning providers in reverse. */
-function getValueAndProvider(root: IConfigRoot, key: string): [value: string | undefined, provider: IConfigProvider]
-  | undefined
-{
+function getValueAndProvider(root: IConfigRoot, key: string):
+  | [value: string | undefined, provider: IConfigProvider]
+  | undefined {
   const providers = [...root.providers].reverse();
   for (const provider of providers) {
     const result = provider.tryGet(key);

@@ -182,8 +182,7 @@ function collectionRequest(token: Token): CollectionRequest | undefined {
     || parsed.kind !== 'concrete'
     || parsed.key !== undefined
     || parsed.args.length !== 1
-    || (parsed.base !== ARRAY_TOKEN_BASE && parsed.base !== ITERABLE_TOKEN_BASE))
-  {
+    || (parsed.base !== ARRAY_TOKEN_BASE && parsed.base !== ITERABLE_TOKEN_BASE)) {
     return undefined;
   }
   // The element is the canonical serialisation of the parsed arg.
@@ -760,8 +759,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * instance.
    */
   #resolveWith<T>(token: Token, registration: Registration, vantage: Scope | undefined, stack: Token[], async: boolean,
-    captor?: Captor): T | Pending<T>
-  {
+    captor?: Captor): T | Pending<T> {
     if (stack.includes(token)) {
       throw new CircularDependencyError([...stack, token]);
     }
@@ -839,8 +837,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * the whole collection settles as one Pending.
    */
   #resolveCollection(request: CollectionRequest, vantage: Scope | undefined, stack: Token[], async: boolean,
-    captor?: Captor): unknown | Pending<unknown>
-  {
+    captor?: Captor): unknown | Pending<unknown> {
     const registrations = this.#collectionRegistrations(request.element);
     const elements = registrations.map((registration) =>
       this.#resolveWith<unknown>(request.element, registration, vantage, stack, async, captor)
@@ -985,8 +982,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * the dependencies are resolved against — THE critical rule.
    */
   #instantiate<T>(token: Token, registration: Registration, owningFrame: Scope | undefined, stack: Token[],
-    async: boolean, captor?: Captor): T | Pending<T>
-  {
+    async: boolean, captor?: Captor): T | Pending<T> {
     const signatures = registration.signatures;
 
     if (!signatures?.length) {
@@ -1169,8 +1165,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * ctor or record-less factory) — in that case args is empty.
    */
   #buildPartitioned<T>(targetToken: Token, target: Registration, signature: readonly DepSlot[] | undefined,
-    callerParams: readonly Token[], callArgs: readonly unknown[], owningFrame: Scope | undefined): T
-  {
+    callerParams: readonly Token[], callArgs: readonly unknown[], owningFrame: Scope | undefined): T {
     const stack: Token[] = [];
 
     if (signature === undefined || !signature.length) {
@@ -1223,8 +1218,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * None satisfiable ⇒ throw naming the unsatisfiable tokens.
    */
   #selectSignature(token: Token, targetName: string, signatures: ReadonlyArray<readonly DepSlot[]>,
-    async: boolean): readonly DepSlot[]
-  {
+    async: boolean): readonly DepSlot[] {
     const unsatisfiable = new Set<Token>();
     // Factory-target misses are tracked apart from the plain unsatisfiable
     // tokens so the more actionable `FactoryTargetError` still surfaces when an
@@ -1360,8 +1354,7 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * live stack has unwound by the time a rejection lands).
    */
   #resolveUnion<T>(slot: Union, owningFrame: Scope | undefined, stack: Token[], async: boolean, captor?: Captor,
-    members: readonly DepSlot[] = slot.union as readonly DepSlot[]): T | Pending<T>
-  {
+    members: readonly DepSlot[] = slot.union as readonly DepSlot[]): T | Pending<T> {
     for (let i = 0; i < members.length; i++) {
       const member = members[i]!;
       if (!this.#isResolvableSlot(member, async)) {
@@ -1397,9 +1390,9 @@ export class ServiceProviderClass<S extends string = string> implements IService
    * guard narrows the slot for its own arm at zero cast cost, and exhausting
    * every object-slot guard leaves a bare string `Token` for the final arm.
    */
-  #resolveSlot<T>(slot: DepSlot, owningFrame: Scope | undefined, stack: Token[], async: boolean, captor?: Captor): T
-    | Pending<T>
-  {
+  #resolveSlot<T>(slot: DepSlot, owningFrame: Scope | undefined, stack: Token[], async: boolean, captor?: Captor):
+    | T
+    | Pending<T> {
     if (isFactoryRef(slot)) {
       // The captor deliberately does NOT flow into the factory: it is invoked
       // later, outside this construction, so nothing here can capture it.

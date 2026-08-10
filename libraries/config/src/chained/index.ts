@@ -39,8 +39,7 @@ declare module '../ConfigManager' {
 // ConfigBuilder<T>, so ConfigManager satisfies it too.
 export const ChainedBuilderExtensions = {
   addConfig<TBuilder extends { add(source: IConfigSource): TBuilder; }>(builder: TBuilder, config: IConfig,
-    shouldDisposeConfig = false): TBuilder
-  {
+    shouldDisposeConfig = false): TBuilder {
     return builder.add(new ChainedConfigSource({ config, shouldDisposeConfig }));
   },
 } satisfies AugmentationSet<ConfigBuilder<unknown>>;

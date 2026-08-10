@@ -282,8 +282,7 @@ export class PaymentRouter implements IPaymentRouter {
   readonly #mintReceipt: (order: CheckoutOrder) => IReceipt;
 
   public constructor(resolver: IResolver, gatewayToken: Typeof<IPaymentGateway>,
-    mintReceipt: (order: CheckoutOrder) => IReceipt)
-  {
+    mintReceipt: (order: CheckoutOrder) => IReceipt) {
     this.#resolver = resolver;
     this.#gatewayToken = gatewayToken;
     this.#mintReceipt = mintReceipt;

@@ -203,8 +203,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
  * `#lookup`. Both would otherwise register a silent never-matches.
  */
 function openEntry(token: Token, ctor: Ctor, signatures: DepSignatures | undefined,
-  scope: string | undefined): ManifestEntry
-{
+  scope: string | undefined): ManifestEntry {
   const node = TokenNode.tryParse(token);
   if (node === undefined || node.kind !== 'concrete' || !node.args.length) {
     throw new OpenTokenRegistrationError(token, 'addClass');
@@ -263,8 +262,7 @@ function openEntry(token: Token, ctor: Ctor, signatures: DepSignatures | undefin
  */
 @augment(tokenfor<IServiceManifest>())
 export class ServiceManifestClass<Scopes extends string = 'singleton'>
-  implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>>
-{
+  implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>> {
   /**
    * The entries this node decorates — its PREDECESSOR in the chain. Empty at the
    * root. `protected __`-prefixed (never `#`) because the one subclass below has

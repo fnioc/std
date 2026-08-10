@@ -94,8 +94,7 @@ declare module '@rhombus-std/di.core' {
 // also exported so the same implementation works as a standalone call.
 export const MemoryCacheServiceManifestAugmentations = {
   addMemoryCache(manifest: ServiceManifestClass<string>,
-    setup?: Func<[MemoryCacheOptions], void>
-  ): IServiceManifest<string> {
+    setup?: Func<[MemoryCacheOptions], void>): IServiceManifest<string> {
     let m: IServiceManifest<string> = manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions())
       .as('singleton');
     if (setup !== undefined) {
@@ -113,21 +112,21 @@ export const MemoryCacheServiceManifestAugmentations = {
     // relationship check bails out on this self-assignment even though the two
     // sides are the same type (see diagnostics.core's
     // `clearMetricsListeners` for the full explanation).
-    m = m.tryAddFactory(MEMORY_CACHE_TOKEN, (resolver: IResolver) =>
-      new MemoryCache(resolver.resolve<IOptions<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
-        resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN)), [[RESOLVER_TOKEN]],
+    m = m.tryAddFactory(MEMORY_CACHE_TOKEN,
+      (resolver: IResolver) =>
+        new MemoryCache(resolver.resolve<IOptions<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
+          resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN)), [[RESOLVER_TOKEN]],
       'singleton') as IServiceManifest<string>;
     return m;
   },
 
   addDistributedMemoryCache(manifest: ServiceManifestClass<string>,
-    setup?: Func<[MemoryDistributedCacheOptions], void>
-  ): IServiceManifest<string> {
+    setup?: Func<[MemoryDistributedCacheOptions], void>): IServiceManifest<string> {
     // Same shape as addMemoryCache, over the distributed options token. The
     // cache is REGISTERED here but built lazily on first resolve, over its
     // own private MemoryCache.
-    let m: IServiceManifest<string> = manifest.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, () =>
-      new MemoryDistributedCacheOptions()).as('singleton');
+    let m: IServiceManifest<string> = manifest.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN,
+      () => new MemoryDistributedCacheOptions()).as('singleton');
     if (setup !== undefined) {
       m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, setup);
     }

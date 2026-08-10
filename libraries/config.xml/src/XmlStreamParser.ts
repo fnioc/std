@@ -243,8 +243,7 @@ function provideConfig(root: XmlElement | undefined): Array<[key: string, value:
 }
 
 function processElement(prefix: Prefix, element: XmlElement, pairs: Array<[key: string, value: string]>,
-  seen: Set<string>): void
-{
+  seen: Set<string>): void {
   for (const attribute of element.attributes) {
     prefix.push(attribute.name);
     addPair(prefix.value, attribute.value, pairs, seen);
@@ -265,8 +264,7 @@ function processElement(prefix: Prefix, element: XmlElement, pairs: Array<[key: 
 }
 
 function processChild(prefix: Prefix, child: XmlElement, index: number | undefined,
-  pairs: Array<[key: string, value: string]>, seen: Set<string>): void
-{
+  pairs: Array<[key: string, value: string]>, seen: Set<string>): void {
   prefix.push(child.elementName);
   if (child.nameAttribute) {
     prefix.push(child.nameAttribute);

@@ -1,4 +1,4 @@
-import { type AugmentationSet, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type Flatten, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { CacheItemPriority } from './CacheItemPriority';
 import type { ICacheEntry } from './ICacheEntry';
@@ -6,39 +6,52 @@ import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 import { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
 import type { PostEvictionDelegate } from './PostEvictionDelegate';
 
-/** The `CacheEntryExtensions` augmentation set for {@link ICacheEntry}. */
-export const CacheEntryExtensions = {
+interface ICacheEntrySugarAugmentations {
+  setPriority(priority: CacheItemPriority): this;
+  addExpirationToken(expirationToken: IChangeToken): this;
+  setAbsoluteExpiration(expiration: number | Date): this;
+  setSlidingExpiration(offsetMs: number): this;
+  registerPostEvictionCallback(callback: PostEvictionDelegate, state?: unknown): this;
+  setValue(value: unknown): this;
+  setSize(size: number): this;
+  setOptions(options: MemoryCacheEntryOptions): this;
+}
+
+declare module '@rhombus-std/caching.core' {
+  interface ICacheEntry extends ICacheEntrySugarAugmentations {}
+}
+
+export const CacheEntrySugarAugmentations: AugmentationSet2<ICacheEntry, Flatten<ICacheEntrySugarAugmentations>> = {
   /** Sets the entry's compaction {@link CacheItemPriority}. */
-  setPriority(entry: ICacheEntry, priority: CacheItemPriority): ICacheEntry {
+  setPriority(entry, priority) {
     entry.priority = priority;
     return entry;
   },
 
   /** Expires the entry when `expirationToken` fires. */
-  addExpirationToken(entry: ICacheEntry, expirationToken: IChangeToken): ICacheEntry {
+  addExpirationToken(entry, expirationToken) {
     entry.expirationTokens.push(expirationToken);
     return entry;
   },
 
-  /** Sets an absolute expiration -- `relativeToNowMs` milliseconds from now, or an absolute `Date`. */
-  setAbsoluteExpiration(entry: ICacheEntry, ...rest: [relativeToNowMs: number] | [absolute: Date]): ICacheEntry {
-    const [value] = rest;
-    if (value instanceof Date) {
-      entry.absoluteExpiration = value;
+  /** Sets an absolute expiration -- a number of milliseconds from now, or an absolute `Date`. */
+  setAbsoluteExpiration(entry, expiration) {
+    if (expiration instanceof Date) {
+      entry.absoluteExpiration = expiration;
     } else {
-      entry.absoluteExpirationRelativeToNow = value;
+      entry.absoluteExpirationRelativeToNow = expiration;
     }
     return entry;
   },
 
   /** Sets how long (in milliseconds) the entry may be inactive before removal. */
-  setSlidingExpiration(entry: ICacheEntry, offsetMs: number): ICacheEntry {
+  setSlidingExpiration(entry, offsetMs) {
     entry.slidingExpiration = offsetMs;
     return entry;
   },
 
   /** Registers a callback fired after the entry is evicted. */
-  registerPostEvictionCallback(entry: ICacheEntry, callback: PostEvictionDelegate, state?: unknown): ICacheEntry {
+  registerPostEvictionCallback(entry, callback, state) {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;
@@ -47,13 +60,13 @@ export const CacheEntryExtensions = {
   },
 
   /** Sets the entry's value. */
-  setValue(entry: ICacheEntry, value: unknown): ICacheEntry {
+  setValue(entry, value) {
     entry.value = value;
     return entry;
   },
 
   /** Sets the entry's size. Throws if `size` is negative. */
-  setSize(entry: ICacheEntry, size: number): ICacheEntry {
+  setSize(entry, size) {
     if (size < 0) {
       throw new RangeError(`size must be non-negative, was ${size}.`);
     }
@@ -62,7 +75,7 @@ export const CacheEntryExtensions = {
   },
 
   /** Applies every value of `options` to `entry`. Throws if `options` carries a post-eviction registration with no callback. */
-  setOptions(entry: ICacheEntry, options: MemoryCacheEntryOptions): ICacheEntry {
+  setOptions(entry, options) {
     entry.absoluteExpiration = options.absoluteExpiration;
     entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
     entry.slidingExpiration = options.slidingExpiration;
@@ -72,7 +85,7 @@ export const CacheEntryExtensions = {
     const expirationTokens = options.expirationTokensDirect;
     if (expirationTokens !== undefined) {
       for (const token of expirationTokens) {
-        CacheEntryExtensions.addExpirationToken(entry, token);
+        CacheEntrySugarAugmentations.addExpirationToken(entry, token);
       }
     }
 
@@ -91,20 +104,6 @@ export const CacheEntryExtensions = {
 
     return entry;
   },
-} satisfies AugmentationSet<ICacheEntry>;
+};
 
-declare module './ICacheEntry' {
-  interface ICacheEntry {
-    setPriority(priority: CacheItemPriority): this;
-    addExpirationToken(expirationToken: IChangeToken): this;
-    setAbsoluteExpiration(relativeToNowMs: number): this;
-    setAbsoluteExpiration(absolute: Date): this;
-    setSlidingExpiration(offsetMs: number): this;
-    registerPostEvictionCallback(callback: PostEvictionDelegate, state?: unknown): this;
-    setValue(value: unknown): this;
-    setSize(size: number): this;
-    setOptions(options: MemoryCacheEntryOptions): this;
-  }
-}
-
-registerAugmentations(tokenfor<ICacheEntry>(), CacheEntryExtensions);
+registerAugmentations(tokenfor<ICacheEntry>(), CacheEntrySugarAugmentations);
