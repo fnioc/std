@@ -9,9 +9,6 @@ import { TypeVisitor } from './TypeVisitor.js';
  * @remarks
  * One pass, no re-entry: a substituted type is spliced in as-is and never re-scanned, so
  * mapping `T` to a type containing `%T` terminates instead of looping.
- *
- * A subtree containing no substituted placeholder is returned by reference rather than
- * rebuilt, so identity survives everywhere nothing changed.
  */
 class SubstituteVisitor extends TypeVisitor<Type> {
   readonly #substitutions: ReadonlyMap<string, Type>;
@@ -30,54 +27,41 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   }
 
   protected override visitUnion(type: UnionType): Type {
-    const types = this.#all(type.members);
-    return types === type.members ? type : Type.union(...types);
+    return Type.union(...this.#all(type.members));
   }
 
   protected override visitIntersection(type: IntersectionType): Type {
-    const types = this.#all(type.members);
-    return types === type.members ? type : Type.intersection(...types);
+    return Type.intersection(...this.#all(type.members));
   }
 
   protected override visitTuple(type: TupleType): Type {
-    const types = this.#all(type.members);
-    return types === type.members ? type : Type.tuple(...types);
+    return Type.tuple(...this.#all(type.members));
   }
 
   protected override visitNamed(type: NamedType): Type {
-    const genericTypes = this.#all(type.genericArgs);
-    return genericTypes === type.genericArgs ? type : Type.named(type.name, type.from, genericTypes);
+    return Type.named(type.name, type.from, this.#all(type.genericArgs));
   }
 
   protected override visitFunction(type: FunctionType): Type {
-    const args = this.#all(type.args);
-    const returnType = this.visit(type.returnType);
-    return args === type.args && returnType === type.returnType ? type : Type.func(returnType, ...args);
+    return Type.func(this.visit(type.returnType), ...this.#all(type.args));
   }
 
   protected override visitCtor(type: CtorType): Type {
-    const args = this.#all(type.args);
-    const instanceType = this.visit(type.instanceType);
-    return args === type.args && instanceType === type.instanceType ? type : Type.ctor(instanceType, ...args);
+    return Type.ctor(this.visit(type.instanceType), ...this.#all(type.args));
   }
 
   protected override visitTag(type: TagType): Type {
-    const inner = this.visit(type.type);
-    return inner === type.type ? type : Type.tag(inner, type.tag);
+    return Type.tag(this.visit(type.type), type.tag);
   }
 
   protected override visitObject(type: ObjectType): Type {
-    const entries = Object.entries(type.members);
-    const visited = entries.map(([key, member]) => [key, this.visit(member)] as const);
-    return visited.every(([, member], index) => member === entries[index]![1])
-      ? type
-      : Type.object(Object.fromEntries(visited));
+    return Type.object(
+      Object.fromEntries(Object.entries(type.members).map(([key, member]) => [key, this.visit(member)])),
+    );
   }
 
-  /** Visits each slot, handing back the original array when every slot came back unchanged. */
   #all(types: readonly Type[]): readonly Type[] {
-    const visited = types.map(type => this.visit(type));
-    return visited.every((type, index) => type === types[index]) ? types : visited;
+    return types.map(type => this.visit(type));
   }
 }
 

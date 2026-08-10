@@ -95,6 +95,15 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
 
 const stringifyVisitor = new StringifyVisitor();
 
+/** A node is immutable once interned, so its spelling is computed once and kept. */
+const spellings = new WeakMap<Type, string>();
+
 export function stringifyType(type: Type): string {
-  return stringifyVisitor.visit(type, Precedence.arrow);
+  const known = spellings.get(type);
+  if (known !== undefined) {
+    return known;
+  }
+  const spelling = stringifyVisitor.visit(type, Precedence.arrow);
+  spellings.set(type, spelling);
+  return spelling;
 }

@@ -38,14 +38,14 @@ describe('Type.satisfies on tags', () => {
   test('a placeholder captures a tagged type whole', () => {
     const [satisfied, placeholders] = Type.satisfies(Type.tag(A, 'primary'), Type.placeholder('T'));
     expect(satisfied).toBe(true);
-    expect(Type.equals(placeholders!.get('T')!, Type.tag(A, 'primary'))).toBe(true);
+    expect(placeholders!.get('T')!).toBe(Type.tag(A, 'primary'));
   });
 
   test('a placeholder inside a tag captures only what the tag wraps', () => {
     const [satisfied, placeholders] = Type.satisfies(Type.tag(A, 'primary'),
       Type.tag(Type.placeholder('T'), 'primary'));
     expect(satisfied).toBe(true);
-    expect(Type.equals(placeholders!.get('T')!, A)).toBe(true);
+    expect(placeholders!.get('T')!).toBe(A);
   });
 });
 
@@ -54,7 +54,7 @@ describe('Type.match on tags', () => {
     const [matched, placeholders] = Type.match(Type.tag(Type.named('Box', 'app', [Type.placeholder('T')]), 'primary'),
       Type.tag(Type.named('Box', 'app', [A]), 'primary'));
     expect(matched).toBe(true);
-    expect(Type.equals(placeholders!.get('T')!, A)).toBe(true);
+    expect(placeholders!.get('T')!).toBe(A);
   });
 
   test('an untagged pattern does not match a tagged subject', () => {
