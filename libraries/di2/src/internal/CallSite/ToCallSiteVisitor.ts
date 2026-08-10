@@ -1,4 +1,4 @@
-import { IManifest, ServiceDescriptor } from '@rhombus-std/di2.core';
+import { CycleError, IManifest, ServiceDescriptor } from '@rhombus-std/di2.core';
 import { type CtorType, type FunctionType, type IntersectionType, type NamedType, type ObjectType, type PlaceholderType,
   type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
   type UnionType } from '@rhombus-std/primitives';
@@ -20,10 +20,14 @@ const SERVICE_PROVIDER_FROMS: readonly string[] = ['@rhombus-std/primitives', '@
  * for a whole-type registration match; the per-kind steps are only the fallback decomposition or
  * synthesis, so a registration for a composite beats its parts. Undefined means the type is
  * unsatisfiable from this manifest; the composite steps use that to fall back — a union tries
- * its next member, a descriptor its next signature.
+ * its next member, a descriptor its next signature. Re-entering a type the walk is still
+ * lowering throws {@link CycleError} instead, which ends the walk outright rather than falling
+ * back: no later member or signature can undo a loop.
  */
 export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   readonly #manifest: IManifest;
+  /** The types this walk has entered and not yet finished, outermost first. */
+  readonly #open: Type[] = [];
 
   constructor(context: CallSiteContext) {
     super();
@@ -34,7 +38,15 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     if (type.kind === 'placeholder') {
       return undefined;
     }
-    return first(this.#candidates(type)) ?? super.visit(type);
+    if (this.#open.some(open => Type.equals(open, type))) {
+      throw new CycleError([...this.#open, type]);
+    }
+    this.#open.push(type);
+    try {
+      return first(this.#candidates(type)) ?? super.visit(type);
+    } finally {
+      this.#open.pop();
+    }
   }
 
   /**
