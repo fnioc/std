@@ -138,7 +138,7 @@ export interface ObjectType extends TypeBase<'object'> {
   readonly members: Readonly<Record<string, Type>>;
 }
 
-type LiteralValue = string | number | bigint | boolean | null | undefined;
+export type LiteralValue = string | number | bigint | boolean | null | undefined;
 /** Any type that `typeof` can resolve */
 export interface TypeLiteralType extends TypeBase<'literal'> {
   readonly value: LiteralValue;
