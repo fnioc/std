@@ -1,0 +1,74 @@
+{
+  "name": "@rhombus-std/di2.extras",
+  "version": "10.1.0",
+  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
+  "keywords": [
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "transformer",
+    "compiler"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/di2.extras"
+  },
+  "type": "module",
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
+    },
+    "./ttsc": "./ttsc.mjs",
+    "./tokens/*": {
+      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "ttsc": {
+    "plugin": {
+      "transform": "@rhombus-std/di2.extras/ttsc"
+    }
+  },
+  "files": [
+    "dist",
+    "ttsc.mjs"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "tsc --noEmit -p tsconfig.ci.json"
+  },
+  "dependencies": {
+    "@rhombus-toolkit/func": "3.5.3"
+  },
+  "peerDependencies": {
+    "@rhombus-std/di2.core": "workspace:^",
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
+    "@rhombus-std/di2.core": "workspace:*",
+    "typescript": "^5.9.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
+      },
+      "./ttsc": "./ttsc.mjs"
+    }
+  }
+}
