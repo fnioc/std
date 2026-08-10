@@ -1,11 +1,11 @@
-import { type IManifest } from '@rhombus-std/di2.core';
+import { type Manifest } from '@rhombus-std/di2.core';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { ServiceProvider } from './ServiceProvider.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
 declare module '@rhombus-std/di2.core' {
-  interface IManifest<Scopes extends string> extends IManifestContainerBuilderAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestContainerBuilderAugmentations<Scopes> {}
 }
 
 /** Sealing a manifest into the provider that resolves against it. */
@@ -25,7 +25,7 @@ type IManifestContainerBuilderAugmentationsImpl = {
 };
 
 export const ManifestContainerBuilderAugmentations: AugmentationSet2<
-  IManifest,
+  Manifest,
   IManifestContainerBuilderAugmentationsImpl
 > = {
   buildServiceProvider(manifest, ...args) {
@@ -34,4 +34,4 @@ export const ManifestContainerBuilderAugmentations: AugmentationSet2<
   },
 };
 
-registerAugmentations(tokenfor<IManifest>(), ManifestContainerBuilderAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ManifestContainerBuilderAugmentations);

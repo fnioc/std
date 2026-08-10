@@ -1,4 +1,4 @@
-import { IManifest, ManifestValidationError, ServiceDescriptor, UnsatisfiableError,
+import { Manifest, ManifestValidationError, ServiceDescriptor, UnsatisfiableError,
   type ValidationFailure } from '@rhombus-std/di2.core';
 import type { IServiceProvider, Type } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite/CallSite.js';
@@ -16,9 +16,9 @@ export interface ResolveContext {
  * per-walk arrives in the {@link ResolveContext}.
  */
 export class Engine {
-  readonly #manifest: IManifest;
+  readonly #manifest: Manifest;
 
-  constructor(manifest: IManifest) {
+  constructor(manifest: Manifest) {
     this.#manifest = manifest;
   }
 
@@ -58,7 +58,7 @@ export class Engine {
     }
   }
 
-  #lower(type: Type, manifest: IManifest): CallSite {
+  #lower(type: Type, manifest: Manifest): CallSite {
     const site = CallSite.from(type, { manifest });
     if (site === undefined) {
       throw new UnsatisfiableError(type, 'nothing in the manifest can produce it');

@@ -1,4 +1,4 @@
-import { CycleError, IManifest, ServiceDescriptor } from '@rhombus-std/di2.core';
+import { CycleError, Manifest, ServiceDescriptor } from '@rhombus-std/di2.core';
 import { type CtorType, type FunctionType, type IntersectionType, type NamedType, type ObjectType, type PlaceholderType,
   type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
   type UnionType } from '@rhombus-std/primitives';
@@ -6,7 +6,7 @@ import { CallSite } from './CallSite.js';
 import { first, isAllThere } from './utils.js';
 
 export interface CallSiteContext {
-  readonly manifest: IManifest;
+  readonly manifest: Manifest;
 }
 
 /** The spellings under which a dependency on the provider itself is recognized. */
@@ -25,7 +25,7 @@ const SERVICE_PROVIDER_FROMS: readonly string[] = ['@rhombus-std/primitives', '@
  * back: no later member or signature can undo a loop.
  */
 export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
-  readonly #manifest: IManifest;
+  readonly #manifest: Manifest;
   /** The types this walk has entered and not yet finished, outermost first. */
   readonly #open: Type[] = [];
 
@@ -51,7 +51,10 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
 
   /**
    * Every registration that can serve {@link type}, newest first, each closed over the
-   * placeholders its match captured. The registration is the PATTERN side and must extend the
+   * placeholders its match captured.
+   *
+   * @remarks
+   * The registration is the PATTERN side and must extend the
    * request — its value has to be usable AS the requested type — with its placeholders
    * capturing the request's fragments, so `Box<%T>` serves `Box<Foo>` closed over `T := Foo`.
    */

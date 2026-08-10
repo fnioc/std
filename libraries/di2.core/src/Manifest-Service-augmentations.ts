@@ -1,7 +1,7 @@
 import { AugmentationSet2, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
-import { IManifest } from './IManifest';
+import { Manifest } from './Manifest';
 import { ServiceDescriptor } from './ServiceDescriptor';
 import { keyedType, Signatures, TypeSignatures } from './types';
 import { Flatten } from './utils';
@@ -14,10 +14,10 @@ interface IManifestServiceAugmentations<Scopes extends string> {
 }
 
 declare module '@rhombus-std/di2.core' {
-  interface IManifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
 }
 
-export const ManifestServiceAugmentations: AugmentationSet2<IManifest, Flatten<IManifestServiceAugmentations<string>>> =
+export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =
   {
     addClass(receiver, token, ctor, signatures, scope, key) {
       if (typeof token === 'string') {
@@ -41,4 +41,4 @@ export const ManifestServiceAugmentations: AugmentationSet2<IManifest, Flatten<I
     },
   };
 
-registerAugmentations(tokenfor<IManifest>(), ManifestServiceAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ManifestServiceAugmentations);

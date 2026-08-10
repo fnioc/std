@@ -1,4 +1,4 @@
-import { IManifest } from '@rhombus-std/di2.core';
+import { Manifest } from '@rhombus-std/di2.core';
 import { type IServiceProvider, type Token, Type } from '@rhombus-std/primitives';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
@@ -8,7 +8,7 @@ export class ServiceProvider implements IServiceProvider {
   readonly #engine: Engine;
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
-  constructor(manifest: IManifest, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
+  constructor(manifest: Manifest, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
     this.#engine = new Engine(manifest);
     if (options.validateOnBuild) {
       this.#engine.validate();
