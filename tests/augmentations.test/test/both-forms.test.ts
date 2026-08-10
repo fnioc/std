@@ -18,8 +18,8 @@ import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
-import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, MetricsOptions,
-  MetricsOptionsExtensions, TracingOptions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
+import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderAugmentations, MetricsOptions,
+  MetricsOptionsAugmentations, TracingOptions, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
@@ -79,7 +79,7 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     const listener = { name: 'listener' } as IMetricsListener;
 
     builder.addMetricsListener(listener); // method form
-    MetricsBuilderExtensions.addMetricsListener(builder, listener); // standalone member form
+    MetricsBuilderAugmentations.addMetricsListener(builder, listener); // standalone member form
 
     expect(recorded).toEqual([[METRICS_LISTENER_TOKEN, listener], [METRICS_LISTENER_TOKEN, listener]]);
   });
@@ -108,8 +108,8 @@ describe('reverse direction, value-object receiver — MetricsOptions (§29/#105
     viaMethod.disableMetrics('meter', 'instrument');
 
     const viaMember = new MetricsOptions();
-    MetricsOptionsExtensions.enableMetrics(viaMember, 'meter'); // standalone member form
-    MetricsOptionsExtensions.disableMetrics(viaMember, 'meter', 'instrument');
+    MetricsOptionsAugmentations.enableMetrics(viaMember, 'meter'); // standalone member form
+    MetricsOptionsAugmentations.disableMetrics(viaMember, 'meter', 'instrument');
 
     expect(viaMethod.rules).toEqual(viaMember.rules);
     expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);
@@ -125,8 +125,8 @@ describe('reverse direction, value-object receiver — TracingOptions (§29/#105
     viaMethod.disableTracing('source', 'operation');
 
     const viaMember = new TracingOptions();
-    TracingOptionsExtensions.enableTracing(viaMember, 'source'); // standalone member form
-    TracingOptionsExtensions.disableTracing(viaMember, 'source', 'operation');
+    TracingOptionsAugmentations.enableTracing(viaMember, 'source'); // standalone member form
+    TracingOptionsAugmentations.disableTracing(viaMember, 'source', 'operation');
 
     expect(viaMethod.rules).toEqual(viaMember.rules);
     expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);

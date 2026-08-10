@@ -10,10 +10,10 @@ import { ConfigBuilderCommandLineAugmentations } from '@rhombus-std/config.comma
 import { ConfigBuilderEnvAugmentations } from '@rhombus-std/config.env';
 import { ConfigBuilderJsonAugmentations } from '@rhombus-std/config.json';
 import { MetricsServiceExtensions, TracingServiceExtensions } from '@rhombus-std/diagnostics';
-import { MetricsOptionsExtensions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
+import { MetricsOptionsAugmentations, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptionsExtensions, LoggingServiceManifestAugmentations } from '@rhombus-std/logging';
-import { OptionsConfigServiceManifestAugmentations,
-  OptionsServiceManifestAugmentations } from '@rhombus-std/options.augmentations';
+import { ServiceManifestOptionsAugmentations,
+  ServiceManifestOptionsConfigAugmentations } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 const keys = (set: object): string[] => Object.keys(set).sort();
@@ -31,22 +31,22 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
     expect(keys(TracingServiceExtensions)).toEqual(['addTracing']);
     expect(keys(LoggingServiceManifestAugmentations)).toEqual(['addLogging']);
     expect(keys(MemoryCacheServiceManifestAugmentations)).toEqual(['addDistributedMemoryCache', 'addMemoryCache']);
-    expect(keys(OptionsServiceManifestAugmentations)).toEqual(['addOptions', 'postConfigure', 'validate']);
-    expect(keys(OptionsConfigServiceManifestAugmentations)).toEqual(['configure']);
+    expect(keys(ServiceManifestOptionsAugmentations)).toEqual(['addOptions', 'postConfigure', 'validate']);
+    expect(keys(ServiceManifestOptionsConfigAugmentations)).toEqual(['configure']);
   });
 
   test('value-object augmentations (§29/#105)', () => {
     expect(keys(LoggerFilterOptionsExtensions)).toEqual(['addFilter']);
-    expect(keys(MetricsOptionsExtensions)).toEqual(['disableMetrics', 'enableMetrics']);
-    expect(keys(TracingOptionsExtensions)).toEqual(['disableTracing', 'enableTracing']);
+    expect(keys(MetricsOptionsAugmentations)).toEqual(['disableMetrics', 'enableMetrics']);
+    expect(keys(TracingOptionsAugmentations)).toEqual(['disableTracing', 'enableTracing']);
   });
 
   test('every member is a receiver-first function', () => {
     for (const set of [ConfigBuilderJsonAugmentations, ConfigBuilderEnvAugmentations,
       ConfigBuilderCommandLineAugmentations, MemoryConfigBuilderAugmentations, MetricsServiceExtensions,
       TracingServiceExtensions, LoggingServiceManifestAugmentations, MemoryCacheServiceManifestAugmentations,
-      OptionsServiceManifestAugmentations, OptionsConfigServiceManifestAugmentations, LoggerFilterOptionsExtensions,
-      MetricsOptionsExtensions, TracingOptionsExtensions]) {
+      ServiceManifestOptionsAugmentations, ServiceManifestOptionsConfigAugmentations, LoggerFilterOptionsExtensions,
+      MetricsOptionsAugmentations, TracingOptionsAugmentations]) {
       for (const name of Object.keys(set)) {
         expect((set as Record<string, unknown>)[name]).toBeInstanceOf(Function);
       }
