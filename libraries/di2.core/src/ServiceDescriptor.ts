@@ -1,0 +1,120 @@
+import { Ctor, Func } from '@rhombus-toolkit/func';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import { Type } from './Type';
+
+export type ServiceDescriptor<Scopes extends string> = CtorServiceDescriptor<Scopes> | FactoryServiceDescriptor<Scopes>
+  | ValuedServiceDescriptor<Scopes>;
+
+interface CtorServiceDescriptor<Scopes extends string> {
+  readonly kind: 'ctor';
+  readonly serviceType: Type;
+  readonly ctor: Ctor;
+  readonly signatures: ReadonlyArray<readonly Type[]>;
+  readonly scope?: Scopes;
+  readonly serviceKey?: string;
+}
+
+interface FactoryServiceDescriptor<Scopes extends string> {
+  readonly kind: 'factory';
+  readonly serviceType: Type;
+  readonly factory: Func;
+  readonly signatures: ReadonlyArray<readonly Type[]>;
+  readonly scope?: Scopes;
+  readonly serviceKey?: string;
+}
+
+interface ValuedServiceDescriptor<Scopes extends string> {
+  readonly kind: 'value';
+  readonly serviceType: Type;
+  readonly value: any;
+  readonly serviceKey?: string;
+}
+
+export namespace ServiceDescriptor {
+  export namespace make {
+    export function ctor<Scopes extends string>(serviceType: Type | string, implementation: Ctor,
+      signatures: ReadonlyArray<readonly Type[]> | ReadonlyArray<readonly string[]>, scope?: Scopes,
+      serviceKey?: string): CtorServiceDescriptor<Scopes> {
+      if (typeof serviceType === 'string') {
+        return ctor(Type.parse(serviceType), implementation, signatures, scope, serviceKey);
+      }
+      if (isString2d(signatures)) {
+        return ctor(serviceType, implementation, signatures.map(sig => sig.map(token => Type.parse(token as string))),
+          scope, serviceKey);
+      }
+      return { kind: 'ctor', serviceType, ctor: implementation, signatures, scope, serviceKey };
+    }
+
+    export function factory<Scopes extends string>(serviceType: Type | string, implementation: Func,
+      signatures: ReadonlyArray<readonly Type[]> | ReadonlyArray<readonly string[]>, scope?: Scopes,
+      serviceKey?: string): FactoryServiceDescriptor<Scopes> {
+      if (typeof serviceType === 'string') {
+        return factory(Type.parse(serviceType), implementation, signatures, scope, serviceKey);
+      }
+      if (isString2d(signatures)) {
+        return factory(serviceType, implementation, signatures.map(sig =>
+          sig.map(token => Type.parse(token as string))
+        ), scope, serviceKey);
+      }
+      return { kind: 'factory', serviceType, factory: implementation, signatures, scope, serviceKey };
+    }
+
+    export function value<Scopes extends string>(serviceType: Type | string, value: any,
+      serviceKey?: string): ValuedServiceDescriptor<Scopes> {
+      const type = typeof serviceType === 'string' ? Type.parse(serviceType) : serviceType;
+      return { kind: 'value', serviceType: type, value, serviceKey };
+    }
+  }
+
+  /**
+   * Closes an open registration against the placeholders a `Type.satisfies` match captured,
+   * rewriting `serviceType` and every signature parameter so the result stands on its own.
+   */
+  export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>,
+    placeholders: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
+    if (!placeholders.size) {
+      return descriptor;
+    }
+    const serviceType = Type.substitute(descriptor.serviceType, placeholders);
+    switch (descriptor.kind) {
+      case 'value':
+        return { ...descriptor, serviceType };
+      case 'ctor':
+        return { ...descriptor, serviceType, signatures: substituteSignatures(descriptor.signatures, placeholders) };
+      case 'factory':
+        return { ...descriptor, serviceType, signatures: substituteSignatures(descriptor.signatures, placeholders) };
+      default:
+        return assertNever(descriptor);
+    }
+  }
+
+  export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
+    if (!matches(left, right)
+      || (left as any).scope !== (right as any).scope
+      || left.kind !== right.kind) {
+      return false;
+    }
+    switch (left.kind) {
+      case 'ctor':
+        return left.ctor === (right as CtorServiceDescriptor<string>).ctor;
+      case 'factory':
+        return left.factory === (right as FactoryServiceDescriptor<string>).factory;
+      case 'value':
+        return left.value === (right as ValuedServiceDescriptor<string>).value;
+      default:
+        return assertNever(left);
+    }
+  }
+  export function matches(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
+    return left.serviceKey === right.serviceKey && Type.equals(left.serviceType, right.serviceType);
+  }
+}
+
+function substituteSignatures(signatures: ReadonlyArray<readonly Type[]>,
+  placeholders: ReadonlyMap<string, Type>): ReadonlyArray<readonly Type[]> {
+  return signatures.map(signature => signature.map(param => Type.substitute(param, placeholders)));
+}
+
+function isString2d(value: ReadonlyArray<readonly any[]>): value is ReadonlyArray<readonly string[]> {
+  return value[0]?.length === 0 || typeof value[0]?.[0] === 'string';
+}
