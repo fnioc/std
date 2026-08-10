@@ -1,0 +1,78 @@
+// The file-default hooks every file-backed configuration source reads: which
+// IFileProvider to resolve paths against, and what to do when a load throws.
+// Both live in the builder's shared `properties` bag, so a source picks them up
+// through the plain IConfigBuilder it is handed at build time.
+
+import type { ConfigBuilder } from '@rhombus-std/config';
+import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
+import type { IFileProvider } from '@rhombus-std/fileproviders.core';
+import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
+import { type AugmentationSet2, type Flatten, process, registerAugmentations } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/func';
+import type { FileLoadErrorContext } from './FileLoadErrorContext';
+
+// The `builder.properties` keys the default file provider and load-error
+// handler are stashed under -- fixed literal strings so the property bag
+// stays interoperable across every file-config package. The handler key
+// still reads "Exception" (a cross-package data key, not a member name;
+// the member and type use "error").
+const FILE_PROVIDER_KEY = 'FileProvider';
+const FILE_LOAD_ERROR_HANDLER_KEY = 'FileLoadExceptionHandler';
+
+/** The load-error-handler callback stashed on the builder. */
+type FileLoadErrorHandler = Func<[FileLoadErrorContext], void>;
+
+interface IConfigBuilderFileAugmentations {
+  /** Sets the default file provider for file-based sources. */
+  setFileProvider(fileProvider: IFileProvider): this;
+  /** Gets the default file provider (a cwd-rooted PhysicalFileProvider when unset). */
+  getFileProvider(): IFileProvider;
+  /** Roots the default file provider at `basePath`. */
+  setBasePath(basePath: string): this;
+  /** Sets the default action invoked when a file-based source's load throws. */
+  setFileLoadErrorHandler(handler: FileLoadErrorHandler): this;
+  /** Gets the default file-load-error handler, if any. */
+  getFileLoadErrorHandler(): FileLoadErrorHandler | undefined;
+}
+
+declare module '@rhombus-std/config.core' {
+  interface IConfigBuilder extends IConfigBuilderFileAugmentations {}
+}
+
+// ConfigBuilder<T> cannot extend IConfigBuilder -- its `build()` returns the
+// schema-typed T, not an IConfigRoot -- so it merges the same member map
+// directly. Its generic arity and default MUST match the class declaration or
+// the merge fails (TS2428). ConfigManager needs no block of its own: it reaches
+// the members through IConfigManager, which does extend IConfigBuilder.
+declare module '@rhombus-std/config' {
+  interface ConfigBuilder<T = IndexedSection> extends IConfigBuilderFileAugmentations {}
+}
+
+export const ConfigBuilderFileAugmentations: AugmentationSet2<IConfigBuilder,
+  Flatten<IConfigBuilderFileAugmentations>> = {
+    setFileProvider(builder, fileProvider) {
+      builder.properties.set(FILE_PROVIDER_KEY, fileProvider);
+      return builder;
+    },
+    getFileProvider(builder) {
+      const provider = builder.properties.get(FILE_PROVIDER_KEY);
+      if (provider !== undefined) {
+        return provider as IFileProvider;
+      }
+      // Falls back to a physical provider rooted at the current working directory.
+      return new PhysicalFileProvider(process.cwd());
+    },
+    setBasePath(builder, basePath) {
+      return ConfigBuilderFileAugmentations.setFileProvider(builder, new PhysicalFileProvider(basePath));
+    },
+    setFileLoadErrorHandler(builder, handler) {
+      builder.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
+      return builder;
+    },
+    getFileLoadErrorHandler(builder) {
+      return builder.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
+    },
+  };
+
+registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderFileAugmentations);

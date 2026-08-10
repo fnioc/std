@@ -10,9 +10,11 @@ import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
 import { parseBoolean, parseNumber } from './coerce';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigSection, subtreeToObject } from './ConfigSection';
-import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
+import { getChildrenImplementation } from './internal-children';
 
-export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfigRoot, Disposable {
+export interface ConfigRoot extends IConfigRoot {}
+
+export class ConfigRoot extends IndexAccessed<IndexedSection> implements Disposable {
   readonly #providers: IConfigProvider[];
   readonly #changeTokenRegistrations: Disposable[] = [];
   #changeToken = new ConfigReloadToken();
@@ -148,7 +150,7 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
 
   /** The immediate top-level sections of this root. */
   public getChildren(): Iterable<IConfigSection> {
-    return InternalConfigRootExtensions.getChildrenImplementation(this, undefined);
+    return getChildrenImplementation(this, undefined);
   }
 
   /** The whole tree as a nested plain string object. */

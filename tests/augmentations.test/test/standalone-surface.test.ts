@@ -5,10 +5,10 @@
 // commit that changes the surface.
 
 import { MemoryCacheServiceManifestAugmentations } from '@rhombus-std/caching.memory';
-import { MemoryConfigBuilderExtensions } from '@rhombus-std/config';
-import { CommandLineConfigAugmentations } from '@rhombus-std/config.commandline';
-import { EnvironmentVariablesExtensions } from '@rhombus-std/config.env';
-import { JsonConfigAugmentations } from '@rhombus-std/config.json';
+import { MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
+import { ConfigBuilderCommandLineAugmentations } from '@rhombus-std/config.commandline';
+import { ConfigBuilderEnvAugmentations } from '@rhombus-std/config.env';
+import { ConfigBuilderJsonAugmentations } from '@rhombus-std/config.json';
 import { MetricsServiceExtensions, TracingServiceExtensions } from '@rhombus-std/diagnostics';
 import { MetricsOptionsExtensions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptionsExtensions, LoggingServiceManifestAugmentations } from '@rhombus-std/logging';
@@ -20,10 +20,10 @@ const keys = (set: object): string[] => Object.keys(set).sort();
 
 describe('standalone augmentation surface (member-name snapshots)', () => {
   test('config providers', () => {
-    expect(keys(JsonConfigAugmentations)).toEqual(['addJsonFile', 'addJsonStream']);
-    expect(keys(EnvironmentVariablesExtensions)).toEqual(['addEnvironmentVariables']);
-    expect(keys(CommandLineConfigAugmentations)).toEqual(['addCommandLine']);
-    expect(keys(MemoryConfigBuilderExtensions)).toEqual(['addInMemoryCollection']);
+    expect(keys(ConfigBuilderJsonAugmentations)).toEqual(['addJsonFile', 'addJsonStream']);
+    expect(keys(ConfigBuilderEnvAugmentations)).toEqual(['addEnvironmentVariables']);
+    expect(keys(ConfigBuilderCommandLineAugmentations)).toEqual(['addCommandLine']);
+    expect(keys(MemoryConfigBuilderAugmentations)).toEqual(['addInMemoryCollection']);
   });
 
   test('IServiceManifest augmentations', () => {
@@ -42,11 +42,11 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
   });
 
   test('every member is a receiver-first function', () => {
-    for (const set of [JsonConfigAugmentations, EnvironmentVariablesExtensions, CommandLineConfigAugmentations,
-      MemoryConfigBuilderExtensions, MetricsServiceExtensions, TracingServiceExtensions,
-      LoggingServiceManifestAugmentations, MemoryCacheServiceManifestAugmentations, OptionsServiceManifestAugmentations,
-      OptionsConfigServiceManifestAugmentations, LoggerFilterOptionsExtensions, MetricsOptionsExtensions,
-      TracingOptionsExtensions]) {
+    for (const set of [ConfigBuilderJsonAugmentations, ConfigBuilderEnvAugmentations,
+      ConfigBuilderCommandLineAugmentations, MemoryConfigBuilderAugmentations, MetricsServiceExtensions,
+      TracingServiceExtensions, LoggingServiceManifestAugmentations, MemoryCacheServiceManifestAugmentations,
+      OptionsServiceManifestAugmentations, OptionsConfigServiceManifestAugmentations, LoggerFilterOptionsExtensions,
+      MetricsOptionsExtensions, TracingOptionsExtensions]) {
       for (const name of Object.keys(set)) {
         expect((set as Record<string, unknown>)[name]).toBeInstanceOf(Function);
       }

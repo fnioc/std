@@ -15,7 +15,7 @@
 import { CacheEntrySugarAugmentations, CacheItemPriority,
   MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
-import { ConfigBuilder, MemoryConfigBuilderExtensions } from '@rhombus-std/config';
+import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, MetricsOptions,
@@ -27,7 +27,7 @@ import { describe, expect, test } from 'bun:test';
 describe('foreign-class direction — addInMemoryCollection', () => {
   test('method form and standalone form yield the same configuration', () => {
     const viaMethod = new ConfigBuilder().addInMemoryCollection({ Key: 'value' }).build();
-    const viaMember = MemoryConfigBuilderExtensions.addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
+    const viaMember = MemoryConfigBuilderAugmentations.addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
       .build();
 
     expect(viaMethod.get('Key')).toBe('value');
