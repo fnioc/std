@@ -14,7 +14,8 @@ export type CallSite =
   | LateBoundCallSite
   | ConstantCallSite
   | ServiceProviderCallSite
-  | IterableCallSite;
+  | IterableCallSite
+  | ArrayCallSite;
 
 export interface CtorCallSite {
   readonly kind: 'ctor';
@@ -43,9 +44,18 @@ export interface ConstantCallSite {
 export interface ServiceProviderCallSite {
   readonly kind: 'service-provider';
 }
+/**
+ * Every registration serving one type, realized lazily and re-iterably: each walk constructs
+ * afresh, so a transient member yields a new instance per pass.
+ */
 export interface IterableCallSite {
   readonly kind: 'iterable';
-  readonly types: Iterable<CallSite>;
+  readonly types: readonly CallSite[];
+}
+/** The same members as {@link IterableCallSite}, realized eagerly into a fresh array per request. */
+export interface ArrayCallSite {
+  readonly kind: 'array';
+  readonly types: readonly CallSite[];
 }
 
 export namespace CallSite {
@@ -64,8 +74,11 @@ export namespace CallSite {
   export function serviceProvider(): ServiceProviderCallSite {
     return { kind: 'service-provider' };
   }
-  export function iterable(types: Iterable<CallSite>): IterableCallSite {
+  export function iterable(types: readonly CallSite[]): IterableCallSite {
     return { kind: 'iterable', types };
+  }
+  export function array(types: readonly CallSite[]): ArrayCallSite {
+    return { kind: 'array', types };
   }
 
   export function from(type: Type, context: CallSiteContext): CallSite | undefined {
@@ -98,7 +111,7 @@ export namespace CallSite {
   }
 
   /** The first signature whose every parameter lowers to a call site, longest first. */
-  function lowerSignature(signatures: readonly (readonly Type[])[], visitor: TypeVisitor<CallSite | undefined>):
+  function lowerSignature(signatures: ReadonlyArray<readonly Type[]>, visitor: TypeVisitor<CallSite | undefined>):
     | CallSite[]
     | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
