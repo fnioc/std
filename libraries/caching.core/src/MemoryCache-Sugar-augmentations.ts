@@ -206,7 +206,7 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
 // it installs with a strategy that routes every call to the primitive: both
 // take just `key` and return the `[found, value]` tuple, and routing to the
 // primitive keeps the mounted method from recursing into itself.
-const cacheMerge = { tryGetValue(original, _extension) {
+const cacheMerge = { tryGetValue(original, _incoming) {
   return function(this: IMemoryCache, ...args: unknown[]) {
     return original.call(this, ...args);
   };

@@ -17,13 +17,13 @@ import { Multimap } from './Multimap.js';
 import type { Token } from './Token.js';
 
 /** A receiver-first augmentation function whose receiver type is erased in the bag. */
-type ExtensionFn = Func<[receiver: never, ...args: never[]], unknown>;
+type AugmentationFn = Func<[receiver: never, ...args: never[]], unknown>;
 
 /**
  * A member contribution: its augmentation function paired with the collision
  * strategy the same registration supplied for that name (if any).
  */
-type Contribution = readonly [fn: ExtensionFn, merge?: MergeStrategy];
+type Contribution = readonly [fn: AugmentationFn, merge?: MergeStrategy];
 
 /**
  * A token's bag: a per-name list of contributions, so a name registered by two
@@ -56,7 +56,7 @@ export function registerAugmentations<R>(token: Token, set: AugmentationSet<R>, 
     bag = new Multimap();
     bags.set(token, bag);
   }
-  for (const [name, fn] of Object.entries(set as Record<string, ExtensionFn>)) {
+  for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
     bag.add(name, [fn, merge?.[name]]);
   }
 

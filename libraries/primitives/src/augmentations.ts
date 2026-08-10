@@ -1,5 +1,5 @@
 // Installs augmentation sets onto a receiver class's prototype. A set is a named
-// object literal of receiver-first functions (`satisfies AugmentationSet<R>`);
+// object literal of receiver-first functions;
 // mounting turns each into a `this`-forwarding method, so callers reach them as
 // ordinary instance methods. `applyAugmentations` is the direct path for a
 // receiver whose set is known where the class is defined; the augmentation
@@ -25,17 +25,17 @@ export type AugmentationSet2<Rec, Impl extends Record<PropertyKey, Func>> = {
  *
  *   - `original` -- the member currently occupying the slot, adapted to a
  *     `this`-bound method. Call it as `original.call(this, ...args)`.
- *   - `extension` -- the incoming augmentation function, receiver-first. Call it
- *     as `extension(this, ...args)`.
+ *   - `incoming` -- the augmentation function being installed, receiver-first.
+ *     Call it as `incoming(this, ...args)`.
  *
  * and returns the DISPATCHER method that replaces the slot: a pure filter that
- * routes a call to `extension` when the arguments match the extension's own
+ * routes a call to `incoming` when the arguments match that function's own
  * signature, and to `original` otherwise. Routing the primitive-shaped call to
  * `original` is what keeps a wrapper (which typically re-enters the receiver
  * method in primitive shape) from recursing into itself.
  */
 export type MergeStrategy = (original: (this: any, ...args: any[]) => unknown,
-  extension: Func<[receiver: any, ...args: any[]], unknown>) => (this: any, ...args: any[]) => unknown;
+  incoming: Func<[receiver: any, ...args: any[]], unknown>) => (this: any, ...args: any[]) => unknown;
 
 /** Per-member collision resolvers, keyed by the augmentation member name. */
 export type MergeStrategies = Record<string, MergeStrategy>;
@@ -59,8 +59,8 @@ export function applyAugmentations<R extends Ctor<any[], any>>(Ctor: R, augmenta
  */
 export function installSet(Ctor: Ctor<any[], any>, augmentations: AugmentationSet<any>, merge?: MergeStrategies): void {
   const proto = Ctor.prototype as Record<PropertyKey, any>;
-  for (const [name, extension] of Object.entries(augmentations)) {
-    installMember(Ctor, proto, name, extension, merge?.[name]);
+  for (const [name, augmentation] of Object.entries(augmentations)) {
+    installMember(Ctor, proto, name, augmentation, merge?.[name]);
   }
 }
 
@@ -69,10 +69,10 @@ export function installSet(Ctor: Ctor<any[], any>, augmentations: AugmentationSe
  * taken one, or a throw when a taken name has no strategy.
  */
 function installMember(Ctor: Ctor<any[], any>, proto: Record<PropertyKey, any>, name: string,
-  extension: Func<[receiver: any, ...args: any[]], unknown>, strategy: MergeStrategy | undefined): void {
+  augmentation: Func<[receiver: any, ...args: any[]], unknown>, strategy: MergeStrategy | undefined): void {
   if (!(name in proto)) {
     proto[name] = function(this: any, ...args: any[]) {
-      return extension(this, ...args);
+      return augmentation(this, ...args);
     };
     return;
   }
@@ -85,5 +85,5 @@ function installMember(Ctor: Ctor<any[], any>, proto: Record<PropertyKey, any>, 
   const original = function(this: any, ...args: any[]) {
     return existing.call(this, ...args);
   };
-  proto[name] = strategy(original, extension);
+  proto[name] = strategy(original, augmentation);
 }

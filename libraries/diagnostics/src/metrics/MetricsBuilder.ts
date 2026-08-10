@@ -1,6 +1,6 @@
 // MetricsBuilder -- the concrete IMetricsBuilder the addMetrics augmentation hands
 // to a consumer's configure callback. It holds the service-registration surface
-// and nothing else; every capability is an extension function over it
+// and nothing else; every capability is an augmentation function over it
 // (@rhombus-std/diagnostics.core's addMetricsListener/enableMetrics/... and this
 // package's addMetricsConfig).
 
@@ -30,7 +30,7 @@ export class MetricsBuilder implements IMetricsBuilder {
   // the new manifest the immutable chain returns (see IMetricsBuilder).
   services: IServiceManifestBase;
 
-  /** @param services The registration surface extension functions register against. */
+  /** @param services The registration surface augmentation functions register against. */
   public constructor(services: IServiceManifestBase) {
     this.services = services;
   }

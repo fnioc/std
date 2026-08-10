@@ -37,10 +37,10 @@ export const LoggerFactoryAugmentations: AugmentationSet2<ILoggerFactory, Flatte
 
 // The `createLogger` merge strategy: the convenience form takes a type
 // (constructor); the primitive takes a category-name string.
-const factoryMerge = { createLogger(original, extension) {
+const factoryMerge = { createLogger(original, incoming) {
   return function(this: ILoggerFactory, first: unknown, ...rest: unknown[]) {
     if (typeof first === 'function') {
-      return extension(this, first, ...rest);
+      return incoming(this, first, ...rest);
     }
     return original.call(this, first, ...rest);
   };

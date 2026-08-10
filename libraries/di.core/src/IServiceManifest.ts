@@ -492,7 +492,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'> {
    *
    * This is the collection's own concern, so it lives here in di.core. The
    * ENGINE-CONSTRUCTING half — turning this snapshot into a `IServiceProvider` —
-   * is a `@rhombus-std/di` extension (`build()` below), because it needs the
+   * is a `@rhombus-std/di` augmentation (`build()` below), because it needs the
    * runtime resolution engine di.core deliberately does not depend on.
    */
   public seal(): SealedManifest {

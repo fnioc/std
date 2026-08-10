@@ -139,12 +139,12 @@ export const LoggerAugmentations: AugmentationSet2<ILogger, Flatten<ILoggerAugme
 const loggerMerge = {
   // `log`: the primitive's second argument is always an `EventId`; the
   // convenience wrapper's is a message string (or a leading `Error`).
-  log(original, extension) {
+  log(original, incoming) {
     return function(this: ILogger, logLevel: LogLevel, second: unknown, ...rest: unknown[]) {
       if (second instanceof EventId) {
         return original.call(this, logLevel, second, ...rest);
       }
-      return extension(this, logLevel, second, ...rest);
+      return incoming(this, logLevel, second, ...rest);
     };
   },
   // `beginScope`: the convenience wrapper formats a message template with
@@ -152,10 +152,10 @@ const loggerMerge = {
   // string). Route to the wrapper only for the unambiguous format form -- a
   // string WITH format args -- so a lone `beginScope("op-1")` stays raw
   // primitive state.
-  beginScope(original, extension) {
+  beginScope(original, incoming) {
     return function(this: ILogger, first: unknown, ...rest: unknown[]) {
       if (typeof first === 'string' && rest.length > 0) {
-        return extension(this, first, ...rest);
+        return incoming(this, first, ...rest);
       }
       return original.call(this, first, ...rest);
     };

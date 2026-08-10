@@ -46,9 +46,9 @@ export const ServiceManifestContainerBuilderAugmentations: AugmentationSet2<Serv
 // which this fully supersedes: the strategy installs a dispatcher that always
 // routes to the real one. Without a strategy the registry refuses the collision
 // rather than silently clobbering the class's own member.
-const containerBuilderMerge = { build(_stub, extension) {
+const containerBuilderMerge = { build(_stub, incoming) {
   return function(this: ServiceManifestClass<string>, ...args: unknown[]) {
-    return extension(this, ...args);
+    return incoming(this, ...args);
   };
 } } satisfies MergeStrategies;
 

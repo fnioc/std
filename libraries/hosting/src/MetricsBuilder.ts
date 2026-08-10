@@ -23,7 +23,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 // restating a member.
 export interface MetricsBuilder extends IMetricsBuilder {}
 
-/** Carries the service-registration surface the metrics extension functions register against. */
+/** Carries the service-registration surface the metrics augmentation functions register against. */
 @augment(tokenfor<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
   readonly #holder: IServiceManifestHolder;

@@ -4,7 +4,7 @@
 // augmentation sets (Metrics/TracingBuilderConfigAugmentations), the config-bind
 // IConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
-// registration builder AND the metrics/tracing builder extensions as instance
+// registration builder AND the metrics/tracing builder augmentations as instance
 // methods on the family's own builders (every augmentation available as both a
 // standalone function and a method). A consumer who only wants the sugar takes
 // a bare side-effect import: `import "@rhombus-std/diagnostics";`. This package

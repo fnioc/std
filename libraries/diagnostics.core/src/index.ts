@@ -1,5 +1,5 @@
 // Ships the metrics/tracing configuration surface (options, rules, scope enums,
-// builder interfaces) and their extension functions as real runtime -- but no
+// builder interfaces) and their augmentation functions as real runtime -- but no
 // metrics/tracing emission runtime sits behind them. What's provided is the
 // pure-data rule/options model, the DI-registration wiring, and the
 // most-specific-rule-wins resolvers (`getMostSpecificInstrumentRule`/
