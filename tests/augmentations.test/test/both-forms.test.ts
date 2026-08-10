@@ -12,7 +12,8 @@
 //     LoggerFilterOptions, and enableMetrics/enableTracing on
 //     MetricsOptions/TracingOptions -- installed onto the concrete option class.
 
-import { CacheEntryExtensions, CacheExtensions, CacheItemPriority } from '@rhombus-std/caching.core';
+import { CacheEntrySugarAugmentations, CacheItemPriority,
+  MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigBuilder, MemoryConfigBuilderExtensions } from '@rhombus-std/config';
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
@@ -39,12 +40,12 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     const cache = new MemoryCache(new MemoryCacheOptions());
 
     cache.set('a', 1); // method form
-    CacheExtensions.set(cache, 'b', 2); // standalone member form
+    MemoryCacheSugarAugmentations.set(cache, 'b', 2); // standalone member form
 
     expect(cache.get<number>('a')).toBe(1);
-    expect(CacheExtensions.get<number>(cache, 'b')).toBe(2);
+    expect(MemoryCacheSugarAugmentations.get(cache, 'b')).toBe(2);
     // cross-check: the two read forms agree on the same key.
-    expect(cache.get('b')).toBe(CacheExtensions.get(cache, 'b'));
+    expect(cache.get('b')).toBe(MemoryCacheSugarAugmentations.get(cache, 'b'));
   });
 
   test('entry setPriority method form equals the object-literal member form', () => {
@@ -54,7 +55,7 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     viaMethod.setPriority(CacheItemPriority.High);
 
     const viaMember = cache.createEntry('y');
-    CacheEntryExtensions.setPriority(viaMember, CacheItemPriority.High);
+    CacheEntrySugarAugmentations.setPriority(viaMember, CacheItemPriority.High);
 
     expect(viaMethod.priority).toBe(CacheItemPriority.High);
     expect(viaMethod.priority).toBe(viaMember.priority);

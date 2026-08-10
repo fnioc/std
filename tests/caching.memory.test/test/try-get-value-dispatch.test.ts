@@ -1,4 +1,4 @@
-// tryGetValue on a concrete MemoryCache: the convenience `CacheExtensions.tryGetValue`
+// tryGetValue on a concrete MemoryCache: the convenience `MemoryCacheSugarAugmentations.tryGetValue`
 // shares its name with IMemoryCache's own primitive, so it installs as a
 // dispatcher that routes to the primitive (the two are runtime-identical — the
 // wrapper only re-casts the value type). The method stays dot-callable and never

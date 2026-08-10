@@ -21,6 +21,7 @@
   "exports": {
     ".": {
       "source": "./src/index.ts",
+      "caching-core-source": "./src/index.ts",
       "bun": "./dist/bundle/index.js",
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/bundle/index.js",
