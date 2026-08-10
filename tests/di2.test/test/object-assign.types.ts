@@ -7,7 +7,7 @@
 // `never`, and `never` satisfies every constraint -- so the positive cases keep passing and only an
 // expected-error that stops erroring reveals it.
 
-import type { assign } from '@rhombus-std/di2.core';
+import type { assign } from '@rhombus-std/primitives';
 
 // Spelled out rather than inferred from a sparse literal, which is the point worth seeing: `[, 5]`
 // and `[undefined, 5]` infer the same tuple, so a hole is not something the type layer can react to.

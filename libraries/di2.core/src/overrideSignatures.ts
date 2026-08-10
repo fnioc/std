@@ -1,5 +1,6 @@
 import type { Type } from '@rhombus-std/primitives';
-import type { Signatures } from './types';
+import type { assign } from '@rhombus-std/primitives';
+import type { Signatures, TypeSignatures } from './types';
 
 /**
  * Overlays a sparse positional `overrides` array onto each derived dependency signature, so a
@@ -31,4 +32,9 @@ export function overrideSignatures(signatures: Signatures,
     Object.assign(merged, overrides);
     return merged;
   });
+}
+export function overrideSignatures2<S extends TypeSignatures, O extends ReadonlyArray<Type | undefined>>(signatures: S,
+  overrides: O) {
+  return signatures.map((signature) => Object.assign(signature.slice(), overrides))
+    .filter(<T>(p: T | undefined): p is T => !!p);
 }
