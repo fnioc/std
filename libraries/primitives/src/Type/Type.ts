@@ -2,8 +2,9 @@ import { Func } from '@rhombus-toolkit/func';
 import { memo, UnionToTuple } from '../utils.js';
 import { typeEquals } from './EqualsVisitor.js';
 import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
+import { parseType } from './internals/parser.js';
 import { matchType, satisfiesType } from './SatisfiesVisitor.js';
-import { stringifyVisitor } from './StringifyVisitor.js';
+import { stringifyType } from './StringifyVisitor.js';
 import { substituteType } from './SubstituteVisitor.js';
 import { typeValidatorVisitor } from './TypeValidatorVisitor.js';
 
@@ -52,20 +53,23 @@ export namespace Type {
     return { kind: 'tag', tag, type };
   }
 
+  /**
+   * Reads a type token back into the {@link Type} it spells — the inverse of {@link stringify}.
+   *
+   * @remarks
+   * Three names carry a reserved meaning, and only unqualified: `Func<Return, ...Args>` and
+   * `Ctor<Instance, ...Args>` spell the function and constructor kinds, and `ServiceProvider`
+   * spells the provider itself. Qualify one — `app:Func` — and it names an ordinary type, as do
+   * the value-type names `string`, `number` and the rest. An absent qualifier means `global`.
+   *
+   * @throws TypeParseError - when the token is malformed.
+   */
   export const from = memo(function from(token: string): Type {
-    /**
-     * Special cases of named types:
-     * ============================
-     * Func => FunctionType
-     * Ctor => CtorType
-     * ServiceProvider => ServiceProviderType
-     * value types e.g. string, number => error
-     */
-    throw 'not implemented';
+    return parseType(token);
   });
 
   export function stringify(type: Type): string {
-    return stringifyVisitor.visit(type);
+    return stringifyType(type);
   }
   export function validate(type: Type): readonly string[] {
     return typeValidatorVisitor.visit(type);
