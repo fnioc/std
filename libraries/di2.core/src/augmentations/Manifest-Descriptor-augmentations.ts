@@ -2,38 +2,39 @@ import { AugmentationSet2, registerAugmentations, Token, Type } from '@rhombus-s
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { type IManifest } from '../IManifest';
+import { type Manifest } from '../Manifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 import { keyedType, Signatures, TypeSignatures } from '../types';
+import { Flatten } from '../utils';
 
-type IManifestDescriptorAugmentations<Scopes extends string> = {
-  addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
-  tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
+interface IManifestDescriptorAugmentations<Scopes extends string> {
+  addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+  tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
-  tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
+  tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-    key?: string): IManifest<Scopes>;
-  tryAddValue(token: Token | Type, value: unknown, key?: string): IManifest<Scopes>;
+    key?: string): Manifest<Scopes>;
+  tryAddValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
 
   replaceClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope: Scopes | undefined,
-    key?: string): IManifest<Scopes>;
+    key?: string): Manifest<Scopes>;
   replaceFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope: Scopes | undefined,
-    key?: string): IManifest<Scopes>;
-  replaceValue(token: Token | Type, value: unknown, key?: string): IManifest<Scopes>;
+    key?: string): Manifest<Scopes>;
+  replaceValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
 
-  removeAll(token: Token | Type, key?: string): IManifest<Scopes>;
-};
-
-declare module '@rhombus-std/di2.core' {
-  interface IManifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
+  removeAll(token: Token | Type, key?: string): Manifest<Scopes>;
 }
 
-export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>,
-  IManifestDescriptorAugmentations<any>> = {
+declare module '@rhombus-std/di2.core' {
+  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
+}
+
+export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
+  Flatten<IManifestDescriptorAugmentations<any>>> = {
     addMany(manifest, descriptors) {
       return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), manifest);
     },
-    tryAdd(manifest: IManifest, ...descriptors: ReadonlyArray<ServiceDescriptor<any>>) {
+    tryAdd(manifest: Manifest, ...descriptors: ReadonlyArray<ServiceDescriptor<any>>) {
       return Iterator.from(descriptors)
         .filter(newDesc =>
           !Iterator.from(manifest).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc))
@@ -85,4 +86,4 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
     },
   };
 
-registerAugmentations(tokenfor<IManifest>(), ManifestDescriptorAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ManifestDescriptorAugmentations);
