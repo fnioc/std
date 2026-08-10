@@ -3,6 +3,7 @@ import type { Type, TypeVisitor } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { realizeCallSite } from './RealizeVisitor.js';
+import { type CallSiteContext, ToCallSiteVisitor } from './ToCallSiteVisitor.js';
 import { isAllThere } from './utils.js';
 
 export type { RealizeContext } from './RealizeVisitor.js';
@@ -12,7 +13,6 @@ export type CallSite =
   | FactoryCallSite
   | LateBoundCallSite
   | ConstantCallSite
-  | AdHocCallSite
   | ServiceProviderCallSite
   | IterableCallSite;
 
@@ -28,8 +28,8 @@ export interface FactoryCallSite {
   readonly args: CallSite[];
 }
 /**
- * A function value handed back to the caller; each invocation realizes {@link result} with the
- * call's arguments filling the ad-hoc holes named by {@link lateBoundArgs}, in order.
+ * A function value handed back to the caller; each invocation re-enters the engine to resolve
+ * {@link result}, the call's arguments registered as values for {@link lateBoundArgs}, in order.
  */
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
@@ -39,10 +39,6 @@ export interface LateBoundCallSite {
 export interface ConstantCallSite {
   readonly kind: 'constant';
   readonly value: any;
-}
-export interface AdHocCallSite {
-  readonly kind: 'adhoc';
-  readonly label: string;
 }
 export interface ServiceProviderCallSite {
   readonly kind: 'service-provider';
@@ -65,9 +61,6 @@ export namespace CallSite {
   export function constant(value: any): ConstantCallSite {
     return { kind: 'constant', value };
   }
-  export function adhoc(label: string): AdHocCallSite {
-    return { kind: 'adhoc', label };
-  }
   export function serviceProvider(): ServiceProviderCallSite {
     return { kind: 'service-provider' };
   }
@@ -75,48 +68,43 @@ export namespace CallSite {
     return { kind: 'iterable', types };
   }
 
+  export function from(type: Type, context: CallSiteContext): CallSite | undefined {
+    return new ToCallSiteVisitor(context).visit(type);
+  }
+
   /**
-   * Lowers an ALREADY-CLOSED descriptor — run it through {@link ServiceDescriptor.op.substitute}
+   * Lowers an ALREADY-CLOSED descriptor — run it through {@link ServiceDescriptor.substitute}
    * first if the match captured placeholders. `visitor` supplies the recursion that turns each
-   * signature parameter into the call site producing it.
-   *
-   * @throws {UnsatisfiableError} when no signature has every parameter satisfiable.
+   * signature parameter into the call site producing it. Undefined when no signature has every
+   * parameter satisfiable.
    */
   export function fromDescriptor(descriptor: ServiceDescriptor<string>, visitor: TypeVisitor<CallSite | undefined>):
     | CallSite
     | undefined {
-    try {
-      switch (descriptor.kind) {
-        case 'value':
-          return constant(descriptor.value);
-        case 'ctor':
-          return ctor(descriptor.ctor, lowerSignature(descriptor.signatures, visitor));
-        case 'factory':
-          return factory(descriptor.factory, lowerSignature(descriptor.signatures, visitor));
-        default:
-          return assertNever(descriptor);
+    switch (descriptor.kind) {
+      case 'value':
+        return constant(descriptor.value);
+      case 'ctor': {
+        const args = lowerSignature(descriptor.signatures, visitor);
+        return args && ctor(descriptor.ctor, args);
       }
-    } catch (error) {
-      if (error === 'failzor') {
-        return undefined;
+      case 'factory': {
+        const args = lowerSignature(descriptor.signatures, visitor);
+        return args && factory(descriptor.factory, args);
       }
-      throw error;
+      default:
+        return assertNever(descriptor);
     }
   }
 
-  /** The first signature whose every parameter lowers to a call site. */
-  function lowerSignature(signatures: ReadonlyArray<readonly Type[]>,
-    visitor: TypeVisitor<CallSite | undefined>): CallSite[] {
-    const lowered = Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
+  /** The first signature whose every parameter lowers to a call site, longest first. */
+  function lowerSignature(signatures: readonly (readonly Type[])[], visitor: TypeVisitor<CallSite | undefined>):
+    | CallSite[]
+    | undefined {
+    return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(param => visitor.visit(param)))
       .find(isAllThere);
-    if (!lowered) {
-      throw 'failzor';
-    }
-    return lowered;
   }
 
-  export namespace op {
-    export const realize = realizeCallSite;
-  }
+  export const realize = realizeCallSite;
 }
