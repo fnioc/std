@@ -6,12 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Project-specific rules only. General git/commit/worktree conventions live in user prefs, not here.
 
-**`docs/decisions.v2.md` is the living design record** — every load-bearing package boundary and
-invariant below is numbered and justified there (cited as "§N"). `docs/decisions.md` is its
-**retiring** predecessor: still worth reading for the _why_, but entries migrate out of it one at a
-time, so **never write to it** and never let an un-migrated entry there govern a decision without
-the owner ratifying it first. A newly settled decision is recorded in `decisions.v2.md` only. The
-root `README.md` is scaffolding-era and stale — ignore it.
+**Decision records** (`docs/`) — one authority rule: only the owner's file is gospel.
+
+- **`decisions.user.md` — GOSPEL.** Decisions the owner made, nothing else. Ground architectural
+  choices here and nowhere else. Every entry requires the owner's explicit signoff; never write to
+  it without the owner's knowledge.
+- **`decisions.v2.md` — NOT gospel.** Claude's own decision log (the "§N" citations below). Write to
+  it freely — no permission needed — to track your thinking and to argue a position with the owner;
+  never to ground an architectural decision.
+- **`decisions.md` — retired; never write to it.** Correcting one of its entries = strike it there
+  and author the corrected entry in `decisions.v2.md`.
+- **No entry ever overrides another — correct the original in place instead.** Conflicting entries
+  never coexist: the records read the same in any order. Entries speak only of the present, never of
+  how things used to be.
+- **di2 decisions stay distinct from di** until the owner says otherwise.
+
+The root `README.md` is scaffolding-era and stale — ignore it.
 
 ## Issue coding gate
 

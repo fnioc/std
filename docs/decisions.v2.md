@@ -1,10 +1,12 @@
 # Decisions (v2)
 
-The live record of **owner-ratified** design decisions. Each entry keeps its original `§N`
-id so existing `§N` citations across the codebase still resolve here. Entries arrive only two
-ways: migrated from the retiring `decisions.md` on explicit owner approval, or recorded fresh
-when the owner signals to save one. Kept terse on purpose — this doc is primarily for Claude's
-use. Migration rules live in the block at the top of `decisions.md`.
+**NOT gospel.** Claude's own decision log — the owner's record is `decisions.user.md`, and only that
+file grounds architectural choices. Claude writes here freely, without asking: its own calls, working
+positions, material for arguing a case with the owner. Each entry keeps its `§N` id so citations
+across the codebase resolve here. No entry overrides another — correct the original in place (for a
+`decisions.md` entry: strike it there, author the corrected entry here) — and every entry speaks only
+of the present, so the doc reads the same in any order. di2 decisions stay distinct from di. Kept
+terse on purpose — this doc is primarily for Claude's use.
 
 ---
 
