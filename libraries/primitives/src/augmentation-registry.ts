@@ -11,7 +11,8 @@
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { type AugmentationSet, installSet, type MergeStrategies, type MergeStrategy } from './augmentations.js';
+import { type AugmentationSet, AugmentationSet2, installSet, type MergeStrategies,
+  type MergeStrategy } from './augmentations.js';
 import { Multimap } from './Multimap.js';
 import type { Token } from './Token.js';
 
@@ -47,6 +48,8 @@ const subscribers = new Map<Token, DeltaInstaller[]>();
  * the collision is resolved (by a supplied `merge` strategy) or refused at install
  * time. Subscribers are invoked synchronously, so that refusal reaches this caller.
  */
+export function registerAugmentations<R, I extends Record<PropertyKey, Func>>(token: Token, set: AugmentationSet2<R, I>,
+  merge?: MergeStrategies): void;
 export function registerAugmentations<R>(token: Token, set: AugmentationSet<R>, merge?: MergeStrategies): void {
   let bag = bags.get(token);
   if (bag === undefined) {
