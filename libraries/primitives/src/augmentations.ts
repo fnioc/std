@@ -15,7 +15,9 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 /** An object literal of receiver-first augmentation functions all sharing receiver type R. */
 export type AugmentationSet<R> = Record<string, Func<[receiver: R, ...args: any[]], unknown>>;
-
+export type AugmentationSet2<Rec, Impl extends Record<PropertyKey, Func>> = {
+  [K in keyof Impl]: Func<[receiver: Rec, ...args: Parameters<Impl[K]>]>;
+};
 /**
  * A collision resolver for a single augmented member whose name is already
  * taken on the receiver prototype -- the class's own primitive, or a member an
@@ -45,8 +47,7 @@ export type MergeStrategies = Record<string, MergeStrategy>;
  * passed at the call site.
  */
 export function applyAugmentations<R extends Ctor<any[], any>>(Ctor: R, augmentations: AugmentationSet<InstanceType<R>>,
-  merge?: MergeStrategies): void
-{
+  merge?: MergeStrategies): void {
   installSet(Ctor, augmentations, merge);
 }
 
@@ -68,8 +69,7 @@ export function installSet(Ctor: Ctor<any[], any>, augmentations: AugmentationSe
  * taken one, or a throw when a taken name has no strategy.
  */
 function installMember(Ctor: Ctor<any[], any>, proto: Record<PropertyKey, any>, name: string,
-  extension: Func<[receiver: any, ...args: any[]], unknown>, strategy: MergeStrategy | undefined): void
-{
+  extension: Func<[receiver: any, ...args: any[]], unknown>, strategy: MergeStrategy | undefined): void {
   if (!(name in proto)) {
     proto[name] = function(this: any, ...args: any[]) {
       return extension(this, ...args);
