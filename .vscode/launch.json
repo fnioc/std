@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "app.with-transformer",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/examples.app.with-transformer/dist/main.js",
+      "cwd": "${workspaceFolder}/examples/examples.app.with-transformer",
+      "preLaunchTask": "build app.with-transformer",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/examples/examples.app.with-transformer/dist/**/*.js"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "app.without-transformer",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/examples.app.without-transformer/dist/main.js",
+      "cwd": "${workspaceFolder}/examples/examples.app.without-transformer",
+      "preLaunchTask": "build app.without-transformer",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/examples/examples.app.without-transformer/dist/**/*.js"],
+      "console": "integratedTerminal"
+    }
+  ]
+}

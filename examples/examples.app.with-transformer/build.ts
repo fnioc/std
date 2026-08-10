@@ -41,6 +41,7 @@ const js = await Bun.build({
   outdir: dist,
   target: 'node',
   format: 'esm',
+  sourcemap: 'linked',
   external: [
     '@rhombus-std/config',
     '@rhombus-std/di',
