@@ -1,4 +1,6 @@
 import { LogLevel } from '@rhombus-std/logging.core';
+import { augment } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 /**
@@ -16,8 +18,7 @@ export class LoggerFilterRule {
   public readonly filter: Func<[string | undefined, string | undefined, LogLevel], boolean> | undefined;
 
   public constructor(providerName: string | undefined, categoryName: string | undefined, logLevel: LogLevel | undefined,
-    filter: Func<[string | undefined, string | undefined, LogLevel], boolean> | undefined)
-  {
+    filter: Func<[string | undefined, string | undefined, LogLevel], boolean> | undefined) {
     this.providerName = providerName;
     this.categoryName = categoryName;
     this.logLevel = logLevel;
@@ -31,6 +32,7 @@ export class LoggerFilterRule {
 }
 
 /** The options for a logger filter. */
+@augment(tokenfor<LoggerFilterOptions>())
 export class LoggerFilterOptions {
   /** Whether logging scopes are captured. Defaults to `true`. */
   public captureScopes = true;
