@@ -171,16 +171,32 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
       return CallSite.serviceProvider();
     }
     if (isIterableType(type)) {
-      const itemType = type.genericArgs[0]!;
-      // Materialized: the iterable callsite must survive repeated realization.
-      const collected = [...this.#candidates(itemType)];
-      const synthesized = this.#synthesized(itemType);
-      if (synthesized) {
-        collected.push(synthesized);
-      }
-      return CallSite.iterable(collected);
+      return CallSite.iterable(this.#collection(type.genericArgs[0]!));
+    }
+    if (isArrayType(type)) {
+      return CallSite.array(this.#collection(type.genericArgs[0]!));
     }
     return undefined;
+  }
+
+  /**
+   * Every way the manifest can produce {@link itemType}, in REGISTRATION order, materialized so
+   * the call site survives repeated realization.
+   *
+   * @remarks
+   * Registration order is what a consumer walking the collection expects — services come out in
+   * the order they were authored. It also puts the newest registration last, which is the one a
+   * request for a single {@link itemType} resolves to, so "the collection ends with the singular
+   * answer" holds without being arranged for separately.
+   *
+   * Synthesis leads because a registration outranks it: {@link visit} consults the manifest before
+   * falling back to synthesis, so the synthesized member is the weakest answer and belongs at the
+   * end newest-wins never reaches.
+   */
+  #collection(itemType: Type): CallSite[] {
+    const registered = [...this.#candidates(itemType)].reverse();
+    const synthesized = this.#synthesized(itemType);
+    return synthesized ? [synthesized, ...registered] : registered;
   }
 
   /**
@@ -238,4 +254,9 @@ function isServiceProviderType(type: NamedType): boolean {
 
 function isIterableType(type: NamedType): boolean {
   return type.name === 'Iterable' && type.from === 'global' && type.genericArgs.length === 1;
+}
+
+/** `T[]` and `Array<T>` derive the same type, so one recognition covers both spellings. */
+function isArrayType(type: NamedType): boolean {
+  return type.name === 'Array' && type.from === 'global' && type.genericArgs.length === 1;
 }

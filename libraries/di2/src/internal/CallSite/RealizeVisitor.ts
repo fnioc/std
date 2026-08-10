@@ -2,8 +2,8 @@ import { ServiceDescriptor } from '@rhombus-std/di2.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
-import type { CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundCallSite,
-  ServiceProviderCallSite } from './CallSite.js';
+import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite,
+  LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
 
 export interface RealizeContext {
   readonly engine: Engine;
@@ -42,6 +42,8 @@ class RealizeVisitor {
         return this.visitServiceProvider(site);
       case 'iterable':
         return this.visitIterable(site);
+      case 'array':
+        return this.visitArray(site);
       default:
         return assertNever(site);
     }
@@ -72,8 +74,24 @@ class RealizeVisitor {
     return this.#context.serviceProvider;
   }
 
+  /**
+   * @remarks
+   * Re-iterable rather than a one-shot iterator: a caller that walks it twice gets a value both
+   * times. Each walk realizes afresh, so a transient member is a new instance per pass.
+   */
   protected visitIterable(site: IterableCallSite): any {
-    return Iterator.from(site.types).map(type => this.visit(type));
+    const realize = (inner: CallSite) => this.visit(inner);
+    return {
+      *[Symbol.iterator]() {
+        for (const inner of site.types) {
+          yield realize(inner);
+        }
+      },
+    };
+  }
+
+  protected visitArray(site: ArrayCallSite): any {
+    return site.types.map(inner => this.visit(inner));
   }
 }
 
