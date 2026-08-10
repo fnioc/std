@@ -11,7 +11,6 @@ interface CtorServiceDescriptor<Scopes extends string> {
   readonly ctor: Ctor;
   readonly signatures: ReadonlyArray<readonly Type[]>;
   readonly scope?: Scopes;
-  readonly serviceKey?: string;
 }
 
 interface FactoryServiceDescriptor<Scopes extends string> {
@@ -20,30 +19,27 @@ interface FactoryServiceDescriptor<Scopes extends string> {
   readonly factory: Func;
   readonly signatures: ReadonlyArray<readonly Type[]>;
   readonly scope?: Scopes;
-  readonly serviceKey?: string;
 }
 
 interface ValuedServiceDescriptor<Scopes extends string> {
   readonly kind: 'value';
   readonly serviceType: Type;
   readonly value: any;
-  readonly serviceKey?: string;
 }
 
 export namespace ServiceDescriptor {
   export function ctor<Scopes extends string>(serviceType: Type, implementation: Ctor,
-    signatures: ReadonlyArray<readonly Type[]>, scope?: Scopes, serviceKey?: string): CtorServiceDescriptor<Scopes> {
-    return { kind: 'ctor', serviceType, ctor: implementation, signatures, scope, serviceKey };
+    signatures: ReadonlyArray<readonly Type[]>, scope?: Scopes): CtorServiceDescriptor<Scopes> {
+    return { kind: 'ctor', serviceType, ctor: implementation, signatures, scope };
   }
 
   export function factory<Scopes extends string>(serviceType: Type, implementation: Func,
-    signatures: ReadonlyArray<readonly Type[]>, scope?: Scopes, serviceKey?: string): FactoryServiceDescriptor<Scopes> {
-    return { kind: 'factory', serviceType, factory: implementation, signatures, scope, serviceKey };
+    signatures: ReadonlyArray<readonly Type[]>, scope?: Scopes): FactoryServiceDescriptor<Scopes> {
+    return { kind: 'factory', serviceType, factory: implementation, signatures, scope };
   }
 
-  export function value<Scopes extends string>(serviceType: Type, value: any,
-    serviceKey?: string): ValuedServiceDescriptor<Scopes> {
-    return { kind: 'value', serviceType, value, serviceKey };
+  export function value<Scopes extends string>(serviceType: Type, value: any): ValuedServiceDescriptor<Scopes> {
+    return { kind: 'value', serviceType, value };
   }
 
   /**
@@ -92,8 +88,12 @@ export namespace ServiceDescriptor {
         return assertNever(left);
     }
   }
+  /**
+   * Do the two occupy the same registration slot? The service type is the whole of a
+   * registration's identity — a keyed registration carries its key inside that type, as a tag.
+   */
   export function matches(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
-    return left.serviceKey === right.serviceKey && Type.equals(left.serviceType, right.serviceType);
+    return Type.equals(left.serviceType, right.serviceType);
   }
 }
 

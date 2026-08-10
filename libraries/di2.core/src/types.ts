@@ -11,6 +11,15 @@ export namespace TypeSignatures {
   }
 }
 
+/**
+ * The type a keyed registration is filed under. A `key` on a manifest verb is sugar for tagging
+ * the service type, so the key travels inside the type instead of beside it and a request has to
+ * spell the same tag to reach the registration.
+ */
+export function keyedType(type: Type, key: string | undefined): Type {
+  return key === undefined ? type : Type.tag(type, key);
+}
+
 // /**
 //  * Anything a dependency signature can describe: a class constructor (its deps
 //  * are the ctor parameters) or a factory function (its deps are the call
