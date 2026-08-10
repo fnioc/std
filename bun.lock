@@ -284,22 +284,6 @@
         "@rhombus-std/config": "workspace:^",
       },
     },
-    "libraries/di.extras": {
-      "name": "@rhombus-std/di.extras",
-      "version": "10.1.0",
-      "dependencies": {
-        "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.extras": "workspace:*",
-        "@rhombus-toolkit/func": "3.5.3",
-      },
-      "devDependencies": {
-        "@rhombus-std/di2.core": "workspace:*",
-      },
-      "peerDependencies": {
-        "@rhombus-std/di2.core": "workspace:^",
-        "typescript": ">=5.2",
-      },
-    },
     "libraries/di.extras.options": {
       "name": "@rhombus-std/di.extras.options",
       "version": "0.0.0",
@@ -637,8 +621,8 @@
       "name": "@rhombus-std/primitives.extras",
       "version": "10.1.0",
       "dependencies": {
-        "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-toolkit/func": "3.5.3",
+        "@rhombus-std/primitives": "workspace:^",
+        "@rhombus-toolkit/func": "^3.5.3",
       },
     },
     "tests/augmentations.test": {
@@ -1405,8 +1389,6 @@
     "@rhombus-std/config.xml.test": ["@rhombus-std/config.xml.test@workspace:tests/config.xml.test"],
 
     "@rhombus-std/declare-by-depending.ttsc.e2e": ["@rhombus-std/declare-by-depending.ttsc.e2e@workspace:tests/declare-by-depending.ttsc.e2e"],
-
-    "@rhombus-std/di.extras": ["@rhombus-std/di.extras@workspace:libraries/di.extras"],
 
     "@rhombus-std/di.extras.options": ["@rhombus-std/di.extras.options@workspace:libraries/di.extras.options"],
 

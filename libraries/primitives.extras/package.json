@@ -16,6 +16,10 @@
     "directory": "libraries/primitives.extras"
   },
   "type": "module",
+  "dependencies": {
+    "@rhombus-std/primitives": "workspace:^",
+    "@rhombus-toolkit/func": "^3.5.3"
+  },
   "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
@@ -54,9 +58,5 @@
       },
       "./ttsc": "./ttsc.mjs"
     }
-  },
-  "dependencies": {
-    "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3"
   }
 }
