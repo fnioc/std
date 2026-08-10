@@ -1,13 +1,14 @@
 import { Func } from '@rhombus-toolkit/func';
 
 const _cache = new WeakMap<Func, WeakMap<object, Map<unknown, unknown>>>();
-export function memo<T extends Func, Id>(fn: T, getId: Func<Parameters<T>, Id>) {
+export function memo<T extends Func>(fn: T, getId?: Func<Parameters<T>, any>) {
+  getId ??= ((p: any) => p) as any;
   let byReceiver = _cache.get(fn);
   if (byReceiver === undefined) {
     byReceiver = new WeakMap();
     _cache.set(fn, byReceiver);
   }
-  const caches = byReceiver as WeakMap<object, Map<Id, ReturnType<T>>>;
+  const caches = byReceiver as WeakMap<object, Map<any, ReturnType<T>>>;
   const result = function(this: ThisParameterType<T>, ...args: Parameters<T>): ReturnType<T> {
     const receiver = (this ?? fn) as object;
     let cache = caches.get(receiver);
@@ -15,7 +16,7 @@ export function memo<T extends Func, Id>(fn: T, getId: Func<Parameters<T>, Id>) 
       cache = new Map();
       caches.set(receiver, cache);
     }
-    const id = getId(...args);
+    const id = getId!(...args);
     if (!cache.has(id)) {
       cache.set(id, fn.apply(this, args));
     }

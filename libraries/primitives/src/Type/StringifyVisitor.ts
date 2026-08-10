@@ -3,9 +3,9 @@ import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, P
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** Renders a {@link Type} as its source-level spelling — `@rhombus-std/di2.core:Foo<string | [number, pkg:something]>`. */
-class ToStringVisitor extends TypeVisitor<string> {
-  protected override visitCtor(type: CtorType, context: never): string {
-    throw new Error('Method not implemented.');
+class StringifyVisitor extends TypeVisitor<string> {
+  protected override visitCtor(type: CtorType): string {
+    return `new (${type.args.map(t => this.visit(t)).join(', ')}) => ${this.visit(type.instanceType)}`;
   }
   protected override visitUnion(type: UnionType): string {
     return type.types.map(t => this.visit(t)).join(' | ');
@@ -53,4 +53,4 @@ class ToStringVisitor extends TypeVisitor<string> {
   }
 }
 
-export const toStringVisitor = new ToStringVisitor();
+export const stringifyVisitor = new StringifyVisitor();
