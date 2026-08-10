@@ -136,6 +136,12 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return proposed => proposed.kind === 'literal' && Object.is(proposed.value, type.value);
   }
 
+  /**
+   * Tags match strictly, in both directions: only the same tag over a satisfying inner type
+   * satisfies a tagged condition, and — since every other condition kind demands its own kind of
+   * the proposed type — a tagged type satisfies no untagged condition. Tagging therefore yields a
+   * type distinct from the one it wraps, not a refinement of it.
+   */
   protected override visitTag(type: TagType): Predicate {
     return proposed => proposed.kind === 'tag' && proposed.tag === type.tag && this.match(proposed.type, type.type);
   }
