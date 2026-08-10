@@ -23,13 +23,13 @@ export type ConstructableType = Exclude<Type, NamedType>;
 
 export namespace Type {
   export function union(...types: readonly Type[]): UnionType {
-    return { kind: 'union', types };
+    return { kind: 'union', members: types };
   }
   export function intersection(...types: readonly Type[]): IntersectionType {
-    return { kind: 'intersection', types };
+    return { kind: 'intersection', members: types };
   }
   export function tuple(...types: readonly Type[]): TupleType {
-    return { kind: 'tuple', types };
+    return { kind: 'tuple', members: types };
   }
   export function func(returnType: Type, ...args: readonly Type[]): FunctionType {
     return { kind: 'function', args, returnType };
@@ -38,7 +38,7 @@ export namespace Type {
     return { kind: 'ctor', args, instanceType };
   }
   export function named(name: string, from: string = 'global', genericTypes: readonly Type[] = []): NamedType {
-    return { kind: 'named', from, name, genericTypes };
+    return { kind: 'named', from, name, genericArgs: genericTypes };
   }
   export function object(members: Readonly<Record<string, Type>>): ObjectType {
     return { kind: 'object', members };
@@ -102,15 +102,15 @@ interface TypeBase<Kind extends string> {
 }
 
 export interface UnionType extends TypeBase<'union'> {
-  readonly types: readonly Type[];
+  readonly members: readonly Type[];
 }
 
 export interface IntersectionType extends TypeBase<'intersection'> {
-  readonly types: readonly Type[];
+  readonly members: readonly Type[];
 }
 
 export interface TupleType extends TypeBase<'tuple'> {
-  readonly types: readonly Type[];
+  readonly members: readonly Type[];
 }
 export interface FunctionType extends TypeBase<'function'> {
   readonly args: readonly Type[];
@@ -132,7 +132,7 @@ export interface NamedType extends TypeBase<'named'> {
    * The exported name, or 'default' for default exports.
    */
   readonly name: string;
-  readonly genericTypes: readonly Type[];
+  readonly genericArgs: readonly Type[];
 }
 export interface ObjectType extends TypeBase<'object'> {
   readonly members: Readonly<Record<string, Type>>;

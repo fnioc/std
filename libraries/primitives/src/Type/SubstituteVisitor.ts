@@ -30,23 +30,23 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   }
 
   protected override visitUnion(type: UnionType): Type {
-    const types = this.#all(type.types);
-    return types === type.types ? type : Type.union(...types);
+    const types = this.#all(type.members);
+    return types === type.members ? type : Type.union(...types);
   }
 
   protected override visitIntersection(type: IntersectionType): Type {
-    const types = this.#all(type.types);
-    return types === type.types ? type : Type.intersection(...types);
+    const types = this.#all(type.members);
+    return types === type.members ? type : Type.intersection(...types);
   }
 
   protected override visitTuple(type: TupleType): Type {
-    const types = this.#all(type.types);
-    return types === type.types ? type : Type.tuple(...types);
+    const types = this.#all(type.members);
+    return types === type.members ? type : Type.tuple(...types);
   }
 
   protected override visitNamed(type: NamedType): Type {
-    const genericTypes = this.#all(type.genericTypes);
-    return genericTypes === type.genericTypes ? type : Type.named(type.name, type.from, genericTypes);
+    const genericTypes = this.#all(type.genericArgs);
+    return genericTypes === type.genericArgs ? type : Type.named(type.name, type.from, genericTypes);
   }
 
   protected override visitFunction(type: FunctionType): Type {
