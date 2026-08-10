@@ -97,8 +97,7 @@ class ChangeTokenRegistration<TState> {
   }
 
   async #awaitConsumerThenRegisterCallback(consumerResult: PromiseLike<void>,
-    token: IChangeToken | null | undefined): Promise<void>
-  {
+    token: IChangeToken | null | undefined): Promise<void> {
     try {
       await consumerResult;
     } catch {
@@ -141,8 +140,7 @@ export const ChangeToken = {
    * @returns A {@link Disposable} that, when disposed, unregisters the consumer.
    */
   onChange<TState = undefined>(produceToken: ChangeTokenProducer, consumeToken: ChangeTokenConsumer<TState>,
-    state?: TState): Disposable
-  {
+    state?: TState): Disposable {
     return new ChangeTokenRegistration(produceToken, consumeToken, state as TState);
   },
 };

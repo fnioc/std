@@ -5,7 +5,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigRoot } from './ConfigRoot';
-import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
+import { getChildrenImplementation } from './internal-children';
 import { MemoryConfigSource } from './memory/MemoryConfigSource';
 
 /**
@@ -20,8 +20,10 @@ import { MemoryConfigSource } from './memory/MemoryConfigSource';
  * (`addJsonFile`, `addEnvironmentVariables`, ...) is callable on a manager just
  * as on a {@link ConfigBuilder}.
  */
+export interface ConfigManager extends IConfigManager, IConfigRoot {}
+
 @augment(tokenfor<IConfigBuilder>())
-export class ConfigManager implements IConfigManager, IConfigRoot {
+export class ConfigManager {
   readonly #sources: IConfigSource[] = [];
   readonly #properties = new Map<string, unknown>();
   readonly #root: ConfigRoot = new ConfigRoot([]);
@@ -106,7 +108,7 @@ export class ConfigManager implements IConfigManager, IConfigRoot {
   }
 
   public getChildren(): Iterable<IConfigSection> {
-    return InternalConfigRootExtensions.getChildrenImplementation(this, undefined);
+    return getChildrenImplementation(this, undefined);
   }
 
   public toObject(): ConfigObject {

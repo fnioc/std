@@ -1,5 +1,5 @@
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TOKEN,
-  hostedServiceCollectionToken, HostEnvironmentEnvExtensions, type IHostedService,
+  hostedServiceCollectionToken, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
 import '@rhombus-std/hosting.core/private/index';
@@ -24,10 +24,10 @@ test('environment predicates compare case-insensitively', () => {
   // its receiver.
   const env = { environmentName: 'development', applicationName: 'app', contentRootPath: '/',
     contentRootFileProvider: new NullFileProvider() } as IHostEnvironment;
-  expect(HostEnvironmentEnvExtensions.isEnvironment(env, 'Development')).toBe(true);
-  expect(HostEnvironmentEnvExtensions.isDevelopment(env)).toBe(true);
-  expect(HostEnvironmentEnvExtensions.isProduction(env)).toBe(false);
-  expect(HostEnvironmentEnvExtensions.isStaging(env)).toBe(false);
+  expect(HostEnvironmentEnvAugmentations.isEnvironment(env, 'Development')).toBe(true);
+  expect(HostEnvironmentEnvAugmentations.isDevelopment(env)).toBe(true);
+  expect(HostEnvironmentEnvAugmentations.isProduction(env)).toBe(false);
+  expect(HostEnvironmentEnvAugmentations.isStaging(env)).toBe(false);
 });
 
 test('BackgroundService.start kicks execute without awaiting; stop aborts the stopping signal', async () => {

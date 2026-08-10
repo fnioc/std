@@ -97,8 +97,7 @@ class FixedClock {
 /** The service under test — the one thing a test host must NOT replace. */
 class Checkout {
   public constructor(public readonly gateway: LivePaymentGateway | FakePaymentGateway,
-    public readonly ledger: DiskLedger | MemoryLedger, public readonly clock: FixedClock)
-  {}
+    public readonly ledger: DiskLedger | MemoryLedger, public readonly clock: FixedClock) {}
 
   public run(amountMinor: number): string {
     return `${this.clock.now()} ${this.gateway.charge(amountMinor)} -> ${this.ledger.kind} ledger`;

@@ -40,8 +40,7 @@ export class MemoryDistributedCache implements IDistributedCache {
 
   /** Sets the byte payload associated with `key`, sized at its byte length. */
   public set(key: string, value: Uint8Array, options: DistributedCacheEntryOptions,
-    _abortSignal?: AbortSignal): Promise<void>
-  {
+    _abortSignal?: AbortSignal): Promise<void> {
     // Dispose in `finally`: a validating setter that throws must still
     // dispose the entry so the linked-entry tracking chain (if enabled on
     // the inner cache) is popped.

@@ -115,8 +115,7 @@ export function tracingRuleMatches(rule: TracingRule, query: TracingRuleQuery): 
  * so a fold over a rule list keeps the LAST of equally specific rules.
  */
 export function isMoreSpecificTracingRule(rule: TracingRule, best: TracingRule | undefined,
-  isLocalScope: boolean): boolean
-{
+  isLocalScope: boolean): boolean {
   if (best === undefined) {
     return true;
   }
@@ -176,9 +175,9 @@ export function isMoreSpecificTracingRule(rule: TracingRule, best: TracingRule |
  * the source/operation is then disabled, so the enablement decision is
  * `getMostSpecificTracingRule(...)?.enable ?? false`.
  */
-export function getMostSpecificTracingRule(rules: readonly TracingRule[], query: TracingRuleQuery): TracingRule
-  | undefined
-{
+export function getMostSpecificTracingRule(rules: readonly TracingRule[], query: TracingRuleQuery):
+  | TracingRule
+  | undefined {
   let best: TracingRule | undefined;
   for (const rule of rules) {
     if (tracingRuleMatches(rule, query) && isMoreSpecificTracingRule(rule, best, query.isLocalScope)) {

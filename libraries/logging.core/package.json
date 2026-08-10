@@ -20,6 +20,7 @@
   "exports": {
     ".": {
       "source": "./src/index.ts",
+      "logging-core-source": "./src/index.ts",
       "bun": "./dist/bundle/index.js",
       "types": "./dist/bundle/index.d.ts",
       "import": "./dist/bundle/index.js",

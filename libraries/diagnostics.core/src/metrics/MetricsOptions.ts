@@ -6,7 +6,7 @@ import type { InstrumentRule } from './InstrumentRule';
  * listeners are enabled.
  *
  * @remarks
- * Rules can arrive from two places: the builder rule-configuration extension
+ * Rules can arrive from two places: the builder rule-configuration augmentation
  * methods, and the config-binding step in `@rhombus-std/diagnostics`.
  */
 export class MetricsOptions {

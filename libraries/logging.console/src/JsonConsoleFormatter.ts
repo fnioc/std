@@ -101,8 +101,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
   }
 
   public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void
-  {
+    textWriter: TextWriter): void {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
 
     const entry: { [key: string]: JsonValue; } = {};

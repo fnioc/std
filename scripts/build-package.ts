@@ -121,8 +121,7 @@ export function ttscEnv(): NodeJS.ProcessEnv {
  * consumer passes the one aggregate specifier here.
  */
 export async function ttscBunPlugin(dir: string, ttscProject: string,
-  transforms?: readonly string[]): Promise<Bun.BunPlugin>
-{
+  transforms?: readonly string[]): Promise<Bun.BunPlugin> {
   Object.assign(process.env, ttscEnv());
   const adapter = Bun.resolveSync('@ttsc/unplugin/bun', dir);
   const ttscBun = (await import(adapter)).default as (

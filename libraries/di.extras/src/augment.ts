@@ -1,14 +1,11 @@
-// Token-free authoring overloads for `@rhombus-std/di.core`'s registration,
-// lifetime, and resolve surfaces — `addClass<I>(C)`, `addFactory<I>(fn)`,
-// `addValue<I>(v)`, `.as<"scope">()`, `resolve<T>()`, `resolveAsync<T>()`,
-// `tryResolve<T>()`, `isService<T>()`. Each is declared as an ADDITIONAL overload
-// merged onto the interface a consumer already holds (`IServiceManifestBase`,
-// `IResolver`, …), so importing `@rhombus-std/di.extras` for its side effect is
-// enough to bring every one of them into scope — no separate import per member.
+// Additional overloads on `@rhombus-std/di.core`'s registration, lifetime and
+// resolve interfaces, each taking the service type as a type argument in place
+// of a token. They are declared on the interfaces a consumer already holds
+// (`IServiceManifestBase`, `IResolver`, …), so a bare side-effect import of
+// `@rhombus-std/di.extras` brings every one of them into scope at once.
 //
-// None of these overloads has a runtime body of its own: calling one directly
-// throws unless it has first been rewritten to the explicit-token form each doc
-// comment below shows.
+// The declarations carry no implementation: the receiver's own member is what
+// runs, and it throws when handed the type-argument form.
 
 import type { AddChain, IServiceManifest, Slot } from '@rhombus-std/di.core';
 import type { Ctor, Func } from '@rhombus-toolkit/func';

@@ -143,8 +143,7 @@ export interface IWithKeyBuilder<S extends string, Slots extends Slot, Gated ext
  * mutates — a call whose result is discarded registers NOTHING.
  */
 export interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown>
-  extends Iterable<ManifestEntry>
-{
+  extends Iterable<ManifestEntry> {
   /**
    * Class registration — a string token bound to a concrete constructor.
    *

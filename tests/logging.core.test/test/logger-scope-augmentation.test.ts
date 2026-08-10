@@ -8,7 +8,7 @@
 // Black-box via the public logging.core surface.
 
 import { NullLogger } from '@rhombus-std/logging';
-import { EventId, FormattedLogValues, type ILogger, LoggerExtensions, LogLevel } from '@rhombus-std/logging.core';
+import { EventId, FormattedLogValues, type ILogger, LoggerAugmentations, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -36,8 +36,7 @@ class DecoratedRecordingLogger implements ILogger {
   public readonly scopes: unknown[] = [];
   public readonly logs: Array<{ eventId: EventId; state: unknown; }> = [];
   public log<TState>(_logLevel: LogLevel, eventId: EventId, state: TState, _error: Error | undefined,
-    _formatter: (state: TState, error: Error | undefined) => string): void
-  {
+    _formatter: (state: TState, error: Error | undefined) => string): void {
     this.logs.push({ eventId, state });
   }
   public isEnabled(): boolean {
@@ -65,11 +64,11 @@ function decoratedLogger(): DecoratedRecordingLogger & LoggerConvenience {
   return new DecoratedRecordingLogger() as DecoratedRecordingLogger & LoggerConvenience;
 }
 
-describe('LoggerExtensions.beginScope', () => {
+describe('LoggerAugmentations.beginScope', () => {
   test('formats the template into a FormattedLogValues state and opens the scope', () => {
     const { logger, scopes } = recordingLogger();
 
-    const scope = LoggerExtensions.beginScope(logger, 'Processing request {Id} from {Address}', 42, '10.0.0.1');
+    const scope = LoggerAugmentations.beginScope(logger, 'Processing request {Id} from {Address}', 42, '10.0.0.1');
 
     expect(scope).toBeDefined();
     expect(scopes).toHaveLength(1);
@@ -110,7 +109,7 @@ describe('LoggerExtensions.beginScope', () => {
   });
 });
 
-describe('LoggerExtensions.log (dispatched over the primitive)', () => {
+describe('LoggerAugmentations.log (dispatched over the primitive)', () => {
   test('a message string routes to the wrapper (convenience dot-callable)', () => {
     const logger = decoratedLogger();
 

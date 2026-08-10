@@ -21,4 +21,4 @@ export { defaultPageContext } from './page-context';
 
 export { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './tokens';
 
-export { BrowserLifetimeHostBuilderAugmentations } from './BrowserLifetimeHostBuilderAugmentations';
+export { HostBuilderBrowserLifetimeAugmentations } from './HostBuilder-BrowserLifetime-augmentations';

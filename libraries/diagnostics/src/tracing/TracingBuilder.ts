@@ -27,7 +27,7 @@ export class TracingBuilder implements ITracingBuilder {
   // the new manifest the immutable chain returns (see ITracingBuilder).
   services: IServiceManifestBase;
 
-  /** @param services The registration surface extension functions register against. */
+  /** @param services The registration surface augmentation functions register against. */
   public constructor(services: IServiceManifestBase) {
     this.services = services;
   }

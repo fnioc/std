@@ -2,7 +2,7 @@
 // expiration over a fake clock, refresh's sliding-window reset, and the
 // registry-installed setString/getString method form (docs §38/§40).
 
-import { DistributedCacheEntryOptions, DistributedCacheExtensions } from '@rhombus-std/caching.core';
+import { DistributedCacheEntryOptions, DistributedCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { type ISystemClock, MemoryDistributedCache, MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';
 import { describe, expect, test } from 'bun:test';
 
@@ -87,10 +87,10 @@ describe('MemoryDistributedCache', () => {
     const { cache } = makeCache();
 
     await cache.setString('method', 'vía-method ✓');
-    await DistributedCacheExtensions.setString(cache, 'member', 'vía-member ✓');
+    await DistributedCacheSugarAugmentations.setString(cache, 'member', 'vía-member ✓');
 
     expect(await cache.getString('method')).toBe('vía-method ✓');
-    expect(await DistributedCacheExtensions.getString(cache, 'method')).toBe('vía-method ✓');
+    expect(await DistributedCacheSugarAugmentations.getString(cache, 'method')).toBe('vía-method ✓');
     expect(await cache.getString('member')).toBe('vía-member ✓');
   });
 });

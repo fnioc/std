@@ -59,16 +59,18 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
     expect(options.rules[0]!.categoryName).toBeUndefined();
   });
 
+  // The predicate arm, not the (category, level) one: an AugmentationSet2-typed
+  // const collapses an overloaded member to its LAST overload, so the standalone
+  // surface only carries the predicate signature. The method form (which comes
+  // from the interface merge) keeps both.
   test('method form and standalone member form register the same rule', () => {
+    const filter = (): boolean => true;
+
     const viaMethodBuilder = new LoggingBuilder(new ServiceManifest<'singleton'>());
-    viaMethodBuilder.addFilter('Cat', LogLevel.Warning); // method form
+    viaMethodBuilder.addFilter(filter); // method form
 
     const viaMemberBuilder = new LoggingBuilder(new ServiceManifest<'singleton'>());
-    FilterLoggingBuilderExtensions.addFilter( // standalone member form
-      viaMemberBuilder,
-      'Cat',
-      LogLevel.Warning,
-    );
+    FilterLoggingBuilderExtensions.addFilter(viaMemberBuilder, filter); // standalone member form
 
     const viaMethod = resolveFilterOptions(viaMethodBuilder);
     const viaMember = resolveFilterOptions(viaMemberBuilder);

@@ -45,8 +45,7 @@ export class LoggerFactory implements ILoggerFactory {
   #disposed = false;
 
   public constructor(providers: Iterable<ILoggerProvider> = [],
-    filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>, scopeProvider?: IExternalScopeProvider)
-  {
+    filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>, scopeProvider?: IExternalScopeProvider) {
     this.#scopeProvider = scopeProvider;
 
     const source: IOptions<LoggerFilterOptions> = filterOptions === undefined

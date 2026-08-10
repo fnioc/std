@@ -51,8 +51,7 @@ import type { IOptions } from '@rhombus-std/options';
  *   registers one was wired in.
  */
 export function makeServerReport(greetings: IGreeting[], server: IOptions<ServerOptions>,
-  policy: IOptions<GreetingPolicy>, health?: IHealthCheck): IServerReport
-{
+  policy: IOptions<GreetingPolicy>, health?: IHealthCheck): IServerReport {
   const options = server.value;
   const excitement = policy.value.excitement;
 

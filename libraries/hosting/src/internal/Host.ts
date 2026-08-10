@@ -22,7 +22,7 @@ import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavio
 import type { HostOptions } from '../HostOptions';
 import { linkSignals, whenAborted } from '../signal-linking';
 import { ApplicationLifetime } from './ApplicationLifetime';
-import { HostingLoggerExtensions } from './HostingLoggerExtensions';
+import { hostingLog } from './hosting-log';
 
 // Re-export the shared hosted-service token so a white-box consumer can reach it
 // alongside the host. The value is hosting.core's token (the one
@@ -57,8 +57,7 @@ function getHostLifecycles(hostedServices: readonly IHostedService[]): IHostedLi
  * collected into `errors` rather than thrown.
  */
 async function foreachService<T>(services: readonly T[], signal: AbortSignal, concurrent: boolean,
-  abortOnFirstError: boolean, errors: unknown[], operation: Func<[T, AbortSignal], Promise<void>>): Promise<void>
-{
+  abortOnFirstError: boolean, errors: unknown[], operation: Func<[T, AbortSignal], Promise<void>>): Promise<void> {
   if (concurrent) {
     const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
@@ -109,8 +108,7 @@ export class Host implements IHost, AsyncDisposable {
   #backgroundServiceErrors?: unknown[];
 
   public constructor(services: IServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger,
-    hostLifetime: IHostLifetime, options: HostOptions)
-  {
+    hostLifetime: IHostLifetime, options: HostOptions) {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
       throw new Error('Replacing IHostApplicationLifetime is not supported.');
     }
@@ -132,7 +130,7 @@ export class Host implements IHost, AsyncDisposable {
    * fire `applicationStarted`.
    */
   public async start(abortSignal?: AbortSignal): Promise<void> {
-    HostingLoggerExtensions.starting(this.#logger);
+    hostingLog.starting(this.#logger);
 
     const sources = abortSignal
       ? [abortSignal, this.#applicationLifetime.applicationStopping]
@@ -154,7 +152,7 @@ export class Host implements IHost, AsyncDisposable {
           return;
         }
         const error = aggregate(errors, 'One or more hosted services failed to start.');
-        HostingLoggerExtensions.hostedServiceStartupFaulted(this.#logger, error);
+        hostingLog.hostedServiceStartupFaulted(this.#logger, error);
         throw error;
       };
 
@@ -201,7 +199,7 @@ export class Host implements IHost, AsyncDisposable {
       linked[Symbol.dispose]();
     }
 
-    HostingLoggerExtensions.started(this.#logger);
+    hostingLog.started(this.#logger);
   }
 
   /**
@@ -210,7 +208,7 @@ export class Host implements IHost, AsyncDisposable {
    * host lifetime stop -> dispose the singleton scope.
    */
   public async stop(abortSignal?: AbortSignal): Promise<void> {
-    HostingLoggerExtensions.stopping(this.#logger);
+    hostingLog.stopping(this.#logger);
 
     const sources = abortSignal ? [abortSignal] : [];
     const linked = linkSignals(sources, this.#options.shutdownTimeout);
@@ -276,14 +274,14 @@ export class Host implements IHost, AsyncDisposable {
       if (errors.length) {
         const error = aggregate(errors,
           'One or more hosted services failed to stop, or a background service threw an error.');
-        HostingLoggerExtensions.stoppedWithError(this.#logger, error);
+        hostingLog.stoppedWithError(this.#logger, error);
         throw error;
       }
     } finally {
       linked[Symbol.dispose]();
     }
 
-    HostingLoggerExtensions.stopped(this.#logger);
+    hostingLog.stopped(this.#logger);
   }
 
   /**
@@ -305,9 +303,9 @@ export class Host implements IHost, AsyncDisposable {
         return;
       }
 
-      HostingLoggerExtensions.backgroundServiceFaulted(this.#logger, error);
+      hostingLog.backgroundServiceFaulted(this.#logger, error);
       if (this.#options.backgroundServiceErrorBehavior === BackgroundServiceErrorBehavior.StopHost) {
-        HostingLoggerExtensions.backgroundServiceStoppingHost(this.#logger, error);
+        hostingLog.backgroundServiceStoppingHost(this.#logger, error);
         (this.#backgroundServiceErrors ??= []).push(error);
         this.#applicationLifetime.stopApplication();
       }

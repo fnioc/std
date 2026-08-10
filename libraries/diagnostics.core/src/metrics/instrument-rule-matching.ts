@@ -101,8 +101,7 @@ export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRul
  * keeps the LAST of equally specific rules.
  */
 export function isMoreSpecificInstrumentRule(rule: InstrumentRule, best: InstrumentRule | undefined,
-  isLocalScope: boolean): boolean
-{
+  isLocalScope: boolean): boolean {
   if (best === undefined) {
     return true;
   }
@@ -164,8 +163,7 @@ export function isMoreSpecificInstrumentRule(rule: InstrumentRule, best: Instrum
  */
 export function getMostSpecificInstrumentRule(rules: readonly InstrumentRule[], query: InstrumentRuleQuery):
   | InstrumentRule
-  | undefined
-{
+  | undefined {
   let best: InstrumentRule | undefined;
   for (const rule of rules) {
     if (instrumentRuleMatches(rule, query) && isMoreSpecificInstrumentRule(rule, best, query.isLocalScope)) {

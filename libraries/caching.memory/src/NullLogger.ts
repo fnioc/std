@@ -18,8 +18,7 @@ interface NullLoggerImpl extends ILogger {}
 @augment(tokenfor<ILogger>())
 class NullLoggerImpl implements ILogger {
   public log<TState>(_logLevel: LogLevel, _eventId: EventId, _state: TState, _error: Error | undefined,
-    _formatter: Func<[TState, Error | undefined], string>): void
-  {
+    _formatter: Func<[TState, Error | undefined], string>): void {
     // discard
   }
 

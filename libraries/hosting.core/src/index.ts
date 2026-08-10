@@ -6,8 +6,8 @@
 // IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it registers `addHostedService`
 // against di.core's `ServiceManifest` augmentation token, and the IHost /
 // IHostBuilder / IHostEnvironment augmentation sets against their own tokens
-// (see HostingAbstractionsHostExtensions.ts, HostingAbstractionsHostBuilderExtensions.ts,
-// HostEnvironmentEnvExtensions.ts, ServiceManifestHostedServiceAugmentations.ts).
+// (see HostLifecycleAugmentations.ts, HostBuilderStartAugmentations.ts,
+// HostEnvironmentEnvAugmentations.ts, ServiceManifestHostedServiceAugmentations.ts).
 // The concrete classes that consume those bags pull them onto their
 // prototypes via `@augment`.
 
@@ -37,12 +37,12 @@ export { HOST_APPLICATION_LIFETIME_TOKEN, HOSTED_SERVICE_TOKEN, hostedServiceCol
 // that register against their receiver tokens. Each set's members are also
 // directly callable; the fluent method form is pulled onto the concrete
 // classes via `@augment`.
-export { HostingAbstractionsHostBuilderExtensions } from './HostingAbstractionsHostBuilderExtensions';
-export { HostingAbstractionsHostExtensions } from './HostingAbstractionsHostExtensions';
+export { HostLifecycleAugmentations } from './Host-Lifecycle-augmentations';
+export { HostBuilderStartAugmentations } from './HostBuilder-Start-augmentations';
 
 // Environment predicates.
-export { HostEnvironmentEnvExtensions } from './HostEnvironmentEnvExtensions';
+export { HostEnvironmentEnvAugmentations } from './HostEnvironment-Env-augmentations';
 
 // The `addHostedService` registration augmentation + its side-effect
 // registration against di.core's ServiceManifest augmentation token.
-export { ServiceManifestHostedServiceAugmentations } from './ServiceManifestHostedServiceAugmentations';
+export { ServiceManifestHostedServiceAugmentations } from './ServiceManifest-HostedService-augmentations';

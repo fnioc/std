@@ -20,8 +20,7 @@ export class Matcher {
    */
   public match(template: TokenNode, ground: TokenNode, bind: Map<number, TokenNode> = new Map<number, TokenNode>()):
     | Map<number, TokenNode>
-    | undefined
-  {
+    | undefined {
     switch (template.kind) {
       case 'hole': {
         // Directional contract: `ground` is closed. A hole never binds to an open

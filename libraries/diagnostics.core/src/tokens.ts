@@ -1,5 +1,5 @@
 // The DI tokens diagnostics wires its metrics/tracing slots through -- the ABI
-// shared between the builder extension functions here (which register services
+// shared between the builder augmentations here (which register services
 // against these tokens) and @rhombus-std/diagnostics's assembly (which resolves
 // them). Kept in core so both sides agree on the exact strings.
 //
