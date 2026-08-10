@@ -7,8 +7,8 @@
 
 export * from '@rhombus-std/hosting.core';
 
-// Side-effect import: registers HostingHostBuilderAugmentations.
-import './HostingHostBuilderAugmentations';
+// Side-effect import: registers HostBuilderHostingAugmentations.
+import './HostBuilder-Hosting-augmentations';
 
 export { Host } from './Host';
 export { HostApplicationBuilder } from './HostApplicationBuilder';
@@ -22,7 +22,7 @@ export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from './internal/ConsoleLi
 export { NullLifetime } from './internal/NullLifetime';
 export { MetricsBuilder } from './MetricsBuilder';
 
-export { HostingHostBuilderAugmentations } from './HostingHostBuilderAugmentations';
+export { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentations';
 
 // Re-exported from di.core, which owns it; this is the type
 // `useDefaultServiceProvider` configures.

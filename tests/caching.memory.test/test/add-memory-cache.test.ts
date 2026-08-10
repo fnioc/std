@@ -5,7 +5,7 @@
 
 import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_CACHE_TOKEN, MemoryCache, MemoryCacheOptions,
   ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
-import { ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
+import { type IServiceManifest, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
 import { LOGGER_FACTORY_TOKEN, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
@@ -44,11 +44,16 @@ describe('addMemoryCache', () => {
 
     // The manifest is immutable, so `addMemoryCache` hands back a NEW manifest
     // carrying the registrations -- build from `returned`, not `services`.
-    const returned = ServiceManifestMemoryCacheAugmentations.addMemoryCache(services, (options) => {
-      ran++;
-      expect(options).toBeInstanceOf(MemoryCacheOptions);
-      options.trackStatistics = true;
-    });
+    // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
+    // resolve off `any` cannot take an explicit type argument.
+    const returned: IServiceManifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache(
+      services,
+      (options) => {
+        ran++;
+        expect(options).toBeInstanceOf(MemoryCacheOptions);
+        options.trackStatistics = true;
+      },
+    );
 
     const scope = returned.build().createScope('singleton');
     // Lazy: the configure step has not run at registration/build time.

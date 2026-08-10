@@ -43,7 +43,7 @@ describe('register-then-decorate', () => {
       return box.value;
     } } satisfies AugmentationSet<Box>;
 
-    registerAugmentations(TOKEN, BoxExtensions);
+    registerAugmentations<Box, { double(): Box; read(): number; }>(TOKEN, BoxExtensions);
     augment(TOKEN)(Box);
 
     const box = new Box();
@@ -75,7 +75,7 @@ describe('decorate-then-register (late registration reaches the prototype)', () 
     } } satisfies AugmentationSet<Widget>;
 
     // Register LATER -- the delta dispatch reaches the already-decorated class.
-    registerAugmentations(TOKEN, WidgetExtensions);
+    registerAugmentations<Widget, { bump(): Widget; }>(TOKEN, WidgetExtensions);
 
     expect(new Widget().bump().count).toBe(1);
   });
@@ -127,7 +127,8 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
       const set = { [name](receiver: { added: string[]; }): void {
         receiver.added.push(name);
       } } satisfies AugmentationSet<{ added: string[]; }>;
-      expect(() => registerAugmentations(TOKEN, set)).not.toThrow();
+      expect(() => registerAugmentations<{ added: string[]; }, Record<string, () => void>>(TOKEN, set)).not
+        .toThrow();
     }
 
     // Capture each installed slot AFTER all eight dispatches: because the install
@@ -166,9 +167,10 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
 
     const names = ['addJsonFile', 'addEnvironmentVariables', 'addCommandLine', 'addIniFile'] as const;
     for (const name of names) {
-      registerAugmentations(TOKEN, { [name](receiver: { added: string[]; }): void {
-        receiver.added.push(name);
-      } } satisfies AugmentationSet<{ added: string[]; }>);
+      registerAugmentations<{ added: string[]; }, Record<string, () => void>>(TOKEN,
+        { [name](receiver: { added: string[]; }): void {
+          receiver.added.push(name);
+        } } satisfies AugmentationSet<{ added: string[]; }>);
     }
 
     class LateBuilder {
@@ -212,8 +214,8 @@ describe('multi-set merge (two consts, one token)', () => {
     } } satisfies AugmentationSet<Svc>;
 
     augment(TOKEN)(Svc);
-    registerAugmentations(TOKEN, First);
-    registerAugmentations(TOKEN, Second);
+    registerAugmentations<Svc, { a(): string; }>(TOKEN, First);
+    registerAugmentations<Svc, { b(): string; }>(TOKEN, Second);
 
     const svc = new Svc();
     expect(svc.a()).toBe('a');
@@ -231,8 +233,8 @@ describe('bag tolerates a second same-name registration (§73/3)', () => {
     // The old registry threw here; §73/3 moves the throw to install time. With no
     // class yet decorated, both registrations simply accumulate in the bag.
     expect(() => {
-      registerAugmentations(TOKEN, One);
-      registerAugmentations(TOKEN, Two);
+      registerAugmentations<object, { configure(): void; }>(TOKEN, One);
+      registerAugmentations<object, { configure(): void; }>(TOKEN, Two);
     }).not.toThrow();
   });
 
@@ -295,7 +297,7 @@ describe('fluent-return preservation', () => {
       return builder;
     } } satisfies AugmentationSet<Builder>;
 
-    registerAugmentations(TOKEN, BuilderExtensions);
+    registerAugmentations<Builder, { step(name: string): Builder; }>(TOKEN, BuilderExtensions);
     augment(TOKEN)(Builder);
 
     const built = new Builder().step('one').step('two');
@@ -344,7 +346,7 @@ describe('install-time collision with a class primitive (§73/2)', () => {
       };
     } } satisfies MergeStrategies;
 
-    registerAugmentations(TOKEN, BoxExtensions, merge);
+    registerAugmentations<Box, { compute(x: unknown): string; }>(TOKEN, BoxExtensions, merge);
     augment(TOKEN)(Box);
 
     const box = new Box();
@@ -528,7 +530,7 @@ describe('@augment decorator syntax (TC39 standard class decorator)', () => {
       counter.n += 1;
       return counter;
     } } satisfies AugmentationSet<Counter>;
-    registerAugmentations(TOKEN, CounterExtensions);
+    registerAugmentations<Counter, { inc(): Counter; }>(TOKEN, CounterExtensions);
 
     @augment(TOKEN)
     class Counter {

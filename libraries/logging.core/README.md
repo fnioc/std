@@ -60,7 +60,7 @@ output, filtering, etc.) comes from `@rhombus-std/logging` and its sinks.
 | `LoggerMessage`                                                                                               | `LoggerMessage.define(level, eventId, template)` / `.defineScope(template)` — cached, strongly-typed log delegates for hot paths, parsed once and invoked per message.                                       |
 | `FormattedLogValues` / `formatMessage` / `formatLogValues`                                                    | The deferred message-template state (`{Hole}`-style substitution) passed as `state` to `ILogger.log`; a structured sink can enumerate its `[name, value]` pairs instead of just reading the rendered string. |
 | `logTrace` / `logDebug` / `logInformation` / `logWarning` / `logError` / `logCritical` / `log` / `beginScope` | Standalone convenience wrappers over `ILogger.log` — each accepts an optional leading `Error` before the message.                                                                                            |
-| `LoggerExtensions`                                                                                            | The same wrappers grouped as one object, importable as a set: `LoggerExtensions.logInformation(logger, …)`.                                                                                                  |
+| `LoggerAugmentations`                                                                                         | The same wrappers grouped as one object, importable as a set: `LoggerAugmentations.logInformation(logger, …)`.                                                                                               |
 | `Logger<T>`                                                                                                   | A generic-category `ILogger<T>` that delegates to a factory-created inner logger, categorized from `T`'s dependency-injection token. Needs a real `ILoggerFactory` to construct.                             |
 
 ## How it fits
@@ -93,7 +93,7 @@ caring which sink is behind it — should depend on `logging.core` alone.
   effect. This lets a concrete logger class elsewhere in the stack gain them as
   methods; it has no effect on plain functional use of the standalone
   wrappers.
-- `LoggerFactoryExtensions.createLogger(factory, MyService)` derives the
+- `LoggerFactoryAugmentations.createLogger(factory, MyService)` derives the
   category from a class's `name` — there is no compile-time-generated
   `createLogger<T>()` sugar in this package; call the explicit form.
 - The convenience wrappers drop the event-id-carrying overloads present on

@@ -1,12 +1,10 @@
-// Internal structured log messages for the host runtime. Not exported from
-// the package barrel; call sites use `HostingLoggerExtensions.member(logger,
-// ...)` directly.
+// Internal structured log messages for the host runtime. Not exported from the
+// package barrel; call sites use `hostingLog.member(logger, ...)` directly.
 //
 // Written against `ILogger.log` directly (rather than the `logInformation`-
 // style convenience wrappers) so each message keeps its stable event id.
 
 import { type EventId, formatLogValues, FormattedLogValues, type ILogger, LogLevel } from '@rhombus-std/logging.core';
-import type { AugmentationSet } from '@rhombus-std/primitives';
 import { LoggerEventIds } from './LoggerEventIds';
 
 /** Coerces an arbitrary thrown value into an `Error` for the logging sink. */
@@ -26,10 +24,9 @@ function write(logger: ILogger, level: LogLevel, eventId: EventId, message: stri
 }
 
 /**
- * The internal `HostingLoggerExtensions` set -- the host runtime's structured
- * log messages, keyed to {@link LoggerEventIds}.
+ * The host runtime's structured log messages, keyed to {@link LoggerEventIds}.
  */
-export const HostingLoggerExtensions = {
+export const hostingLog = {
   /**
    * Logs an application-lifecycle callback error at critical severity. When
    * `error` is an `AggregateError`, each inner error's message is appended to
@@ -73,4 +70,4 @@ export const HostingLoggerExtensions = {
   hostedServiceStartupFaulted(logger: ILogger, error: unknown): void {
     write(logger, LogLevel.Error, LoggerEventIds.hostedServiceStartupFaulted, 'Hosting failed to start', error);
   },
-} satisfies AugmentationSet<ILogger>;
+};

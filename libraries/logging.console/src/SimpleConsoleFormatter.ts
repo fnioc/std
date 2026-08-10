@@ -17,7 +17,7 @@ import { formatTimestamp } from './date-format';
 import { LoggerColorBehavior } from './LoggerColorBehavior';
 import type { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
 import type { TextWriter } from './text-writer';
-import { TextWriterExtensions } from './TextWriterExtensions';
+import { writeColoredMessage } from './write-colored-message';
 
 const LOGLEVEL_PADDING = ': ';
 /** Width of `info: ` — every level string is 4 characters. */
@@ -102,8 +102,7 @@ export class SimpleConsoleFormatter extends ConsoleFormatter implements Disposab
     if (timestampFormat !== undefined && stamp !== undefined) {
       textWriter.write(formatTimestamp(stamp, timestampFormat, this.formatterOptions.useUtcTimestamp));
     }
-    TextWriterExtensions.writeColoredMessage(textWriter, logLevelString, logLevelColors.background,
-      logLevelColors.foreground);
+    writeColoredMessage(textWriter, logLevelString, logLevelColors.background, logLevelColors.foreground);
 
     const singleLine = this.formatterOptions.singleLine;
 

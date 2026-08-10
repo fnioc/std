@@ -4,8 +4,9 @@
 
 import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
-import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerExtensions, ConsoleLoggerOptions, ConsoleLoggerProvider,
-  ConsoleLoggerQueueFullMode, type LogEntry, StringWriter, type TextWriter } from '@rhombus-std/logging.console';
+import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions,
+  ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
+  type TextWriter } from '@rhombus-std/logging.console';
 import { EventId, type IExternalScopeProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
@@ -150,11 +151,11 @@ test('addConsole registers exactly one provider per manifest', () => {
   const { services, values } = fakeServices();
   const builder = builderOver(services);
 
-  ConsoleLoggerExtensions.addConsole(builder);
-  ConsoleLoggerExtensions.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsole(builder);
+  ConsoleLoggerAugmentations.addConsole(builder, (options) => {
     options.maxQueueLength = 7;
   });
-  ConsoleLoggerExtensions.addSimpleConsole(builder);
+  ConsoleLoggerAugmentations.addSimpleConsole(builder);
 
   const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TOKEN);
   expect(providers).toHaveLength(1);
@@ -177,11 +178,11 @@ test('configure delegates accumulate onto the shared options and reach the provi
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerExtensions.addConsole(builder);
+  ConsoleLoggerAugmentations.addConsole(builder);
   // A configure applied AFTER the provider exists must still land (the
   // reference OnChange route): select the custom formatter registered late.
-  ConsoleLoggerExtensions.addConsoleFormatter(builder, new UpperFormatter());
-  ConsoleLoggerExtensions.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsoleFormatter(builder, new UpperFormatter());
+  ConsoleLoggerAugmentations.addConsole(builder, (options) => {
     options.formatterName = 'upper';
   });
 
@@ -211,7 +212,7 @@ test("addSimpleConsole's configure reaches the built-in simple formatter", async
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerExtensions.addSimpleConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addSimpleConsole(builder, (options) => {
     options.singleLine = true;
   });
 

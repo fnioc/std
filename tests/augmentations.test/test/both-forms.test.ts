@@ -85,13 +85,19 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
   });
 });
 
-describe('reverse direction, value-object receiver — LoggerFilterOptions.addFilter (§29/#105)', () => {
+describe('reverse direction, value-object receiver — LoggerFilterOptions.addFilter', () => {
+  // The predicate arm, not the (category, level) one: an AugmentationSet2-typed
+  // const collapses an overloaded member to its LAST overload, so the standalone
+  // surface only carries the predicate signature. The method form (which comes
+  // from the interface merge) keeps both.
   test('addFilter method form equals the object-literal member form', () => {
+    const filter = (): boolean => true;
+
     const viaMethod = new LoggerFilterOptions();
-    viaMethod.addFilter('Cat', LogLevel.Warning); // method form
+    viaMethod.addFilter(filter); // method form
 
     const viaMember = new LoggerFilterOptions();
-    LoggerFilterOptionsExtensions.addFilter(viaMember, 'Cat', LogLevel.Warning); // standalone member form
+    LoggerFilterOptionsExtensions.addFilter(viaMember, filter); // standalone member form
 
     expect(viaMethod.rules.length).toBe(1);
     expect(viaMethod.rules[0]).toEqual(viaMember.rules[0]);
