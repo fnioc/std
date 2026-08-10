@@ -1,4 +1,5 @@
-import { memo } from '../utils.js';
+import { Func } from '@rhombus-toolkit/func';
+import { memo, UnionToTuple } from '../utils.js';
 import { typeEquals } from './EqualsVisitor.js';
 import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
 import { satisfiesType } from './SatisfiesVisitor.js';
@@ -6,8 +7,16 @@ import { substituteType } from './SubstituteVisitor.js';
 import { toStringVisitor } from './ToStringVisitor.js';
 import { typeValidatorVisitor } from './TypeValidatorVisitor.js';
 
-export type TokenType = UnionType | IntersectionType | TupleType | LateBoundType | NamedType | ObjectType
-  | TypeLiteralType | PlaceholderType | TagType;
+export type TokenType =
+  | UnionType
+  | IntersectionType
+  | TupleType
+  | LateBoundType
+  | NamedType
+  | ObjectType
+  | TypeLiteralType
+  | PlaceholderType
+  | TagType;
 export type Type = TokenType | CtorType;
 export type ConstructableType = Exclude<Type, NamedType>;
 

@@ -1,5 +1,5 @@
-import { type IntersectionType, type LateBoundType, type NamedType, type ObjectType, type PlaceholderType, type TagType,
-  type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type CtorType, type IntersectionType, type LateBoundType, type NamedType, type ObjectType,
+  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 // TODO: short-circuit a branch whose children all expanded to themselves, returning the
@@ -42,6 +42,12 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   protected override visitLateBound(type: LateBoundType): readonly Type[] {
     return this.#product([...type.args, type.returnType]).map(parts =>
       Type.make.latebound(parts[parts.length - 1]!, ...parts.slice(0, -1))
+    );
+  }
+
+  protected override visitCtor(type: CtorType): readonly Type[] {
+    return this.#product([...type.args, type.instanceType]).map(parts =>
+      Type.make.ctor(parts[parts.length - 1]!, ...parts.slice(0, -1))
     );
   }
 

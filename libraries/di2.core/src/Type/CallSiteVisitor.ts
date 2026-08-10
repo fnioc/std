@@ -60,15 +60,11 @@ class CallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     if (!isAllThere(members)) {
       return undefined;
     }
-    return CallSite.make.factory((...args: any[]) => args, ...members);
+    return CallSite.make.factory((...args: any[]) => args, members);
   }
 
   protected override visitLateBound(type: LateBoundType): CallSite | undefined {
-    return CallSite.make.factory(type.returnType, type.args);
-    return CallSite.make.constant((...args: any[]) => {
-      const additionalServices = type.args.map((serviceType, i) => ServiceDescriptor.make.value(serviceType, args[i]));
-      return this.#serviceProvider.resolve(type.returnType, { additionalServices });
-    });
+    return CallSite.make.latebound(type.returnType, type.args);
   }
 
   protected override visitNamed(type: NamedType): CallSite | undefined {

@@ -89,16 +89,23 @@ export namespace ServiceDescriptor {
   }
 
   export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
-    if (!matches(left, right)
-      || (left as any).scope !== (right as any).scope
-      || left.kind !== right.kind) {
+    if (left === right) {
+      return true;
+    }
+    if (left.kind !== right.kind || !matches(left, right)) {
       return false;
     }
     switch (left.kind) {
-      case 'ctor':
-        return left.ctor === (right as CtorServiceDescriptor<string>).ctor;
-      case 'factory':
-        return left.factory === (right as FactoryServiceDescriptor<string>).factory;
+      case 'ctor': {
+        const other = right as CtorServiceDescriptor<string>;
+        return left.ctor === other.ctor && left.scope === other.scope
+          && signaturesEqual(left.signatures, other.signatures);
+      }
+      case 'factory': {
+        const other = right as FactoryServiceDescriptor<string>;
+        return left.factory === other.factory && left.scope === other.scope
+          && signaturesEqual(left.signatures, other.signatures);
+      }
       case 'value':
         return left.value === (right as ValuedServiceDescriptor<string>).value;
       default:
@@ -108,6 +115,13 @@ export namespace ServiceDescriptor {
   export function matches(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
     return left.serviceKey === right.serviceKey && Type.equals(left.serviceType, right.serviceType);
   }
+}
+
+function signaturesEqual(left: ReadonlyArray<readonly Type[]>, right: ReadonlyArray<readonly Type[]>): boolean {
+  return left.length === right.length && left.every((signature, index) =>
+    signature.length === right[index]!.length
+    && signature.every((param, position) => Type.equals(param, right[index]![position]!))
+  );
 }
 
 function substituteSignatures(signatures: ReadonlyArray<readonly Type[]>,

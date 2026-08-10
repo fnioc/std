@@ -4,8 +4,10 @@ import { augment, IterableObject } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { ServiceDescriptor } from './ServiceDescriptor';
 
-export interface IManifest<Scopes extends string = string> extends IterableObject<ServiceDescriptor<Scopes>> {
+export interface IManifest<Scopes extends string = string> extends Iterable<ServiceDescriptor<Scopes>> {
   add(descriptor: ServiceDescriptor<Scopes>): IManifest<Scopes>;
+  remove(descriptor: ServiceDescriptor<Scopes>): IManifest<Scopes>;
+  replace(descriptor: ServiceDescriptor<Scopes>): IManifest<Scopes>;
 }
 
 export interface Manifest<Scopes extends string = string> extends IManifest<Scopes> {}
@@ -17,18 +19,49 @@ export class Manifest<Scopes extends string> implements IManifest<Scopes> {
     this.#descriptors = descriptors ?? [];
   }
   add(descriptor: ServiceDescriptor<Scopes>) {
-    // INTENTIONAL: newest first. The chain yields most-recent-registration-first so
-    // that taking the FIRST match of a filtered scan is what makes a later
-    // registration beat an earlier one for the same type.
     function* added(this: Manifest<Scopes>) {
+      // INTENTIONAL: newest first.
       yield descriptor;
       yield* this.#descriptors;
     }
     return new Manifest(added.call(this));
   }
 
-  // this is yielded instead of directly returning to ensure it returns an Iterator prototyped object, thus ensure the Iterator comprehension methods.
-  *[Symbol.iterator]() {
-    yield* this.#descriptors;
+  remove(descriptor: ServiceDescriptor<Scopes>) {
+    function* removed(this: Manifest<Scopes>) {
+      const it = Iterator.from(this.#descriptors);
+      for (const existing of it) {
+        if (ServiceDescriptor.equals(existing, descriptor)) {
+          yield* it;
+        } else {
+          yield existing;
+        }
+      }
+    }
+    return new Manifest(removed.call(this));
+  }
+
+  replace(descriptor: ServiceDescriptor<Scopes>) {
+    function* replaced(this: Manifest<Scopes>) {
+      const it = Iterator.from(this.#descriptors);
+      for (const existing of it) {
+        if (ServiceDescriptor.matches(existing, descriptor)) {
+          yield descriptor;
+          yield* it;
+        } else {
+          yield existing;
+        }
+      }
+    }
+    return new Manifest(replaced.call(this));
+  }
+
+  [Symbol.iterator]() {
+    return this.#descriptors[Symbol.iterator]();
+  }
+
+  static #empty = new Manifest<any>();
+  static empty<Scopes extends string>(): IManifest<Scopes> {
+    return this.#empty;
   }
 }

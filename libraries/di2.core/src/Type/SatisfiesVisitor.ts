@@ -1,6 +1,6 @@
 import { typeEquals } from './EqualsVisitor.js';
-import type { IntersectionType, LateBoundType, NamedType, ObjectType, PlaceholderType, TagType, TupleType, Type,
-  TypeLiteralType, UnionType } from './Type.js';
+import type { CtorType, IntersectionType, LateBoundType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+  Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** Failure carries nothing; success carries one entry per placeholder label in the condition. */
@@ -30,6 +30,9 @@ class PlaceholderScanner extends TypeVisitor<boolean> {
   }
   protected override visitLateBound(type: LateBoundType): boolean {
     return type.args.some(arg => this.visit(arg)) || this.visit(type.returnType);
+  }
+  protected override visitCtor(type: CtorType): boolean {
+    return type.args.some(arg => this.visit(arg)) || this.visit(type.instanceType);
   }
   protected override visitNamed(type: NamedType): boolean {
     return type.genericTypes.some(arg => this.visit(arg));
@@ -98,6 +101,13 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       proposed.kind === 'latebound' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
       && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
       && this.match(proposed.returnType, type.returnType);
+  }
+
+  protected override visitCtor(type: CtorType): Predicate {
+    return proposed =>
+      proposed.kind === 'ctor' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
+      && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
+      && this.match(proposed.instanceType, type.instanceType);
   }
 
   protected override visitNamed(type: NamedType): Predicate {

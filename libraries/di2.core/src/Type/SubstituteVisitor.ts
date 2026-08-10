@@ -1,5 +1,5 @@
-import { type IntersectionType, type LateBoundType, type NamedType, type ObjectType, type PlaceholderType, type TagType,
-  type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type CtorType, type IntersectionType, type LateBoundType, type NamedType, type ObjectType,
+  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -53,6 +53,12 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     const args = this.#all(type.args);
     const returnType = this.visit(type.returnType);
     return args === type.args && returnType === type.returnType ? type : Type.make.latebound(returnType, ...args);
+  }
+
+  protected override visitCtor(type: CtorType): Type {
+    const args = this.#all(type.args);
+    const instanceType = this.visit(type.instanceType);
+    return args === type.args && instanceType === type.instanceType ? type : Type.make.ctor(instanceType, ...args);
   }
 
   protected override visitTag(type: TagType): Type {

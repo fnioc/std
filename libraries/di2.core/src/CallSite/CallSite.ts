@@ -17,16 +17,52 @@ export type CallSite =
   | ServiceProviderCallSite
   | IterableCallSite;
 
+export interface CtorCallSite {
+  readonly kind: 'ctor';
+  readonly ctor: Ctor;
+  readonly args: CallSite[];
+}
+/** A registered factory the engine invokes — {@link args} realize its parameters. */
+export interface FactoryCallSite {
+  readonly kind: 'factory';
+  readonly factory: Func;
+  readonly args: CallSite[];
+}
+/**
+ * A function value handed back to the caller; each invocation realizes {@link result} with the
+ * call's arguments filling the ad-hoc holes named by {@link lateBoundArgs}, in order.
+ */
+export interface LateBoundCallSite {
+  readonly kind: 'latebound';
+  readonly result: Type;
+  readonly lateBoundArgs: readonly Type[];
+}
+export interface ConstantCallSite {
+  readonly kind: 'constant';
+  readonly value: any;
+}
+export interface AdHocCallSite {
+  readonly kind: 'adhoc';
+  readonly label: string;
+}
+export interface ServiceProviderCallSite {
+  readonly kind: 'service-provider';
+}
+export interface IterableCallSite {
+  readonly kind: 'iterable';
+  readonly types: Iterable<CallSite>;
+}
+
 export namespace CallSite {
   export namespace make {
-    export function ctor(ctor: Ctor, ...args: CallSite[]): CtorCallSite {
+    export function ctor(ctor: Ctor, args: CallSite[]): CtorCallSite {
       return { kind: 'ctor', ctor, args };
     }
-    export function factory(factory: Func, ...args: CallSite[]): FactoryCallSite {
+    export function factory(factory: Func, args: CallSite[]): FactoryCallSite {
       return { kind: 'factory', factory, args };
     }
-    export function latebound(result: CallSite, ...params: string[]): LateBoundCallSite {
-      return { kind: 'latebound', result, params };
+    export function latebound(result: Type, lateBoundArgs: readonly Type[]): LateBoundCallSite {
+      return { kind: 'latebound', result, lateBoundArgs };
     }
     export function constant(value: any): ConstantCallSite {
       return { kind: 'constant', value };
@@ -59,14 +95,14 @@ export namespace CallSite {
         case 'value':
           return make.constant(descriptor.value);
         case 'ctor':
-          return make.ctor(descriptor.ctor, ...lowerSignature(descriptor.signatures, visitor));
+          return make.ctor(descriptor.ctor, lowerSignature(descriptor.signatures, visitor));
         case 'factory':
-          return make.factory(descriptor.factory, ...lowerSignature(descriptor.signatures, visitor));
+          return make.factory(descriptor.factory, lowerSignature(descriptor.signatures, visitor));
         default:
           return assertNever(descriptor);
       }
     } catch (error) {
-      if (error == 'failzor') {
+      if (error === 'failzor') {
         return undefined;
       }
       throw error;
@@ -76,8 +112,7 @@ export namespace CallSite {
   /** The first signature whose every parameter lowers to a call site. */
   function lowerSignature(signatures: ReadonlyArray<readonly Type[]>,
     visitor: TypeVisitor<CallSite | undefined>): CallSite[] {
-    const lowered = Array.from(signatures)
-      .sort((a, b) => b.length - a.length)
+    const lowered = Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(param => visitor.visit(param)))
       .find(isAllThere);
     if (!lowered) {
@@ -85,40 +120,4 @@ export namespace CallSite {
     }
     return lowered;
   }
-}
-
-export interface CtorCallSite {
-  readonly kind: 'ctor';
-  readonly ctor: Ctor;
-  readonly args: CallSite[];
-}
-/** A registered factory the engine invokes — {@link args} realize its parameters. */
-export interface FactoryCallSite {
-  readonly kind: 'factory';
-  readonly factory: Func;
-  readonly args: CallSite[];
-}
-/**
- * A function value handed back to the caller; each invocation realizes {@link result} with the
- * call's arguments filling the ad-hoc holes named by {@link params}, in order.
- */
-export interface LateBoundCallSite {
-  readonly kind: 'latebound';
-  readonly result: CallSite;
-  readonly params: readonly string[];
-}
-export interface ConstantCallSite {
-  readonly kind: 'constant';
-  readonly value: any;
-}
-export interface AdHocCallSite {
-  readonly kind: 'adhoc';
-  readonly label: string;
-}
-export interface ServiceProviderCallSite {
-  readonly kind: 'service-provider';
-}
-export interface IterableCallSite {
-  readonly kind: 'iterable';
-  readonly types: Iterable<CallSite>;
 }
