@@ -24,6 +24,14 @@ export type ConfigDebugViewContext = {
   readonly provider: IConfigProvider;
 };
 
+type IConfigRootAugmentations = {
+  getDebugView(processValue?: Func<[ConfigDebugViewContext], string>): string;
+};
+
+declare module '@rhombus-std/config.core' {
+  interface IConfigRoot extends IConfigRootAugmentations {}
+}
+
 /** The value/provider that last defined `key`, scanning providers in reverse. */
 function getValueAndProvider(root: IConfigRoot, key: string):
   | [value: string | undefined, provider: IConfigProvider]

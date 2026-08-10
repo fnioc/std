@@ -8,6 +8,16 @@ import { isConfigSection } from './config-section-guard';
 import type { IConfig } from './IConfig';
 import type { IConfigSection } from './IConfigSection';
 
+type IConfigAugmentations = {
+  getConnectionString(name: string): string | undefined;
+  getRequiredSection(key: string): IConfigSection;
+  asIterable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined], void, unknown>;
+};
+
+declare module '@rhombus-std/config.core' {
+  interface IConfig extends IConfigAugmentations {}
+}
+
 /**
  * Whether `section` has a {@link IConfigSection.value} or at least one child;
  * `false` for a nullish section.

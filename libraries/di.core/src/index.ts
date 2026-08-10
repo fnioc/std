@@ -99,4 +99,4 @@ export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDepen
 // A side-effect import: pulling the barrel registers it against the
 // `ServiceManifest` token, installing the verbs onto the collection prototype.
 // The const itself is the standalone call surface.
-export { ServiceManifestDescriptorAugmentations } from './augmentations/ServiceManifestDescriptorAugmentations.js';
+export { ServiceManifestDescriptorAugmentations } from './augmentations/ServiceManifest-Descriptor-augmentations.js';

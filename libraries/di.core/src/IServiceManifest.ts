@@ -260,9 +260,11 @@ function openEntry(token: Token, ctor: Ctor, signatures: DepSignatures | undefin
  * set — including those registered by DOWNSTREAM packages loaded after this one —
  * is installed onto the prototype.
  */
+export interface ServiceManifestClass<Scopes extends string = 'singleton'>
+  extends IServiceManifestBase<Scopes, IServiceProvider<Scopes>> {}
+
 @augment(tokenfor<IServiceManifest>())
-export class ServiceManifestClass<Scopes extends string = 'singleton'>
-  implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>> {
+export class ServiceManifestClass<Scopes extends string = 'singleton'> {
   /**
    * The entries this node decorates — its PREDECESSOR in the chain. Empty at the
    * root. `protected __`-prefixed (never `#`) because the one subclass below has
