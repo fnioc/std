@@ -24,28 +24,30 @@ export class Manifest<Scopes extends string> implements IManifest<Scopes> {
       yield descriptor;
       yield* this.#descriptors;
     }
-    return new Manifest(added.call(this));
+    // A bound generator FUNCTION per iteration, never a generator object: the manifest is
+    // iterated many times per resolution, and a stored generator object is spent after one pass.
+    return new Manifest({ [Symbol.iterator]: added.bind(this) });
   }
 
   remove(descriptor: ServiceDescriptor<Scopes>) {
     function* removed(this: Manifest<Scopes>) {
       const it = Iterator.from(this.#descriptors);
       for (const existing of it) {
-        if (ServiceDescriptor.op.equals(existing, descriptor)) {
+        if (ServiceDescriptor.equals(existing, descriptor)) {
           yield* it;
         } else {
           yield existing;
         }
       }
     }
-    return new Manifest(removed.call(this));
+    return new Manifest({ [Symbol.iterator]: removed.bind(this) });
   }
 
   replace(descriptor: ServiceDescriptor<Scopes>) {
     function* replaced(this: Manifest<Scopes>) {
       const it = Iterator.from(this.#descriptors);
       for (const existing of it) {
-        if (ServiceDescriptor.op.matches(existing, descriptor)) {
+        if (ServiceDescriptor.matches(existing, descriptor)) {
           yield descriptor;
           yield* it;
         } else {
@@ -53,7 +55,7 @@ export class Manifest<Scopes extends string> implements IManifest<Scopes> {
         }
       }
     }
-    return new Manifest(replaced.call(this));
+    return new Manifest({ [Symbol.iterator]: replaced.bind(this) });
   }
 
   [Symbol.iterator]() {
