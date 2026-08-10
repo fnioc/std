@@ -1,7 +1,15 @@
-import type { Token } from '@rhombus-std/primitives';
+import { type Token, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-export type DepSignatures = ReadonlyArray<readonly Token[]>;
+export type TokenSignatures = ReadonlyArray<readonly Token[]>;
+export type TypeSignatures = ReadonlyArray<readonly Type[]>;
+/** A signatures array whose entries may be a mix of resolved `Type`s and unnormalized `Token` strings. */
+export type Signatures = ReadonlyArray<readonly (Type | Token)[]>;
+export namespace TypeSignatures {
+  export function from(signatures: Signatures): TypeSignatures {
+    return signatures.map(sig => sig.map(token => typeof token === 'string' ? Type.from(token) : token));
+  }
+}
 
 // /**
 //  * Anything a dependency signature can describe: a class constructor (its deps
