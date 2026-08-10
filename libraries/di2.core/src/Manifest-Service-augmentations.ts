@@ -5,17 +5,19 @@ import { IManifest } from './IManifest';
 import { ServiceDescriptor } from './ServiceDescriptor';
 import { Signatures, TypeSignatures } from './types';
 
+type IManifestServiceAugmentations<Scopes extends string> = {
+  addClass(type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
+  addClass(token: Token, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
+  addFactory(type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
+    key?: string): IManifest<Scopes>;
+  addFactory(token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
+    key?: string): IManifest<Scopes>;
+  addValue(type: Type, value: unknown, key?: string): IManifest<Scopes>;
+  addValue(token: Token, value: unknown, key?: string): IManifest<Scopes>;
+};
+
 declare module '@rhombus-std/di2.core' {
-  interface IManifest<Scopes extends string> {
-    addClass(type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
-    addClass(token: Token, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
-    addFactory(type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-      key?: string): IManifest<Scopes>;
-    addFactory(token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-      key?: string): IManifest<Scopes>;
-    addValue(type: Type, value: unknown, key?: string): IManifest<Scopes>;
-    addValue(token: Token, value: unknown, key?: string): IManifest<Scopes>;
-  }
+  interface IManifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
 }
 
 // Decoupled from the public overloads above: `AugmentationSet2` reads a

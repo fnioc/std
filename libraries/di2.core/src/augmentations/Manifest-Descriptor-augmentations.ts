@@ -7,34 +7,36 @@ import { type IManifest } from '../IManifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 import { Signatures, TypeSignatures } from '../types';
 
+type IManifestDescriptorAugmentations<Scopes extends string> = {
+  addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
+  tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
+
+  tryAddClass(type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
+  tryAddClass(token: Token, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
+  tryAddFactory(type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
+    key?: string): IManifest<Scopes>;
+  tryAddFactory(token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
+    key?: string): IManifest<Scopes>;
+  tryAddValue(type: Type, value: unknown, key?: string): IManifest<Scopes>;
+  tryAddValue(token: Token, value: unknown, key?: string): IManifest<Scopes>;
+
+  replaceClass(type: Type, ctor: Ctor, signatures: Signatures, scope: Scopes | undefined,
+    key?: string): IManifest<Scopes>;
+  replaceClass(token: Token, ctor: Ctor, signatures: Signatures, scope: Scopes | undefined,
+    key?: string): IManifest<Scopes>;
+  replaceFactory(type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope: Scopes | undefined,
+    key?: string): IManifest<Scopes>;
+  replaceFactory(token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope: Scopes | undefined,
+    key?: string): IManifest<Scopes>;
+  replaceValue(type: Type, value: unknown, key?: string): IManifest<Scopes>;
+  replaceValue(token: Token, value: unknown, key?: string): IManifest<Scopes>;
+
+  removeAll(type: Type, key?: string): IManifest<Scopes>;
+  removeAll(token: Token, key?: string): IManifest<Scopes>;
+};
+
 declare module '@rhombus-std/di2.core' {
-  interface IManifest<Scopes extends string> {
-    addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
-    tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
-
-    tryAddClass(type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
-    tryAddClass(token: Token, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
-    tryAddFactory(type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-      key?: string): IManifest<Scopes>;
-    tryAddFactory(token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-      key?: string): IManifest<Scopes>;
-    tryAddValue(type: Type, value: unknown, key?: string): IManifest<Scopes>;
-    tryAddValue(token: Token, value: unknown, key?: string): IManifest<Scopes>;
-
-    replaceClass(type: Type, ctor: Ctor, signatures: Signatures, scope: Scopes | undefined,
-      key?: string): IManifest<Scopes>;
-    replaceClass(token: Token, ctor: Ctor, signatures: Signatures, scope: Scopes | undefined,
-      key?: string): IManifest<Scopes>;
-    replaceFactory(type: Type, factory: Func<any[], unknown>, signatures: Signatures, scope: Scopes | undefined,
-      key?: string): IManifest<Scopes>;
-    replaceFactory(token: Token, factory: Func<any[], unknown>, signatures: Signatures, scope: Scopes | undefined,
-      key?: string): IManifest<Scopes>;
-    replaceValue(type: Type, value: unknown, key?: string): IManifest<Scopes>;
-    replaceValue(token: Token, value: unknown, key?: string): IManifest<Scopes>;
-
-    removeAll(type: Type, key?: string): IManifest<Scopes>;
-    removeAll(token: Token, key?: string): IManifest<Scopes>;
-  }
+  interface IManifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
 }
 
 // Decoupled from the public overloads above -- see the matching comment in
