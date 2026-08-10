@@ -14,14 +14,15 @@
 // Each test uses a UNIQUE token string so the module-level bag/bus (a process
 // singleton) does not leak state between cases.
 
-import { augment, type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
+import { augment, type AugmentationSet, type MergeStrategies, registerAugmentations,
+  Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 let counter = 0;
-/** A fresh token per call, so no two tests share a registry bag. */
+/** A fresh receiver token per call, so no two tests share a registry bag. */
 function freshToken(): string {
   counter += 1;
-  return `test:token:${counter}`;
+  return `test/registry:IReceiver${counter}`;
 }
 
 describe('register-then-decorate', () => {
@@ -541,5 +542,39 @@ describe('@augment decorator syntax (TC39 standard class decorator)', () => {
     }
 
     expect(new Counter().inc().inc().n).toBe(2);
+  });
+});
+
+describe('a receiver is a type, however it is spelled', () => {
+  test('a token string and the type it names reach one bag', () => {
+    const TOKEN = 'spelling/one:IReceiver';
+
+    registerAugmentations(TOKEN, { fromString: () => 'string' } as AugmentationSet<unknown>);
+    registerAugmentations(Type.from(TOKEN), { fromType: () => 'type' } as AugmentationSet<unknown>);
+
+    @augment(Type.from(TOKEN))
+    class Receiver {}
+    interface Receiver {
+      fromString(): string;
+      fromType(): string;
+    }
+
+    const receiver = new Receiver();
+    expect(receiver.fromString()).toBe('string');
+    expect(receiver.fromType()).toBe('type');
+  });
+
+  test('a class decorated by string sees a registration made by type', () => {
+    const TOKEN = 'spelling/two:IReceiver';
+
+    @augment(TOKEN)
+    class Receiver {}
+    interface Receiver {
+      late(): string;
+    }
+
+    registerAugmentations(Type.from(TOKEN), { late: () => 'installed' } as AugmentationSet<unknown>);
+
+    expect(new Receiver().late()).toBe('installed');
   });
 });
