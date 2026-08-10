@@ -134,3 +134,22 @@ describe('equals is retired', () => {
     expect(Type.equals).toBeUndefined();
   });
 });
+
+describe('collection', () => {
+  test('spells the aggregate of an element', () => {
+    expect(Type.stringify(Type.collection(A))).toBe('Array<app:A>');
+  });
+
+  test('the composing and the reading side land on one object', () => {
+    expect(Type.collection(A)).toBe(Type.collection(A));
+    expect(Type.collection(A)).toBe(Type.from('Array<app:A>'));
+  });
+
+  test('a different element is a different aggregate', () => {
+    expect(Type.collection(A)).not.toBe(Type.collection(B));
+  });
+
+  test('nests, so an aggregate is itself collectable', () => {
+    expect(Type.collection(Type.collection(A))).toBe(Type.from('Array<Array<app:A>>'));
+  });
+});

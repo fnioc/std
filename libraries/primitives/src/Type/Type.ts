@@ -71,6 +71,19 @@ export namespace Type {
   }
 
   /**
+   * The aggregate of every registration of `element` — the type a container reads to collect them
+   * all, rather than to resolve one.
+   *
+   * @remarks
+   * The side that registers an element and the side that reads the aggregate must name the same
+   * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
+   * this, so they cannot drift.
+   */
+  export function collection(element: Type): NamedType {
+    return factory.named('Array', 'global', [element]);
+  }
+
+  /**
    * Reads a type token back into the {@link Type} it spells — the inverse of {@link stringify}.
    *
    * @remarks
