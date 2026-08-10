@@ -5,7 +5,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { AugmentationSet2 } from '@rhombus-std/primitives';
 import { type IManifest } from '../IManifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
-import { Signatures, TypeSignatures } from '../types';
+import { keyedType, Signatures, TypeSignatures } from '../types';
 
 type IManifestDescriptorAugmentations<Scopes extends string> = {
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): IManifest<Scopes>;
@@ -95,21 +95,25 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
       if (typeof token === 'string') {
         return manifest.tryAddClass(Type.from(token), ctor, signatures, scope, key);
       }
-      return manifest.tryAdd(ServiceDescriptor.ctor(token, ctor, TypeSignatures.from(signatures), scope, key));
+      return manifest.tryAdd(
+        ServiceDescriptor.ctor(keyedType(token, key), ctor, TypeSignatures.from(signatures), scope),
+      );
     },
     tryAddFactory(manifest: IManifest, ...args: TryAddFactoryArgs<string>): IManifest {
       const [token, factory, signatures, scope, key] = args;
       if (typeof token === 'string') {
         return manifest.tryAddFactory(Type.from(token), factory, signatures, scope, key);
       }
-      return manifest.tryAdd(ServiceDescriptor.factory(token, factory, TypeSignatures.from(signatures), scope, key));
+      return manifest.tryAdd(
+        ServiceDescriptor.factory(keyedType(token, key), factory, TypeSignatures.from(signatures), scope),
+      );
     },
     tryAddValue(manifest: IManifest, ...args: TryAddValueArgs): IManifest {
       const [token, value, key] = args;
       if (typeof token === 'string') {
         return manifest.tryAddValue(Type.from(token), value, key);
       }
-      return manifest.tryAdd(ServiceDescriptor.value(token, value, key));
+      return manifest.tryAdd(ServiceDescriptor.value(keyedType(token, key), value));
     },
 
     replaceClass(manifest: IManifest, ...args: ReplaceClassArgs<string>): IManifest {
@@ -139,7 +143,7 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
       if (typeof token === 'string') {
         return manifest.removeAll(Type.from(token), key);
       }
-      const target = ServiceDescriptor.value(token, undefined, key);
+      const target = ServiceDescriptor.value(keyedType(token, key), undefined);
       return Iterator.from(manifest)
         .filter(descriptor => ServiceDescriptor.matches(descriptor, target))
         .reduce((man, descriptor) => man.remove(descriptor), manifest);

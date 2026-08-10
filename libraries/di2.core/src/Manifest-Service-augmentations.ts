@@ -3,7 +3,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { IManifest } from './IManifest';
 import { ServiceDescriptor } from './ServiceDescriptor';
-import { Signatures, TypeSignatures } from './types';
+import { keyedType, Signatures, TypeSignatures } from './types';
 
 type IManifestServiceAugmentations<Scopes extends string> = {
   addClass(type: Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): IManifest<Scopes>;
@@ -52,21 +52,23 @@ export const ManifestServiceAugmentations: AugmentationSet2<IManifest, IManifest
     if (typeof token === 'string') {
       return receiver.addClass(Type.from(token), ctor, signatures, scope, key);
     }
-    return receiver.add(ServiceDescriptor.ctor(token, ctor, TypeSignatures.from(signatures), scope, key));
+    return receiver.add(ServiceDescriptor.ctor(keyedType(token, key), ctor, TypeSignatures.from(signatures), scope));
   },
   addFactory(receiver: IManifest, ...args: AddFactoryArgs<string>): IManifest {
     const [token, factory, signatures, scope, key] = args;
     if (typeof token === 'string') {
       return receiver.addFactory(Type.from(token), factory, signatures, scope, key);
     }
-    return receiver.add(ServiceDescriptor.factory(token, factory, TypeSignatures.from(signatures), scope, key));
+    return receiver.add(
+      ServiceDescriptor.factory(keyedType(token, key), factory, TypeSignatures.from(signatures), scope),
+    );
   },
   addValue(receiver: IManifest, ...args: AddValueArgs): IManifest {
     const [token, value, key] = args;
     if (typeof token === 'string') {
       return receiver.addValue(Type.from(token), value, key);
     }
-    return receiver.add(ServiceDescriptor.value(token, value, key));
+    return receiver.add(ServiceDescriptor.value(keyedType(token, key), value));
   },
 };
 
