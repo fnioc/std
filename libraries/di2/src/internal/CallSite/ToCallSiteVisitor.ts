@@ -38,7 +38,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     if (type.kind === 'placeholder') {
       return undefined;
     }
-    if (this.#open.some(open => Type.equals(open, type))) {
+    if (this.#open.includes(type)) {
       throw new CycleError([...this.#open, type]);
     }
     this.#open.push(type);
