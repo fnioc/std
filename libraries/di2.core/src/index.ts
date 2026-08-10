@@ -9,3 +9,4 @@ export * from './overrideSignatures';
 export * from './ScopeCache';
 export * from './ServiceDescriptor';
 export * from './types';
+export type { assign } from './utils';

@@ -1,11 +1,10 @@
-import { AugmentationSet2, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
+import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { type Manifest } from '../Manifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 import { keyedType, Signatures, TypeSignatures } from '../types';
-import { Flatten } from '../utils';
 
 interface IManifestDescriptorAugmentations<Scopes extends string> {
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;

@@ -9,9 +9,9 @@ import '@rhombus-std/options.augmentations';
 
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
-import { Flatten } from '../../di2.core/src/utils';
 import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';
 interface ILoggerFilterOptionsExtensions {

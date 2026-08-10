@@ -1,10 +1,9 @@
-import { AugmentationSet2, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
+import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { Manifest } from './Manifest';
 import { ServiceDescriptor } from './ServiceDescriptor';
 import { keyedType, Signatures, TypeSignatures } from './types';
-import { Flatten } from './utils';
 
 interface IManifestServiceAugmentations<Scopes extends string> {
   addClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): this;
