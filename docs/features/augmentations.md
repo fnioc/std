@@ -76,6 +76,14 @@ type IConfigBuilderJsonAugmentations = {
 This type is the one place the member signatures are written — everything else below either
 `extends` it or derives from it.
 
+Write the member map as a `type` literal by default — a type literal carries the implicit index
+signature that `AugmentationSet2`'s `Record<PropertyKey, Func>` constraint needs, so it plugs in
+directly. The one reason to use an `interface` instead is `this`-polymorphic returns
+(`addFilter(...): this`), which are only legal inside an interface; an interface has no implicit
+index signature, so wrap it as `Flatten<IMemberMap>` wherever the constraint is applied (the
+`AugmentationSet2` const annotation), while the `extends` merge in step 3 uses the raw interface so
+`this` keeps meaning the receiver.
+
 **3. Merge the member map onto the receiver interface with `extends`**, in the same file as the
 receiver's own declaring module (this placement matters — see Gotchas):
 
