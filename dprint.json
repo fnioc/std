@@ -8,12 +8,12 @@
   "typescript": {
     "lineWidth": 120,
     "useBraces": "always",
+    "bracePosition": "sameLine",
     "quoteStyle": "preferSingle",
     "quoteProps": "asNeeded",
     "semiColons": "always",
     "singleBodyPosition": "nextLine",
-    "preferHanging": true,
-    "preferSingleLine": true
+    "preferHanging": true
   },
   "json": {},
   "markdown": {

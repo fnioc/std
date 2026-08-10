@@ -84,15 +84,15 @@ declare module '@rhombus-std/di.core' {
 // installs independently and a consumer may pull in only one.
 export const MetricsServiceExtensions = {
   addMetrics(manifest: ServiceManifestClass<string>,
-    configure?: Func<[IMetricsBuilder], void>
-  ): IServiceManifest<string> {
+    configure?: Func<[IMetricsBuilder], void>): IServiceManifest<string> {
     // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
     // scope. Calling addMetrics twice re-registers the (identical) factory --
     // last-wins bare-token resolution keeps that correct. The factory takes the
     // live provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
-    let m: IServiceManifest<string> = manifest.addFactory(METRICS_OPTIONS_TOKEN, (resolver) =>
-      assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TOKEN, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, () =>
-        new MetricsOptions()), [[RESOLVER_TOKEN]], 'singleton');
+    let m: IServiceManifest<string> = manifest.addFactory(METRICS_OPTIONS_TOKEN,
+      (resolver) =>
+        assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TOKEN, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, () =>
+          new MetricsOptions()), [[RESOLVER_TOKEN]], 'singleton');
     // The per-listener configuration factory, ctor-injected with the collection
     // of every MetricsConfig marker addMetricsConfig registered.
     m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN, MetricListenerConfigFactory, [[
@@ -117,11 +117,11 @@ export const MetricsServiceExtensions = {
 
 export const TracingServiceExtensions = {
   addTracing(manifest: ServiceManifestClass<string>,
-    configure?: Func<[ITracingBuilder], void>
-  ): IServiceManifest<string> {
-    let m: IServiceManifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN, (resolver) =>
-      assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TOKEN, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, () =>
-        new TracingOptions()), [[RESOLVER_TOKEN]], 'singleton');
+    configure?: Func<[ITracingBuilder], void>): IServiceManifest<string> {
+    let m: IServiceManifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN,
+      (resolver) =>
+        assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TOKEN, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, () =>
+          new TracingOptions()), [[RESOLVER_TOKEN]], 'singleton');
     // The per-listener configuration factory, ctor-injected with the collection
     // of every TracingConfig marker addTracingConfig registered.
     m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, DefaultActivityListenerConfigFactory, [[

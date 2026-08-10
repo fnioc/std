@@ -167,12 +167,11 @@ export const known = provider.isService<ILogger>();
 // share the plugin cache (see the file header). Each tsconfig differs only in
 // its plugin list and its outDir, so their emit never collides.
 function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(join(projDir, name),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
-      include: ['src/**/*'],
-    }));
+  writeFileSync(join(projDir, name), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
+    include: ['src/**/*'],
+  }));
 }
 
 function setupWorkspace(): void {
@@ -485,12 +484,11 @@ function writeChainSrc(dir: string): void {
 }
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(join(dir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
-      include: ['src/**/*'],
-    }));
+  writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
+    include: ['src/**/*'],
+  }));
 }
 
 function linkChainDeps(dir: string): void {

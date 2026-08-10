@@ -55,9 +55,10 @@ export const OptionsBuilderExtensions = {
     // -- harmless: the host resolves a single `IStartupValidator`, and every
     // registration's factory reads the SAME full target list from the
     // resolver at start time.
-    m = m.addFactory(tokenfor<IStartupValidator>(), (resolver: IResolver): IStartupValidator =>
-      new StartupValidator(resolver,
-        resolver.resolve<readonly Token[]>(collectionToken(startupValidationTargetToken()))), [[RESOLVER_TOKEN]]);
+    m = m.addFactory(tokenfor<IStartupValidator>(),
+      (resolver: IResolver): IStartupValidator =>
+        new StartupValidator(resolver,
+          resolver.resolve<readonly Token[]>(collectionToken(startupValidationTargetToken()))), [[RESOLVER_TOKEN]]);
     return m;
   },
 } satisfies AugmentationSet<ServiceManifestClass<string>>;

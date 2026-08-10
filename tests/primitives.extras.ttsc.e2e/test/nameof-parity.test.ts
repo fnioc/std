@@ -146,13 +146,12 @@ export const localExplicitAlias = tokenfor<Local<"request">>();
 export const publicDefaultAlias = tokenfor<Scoped>();
 export const publicExplicitAlias = tokenfor<Scoped<"request">>();
 `);
-  writeFileSync(join(projDir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
-        plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }] },
-      include: ['src/**/*'],
-    }));
+  writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+      plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }] },
+    include: ['src/**/*'],
+  }));
 
   const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projDir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
