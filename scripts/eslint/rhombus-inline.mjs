@@ -228,8 +228,7 @@ const BANNED = {
 function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers) {
   const body = fn.body;
   if (!body || body.type !== 'BlockStatement' || body.body.length !== 1 || body.body[0].type !== 'ReturnStatement'
-    || !body.body[0].argument)
-  {
+    || !body.body[0].argument) {
     context.report({ node: fn, messageId: 'singleReturn' });
     return;
   }
@@ -350,8 +349,7 @@ function walkExpression(root, cb) {
       // A this.<member> call to another listed member is nesting (unless it is
       // the primitive-form call, which the stage handles).
       if (callee.type === 'MemberExpression' && callee.object.type === 'ThisExpression'
-        && callee.property.type === 'Identifier' && cb.listedMembers.has(callee.property.name))
-      {
+        && callee.property.type === 'Identifier' && cb.listedMembers.has(callee.property.name)) {
         const typeArgCount = node.typeArguments?.params?.length ?? 0;
         if (typeArgCount > 0) {
           cb.onNestedMember(node, callee.property.name);

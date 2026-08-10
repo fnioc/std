@@ -152,8 +152,7 @@ class InteropWorker implements IHostedLifecycleService {
   readonly #config: ConfigRoot;
 
   public constructor(resolver: IResolver, lifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory,
-    config: ConfigRoot)
-  {
+    config: ConfigRoot) {
     this.#resolver = resolver;
     this.#lifetime = lifetime;
     this.#logger = loggerFactory.createLogger('Rhombus.Examples.InteropWorker');

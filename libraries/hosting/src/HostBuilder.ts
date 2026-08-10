@@ -4,7 +4,7 @@
 // application configuration -> framework services -> the internal host.
 //
 // Configuration flows through `@rhombus-std/config`'s `ConfigBuilder`
-// (the provider `add*` sugar is installed by the `configureDefaults` extension,
+// (the provider `add*` sugar is installed by the `configureDefaults` augmentation,
 // which side-effect-imports the provider packages). Service registration flows
 // through `@rhombus-std/di`'s `ServiceManifest`.
 

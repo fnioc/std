@@ -26,8 +26,7 @@ export class ConsoleLoggerProcessor implements Disposable {
   public readonly errorConsole: IConsole;
 
   public constructor(console: IConsole, errorConsole: IConsole, fullMode: ConsoleLoggerQueueFullMode,
-    maxQueueLength: number)
-  {
+    maxQueueLength: number) {
     this.console = console;
     this.errorConsole = errorConsole;
     this.#fullMode = ConsoleLoggerProcessor.#validateFullMode(fullMode);

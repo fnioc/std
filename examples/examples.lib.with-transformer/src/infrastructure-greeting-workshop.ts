@@ -355,8 +355,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
 export function addGreetingWorkshop<S extends string>(services: IServiceManifest<S | 'singleton'>,
-  configure: (builder: IGreetingWorkshopBuilder) => void): IServiceManifest<S | 'singleton'>
-{
+  configure: (builder: IGreetingWorkshopBuilder) => void): IServiceManifest<S | 'singleton'> {
   const holder: IServiceManifestHolder<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 

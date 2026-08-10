@@ -1,6 +1,6 @@
 import type { IServiceManifest, Token } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
-import { BrowserConsoleLogger, BrowserConsoleLoggerExtensions, BrowserConsoleLoggerProvider, type ConsoleLike,
+import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike,
   consoleMethodFor } from '@rhombus-std/logging.browserconsole';
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
@@ -118,8 +118,8 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   const { services, values } = fakeServices();
   const builder = new LoggingBuilder(services);
 
-  BrowserConsoleLoggerExtensions.addBrowserConsole(builder);
-  BrowserConsoleLoggerExtensions.addBrowserConsole(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole(builder);
 
   const providers = values.filter(([token]) => {
     return token === LOGGER_PROVIDER_TOKEN;
@@ -134,8 +134,8 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   const first = fakeServices();
   const second = fakeServices();
 
-  BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(first.services));
-  BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(second.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole(new LoggingBuilder(first.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole(new LoggingBuilder(second.services));
 
   const providersFor = (values: Array<[Token, unknown]>) => {
     return values.filter(([token]) => {

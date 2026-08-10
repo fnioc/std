@@ -12,8 +12,7 @@ import { describe, expect, test } from 'bun:test';
 
 /** Shorthand rule ctor: names + scopes, `enable` defaulting to true. */
 function rule(meterName: string | undefined, instrumentName: string | undefined, listenerName: string | undefined,
-  scopes: MeterScope = MeterScope.Global, enable = true): InstrumentRule
-{
+  scopes: MeterScope = MeterScope.Global, enable = true): InstrumentRule {
   return new InstrumentRule(meterName, instrumentName, listenerName, scopes, enable);
 }
 

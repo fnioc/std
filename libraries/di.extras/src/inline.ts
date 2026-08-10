@@ -1,7 +1,7 @@
 // Sugar bodies for di's registration and resolve surfaces — the object literals
 // below are substitution source only: this package's barrel (`./index.ts`) does
 // not re-export this file, so it never reaches `dist`. Each body shows the exact
-// expression the matching token-free overload in `./augment.ts` becomes.
+// expression the matching overload in `./augment.ts` becomes.
 //
 // Each object literal is paired with a `registerInlineBodies(...)` call — a
 // no-op marker, not dead code.

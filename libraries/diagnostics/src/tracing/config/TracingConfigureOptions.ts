@@ -19,8 +19,7 @@ const ENABLED_LOCAL_TRACING_KEY = 'EnabledLocalTracing';
 
 /** Appends per-operation rules from an object of `{OperationName} = bool` leaves. */
 function loadActivityRules(options: TracingOptions, sourceSection: IConfigSection, scopes: ActivitySourceScopes,
-  listenerName: string | undefined): void
-{
+  listenerName: string | undefined): void {
   for (const [relativePath, rawValue] of flattenLeaves(sourceSection)) {
     const enabled = parseBool(rawValue);
     if (enabled === undefined) {
@@ -33,8 +32,7 @@ function loadActivityRules(options: TracingOptions, sourceSection: IConfigSectio
 
 /** Appends per-source rules (bool leaf) or recurses into per-operation rules (object). */
 function loadActivitySourceRules(options: TracingOptions, scopeSection: IConfigSection, scopes: ActivitySourceScopes,
-  listenerName: string | undefined): void
-{
+  listenerName: string | undefined): void {
   for (const sourceSection of scopeSection.getChildren()) {
     if (hasChildren(sourceSection)) {
       loadActivityRules(options, sourceSection, scopes, listenerName);

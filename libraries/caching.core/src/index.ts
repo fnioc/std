@@ -12,15 +12,15 @@ export type { CacheTryGetResult, IMemoryCache } from './IMemoryCache';
 export { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 export { MemoryCacheStatistics } from './MemoryCacheStatistics';
 
-export { CacheEntryExtensions } from './CacheEntryExtensions';
-export { CacheExtensions } from './CacheExtensions';
-export { MemoryCacheEntryExtensions } from './MemoryCacheEntryExtensions';
+export { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
+export { MemoryCacheSugarAugmentations } from './MemoryCache-Sugar-augmentations';
+export { MemoryCacheEntryOptionsSugarAugmentations } from './MemoryCacheEntryOptions-Sugar-augmentations';
 
 // The distributed-cache surface (`freezeDistributedCacheEntryOptions` is
 // intentionally not re-exported).
-export { DistributedCacheEntryExtensions } from './DistributedCacheEntryExtensions';
+export { DistributedCacheSugarAugmentations } from './DistributedCache-Sugar-augmentations';
 export { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
-export { DistributedCacheExtensions } from './DistributedCacheExtensions';
+export { DistributedCacheEntryOptionsSugarAugmentations } from './DistributedCacheEntryOptions-Sugar-augmentations';
 export type { IDistributedCache } from './IDistributedCache';
 
 // The hybrid-cache surface (`toDistributedCacheEntryOptions` is intentionally

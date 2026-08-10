@@ -1,5 +1,5 @@
 // clearMetricsListeners / clearTracingListeners -- the ports of the reference
-// `MetricsBuilderExtensions.ClearListeners` / `TracingBuilderExtensions.ClearListeners`
+// `MetricsBuilderAugmentations.ClearListeners` / `TracingBuilderAugmentations.ClearListeners`
 // (`builder.Services.RemoveAll<...>()` through di.core's removeAll descriptor
 // verb). Exercised in both dual-export forms (docs §28): the standalone
 // `Set.member(builder, ...)` call and the registry-installed method, both
@@ -11,8 +11,8 @@ import { ServiceManifest } from '@rhombus-std/di';
 import type { IServiceManifest as Manifest, IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TOKEN,
-  METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN,
-  TracingBuilderExtensions } from '@rhombus-std/diagnostics.core';
+  METRICS_LISTENER_TOKEN, MetricsBuilderAugmentations, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN,
+  TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
 
 function listener(name: string): IMetricsListener {
@@ -31,14 +31,14 @@ function registered(builder: { services: IServiceManifestBase; }, token: string)
   return (builder.services as Manifest).build().resolve<unknown[]>(`Array<${token}>`);
 }
 
-describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
+describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   test('removes every IMetricsListener registration', () => {
     const manifest = new ServiceManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
-    MetricsBuilderExtensions.addMetricsListener(builder, listener('a'));
-    MetricsBuilderExtensions.addMetricsListener(builder, listener('b'));
-    const returned = MetricsBuilderExtensions.clearMetricsListeners(builder);
+    MetricsBuilderAugmentations.addMetricsListener(builder, listener('a'));
+    MetricsBuilderAugmentations.addMetricsListener(builder, listener('b'));
+    const returned = MetricsBuilderAugmentations.clearMetricsListeners(builder);
 
     expect(returned).toBe(builder);
     expect(registered(builder, METRICS_LISTENER_TOKEN)).toHaveLength(0);
@@ -48,10 +48,10 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
     const manifest = new ServiceManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
-    MetricsBuilderExtensions.addMetricsListener(builder, listener('stale'));
-    MetricsBuilderExtensions.clearMetricsListeners(builder);
+    MetricsBuilderAugmentations.addMetricsListener(builder, listener('stale'));
+    MetricsBuilderAugmentations.clearMetricsListeners(builder);
     const fresh = listener('fresh');
-    MetricsBuilderExtensions.addMetricsListener(builder, fresh);
+    MetricsBuilderAugmentations.addMetricsListener(builder, fresh);
 
     expect(registered(builder, METRICS_LISTENER_TOKEN)).toEqual([fresh]);
   });
@@ -60,9 +60,9 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
     const manifest = new ServiceManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
-    MetricsBuilderExtensions.addMetricsListener(builder, listener('a'));
-    MetricsBuilderExtensions.enableMetrics(builder, 'some-meter');
-    MetricsBuilderExtensions.clearMetricsListeners(builder);
+    MetricsBuilderAugmentations.addMetricsListener(builder, listener('a'));
+    MetricsBuilderAugmentations.enableMetrics(builder, 'some-meter');
+    MetricsBuilderAugmentations.clearMetricsListeners(builder);
 
     expect(registered(builder, METRICS_CONFIGURE_TOKEN)).toHaveLength(1);
   });
@@ -78,14 +78,14 @@ describe('MetricsBuilderExtensions.clearMetricsListeners', () => {
   });
 });
 
-describe('TracingBuilderExtensions.clearTracingListeners', () => {
+describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   test('removes every ActivityListenerBuilder registration', () => {
     const manifest = new ServiceManifest();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
-    TracingBuilderExtensions.addTracingListener(builder, 'L1', () => {});
-    TracingBuilderExtensions.addTracingListener(builder, 'L2', () => {});
-    const returned = TracingBuilderExtensions.clearTracingListeners(builder);
+    TracingBuilderAugmentations.addTracingListener(builder, 'L1', () => {});
+    TracingBuilderAugmentations.addTracingListener(builder, 'L2', () => {});
+    const returned = TracingBuilderAugmentations.clearTracingListeners(builder);
 
     expect(returned).toBe(builder);
     expect(registered(builder, TRACING_LISTENER_TOKEN)).toHaveLength(0);
@@ -95,10 +95,10 @@ describe('TracingBuilderExtensions.clearTracingListeners', () => {
     const manifest = new ServiceManifest();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
-    TracingBuilderExtensions.addTracingListener(builder, 'stale', () => {});
-    TracingBuilderExtensions.enableTracing(builder, 'MySource');
-    TracingBuilderExtensions.clearTracingListeners(builder);
-    TracingBuilderExtensions.addTracingListener(builder, 'fresh', () => {});
+    TracingBuilderAugmentations.addTracingListener(builder, 'stale', () => {});
+    TracingBuilderAugmentations.enableTracing(builder, 'MySource');
+    TracingBuilderAugmentations.clearTracingListeners(builder);
+    TracingBuilderAugmentations.addTracingListener(builder, 'fresh', () => {});
 
     const remaining = registered(builder, TRACING_LISTENER_TOKEN);
     expect(remaining).toHaveLength(1);

@@ -30,8 +30,7 @@ export function setServiceProviderOptionsFactory(builder: IHostBuilder, factory:
  */
 export function resolveServiceProviderOptions(builder: IHostBuilder, context: HostBuilderContext):
   | ServiceProviderOptions
-  | undefined
-{
+  | undefined {
   const factory = builder.properties.get(SERVICE_PROVIDER_OPTIONS_FACTORY) as ServiceProviderOptionsFactory | undefined;
   return factory?.(context);
 }

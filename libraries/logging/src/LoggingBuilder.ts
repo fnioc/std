@@ -21,7 +21,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 export interface LoggingBuilder extends ILoggingBuilder {}
 
 // Decorating the concrete builder with the ILoggingBuilder token means every
-// set registered against it — this package's `LoggingBuilderExtensions`, plus
+// set registered against it — this package's `LoggingBuilderProviderAugmentations`, plus
 // downstream `addConfig`/`addConsole` — is (re)installed onto the prototype,
 // whatever the import order.
 @augment(tokenfor<ILoggingBuilder>())

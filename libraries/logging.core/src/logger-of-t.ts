@@ -40,8 +40,7 @@ export class Logger<T> implements ILogger<T> {
   }
 
   public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+    formatter: Func<[TState, Error | undefined], string>): void {
     this.#logger.log(logLevel, eventId, state, error, formatter);
   }
 

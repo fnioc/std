@@ -66,8 +66,7 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
   }
 
   public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void
-  {
+    textWriter: TextWriter): void {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
     this.#writeInternal(scopeProvider, textWriter, message, logEntry.logLevel, logEntry.category, logEntry.eventId.id,
       logEntry.error === undefined ? undefined : logEntry.error.stack ?? String(logEntry.error),
@@ -75,8 +74,7 @@ export class SystemdConsoleFormatter extends ConsoleFormatter implements Disposa
   }
 
   #writeInternal(scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter, message: string,
-    logLevel: LogLevel, category: string, eventId: number, error: string | undefined, stamp: Date | undefined): void
-  {
+    logLevel: LogLevel, category: string, eventId: number, error: string | undefined, stamp: Date | undefined): void {
     message = ConsoleControlCharacterSanitizer.sanitize(message);
     error = ConsoleControlCharacterSanitizer.sanitize(error);
     category = ConsoleControlCharacterSanitizer.sanitize(category);

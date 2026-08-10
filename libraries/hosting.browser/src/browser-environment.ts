@@ -22,7 +22,7 @@ export interface BrowserEnvironmentSettings {
 }
 
 // Interface-extends merge (augmentation doctrine): the registry-installed
-// environment predicates (hosting.core's HostEnvironmentEnvExtensions) reach the
+// environment predicates (hosting.core's HostEnvironmentEnvAugmentations) reach the
 // IHostEnvironment interface via hosting.core's own merge; binding the interface
 // SYMBOL here flows every current and future IHostEnvironment augmentation onto
 // this concrete holder, so it satisfies `implements IHostEnvironment` without

@@ -29,8 +29,7 @@ const JOIN = 'pkg:IJoin';
 /** The middle link: one dependency carrying the hole, one type-argument witness. */
 class Table {
   public constructor(public readonly seed: { readonly rows: readonly string[]; },
-    public readonly entityToken: string)
-  {}
+    public readonly entityToken: string) {}
 }
 
 /** The template a consumer asks for; its dependency is another template's closing. */

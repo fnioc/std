@@ -203,8 +203,7 @@ function materialise(pending: PendingRegistration): ManifestEntry {
  * `#lookup`. Both would otherwise register a silent never-matches.
  */
 function openEntry(token: Token, ctor: Ctor, signatures: DepSignatures | undefined,
-  scope: string | undefined): ManifestEntry
-{
+  scope: string | undefined): ManifestEntry {
   const node = TokenNode.tryParse(token);
   if (node === undefined || node.kind !== 'concrete' || !node.args.length) {
     throw new OpenTokenRegistrationError(token, 'addClass');
@@ -261,10 +260,11 @@ function openEntry(token: Token, ctor: Ctor, signatures: DepSignatures | undefin
  * set — including those registered by DOWNSTREAM packages loaded after this one —
  * is installed onto the prototype.
  */
+export interface ServiceManifestClass<Scopes extends string = 'singleton'>
+  extends IServiceManifestBase<Scopes, IServiceProvider<Scopes>> {}
+
 @augment(tokenfor<IServiceManifest>())
-export class ServiceManifestClass<Scopes extends string = 'singleton'>
-  implements IServiceManifestBase<Scopes, IServiceProvider<Scopes>>
-{
+export class ServiceManifestClass<Scopes extends string = 'singleton'> {
   /**
    * The entries this node decorates — its PREDECESSOR in the chain. Empty at the
    * root. `protected __`-prefixed (never `#`) because the one subclass below has
@@ -492,7 +492,7 @@ export class ServiceManifestClass<Scopes extends string = 'singleton'>
    *
    * This is the collection's own concern, so it lives here in di.core. The
    * ENGINE-CONSTRUCTING half — turning this snapshot into a `IServiceProvider` —
-   * is a `@rhombus-std/di` extension (`build()` below), because it needs the
+   * is a `@rhombus-std/di` augmentation (`build()` below), because it needs the
    * runtime resolution engine di.core deliberately does not depend on.
    */
   public seal(): SealedManifest {

@@ -16,8 +16,7 @@ export type LoggerFilterDelegate = Func<[string | undefined, string | undefined,
 export class MessageLogger {
   public constructor(public readonly logger: ILogger, public readonly category: string,
     public readonly providerTypeFullName: string | undefined, public readonly minLevel: LogLevel | undefined,
-    public readonly filter: LoggerFilterDelegate | undefined)
-  {}
+    public readonly filter: LoggerFilterDelegate | undefined) {}
 
   public isEnabled(level: LogLevel): boolean {
     if (this.minLevel !== undefined && level < this.minLevel) {
@@ -37,8 +36,7 @@ export class MessageLogger {
  */
 export class ScopeLogger {
   public constructor(public readonly logger: ILogger | undefined,
-    public readonly externalScopeProvider: IExternalScopeProvider | undefined)
-  {}
+    public readonly externalScopeProvider: IExternalScopeProvider | undefined) {}
 
   public createScope<TState>(state: TState): Disposable | undefined {
     if (this.externalScopeProvider !== undefined) {

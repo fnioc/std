@@ -1,10 +1,10 @@
 // Public entry point for @rhombus-std/diagnostics.
 //
 // Ships the concrete MetricsBuilder/TracingBuilder, the config-binding
-// augmentation sets (Metrics/TracingBuilderConfigExtensions), the config-bind
+// augmentation sets (Metrics/TracingBuilderConfigAugmentations), the config-bind
 // IConfigureOptions steps, and -- as a SIDE EFFECT of importing this module --
 // installs the `addMetrics`/`addTracing` fluent authoring methods onto di.core's
-// registration builder AND the metrics/tracing builder extensions as instance
+// registration builder AND the metrics/tracing builder augmentations as instance
 // methods on the family's own builders (every augmentation available as both a
 // standalone function and a method). A consumer who only wants the sugar takes
 // a bare side-effect import: `import "@rhombus-std/diagnostics";`. This package
@@ -30,7 +30,7 @@ import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CH
   METRICS_OPTIONS_TOKEN, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
   TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, TRACING_OPTIONS_TOKEN,
   TracingOptions } from '@rhombus-std/diagnostics.core';
-import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -47,102 +47,100 @@ import { MetricsBuilder } from './metrics/MetricsBuilder';
 import { DefaultActivityListenerConfigFactory } from './tracing/config/DefaultActivityListenerConfigFactory';
 import { TracingBuilder } from './tracing/TracingBuilder';
 
-// The authored methods merge onto core's `IServiceManifestBase` interface -- the
-// surface the public `ServiceManifest` a consumer holds resolves to -- AND onto
-// the concrete `ServiceManifestClass`, so the class still SATISFIES `implements
-// IServiceManifestBase` once these NEW method names are on the interface.
-// `Provider`/`Scopes` are defaulted so each merge matches its target's
-// type-parameter list (TS2428 requires identical parameters).
-declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
-    /**
-     * Registers the metrics options assembly and, if `configure` is supplied,
-     * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
-     * {@link METRICS_OPTIONS_TOKEN} yields an `IOptions<MetricsOptions>` assembled
-     * from every rule / config-bind step registered through the builder, reactive
-     * to configuration reloads.
-     */
-    addMetrics(configure?: Func<[IMetricsBuilder], void>): IServiceManifest<Scopes>;
-    /**
-     * Registers the tracing options assembly and, if `configure` is supplied,
-     * runs it over a concrete {@link ITracingBuilder}. After this call resolving
-     * {@link TRACING_OPTIONS_TOKEN} yields an `IOptions<TracingOptions>` assembled
-     * from every rule / config-bind step registered through the builder, reactive
-     * to configuration reloads.
-     */
-    addTracing(configure?: Func<[ITracingBuilder], void>): IServiceManifest<Scopes>;
-  }
+type IServiceManifestDiagnosticsAugmentations<Scopes extends string> = {
+  /**
+   * Registers the metrics options assembly and, if `configure` is supplied,
+   * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
+   * {@link METRICS_OPTIONS_TOKEN} yields an `IOptions<MetricsOptions>` assembled
+   * from every rule / config-bind step registered through the builder, reactive
+   * to configuration reloads.
+   */
+  addMetrics(configure?: Func<[IMetricsBuilder], void>): IServiceManifest<Scopes>;
+  /**
+   * Registers the tracing options assembly and, if `configure` is supplied,
+   * runs it over a concrete {@link ITracingBuilder}. After this call resolving
+   * {@link TRACING_OPTIONS_TOKEN} yields an `IOptions<TracingOptions>` assembled
+   * from every rule / config-bind step registered through the builder, reactive
+   * to configuration reloads.
+   */
+  addTracing(configure?: Func<[ITracingBuilder], void>): IServiceManifest<Scopes>;
+};
 
-  interface ServiceManifestClass<Scopes extends string = 'singleton'> {
-    addMetrics(configure?: Func<[IMetricsBuilder], void>): IServiceManifest<Scopes>;
-    addTracing(configure?: Func<[ITracingBuilder], void>): IServiceManifest<Scopes>;
-  }
+// `Provider`/`Scopes` are defaulted so the merge matches its target's
+// type-parameter list (TS2428 requires identical parameters), even though the
+// members do not name `Provider`.
+declare module '@rhombus-std/di.core' {
+  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown>
+    extends IServiceManifestDiagnosticsAugmentations<Scopes> {}
 }
 
 // `addMetrics` and `addTracing` are two separate object literals -- one member
 // each -- even though both target the same ServiceManifest receiver, since each
-// installs independently and a consumer may pull in only one.
-export const MetricsServiceExtensions = {
-  addMetrics(manifest: ServiceManifestClass<string>,
-    configure?: Func<[IMetricsBuilder], void>): IServiceManifest<string> {
-    // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
-    // scope. Calling addMetrics twice re-registers the (identical) factory --
-    // last-wins bare-token resolution keeps that correct. The factory takes the
-    // live provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
-    let m: IServiceManifest<string> = manifest.addFactory(METRICS_OPTIONS_TOKEN,
-      (resolver) =>
-        assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TOKEN, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, () =>
-          new MetricsOptions()), [[RESOLVER_TOKEN]], 'singleton');
-    // The per-listener configuration factory, ctor-injected with the collection
-    // of every MetricsConfig marker addMetricsConfig registered.
-    m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN, MetricListenerConfigFactory, [[
-      collectionToken(METRICS_CONFIGURATION_TOKEN),
-    ]], 'singleton');
-    if (configure) {
-      // The cast works around a TS structural-comparison depth limit -- see
-      // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
-      // explanation. `MetricsBuilder`'s ctor takes the Scopes-erased
-      // `IServiceManifestBase`; `m`'s huge `addClass`/`addFactory` overload surface
-      // (di.core's ServiceManifestDescriptorAugmentations merge) pushes the
-      // direct-assignment check past TS's recursion budget.
-      const builder = new MetricsBuilder(m as IServiceManifestBase);
-      configure(builder);
-      // The chain is immutable: everything `configure` registered lives on the
-      // manifest the BUILDER now holds, not on `m`.
-      m = builder.services as IServiceManifest<string>;
-    }
-    return m;
-  },
-} satisfies AugmentationSet<ServiceManifestClass<string>>;
+// installs independently and a consumer may pull in only one. Each names the
+// half of the member map it carries.
+export const ServiceManifestMetricsAugmentations: AugmentationSet2<ServiceManifestClass<string>,
+  Pick<IServiceManifestDiagnosticsAugmentations<string>, 'addMetrics'>> = {
+    addMetrics(manifest: ServiceManifestClass<string>,
+      configure?: Func<[IMetricsBuilder], void>): IServiceManifest<string> {
+      // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
+      // scope. Calling addMetrics twice re-registers the (identical) factory --
+      // last-wins bare-token resolution keeps that correct. The factory takes the
+      // live provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
+      let m: IServiceManifest<string> = manifest.addFactory(METRICS_OPTIONS_TOKEN,
+        (resolver) =>
+          assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TOKEN, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, () =>
+            new MetricsOptions()), [[RESOLVER_TOKEN]], 'singleton');
+      // The per-listener configuration factory, ctor-injected with the collection
+      // of every MetricsConfig marker addMetricsConfig registered.
+      m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN, MetricListenerConfigFactory, [[
+        collectionToken(METRICS_CONFIGURATION_TOKEN),
+      ]], 'singleton');
+      if (configure) {
+        // The cast works around a TS structural-comparison depth limit -- see
+        // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
+        // explanation. `MetricsBuilder`'s ctor takes the Scopes-erased
+        // `IServiceManifestBase`; `m`'s huge `addClass`/`addFactory` overload surface
+        // (di.core's ServiceManifestDescriptorAugmentations merge) pushes the
+        // direct-assignment check past TS's recursion budget.
+        const builder = new MetricsBuilder(m as IServiceManifestBase);
+        configure(builder);
+        // The chain is immutable: everything `configure` registered lives on the
+        // manifest the BUILDER now holds, not on `m`.
+        m = builder.services as IServiceManifest<string>;
+      }
+      return m;
+    },
+  };
 
-export const TracingServiceExtensions = {
-  addTracing(manifest: ServiceManifestClass<string>,
-    configure?: Func<[ITracingBuilder], void>): IServiceManifest<string> {
-    let m: IServiceManifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN,
-      (resolver) =>
-        assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TOKEN, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, () =>
-          new TracingOptions()), [[RESOLVER_TOKEN]], 'singleton');
-    // The per-listener configuration factory, ctor-injected with the collection
-    // of every TracingConfig marker addTracingConfig registered.
-    m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, DefaultActivityListenerConfigFactory, [[
-      collectionToken(TRACING_CONFIGURATION_TOKEN),
-    ]], 'singleton');
-    if (configure) {
-      // See the addMetrics cast above for why this is needed.
-      const builder = new TracingBuilder(m as IServiceManifestBase);
-      configure(builder);
-      // Immutable chain -- read back what the builder registered (see addMetrics).
-      m = builder.services as IServiceManifest<string>;
-    }
-    return m;
-  },
-} satisfies AugmentationSet<ServiceManifestClass<string>>;
+export const ServiceManifestTracingAugmentations: AugmentationSet2<ServiceManifestClass<string>,
+  Pick<IServiceManifestDiagnosticsAugmentations<string>, 'addTracing'>> = {
+    addTracing(manifest: ServiceManifestClass<string>,
+      configure?: Func<[ITracingBuilder], void>): IServiceManifest<string> {
+      let m: IServiceManifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN,
+        (resolver) =>
+          assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TOKEN, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, () =>
+            new TracingOptions()), [[RESOLVER_TOKEN]], 'singleton');
+      // The per-listener configuration factory, ctor-injected with the collection
+      // of every TracingConfig marker addTracingConfig registered.
+      m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, DefaultActivityListenerConfigFactory, [[
+        collectionToken(TRACING_CONFIGURATION_TOKEN),
+      ]], 'singleton');
+      if (configure) {
+        // See the addMetrics cast above for why this is needed.
+        const builder = new TracingBuilder(m as IServiceManifestBase);
+        configure(builder);
+        // Immutable chain -- read back what the builder registered (see addMetrics).
+        m = builder.services as IServiceManifest<string>;
+      }
+      return m;
+    },
+  };
 
 // OPEN receiver: register both sets against di.core's ServiceManifest token.
 // The `ServiceManifestClass` decorated `@augment(tokenfor<IServiceManifest>())`
 // in di.core pulls `addMetrics`/`addTracing` onto its prototype.
-registerAugmentations(tokenfor<IServiceManifest>(), MetricsServiceExtensions);
-registerAugmentations(tokenfor<IServiceManifest>(), TracingServiceExtensions);
+registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestMetricsAugmentations);
+registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestTracingAugmentations);
 
 // Wholesale re-export of this family's own core (the IMetricsBuilder/
 // ITracingBuilder abstractions, the rule/options data model, and the tokens),
@@ -158,11 +156,11 @@ export { TracingBuilder } from './tracing/TracingBuilder';
 // The config-binding augmentation sets. Their receiver is the family's OWN
 // builder interface; each self-registers against the builder token so the
 // `@augment`'d MetricsBuilder/TracingBuilder gain the instance-method form,
-// so both `MetricsBuilderConfigExtensions.addMetricsConfig(builder, cfg)`
+// so both `MetricsBuilderConfigAugmentations.addMetricsConfig(builder, cfg)`
 // and `builder.addMetricsConfig(cfg)` work. The method form is primary.
 // Re-exporting the consts also runs each module's registerAugmentations side effect.
-export { MetricsBuilderConfigExtensions } from './metrics/config/MetricsBuilderConfigExtensions';
-export { TracingBuilderConfigExtensions } from './tracing/config/TracingBuilderConfigExtensions';
+export { MetricsBuilderConfigAugmentations } from './metrics/config/MetricsBuilder-Config-augmentations';
+export { TracingBuilderConfigAugmentations } from './tracing/config/TracingBuilder-Config-augmentations';
 
 // The config-bind IConfigureOptions steps, exposed so a plugin-less consumer
 // can bind a configuration section without the addMetricsConfig wrapper.

@@ -1,11 +1,11 @@
 // addDistributedMemoryCache: the ServiceManifest registration member appended
-// to MemoryCacheServiceManifestAugmentations -- both the standalone member and
+// to ServiceManifestMemoryCacheAugmentations -- both the standalone member and
 // the registry-installed method form (docs §38), and the resolved singleton's
 // end-to-end behavior.
 
-import { DISTRIBUTED_CACHE_TOKEN, MemoryCacheServiceManifestAugmentations, MemoryDistributedCache,
-  MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';
-import { ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
+import { DISTRIBUTED_CACHE_TOKEN, MemoryDistributedCache, MemoryDistributedCacheOptions,
+  ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
+import { type IServiceManifest, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
 import { describe, expect, test } from 'bun:test';
 
 describe('addDistributedMemoryCache', () => {
@@ -37,9 +37,12 @@ describe('addDistributedMemoryCache', () => {
     const services = new ServiceManifestClass<string>();
     let seen: MemoryDistributedCacheOptions | undefined;
 
-    const returned = MemoryCacheServiceManifestAugmentations.addDistributedMemoryCache(services, (options) => {
-      seen = options;
-    });
+    // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
+    // resolve off `any` cannot take an explicit type argument.
+    const returned: IServiceManifest<string> = ServiceManifestMemoryCacheAugmentations
+      .addDistributedMemoryCache(services, (options) => {
+        seen = options;
+      });
 
     // Same immutability contract through the standalone form.
     expect(returned).not.toBe(services);

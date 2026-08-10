@@ -20,7 +20,7 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
 import type { ConfigData } from '@rhombus-std/config';
 import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from '@rhombus-std/hosting';
-import { BrowserConsoleLoggerExtensions } from '@rhombus-std/logging.browserconsole';
+import { BrowserConsoleLoggerAugmentations } from '@rhombus-std/logging.browserconsole';
 import type { Action, Func } from '@rhombus-toolkit/func';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
@@ -68,7 +68,7 @@ export const BrowserHost = {
     // (via the settings override above) and the HostingEnvironment default
     // NullFileProvider — see ./browser-environment for the standalone factory.
 
-    BrowserConsoleLoggerExtensions.addBrowserConsole(builder.logging);
+    BrowserConsoleLoggerAugmentations.addBrowserConsole(builder.logging);
 
     const lifetimeOptions = new BrowserLifetimeOptions();
     settings?.configureLifetime?.(lifetimeOptions);
@@ -94,8 +94,7 @@ export const BrowserHost = {
    * (synchronous), not a hosted service's `stop()`.
    */
   run(settings?: BrowserHostApplicationBuilderSettings,
-    configureApp?: Action<[HostApplicationBuilder]>): Promise<void>
-  {
+    configureApp?: Action<[HostApplicationBuilder]>): Promise<void> {
     const builder = BrowserHost.createApplicationBuilder(settings);
     configureApp?.(builder);
     return builder.build().runAsync();

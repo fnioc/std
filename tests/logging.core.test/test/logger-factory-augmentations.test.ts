@@ -1,4 +1,4 @@
-// LoggerFactoryExtensions — the type-receiving `createLogger` wrapper
+// LoggerFactoryAugmentations — the type-receiving `createLogger` wrapper
 // (black-box via the public logging.core surface; the concrete factories come
 // from @rhombus-std/logging). Its member shares ILoggerFactory's own
 // `createLogger` primitive name, so it installs as a DISPATCHER over the
@@ -6,7 +6,7 @@
 // the primitive — dot-callable at runtime on any decorated factory.
 
 import { LoggerFactory, NullLogger, NullLoggerFactory } from '@rhombus-std/logging';
-import { type ILogger, type ILoggerFactory, LoggerFactoryExtensions } from '@rhombus-std/logging.core';
+import { type ILogger, type ILoggerFactory, LoggerFactoryAugmentations } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
 
 /** The method-form surface `@augment` installs at runtime (not statically typed, §36 + TS2430). */
@@ -15,7 +15,7 @@ type WithTypeCreateLogger = { createLogger(type: abstract new(...args: never) =>
 class OrderProcessor {}
 abstract class PaymentGateway {}
 
-describe('LoggerFactoryExtensions.createLogger', () => {
+describe('LoggerFactoryAugmentations.createLogger', () => {
   test("derives the category from the constructor's name", () => {
     const categories: string[] = [];
     const recording: ILoggerFactory = { createLogger(categoryName: string): ILogger {
@@ -23,22 +23,22 @@ describe('LoggerFactoryExtensions.createLogger', () => {
       return NullLogger.instance;
     }, addProvider(): void {}, [Symbol.dispose](): void {} };
 
-    LoggerFactoryExtensions.createLogger(recording, OrderProcessor);
+    LoggerFactoryAugmentations.createLogger(recording, OrderProcessor);
     // Abstract constructors are accepted — only the name is read.
-    LoggerFactoryExtensions.createLogger(recording, PaymentGateway);
+    LoggerFactoryAugmentations.createLogger(recording, PaymentGateway);
 
     expect(categories).toEqual(['OrderProcessor', 'PaymentGateway']);
   });
 
   test('delegates to the factory: the type form and the string form return the same cached logger', () => {
     const factory = new LoggerFactory();
-    const viaType = LoggerFactoryExtensions.createLogger(factory, OrderProcessor);
+    const viaType = LoggerFactoryAugmentations.createLogger(factory, OrderProcessor);
     const viaName = factory.createLogger('OrderProcessor');
     expect(viaType).toBe(viaName);
   });
 
   test('NullLoggerFactory yields the shared no-op logger', () => {
-    const logger = LoggerFactoryExtensions.createLogger(NullLoggerFactory.instance, OrderProcessor);
+    const logger = LoggerFactoryAugmentations.createLogger(NullLoggerFactory.instance, OrderProcessor);
     expect(logger).toBe(NullLogger.instance);
   });
 

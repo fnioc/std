@@ -12,8 +12,7 @@ import { describe, expect, test } from 'bun:test';
 
 /** Shorthand rule ctor: names + scopes, `enable` defaulting to true. */
 function rule(sourceName: string | undefined, operationName?: string, listenerName?: string,
-  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL, enable = true): TracingRule
-{
+  scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL, enable = true): TracingRule {
   return new TracingRule(sourceName, operationName, listenerName, scopes, enable);
 }
 

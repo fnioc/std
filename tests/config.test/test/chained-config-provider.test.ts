@@ -118,8 +118,15 @@ describe('ChainedConfigSource', () => {
   });
 });
 
-/** A minimal Disposable IConfig stand-in -- only `[Symbol.dispose]` is exercised below. */
-class FakeDisposableConfig implements IConfig, Disposable {
+/**
+ * A minimal Disposable IConfig stand-in -- only `[Symbol.dispose]` is exercised
+ * below. It MERGES IConfig rather than implementing it: the interface carries
+ * augmented members that only exist once the registry installs them, so
+ * `implements` would demand a body for each of them here.
+ */
+interface FakeDisposableConfig extends IConfig {}
+
+class FakeDisposableConfig implements Disposable {
   public disposed = false;
   public readonly value: string | undefined = undefined;
   public get(): string | undefined {

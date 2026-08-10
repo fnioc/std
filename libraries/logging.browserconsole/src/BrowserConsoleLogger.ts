@@ -60,8 +60,7 @@ export class BrowserConsoleLogger implements ILogger {
   }
 
   public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+    formatter: Func<[TState, Error | undefined], string>): void {
     if (!this.isEnabled(logLevel)) {
       return;
     }

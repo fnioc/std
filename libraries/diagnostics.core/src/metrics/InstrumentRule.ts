@@ -24,8 +24,7 @@ export class InstrumentRule {
    * @param enable `true` to enable the matched instrument for the listener; otherwise `false`.
    */
   public constructor(meterName: string | undefined, instrumentName: string | undefined,
-    listenerName: string | undefined, scopes: MeterScope, enable: boolean)
-  {
+    listenerName: string | undefined, scopes: MeterScope, enable: boolean) {
     if (scopes === MeterScope.None) {
       throw new RangeError('The MeterScope must be Global, Local, or both.');
     }

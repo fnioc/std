@@ -317,8 +317,7 @@ export class CacheEntry implements ICacheEntry {
   public propagateOptionsToCurrent(): void {
     // Nothing to propagate, or no pending parent.
     if (((this.#expirationTokens === undefined || this.#expirationTokens.length === 0) && this.#absoluteMs < 0)
-      || ambientCurrentEntry === undefined)
-    {
+      || ambientCurrentEntry === undefined) {
       return;
     }
     // Copy regardless of whether the parent ends up cached: the tokens are

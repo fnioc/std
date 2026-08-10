@@ -155,8 +155,7 @@ export function createFrameworkServices(): FrameworkServices {
  * result forward instead of reusing the `services` it passed in.
  */
 export function populateFrameworkServices(services: IServiceManifest, context: HostBuilderContext,
-  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): IServiceManifest
-{
+  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): IServiceManifest {
   let s = services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
   s = s.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
   s = s.addValue(CONFIG_TOKEN, config);
@@ -186,8 +185,7 @@ export function populateFrameworkServices(services: IServiceManifest, context: H
  * toggles the builders resolved; omitted ⇒ an unvalidated build.
  */
 export function resolveHost(services: IServiceManifest, framework: FrameworkServices, config: IConfig,
-  serviceProviderOptions?: ServiceProviderOptions): IHost
-{
+  serviceProviderOptions?: ServiceProviderOptions): IHost {
   const provider: IServiceProvider = services.build(serviceProviderOptions);
 
   const loggerProviders = provider.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);

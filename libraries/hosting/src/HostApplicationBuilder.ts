@@ -161,8 +161,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * default `ServiceManifest` build path is always used.
    */
   public configureContainer<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>,
-    _configure?: Action<[TContainerBuilder]>): void
-  {}
+    _configure?: Action<[TContainerBuilder]>): void {}
 
   /**
    * Returns a classic {@link IHostBuilder} view over this builder. Lazily

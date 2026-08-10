@@ -247,8 +247,7 @@ describe('partially-closed templates', () => {
   test('every slot kind closes through a template that also carries a concrete arg', () => {
     class KitchenSink {
       public constructor(public readonly sp: IResolver, public readonly lit: unknown, public readonly argToken: unknown,
-        public readonly dep: unknown, public readonly viaUnion: unknown)
-      {}
+        public readonly dep: unknown, public readonly viaUnion: unknown) {}
     }
     let services = new ServiceManifest();
     services = services.addValue(T.A, 'A!');
@@ -357,8 +356,7 @@ describe('substitution across slot kinds', () => {
   test('provider token, LiteralRef, TypeArgRef, hole token, and Union-with-hole all close', () => {
     class KitchenSink {
       public constructor(public readonly sp: IResolver, public readonly lit: unknown, public readonly argToken: unknown,
-        public readonly dep: unknown, public readonly viaUnion: unknown)
-      {}
+        public readonly dep: unknown, public readonly viaUnion: unknown) {}
     }
     let services = new ServiceManifest();
     services = services.addValue(T.A, 'A!');

@@ -80,15 +80,15 @@ hosted service and starts/stops it as a group.
 | `Environments`                              | Common environment name constants (`Development`, `Staging`, `Production`).                                                        |
 | `HostDefaults`                              | The configuration key names a host reads to set `applicationName`, `environment`, and `contentRoot`.                               |
 | `HostAbortedError`                          | Thrown to signal a host is stopping gracefully — not meant to be handled by application code.                                      |
-| `HostingAbstractionsHostExtensions`         | Helpers over `IHost`: `run`/`runAsync` (start, wait for shutdown, dispose), `waitForShutdownAsync`, `stopWithTimeout`.             |
-| `HostingAbstractionsHostBuilderExtensions`  | `startHost` — builds an `IHostBuilder` and starts it in one call.                                                                  |
-| `HostEnvironmentEnvExtensions`              | Environment predicates: `isEnvironment`, `isDevelopment`, `isStaging`, `isProduction`.                                             |
+| `HostLifecycleAugmentations`                | Helpers over `IHost`: `run`/`runAsync` (start, wait for shutdown, dispose), `waitForShutdownAsync`, `stopWithTimeout`.             |
+| `HostBuilderStartAugmentations`             | `startHost` — builds an `IHostBuilder` and starts it in one call.                                                                  |
+| `HostEnvironmentEnvAugmentations`           | Environment predicates: `isEnvironment`, `isDevelopment`, `isStaging`, `isProduction`.                                             |
 | `ServiceManifestHostedServiceAugmentations` | The `addHostedService` registration helper, installed onto `ServiceManifest`.                                                      |
 
 The `*Extensions` object literals double as fluent methods once a concrete
 host implementation installs them — call `host.waitForShutdownAsync()`
 directly on an `IHost`, or call
-`HostingAbstractionsHostExtensions.waitForShutdownAsync(host)` against the
+`HostLifecycleAugmentations.waitForShutdownAsync(host)` against the
 plain interface. Both forms do exactly the same thing.
 
 ## How it fits

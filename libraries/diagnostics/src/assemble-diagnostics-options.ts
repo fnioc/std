@@ -19,8 +19,7 @@ import { CompositeChangeToken } from './CompositeChangeToken';
  * @param makeBase Produces the base instance each build starts from.
  */
 export function assembleDiagnosticsOptions<T>(resolver: IResolver, configureToken: Token, sourceToken: Token,
-  makeBase: Func<[], T>): IOptions<T>
-{
+  makeBase: Func<[], T>): IOptions<T> {
   const steps = resolver.resolve<ReadonlyArray<IConfigureOptions<T>>>(collectionToken(configureToken));
   const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(collectionToken(sourceToken));
 

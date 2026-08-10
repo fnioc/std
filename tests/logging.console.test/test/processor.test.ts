@@ -26,8 +26,7 @@ class FakeConsole implements IConsole {
 }
 
 function processor(fullMode = ConsoleLoggerQueueFullMode.Wait,
-  maxQueueLength = 1024): { processor: ConsoleLoggerProcessor; out: FakeConsole; err: FakeConsole; }
-{
+  maxQueueLength = 1024): { processor: ConsoleLoggerProcessor; out: FakeConsole; err: FakeConsole; } {
   const out = new FakeConsole();
   const err = new FakeConsole();
   return { processor: new ConsoleLoggerProcessor(out, err, fullMode, maxQueueLength), out, err };

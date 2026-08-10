@@ -2,7 +2,7 @@
 //
 // Importing this module installs the `addLogging` sugar onto
 // @rhombus-std/di.core's ServiceManifest via the declaration-merging
-// side-effect augmentation (./LoggingServiceManifestAugmentations). A consumer
+// side-effect augmentation (./ServiceManifest-Logging-augmentations). A consumer
 // who only wants that sugar writes a bare `import "@rhombus-std/logging";`.
 // This package MUST keep `"sideEffects": true` so a bundler cannot tree-shake
 // the augmentation away.
@@ -14,9 +14,9 @@
 export * from '@rhombus-std/logging.core';
 
 // Registers the `addLogging` augmentation onto di.core's ServiceManifest.
-export { LoggingServiceManifestAugmentations } from './LoggingServiceManifestAugmentations';
+export { ServiceManifestLoggingAugmentations } from './ServiceManifest-Logging-augmentations';
 // Registers the ILoggingBuilder augmentations (addProvider/…).
-export { LoggingBuilderExtensions } from './LoggingBuilderExtensions';
+export { LoggingBuilderProviderAugmentations } from './LoggingBuilder-Provider-augmentations';
 // Installs LoggerFilterOptions's addFilter directly, and registers the
 // ILoggingBuilder half that routes through the options-configure pipeline.
 export { FilterLoggingBuilderExtensions, LoggerFilterOptionsExtensions } from './filter-augmentations';

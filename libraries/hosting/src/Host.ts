@@ -2,13 +2,13 @@ import type { IHostBuilder } from '@rhombus-std/hosting.core';
 import { HostApplicationBuilder } from './HostApplicationBuilder';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
 import { HostBuilder } from './HostBuilder';
-import { HostingHostBuilderAugmentations } from './HostingHostBuilderAugmentations';
+import { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentations';
 
 /** Convenience factories for creating pre-configured builders. */
 export const Host = {
   /** A classic {@link HostBuilder} with the pre-configured defaults applied. */
   createDefaultBuilder(args?: readonly string[]): IHostBuilder {
-    return HostingHostBuilderAugmentations.configureDefaults(new HostBuilder(), args);
+    return HostBuilderHostingAugmentations.configureDefaults(new HostBuilder(), args);
   },
 
   /**

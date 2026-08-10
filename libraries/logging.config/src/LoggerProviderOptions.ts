@@ -40,8 +40,7 @@ export const LoggerProviderOptions = {
    * unchanged.
    */
   registerProviderOptions<TOptions, TProvider>(services: IServiceManifest, optionsToken: Typeof<IOptions<TOptions>>,
-    providerType: Typeof<TProvider>): IServiceManifest
-  {
+    providerType: Typeof<TProvider>): IServiceManifest {
     const providerConfig: Token = loggerProviderConfigToken(providerType);
     return services.addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]],
       'singleton').addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[

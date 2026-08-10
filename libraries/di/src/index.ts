@@ -10,9 +10,9 @@
 // ships the class with a stub that throws without the engine, and ./ServiceManifest.js
 // registers the engine-constructing half onto it as a load-time side effect.
 export { ServiceManifestClass } from '@rhombus-std/di.core';
+export { ServiceManifestContainerBuilderAugmentations } from './ServiceManifest-ContainerBuilder-augmentations.js';
 export { ServiceManifest } from './ServiceManifest.js';
 export type { IServiceManifest, ServiceManifestCtor } from './ServiceManifest.js';
-export { ServiceManifestContainerBuilderAugmentations } from './ServiceManifest.js';
 
 // `AddChain<S, Slots, Gated>` is the immutable registration continuation an
 // `addClass`/`addFactory` call returns: the manifest itself (withheld while
