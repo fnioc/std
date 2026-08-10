@@ -11,19 +11,19 @@ declare module '@rhombus-std/di2.core' {
 /** Sealing a manifest into the provider that resolves against it. */
 export type IManifestContainerBuilderAugmentations<Scopes extends string> = {
   /** Builds a provider over these registrations, with every {@link ServiceProviderOptions} default. */
-  buildServiceProvider(): ServiceProvider;
-  buildServiceProvider(options: ServiceProviderOptions): ServiceProvider;
+  build(): ServiceProvider;
+  build(options: ServiceProviderOptions): ServiceProvider;
 };
 
 type IManifestContainerBuilderAugmentationsImpl = {
-  buildServiceProvider(options?: ServiceProviderOptions): ServiceProvider;
+  build(options?: ServiceProviderOptions): ServiceProvider;
 };
 
 export const ManifestContainerBuilderAugmentations: AugmentationSet2<
   Manifest,
   IManifestContainerBuilderAugmentationsImpl
 > = {
-  buildServiceProvider(manifest, ...args) {
+  build(manifest, ...args) {
     const [options] = args;
     return new ServiceProvider(manifest, options ?? ServiceProviderOptions.defaults);
   },

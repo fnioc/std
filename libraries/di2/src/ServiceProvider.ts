@@ -19,4 +19,33 @@ export class ServiceProvider implements IServiceProvider {
     const target = typeof type === 'string' ? Type.from(type) : type;
     return this.#engine.resolve(target, { serviceProvider: this });
   }
+
+  /** @throws always — see {@link notImplemented}. */
+  tryResolve(_type: Type | Token): any {
+    return notImplemented('tryResolve');
+  }
+
+  /** @throws always — see {@link notImplemented}. */
+  resolveAsync(_type: Type | Token): Promise<any> {
+    return notImplemented('resolveAsync');
+  }
+
+  /** @throws always — see {@link notImplemented}. */
+  dispose(): void {
+    return notImplemented('dispose');
+  }
+
+  /** @throws always — see {@link notImplemented}. */
+  disposeAsync(): Promise<void> {
+    return notImplemented('disposeAsync');
+  }
+}
+
+/**
+ * Stands in for a member that is declared so callers can be written against it, but has no
+ * behaviour yet. Reaching one is a fault in the caller's expectations, not a resolution failure,
+ * so it is a plain error rather than anything the container taxonomy would invite you to catch.
+ */
+function notImplemented(member: string): never {
+  throw new Error(`ServiceProvider.${member} is not implemented.`);
 }
