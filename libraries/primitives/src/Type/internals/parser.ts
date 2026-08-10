@@ -1,4 +1,5 @@
 import type { CtorType, FunctionType, ObjectType, Type, TypeLiteralType } from '../Type.js';
+import { ctor, func, intersection, literal, named, object, placeholder, tag, tuple, union } from './factories.js';
 import { lex, type LexToken } from './lexer.js';
 import { TypeParseError } from './TypeParseError.js';
 
@@ -68,7 +69,7 @@ class TypeParser {
     while (this.#take('|')) {
       types.push(this.#intersection());
     }
-    return { kind: 'union', members: types };
+    return union(types);
   }
 
   #intersection(): Type {
@@ -80,13 +81,13 @@ class TypeParser {
     while (this.#take('&')) {
       types.push(this.#tagged());
     }
-    return { kind: 'intersection', members: types };
+    return intersection(types);
   }
 
   #tagged(): Type {
     let type = this.#primary();
     while (this.#take('#')) {
-      type = { kind: 'tag', tag: this.#segment(), type };
+      type = tag(type, this.#segment());
     }
     return type;
   }
@@ -98,7 +99,7 @@ class TypeParser {
     }
     if (token.kind === 'literal') {
       this.#index++;
-      return { kind: 'literal', value: token.value };
+      return literal(token.value);
     }
     if (token.kind === 'name') {
       return this.#named();
@@ -112,15 +113,15 @@ class TypeParser {
       }
       case '[': {
         this.#index++;
-        return { kind: 'tuple', members: this.#typeList(']') };
+        return tuple(this.#typeList(']'));
       }
       case '{': {
         this.#index++;
-        return { kind: 'object', members: this.#members() };
+        return object(this.#members());
       }
       case '%': {
         this.#index++;
-        return { kind: 'placeholder', label: this.#segment() };
+        return placeholder(this.#segment());
       }
       default: {
         throw this.#error(token.position, 'a type');
@@ -131,7 +132,7 @@ class TypeParser {
   #named(): Type {
     const first = this.#next();
     if (this.#take(':')) {
-      return { kind: 'named', from: first.text, name: this.#segment(), genericArgs: this.#genericTypes() };
+      return named(this.#segment(), first.text, this.#genericTypes());
     }
     if (!first.escaped) {
       const reserved = this.#reserved(first);
@@ -139,7 +140,7 @@ class TypeParser {
         return reserved;
       }
     }
-    return { kind: 'named', from: 'global', name: first.text, genericArgs: this.#genericTypes() };
+    return named(first.text, 'global', this.#genericTypes());
   }
 
   /**
@@ -151,22 +152,22 @@ class TypeParser {
       if (this.#at('<')) {
         throw this.#error(this.#peek()!.position, `no type arguments — \`${name.text}\` is a literal`);
       }
-      return { kind: 'literal', value: KEYWORD_LITERALS.get(name.text) };
+      return literal(KEYWORD_LITERALS.get(name.text));
     }
     switch (name.text) {
       case 'Func': {
         const [returnType, ...args] = this.#reservedArguments(name, 'Func<Return, ...Args>');
-        return { kind: 'function', args, returnType: returnType! };
+        return func(returnType!, args);
       }
       case 'Ctor': {
         const [instanceType, ...args] = this.#reservedArguments(name, 'Ctor<Instance, ...Args>');
-        return { kind: 'ctor', args, instanceType: instanceType! };
+        return ctor(instanceType!, args);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
           throw this.#error(this.#peek()!.position, 'no type arguments — `ServiceProvider` names the provider itself');
         }
-        return { kind: 'named', from: SERVICE_PROVIDER_FROM, name: 'IServiceProvider', genericArgs: [] };
+        return named('IServiceProvider', SERVICE_PROVIDER_FROM, []);
       }
       default: {
         return undefined;
@@ -260,7 +261,7 @@ class TypeParser {
     this.#expect('(');
     const args = this.#typeList(')');
     this.#expect('=>');
-    return { kind: 'function', args, returnType: this.#type() };
+    return func(this.#type(), args);
   }
 
   #ctor(): CtorType {
@@ -268,7 +269,7 @@ class TypeParser {
     this.#expect('(');
     const args = this.#typeList(')');
     this.#expect('=>');
-    return { kind: 'ctor', args, instanceType: this.#type() };
+    return ctor(this.#type(), args);
   }
 
   #peek(): LexToken | undefined {

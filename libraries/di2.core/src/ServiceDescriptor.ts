@@ -93,14 +93,14 @@ export namespace ServiceDescriptor {
    * registration's identity — a keyed registration carries its key inside that type, as a tag.
    */
   export function matches(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
-    return Type.equals(left.serviceType, right.serviceType);
+    return left.serviceType === right.serviceType;
   }
 }
 
 function signaturesEqual(left: ReadonlyArray<readonly Type[]>, right: ReadonlyArray<readonly Type[]>): boolean {
   return left.length === right.length && left.every((signature, index) =>
     signature.length === right[index]!.length
-    && signature.every((param, position) => Type.equals(param, right[index]![position]!))
+    && signature.every((param, position) => param === right[index]![position])
   );
 }
 

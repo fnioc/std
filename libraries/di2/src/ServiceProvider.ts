@@ -9,7 +9,7 @@ export class ServiceProvider implements IServiceProvider {
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
   constructor(manifest: Manifest, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
-    this.#engine = new Engine(manifest);
+    this.#engine = new Engine(manifest, options);
     if (options.validateOnBuild) {
       this.#engine.validate();
     }
