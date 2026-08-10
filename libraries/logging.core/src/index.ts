@@ -38,11 +38,11 @@ export type { LogDefineOptions } from './logger-message';
 export { formatLogValues, formatMessage, FormattedLogValues } from './formatted-log-values';
 
 // The ILogger convenience wrappers: the standalone functions and the
-// `LoggerExtensions` set. Importing the barrel installs the method form onto
+// `LoggerAugmentations` set. Importing the barrel installs the method form onto
 // every `@augment`-decorated `ILogger` as a side effect.
-export { beginScope, log, logCritical, logDebug, logError, LoggerExtensions, logInformation, logTrace,
-  logWarning } from './LoggerExtensions';
+export { beginScope, log, logCritical, logDebug, logError, LoggerAugmentations, logInformation, logTrace,
+  logWarning } from './Logger-augmentations';
 
 // The type-receiving `createLogger` wrapper. Importing the barrel makes it
 // dot-callable on any `@augment`-decorated `ILoggerFactory` as a side effect.
-export { LoggerFactoryExtensions } from './LoggerFactoryExtensions';
+export { LoggerFactoryAugmentations } from './LoggerFactory-augmentations';

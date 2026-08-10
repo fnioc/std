@@ -1,12 +1,10 @@
 // The convenience logging wrappers: `logTrace`/`logDebug`/`logInformation`/
 // `logWarning`/`logError`/`logCritical`, plus the level-parameterized `log`.
 //
-// Dual export: the receiver-first functions are exported plain (the
-// standalone surface) and also registered against the `ILogger` token as the
-// `LoggerExtensions` set, so every concrete logger decorated with
-// `@augment(tokenfor<ILogger>())` gains them as methods. The method surface is
-// also merged directly onto `ILogger` via the `declare module './ILogger'`
-// block below.
+// Dual export: the receiver-first functions are exported plain (the standalone
+// surface) and also registered against the `ILogger` token as one set, so every
+// concrete logger decorated with `@augment(tokenfor<ILogger>())` gains them as
+// methods.
 //
 // Each level collapses to two call forms — `(logger, message, ...args)` and
 // `(logger, error, message, ...args)` — disambiguated at runtime by whether
@@ -14,7 +12,8 @@
 // event-id overload: a caller that needs one calls
 // `logger.log(level, EventId.from(n), …)` directly.
 
-import { type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type Flatten, type MergeStrategies,
+  registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
@@ -89,44 +88,53 @@ export function beginScope(logger: ILogger, messageFormat: string, ...args: unkn
   return logger.beginScope(new FormattedLogValues(messageFormat, args));
 }
 
+interface ILoggerAugmentations {
+  logTrace(message: string, ...args: unknown[]): void;
+  logTrace(error: Error, message: string, ...args: unknown[]): void;
+  logDebug(message: string, ...args: unknown[]): void;
+  logDebug(error: Error, message: string, ...args: unknown[]): void;
+  logInformation(message: string, ...args: unknown[]): void;
+  logInformation(error: Error, message: string, ...args: unknown[]): void;
+  logWarning(message: string, ...args: unknown[]): void;
+  logWarning(error: Error, message: string, ...args: unknown[]): void;
+  logError(message: string, ...args: unknown[]): void;
+  logError(error: Error, message: string, ...args: unknown[]): void;
+  logCritical(message: string, ...args: unknown[]): void;
+  logCritical(error: Error, message: string, ...args: unknown[]): void;
+}
+
+/**
+ * `log` and `beginScope` are kept out of the merge below: their names ARE
+ * `ILogger`'s own primitives, and TS refuses to merge an incompatible overload
+ * onto a body-declared method (TS2430). They are not excluded at RUNTIME -- the
+ * registration installs them with a merge strategy that dispatches the
+ * primitive-shaped call to the primitive and the convenience-shaped call to the
+ * wrapper, so the convenience form stays dot-callable. Their typed path is the
+ * standalone `log(logger, ...)` / `beginScope(logger, ...)` function.
+ */
+interface ILoggerStandaloneWrappers {
+  log(logLevel: LogLevel, message: string, ...args: unknown[]): void;
+  log(logLevel: LogLevel, error: Error, message: string, ...args: unknown[]): void;
+  beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined;
+}
+
+declare module '@rhombus-std/logging.core' {
+  interface ILogger<TCategoryName = unknown> extends ILoggerAugmentations {}
+}
+
 /**
  * Registered against the `ILogger` token below and reachable standalone as
- * `LoggerExtensions.logInformation(logger, …)`; a concrete logger class
+ * `LoggerAugmentations.logInformation(logger, ...)`; a concrete logger class
  * decorated with `@augment(tokenfor<ILogger>())` gains the members as methods.
  */
-export const LoggerExtensions = { log, beginScope, logTrace, logDebug, logInformation, logWarning, logError,
-  logCritical } satisfies AugmentationSet<ILogger>;
-
-// `log` and `beginScope` are absent from this interface merge — their names
-// ARE `ILogger`'s own primitives, and TS forbids merging an incompatible
-// overload onto a body-declared primitive method (TS2430). They are not
-// excluded at runtime: the registration below installs them with a merge
-// strategy (`loggerMerge`) that dispatches the primitive-shaped call to the
-// primitive and the convenience-shaped call to the wrapper, so the
-// convenience form stays dot-callable. Their typed path stays the standalone
-// `log(logger, …)` / `beginScope(logger, …)` functions.
-declare module './ILogger' {
-  interface ILogger<TCategoryName = unknown> {
-    logTrace(message: string, ...args: unknown[]): void;
-    logTrace(error: Error, message: string, ...args: unknown[]): void;
-    logDebug(message: string, ...args: unknown[]): void;
-    logDebug(error: Error, message: string, ...args: unknown[]): void;
-    logInformation(message: string, ...args: unknown[]): void;
-    logInformation(error: Error, message: string, ...args: unknown[]): void;
-    logWarning(message: string, ...args: unknown[]): void;
-    logWarning(error: Error, message: string, ...args: unknown[]): void;
-    logError(message: string, ...args: unknown[]): void;
-    logError(error: Error, message: string, ...args: unknown[]): void;
-    logCritical(message: string, ...args: unknown[]): void;
-    logCritical(error: Error, message: string, ...args: unknown[]): void;
-  }
-}
+export const LoggerAugmentations: AugmentationSet2<ILogger, Flatten<ILoggerAugmentations & ILoggerStandaloneWrappers>> =
+  { log, beginScope, logTrace, logDebug, logInformation, logWarning, logError, logCritical };
 
 // `log` and `beginScope` share names with `ILogger`'s own primitives, so each
 // is installed with a merge strategy (below) that routes a primitive-shaped
 // call to the primitive and a convenience-shaped call to the wrapper. The
 // wrapper re-enters the receiver in primitive shape (e.g.
-// `log(logLevel, EventId.from(0), …)`), so the dispatcher routes that call
+// `log(logLevel, EventId.from(0), ...)`), so the dispatcher routes that call
 // back to the primitive rather than recursing.
 const loggerMerge = {
   // `log`: the primitive's second argument is always an `EventId`; the
@@ -141,8 +149,8 @@ const loggerMerge = {
   },
   // `beginScope`: the convenience wrapper formats a message template with
   // args; the primitive takes an arbitrary state (which may itself be a bare
-  // string). Route to the wrapper only for the unambiguous format form — a
-  // string WITH format args — so a lone `beginScope("op-1")` stays raw
+  // string). Route to the wrapper only for the unambiguous format form -- a
+  // string WITH format args -- so a lone `beginScope("op-1")` stays raw
   // primitive state.
   beginScope(original, extension) {
     return function(this: ILogger, first: unknown, ...rest: unknown[]) {
@@ -154,4 +162,4 @@ const loggerMerge = {
   },
 } satisfies MergeStrategies;
 
-registerAugmentations(tokenfor<ILogger>(), LoggerExtensions, loggerMerge);
+registerAugmentations(tokenfor<ILogger>(), LoggerAugmentations, loggerMerge);
