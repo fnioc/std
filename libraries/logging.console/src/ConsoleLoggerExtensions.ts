@@ -24,7 +24,7 @@
 // ConsoleLoggerOptions/formatter options) isn't wired up yet — see the
 // package index.
 
-import { LoggingBuilderExtensions } from '@rhombus-std/logging';
+import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -98,7 +98,7 @@ export const ConsoleLoggerExtensions = {
         new JsonConsoleFormatter(registration.jsonOptions), new SystemdConsoleFormatter(registration.systemdOptions),
         new SimpleConsoleFormatter(registration.simpleOptions)]);
       registration.pendingFormatters.length = 0;
-      LoggingBuilderExtensions.addProvider(builder, registration.provider);
+      LoggingBuilderProviderAugmentations.addProvider(builder, registration.provider);
     }
     if (configure !== undefined) {
       registration.loggerOptions.reload(configure);

@@ -4,7 +4,7 @@ import { expect, test } from 'bun:test';
 
 function fakeEnvironment(environmentName: string): IHostEnvironment {
   // createDefaultServiceProviderOptions only reads environmentName (through the
-  // standalone HostEnvironmentEnvExtensions.isDevelopment), so the rest of the
+  // standalone HostEnvironmentEnvAugmentations.isDevelopment), so the rest of the
   // IHostEnvironment surface is irrelevant to this unit.
   return { environmentName } as IHostEnvironment;
 }

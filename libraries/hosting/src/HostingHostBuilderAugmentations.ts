@@ -4,7 +4,7 @@
 // OPEN receiver: `IHostBuilder` is owned by hosting.core and extended across
 // packages, so this const registers into the augmentation registry under
 // the `IHostBuilder` token (alongside hosting.core's
-// `HostingAbstractionsHostBuilderExtensions`, which contributes `startHost`). The
+// `HostBuilderStartAugmentations`, which contributes `startHost`). The
 // interface-side merge for THIS const's members lives here beside it; the
 // class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
@@ -13,7 +13,7 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { type IResolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
-import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostingAbstractionsHostExtensions,
+import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
   type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
@@ -210,7 +210,7 @@ export const HostingHostBuilderAugmentations = {
     } else {
       abortSignal = args[0];
     }
-    return HostingAbstractionsHostExtensions.runAsync(
+    return HostLifecycleAugmentations.runAsync(
       HostingHostBuilderAugmentations.useConsoleLifetime(hostBuilder, configureOptions).build(),
       abortSignal,
     );

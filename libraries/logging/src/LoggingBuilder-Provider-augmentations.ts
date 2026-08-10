@@ -9,12 +9,12 @@
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 
-export const LoggingBuilderExtensions = {
+interface ILoggingBuilderProviderAugmentations {
   /**
    * Adds an {@link ILoggerProvider} to the builder, registered under the
    * enumerable {@link LOGGER_PROVIDER_TOKEN}.
@@ -23,38 +23,39 @@ export const LoggingBuilderExtensions = {
    * `Array<ILoggerProvider>` collection, so every provider added here receives
    * log output — no manual `new LoggerFactory([...providers])` needed.
    */
-  addProvider(builder: ILoggingBuilder, provider: ILoggerProvider): ILoggingBuilder {
-    builder.services = builder.services.addValue(LOGGER_PROVIDER_TOKEN, provider);
-    return builder;
-  },
-
+  addProvider(provider: ILoggerProvider): this;
   /**
    * Sets a minimum {@link LogLevel} for log messages — appends a
    * {@link DefaultLoggerLevelConfigureOptions} configure step to the
    * `IOptions<LoggerFilterOptions>` pipeline.
    */
-  setMinimumLevel(builder: ILoggingBuilder, level: LogLevel): ILoggingBuilder {
-    builder.services = builder.services.addValue(configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
-      new DefaultLoggerLevelConfigureOptions(level));
-    return builder;
-  },
-
+  setMinimumLevel(level: LogLevel): this;
   /** Removes all {@link ILoggerProvider}s from the builder, via di.core's `removeAll` manifest verb. */
-  clearProviders(builder: ILoggingBuilder): ILoggingBuilder {
-    builder.services = builder.services.removeAll(LOGGER_PROVIDER_TOKEN);
-    return builder;
-  },
-} satisfies AugmentationSet<ILoggingBuilder>;
+  clearProviders(): this;
+}
 
 // Merges onto the ILoggingBuilder interface so a consumer holding it sees the
 // methods; the concrete LoggingBuilder inherits them through its own
 // `interface LoggingBuilder extends ILoggingBuilder` merge.
 declare module '@rhombus-std/logging.core' {
-  interface ILoggingBuilder {
-    addProvider(provider: ILoggerProvider): this;
-    setMinimumLevel(level: LogLevel): this;
-    clearProviders(): this;
-  }
+  interface ILoggingBuilder extends ILoggingBuilderProviderAugmentations {}
 }
 
-registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderExtensions);
+export const LoggingBuilderProviderAugmentations: AugmentationSet2<ILoggingBuilder,
+  Flatten<ILoggingBuilderProviderAugmentations>> = {
+    addProvider(builder, provider) {
+      builder.services = builder.services.addValue(LOGGER_PROVIDER_TOKEN, provider);
+      return builder;
+    },
+    setMinimumLevel(builder, level) {
+      builder.services = builder.services.addValue(configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
+        new DefaultLoggerLevelConfigureOptions(level));
+      return builder;
+    },
+    clearProviders(builder) {
+      builder.services = builder.services.removeAll(LOGGER_PROVIDER_TOKEN);
+      return builder;
+    },
+  };
+
+registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderProviderAugmentations);

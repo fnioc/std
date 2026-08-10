@@ -1,17 +1,34 @@
-import { AbortController, type AbortSignal, type AugmentationSet, clearTimeout, neverSignal, registerAugmentations,
+import { AbortController, type AbortSignal, type AugmentationSet2, clearTimeout, neverSignal, registerAugmentations,
   setTimeout } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';
 
-declare module './IHost' {
-  interface IHost {
-    run(abortSignal?: AbortSignal): Promise<void>;
-    runAsync(abortSignal?: AbortSignal): Promise<void>;
-    waitForShutdownAsync(abortSignal?: AbortSignal): Promise<void>;
-    stopWithTimeout(timeoutMs: number): Promise<void>;
-  }
+type IHostLifecycleAugmentations = {
+  /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
+  run(abortSignal?: AbortSignal): Promise<void>;
+  /**
+   * Runs an application: starts the host, waits for shutdown, then disposes the
+   * host (async disposal preferred when available). Completes only once shutdown
+   * is triggered.
+   */
+  runAsync(abortSignal?: AbortSignal): Promise<void>;
+  /**
+   * Returns a promise that completes when shutdown is triggered via
+   * `applicationStopping` (or via `abortSignal`, which requests a stop),
+   * then gracefully stops the host.
+   */
+  waitForShutdownAsync(abortSignal?: AbortSignal): Promise<void>;
+  /**
+   * Attempts to gracefully stop the host, escalating to a non-graceful stop once
+   * `timeoutMs` elapses.
+   */
+  stopWithTimeout(timeoutMs: number): Promise<void>;
+};
+
+declare module '@rhombus-std/hosting.core' {
+  interface IHost extends IHostLifecycleAugmentations {}
 }
 
 /** A promise that settles when `signal` aborts (or immediately, if already aborted). */
@@ -25,21 +42,15 @@ function whenAborted(signal: AbortSignal): Promise<void> {
 }
 
 /** Augmentation set for {@link IHost}; each member is also directly callable. */
-export const HostingAbstractionsHostExtensions = {
-  /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
-  run(host: IHost, abortSignal?: AbortSignal): Promise<void> {
-    return HostingAbstractionsHostExtensions.runAsync(host, abortSignal);
+export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleAugmentations> = {
+  run(host, abortSignal) {
+    return HostLifecycleAugmentations.runAsync(host, abortSignal);
   },
 
-  /**
-   * Runs an application: starts the host, waits for shutdown, then disposes the
-   * host (async disposal preferred when available). Completes only once shutdown
-   * is triggered.
-   */
-  async runAsync(host: IHost, abortSignal?: AbortSignal): Promise<void> {
+  async runAsync(host, abortSignal) {
     try {
       await host.start(abortSignal);
-      await HostingAbstractionsHostExtensions.waitForShutdownAsync(host, abortSignal);
+      await HostLifecycleAugmentations.waitForShutdownAsync(host, abortSignal);
     } finally {
       const asyncDisposable = host as Partial<AsyncDisposable>;
       const disposeAsync = asyncDisposable[Symbol.asyncDispose];
@@ -51,12 +62,7 @@ export const HostingAbstractionsHostExtensions = {
     }
   },
 
-  /**
-   * Returns a promise that completes when shutdown is triggered via
-   * `applicationStopping` (or via `abortSignal`, which requests a stop),
-   * then gracefully stops the host.
-   */
-  async waitForShutdownAsync(host: IHost, abortSignal?: AbortSignal): Promise<void> {
+  async waitForShutdownAsync(host, abortSignal) {
     const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
 
     const requestStop = (): void => lifetime.stopApplication();
@@ -79,11 +85,7 @@ export const HostingAbstractionsHostExtensions = {
     await host.stop(neverSignal);
   },
 
-  /**
-   * Attempts to gracefully stop the host, escalating to a non-graceful stop once
-   * `timeoutMs` elapses.
-   */
-  async stopWithTimeout(host: IHost, timeoutMs: number): Promise<void> {
+  async stopWithTimeout(host, timeoutMs) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -92,6 +94,6 @@ export const HostingAbstractionsHostExtensions = {
       clearTimeout(timer);
     }
   },
-} satisfies AugmentationSet<IHost>;
+};
 
-registerAugmentations(tokenfor<IHost>(), HostingAbstractionsHostExtensions);
+registerAugmentations(tokenfor<IHost>(), HostLifecycleAugmentations);

@@ -20,8 +20,8 @@ import { JsonConfigSource } from '@rhombus-std/config.json';
 import { ServiceManifest } from '@rhombus-std/di';
 import type { IServiceManifest } from '@rhombus-std/di.core';
 import type { ServiceProviderOptions } from '@rhombus-std/di.core';
-import { HostDefaults, HostEnvironmentEnvExtensions, type IHostEnvironment } from '@rhombus-std/hosting.core';
-import { LoggingBuilder, LoggingBuilderExtensions } from '@rhombus-std/logging';
+import { HostDefaults, HostEnvironmentEnvAugmentations, type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { LoggingBuilder, LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import { ConsoleLoggerProvider } from '@rhombus-std/logging.console';
 import { process } from '@rhombus-std/primitives';
 
@@ -66,7 +66,7 @@ export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHos
 /** Registers the default framework services: currently just the console logging provider. */
 export function addDefaultServices(services: IServiceManifest): IServiceManifest {
   const builder = new LoggingBuilder(services);
-  LoggingBuilderExtensions.addProvider(builder, new ConsoleLoggerProvider());
+  LoggingBuilderProviderAugmentations.addProvider(builder, new ConsoleLoggerProvider());
   // The chain is immutable, so the registration lives on the manifest the
   // builder now holds -- not on the one that was passed in.
   return builder.services;
@@ -78,6 +78,6 @@ export function addDefaultServices(services: IServiceManifest): IServiceManifest
  * host pays no validation cost while a developer catches lifetime mistakes early.
  */
 export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
-  const isDevelopment = HostEnvironmentEnvExtensions.isDevelopment(environment);
+  const isDevelopment = HostEnvironmentEnvAugmentations.isDevelopment(environment);
   return { validateScopes: isDevelopment, validateOnBuild: isDevelopment };
 }

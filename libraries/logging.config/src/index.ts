@@ -3,7 +3,7 @@
 // keep `"sideEffects": true` so a bundler cannot tree-shake that
 // registration away.
 
-export { LoggingBuilderExtensions } from './add-configuration';
+export { LoggingBuilderProviderAugmentations } from './add-configuration';
 export { type ILoggerProviderConfig, loggerProviderConfigToken } from './ILoggerProviderConfig';
 export type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 export { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';

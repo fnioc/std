@@ -103,11 +103,11 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
   });
 
   test('the standalone member form registers the identical pipeline', async () => {
-    const { LoggingBuilderExtensions } = await import('@rhombus-std/logging.config');
+    const { LoggingBuilderProviderAugmentations } = await import('@rhombus-std/logging.config');
     const config = rootWith({ 'LogLevel:Default': 'Debug' });
 
     const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
-    LoggingBuilderExtensions.addConfig(builder, config);
+    LoggingBuilderProviderAugmentations.addConfig(builder, config);
 
     const provider = builder.services.build().createScope('singleton');
     const options = provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);

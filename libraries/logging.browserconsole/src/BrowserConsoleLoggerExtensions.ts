@@ -12,7 +12,7 @@
 // is immutable, so the manifest is a different object after each
 // registration).
 
-import { LoggingBuilderExtensions } from '@rhombus-std/logging';
+import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -38,7 +38,7 @@ export const BrowserConsoleLoggerExtensions = {
     if (provider === undefined) {
       provider = new BrowserConsoleLoggerProvider();
       registrations.set(builder, provider);
-      LoggingBuilderExtensions.addProvider(builder, provider);
+      LoggingBuilderProviderAugmentations.addProvider(builder, provider);
     }
     return builder;
   },

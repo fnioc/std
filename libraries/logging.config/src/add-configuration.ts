@@ -23,7 +23,7 @@ import { LoggerProviderConfigFactory } from './LoggerProviderConfigFactory';
 import { LoggingConfig } from './LoggingConfig';
 
 /** The `addConfig` augmentation set for {@link ILoggingBuilder}. */
-export const LoggingBuilderExtensions = {
+export const LoggingBuilderProviderAugmentations = {
   /**
    * No-arg: adds the services required to resolve
    * {@link ILoggerProviderConfigFactory} or `ILoggerProviderConfig<T>`.
@@ -78,4 +78,4 @@ declare module '@rhombus-std/logging.core' {
   }
 }
 
-registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderExtensions);
+registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderProviderAugmentations);
