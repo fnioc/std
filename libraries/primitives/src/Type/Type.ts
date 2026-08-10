@@ -2,9 +2,9 @@ import { Func } from '@rhombus-toolkit/func';
 import { memo, UnionToTuple } from '../utils.js';
 import { typeEquals } from './EqualsVisitor.js';
 import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
-import { satisfiesType } from './SatisfiesVisitor.js';
+import { matchType, satisfiesType } from './SatisfiesVisitor.js';
+import { stringifyVisitor } from './StringifyVisitor.js';
 import { substituteType } from './SubstituteVisitor.js';
-import { toStringVisitor } from './ToStringVisitor.js';
 import { typeValidatorVisitor } from './TypeValidatorVisitor.js';
 
 export type TokenType =
@@ -52,7 +52,7 @@ export namespace Type {
     return { kind: 'tag', tag, type };
   }
 
-  export const parse = memo(function parse(token: string): Type {
+  export const from = memo(function from(token: string): Type {
     /**
      * Special cases of named types:
      * ============================
@@ -62,33 +62,34 @@ export namespace Type {
      * value types e.g. string, number => error
      */
     throw 'not implemented';
-  }, p => p);
+  });
 
-  export namespace op {
-    export function toString(type: Type): string {
-      return toStringVisitor.visit(type);
+  export function stringify(type: Type): string {
+    return stringifyVisitor.visit(type);
+  }
+  export function validate(type: Type): readonly string[] {
+    return typeValidatorVisitor.visit(type);
+  }
+  export function expand(type: Type): readonly Type[] {
+    return expandUnionsVisitor.visit(type);
+  }
+  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
+    return substituteType(type, substitutions);
+  }
+  export function satisfies(proposed: Type, condition: Type) {
+    return satisfiesType(proposed, condition);
+  }
+  export function match(pattern: Type, subject: Type) {
+    return matchType(pattern, subject);
+  }
+  export function equals(left: Type | string, right: Type | string): boolean {
+    if (typeof left === 'string') {
+      return equals(Type.from(left), right);
     }
-    export function validate(type: Type): readonly string[] {
-      return typeValidatorVisitor.visit(type);
+    if (typeof right === 'string') {
+      return equals(left, Type.from(right));
     }
-    export function expand(type: Type): readonly Type[] {
-      return expandUnionsVisitor.visit(type);
-    }
-    export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-      return substituteType(type, substitutions);
-    }
-    export function satisfies(proposed: Type, condition: Type) {
-      return satisfiesType(proposed, condition);
-    }
-    export function equals(left: Type | string, right: Type | string): boolean {
-      if (typeof left === 'string') {
-        return equals(Type.parse(left), right);
-      }
-      if (typeof right === 'string') {
-        return equals(left, Type.parse(right));
-      }
-      return typeEquals(left, right);
-    }
+    return typeEquals(left, right);
   }
 }
 

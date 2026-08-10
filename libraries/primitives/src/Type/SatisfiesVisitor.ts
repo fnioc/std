@@ -66,7 +66,7 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   /** Entry point: applies the proposed-side rules, then dispatches on the condition. */
   match(proposed: Type, condition: Type): boolean {
     if (condition.kind === 'placeholder') {
-      return this.#capture(condition.label, proposed);
+      return this.capture(condition.label, proposed);
     }
     if (proposed.kind === 'union') {
       return proposed.types.every(member => this.match(member, condition));
@@ -78,7 +78,7 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 
   protected override visitPlaceholder(type: PlaceholderType): Predicate {
-    return proposed => this.#capture(type.label, proposed);
+    return proposed => this.capture(type.label, proposed);
   }
 
   protected override visitUnion(type: UnionType): Predicate {
@@ -141,13 +141,13 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 
   /** Binds a label, requiring any earlier binding of the same label to be the same type. */
-  #capture(label: string, proposed: Type): boolean {
+  protected capture(label: string, captured: Type): boolean {
     const bound = this.captures.get(label);
     if (bound === undefined) {
-      this.captures.set(label, proposed);
+      this.captures.set(label, captured);
       return true;
     }
-    return typeEquals(bound, proposed);
+    return typeEquals(bound, captured);
   }
 
   /** Tries one branch of a condition union, rolling captures back when it fails. */
@@ -164,6 +164,26 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 }
 
+/**
+ * The pattern-match sibling of {@link SatisfiesVisitor}: the PROPOSED side is a pattern whose
+ * placeholders capture the condition's fragments, while the subtyping direction is unchanged —
+ * pattern-instantiated extends condition.
+ *
+ * @remarks
+ * Only the proposed-placeholder interception is added here. In variance-flipped sub-positions
+ * (function/ctor parameters) the recursion swaps the sides, so a pattern placeholder arrives as
+ * the CONDITION of that sub-match — the inherited condition-placeholder branch captures it, and
+ * the shared {@link captures} map keeps repeated labels consistent across both.
+ */
+class PatternMatchVisitor extends SatisfiesVisitor {
+  override match(proposed: Type, condition: Type): boolean {
+    if (proposed.kind === 'placeholder') {
+      return this.capture(proposed.label, condition);
+    }
+    return super.match(proposed, condition);
+  }
+}
+
 export function satisfiesType(proposed: Type, condition: Type): [satisfied: false] | [satisfied: true,
   placeholders: Map<string, Type>] {
   if (placeholderScanner.visit(proposed)) {
@@ -171,4 +191,17 @@ export function satisfiesType(proposed: Type, condition: Type): [satisfied: fals
   }
   const visitor = new SatisfiesVisitor();
   return visitor.match(proposed, condition) ? [true, visitor.captures] : [false];
+}
+
+/**
+ * Does some instantiation of {@link pattern} extend {@link subject}? Success carries the
+ * instantiation: one entry per placeholder label in the pattern.
+ */
+export function matchType(pattern: Type, subject: Type): [matched: false] | [matched: true,
+  placeholders: Map<string, Type>] {
+  if (placeholderScanner.visit(subject)) {
+    throw new Error('match: the subject type may not contain placeholders');
+  }
+  const visitor = new PatternMatchVisitor();
+  return visitor.match(pattern, subject) ? [true, visitor.captures] : [false];
 }
