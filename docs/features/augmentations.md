@@ -74,10 +74,17 @@ index signature, so wrap it as `Flatten<IMemberMap>` wherever the constraint is 
 receiver's own declaring module (this placement matters — see Gotchas):
 
 ```ts
-declare module './configuration-builder.js' {
+declare module '@rhombus-std/config.core' {
   interface IConfigBuilder extends IConfigBuilderJsonAugmentations {}
 }
 ```
+
+The `declare module` target is always the receiver's **package specifier** — never a relative
+path. A relative target (`declare module './configuration-builder.js'`) merges onto one internal
+module instance: consumers resolving the receiver through the package barrel never see the merge,
+and the rolled `.d.ts` cannot represent it. The bare specifier merges onto the package's public
+surface, survives file moves, and rolls correctly. A receiver in your own package is no exception —
+target your own package's name.
 
 A receiver with its own generic parameter threads it through both the member map and this merge:
 `IManifestServiceAugmentations<Scopes extends string>` merges onto
