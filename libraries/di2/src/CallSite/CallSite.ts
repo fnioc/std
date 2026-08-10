@@ -1,10 +1,9 @@
+import type { ServiceDescriptor } from '@rhombus-std/di2.core';
+import type { Type, TypeVisitor } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { ServiceDescriptor } from '../ServiceDescriptor.js';
-import type { Type } from '../Type/index.js';
-import type { TypeVisitor } from '../Type/TypeVisitor.js';
-import { isAllThere } from '../utils.js';
 import { realizeCallSite } from './RealizeVisitor.js';
+import { isAllThere } from './utils.js';
 
 export type { RealizeContext } from './RealizeVisitor.js';
 
@@ -54,34 +53,30 @@ export interface IterableCallSite {
 }
 
 export namespace CallSite {
-  export namespace make {
-    export function ctor(ctor: Ctor, args: CallSite[]): CtorCallSite {
-      return { kind: 'ctor', ctor, args };
-    }
-    export function factory(factory: Func, args: CallSite[]): FactoryCallSite {
-      return { kind: 'factory', factory, args };
-    }
-    export function latebound(result: Type, lateBoundArgs: readonly Type[]): LateBoundCallSite {
-      return { kind: 'latebound', result, lateBoundArgs };
-    }
-    export function constant(value: any): ConstantCallSite {
-      return { kind: 'constant', value };
-    }
-    export function adhoc(label: string): AdHocCallSite {
-      return { kind: 'adhoc', label };
-    }
-    export function serviceProvider(): ServiceProviderCallSite {
-      return { kind: 'service-provider' };
-    }
-    export function iterable(types: Iterable<CallSite>): IterableCallSite {
-      return { kind: 'iterable', types };
-    }
+  export function ctor(ctor: Ctor, args: CallSite[]): CtorCallSite {
+    return { kind: 'ctor', ctor, args };
+  }
+  export function factory(factory: Func, args: CallSite[]): FactoryCallSite {
+    return { kind: 'factory', factory, args };
+  }
+  export function latebound(result: Type, lateBoundArgs: readonly Type[]): LateBoundCallSite {
+    return { kind: 'latebound', result, lateBoundArgs };
+  }
+  export function constant(value: any): ConstantCallSite {
+    return { kind: 'constant', value };
+  }
+  export function adhoc(label: string): AdHocCallSite {
+    return { kind: 'adhoc', label };
+  }
+  export function serviceProvider(): ServiceProviderCallSite {
+    return { kind: 'service-provider' };
+  }
+  export function iterable(types: Iterable<CallSite>): IterableCallSite {
+    return { kind: 'iterable', types };
   }
 
-  export const realize = realizeCallSite;
-
   /**
-   * Lowers an ALREADY-CLOSED descriptor — run it through {@link ServiceDescriptor.substitute}
+   * Lowers an ALREADY-CLOSED descriptor — run it through {@link ServiceDescriptor.op.substitute}
    * first if the match captured placeholders. `visitor` supplies the recursion that turns each
    * signature parameter into the call site producing it.
    *
@@ -93,11 +88,11 @@ export namespace CallSite {
     try {
       switch (descriptor.kind) {
         case 'value':
-          return make.constant(descriptor.value);
+          return constant(descriptor.value);
         case 'ctor':
-          return make.ctor(descriptor.ctor, lowerSignature(descriptor.signatures, visitor));
+          return ctor(descriptor.ctor, lowerSignature(descriptor.signatures, visitor));
         case 'factory':
-          return make.factory(descriptor.factory, lowerSignature(descriptor.signatures, visitor));
+          return factory(descriptor.factory, lowerSignature(descriptor.signatures, visitor));
         default:
           return assertNever(descriptor);
       }
@@ -119,5 +114,9 @@ export namespace CallSite {
       throw 'failzor';
     }
     return lowered;
+  }
+
+  export namespace op {
+    export const realize = realizeCallSite;
   }
 }

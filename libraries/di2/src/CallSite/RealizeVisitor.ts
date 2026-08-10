@@ -1,8 +1,9 @@
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { IServiceProvider } from '../IServiceProvider.js';
-import { ServiceDescriptor } from '../ServiceDescriptor.js';
+import { ServiceDescriptor } from '@rhombus-std/di2.core';
+import type { IServiceProvider, Type } from '@rhombus-std/primitives';
 import type { AdHocCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite,
   LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
+import { CallSiteContext } from './ToCallSiteVisitor.js';
 
 export interface RealizeContext {
   readonly serviceProvider: IServiceProvider;
@@ -60,10 +61,13 @@ class RealizeVisitor {
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
+    const context:CallSiteContext = {
+      manifest: this.#
+    };
     return (...args: any[]) => {
-      return this.#serviceProvider.resolve(site.result, {
+      return this.#context.serviceProvider.resolve(site.result, {
         additionalServices: site.lateBoundArgs.map((serviceType, i) =>
-          ServiceDescriptor.make.value(serviceType, args[i])
+           ServiceDescriptor.value(serviceType, args[i])
         ),
       });
     };

@@ -4,7 +4,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 
 @augment(tokenfor<IServiceProvider>())
 class ServiceProvider implements IServiceProvider {
-  async provideAsync(token: Token) {
+  async resolveAsync(token: Token) {
     const type = Type.parse(token);
 
     const result = this.#realize(type);
@@ -13,27 +13,29 @@ class ServiceProvider implements IServiceProvider {
     );
     const promised = new Map(await Promise.all(promisedEntryPromises));
 
-    if (type.kind !== 'latebound') {
+    if (type.kind !== 'function') {
       return result.resolve({ promised, serviceProvider: this });
     }
     return (...args: any[]) => {
-      const adhocEntries = type.args.map((t, i) => [Type.toString(t), args[i]] as const);
+      const adhocEntries = type.args.map((t, i) => [Type.op.toString(t), args[i]] as const);
       const adhoc = new Map(adhocEntries);
       return result.resolve({ promised, adhoc, serviceProvider: this });
     };
   }
 
-  provide(token: Token) {
-    const type = Type.parse(token);
+  resolve(type: Type | Token) {
+    if (typeof type === 'string') {
+      return this.resolve(Type.parse(token));
+    }
     const result = this.#realize(type);
     if (result.promises?.size) {
       throw 'must use async for promises';
     }
-    if (type.kind !== 'latebound') {
+    if (type.kind !== 'function') {
       return result.resolve({ serviceProvider: this });
     }
     return (...args: any[]) => {
-      const adhocEntries = type.args.map((t, i) => [Type.toString(t), args[i]] as const);
+      const adhocEntries = type.args.map((t, i) => [Type.op.toString(t), args[i]] as const);
       const adhoc = new Map(adhocEntries);
       return result.resolve({ adhoc, serviceProvider: this });
     };

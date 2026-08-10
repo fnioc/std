@@ -1,4 +1,4 @@
-import { AugmentationSet2, registerAugmentations, Token } from '@rhombus-std/primitives';
+import { AugmentationSet2, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { IManifest } from './IManifest';
@@ -18,13 +18,13 @@ declare module '@rhombus-std/di2.core' {
 
 export const ManifestServiceAugmentations: AugmentationSet2<IManifest, IManifestServiceAugmentations<string>> = {
   addClass(receiver, token, ctor, signatures, scope?, key?) {
-    return receiver.add(ServiceDescriptor.make.ctor(token, ctor, signatures, scope, key));
+    return receiver.add(ServiceDescriptor.ctor(Type.parse(token), ctor, signatures, scope, key));
   },
   addFactory(receiver, token, factory, signatures, scope?, key?) {
-    return receiver.add(ServiceDescriptor.make.factory(token, factory, signatures, scope, key));
+    return receiver.add(ServiceDescriptor.factory(Type.parse(token), factory, signatures, scope, key));
   },
   addValue(receiver, token, value, key?) {
-    return receiver.add(ServiceDescriptor.make.value(token, value, key));
+    return receiver.add(ServiceDescriptor.value(Type.parse(token), value, key));
   },
 };
 

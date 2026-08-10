@@ -1,6 +1,4 @@
-import { assertNever } from '@rhombus-toolkit/type-guards';
-
-import type { CtorType, IntersectionType, LateBoundType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
   Type, TypeLiteralType, UnionType } from './Type.js';
 
 /**
@@ -23,8 +21,8 @@ export abstract class TypeVisitor<Return, Context = never> {
         return this.visitIntersection(type, context);
       case 'tuple':
         return this.visitTuple(type, context);
-      case 'latebound':
-        return this.visitLateBound(type, context);
+      case 'function':
+        return this.visitFunction(type, context);
       case 'named':
         return this.visitNamed(type, context);
       case 'object':
@@ -45,11 +43,16 @@ export abstract class TypeVisitor<Return, Context = never> {
   protected abstract visitUnion(type: UnionType, context: Context): Return;
   protected abstract visitIntersection(type: IntersectionType, context: Context): Return;
   protected abstract visitTuple(type: TupleType, context: Context): Return;
-  protected abstract visitLateBound(type: LateBoundType, context: Context): Return;
+  protected abstract visitFunction(type: FunctionType, context: Context): Return;
   protected abstract visitNamed(type: NamedType, context: Context): Return;
   protected abstract visitObject(type: ObjectType, context: Context): Return;
   protected abstract visitTypeLiteral(type: TypeLiteralType, context: Context): Return;
   protected abstract visitPlaceholder(type: PlaceholderType, context: Context): Return;
   protected abstract visitTag(type: TagType, context: Context): Return;
   protected abstract visitCtor(type: CtorType, context: Context): Return;
+}
+
+// Local copy — primitives stays free of @rhombus-toolkit/type-guards as a dependency.
+function assertNever(x: never): never {
+  throw new Error('Unexpected object: ' + x);
 }

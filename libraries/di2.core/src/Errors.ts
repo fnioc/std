@@ -1,4 +1,4 @@
-import { Type } from './Type/index.js';
+import { Type } from '@rhombus-std/primitives';
 
 /**
  * Nothing in the manifest can produce a value for {@link type}.
@@ -22,7 +22,7 @@ export class UnsatisfiableError extends Error {
   readonly type: Type;
 
   constructor(type: Type, reason: string, cause?: UnsatisfiableError) {
-    super(`cannot satisfy ${Type.toString(type)} — ${reason}`, { cause });
+    super(`cannot satisfy ${Type.op.toString(type)} — ${reason}`, { cause });
     this.name = 'UnsatisfiableError';
     this.type = type;
   }

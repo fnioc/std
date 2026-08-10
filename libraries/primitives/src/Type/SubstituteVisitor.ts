@@ -1,5 +1,5 @@
-import { type CtorType, type IntersectionType, type LateBoundType, type NamedType, type ObjectType,
-  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type CtorType, type FunctionType, type IntersectionType, type NamedType, type ObjectType, type PlaceholderType,
+  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -31,39 +31,39 @@ class SubstituteVisitor extends TypeVisitor<Type> {
 
   protected override visitUnion(type: UnionType): Type {
     const types = this.#all(type.types);
-    return types === type.types ? type : Type.make.union(...types);
+    return types === type.types ? type : Type.union(...types);
   }
 
   protected override visitIntersection(type: IntersectionType): Type {
     const types = this.#all(type.types);
-    return types === type.types ? type : Type.make.intersection(...types);
+    return types === type.types ? type : Type.intersection(...types);
   }
 
   protected override visitTuple(type: TupleType): Type {
     const types = this.#all(type.types);
-    return types === type.types ? type : Type.make.tuple(...types);
+    return types === type.types ? type : Type.tuple(...types);
   }
 
   protected override visitNamed(type: NamedType): Type {
     const genericTypes = this.#all(type.genericTypes);
-    return genericTypes === type.genericTypes ? type : Type.make.named(type.name, type.from, genericTypes);
+    return genericTypes === type.genericTypes ? type : Type.named(type.name, type.from, genericTypes);
   }
 
-  protected override visitLateBound(type: LateBoundType): Type {
+  protected override visitFunction(type: FunctionType): Type {
     const args = this.#all(type.args);
     const returnType = this.visit(type.returnType);
-    return args === type.args && returnType === type.returnType ? type : Type.make.latebound(returnType, ...args);
+    return args === type.args && returnType === type.returnType ? type : Type.func(returnType, ...args);
   }
 
   protected override visitCtor(type: CtorType): Type {
     const args = this.#all(type.args);
     const instanceType = this.visit(type.instanceType);
-    return args === type.args && instanceType === type.instanceType ? type : Type.make.ctor(instanceType, ...args);
+    return args === type.args && instanceType === type.instanceType ? type : Type.ctor(instanceType, ...args);
   }
 
   protected override visitTag(type: TagType): Type {
     const inner = this.visit(type.type);
-    return inner === type.type ? type : Type.make.tag(inner, type.tag);
+    return inner === type.type ? type : Type.tag(inner, type.tag);
   }
 
   protected override visitObject(type: ObjectType): Type {
@@ -71,7 +71,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     const visited = entries.map(([key, member]) => [key, this.visit(member)] as const);
     return visited.every(([, member], index) => member === entries[index]![1])
       ? type
-      : Type.make.object(Object.fromEntries(visited));
+      : Type.object(Object.fromEntries(visited));
   }
 
   /** Visits each slot, handing back the original array when every slot came back unchanged. */

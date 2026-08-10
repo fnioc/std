@@ -31,7 +31,7 @@ export class Manifest<Scopes extends string> implements IManifest<Scopes> {
     function* removed(this: Manifest<Scopes>) {
       const it = Iterator.from(this.#descriptors);
       for (const existing of it) {
-        if (ServiceDescriptor.equals(existing, descriptor)) {
+        if (ServiceDescriptor.op.equals(existing, descriptor)) {
           yield* it;
         } else {
           yield existing;
@@ -45,7 +45,7 @@ export class Manifest<Scopes extends string> implements IManifest<Scopes> {
     function* replaced(this: Manifest<Scopes>) {
       const it = Iterator.from(this.#descriptors);
       for (const existing of it) {
-        if (ServiceDescriptor.matches(existing, descriptor)) {
+        if (ServiceDescriptor.op.matches(existing, descriptor)) {
           yield descriptor;
           yield* it;
         } else {

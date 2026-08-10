@@ -11,7 +11,7 @@ export type TokenType =
   | UnionType
   | IntersectionType
   | TupleType
-  | LateBoundType
+  | FunctionType
   | NamedType
   | ObjectType
   | TypeLiteralType
@@ -21,73 +21,74 @@ export type Type = TokenType | CtorType;
 export type ConstructableType = Exclude<Type, NamedType>;
 
 export namespace Type {
-  export namespace make {
-    export function union(...types: readonly Type[]): UnionType {
-      return { kind: 'union', types };
-    }
-    export function intersection(...types: readonly Type[]): IntersectionType {
-      return { kind: 'intersection', types };
-    }
-    export function tuple(...types: readonly Type[]): TupleType {
-      return { kind: 'tuple', types };
-    }
-    export function latebound(returnType: Type, ...args: readonly Type[]): LateBoundType {
-      return { kind: 'latebound', args, returnType };
-    }
-    export function ctor(instanceType: Type, ...args: readonly Type[]): CtorType {
-      return { kind: 'ctor', args, instanceType };
-    }
-    export function named(name: string, from: string = 'global', genericTypes: readonly Type[] = []): NamedType {
-      return { kind: 'named', from, name, genericTypes };
-    }
-    export function object(members: Readonly<Record<string, Type>>): ObjectType {
-      return { kind: 'object', members };
-    }
-    export function typeLiteral(value: LiteralValue): TypeLiteralType {
-      return { kind: 'literal', value };
-    }
-    export function placeholder(label: string): PlaceholderType {
-      return { kind: 'placeholder', label };
-    }
-    export function tag(type: Type, tag: string): TagType {
-      return { kind: 'tag', tag, type };
-    }
+  export function union(...types: readonly Type[]): UnionType {
+    return { kind: 'union', types };
+  }
+  export function intersection(...types: readonly Type[]): IntersectionType {
+    return { kind: 'intersection', types };
+  }
+  export function tuple(...types: readonly Type[]): TupleType {
+    return { kind: 'tuple', types };
+  }
+  export function func(returnType: Type, ...args: readonly Type[]): FunctionType {
+    return { kind: 'function', args, returnType };
+  }
+  export function ctor(instanceType: Type, ...args: readonly Type[]): CtorType {
+    return { kind: 'ctor', args, instanceType };
+  }
+  export function named(name: string, from: string = 'global', genericTypes: readonly Type[] = []): NamedType {
+    return { kind: 'named', from, name, genericTypes };
+  }
+  export function object(members: Readonly<Record<string, Type>>): ObjectType {
+    return { kind: 'object', members };
+  }
+  export function typeLiteral(value: LiteralValue): TypeLiteralType {
+    return { kind: 'literal', value };
+  }
+  export function placeholder(label: string): PlaceholderType {
+    return { kind: 'placeholder', label };
+  }
+  export function tag(type: Type, tag: string): TagType {
+    return { kind: 'tag', tag, type };
   }
 
   export const parse = memo(function parse(token: string): Type {
     /**
      * Special cases of named types:
      * ============================
-     * Func => LateBoundType
+     * Func => FunctionType
      * Ctor => CtorType
      * ServiceProvider => ServiceProviderType
      * value types e.g. string, number => error
      */
     throw 'not implemented';
   }, p => p);
-  export function toString(type: Type): string {
-    return toStringVisitor.visit(type);
-  }
-  export function validate(type: Type): readonly string[] {
-    return typeValidatorVisitor.visit(type);
-  }
-  export function expand(type: Type): readonly Type[] {
-    return expandUnionsVisitor.visit(type);
-  }
-  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-    return substituteType(type, substitutions);
-  }
-  export function satisfies(proposed: Type, condition: Type) {
-    return satisfiesType(proposed, condition);
-  }
-  export function equals(left: Type | string, right: Type | string): boolean {
-    if (typeof left === 'string') {
-      return equals(Type.parse(left), right);
+
+  export namespace op {
+    export function toString(type: Type): string {
+      return toStringVisitor.visit(type);
     }
-    if (typeof right === 'string') {
-      return equals(left, Type.parse(right));
+    export function validate(type: Type): readonly string[] {
+      return typeValidatorVisitor.visit(type);
     }
-    return typeEquals(left, right);
+    export function expand(type: Type): readonly Type[] {
+      return expandUnionsVisitor.visit(type);
+    }
+    export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
+      return substituteType(type, substitutions);
+    }
+    export function satisfies(proposed: Type, condition: Type) {
+      return satisfiesType(proposed, condition);
+    }
+    export function equals(left: Type | string, right: Type | string): boolean {
+      if (typeof left === 'string') {
+        return equals(Type.parse(left), right);
+      }
+      if (typeof right === 'string') {
+        return equals(left, Type.parse(right));
+      }
+      return typeEquals(left, right);
+    }
   }
 }
 
@@ -106,7 +107,7 @@ export interface IntersectionType extends TypeBase<'intersection'> {
 export interface TupleType extends TypeBase<'tuple'> {
   readonly types: readonly Type[];
 }
-export interface LateBoundType extends TypeBase<'latebound'> {
+export interface FunctionType extends TypeBase<'function'> {
   readonly args: readonly Type[];
   readonly returnType: Type;
 }

@@ -1,20 +1,11 @@
-import { Func } from '@rhombus-toolkit/func';
+import { IManifest, ScopeCache, ServiceDescriptor } from '@rhombus-std/di2.core';
+import { type CtorType, type FunctionType, type IntersectionType, IServiceProvider, type NamedType, type ObjectType,
+  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
+  type UnionType } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { CallSite } from '../CallSite/CallSite.js';
-import { IManifest } from '../IManifest.js';
-import { IServiceProvider } from '../IServiceProvider.js';
-import { ServiceDescriptor } from '../ServiceDescriptor.js';
-import { first, isAllThere } from '../utils.js';
-import { type CtorType, type IntersectionType, type LateBoundType, type NamedType, type ObjectType,
-  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
-import { TypeVisitor } from './TypeVisitor.js';
+import { CallSite } from './CallSite.js';
+import { first, isAllThere } from './utils.js';
 
-interface ScopeCache {
-  has(type: Type): boolean;
-  get<T = any>(type: Type): T;
-  set<T>(type: Type, value: T): T;
-  getOrAdd<T>(type: Type, factory: Func<[Type], T>): T;
-}
 export interface CallSiteContext {
   readonly manifest: IManifest;
   readonly serviceProvider: IServiceProvider;
@@ -25,10 +16,10 @@ export interface CallSiteContext {
  * Lowers a type expression into the {@link CallSite} that constructs a value for it.
  *
  * @remarks
- * One instance per walk — {@link callSiteFor} is the entry point. Each step reads the
+ * One instance per walk — {@link toCallSiteFor} is the entry point. Each step reads the
  * node it is given plus the walk-wide {@link CallSiteContext} fixed at construction.
  */
-class CallSiteVisitor extends TypeVisitor<CallSite | undefined> {
+class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   readonly #manifest: IManifest;
   readonly #serviceProvider: IServiceProvider;
 
@@ -40,9 +31,11 @@ class CallSiteVisitor extends TypeVisitor<CallSite | undefined> {
 
   #lookup(type: Type) {
     return Iterator.from(this.#manifest)
-      .map(desc => [...Type.satisfies(desc.serviceType, type), desc] as const)
+      .map(desc => [...Type.op.satisfies(desc.serviceType, type), desc] as const)
       .filter(([status]) => status)
-      .map(([isSuccess, placeholders, desc]) => ServiceDescriptor.substitute(desc!, placeholders as Map<string, Type>));
+      .map(([isSuccess, placeholders, desc]) =>
+        ServiceDescriptor.op.substitute(desc!, placeholders as Map<string, Type>)
+      );
   }
   #lookupSingle(type: Type) {
     return this.#lookup(type).find(Boolean);
@@ -60,11 +53,11 @@ class CallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     if (!isAllThere(members)) {
       return undefined;
     }
-    return CallSite.make.factory((...args: any[]) => args, members);
+    return CallSite.factory((...args: any[]) => args, members);
   }
 
-  protected override visitLateBound(type: LateBoundType): CallSite | undefined {
-    return CallSite.make.latebound(type.returnType, type.args);
+  protected override visitFunction(type: FunctionType): CallSite | undefined {
+    return CallSite.latebound(type.returnType, type.args);
   }
 
   protected override visitNamed(type: NamedType): CallSite | undefined {
@@ -91,6 +84,6 @@ class CallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   }
 }
 
-export function callSiteFor(type: Type, context: CallSiteContext): CallSite | undefined {
-  return new CallSiteVisitor(context).visit(type);
+export function toCallSiteFor(type: Type, context: CallSiteContext): CallSite | undefined {
+  return new ToCallSiteVisitor(context).visit(type);
 }
