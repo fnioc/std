@@ -1,5 +1,5 @@
-import { type CtorType, type IntersectionType, type LateBoundType, type NamedType, type ObjectType,
-  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type CtorType, type FunctionType, type IntersectionType, type NamedType, type ObjectType, type PlaceholderType,
+  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 // TODO: short-circuit a branch whose children all expanded to themselves, returning the
@@ -21,10 +21,10 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
     return type.types.flatMap(member => this.visit(member));
   }
   protected override visitIntersection(type: IntersectionType): readonly Type[] {
-    return this.#product(type.types).map(types => Type.make.intersection(...types));
+    return this.#product(type.types).map(types => Type.intersection(...types));
   }
   protected override visitTuple(type: TupleType): readonly Type[] {
-    return this.#product(type.types).map(types => Type.make.tuple(...types));
+    return this.#product(type.types).map(types => Type.tuple(...types));
   }
   protected override visitPlaceholder(type: PlaceholderType): readonly Type[] {
     return [type];
@@ -33,28 +33,28 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
     return [type];
   }
   protected override visitTag(type: TagType): readonly Type[] {
-    return this.visit(type.type).map(inner => Type.make.tag(inner, type.tag));
+    return this.visit(type.type).map(inner => Type.tag(inner, type.tag));
   }
   protected override visitNamed(type: NamedType): readonly Type[] {
-    return this.#product(type.genericTypes).map(args => Type.make.named(type.name, type.from, args));
+    return this.#product(type.genericTypes).map(args => Type.named(type.name, type.from, args));
   }
 
-  protected override visitLateBound(type: LateBoundType): readonly Type[] {
+  protected override visitFunction(type: FunctionType): readonly Type[] {
     return this.#product([...type.args, type.returnType]).map(parts =>
-      Type.make.latebound(parts[parts.length - 1]!, ...parts.slice(0, -1))
+      Type.func(parts[parts.length - 1]!, ...parts.slice(0, -1))
     );
   }
 
   protected override visitCtor(type: CtorType): readonly Type[] {
     return this.#product([...type.args, type.instanceType]).map(parts =>
-      Type.make.ctor(parts[parts.length - 1]!, ...parts.slice(0, -1))
+      Type.ctor(parts[parts.length - 1]!, ...parts.slice(0, -1))
     );
   }
 
   protected override visitObject(type: ObjectType): readonly Type[] {
     const keys = Object.keys(type.members);
     return this.#product(keys.map(key => type.members[key]!)).map(values =>
-      Type.make.object(Object.fromEntries(keys.map((key, index) => [key, values[index]!])))
+      Type.object(Object.fromEntries(keys.map((key, index) => [key, values[index]!])))
     );
   }
 

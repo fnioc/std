@@ -1,4 +1,4 @@
-import type { CtorType, IntersectionType, LateBoundType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
   Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -12,7 +12,7 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   protected override visitTuple(type: TupleType): readonly string[] {
     return this.#all(type.types);
   }
-  protected override visitLateBound(type: LateBoundType): readonly string[] {
+  protected override visitFunction(type: FunctionType): readonly string[] {
     return [...this.#all(type.args), ...this.visit(type.returnType)];
   }
   protected override visitCtor(type: CtorType): readonly string[] {

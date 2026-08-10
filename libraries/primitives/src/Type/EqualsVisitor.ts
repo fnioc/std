@@ -1,4 +1,4 @@
-import type { CtorType, IntersectionType, LateBoundType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
   Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -39,10 +39,10 @@ class EqualsVisitor extends TypeVisitor<Predicate> {
         && type.types.every((member, index) => this.visit(member)(other.types[index]!)));
   }
 
-  protected override visitLateBound(type: LateBoundType): Predicate {
+  protected override visitFunction(type: FunctionType): Predicate {
     return other =>
       other === type
-      || (other.kind === 'latebound'
+      || (other.kind === 'function'
         && other.args.length === type.args.length
         && type.args.every((arg, index) => this.visit(arg)(other.args[index]!))
         && this.visit(type.returnType)(other.returnType));

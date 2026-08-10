@@ -1,11 +1,10 @@
-import { /*type AugmentationSet, */ IterableObject, registerAugmentations, Token } from '@rhombus-std/primitives';
+import { /*type AugmentationSet, */ IterableObject, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { AugmentationSet2 } from '@rhombus-std/primitives/tokens/augmentations';
 import { type IManifest } from '../IManifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
-import { Type } from '../Type';
 import { DepSignatures } from '../types';
 import { Flatten } from '../utils';
 
@@ -39,18 +38,18 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
     tryAdd(manifest: IManifest, ...descriptors: ReadonlyArray<ServiceDescriptor<any>>) {
       return Iterator.from(descriptors)
         .filter(newDesc =>
-          !Iterator.from(manifest).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc))
+          !Iterator.from(manifest).some(existingDesc => ServiceDescriptor.op.matches(newDesc, existingDesc))
         )
         .reduce((man, descriptor) => man.add(descriptor), manifest);
     },
     tryAddClass(manifest, token, ctor, signatures, scope?, key?) {
-      return manifest.tryAdd(ServiceDescriptor.make.ctor(token, ctor, signatures, scope, key));
+      return manifest.tryAdd(ServiceDescriptor.ctor(Type.parse(token), ctor, signatures, scope, key));
     },
     tryAddFactory(manifest, token, factory, signatures, scope?, key?) {
-      return manifest.tryAdd(ServiceDescriptor.make.factory(token, factory, signatures, scope, key));
+      return manifest.tryAdd(ServiceDescriptor.factory(Type.parse(token), factory, signatures, scope, key));
     },
     tryAddValue(manifest, token, value, key?) {
-      return manifest.tryAdd(ServiceDescriptor.make.value(token, value, key));
+      return manifest.tryAdd(ServiceDescriptor.value(Type.parse(token), value, key));
     },
 
     replaceClass(manifest, token, ctor, signatures, scope?, key?) {
@@ -65,9 +64,9 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
     },
 
     removeAll(manifest, token, key?) {
-      const target = ServiceDescriptor.make.value(Type.parse(token), undefined, key);
+      const target = ServiceDescriptor.value(Type.parse(token), undefined, key);
       return Iterator.from(manifest)
-        .filter(descriptor => ServiceDescriptor.matches(descriptor, target))
+        .filter(descriptor => ServiceDescriptor.op.matches(descriptor, target))
         .reduce((man, descriptor) => man.remove(descriptor), manifest);
     },
   };

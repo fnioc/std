@@ -1,4 +1,4 @@
-import type { CtorType, IntersectionType, LateBoundType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
   Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -16,7 +16,7 @@ class ToStringVisitor extends TypeVisitor<string> {
   protected override visitTuple(type: TupleType): string {
     return `[${type.types.map(t => this.visit(t)).join(', ')}]`;
   }
-  protected override visitLateBound(type: LateBoundType): string {
+  protected override visitFunction(type: FunctionType): string {
     return `(${type.args.map(t => this.visit(t)).join(', ')}) => ${this.visit(type.returnType)}`;
   }
   protected override visitNamed(type: NamedType): string {

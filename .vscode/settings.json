@@ -1,4 +1,6 @@
 {
+  "typescript.preferences.importModuleSpecifierEnding": "minimal",
+  "javascript.preferences.importModuleSpecifierEnding": "minimal",
   "editor.defaultFormatter": "dprint.dprint",
   "[typescript]": {
     "editor.defaultFormatter": "dprint.dprint"
