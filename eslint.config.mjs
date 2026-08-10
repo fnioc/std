@@ -9,7 +9,13 @@ export default tseslint.config({
   extends: [tseslint.configs.base],
   languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
   rules: { curly: ['error', 'all'], '@typescript-eslint/switch-exhaustiveness-check': 'error',
-    '@typescript-eslint/array-type': ['error', { default: 'array-simple' }] },
+    '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
+    '@typescript-eslint/no-restricted-imports': ['error', {
+      patterns: [{
+        group: ['@rhombus-std/*/tokens/**', '@rhombus-std/*/private/**'],
+        message: 'White-box seam (tests only) — import from the package barrel instead.',
+      }],
+    }] },
 }, {
   // Inline-sugar authoring files: the hygiene the generic inline stage relies
   // on (single return expression over compile-time primitives). Rides the
