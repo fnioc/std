@@ -1,5 +1,15 @@
 import { Func } from '@rhombus-toolkit/func';
 
+/**
+ * Restates `T`'s members as a type literal, which carries the implicit index
+ * signature an `interface` lacks. An augmentation member map declared as an
+ * `interface` (the shape `this`-polymorphic returns require) needs this wrapper
+ * to satisfy `AugmentationSet2`'s `Record<PropertyKey, Func>` constraint.
+ */
+export type Flatten<T> = {
+  [K in keyof T]: T[K];
+};
+
 const _cache = new WeakMap<Func, WeakMap<object, Map<unknown, unknown>>>();
 export function memo<T extends Func>(fn: T, getId?: Func<Parameters<T>, any>) {
   getId ??= ((p: any) => p) as any;
