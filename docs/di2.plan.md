@@ -37,8 +37,22 @@ shown to the owner and not overruled; everything untagged is owner-set.
 
 ## Lowering
 
-- ToCallSiteVisitor consults the manifest, closes open generics (satisfies-captures →
+- ToCallSiteVisitor consults the manifest, closes open generics (match-captures →
   `ServiceDescriptor.op.substitute`), lowers to the CallSite tree. Scope-independent, always.
+- Every node is checked for a WHOLE-TYPE registration match first (overridden `visit`);
+  decomposition/synthesis — union members, tuple assembly, literal constant, latebound,
+  `IServiceProvider` recognition — is only the fallback. A registration for a composite beats its
+  parts. First candidate that actually LOWERS wins (a matching-but-unsatisfiable registration
+  doesn't block an older viable one).
+- Intersections are served by a SINGLE registration matching every member — the joint whole-type
+  match does this (intersection condition = every member against one shared capture map); the
+  per-kind fallback stays empty by design.
+- `Iterable<T>` (`named 'Iterable'`, `from 'global'`, one generic arg) is a recognition in the
+  named fallback. Collection = BOTH categories: every registration matching `T` (newest first)
+  PLUS `T`'s pure-synthesis result (a union contributes its members' syntheses only — lookups
+  never re-run there, so registrations don't double-count). An exact `Iterable<T>` registration
+  wins outright, never combined. Zero matches ⇒ empty sequence, not unsatisfiable. The callsite
+  is materialized; realize hands each walk a lazy iterator.
 - Failure signal is `UnsatisfiableError` everywhere — the `'failzor'` throw and undefined-returns
   die. Catch sites: union-member choice, next-signature choice, promise fallback. **(proposed)**
 - A lookup miss on `T` falls back to `Promise<T>`; a hit there produces an async placeholder node
@@ -100,6 +114,34 @@ union+namespace shape + `serviceType: Type`-only — done. FunctionType rename �
 — done, direct-repoint shape (no shims: di2.core imports Type/IServiceProvider straight from
 primitives; utils split — memo/UnionToTuple → primitives-internal, isAllThere/first →
 di2/CallSite/utils.ts; primitives rebuilt clean; di2.core barrel re-exports the Type surface +
-IServiceProvider and now ScopeCache). Residual typecheck errors are owner WIP (isString2d import,
-ctor's signatures branch, addMany/AugmentationSet2 mismatch) plus the TS1127 WIP line now living in
-di2. Owner directs what comes next.
+IServiceProvider and now ScopeCache). Handoff snapshot committed + pushed as tag `di2-handoff`
+(9aa32c9).
+
+Engine v1 — done, UNCOMMITTED past the tag: `Engine` (context-taking resolve, additionalServices
+layering, `UnsatisfiableError` at the boundary), ToCallSiteVisitor finished (union first-satisfiable
+member; literal → constant; `IServiceProvider` recognition; function → registration lookup then
+latebound fallback; intersection/object/tag/ctor → generic lookup; placeholder → undefined),
+RealizeVisitor rewritten (latebound loop-back through the engine; ad-hoc machinery deleted), dumb
+`ServiceProvider`, `ToStringVisitor.visitCtor` finished. No scopes, no async, no memo, `Type.parse`
+still throwing. Lookup direction (owner-corrected): the registration must extend the request —
+`returnType extends requestedType` — via the pattern-match sibling of satisfies,
+`Type.op.match(pattern, subject)`: same subtyping direction, placeholders capture on the PATTERN
+(registration) side; variance-flipped sub-positions land pattern placeholders on the condition side
+of the sub-match, where the inherited capture branch handles them. `visitUnion` falls back to a
+whole-union lookup after member decomposition fails, so a union-TYPED registration serves the exact
+union request (and correctly refuses a lone member). Lowering failure is `undefined` internally
+with `UnsatisfiableError` thrown at the engine boundary (`'failzor'` gone).
+Manifest verbs now hand each new Manifest a re-iterable (`{ [Symbol.iterator]: gen.bind(this) }`) —
+a stored generator OBJECT is one-shot, and the old shape emptied the manifest after its first full
+iteration. Smoke green, 16 checks (`libraries/di2/smoke.ts`, throwaway): value / ctor /
+deps+literal / factory / tuple / union member fallback / open-generic close / SP injection /
+latebound with call args / UnsatisfiableError / literal-serves-base / union-registration
+refuses-lone-member + serves-exact-union / open-function capture through a contravariant position.
+
+Residual owner WIP, untouched: the four token-based manifest verbs (`addClass`/`addFactory`/
+`tryAddClass`/`tryAddFactory`) pass `DepSignatures` (Token strings) where `Type[][]` is now
+required — unfixable until `Type.parse` exists or `DepSignatures` changes shape; the
+`addMany`/`AugmentationSet2` variance error (blocks di2.core's gated build — verification bypasses
+it with a scratchpad no-gate driver; zero repo edits); `isString2d` in di2.core/utils.ts is now
+dead code (owner's factory-signature change removed its last caller). Owner directs what comes
+next.
