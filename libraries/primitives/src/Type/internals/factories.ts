@@ -5,8 +5,8 @@
  */
 
 import { stringifyType } from '../StringifyVisitor.js';
-import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
-  Type, TypeBrand, TypeLiteralType, UnionType } from '../Type.js';
+import type { CtorType, FunctionType, IntersectionType, LiteralValue, NamedType, ObjectType, PlaceholderType, TagType,
+  TupleType, Type, TypeBrand, TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
 import { id, intern, isInterned } from './intern.js';
 import { LITERAL_BASE } from './literal-base.js';
@@ -79,7 +79,7 @@ export function object(members: Readonly<Record<string, Type>>): ObjectType {
   );
 }
 
-export function literal(value: TypeLiteralType['value']): TypeLiteralType {
+export function literal(value: LiteralValue): TypeLiteralType {
   return intern(literalKey(value), () => node<TypeLiteralType>({ kind: 'literal', value }));
 }
 
@@ -145,7 +145,7 @@ function withoutSubsumedLiterals(members: readonly Type[]): readonly Type[] {
   return members.filter(member => member.kind !== 'literal' || !bases.has(typeof member.value));
 }
 
-function literalKey(value: TypeLiteralType['value']): string {
+function literalKey(value: LiteralValue): string {
   switch (typeof value) {
     case 'string': {
       return `literal\0s${JSON.stringify(value)}`;
