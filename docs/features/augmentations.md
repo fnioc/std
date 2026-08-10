@@ -62,45 +62,90 @@ load after its concrete class already exists (`ServiceManifest`, `IConfigBuilder
 interface and every one of its augmentations live inside one family's own package (`IMemoryCache`,
 `MetricsOptions`, `LoggerFilterOptions`) — these install directly, no token needed.
 
-**2. Write one named, exported const object literal per group of related members**, receiver-first,
-satisfying `AugmentationSet<Receiver>`:
+**2. Name the file `<Receiver>-<Topic>-augmentations.ts`**, where `Receiver` is the receiver
+interface's name with its leading `I` dropped and `Topic` is a short word for the member group
+(`Json`, `Descriptor`, `Service`). Declare the member map as its own named type — the signatures a
+caller sees on the receiver, with the receiver itself omitted:
 
 ```ts
-import type { AugmentationSet } from '@rhombus-std/primitives';
-
-export const JsonConfigExtensions = { addJsonFile(builder: IConfigBuilder, path: string, optional = false) {
-  return builder.add(new JsonConfigSource(path, optional));
-} } satisfies AugmentationSet<IConfigBuilder>;
+type IConfigBuilderJsonAugmentations = {
+  addJsonFile(path: string, optional?: boolean): IConfigBuilder;
+};
 ```
 
-This const **is** the callable surface — `JsonConfigExtensions.addJsonFile(builder, path)`
-already works, with no installation step, as a plain function. Installation (below) is what makes
-`builder.addJsonFile(path)` also work.
+This type is the one place the member signatures are written — everything else below either
+`extends` it or derives from it.
 
-**3. Add the interface-side type merge beside it**, in the same file as the receiver's own
-declaring module (this placement matters — see Gotchas):
+**3. Merge the member map onto the receiver interface with `extends`**, in the same file as the
+receiver's own declaring module (this placement matters — see Gotchas):
 
 ```ts
 declare module './configuration-builder.js' {
-  interface IConfigBuilder {
-    addJsonFile(path: string, optional?: boolean): IConfigBuilder;
-  }
+  interface IConfigBuilder extends IConfigBuilderJsonAugmentations {}
 }
 ```
 
-**4. Install it:**
+A receiver with its own generic parameter threads it through both the member map and this merge:
+`IManifestServiceAugmentations<Scopes extends string>` merges onto
+`interface IManifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}`.
 
-- **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheConst)` directly, wherever the
-  concrete class is defined.
-- **OPEN receiver** — call `registerAugmentations(token, TheConst)`, where `token` is an inline
-  `tokenfor<Receiver>()` call (never an exported constant — see Gotchas):
+**4. Write the exported const and install it:**
+
+- **OPEN receiver** — type the const `AugmentationSet2<Receiver, MemberMap>`. `AugmentationSet2` is
+  a mapped type over the member map from step 2: it adds the leading `receiver` parameter to every
+  member and carries every other parameter and return type along, so the object literal itself
+  needs no type annotations at all:
 
   ```ts
-  registerAugmentations(tokenfor<IConfigBuilder>(), JsonConfigExtensions);
+  import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+  import { tokenfor } from '@rhombus-std/primitives.extras';
+
+  export const ConfigBuilderJsonAugmentations: AugmentationSet2<IConfigBuilder, IConfigBuilderJsonAugmentations> = {
+    addJsonFile(builder, path, optional) {
+      return builder.add(new JsonConfigSource(path, optional));
+    },
+  };
+
+  registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderJsonAugmentations);
   ```
 
-  Any class decorated `@augment(tokenfor<IConfigBuilder>())` — anywhere, imported in any
-  order, defined before or after this call runs — picks the new member up automatically.
+  Any class decorated `@augment(tokenfor<IConfigBuilder>())` — anywhere, imported in any order,
+  defined before or after this call runs — picks the new member up automatically.
+
+- **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheConst)` directly, wherever the
+  concrete class is defined. `applyAugmentations` still takes a plain object literal `satisfies
+  AugmentationSet<Receiver>` rather than an `AugmentationSet2`-typed one, so its members keep their
+  hand-written parameter types; only the interface merge in step 3 is shared with the OPEN case:
+
+  ```ts
+  export const MemoryCacheSugarAugmentations = {
+    getOrCreate(cache: IMemoryCache, key: string, factory: () => unknown) {
+      return cache.tryGetValue(key) ?? factory();
+    },
+  } satisfies AugmentationSet<IMemoryCache>;
+
+  applyAugmentations(MemoryCache, MemoryCacheSugarAugmentations);
+  ```
+
+This const **is** the callable surface either way — `ConfigBuilderJsonAugmentations.addJsonFile(builder, path)`
+already works, with no installation step, as a plain function. Installation is what additionally
+makes `builder.addJsonFile(path)` work.
+
+**Naming at a glance** — the file, the member-map type, and the const all share the same
+`Receiver`/`Topic` pair:
+
+|                 | pattern                               | example                               |
+| --------------- | ------------------------------------- | ------------------------------------- |
+| file            | `<Receiver>-<Topic>-augmentations.ts` | `ConfigBuilder-Json-augmentations.ts` |
+| member-map type | `I<Receiver><Topic>Augmentations`     | `IConfigBuilderJsonAugmentations`     |
+| const           | `<Receiver><Topic>Augmentations`      | `ConfigBuilderJsonAugmentations`      |
+
+**Legacy shape.** Some augmentation files still declare their members inline inside the `declare
+module` block and type the const `satisfies AugmentationSet<Receiver>` with no separate member-map
+type at all, with a run-on PascalCase file name instead of the hyphenated `Receiver-Topic` form —
+for example `libraries/di.core/src/augmentations/ServiceManifestDescriptorAugmentations.ts`. That's
+the pre-member-map shape; every new augmentation uses the steps above, and existing files migrate to
+it opportunistically rather than through a dedicated rewrite pass.
 
 ## Implementing an augmented interface (the supported consumer feature)
 
