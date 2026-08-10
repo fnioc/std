@@ -102,8 +102,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ChangeToken.onChange` — the async-consumer forms real, via a runtime thenable check, §58 — plus
   `CompositeChangeToken` merging N tokens into one, §58) that underpins live-reload (§8), **and**
   the augmentation infra:
-  one named exported object literal per ME static extension class, `satisfies AugmentationSet<R>`
-  (§28), installed either directly via `applyAugmentations` (CLOSED receivers) or through the
+  one named exported object literal per ME static extension class — `satisfies AugmentationSet<R>`
+  for a CLOSED receiver, or typed `AugmentationSet2<R, MemberMap>` against a named member-map type
+  for OPEN (§28) — installed either directly via `applyAugmentations` (CLOSED receivers) or through the
   **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
   re-exports it), `registerAugmentations(token, set, merge?)` (per-token bag = a
   `Multimap<string, [fn, merge?]>` holding a per-name LIST of contributions, each pairing the fn
@@ -324,11 +325,14 @@ before touching):
   external** — an inlined copy forks the augmentation registry's Map + subscriber list (§38). The same
   holds for the rolled `.d.ts`: a package that inlines di.core's types forks
   `IServiceManifestBase`, so every di.core dependent keeps it external in `rollup.dts.mjs` (§114).
-- **Augmentations** — one named object literal per augmentation set (`satisfies
-  AugmentationSet<R>`), authored first-party-only, installed via direct `applyAugmentations` for
-  CLOSED receivers or the token registry + `@augment` decorator for OPEN ones; the transformer
-  matches sugar calls at the receiver's declaration site, never by type name or call shape. Full
-  mechanics, authoring steps, and gotchas: `docs/features/augmentations.md` (§89).
+- **Augmentations** — file `<Receiver>-<Topic>-augmentations.ts` (receiver's leading `I` dropped); a
+  named member-map type `I<Receiver><Topic>Augmentations` merges onto the receiver via `declare
+  module … extends`, and the exported const `<Receiver><Topic>Augmentations` is typed
+  `AugmentationSet2<Receiver, MemberMap>`, installed via the token registry + `@augment` decorator
+  for OPEN receivers (the common case); a CLOSED receiver keeps `satisfies
+  AugmentationSet<Receiver>` + direct `applyAugmentations`. Authored first-party-only; the
+  transformer matches sugar calls at the receiver's declaration site, never by type name or call
+  shape. Full mechanics, authoring steps, and gotchas: `docs/features/augmentations.md` (§89).
 
 **Keep this digest in step with `docs/decisions.v2.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the
