@@ -20,7 +20,10 @@ export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
   output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   // Preserve `@rhombus-std/di2.core` as an external import so its module identity
-  // (the augmentation target) survives into the published declaration.
-  external: [/^@rhombus-std\/di2\.core$/],
+  // (the augmentation target) survives into the published declaration, and
+  // `@rhombus-std/primitives` so `Type` keeps ONE identity across the graph — an inlined copy
+  // carries its own `unique symbol` brand, which no other copy's node can satisfy, so a consumer
+  // importing both packages finds their `Type`s mutually unassignable.
+  external: [/^@rhombus-std\/di2\.core$/, /^@rhombus-std\/primitives$/],
   plugins: [dts({ tsconfig: join(PKG_ROOT, 'tsconfig.json'), respectExternal: true })],
 };
