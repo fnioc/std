@@ -100,12 +100,11 @@ function writeProject(projDir: string): void {
   rmSync(join(projDir, 'dist'), { recursive: true, force: true });
   writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
-  writeFileSync(join(projDir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
-      include: ['src/**/*'],
-    }));
+  writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
+    include: ['src/**/*'],
+  }));
 }
 
 /** Link the shared ttsc toolchain into a fixture's node_modules. */

@@ -111,8 +111,7 @@ registerInlineBodies(ServiceManifestInline);
  */
 export const ServiceManifestOverrideInline = {
   addClass<I>(this: IInlineRegistrationTarget, ctor: Ctor,
-    overrides: ReadonlyArray<string | undefined>
-  ): IServiceManifest {
+    overrides: ReadonlyArray<string | undefined>): IServiceManifest {
     return this.addClass(tokenfor<I>(), ctor, overrideSignatures(signatureof(ctor), overrides), void 0, keyof<I>());
   },
 };

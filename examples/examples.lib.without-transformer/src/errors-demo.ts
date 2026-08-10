@@ -249,8 +249,8 @@ export function demonstrateRegistrationErrors(services: IServiceManifest<'single
   // `IRepository<User,$1>` is an ordinary template, registers fine, and is what
   // the open-generics chapter is about.
   lines.push(
-    stagedFailure('registering a class at a bare hole', () =>
-      services.addClass(BARE_HOLE_TOKEN, ReportService, [[STORE_TOKEN]])),
+    stagedFailure('registering a class at a bare hole',
+      () => services.addClass(BARE_HOLE_TOKEN, ReportService, [[STORE_TOKEN]])),
   );
 
   return lines;

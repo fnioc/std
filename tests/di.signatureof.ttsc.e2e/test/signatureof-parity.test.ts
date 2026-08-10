@@ -142,12 +142,11 @@ services.addValue<IBaz>(bazValue);
 `;
 
 function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(join(projDir, name),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
-      include: ['src/**/*'],
-    }));
+  writeFileSync(join(projDir, name), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
+    include: ['src/**/*'],
+  }));
 }
 
 function setupWorkspace(): void {
