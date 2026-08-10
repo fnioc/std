@@ -1,4 +1,4 @@
-import { typeEquals } from './EqualsVisitor.js';
+import { LITERAL_BASE } from './internals/literal-base.js';
 import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
   Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
@@ -6,10 +6,6 @@ import { TypeVisitor } from './TypeVisitor.js';
 /** Failure carries nothing; success carries one entry per placeholder label in the condition. */
 
 type Predicate = (proposed: Type) => boolean;
-
-/** The global type a bare literal widens to, so `33` can satisfy `number`. */
-const LITERAL_BASE: Readonly<Record<string, string>> = { string: 'string', number: 'number', bigint: 'bigint',
-  boolean: 'boolean' };
 
 /** True when any placeholder appears anywhere in the tree. */
 class PlaceholderScanner extends TypeVisitor<boolean> {
@@ -153,7 +149,7 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       this.captures.set(label, captured);
       return true;
     }
-    return typeEquals(bound, captured);
+    return bound === captured;
   }
 
   /** Tries one branch of a condition union, rolling captures back when it fails. */

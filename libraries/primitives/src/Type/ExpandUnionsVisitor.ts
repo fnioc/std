@@ -2,19 +2,13 @@ import { type CtorType, type FunctionType, type IntersectionType, type NamedType
   type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
-// TODO: short-circuit a branch whose children all expanded to themselves, returning the
-// node as-is instead of rebuilding it. Every composite currently goes back through its
-// factory even when no union was found, so a union-free tree comes out as a deep copy —
-// wasted allocation, and identity-keyed callers (`memo`) miss on every entry.
-
 /**
  * Expands every union into the union-free alternatives it stands for, so
  * `(A | B, C)` becomes `(A, C)` and `(B, C)`.
  *
  * @remarks
- * Ordering is leftmost-significant: the rightmost union varies fastest, so the
- * first alternative takes every union's first branch and declaration priority
- * survives left to right.
+ * Ordering is leftmost-significant: the rightmost union varies fastest, so the first alternative
+ * takes every union's first member in canonical order.
  */
 class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   protected override visitUnion(type: UnionType): readonly Type[] {

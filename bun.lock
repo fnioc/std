@@ -829,6 +829,15 @@
         "@rhombus-toolkit/func": "^3.5.3",
       },
     },
+    "tests/di2.test": {
+      "name": "@rhombus-std/di2.test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@rhombus-std/di2": "workspace:*",
+        "@rhombus-std/di2.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+      },
+    },
     "tests/diagnostics.core.test": {
       "name": "@rhombus-std/diagnostics.core.test",
       "version": "0.0.0",
@@ -1422,6 +1431,8 @@
     "@rhombus-std/di2": ["@rhombus-std/di2@workspace:libraries/di2"],
 
     "@rhombus-std/di2.core": ["@rhombus-std/di2.core@workspace:libraries/di2.core"],
+
+    "@rhombus-std/di2.test": ["@rhombus-std/di2.test@workspace:tests/di2.test"],
 
     "@rhombus-std/diagnostics": ["@rhombus-std/diagnostics@workspace:libraries/diagnostics"],
 
