@@ -1,7 +1,5 @@
-import { Func } from '@rhombus-toolkit/func';
-import { memo, UnionToTuple } from '../utils.js';
-import { typeEquals } from './EqualsVisitor.js';
 import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
+import * as factory from './internals/factories.js';
 import { parseType } from './internals/parser.js';
 import { matchType, satisfiesType } from './SatisfiesVisitor.js';
 import { stringifyType } from './StringifyVisitor.js';
@@ -21,36 +19,55 @@ export type TokenType =
 export type Type = TokenType | CtorType;
 export type ConstructableType = Exclude<Type, NamedType>;
 
+/** Every token that has already been read, so a repeated request skips the lexer. */
+const parsed = new Map<string, Type>();
+
 export namespace Type {
-  export function union(...types: readonly Type[]): UnionType {
-    return { kind: 'union', members: types };
+  /**
+   * @remarks
+   * Members are flattened, deduped and ordered canonically, and a literal standing beside its
+   * primitive base is dropped — the readings TypeScript gives a union, under which `A | B` and
+   * `B | A` are one type. A lone surviving member is returned in place of the union it would
+   * have formed.
+   *
+   * @throws TypeError - when no member survives.
+   */
+  export function union(...types: readonly Type[]): Type {
+    return factory.union(types);
   }
-  export function intersection(...types: readonly Type[]): IntersectionType {
-    return { kind: 'intersection', members: types };
+  /**
+   * @remarks
+   * Canonicalized exactly as {@link union} is, minus the literal reduction.
+   *
+   * @throws TypeError - when no member survives.
+   */
+  export function intersection(...types: readonly Type[]): Type {
+    return factory.intersection(types);
   }
   export function tuple(...types: readonly Type[]): TupleType {
-    return { kind: 'tuple', members: types };
+    return factory.tuple(types);
   }
   export function func(returnType: Type, ...args: readonly Type[]): FunctionType {
-    return { kind: 'function', args, returnType };
+    return factory.func(returnType, args);
   }
   export function ctor(instanceType: Type, ...args: readonly Type[]): CtorType {
-    return { kind: 'ctor', args, instanceType };
+    return factory.ctor(instanceType, args);
   }
   export function named(name: string, from: string = 'global', genericTypes: readonly Type[] = []): NamedType {
-    return { kind: 'named', from, name, genericArgs: genericTypes };
+    return factory.named(name, from, genericTypes);
   }
+  /** Members are keyed in sorted order, so writing them in another order names the same type. */
   export function object(members: Readonly<Record<string, Type>>): ObjectType {
-    return { kind: 'object', members };
+    return factory.object(members);
   }
   export function typeLiteral(value: LiteralValue): TypeLiteralType {
-    return { kind: 'literal', value };
+    return factory.literal(value);
   }
   export function placeholder(label: string): PlaceholderType {
-    return { kind: 'placeholder', label };
+    return factory.placeholder(label);
   }
   export function tag(type: Type, tag: string): TagType {
-    return { kind: 'tag', tag, type };
+    return factory.tag(type, tag);
   }
 
   /**
@@ -64,9 +81,15 @@ export namespace Type {
    *
    * @throws TypeParseError - when the token is malformed.
    */
-  export const from = memo(function from(token: string): Type {
-    return parseType(token);
-  });
+  export function from(token: string): Type {
+    const read = parsed.get(token);
+    if (read !== undefined) {
+      return read;
+    }
+    const type = parseType(token);
+    parsed.set(token, type);
+    return type;
+  }
 
   export function stringify(type: Type): string {
     return stringifyType(type);
@@ -86,19 +109,20 @@ export namespace Type {
   export function match(pattern: Type, subject: Type) {
     return matchType(pattern, subject);
   }
-  export function equals(left: Type | string, right: Type | string): boolean {
-    if (typeof left === 'string') {
-      return equals(Type.from(left), right);
-    }
-    if (typeof right === 'string') {
-      return equals(left, Type.from(right));
-    }
-    return typeEquals(left, right);
-  }
 }
+
+/** Marks a node as one the intern table minted. Declared only — nothing carries it at runtime. */
+declare const TYPE_BRAND: unique symbol;
+
+/**
+ * The brand's key, so the factories can name the shape they build: a node minus the mark it
+ * cannot supply a runtime value for.
+ */
+export type TypeBrand = typeof TYPE_BRAND;
 
 interface TypeBase<Kind extends string> {
   readonly kind: Kind;
+  readonly [TYPE_BRAND]: void;
 }
 
 export interface UnionType extends TypeBase<'union'> {
@@ -138,7 +162,7 @@ export interface ObjectType extends TypeBase<'object'> {
   readonly members: Readonly<Record<string, Type>>;
 }
 
-type LiteralValue = string | number | bigint | boolean | null | undefined;
+export type LiteralValue = string | number | bigint | boolean | null | undefined;
 /** Any type that `typeof` can resolve */
 export interface TypeLiteralType extends TypeBase<'literal'> {
   readonly value: LiteralValue;

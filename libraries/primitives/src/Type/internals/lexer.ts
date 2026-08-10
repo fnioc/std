@@ -1,4 +1,4 @@
-import type { TypeLiteralType } from '../Type.js';
+import type { LiteralValue } from '../Type.js';
 import { isSafeChar, isSegmentStart } from './grammar.js';
 import { TypeParseError } from './TypeParseError.js';
 
@@ -7,7 +7,7 @@ export interface LexToken {
   /** The punctuation itself, or the unescaped text of a name. */
   readonly text: string;
   /** The decoded value of a `literal`. */
-  readonly value: TypeLiteralType['value'];
+  readonly value: LiteralValue;
   /** Whether a `name` was written with an escape, which rules out every reserved reading of it. */
   readonly escaped: boolean;
   readonly position: number;

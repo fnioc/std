@@ -48,6 +48,34 @@ export class CycleError extends Error {
   }
 }
 
+/**
+ * A union dependency has more than one member the manifest can supply, so nothing about the union
+ * says which one is meant.
+ *
+ * @remarks
+ * Deliberately not an {@link UnsatisfiableError}: the request can be met, in more ways than one, so
+ * a handler falling back through candidates must not swallow it. Resolve it by narrowing the
+ * dependency to the member intended, or by keying a registration so the union no longer names it.
+ * A provider built with `unionAmbiguity: 'newest'` takes the most recently registered member
+ * instead of raising.
+ */
+export class AmbiguousUnionError extends Error {
+  /** The union that could not be decided. */
+  readonly type: Type;
+  /** The members competing to supply it, in the union's own order. */
+  readonly members: readonly Type[];
+
+  constructor(type: Type, members: readonly Type[]) {
+    super(
+      `cannot choose for ${Type.stringify(type)} — ${members.length} members can be supplied: `
+        + members.map(member => Type.stringify(member)).join(', '),
+    );
+    this.name = 'AmbiguousUnionError';
+    this.type = type;
+    this.members = members;
+  }
+}
+
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */

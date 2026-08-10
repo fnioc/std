@@ -15,11 +15,6 @@ export type IManifestContainerBuilderAugmentations<Scopes extends string> = {
   buildServiceProvider(options: ServiceProviderOptions): ServiceProvider;
 };
 
-// Decoupled from the public overloads above: `AugmentationSet2` reads each member's params
-// through `Parameters<Impl[K]>`, which sees only the LAST arm of a genuinely overloaded
-// signature. Here the two arms differ by arity alone, so one optional parameter carries both
-// (a union-of-tuples rest -- what an arms-differ-by-type member needs -- would instead widen
-// into a single tuple whose FIRST element unions the receiver with the option bag).
 type IManifestContainerBuilderAugmentationsImpl = {
   buildServiceProvider(options?: ServiceProviderOptions): ServiceProvider;
 };

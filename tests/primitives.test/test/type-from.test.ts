@@ -11,7 +11,7 @@ const C = Type.named('C', 'app');
 
 describe('Type.from', () => {
   test('reads a qualified name', () => {
-    expect(Type.equals(Type.from('app:Foo'), Type.named('Foo', 'app'))).toBe(true);
+    expect(Type.from('app:Foo')).toBe(Type.named('Foo', 'app'));
   });
 
   test('an absent qualifier means the global namespace', () => {
@@ -19,58 +19,57 @@ describe('Type.from', () => {
   });
 
   test('a value-type name is an ordinary named type', () => {
-    expect(Type.equals(Type.from('string'), Type.named('string'))).toBe(true);
-    expect(Type.equals(Type.from('global:string'), Type.named('string', 'global'))).toBe(true);
-    expect(Type.equals(Type.from('number'), Type.from('global:number'))).toBe(true);
+    expect(Type.from('string')).toBe(Type.named('string'));
+    expect(Type.from('global:string')).toBe(Type.named('string', 'global'));
+    expect(Type.from('number')).toBe(Type.from('global:number'));
   });
 
   test('reads nested generics', () => {
     const nested = Type.named('Box', 'app', [Type.named('Iterable', 'global', [A])]);
-    expect(Type.equals(Type.from('app:Box<Iterable<app:A>>'), nested)).toBe(true);
+    expect(Type.from('app:Box<Iterable<app:A>>')).toBe(nested);
   });
 
   test('reads an object type', () => {
-    expect(Type.equals(
-      Type.from('{ a: string; b: app:B }'),
-      Type.object({ a: Type.named('string'), b: B }),
-    )).toBe(true);
+    expect(Type.from('{ a: string; b: app:B }')).toBe(Type.object({ a: Type.named('string'), b: B }));
   });
 
   test('reads a union, with intersection binding tighter', () => {
-    expect(Type.equals(Type.from('app:A | app:B & app:C'), Type.union(A, Type.intersection(B, C)))).toBe(true);
-    expect(Type.equals(Type.from('(app:A | app:B) & app:C'), Type.intersection(Type.union(A, B), C))).toBe(true);
+    expect(Type.from('app:A | app:B & app:C')).toBe(Type.union(A, Type.intersection(B, C)));
+    expect(Type.from('(app:A | app:B) & app:C')).toBe(Type.intersection(Type.union(A, B), C));
   });
 
   test('reads a tag', () => {
-    expect(Type.equals(Type.from('app:A#primary'), Type.tag(A, 'primary'))).toBe(true);
-    expect(Type.equals(Type.from('(app:A | app:B)#primary'), Type.tag(Type.union(A, B), 'primary'))).toBe(true);
+    expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
+    expect(Type.from('(app:A | app:B)#primary')).toBe(Type.tag(Type.union(A, B), 'primary'));
   });
 
   test('reads tuples, placeholders and literals', () => {
-    expect(Type.equals(Type.from('[app:A, 5]'), Type.tuple(A, Type.typeLiteral(5)))).toBe(true);
-    expect(Type.equals(Type.from('[]'), Type.tuple())).toBe(true);
-    expect(Type.equals(Type.from('%T'), Type.placeholder('T'))).toBe(true);
-    expect(Type.equals(Type.from('42n'), Type.typeLiteral(42n))).toBe(true);
-    expect(Type.equals(Type.from('-Infinity'), Type.typeLiteral(-Infinity))).toBe(true);
-    expect(Type.equals(Type.from('undefined'), Type.typeLiteral(undefined))).toBe(true);
+    expect(Type.from('[app:A, 5]')).toBe(Type.tuple(A, Type.typeLiteral(5)));
+    expect(Type.from('[]')).toBe(Type.tuple());
+    expect(Type.from('%T')).toBe(Type.placeholder('T'));
+    expect(Type.from('42n')).toBe(Type.typeLiteral(42n));
+    expect(Type.from('-Infinity')).toBe(Type.typeLiteral(-Infinity));
+    expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
   });
 
   test('reads the arrow forms', () => {
-    expect(Type.equals(Type.from('(app:B) => app:A'), Type.func(A, B))).toBe(true);
-    expect(Type.equals(Type.from('new (app:B) => app:A'), Type.ctor(A, B))).toBe(true);
-    expect(Type.equals(Type.from('() => app:A | app:B'), Type.func(Type.union(A, B)))).toBe(true);
-    expect(Type.equals(Type.from('(() => app:A) | app:B'), Type.union(Type.func(A), B))).toBe(true);
+    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
+    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
+    expect(Type.from('() => app:A | app:B')).toBe(Type.func(Type.union(A, B)));
+    expect(Type.from('(() => app:A) | app:B')).toBe(Type.union(Type.func(A), B));
   });
 
-  test('memoizes by token', () => {
-    expect(Type.from('app:Foo')).toBe(Type.from('app:Foo'));
+  test('whitespace is not part of what a token spells', () => {
+    expect(Type.from('app:A|app:B')).toBe(Type.from('app:A | app:B'));
+    expect(Type.from('\n app:A\t|  app:B ')).toBe(Type.from('app:A | app:B'));
+    expect(Type.from('app:Box< app:A , app:B >')).toBe(Type.from('app:Box<app:A,app:B>'));
   });
 });
 
 describe('reserved names', () => {
   test('Func, Ctor and ServiceProvider name their own kinds', () => {
-    expect(Type.equals(Type.from('Func<app:A, app:B>'), Type.func(A, B))).toBe(true);
-    expect(Type.equals(Type.from('Ctor<app:A, app:B>'), Type.ctor(A, B))).toBe(true);
+    expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, B));
+    expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, B));
     expect(Type.from('ServiceProvider')).toMatchObject({
       kind: 'named',
       from: '@rhombus-std/primitives',
@@ -79,14 +78,14 @@ describe('reserved names', () => {
   });
 
   test('a qualified reserved name is an ordinary named type', () => {
-    expect(Type.equals(Type.from('app:Func'), Type.named('Func', 'app'))).toBe(true);
-    expect(Type.equals(Type.from('app:Ctor'), Type.named('Ctor', 'app'))).toBe(true);
-    expect(Type.equals(Type.from('app:ServiceProvider'), Type.named('ServiceProvider', 'app'))).toBe(true);
+    expect(Type.from('app:Func')).toBe(Type.named('Func', 'app'));
+    expect(Type.from('app:Ctor')).toBe(Type.named('Ctor', 'app'));
+    expect(Type.from('app:ServiceProvider')).toBe(Type.named('ServiceProvider', 'app'));
   });
 
   test('an escaped reserved name is an ordinary named type', () => {
-    expect(Type.equals(Type.from('\\Func'), Type.named('Func'))).toBe(true);
-    expect(Type.equals(Type.from('\\true'), Type.named('true'))).toBe(true);
+    expect(Type.from('\\Func')).toBe(Type.named('Func'));
+    expect(Type.from('\\true')).toBe(Type.named('true'));
   });
 });
 
@@ -118,19 +117,19 @@ describe('escaping', () => {
 
   test('a name carrying grammar characters survives', () => {
     const named = Type.named('has space<and>:colon', 'a|b', [A]);
-    expect(Type.equals(Type.from(Type.stringify(named)), named)).toBe(true);
+    expect(Type.from(Type.stringify(named))).toBe(named);
   });
 
   test('a name spelled like a keyword survives', () => {
     for (const name of ['true', 'false', 'null', 'undefined', 'NaN', 'Infinity', 'Func', 'Ctor', '1st', '']) {
       const named = Type.named(name);
-      expect(Type.equals(Type.from(Type.stringify(named)), named)).toBe(true);
+      expect(Type.from(Type.stringify(named))).toBe(named);
     }
   });
 
   test('a tag, placeholder label and object key carrying grammar characters survive', () => {
     const awkward = Type.object({ 'key: with; grammar': Type.tag(Type.placeholder('%odd|label'), 'a#tag') });
-    expect(Type.equals(Type.from(Type.stringify(awkward)), awkward)).toBe(true);
+    expect(Type.from(Type.stringify(awkward))).toBe(awkward);
   });
 });
 
@@ -175,7 +174,7 @@ describe('round trip', () => {
       } catch (error) {
         throw new Error(`seed ${seed} spelled ${token} which did not read back: ${(error as Error).message}`);
       }
-      if (!Type.equals(original, reread)) {
+      if (reread !== original) {
         throw new Error(`seed ${seed} spelled ${token} which read back as ${Type.stringify(reread)}`);
       }
     }

@@ -1,6 +1,7 @@
 import { Manifest, ManifestValidationError, ServiceDescriptor, UnsatisfiableError,
   type ValidationFailure } from '@rhombus-std/di2.core';
 import type { IServiceProvider, Type } from '@rhombus-std/primitives';
+import { ServiceProviderOptions } from '../ServiceProviderOptions.js';
 import { CallSite } from './CallSite/CallSite.js';
 import { isOpenType } from './OpenTypeVisitor.js';
 
@@ -17,9 +18,11 @@ export interface ResolveContext {
  */
 export class Engine {
   readonly #manifest: Manifest;
+  readonly #unionAmbiguity: NonNullable<ServiceProviderOptions['unionAmbiguity']>;
 
-  constructor(manifest: Manifest) {
+  constructor(manifest: Manifest, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
     this.#manifest = manifest;
+    this.#unionAmbiguity = options.unionAmbiguity ?? 'error';
   }
 
   /** @throws {UnsatisfiableError} when nothing in the manifest can produce {@link type}. */
@@ -59,7 +62,7 @@ export class Engine {
   }
 
   #lower(type: Type, manifest: Manifest): CallSite {
-    const site = CallSite.from(type, { manifest });
+    const site = CallSite.from(type, { manifest, unionAmbiguity: this.#unionAmbiguity });
     if (site === undefined) {
       throw new UnsatisfiableError(type, 'nothing in the manifest can produce it');
     }
