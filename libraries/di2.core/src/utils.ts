@@ -30,6 +30,79 @@ export type Flatten<T> = {
   [K in keyof T]: T[K];
 };
 
+/********************** Object ***********************/
+
+export type Entry<Key extends PropertyKey = PropertyKey, Value = any> = readonly [Key, Value];
+
+export type keys<T extends {}> = keyof T;
+// export function keys<T extends {}>(obj: T): Array<keys<T>> {
+//     return Object.keys(obj) as any;
+// }
+
+export type entries<T extends {}> = EntriesFromKeys<T, UnionToTuple<keyof T>>;
+type EntriesFromKeys<T, Keys extends readonly unknown[]> = {
+  readonly [I in keyof Keys]: Keys[I] extends keyof T ? Entry<Keys[I], T[Keys[I]]> : never;
+};
+// export function entries<T extends {}>(obj: T): entries<T>{
+//     return Object.entries(obj) as any;
+// }
+
+export type values<T extends {}> = T[keyof T];
+// export function values<T extends {}>(obj: T): Array<values<T>> {
+//     return Object.values(obj);
+// }
+
+export type fromEntries<TUnion extends Entry> = {
+  [T in TUnion as T[0]]: T[1];
+};
+// export function fromEntries<TEntry extends Entry>(entries: TEntry[]): fromEntries<TEntry> {
+//     return Object.fromEntries(entries) as any;
+// }
+
+type ShallowMerge<A, B> = Flatten<Omit<A, keyof B> & B>;
+
+export type assign<Sources extends readonly any[]> = _assign<Sources, {}>;
+type _assign<Sources extends readonly any[], Result extends {}> = Sources extends
+  readonly [...infer Sources, infer LastSource] ? _assign<Sources, ShallowMerge<LastSource, Result>>
+  : Result;
+
+declare global {
+  interface ObjectConstructor {
+    assign<Target extends object, Sources extends any[]>(target: Target,
+      ...sources: Sources): assign<[Target, Sources]>;
+    fromEntries<TEntry extends Entry>(entries: TEntry[]): fromEntries<TEntry>;
+    values<T extends {}>(obj: T): Array<values<T>>;
+    entries<T extends {}>(obj: T): entries<T>;
+    keys<T extends {}>(obj: T): Array<keys<T>>;
+  }
+}
+
+// export function assign<Target extends object, Sources extends any[]>(target: Target, ...sources: Sources): assign<[Target, Sources]> {
+//     return Object.assign(target, ...sources);
+// }
+
+/************************************************/
+type Contravariant<T> = Func<[T]>;
+type ForceCV<T> = T extends unknown ? Contravariant<T> : never;
+type ExtractCV<T> = T extends Contravariant<infer I> ? I : never;
+
+type UnionToIntersection<T> = ForceCV<T> extends Contravariant<infer I> ? I : never;
+type LastInUnion<T> = ExtractCV<UnionToIntersection<ForceCV<T>>>; // extends Contravariant<infer R> ? R : never;
+
+export type UnionToTuple<T> = _UnionToTuple<T, []>;
+type _UnionToTuple<T, Result extends readonly unknown[], Last = LastInUnion<T>> = [T] extends [never] ? Result
+  : _UnionToTuple<Exclude<T, Last>, readonly [Last, ...Result]>;
+
+export type TupleToUnion<T extends readonly unknown[]> = T[number];
+
+/****************** Iterable *******************/
+
+export function* replace<T>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: T): Generator<T> {
+  const predicate = isFunc(match) ? match : (item: T) => item === match;
+  for (const item of source) {
+    yield predicate(item) ? replacement : item;
+  }
+}
 /** The first element `source` yields, or `undefined` when it yields nothing. */
 export function first<T>(source: Iterable<T>): T | undefined {
   for (const value of source) {
@@ -38,165 +111,15 @@ export function first<T>(source: Iterable<T>): T | undefined {
   return undefined;
 }
 
-export function isAllThere<T>(items: Array<T | undefined>): items is T[] {
-  return items.every(Boolean);
+export function isAllThere<T>(items: Array<T | undefined>): items is T[];
+// export function isAllThere<T>(items: IteratorObject<T | undefined>): items is IteratorObject<T>;
+// export function isAllThere<T>(items: IterableIterator<T | undefined>): items is IterableIterator<T>;
+// export function isAllThere<T>(items: Iterable<T | undefined>): items is Iterable<T>;
+export function isAllThere<T>(items: Iterable<T | undefined>): items is Iterable<T> {
+  return Iterator.from(items).every(Boolean);
 }
+/**************************************************/
 
-// declare global {
-//   interface Iterable<T> extends IterableComprehensions<T>{}
-// }
-// interface IterableComprehensions<T> {
-//   /**
-//    * Creates an iterator whose values are the result of applying the callback to the values from this iterator.
-//    * @param callbackfn A function that accepts up to two arguments to be used to transform values from the underlying iterator.
-//    */
-//   map<U>(callbackfn: (value: T, index: number) => U): IteratorObject<U, undefined, unknown>;
-
-//   /**
-//    * Creates an iterator whose values are those from this iterator for which the provided predicate returns true.
-//    * @param predicate A function that accepts up to two arguments to be used to test values from the underlying iterator.
-//    */
-//   filter<S extends T>(predicate: (value: T, index: number) => value is S): IteratorObject<S, undefined, unknown>;
-
-//   /**
-//    * Creates an iterator whose values are those from this iterator for which the provided predicate returns true.
-//    * @param predicate A function that accepts up to two arguments to be used to test values from the underlying iterator.
-//    */
-//   filter(predicate: (value: T, index: number) => unknown): IteratorObject<T, undefined, unknown>;
-
-//   /**
-//    * Creates an iterator whose values are the values from this iterator, stopping once the provided limit is reached.
-//    * @param limit The maximum number of values to yield.
-//    */
-//   take(limit: number): IteratorObject<T, undefined, unknown>;
-
-//   /**
-//    * Creates an iterator whose values are the values from this iterator after skipping the provided count.
-//    * @param count The number of values to drop.
-//    */
-//   drop(count: number): IteratorObject<T, undefined, unknown>;
-
-//   /**
-//    * Creates an iterator whose values are the result of applying the callback to the values from this iterator and then flattening the resulting iterators or iterables.
-//    * @param callback A function that accepts up to two arguments to be used to transform values from the underlying iterator into new iterators or iterables to be flattened into the result.
-//    */
-//   flatMap<U>(
-//     callback: (value: T, index: number) => Iterator<U, unknown, undefined> | Iterable<U, unknown, undefined>,
-//   ): IteratorObject<U, undefined, unknown>;
-
-//   /**
-//    * Calls the specified callback function for all the elements in this iterator. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
-//    * @param callbackfn A function that accepts up to three arguments. The reduce method calls the callbackfn function one time for each element in the iterator.
-//    * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of a value from the iterator.
-//    */
-//   reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number) => T): T;
-//   reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number) => T, initialValue: T): T;
-
-//   /**
-//    * Calls the specified callback function for all the elements in this iterator. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
-//    * @param callbackfn A function that accepts up to three arguments. The reduce method calls the callbackfn function one time for each element in the iterator.
-//    * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of a value from the iterator.
-//    */
-//   reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number) => U, initialValue: U): U;
-
-//   /**
-//    * Creates a new array from the values yielded by this iterator.
-//    */
-//   toArray(): T[];
-
-//   /**
-//    * Performs the specified action for each element in the iterator.
-//    * @param callbackfn A function that accepts up to two arguments. forEach calls the callbackfn function one time for each element in the iterator.
-//    */
-//   forEach(callbackfn: (value: T, index: number) => void): void;
-
-//   /**
-//    * Determines whether the specified callback function returns true for any element of this iterator.
-//    * @param predicate A function that accepts up to two arguments. The some method calls
-//    * the predicate function for each element in this iterator until the predicate returns a value
-//    * true, or until the end of the iterator.
-//    */
-//   some(predicate: (value: T, index: number) => unknown): boolean;
-
-//   /**
-//    * Determines whether all the members of this iterator satisfy the specified test.
-//    * @param predicate A function that accepts up to two arguments. The every method calls
-//    * the predicate function for each element in this iterator until the predicate returns
-//    * false, or until the end of this iterator.
-//    */
-//   every(predicate: (value: T, index: number) => unknown): boolean;
-
-//   /**
-//    * Returns the value of the first element in this iterator where predicate is true, and undefined
-//    * otherwise.
-//    * @param predicate find calls predicate once for each element of this iterator, in
-//    * order, until it finds one where predicate returns true. If such an element is found, find
-//    * immediately returns that element value. Otherwise, find returns undefined.
-//    */
-//   find<S extends T>(predicate: (value: T, index: number) => value is S): S | undefined;
-//   find(predicate: (value: T, index: number) => unknown): T | undefined;
-
-//   first(): T | undefined;
-// }
-// class SequenceEmptyError extends Error {
-//   constructor();
-//   constructor(message: string);
-//   constructor(message?: string) {
-//     super(message);
-//   }
-// }
-// class MyIt<T> implements It<T> {
-//   #source: Iterable<T>;
-//   constructor(source: Iterable<T>) {
-//     this.#source = source;
-//   }
-
-//   get #it(){
-//     return Iterator.from(this);
-//   }
-
-//   map<U>(callbackfn: (value: T, index: number) => U): IteratorObject<U, undefined, unknown> {
-//     throw new Error('Method not implemented.');
-//   }
-//   filter<S extends T>(predicate: (value: T, index: number) => value is S): IteratorObject<S, undefined, unknown>;
-//   filter(predicate: (value: T, index: number) => unknown): IteratorObject<T, undefined, unknown>;
-//   filter(...args:any[]): any {
-//     return (Iterator.from(this).filter as Func)(...args);
-//   }
-//   take(limit: number): IteratorObject<T, undefined, unknown> {
-//     return Iterator.from(this).take(limit);
-//   }
-//   drop(count: number): IteratorObject<T, undefined, unknown> {
-//     return Iterator.from(this).drop(count);
-//   }
-//   flatMap<U>(callback: (value: T, index: number) => Iterator<U, unknown, undefined> | Iterable<U, unknown, undefined>): IteratorObject<U, undefined, unknown> {
-//     return Iterator.from(this).flatMap(callback);
-//   }
-//   reduce(callbackfn: Func<[previousValue: T, currentValue: T, currentIndex: number], T>): T;
-//   reduce(callbackfn: Func<[previousValue: T, currentValue: T, currentIndex: number], T>, initialValue: T): T;
-//   reduce<U>(callbackfn: Func<[previousValue: U, currentValue: T, currentIndex: number], U>, initialValue: U): U;
-//   reduce(...args:any[]): any {
-//     return (Iterator.from(this).reduce as Func)(...args);
-//   }
-//   toArray(): T[] {
-//     return Iterator.from(this).toArray();
-//   }
-//   forEach(callbackfn: (value: T, index: number) => void): void {
-//     return Iterator.from(this).forEach(callbackfn);
-//   }
-//   some(predicate: (value: T, index: number) => unknown): boolean {
-//     return Iterator.from(this).some(predicate);
-//   }
-//   every(predicate: (value: T, index: number) => unknown): boolean {
-//     return Iterator.from(this).every(predicate);
-//   }
-//   find<S extends T>(predicate: (value: T, index: number) => value is S): S | undefined;
-//   find(predicate: (value: T, index: number) => unknown): T | undefined;
-//   find(predicate: Func): any {
-//     return Iterator.from(this).find(predicate);
-//   }
-//   first(): T | undefined {
-//     return Iterator.from(this).find(()=>true);
-//   }
-
-// }
+function isFunc(value: any): value is Func {
+  return typeof value === 'function';
+}

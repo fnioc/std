@@ -3,7 +3,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { AugmentationSet2 } from '@rhombus-std/primitives/tokens/augmentations';
-import { type IManifest, Manifest } from '../IManifest';
+import { type IManifest } from '../IManifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 import { Type } from '../Type';
 import { DepSignatures } from '../types';
@@ -65,10 +65,10 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<IManifest<string>
     },
 
     removeAll(manifest, token, key?) {
-      const lookupType = Type.parse(token);
-      return new Manifest<string>(
-        Iterator.from(manifest).filter(p => p.serviceKey !== key || !Type.equals(p.serviceType, lookupType)),
-      );
+      const target = ServiceDescriptor.make.value(Type.parse(token), undefined, key);
+      return Iterator.from(manifest)
+        .filter(descriptor => ServiceDescriptor.matches(descriptor, target))
+        .reduce((man, descriptor) => man.remove(descriptor), manifest);
     },
   };
 

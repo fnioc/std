@@ -61,9 +61,10 @@ class RealizeVisitor {
 
   protected visitLateBound(site: LateBoundCallSite): any {
     return (...args: any[]) => {
-      return realizeCallSite(site.result, {
-        ...this.#context,
-        additionalServices: site.params.map((serviceType, i) => ServiceDescriptor.make.value(serviceType, args[i])),
+      return this.#serviceProvider.resolve(site.result, {
+        additionalServices: site.lateBoundArgs.map((serviceType, i) =>
+          ServiceDescriptor.make.value(serviceType, args[i])
+        ),
       });
     };
   }

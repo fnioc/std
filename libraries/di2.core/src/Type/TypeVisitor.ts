@@ -10,7 +10,7 @@ import type { CtorType, IntersectionType, LateBoundType, NamedType, ObjectType, 
  * `this.visit(child)` to recurse into `types`, `genericTypes`, or a tag's inner
  * type.
  *
- * @typeParam R - what each handler produces.
+ * @typeParam Return - what each handler produces.
  */
 export abstract class TypeVisitor<Return, Context = never> {
   public visit(type: Type): Return;
