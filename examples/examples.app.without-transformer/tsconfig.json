@@ -9,7 +9,7 @@
     "lib": ["ES2022", "ESNext.Disposable", "DOM"],
     "declaration": false,
     "declarationMap": false,
-    "sourceMap": false,
+    "sourceMap": true,
     "composite": false
   },
   "include": ["src/**/*"]
