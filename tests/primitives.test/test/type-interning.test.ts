@@ -11,16 +11,16 @@ const C = Type.named('C', 'app');
 
 describe('one object per type', () => {
   test('a factory and a token agree, kind for kind', () => {
-    expect(Type.named('Foo', 'app')).toBe(Type.from('app:Foo'));
-    expect(Type.union(A, B)).toBe(Type.from('app:A | app:B'));
-    expect(Type.intersection(A, B)).toBe(Type.from('app:A & app:B'));
-    expect(Type.tuple(A, B)).toBe(Type.from('[app:A, app:B]'));
-    expect(Type.object({ a: A })).toBe(Type.from('{ a: app:A }'));
-    expect(Type.tag(A, 'primary')).toBe(Type.from('app:A#primary'));
-    expect(Type.placeholder('T')).toBe(Type.from('%T'));
-    expect(Type.typeLiteral(5)).toBe(Type.from('5'));
-    expect(Type.func(A, B)).toBe(Type.from('(app:B) => app:A'));
-    expect(Type.ctor(A, B)).toBe(Type.from('new (app:B) => app:A'));
+    expect(Type.from('app:Foo')).toBe(Type.named('Foo', 'app'));
+    expect(Type.from('app:A | app:B')).toBe(Type.union(A, B));
+    expect(Type.from('app:A & app:B')).toBe(Type.intersection(A, B));
+    expect(Type.from('[app:A, app:B]')).toBe(Type.tuple(A, B));
+    expect(Type.from('{ a: app:A }')).toBe(Type.object({ a: A }));
+    expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
+    expect(Type.from('%T')).toBe(Type.placeholder('T'));
+    expect(Type.from('5')).toBe(Type.typeLiteral(5));
+    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
+    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
   });
 
   test('the spellings of one type are one object', () => {
@@ -101,7 +101,7 @@ describe('distinctions the table keeps', () => {
   test('a tag yields a type distinct from the one it wraps', () => {
     expect(Type.tag(A, 'primary')).not.toBe(A);
     expect(Type.tag(A, 'primary')).not.toBe(Type.tag(A, 'secondary'));
-    expect(Type.tag(A, 'primary')).toBe(Type.from('app:A#primary'));
+    expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
   });
 });
 
