@@ -1,7 +1,7 @@
 // Throwaway smoke exercise for the v1 engine — run with `bun smoke.ts`; not part of any gate.
-import { Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di2.core';
+import { ServiceProvider } from '@rhombus-std/di2';
+import { DefaultManifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di2.core';
 import { Type } from '@rhombus-std/primitives';
-import { ServiceProvider } from './src/index.ts';
 
 function check(label: string, condition: boolean): void {
   if (!condition) {
@@ -33,7 +33,7 @@ class Holder {
   constructor(readonly sp: unknown) {}
 }
 
-const manifest = Manifest.empty<string>()
+const manifest = DefaultManifest.empty<string>()
   .addValue(CONFIG, { env: 'dev' })
   // .add(ServiceDescriptor.value(CONFIG, { env: 'dev' }))
   .addClass(Type.stringify(Type.named('Foo', 'app')), Foo, [[]])
@@ -90,14 +90,14 @@ const made = spF.resolve(Type.named('Pair', 'app')) as readonly [Foo, Bar];
 check('factory registration with deps', made[0] instanceof Foo && made[1] instanceof Bar);
 
 const spLit = new ServiceProvider(
-  Manifest.empty<string>().add(ServiceDescriptor.value(Type.typeLiteral('dev'), 'dev-value')),
+  DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.typeLiteral('dev'), 'dev-value')),
 );
 check('literal registration serves its base type', spLit.resolve(Type.named('string')) === 'dev-value');
 
 const A = Type.named('A', 'app');
 const B = Type.named('B', 'app');
 const spUnion = new ServiceProvider(
-  Manifest.empty<string>().add(ServiceDescriptor.value(Type.union(A, B), 'either')),
+  DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.union(A, B), 'either')),
 );
 let unionRejected = false;
 try {
@@ -110,25 +110,25 @@ check('union registration serves the exact union request', spUnion.resolve(Type.
 
 const echoType = Type.func(Type.placeholder('T'), Type.placeholder('T'));
 const spEcho = new ServiceProvider(
-  Manifest.empty<string>().add(ServiceDescriptor.value(echoType, (x: unknown) => x)),
+  DefaultManifest.empty<string>().add(ServiceDescriptor.value(echoType, (x: unknown) => x)),
 );
 const echo = spEcho.resolve(Type.func(FOO, FOO)) as (x: number) => number;
 check('open function registration captures through contravariant position', echo(42) === 42);
 
 const spLitOverride = new ServiceProvider(
-  Manifest.empty<string>().add(ServiceDescriptor.value(Type.typeLiteral('dev'), 'override')),
+  DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.typeLiteral('dev'), 'override')),
 );
 check('whole-type match beats literal self-satisfaction',
   spLitOverride.resolve(Type.typeLiteral('dev')) === 'override');
 check('unregistered literal still self-satisfies', spLitOverride.resolve(Type.typeLiteral('prod')) === 'prod');
 
 const spTuple = new ServiceProvider(
-  Manifest.empty<string>().add(ServiceDescriptor.value(Type.tuple(A, B), 'pre-made')),
+  DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.tuple(A, B), 'pre-made')),
 );
 check('whole-type match beats tuple synthesis', spTuple.resolve(Type.tuple(A, B)) === 'pre-made');
 
 const spIter = new ServiceProvider(
-  Manifest.empty<string>()
+  DefaultManifest.empty<string>()
     .add(ServiceDescriptor.value(A, 'a-val'))
     .add(ServiceDescriptor.value(Type.union(A, B), 'either')),
 );
@@ -137,7 +137,7 @@ check('iterable collects every matching registration, no union double-count',
   gathered.length === 2 && gathered.includes('a-val') && gathered.includes('either'));
 
 const spIterTuple = new ServiceProvider(
-  Manifest.empty<string>()
+  DefaultManifest.empty<string>()
     .add(ServiceDescriptor.value(A, 'a-val'))
     .add(ServiceDescriptor.value(B, 'b-val'))
     .add(ServiceDescriptor.value(Type.tuple(A, B), 'pre-made')),
@@ -147,7 +147,7 @@ check('iterable adds the synthesis result alongside registrations', tuples.lengt
   && tuples.some(t => Array.isArray(t) && t[0] === 'a-val' && t[1] === 'b-val'));
 
 const spIterExact = new ServiceProvider(
-  Manifest.empty<string>()
+  DefaultManifest.empty<string>()
     .add(ServiceDescriptor.value(A, 'a-val'))
     .add(ServiceDescriptor.value(Type.named('Iterable', 'global', [A]), 'exact-iter')),
 );
@@ -159,7 +159,7 @@ check('iterable of nothing is an empty sequence', emptyGather.length === 0);
 
 const STR = Type.named('string');
 const spBoth = new ServiceProvider(
-  Manifest.empty<string>().add(ServiceDescriptor.value(Type.object({ a: STR, b: STR }), 'both')),
+  DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.object({ a: STR, b: STR }), 'both')),
 );
 check('intersection served by ONE registration satisfying every part',
   spBoth.resolve(Type.intersection(Type.object({ a: STR }), Type.object({ b: STR }))) === 'both');
