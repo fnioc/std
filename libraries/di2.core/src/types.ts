@@ -4,7 +4,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 export type TokenSignatures = ReadonlyArray<readonly Token[]>;
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
 /** A signatures array whose entries may be a mix of resolved `Type`s and unnormalized `Token` strings. */
-export type Signatures = ReadonlyArray<readonly (Type | Token)[]>;
+export type Signatures = ReadonlyArray<ReadonlyArray<Type | Token>>;
 export namespace TypeSignatures {
   export function from(signatures: Signatures): TypeSignatures {
     return signatures.map(sig => sig.map(token => typeof token === 'string' ? Type.from(token) : token));
