@@ -6,11 +6,6 @@
 // `getMostSpecificTracingRule`) that decide whether a given instrument or
 // activity source is enabled. See the package README for what's out of scope.
 
-// Side-effect: installs enableMetrics/disableMetrics/enableTracing/disableTracing
-// as instance methods onto MetricsOptions/TracingOptions. Package keeps
-// `"sideEffects": true` so a bundler cannot drop this import.
-import './options-install';
-
 // Metrics.
 export type { IMetricsBuilder } from './metrics/IMetricsBuilder';
 export { getMostSpecificInstrumentRule, instrumentRuleMatches,

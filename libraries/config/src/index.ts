@@ -19,13 +19,6 @@
 // config's public surface stays a superset of core's.
 export * from '@rhombus-std/config.core';
 
-// Install the convenience augmentations' fluent forms onto the concrete engine
-// classes. The member sets themselves are re-exported from core by the
-// `export *` above; these side-effect imports run the `applyAugmentations`
-// calls and carry the `declare module` merges.
-import './config-augmentations-install';
-import './config-root-augmentations-install';
-
 // Engine.
 export { compareConfigKeys } from './config-key-comparer';
 export { ConfigBuilder } from './ConfigBuilder';
