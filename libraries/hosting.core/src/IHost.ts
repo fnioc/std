@@ -1,4 +1,4 @@
-import type { IResolver } from '@rhombus-std/di.core';
+import type { IResolver } from '@rhombus-std/di2.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
 
 /**

@@ -28,7 +28,7 @@
 // types `manifest.addOptions(...)` below into the program.
 import '@rhombus-std/options.augmentations';
 
-import { closeToken, type IServiceManifest, type ServiceManifestClass, typeArg } from '@rhombus-std/di.core';
+import { closeToken, type DefaultManifest, type Manifest, typeArg } from '@rhombus-std/di2.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
@@ -56,14 +56,14 @@ type IServiceManifestLoggingAugmentations<Scopes extends string> = {
    * registration -- its own AND whatever the delegate added through the
    * builder's `.services` (the manifest chain is immutable -- never `this`).
    */
-  addLogging(configure?: Func<[ILoggingBuilder], void>): IServiceManifest<Scopes>;
+  addLogging(configure?: Func<[ILoggingBuilder], void>): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge's type-parameter list matches the
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
-declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown>
+declare module '@rhombus-std/di2.core' {
+  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
     extends IServiceManifestLoggingAugmentations<Scopes> {}
 }
 
@@ -71,11 +71,11 @@ declare module '@rhombus-std/di.core' {
 // `ServiceManifestClass`, decorated with `@augment(tokenfor<IServiceManifest>())`
 // in di.core, pulls the member onto its prototype — and exported so the member
 // is also the standalone call form.
-export const ServiceManifestLoggingAugmentations: AugmentationSet2<ServiceManifestClass<string>,
+export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManifest<string>,
   IServiceManifestLoggingAugmentations<string>> = {
     addLogging(manifest, configure) {
       // The LoggerFilterOptions assembly + its default (Information) min level.
-      let m: IServiceManifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN,
+      let m: Manifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN,
         () => new LoggerFilterOptions()).as('singleton');
       m = m.addValue(configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
         new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
@@ -103,10 +103,10 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<ServiceManife
       // `builder.services` to the manifest its own registration produced -- so
       // reading `builder.services` back out AFTER the delegate runs picks up
       // everything it registered.
-      const builder = new LoggingBuilder(m as unknown as IServiceManifest);
+      const builder = new LoggingBuilder(m as unknown as Manifest);
       configure?.(builder);
-      return builder.services as unknown as IServiceManifest<string>;
+      return builder.services as unknown as Manifest<string>;
     },
   };
 
-registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestLoggingAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ServiceManifestLoggingAugmentations);

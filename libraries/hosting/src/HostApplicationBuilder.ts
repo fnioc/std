@@ -11,9 +11,9 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di.core';
+import { DefaultManifest } from '@rhombus-std/di2';
+import type { Manifest } from '@rhombus-std/di2.core';
+import type { IServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
   type IHostEnvironment } from '@rhombus-std/hosting.core';
@@ -41,7 +41,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   // so they read and write here rather than each carrying a fork of the chain.
   // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
   // build a chain that `build()` never sees.
-  #services: IServiceManifest = new ServiceManifest();
+  #services: Manifest = new DefaultManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;
@@ -141,7 +141,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The collection of services for the application to compose. */
-  public get services(): IServiceManifest {
+  public get services(): Manifest {
     return this.#services;
   }
 
@@ -151,7 +151,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * caller registering something reassigns `builder.services =
    * builder.services.addClass(...)` rather than mutating in place.
    */
-  public set services(value: IServiceManifest) {
+  public set services(value: Manifest) {
     this.#services = value;
   }
 

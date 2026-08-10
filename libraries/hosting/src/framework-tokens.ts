@@ -2,7 +2,7 @@
 // under, so a user's hosted services can inject them off `IHost.services`.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import type { Token } from '@rhombus-std/di.core';
+import type { Token } from '@rhombus-std/di2.core';
 import type { HostBuilderContext, IHostEnvironment, IHostLifetime } from '@rhombus-std/hosting.core';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';

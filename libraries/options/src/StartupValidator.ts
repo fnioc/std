@@ -1,4 +1,4 @@
-import type { IResolver, Token } from '@rhombus-std/di.core';
+import type { IResolver, Token } from '@rhombus-std/di2.core';
 
 import type { IOptions } from './IOptions.js';
 import type { IStartupValidator } from './IStartupValidator.js';

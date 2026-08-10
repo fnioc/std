@@ -17,8 +17,8 @@
 //     loggers -- and any composite logger already handed out -- light up.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di2.core';
+import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di2.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
   type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rhombus-std/logging';
@@ -154,8 +154,8 @@ export function createFrameworkServices(): FrameworkServices {
  * registration -- the chain is immutable, so the caller must thread this
  * result forward instead of reusing the `services` it passed in.
  */
-export function populateFrameworkServices(services: IServiceManifest, context: HostBuilderContext,
-  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): IServiceManifest {
+export function populateFrameworkServices(services: Manifest, context: HostBuilderContext,
+  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): Manifest {
   let s = services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
   s = s.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
   s = s.addValue(CONFIG_TOKEN, config);
@@ -184,7 +184,7 @@ export function populateFrameworkServices(services: IServiceManifest, context: H
  * `serviceProviderOptions` carries the `validateScopes` / `validateOnBuild`
  * toggles the builders resolved; omitted ⇒ an unvalidated build.
  */
-export function resolveHost(services: IServiceManifest, framework: FrameworkServices, config: IConfig,
+export function resolveHost(services: Manifest, framework: FrameworkServices, config: IConfig,
   serviceProviderOptions?: ServiceProviderOptions): IHost {
   const provider: IServiceProvider = services.build(serviceProviderOptions);
 

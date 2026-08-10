@@ -6,7 +6,7 @@
 // `addLogging`). The category is the token's type-name segment
 // (`"@pkg/x:HomeController"` → `"HomeController"`).
 
-import type { Typeof } from '@rhombus-std/di.core';
+import type { Typeof } from '@rhombus-std/di2.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';

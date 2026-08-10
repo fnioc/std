@@ -45,4 +45,4 @@ export { HostEnvironmentEnvAugmentations } from './HostEnvironment-Env-augmentat
 
 // The `addHostedService` registration augmentation + its side-effect
 // registration against di.core's ServiceManifest augmentation token.
-export { ServiceManifestHostedServiceAugmentations } from './ServiceManifest-HostedService-augmentations';
+export { ServiceManifestHostedServiceAugmentations } from './DefaultManifest-HostedService-augmentations';

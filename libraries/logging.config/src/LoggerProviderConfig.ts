@@ -4,7 +4,7 @@
 // direct construction passes `tokenfor<TProvider>()`.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import type { Typeof } from '@rhombus-std/di.core';
+import type { Typeof } from '@rhombus-std/di2.core';
 import type { ILoggerProviderConfig } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 

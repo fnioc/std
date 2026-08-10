@@ -1,5 +1,5 @@
 import type { IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IServiceProviderFactory, Manifest } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { Action } from '@rhombus-toolkit/func';
@@ -38,7 +38,7 @@ export interface IHostApplicationBuilder {
    * builder.services.addClass(...)`. The same slot backs `logging` and `metrics`, so
    * every registration route lands on one chain.
    */
-  services: IServiceManifest;
+  services: Manifest;
 
   /**
    * Registers a factory used to create the service provider. The `configure`

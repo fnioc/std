@@ -10,9 +10,9 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di.core';
+import { DefaultManifest } from '@rhombus-std/di2';
+import type { Manifest } from '@rhombus-std/di2.core';
+import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -38,7 +38,7 @@ export class HostBuilder implements IHostBuilder {
   // Both hold RETURNING delegates: the manifest chain is immutable, so `build()`
   // threads each delegate's return into the next instead of letting them all
   // register into one shared mutable collection.
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, IServiceManifest], IServiceManifest>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest], Manifest>> = [];
   readonly #configureContainerActions: Array<Func<[HostBuilderContext, unknown], unknown>> = [];
 
   #hostBuilt = false;
@@ -56,7 +56,7 @@ export class HostBuilder implements IHostBuilder {
   }
 
   /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
-  public configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
@@ -113,7 +113,7 @@ export class HostBuilder implements IHostBuilder {
     hostBuilderContext.config = appConfig;
 
     // 5. Framework services + the user's configure-services delegates.
-    let services: IServiceManifest = new ServiceManifest();
+    let services: Manifest = new DefaultManifest();
     const framework = createFrameworkServices();
     services = populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfig, framework);
 
@@ -121,7 +121,7 @@ export class HostBuilder implements IHostBuilder {
       services = action(hostBuilderContext, services);
     }
     for (const action of this.#configureContainerActions) {
-      services = action(hostBuilderContext, services) as IServiceManifest;
+      services = action(hostBuilderContext, services) as Manifest;
     }
 
     // 6. Build the provider and construct the internal host. The service-provider

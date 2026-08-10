@@ -5,7 +5,7 @@
 // constructs a `LoggerProviderConfig` for that provider.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { closeToken, type Token } from '@rhombus-std/di.core';
+import { closeToken, type Token } from '@rhombus-std/di2.core';
 
 /**
  * Allows access to the configuration section associated with a logger

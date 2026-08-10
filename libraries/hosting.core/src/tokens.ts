@@ -2,7 +2,7 @@
 // the host's lifetime registration) and its resolution side (the host
 // resolving its hosted services and lifetime).
 
-import type { Token } from '@rhombus-std/di.core';
+import type { Token } from '@rhombus-std/di2.core';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import type { IHostedService } from './IHostedService';

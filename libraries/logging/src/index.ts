@@ -14,7 +14,7 @@
 export * from '@rhombus-std/logging.core';
 
 // Registers the `addLogging` augmentation onto di.core's ServiceManifest.
-export { ServiceManifestLoggingAugmentations } from './ServiceManifest-Logging-augmentations';
+export { ServiceManifestLoggingAugmentations } from './DefaultManifest-Logging-augmentations';
 // Registers the ILoggingBuilder augmentations (addProvider/…).
 export { LoggingBuilderProviderAugmentations } from './LoggingBuilder-Provider-augmentations';
 // Installs LoggerFilterOptions's addFilter directly, and registers the

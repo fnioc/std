@@ -1,4 +1,4 @@
-import type { IResolver, Token } from '@rhombus-std/di.core';
+import type { IResolver, Token } from '@rhombus-std/di2.core';
 import { collectionToken } from '@rhombus-std/diagnostics.core';
 import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';

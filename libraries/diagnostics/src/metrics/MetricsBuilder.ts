@@ -4,7 +4,7 @@
 // (@rhombus-std/diagnostics.core's addMetricsListener/enableMetrics/... and this
 // package's addMetricsConfig).
 
-import type { IServiceManifestBase } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -28,10 +28,10 @@ export interface MetricsBuilder extends IMetricsBuilder {}
 export class MetricsBuilder implements IMetricsBuilder {
   // Writable (not `readonly`): registering something reassigns `services` to
   // the new manifest the immutable chain returns (see IMetricsBuilder).
-  services: IServiceManifestBase;
+  services: Manifest;
 
   /** @param services The registration surface augmentation functions register against. */
-  public constructor(services: IServiceManifestBase) {
+  public constructor(services: Manifest) {
     this.services = services;
   }
 }

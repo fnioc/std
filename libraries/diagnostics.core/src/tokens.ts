@@ -8,7 +8,7 @@
 // `Array<...>`-wrapper collection-resolution convention @rhombus-std/options.augmentations
 // uses to aggregate every registration of a slot.
 
-import type { Token } from '@rhombus-std/di.core';
+import type { Token } from '@rhombus-std/di2.core';
 
 const NAMESPACE = '@rhombus-std/diagnostics';
 

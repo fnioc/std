@@ -8,8 +8,7 @@
 // `tokenfor<IStartupValidator>()`. The host resolves that (optionally) and
 // calls `validate()`.
 
-import { type IResolver, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass,
-  type Token } from '@rhombus-std/di.core';
+import { DefaultManifest, type IResolver, type Manifest, RESOLVER_TOKEN, type Token } from '@rhombus-std/di2.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -26,13 +25,13 @@ type IServiceManifestValidateOnStartAugmentations<Scopes extends string> = {
    * built-in `IStartupValidator`. Returns the manifest produced by its
    * registrations (the manifest chain is immutable -- never `this`).
    */
-  validateOnStart(token: Token): IServiceManifest<Scopes>;
+  validateOnStart(token: Token): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the member does not name it.
-declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown>
+declare module '@rhombus-std/di2.core' {
+  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
     extends IServiceManifestValidateOnStartAugmentations<Scopes> {}
 }
 
@@ -40,11 +39,11 @@ declare module '@rhombus-std/di.core' {
 // `ServiceManifestClass`, decorated with `@augment(tokenfor<IServiceManifest>())`
 // in di.core, pulls the member onto its prototype -- and exported so the
 // member is also the standalone form.
-export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<ServiceManifestClass<string>,
+export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<DefaultManifest<string>,
   IServiceManifestValidateOnStartAugmentations<string>> = {
     validateOnStart(manifest, token) {
       // Accumulate the target in the flat startup-validation slot.
-      let m: IServiceManifest<string> = manifest.addValue(startupValidationTargetToken(), token);
+      let m: Manifest<string> = manifest.addValue(startupValidationTargetToken(), token);
       // Registers the built-in validator under `IStartupValidator`. di.core has
       // no TryAdd surface (registrations are append-only, last-wins), so a
       // repeated `validateOnStart` appends an equivalent transient registration
@@ -59,4 +58,4 @@ export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<Servi
     },
   };
 
-registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestValidateOnStartAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ServiceManifestValidateOnStartAugmentations);

@@ -2,13 +2,13 @@
 // build, not executed at runtime. Not re-exported by ./index.ts — kept out
 // of the bundle deliberately.
 
-import type { IServiceManifest, Token } from '@rhombus-std/di.core';
+import type { Manifest, Token } from '@rhombus-std/di2.core';
 import type { IOptions } from '@rhombus-std/options';
 import { registerInlineBodies, tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 
 /** Receiver shape the sugar body is compiled against. */
 interface IInlineOptionsTarget {
-  addOptions(token: Token, tToken: Token): IServiceManifest;
+  addOptions(token: Token, tToken: Token): Manifest;
 }
 
 /**
@@ -19,7 +19,7 @@ interface IInlineOptionsTarget {
  * wrapped `T` needs its raw type token (brand included) so it matches
  * `IOptions<T>`'s inner leaf.
  */
-export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): IServiceManifest {
+export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): Manifest {
   return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
 } };
 registerInlineBodies(ServiceOptionsInline);

@@ -7,14 +7,14 @@
 // The declarations carry no implementation: the receiver's own member is what
 // runs, and it throws when handed the type-argument form.
 
-import type { AddChain, IServiceManifest, Slot } from '@rhombus-std/di.core';
+import type { AddChain, Manifest, Slot } from '@rhombus-std/di2.core';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 /** Re-exported so a consumer doesn't need a separate import from `@rhombus-std/di.core`. */
-export type { $, Hole, Inject, Typeof } from '@rhombus-std/di.core';
+export type { $, Hole, Inject, Typeof } from '@rhombus-std/di2.core';
 
-declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+declare module '@rhombus-std/di2.core' {
+  interface Manifest<Scopes extends string = 'singleton', Provider = unknown> {
     /** Registers `ctor` under its own token — the instance it builds. */
     addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     /**
@@ -56,9 +56,9 @@ declare module '@rhombus-std/di.core' {
     addFactory<I>(factory: Func<any[], I>, scope: Scopes,
       key: string): AddChain<Scopes, 'signature' | 'signatures', false>;
     /** Registers `value` under its own type's token. */
-    addValue(value: unknown): IServiceManifest<Scopes>;
+    addValue(value: unknown): Manifest<Scopes>;
     /** Registers `value` against `I`. */
-    addValue<I>(value: I): IServiceManifest<Scopes>;
+    addValue<I>(value: I): Manifest<Scopes>;
   }
 
   interface IWithSignatureBuilder<S extends string, Slots extends Slot, Gated extends boolean> {

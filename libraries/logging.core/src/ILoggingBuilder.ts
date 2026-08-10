@@ -1,4 +1,4 @@
-import type { IServiceManifestHolder } from '@rhombus-std/di.core';
+import type { IServiceManifestHolder } from '@rhombus-std/di2.core';
 
 /**
  * An interface for configuring logging providers.

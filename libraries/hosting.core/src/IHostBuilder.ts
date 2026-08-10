@@ -1,5 +1,5 @@
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IServiceProviderFactory, Manifest } from '@rhombus-std/di2.core';
 import type { Action, Func } from '@rhombus-toolkit/func';
 import type { HostBuilderContext } from './HostBuilderContext';
 import type { IHost } from './IHost';
@@ -48,7 +48,7 @@ export interface IHostBuilder {
    * delegate that registers something and returns the manifest it was given
    * would silently drop that registration.
    */
-  configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this;
+  configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this;
 
   /**
    * Overrides the factory used to create the service provider.

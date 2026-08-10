@@ -4,8 +4,7 @@
 // because the registry's bag is a flat name namespace, so a receiver cannot take
 // two contributions of one name from a single registration.
 
-import { type AddChain, type IServiceManifest, RESOLVER_TOKEN, ServiceManifestClass,
-  type Token } from '@rhombus-std/di.core';
+import { type AddChain, DefaultManifest, type Manifest, RESOLVER_TOKEN, type Token } from '@rhombus-std/di2.core';
 import { type IPostConfigureOptions, type IValidateOptions, Options,
   ValidateOptionsResult } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
@@ -43,40 +42,40 @@ type IServiceManifestOptionsAugmentations<Scopes extends string> = {
    * step. Accepts a {@link IPostConfigureOptions} or a bare
    * `(options) => void` delegate.
    */
-  postConfigure<T>(token: Token, step: IPostConfigureOptions<T> | Func<[T], void>): IServiceManifest<Scopes>; /**
+  postConfigure<T>(token: Token, step: IPostConfigureOptions<T> | Func<[T], void>): Manifest<Scopes>; /**
    * The DI-injected post-configure step: resolves each token in `depTokens`
    * and passes the instances to `configureOptions` after the options value
    * — collapsed the same way as the dependency form of {@link configure}
    * above.
    */
   postConfigure<T, Deps extends readonly unknown[]>(token: Token, depTokens: DepTokens<Deps>,
-    configureOptions: (options: T, ...deps: Deps) => void): IServiceManifest<Scopes>; /**
+    configureOptions: (options: T, ...deps: Deps) => void): Manifest<Scopes>; /**
    * Registers a validate step for `token`: `validate` runs against the
    * fully-configured value; a `false` result fails validation with
    * `failureMessage`.
    */
-  validate<T>(token: Token, validate: Func<[T], boolean>, failureMessage?: string): IServiceManifest<Scopes>; /**
+  validate<T>(token: Token, validate: Func<[T], boolean>, failureMessage?: string): Manifest<Scopes>; /**
    * The DI-injected validate step: resolves each token in `depTokens` and
    * passes the instances to `validate` after the options value; a `false`
    * result fails with `failureMessage` — collapsed the same way as the
    * dependency form of {@link configure} above.
    */
   validate<T, Deps extends readonly unknown[]>(token: Token, depTokens: DepTokens<Deps>,
-    validate: (options: T, ...deps: Deps) => boolean, failureMessage?: string): IServiceManifest<Scopes>;
+    validate: (options: T, ...deps: Deps) => boolean, failureMessage?: string): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
-declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown>
+declare module '@rhombus-std/di2.core' {
+  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
     extends IServiceManifestOptionsAugmentations<Scopes> {}
 }
 
 // The overloads live on the member map above -- the signature's source of truth;
 // the impls below carry the disambiguating unions.
-export const ServiceManifestOptionsAugmentations: AugmentationSet2<ServiceManifestClass<string>,
+export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManifest<string>,
   IServiceManifestOptionsAugmentations<string>> = {
-    addOptions<T>(manifest: ServiceManifestClass<string>, token: Token,
+    addOptions<T>(manifest: DefaultManifest<string>, token: Token,
       source: Token | Func<[], T>): AddChain<string, 'scope' | 'key', false> {
       // Two verbs share the name, disambiguated by the second argument:
       //   - a `Token` (string)      → wrap the already-bound `T` resolved from it.
@@ -87,9 +86,9 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<ServiceManife
       }
       return manifest.addFactory(token, (t: T) => Options.of(t), [[source]]);
     },
-    postConfigure<T, Deps extends readonly unknown[]>(manifest: ServiceManifestClass<string>, token: Token,
+    postConfigure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: Token,
       step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
-      configureWithDeps?: (options: T, ...deps: Deps) => void): IServiceManifest<string> {
+      configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
       // DI-injected form: `step` is the dep-token tuple and `configureWithDeps`
       // the callback. Registers a factory for the post-configure slot whose
       // injected params are the resolved deps; it produces an
@@ -109,10 +108,10 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<ServiceManife
       const wrapped: IPostConfigureOptions<T> = typeof plain === 'function' ? { postConfigure: plain } : plain;
       return manifest.addValue(postConfigureStepToken(token), wrapped);
     },
-    validate<T, Deps extends readonly unknown[]>(manifest: ServiceManifestClass<string>, token: Token,
+    validate<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: Token,
       validateOrDeps: Func<[T], boolean> | DepTokens<Deps>,
       failureMessageOrValidate?: string | ((options: T, ...deps: Deps) => boolean),
-      failureMessage?: string): IServiceManifest<string> {
+      failureMessage?: string): Manifest<string> {
       // DI-injected form: `validateOrDeps` is the dep-token tuple,
       // `failureMessageOrValidate` the predicate, `failureMessage` its message.
       // Registers a factory whose injected params are the resolved deps,
@@ -136,4 +135,4 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<ServiceManife
     },
   };
 
-registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestOptionsAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ServiceManifestOptionsAugmentations);

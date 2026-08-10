@@ -1,4 +1,4 @@
-import type { IResolver, Token } from '@rhombus-std/di.core';
+import type { IResolver, Token } from '@rhombus-std/di2.core';
 import { type IConfigureOptions, type IOptions, type IPostConfigureOptions, type IValidateOptions, Options,
   OptionsFactory } from '@rhombus-std/options';
 import type { Func } from '@rhombus-toolkit/func';

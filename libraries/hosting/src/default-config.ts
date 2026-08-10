@@ -17,9 +17,9 @@ import { CommandLineConfigSource } from '@rhombus-std/config.commandline';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
 import { EnvironmentVariablesConfigSource } from '@rhombus-std/config.env';
 import { JsonConfigSource } from '@rhombus-std/config.json';
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { ServiceProviderOptions } from '@rhombus-std/di.core';
+import { DefaultManifest } from '@rhombus-std/di2';
+import type { Manifest } from '@rhombus-std/di2.core';
+import type { ServiceProviderOptions } from '@rhombus-std/di2.core';
 import { HostDefaults, HostEnvironmentEnvAugmentations, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder, LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import { ConsoleLoggerProvider } from '@rhombus-std/logging.console';
@@ -64,7 +64,7 @@ export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHos
 }
 
 /** Registers the default framework services: currently just the console logging provider. */
-export function addDefaultServices(services: IServiceManifest): IServiceManifest {
+export function addDefaultServices(services: Manifest): Manifest {
   const builder = new LoggingBuilder(services);
   LoggingBuilderProviderAugmentations.addProvider(builder, new ConsoleLoggerProvider());
   // The chain is immutable, so the registration lives on the manifest the

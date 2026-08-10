@@ -3,7 +3,7 @@
 // array `addClass`/`addFactory` take as their third argument — one inner array
 // per constructor/call overload.
 
-import type { DepSignatures, DepTarget } from '@rhombus-std/di.core';
+import type { DepSignatures, DepTarget } from '@rhombus-std/di2.core';
 
 /**
  * Dependency signature for a class constructor or factory function.

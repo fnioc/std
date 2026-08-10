@@ -9,7 +9,7 @@
 // `builder.services = builder.services.addClass(...)` stay on one chain instead of
 // forking into two and dropping whichever one `build()` did not read.
 
-import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
+import type { IServiceManifestHolder, Manifest } from '@rhombus-std/di2.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -32,12 +32,12 @@ export class LoggingBuilder implements ILoggingBuilder {
    * Wraps either a bare manifest (a private holder is allocated for it) or an
    * existing {@link IServiceManifestHolder} whose slot this builder then SHARES.
    */
-  public constructor(services: IServiceManifest | IServiceManifestHolder) {
+  public constructor(services: Manifest | IServiceManifestHolder) {
     this.#holder = isHolder(services) ? services : { services };
   }
 
   /** The current manifest — read through the shared holder. */
-  public get services(): IServiceManifest {
+  public get services(): Manifest {
     return this.#holder.services;
   }
 
@@ -47,12 +47,12 @@ export class LoggingBuilder implements ILoggingBuilder {
    * downstream `addConfig`/`addConsole`) threads by assigning here and handing
    * the same builder back.
    */
-  public set services(value: IServiceManifest) {
+  public set services(value: Manifest) {
     this.#holder.services = value;
   }
 }
 
 /** A manifest is never itself a holder: only a holder carries a `services` slot. */
-function isHolder(value: IServiceManifest | IServiceManifestHolder): value is IServiceManifestHolder {
+function isHolder(value: Manifest | IServiceManifestHolder): value is IServiceManifestHolder {
   return 'services' in value;
 }

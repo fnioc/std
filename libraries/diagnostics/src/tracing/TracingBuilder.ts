@@ -1,7 +1,7 @@
 // TracingBuilder -- the concrete ITracingBuilder the addTracing augmentation hands
 // to a consumer's configure callback.
 
-import type { IServiceManifestBase } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -25,10 +25,10 @@ export interface TracingBuilder extends ITracingBuilder {}
 export class TracingBuilder implements ITracingBuilder {
   // Writable (not `readonly`): registering something reassigns `services` to
   // the new manifest the immutable chain returns (see ITracingBuilder).
-  services: IServiceManifestBase;
+  services: Manifest;
 
   /** @param services The registration surface augmentation functions register against. */
-  public constructor(services: IServiceManifestBase) {
+  public constructor(services: Manifest) {
     this.services = services;
   }
 }

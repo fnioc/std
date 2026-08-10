@@ -4,7 +4,7 @@
 // the same token). The MetricsOptions-targeted mutators of the same names are
 // the sibling ./MetricsOptions-augmentations set.
 
-import type { Ctor, DepSignatures, Token } from '@rhombus-std/di.core';
+import type { Ctor, DepSignatures, Token } from '@rhombus-std/di2.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

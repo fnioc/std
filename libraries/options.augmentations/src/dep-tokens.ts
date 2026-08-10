@@ -1,4 +1,4 @@
-import type { Token } from '@rhombus-std/di.core';
+import type { Token } from '@rhombus-std/di2.core';
 
 /**
  * A same-length tuple of dependency-token strings, one per entry in `Deps` -- the

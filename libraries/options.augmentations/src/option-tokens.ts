@@ -5,7 +5,7 @@
 // the append side (`configure`) and the read side (`assembleOptions`) agree
 // without sharing state.
 
-import type { Token } from '@rhombus-std/di.core';
+import type { Token } from '@rhombus-std/di2.core';
 
 // Namespaced so a derived slot token can never collide with a consumer's own
 // registration token, whatever the options token happens to be.

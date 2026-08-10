@@ -6,7 +6,7 @@
 // cannot take two contributions of one name from a single registration.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { type IServiceManifest, ServiceManifestClass, type Token } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, type Token } from '@rhombus-std/di2.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -24,34 +24,34 @@ type IServiceManifestOptionsConfigAugmentations<Scopes extends string> = {
    * change-token source wired to the section's reload token. Requires a prior
    * {@link addOptions} for the same `token`.
    */
-  configure(token: Token, section: IConfig): IServiceManifest<Scopes>; /**
+  configure(token: Token, section: IConfig): Manifest<Scopes>; /**
    * Registers a code configure step for `token`: `configureOptions` runs
    * against the value as one configure source among several (no config
    * section, so no change-token source). Distinguished from the
    * config-section overload of {@link configure} by its function argument.
    */
-  configure<T>(token: Token, configureOptions: Func<[T], void>): IServiceManifest<Scopes>; /**
+  configure<T>(token: Token, configureOptions: Func<[T], void>): Manifest<Scopes>; /**
    * The DI-injected configure step: resolves each token in `depTokens` from
    * the provider at materialization time and passes the instances to
    * `configureOptions` after the options value. A typed caller writes each
    * token as `tokenfor<Dep>()`.
    */
   configure<T, Deps extends readonly unknown[]>(token: Token, depTokens: DepTokens<Deps>,
-    configureOptions: (options: T, ...deps: Deps) => void): IServiceManifest<Scopes>;
+    configureOptions: (options: T, ...deps: Deps) => void): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
-declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown>
+declare module '@rhombus-std/di2.core' {
+  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
     extends IServiceManifestOptionsConfigAugmentations<Scopes> {}
 }
 
-export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<ServiceManifestClass<string>,
+export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<DefaultManifest<string>,
   IServiceManifestOptionsConfigAugmentations<string>> = {
-    configure<T, Deps extends readonly unknown[]>(manifest: ServiceManifestClass<string>, token: Token,
+    configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: Token,
       source: IConfig | Func<[T], void> | DepTokens<Deps>,
-      configureWithDeps?: (options: T, ...deps: Deps) => void): IServiceManifest<string> {
+      configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
       // DI-injected form: `source` is the dep-token tuple and
       // `configureWithDeps` the callback. Registers a factory for the configure
       // slot whose injected params are the resolved deps; it produces an
@@ -73,11 +73,10 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Service
       if (typeof configSource === 'function') {
         return manifest.addValue(configureStepToken(token), { configure: configSource });
       }
-      let m: IServiceManifest<string> = manifest.addValue(configureStepToken(token),
-        new ConfigConfigureOptions(configSource));
+      let m: Manifest<string> = manifest.addValue(configureStepToken(token), new ConfigConfigureOptions(configSource));
       m = m.addValue(changeTokenSourceToken(token), new ConfigChangeTokenSource(configSource));
       return m;
     },
   };
 
-registerAugmentations(tokenfor<IServiceManifest>(), ServiceManifestOptionsConfigAugmentations);
+registerAugmentations(tokenfor<Manifest>(), ServiceManifestOptionsConfigAugmentations);

@@ -34,6 +34,6 @@ export { changeTokenSourceToken, configureStepToken, postConfigureStepToken, sta
 
 // Each re-export executes its module, so the `registerAugmentations` side effect
 // installs the verbs onto the manifest.
-export { ServiceManifestOptionsAugmentations } from './ServiceManifest-Options-augmentations.js';
-export { ServiceManifestOptionsConfigAugmentations } from './ServiceManifest-OptionsConfig-augmentations.js';
-export { ServiceManifestValidateOnStartAugmentations } from './ServiceManifest-ValidateOnStart-augmentations.js';
+export { ServiceManifestOptionsAugmentations } from './DefaultManifest-Options-augmentations.js';
+export { ServiceManifestOptionsConfigAugmentations } from './DefaultManifest-OptionsConfig-augmentations.js';
+export { ServiceManifestValidateOnStartAugmentations } from './DefaultManifest-ValidateOnStart-augmentations.js';

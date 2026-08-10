@@ -10,7 +10,7 @@
 // THAT scope, and `stop` disposes it -- that scope is what gives singleton
 // semantics and deterministic disposal.
 
-import type { IResolver, IServiceProvider } from '@rhombus-std/di.core';
+import type { IResolver, IServiceProvider } from '@rhombus-std/di2.core';
 import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
   type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';

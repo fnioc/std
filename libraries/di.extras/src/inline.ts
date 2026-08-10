@@ -6,9 +6,8 @@
 // Each object literal is paired with a `registerInlineBodies(...)` call — a
 // no-op marker, not dead code.
 
-import type { Ctor, DepSignatures, DepSlot, Factory, IServiceManifest, IServiceQuery,
-  Token } from '@rhombus-std/di.core';
-import { overrideSignatures, signaturefor, signaturesfor } from '@rhombus-std/di.core';
+import type { Ctor, DepSignatures, DepSlot, Factory, IServiceQuery, Manifest, Token } from '@rhombus-std/di2.core';
+import { overrideSignatures, signaturefor, signaturesfor } from '@rhombus-std/di2.core';
 import { registerInlineBodies, tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.extras';
 import { keyedtokenfor } from './keyedtokenfor.js';
@@ -18,11 +17,10 @@ import { valueof } from './valueof.js';
 
 /** `this` typing for the addClass/addFactory/addValue bodies below. */
 interface IInlineRegistrationTarget {
-  addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope?: undefined,
-    key?: string | undefined): IServiceManifest;
+  addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope?: undefined, key?: string | undefined): Manifest;
   addFactory(token: Token, factory: Factory, signatures: DepSignatures, scope?: undefined,
-    key?: string | undefined): IServiceManifest;
-  addValue(token: Token, value: unknown, key?: string | undefined): IServiceManifest;
+    key?: string | undefined): Manifest;
+  addValue(token: Token, value: unknown, key?: string | undefined): Manifest;
 }
 
 /**
@@ -91,11 +89,11 @@ registerInlineBodies(ResolverInline);
  * Keep the `ctor` / `factory` / `value` parameter names exactly as written: each
  * overload is matched by its type-parameter count and value-parameter name.
  */
-export const ServiceManifestInline = { addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
+export const ServiceManifestInline = { addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): Manifest {
   return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
-}, addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
+}, addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): Manifest {
   return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0, keyof<T>());
-}, addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
+}, addValue<I>(this: IInlineRegistrationTarget, value: unknown): Manifest {
   return this.addValue(tokenfor<I>(), value, keyof<I>());
 } };
 registerInlineBodies(ServiceManifestInline);
@@ -110,8 +108,7 @@ registerInlineBodies(ServiceManifestInline);
  * being named `overrides`.
  */
 export const ServiceManifestOverrideInline = {
-  addClass<I>(this: IInlineRegistrationTarget, ctor: Ctor,
-    overrides: ReadonlyArray<string | undefined>): IServiceManifest {
+  addClass<I>(this: IInlineRegistrationTarget, ctor: Ctor, overrides: ReadonlyArray<string | undefined>): Manifest {
     return this.addClass(tokenfor<I>(), ctor, overrideSignatures(signatureof(ctor), overrides), void 0, keyof<I>());
   },
 };
@@ -134,20 +131,20 @@ registerInlineBodies(ServiceManifestOverrideInline);
  * carry zero type parameters, which is how they're told apart despite sharing
  * member and parameter names.
  */
-export const ServiceManifestSelfInline = { addClass(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
+export const ServiceManifestSelfInline = { addClass(this: IInlineRegistrationTarget, ctor: Ctor): Manifest {
   return this.addClass(tokenfor(ctor), ctor, signatureof(ctor));
-}, addFactory(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
+}, addFactory(this: IInlineRegistrationTarget, factory: Factory): Manifest {
   return this.addFactory(tokenfor(factory), factory, signatureof(factory));
-}, addValue(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
+}, addValue(this: IInlineRegistrationTarget, value: unknown): Manifest {
   return this.addValue(tokenof(value), value);
 } };
 registerInlineBodies(ServiceManifestSelfInline);
 
 /** `this` typing for the chain-continuation bodies below. */
 interface IInlineChainTarget {
-  withSignature(...slots: readonly DepSlot[]): IServiceManifest;
-  withSignatures(...signatures: ReadonlyArray<readonly DepSlot[]>): IServiceManifest;
-  as(scope: string): IServiceManifest;
+  withSignature(...slots: readonly DepSlot[]): Manifest;
+  withSignatures(...signatures: ReadonlyArray<readonly DepSlot[]>): Manifest;
+  as(scope: string): Manifest;
 }
 
 /**
@@ -158,13 +155,13 @@ interface IInlineChainTarget {
  *   as<Scope>()         → this.as(valueof<Scope>())
  */
 export const ManifestChainInline = {
-  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
+  withSignature<T extends readonly any[]>(this: IInlineChainTarget): Manifest {
     return this.withSignature(...signaturefor<T>());
   },
-  withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): IServiceManifest {
+  withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): Manifest {
     return this.withSignatures(...signaturesfor<T>());
   },
-  as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
+  as<Scope extends string>(this: IInlineChainTarget): Manifest {
     return this.as(valueof<Scope>());
   },
 };

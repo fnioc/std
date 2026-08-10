@@ -7,7 +7,7 @@
 // reload re-runs the bind.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { closeToken, typeArg } from '@rhombus-std/di.core';
+import { closeToken, typeArg } from '@rhombus-std/di2.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';

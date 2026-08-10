@@ -26,7 +26,7 @@ export { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentat
 
 // Re-exported from di.core, which owns it; this is the type
 // `useDefaultServiceProvider` configures.
-export type { ServiceProviderOptions } from '@rhombus-std/di.core';
+export type { ServiceProviderOptions } from '@rhombus-std/di2.core';
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-config';

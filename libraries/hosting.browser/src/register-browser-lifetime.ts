@@ -5,8 +5,8 @@
 // imported HOST_LIFETIME_TOKEN — di.core is append-only last-wins, so this
 // overrides the default NullLifetime registered by the host composition.
 
-import { type IResolver, RESOLVER_TOKEN } from '@rhombus-std/di.core';
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import { type IResolver, RESOLVER_TOKEN } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
@@ -31,8 +31,8 @@ import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './t
  * caller must thread this result forward instead of reusing the `services` it
  * passed in.
  */
-export function registerBrowserLifetime(services: IServiceManifest, options: BrowserLifetimeOptions,
-  context?: PageContext): IServiceManifest {
+export function registerBrowserLifetime(services: Manifest, options: BrowserLifetimeOptions,
+  context?: PageContext): Manifest {
   let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);

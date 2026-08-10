@@ -11,8 +11,8 @@
 // unsupported; the adapter only mutates the application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di.core';
+import type { IServiceManifestHolder, Manifest } from '@rhombus-std/di2.core';
+import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -43,7 +43,7 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, IServiceManifest], IServiceManifest>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest], Manifest>> = [];
 
   public constructor(config: IConfigManager, holder: IServiceManifestHolder, context: HostBuilderContext) {
     this.#config = config;
@@ -66,7 +66,7 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }

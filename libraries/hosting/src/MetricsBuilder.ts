@@ -11,7 +11,7 @@
 // class satisfying `IMetricsBuilder` once diagnostics.core merges those members
 // onto the interface.
 
-import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
+import type { IServiceManifestHolder, Manifest } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -34,12 +34,12 @@ export class MetricsBuilder implements IMetricsBuilder {
    * -- the host application builder passes ITSELF, so `builder.metrics`
    * registrations and `builder.services` registrations stay on one chain.
    */
-  public constructor(services: IServiceManifest | IServiceManifestHolder) {
+  public constructor(services: Manifest | IServiceManifestHolder) {
     this.#holder = isHolder(services) ? services : { services };
   }
 
   /** The current manifest -- read through the shared holder. */
-  public get services(): IServiceManifest {
+  public get services(): Manifest {
     return this.#holder.services;
   }
 
@@ -47,12 +47,12 @@ export class MetricsBuilder implements IMetricsBuilder {
    * Rebinds the shared holder's manifest. The chain is immutable, so every
    * metrics augmentation threads by assigning here.
    */
-  public set services(value: IServiceManifest) {
+  public set services(value: Manifest) {
     this.#holder.services = value;
   }
 }
 
 /** A manifest is never itself a holder: only a holder carries a `services` slot. */
-function isHolder(value: IServiceManifest | IServiceManifestHolder): value is IServiceManifestHolder {
+function isHolder(value: Manifest | IServiceManifestHolder): value is IServiceManifestHolder {
   return 'services' in value;
 }

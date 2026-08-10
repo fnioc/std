@@ -9,8 +9,8 @@
 // it is reactive, the factory re-runs `applyFilters` for every existing logger
 // on each change, so a configuration reload re-filters live loggers.
 
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceProvider } from '@rhombus-std/di.core';
+import { DefaultManifest } from '@rhombus-std/di2';
+import type { IServiceProvider } from '@rhombus-std/di2.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
@@ -175,7 +175,7 @@ export class LoggerFactory implements ILoggerFactory {
    * disposes the scope (and everything it built, the factory included).
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = new ServiceManifest().addLogging(configure);
+    const services = new DefaultManifest().addLogging(configure);
     const provider = services.build();
     const singletonScope = provider.createScope('singleton');
     const factory = singletonScope.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN);

@@ -1,6 +1,6 @@
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig } from '@rhombus-std/config.core';
-import type { Token } from '@rhombus-std/di.core';
+import type { Token } from '@rhombus-std/di2.core';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import type { LoggingConfig } from './LoggingConfig';
 
