@@ -28,15 +28,15 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     );
   }
   protected override visitUnion(type: UnionType, minimum: Precedence): string {
-    const members = type.types.map(member => this.visit(member, Precedence.intersection));
+    const members = type.members.map(member => this.visit(member, Precedence.intersection));
     return this.#parenthesize(members.join(' | '), Precedence.union, minimum);
   }
   protected override visitIntersection(type: IntersectionType, minimum: Precedence): string {
-    const members = type.types.map(member => this.visit(member, Precedence.tag));
+    const members = type.members.map(member => this.visit(member, Precedence.tag));
     return this.#parenthesize(members.join(' & '), Precedence.intersection, minimum);
   }
   protected override visitTuple(type: TupleType): string {
-    return `[${this.#list(type.types)}]`;
+    return `[${this.#list(type.members)}]`;
   }
   protected override visitFunction(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
@@ -46,7 +46,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     );
   }
   protected override visitNamed(type: NamedType): string {
-    return this.#qualifier(type) + this.#genericTypes(type.genericTypes);
+    return this.#qualifier(type) + this.#genericTypes(type.genericArgs);
   }
   protected override visitObject(type: ObjectType): string {
     const members = Object.entries(type.members)

@@ -73,7 +73,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   }
 
   protected override visitUnion(type: UnionType): CallSite | undefined {
-    return Iterator.from(type.types).map(member => this.visit(member)).find(Boolean);
+    return Iterator.from(type.members).map(member => this.visit(member)).find(Boolean);
   }
 
   protected override visitIntersection(_type: IntersectionType): CallSite | undefined {
@@ -84,7 +84,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   }
 
   protected override visitTuple(type: TupleType): CallSite | undefined {
-    const members = type.types.map(member => this.visit(member));
+    const members = type.members.map(member => this.visit(member));
     if (!isAllThere(members)) {
       return undefined;
     }
@@ -100,7 +100,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
       return CallSite.serviceProvider();
     }
     if (isIterableType(type)) {
-      const itemType = type.genericTypes[0]!;
+      const itemType = type.genericArgs[0]!;
       // Materialized: the iterable callsite must survive repeated realization.
       const collected = [...this.#candidates(itemType)];
       const synthesized = this.#synthesized(itemType);
@@ -118,7 +118,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
    */
   #synthesized(type: Type): CallSite | undefined {
     if (type.kind === 'union') {
-      for (const member of type.types) {
+      for (const member of type.members) {
         const site = this.#synthesized(member);
         if (site) {
           return site;
@@ -152,9 +152,9 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
 
 function isServiceProviderType(type: NamedType): boolean {
   return type.name === 'IServiceProvider' && SERVICE_PROVIDER_FROMS.includes(type.from)
-    && !type.genericTypes.length;
+    && !type.genericArgs.length;
 }
 
 function isIterableType(type: NamedType): boolean {
-  return type.name === 'Iterable' && type.from === 'global' && type.genericTypes.length === 1;
+  return type.name === 'Iterable' && type.from === 'global' && type.genericArgs.length === 1;
 }

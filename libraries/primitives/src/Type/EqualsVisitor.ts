@@ -19,24 +19,24 @@ class EqualsVisitor extends TypeVisitor<Predicate> {
     return other =>
       other === type
       || (other.kind === 'union'
-        && other.types.length === type.types.length
-        && type.types.every((member, index) => this.visit(member)(other.types[index]!)));
+        && other.members.length === type.members.length
+        && type.members.every((member, index) => this.visit(member)(other.members[index]!)));
   }
 
   protected override visitIntersection(type: IntersectionType): Predicate {
     return other =>
       other === type
       || (other.kind === 'intersection'
-        && other.types.length === type.types.length
-        && type.types.every((member, index) => this.visit(member)(other.types[index]!)));
+        && other.members.length === type.members.length
+        && type.members.every((member, index) => this.visit(member)(other.members[index]!)));
   }
 
   protected override visitTuple(type: TupleType): Predicate {
     return other =>
       other === type
       || (other.kind === 'tuple'
-        && other.types.length === type.types.length
-        && type.types.every((member, index) => this.visit(member)(other.types[index]!)));
+        && other.members.length === type.members.length
+        && type.members.every((member, index) => this.visit(member)(other.members[index]!)));
   }
 
   protected override visitFunction(type: FunctionType): Predicate {
@@ -63,8 +63,8 @@ class EqualsVisitor extends TypeVisitor<Predicate> {
       || (other.kind === 'named'
         && other.from === type.from
         && other.name === type.name
-        && other.genericTypes.length === type.genericTypes.length
-        && type.genericTypes.every((arg, index) => this.visit(arg)(other.genericTypes[index]!)));
+        && other.genericArgs.length === type.genericArgs.length
+        && type.genericArgs.every((arg, index) => this.visit(arg)(other.genericArgs[index]!)));
   }
 
   protected override visitObject(type: ObjectType): Predicate {

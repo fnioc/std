@@ -18,13 +18,13 @@ import { TypeVisitor } from './TypeVisitor.js';
  */
 class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   protected override visitUnion(type: UnionType): readonly Type[] {
-    return type.types.flatMap(member => this.visit(member));
+    return type.members.flatMap(member => this.visit(member));
   }
   protected override visitIntersection(type: IntersectionType): readonly Type[] {
-    return this.#product(type.types).map(types => Type.intersection(...types));
+    return this.#product(type.members).map(types => Type.intersection(...types));
   }
   protected override visitTuple(type: TupleType): readonly Type[] {
-    return this.#product(type.types).map(types => Type.tuple(...types));
+    return this.#product(type.members).map(types => Type.tuple(...types));
   }
   protected override visitPlaceholder(type: PlaceholderType): readonly Type[] {
     return [type];
@@ -36,7 +36,7 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
     return this.visit(type.type).map(inner => Type.tag(inner, type.tag));
   }
   protected override visitNamed(type: NamedType): readonly Type[] {
-    return this.#product(type.genericTypes).map(args => Type.named(type.name, type.from, args));
+    return this.#product(type.genericArgs).map(args => Type.named(type.name, type.from, args));
   }
 
   protected override visitFunction(type: FunctionType): readonly Type[] {

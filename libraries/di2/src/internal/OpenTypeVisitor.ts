@@ -7,13 +7,13 @@ class OpenTypeVisitor extends TypeVisitor<boolean> {
     return true;
   }
   protected override visitUnion(type: UnionType): boolean {
-    return this.#any(type.types);
+    return this.#any(type.members);
   }
   protected override visitIntersection(type: IntersectionType): boolean {
-    return this.#any(type.types);
+    return this.#any(type.members);
   }
   protected override visitTuple(type: TupleType): boolean {
-    return this.#any(type.types);
+    return this.#any(type.members);
   }
   protected override visitFunction(type: FunctionType): boolean {
     return this.#any(type.args) || this.visit(type.returnType);
@@ -22,7 +22,7 @@ class OpenTypeVisitor extends TypeVisitor<boolean> {
     return this.#any(type.args) || this.visit(type.instanceType);
   }
   protected override visitNamed(type: NamedType): boolean {
-    return this.#any(type.genericTypes);
+    return this.#any(type.genericArgs);
   }
   protected override visitObject(type: ObjectType): boolean {
     return this.#any(Object.values(type.members));

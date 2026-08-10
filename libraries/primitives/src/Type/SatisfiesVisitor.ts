@@ -20,13 +20,13 @@ class PlaceholderScanner extends TypeVisitor<boolean> {
     return false;
   }
   protected override visitUnion(type: UnionType): boolean {
-    return type.types.some(member => this.visit(member));
+    return type.members.some(member => this.visit(member));
   }
   protected override visitIntersection(type: IntersectionType): boolean {
-    return type.types.some(member => this.visit(member));
+    return type.members.some(member => this.visit(member));
   }
   protected override visitTuple(type: TupleType): boolean {
-    return type.types.some(member => this.visit(member));
+    return type.members.some(member => this.visit(member));
   }
   protected override visitFunction(type: FunctionType): boolean {
     return type.args.some(arg => this.visit(arg)) || this.visit(type.returnType);
@@ -35,7 +35,7 @@ class PlaceholderScanner extends TypeVisitor<boolean> {
     return type.args.some(arg => this.visit(arg)) || this.visit(type.instanceType);
   }
   protected override visitNamed(type: NamedType): boolean {
-    return type.genericTypes.some(arg => this.visit(arg));
+    return type.genericArgs.some(arg => this.visit(arg));
   }
   protected override visitObject(type: ObjectType): boolean {
     return Object.values(type.members).some(member => this.visit(member));
@@ -69,10 +69,10 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       return this.capture(condition.label, proposed);
     }
     if (proposed.kind === 'union') {
-      return proposed.types.every(member => this.match(member, condition));
+      return proposed.members.every(member => this.match(member, condition));
     }
     if (proposed.kind === 'intersection' && condition.kind !== 'intersection') {
-      return proposed.types.some(member => this.match(member, condition));
+      return proposed.members.some(member => this.match(member, condition));
     }
     return this.visit(condition)(proposed);
   }
@@ -82,18 +82,18 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 
   protected override visitUnion(type: UnionType): Predicate {
-    return proposed => type.types.some(member => this.#attempt(proposed, member));
+    return proposed => type.members.some(member => this.#attempt(proposed, member));
   }
 
   protected override visitIntersection(type: IntersectionType): Predicate {
-    return proposed => type.types.every(member => this.match(proposed, member));
+    return proposed => type.members.every(member => this.match(proposed, member));
   }
 
   protected override visitTuple(type: TupleType): Predicate {
     return proposed =>
       proposed.kind === 'tuple'
-      && proposed.types.length === type.types.length
-      && type.types.every((member, index) => this.match(proposed.types[index]!, member));
+      && proposed.members.length === type.members.length
+      && type.members.every((member, index) => this.match(proposed.members[index]!, member));
   }
 
   protected override visitFunction(type: FunctionType): Predicate {
@@ -118,8 +118,8 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       return proposed.kind === 'named'
         && proposed.from === type.from
         && proposed.name === type.name
-        && proposed.genericTypes.length === type.genericTypes.length
-        && type.genericTypes.every((arg, index) => this.match(proposed.genericTypes[index]!, arg));
+        && proposed.genericArgs.length === type.genericArgs.length
+        && type.genericArgs.every((arg, index) => this.match(proposed.genericArgs[index]!, arg));
     };
   }
 

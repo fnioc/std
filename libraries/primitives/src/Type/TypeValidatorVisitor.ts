@@ -4,13 +4,13 @@ import { TypeVisitor } from './TypeVisitor.js';
 
 class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   protected override visitUnion(type: UnionType): readonly string[] {
-    return this.#all(type.types);
+    return this.#all(type.members);
   }
   protected override visitIntersection(type: IntersectionType): readonly string[] {
-    return this.#all(type.types);
+    return this.#all(type.members);
   }
   protected override visitTuple(type: TupleType): readonly string[] {
-    return this.#all(type.types);
+    return this.#all(type.members);
   }
   protected override visitFunction(type: FunctionType): readonly string[] {
     return [...this.#all(type.args), ...this.visit(type.returnType)];
@@ -35,7 +35,7 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
     const own = type.from === 'global' && type.name === 'default'
       ? ['global:default names nothing — give the export a name, or a `from` other than global']
       : [];
-    return [...own, ...this.#all(type.genericTypes)];
+    return [...own, ...this.#all(type.genericArgs)];
   }
 
   #all(types: readonly Type[]): readonly string[] {

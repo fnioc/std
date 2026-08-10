@@ -68,7 +68,7 @@ class TypeParser {
     while (this.#take('|')) {
       types.push(this.#intersection());
     }
-    return { kind: 'union', types };
+    return { kind: 'union', members: types };
   }
 
   #intersection(): Type {
@@ -80,7 +80,7 @@ class TypeParser {
     while (this.#take('&')) {
       types.push(this.#tagged());
     }
-    return { kind: 'intersection', types };
+    return { kind: 'intersection', members: types };
   }
 
   #tagged(): Type {
@@ -112,7 +112,7 @@ class TypeParser {
       }
       case '[': {
         this.#index++;
-        return { kind: 'tuple', types: this.#typeList(']') };
+        return { kind: 'tuple', members: this.#typeList(']') };
       }
       case '{': {
         this.#index++;
@@ -131,7 +131,7 @@ class TypeParser {
   #named(): Type {
     const first = this.#next();
     if (this.#take(':')) {
-      return { kind: 'named', from: first.text, name: this.#segment(), genericTypes: this.#genericTypes() };
+      return { kind: 'named', from: first.text, name: this.#segment(), genericArgs: this.#genericTypes() };
     }
     if (!first.escaped) {
       const reserved = this.#reserved(first);
@@ -139,7 +139,7 @@ class TypeParser {
         return reserved;
       }
     }
-    return { kind: 'named', from: 'global', name: first.text, genericTypes: this.#genericTypes() };
+    return { kind: 'named', from: 'global', name: first.text, genericArgs: this.#genericTypes() };
   }
 
   /**
@@ -166,7 +166,7 @@ class TypeParser {
         if (this.#at('<')) {
           throw this.#error(this.#peek()!.position, 'no type arguments — `ServiceProvider` names the provider itself');
         }
-        return { kind: 'named', from: SERVICE_PROVIDER_FROM, name: 'IServiceProvider', genericTypes: [] };
+        return { kind: 'named', from: SERVICE_PROVIDER_FROM, name: 'IServiceProvider', genericArgs: [] };
       }
       default: {
         return undefined;
