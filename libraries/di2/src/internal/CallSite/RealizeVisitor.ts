@@ -1,18 +1,14 @@
-import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ServiceDescriptor } from '@rhombus-std/di2.core';
-import type { IServiceProvider, Type } from '@rhombus-std/primitives';
-import type { AdHocCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite,
-  LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
-import { CallSiteContext } from './ToCallSiteVisitor.js';
+import type { IServiceProvider } from '@rhombus-std/primitives';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import type { Engine } from '../Engine.js';
+import type { CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundCallSite,
+  ServiceProviderCallSite } from './CallSite.js';
 
 export interface RealizeContext {
+  readonly engine: Engine;
+  /** What a service asking for the provider receives — the walk's originating facade. */
   readonly serviceProvider: IServiceProvider;
-  /** Caller-supplied values filling the {@link AdHocCallSite} holes, keyed by label. */
-  readonly adhoc?: ReadonlyMap<string, any>;
-  /** Values awaited ahead of this synchronous walk, keyed by label. */
-  readonly promised?: ReadonlyMap<string, any>;
-
-  readonly additionalServices?: Iterable<ServiceDescriptor<string>>;
 }
 
 /**
@@ -21,8 +17,9 @@ export interface RealizeContext {
  * @remarks
  * One instance per walk — {@link realizeCallSite} is the entry point. `ctor` and `factory`
  * nodes realize their argument sites depth-first; a `latebound` node realizes to a function
- * that re-realizes its inner site on every call, the call's arguments filling its ad-hoc
- * holes; the leaf kinds read the walk-wide {@link RealizeContext} fixed at construction.
+ * that re-enters the engine on every call, the call's arguments entering as value
+ * registrations; the leaf kinds read the walk-wide {@link RealizeContext} fixed at
+ * construction.
  */
 class RealizeVisitor {
   readonly #context: RealizeContext;
@@ -41,8 +38,6 @@ class RealizeVisitor {
         return this.visitLateBound(site);
       case 'constant':
         return this.visitConstant(site);
-      case 'adhoc':
-        return this.visitAdHoc(site);
       case 'service-provider':
         return this.visitServiceProvider(site);
       case 'iterable':
@@ -61,27 +56,16 @@ class RealizeVisitor {
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
-    const context:CallSiteContext = {
-      manifest: this.#
-    };
-    return (...args: any[]) => {
-      return this.#context.serviceProvider.resolve(site.result, {
-        additionalServices: site.lateBoundArgs.map((serviceType, i) =>
-           ServiceDescriptor.value(serviceType, args[i])
-        ),
+    const context = this.#context;
+    return (...args: any[]) =>
+      context.engine.resolve(site.result, {
+        serviceProvider: context.serviceProvider,
+        additionalServices: site.lateBoundArgs.map((serviceType, i) => ServiceDescriptor.value(serviceType, args[i])),
       });
-    };
   }
 
   protected visitConstant(site: ConstantCallSite): any {
     return site.value;
-  }
-
-  protected visitAdHoc(site: AdHocCallSite): any {
-    if (!this.#context.adhoc?.has(site.label)) {
-      throw new Error(`no ad-hoc value supplied for '${site.label}'`);
-    }
-    return this.#context.adhoc.get(site.label);
   }
 
   protected visitServiceProvider(_site: ServiceProviderCallSite): any {
