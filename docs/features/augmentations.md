@@ -154,36 +154,35 @@ This is the half of the story open to everyone, first-party or downstream: imple
 interface and get its full augmentation surface for free, automatically, forever (including
 augmentations registered _after_ your class is defined).
 
-**1. Implement the interface normally:**
-
-```ts
-export class MyConfigurationBuilder implements IConfigBuilder {
-  add(source: IConfigSource): IConfigBuilder {/* ... */}
-  build(): IConfig {/* ... */}
-}
-```
-
-**2. Decorate the class with `@augment`, using the same token the augmentations were registered
-under:**
-
-```ts
-@augment(tokenfor<IConfigBuilder>())
-export class MyConfigurationBuilder implements IConfigBuilder {
-  add(source: IConfigSource): IConfigBuilder {/* ... */}
-  build(): IConfig {/* ... */}
-}
-```
-
-**3. Add an empty extends-merge so the type-checker sees the augmented members as part of the
-class's own type**, not just the bare interface's:
+**1. Merge the interface onto the class — never `implements` it.** Declare an empty interface of
+the same name extending the receiver interface, beside a class with no `implements` clause:
 
 ```ts
 export interface MyConfigurationBuilder extends IConfigBuilder {}
+export class MyConfigurationBuilder {
+  add(source: IConfigSource): IConfigBuilder {/* ... */}
+  build(): IConfig {/* ... */}
+}
 ```
 
-Without this step, callers holding a `MyConfigurationBuilder`-typed reference (rather than an
-`IConfigBuilder`-typed one) won't see the augmented members in their type, even though the
-class still satisfies `implements IConfigBuilder`. The extends-merge closes that gap.
+Declaration merging makes the interface part of the class's own type, so instances carry every
+member of `IConfigBuilder` — its own and every augmented one, present and future — without the
+class declaring them. This is the difference that matters: the merge **grants** members to the
+type; `implements` **demands** them statically, and fails (TS2416) in any program where the
+interface has augmented members, because those members only exist after the registry installs
+them at runtime. A class that `implements` an augmentable interface is wrong by construction.
+(`Manifest` in di2.core is the canonical in-repo example of this shape.)
+
+**2. Decorate the class with `@augment`, using the same token the augmentations were registered
+under** — this is what actually installs the members at runtime:
+
+```ts
+@augment(tokenfor<IConfigBuilder>())
+export class MyConfigurationBuilder {
+  add(source: IConfigSource): IConfigBuilder {/* ... */}
+  build(): IConfig {/* ... */}
+}
+```
 
 That's it. Every augmentation on that token — the ones that existed when you wrote this class, and
 every one registered on it afterward, by any package — now shows up as a real, typed, callable
@@ -261,7 +260,7 @@ registry never receives augmentations registered against the other.
   resolve to the interface's own declaring module — same file, any specifier. Mixing a
   package-barrel specifier with a relative/declaring-module specifier for the _same_ interface
   makes TS treat the accumulated `this`-returning members as having unrelated `this` types, and
-  concrete classes silently stop satisfying `implements`.
+  the class-side interface merges silently inherit those unrelated `this` types.
 - **First-party-only is permanent, not provisional.** Consumers get to implement receivers and
   inherit every augmentation automatically; they don't get to mint new ones. Don't build tooling
   that assumes this opens up later.
