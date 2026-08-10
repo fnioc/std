@@ -62,13 +62,13 @@
     "@rhombus-std/primitives.extras": "workspace:*"
   },
   "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^",
+    "@rhombus-std/di2.core": "workspace:^",
     "@rhombus-std/di.extras": "workspace:^",
     "@rhombus-std/options": "workspace:^",
     "typescript": ">=5.2"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/options": "workspace:*"
   },

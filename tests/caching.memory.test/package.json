@@ -12,7 +12,7 @@
   "devDependencies": {
     "@rhombus-std/caching.core": "workspace:*",
     "@rhombus-std/caching.memory": "workspace:*",
-    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di2": "workspace:*",
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*"

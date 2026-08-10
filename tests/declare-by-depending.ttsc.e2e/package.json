@@ -9,7 +9,7 @@
     "test:e2e": "bun test"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",

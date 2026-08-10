@@ -56,10 +56,10 @@
     "@rhombus-toolkit/func": "^3.5.3"
   },
   "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^"
+    "@rhombus-std/di2.core": "workspace:^"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",

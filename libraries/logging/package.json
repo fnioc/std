@@ -44,17 +44,17 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
-    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di2": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*"
   },
   "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^"
+    "@rhombus-std/di2.core": "workspace:^"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@rhombus-toolkit/func": "3.5.3",
     "@ttsc/unplugin": "^0.18.1",

@@ -127,11 +127,11 @@
     "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^",
+    "@rhombus-std/di2.core": "workspace:^",
     "typescript": ">=5.2"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*"
+    "@rhombus-std/di2.core": "workspace:*"
   },
   "publishConfig": {
     "access": "public",

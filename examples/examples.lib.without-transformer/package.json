@@ -24,7 +24,7 @@
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*"
   },
   "devDependencies": {

@@ -10,8 +10,8 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@rhombus-std/di": "workspace:*",
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-toolkit/func": "^3.5.3"
   }
 }

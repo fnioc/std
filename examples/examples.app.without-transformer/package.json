@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@rhombus-std/config": "workspace:*",
-    "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di2": "workspace:*",
     "@rhombus-std/examples.lib.with-transformer": "workspace:*",
     "@rhombus-std/examples.lib.without-transformer": "workspace:*",
     "@rhombus-std/hosting": "workspace:*",

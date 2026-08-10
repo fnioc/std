@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "@rhombus-std/config.core": "workspace:*",
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di2.core": "workspace:*",
     "@rhombus-std/diagnostics.core": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
