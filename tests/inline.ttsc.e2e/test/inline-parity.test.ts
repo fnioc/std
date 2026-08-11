@@ -305,15 +305,24 @@ const chainInlineDir = join(CHAIN_ROOT, 'inline');
 // generic signatures are copied verbatim from di.extras's `src/augment.ts`
 // so the merged member symbols the transforms anchor on are the real faces.
 const AUTHORING_SOURCE = `
-import type { AddChain, Ctor, IServiceManifest, Slot } from '@rhombus-std/di.core';
+import type { Ctor, Manifest } from '@rhombus-std/di.core';
+
+// The fluent tail was deleted with the classic engine: a verb returns the
+// manifest now. The chain cases below still exercise withSignature and as,
+// which are parked pending the scope decision, so the fixture declares the
+// shapes they need rather than importing types that no longer exist.
+type Slot = 'signature' | 'signatures' | 'scope' | 'key';
+interface AddChain<S extends string, Slots extends Slot, Gated extends boolean> extends Manifest<S> {
+  __slots?: [Slots, Gated];
+}
 
 declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
+  interface Manifest<Scopes extends string = 'singleton'> {
     addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     addClass<I>(ctor: Ctor<any[], I>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
     addClass<I>(ctor: Ctor<any[], I>, overrides: ReadonlyArray<string | undefined>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
-    addValue(value: unknown): IServiceManifest<Scopes>;
-    addValue<I>(value: I): IServiceManifest<Scopes>;
+    addValue(value: unknown): Manifest<Scopes>;
+    addValue<I>(value: I): Manifest<Scopes>;
   }
   interface IWithSignatureBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
     withSignature<T extends readonly any[]>(): AddChain<S, Exclude<Slots, 'signatures'>, Gated>;
@@ -347,7 +356,7 @@ export {};
 // no instantiation-type-argument stripping to diverge on). Kept in one file so a
 // whole-file byte compare pins import elision + surrounding text, like the pilot.
 const CHAIN_SOURCE = `
-import type { $, IServiceManifest } from '@rhombus-std/di.core';
+import type { $, Manifest } from '@rhombus-std/di.core';
 
 interface ILogger {}
 interface IClock {}
@@ -366,7 +375,7 @@ class ThingRepo {
   }
 }
 
-declare const services: IServiceManifest<'singleton'>;
+declare const services: Manifest<'singleton'>;
 
 export const closed = services.addClass<ILogger>(ConsoleLogger).withSignature<[IClock]>().as<'singleton'>();
 
@@ -387,12 +396,12 @@ export const open = services.addClass<IRepo<$<1>>>(ThingRepo);
 // TestKeyedInlinePipelineComposesBaseKey). Own file so the whole-file compare of
 // cases 1+2 is not disturbed by this deliberate divergence.
 const KEYED_SOURCE = `
-import type { IServiceManifest, Keyed } from '@rhombus-std/di.core';
+import type { Keyed, Manifest } from '@rhombus-std/di.core';
 
 interface ICache {}
 class RedisCache implements ICache {}
 
-declare const services: IServiceManifest<'singleton'>;
+declare const services: Manifest<'singleton'>;
 
 export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache);
 `;
@@ -407,13 +416,13 @@ export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache);
 // class symbol. Own file so the deliberate raw semantics is compared in isolation,
 // like KEYED_SOURCE.
 const VALUE_SOURCE = `
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 interface Thing {}
 class ValueRepo {}
 declare function makeThing(): Thing;
 
-declare const services: IServiceManifest<'singleton'>;
+declare const services: Manifest<'singleton'>;
 
 export const valueFn = services.addValue(makeThing);
 
@@ -428,12 +437,12 @@ export const valueClass = services.addValue(ValueRepo);
 // pruned by the fold. Own file so the resolve compare is isolated from the
 // registration whole-file compare.
 const RESOLVE_SOURCE = `
-import type { IResolver, Keyed } from '@rhombus-std/di.core';
+import type { IServiceProvider, Keyed } from '@rhombus-std/di.core';
 
 interface IThing {}
 interface ICache {}
 
-declare const provider: IResolver;
+declare const provider: IServiceProvider;
 
 export const tokenful = provider.resolve<IThing>();
 export const asyncTok = provider.resolveAsync<IThing>();
@@ -457,7 +466,7 @@ export const keyedAsync = provider.resolveAsync<Keyed<ICache, 'redis'>>();
 // merge (a `[[...]]` literal). Own file so its runtime-callee shape is asserted in
 // isolation; the overrideSignatures merge semantics are unit-tested in di.test.
 const OVERRIDE_SOURCE = `
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 interface IReq {}
 interface ILog {}
@@ -469,7 +478,7 @@ class Handler implements IHandler {
   }
 }
 
-declare const services: IServiceManifest<'singleton'>;
+declare const services: Manifest<'singleton'>;
 
 export const overridden = services.addClass<IHandler>(Handler, ['pkg:IReqAlt']);
 `;
@@ -964,19 +973,19 @@ const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basenam
 // src/augment.ts + options.augmentations so the merged member symbol the inline
 // resolver anchors on is the real face.
 const OPTIONS_AUTHORING = `
-import type { AddChain, Token } from '@rhombus-std/di.core';
+import type { Manifest, Type } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
-  interface IServiceManifestBase<Scopes extends string = 'singleton', Provider = unknown> {
-    addOptions<T>(): AddChain<Scopes, 'scope' | 'key', false>;
-    addOptions(token: Token, tToken: Token): AddChain<Scopes, 'scope' | 'key', false>;
+  interface Manifest<Scopes extends string = 'singleton'> {
+    addOptions<T>(): Manifest<Scopes>;
+    addOptions(token: Type | string, tToken: Type | string): Manifest<Scopes>;
   }
 }
 export {};
 `;
 
 const OPTIONS_SOURCE = `
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 
 // Force @rhombus-std/options into the program so the composed wrapper base
@@ -988,7 +997,7 @@ interface UserOptions {
   name: string;
 }
 
-declare const services: IServiceManifest<'singleton'>;
+declare const services: Manifest<'singleton'>;
 
 export const opts = services.addOptions<UserOptions>();
 `;
