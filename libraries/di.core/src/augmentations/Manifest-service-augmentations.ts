@@ -12,6 +12,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
     key?: string): this;
   addValue(type: Token | Type, value: unknown, key?: string): this;
   as(scope: Scopes): this;
+  withSignature(...types: Array<Type | string>): this;
 }
 
 declare module '@rhombus-std/di.core' {
@@ -55,6 +56,9 @@ export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IM
     },
     as(_manifest, _scope) {
       throw new NotImplementedError('Manifest.as');
+    },
+    withSignature(_manifest, ..._types) {
+      throw new NotImplementedError('Manifest.withSignature');
     },
   };
 
