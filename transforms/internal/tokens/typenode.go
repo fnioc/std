@@ -1,0 +1,234 @@
+package tokens
+
+import (
+	"sort"
+	"strconv"
+	"strings"
+
+	shimast "github.com/microsoft/typescript-go/shim/ast"
+	shimchecker "github.com/microsoft/typescript-go/shim/checker"
+)
+
+// TypeNode is the STRUCTURED form of a derived token — the same derivation
+// DeriveTokenF walks, kept as a small tree instead of being joined into a flat
+// string. It carries exactly the kinds the flat walk ever produced: a named type
+// (with its generic arguments), a literal value, a literal union, and an
+// open-generic hole placeholder.
+type TypeNode struct {
+	Kind TypeNodeKind
+
+	// Named: Name/From are the export name and its qualifying source ("global"
+	// for an unqualified / default-lib name); Args are the closed generic type
+	// arguments, in order.
+	Name string
+	From string
+	Args []*TypeNode
+
+	// Literal: the single literal value.
+	Literal LiteralValue
+
+	// Union: a pure-literal union's members, each itself a Literal node, in
+	// checker order (unsorted — a renderer that needs the canonical sorted-join
+	// spelling sorts at render time).
+	Members []*TypeNode
+
+	// Placeholder: the hole number's decimal text ("1" for $1).
+	Label string
+}
+
+// TypeNodeKind discriminates a TypeNode's populated fields.
+type TypeNodeKind int
+
+const (
+	TypeNodeNamed TypeNodeKind = iota
+	TypeNodeLiteral
+	TypeNodeUnion
+	TypeNodePlaceholder
+)
+
+// DeriveTypeF is DeriveTokenF's own walk, kept as a tree instead of joined into a
+// string. It is the structural sibling every string caller now renders from
+// (renderTypeNode) — see DeriveTokenF below — so the two can never drift: a
+// change to one changes the other's answer too. ok=false marks the same failures
+// DeriveTokenF reports (a nameless anonymous structure, an unbound type
+// parameter), through the same Failure channel.
+func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode, bool) {
+	if t == nil {
+		return nil, false
+	}
+	if node, ok := deriveLiteralNode(t); ok {
+		return node, true
+	}
+	if name, ok := intrinsicToken(t); ok {
+		return &TypeNode{Kind: TypeNodeNamed, Name: name, From: "global"}, true
+	}
+	// A Hole-branded placeholder is `$N`, read before the alias/symbol path: an
+	// aliased or constrained hole carries a symbol that would otherwise mint an
+	// alias node, and the bare `Hole<1>` is an anonymous `__type`.
+	if hole, ok := HoleNumberFor(t, ctx.Checker); ok {
+		return &TypeNode{Kind: TypeNodePlaceholder, Label: strconv.Itoa(hole)}, true
+	}
+	if t.Flags()&shimchecker.TypeFlagsTypeParameter != 0 {
+		if failure != nil {
+			failure.UnboundTypeParameter = t
+		}
+		return nil, false
+	}
+
+	symbol := t.Symbol()
+	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
+		symbol = alias.symbol
+	}
+	if symbol == nil {
+		return nil, false
+	}
+	name := symbol.Name
+	if name == "" || isInternalSymbolName(name) {
+		return nil, false
+	}
+	decl := primaryDeclaration(symbol)
+	if decl == nil {
+		return nil, false
+	}
+	sourceFile := shimast.GetSourceFileOfNode(decl)
+	if sourceFile == nil {
+		return nil, false
+	}
+	from, baseName := baseTokenForPair(ctx, symbol, sourceFile)
+
+	args := genericTypeArguments(ctx, t)
+	if collectionTokenBases[renderNamedBase(from, baseName)] && len(args) > 1 {
+		args = args[:1]
+	}
+	argNodes := make([]*TypeNode, 0, len(args))
+	for _, arg := range args {
+		argNode, ok := DeriveTypeF(ctx, arg, failure)
+		if !ok {
+			return nil, false
+		}
+		argNodes = append(argNodes, argNode)
+	}
+	return &TypeNode{Kind: TypeNodeNamed, Name: baseName, From: from, Args: argNodes}, true
+}
+
+// KeyedBaseType returns the underlying T of a `Keyed<T, K>` brand — the
+// phantom-brand intersection member(s) stripped — for a caller that already
+// confirmed t is keyed via KeyLiteralFor. It is the structural counterpart of
+// keyedBaseTokenFor's stripBrandMembers path; the Inject-pinned-base branch has
+// no structural equivalent (an Inject brand pins an arbitrary token STRING with
+// no corresponding TS type), so a caller wanting that string still goes through
+// KeyedTokenFor.
+func KeyedBaseType(t *shimchecker.Type, checker *shimchecker.Checker) *shimchecker.Type {
+	return stripBrandMembers(t, checker)
+}
+
+// renderNamedBase joins a Named node's From/Name pair into the flat base token:
+// bare Name when From is the "global" sentinel (no qualifier), else
+// "From:Name" — the exact shape baseTokenFor rendered before the FROM/NAME split.
+func renderNamedBase(from, name string) string {
+	if from == "global" {
+		return name
+	}
+	return from + ":" + name
+}
+
+// literalNodeValue extracts a String/Number/BigInt/BooleanLiteral value in
+// SingletonValue's representation, restricted to literalText's domain — no
+// null/undefined/void — so a TypeNodeLiteral fires in exactly the cases the flat
+// literal walk below does.
+func literalNodeValue(t *shimchecker.Type) (LiteralValue, bool) {
+	v, ok := SingletonValue(t)
+	if !ok || v.Kind == LiteralNull || v.Kind == LiteralUndefined {
+		return LiteralValue{}, false
+	}
+	return v, true
+}
+
+// deriveLiteralNode classifies a single literal type or a pure-literal union: a
+// single literal renders as a TypeNodeLiteral, a pure-literal union (every member
+// a String/Number/BigInt/BooleanLiteral) as a TypeNodeUnion of TypeNodeLiteral
+// members. The wide `boolean` scalar (Boolean flag without BooleanLiteral) is
+// excluded up front, before the union branch, so a wide-boolean union never
+// decomposes into its two literal members here — it falls through to
+// intrinsicToken instead.
+func deriveLiteralNode(t *shimchecker.Type) (*TypeNode, bool) {
+	flags := t.Flags()
+	if flags&shimchecker.TypeFlagsBoolean != 0 && flags&shimchecker.TypeFlagsBooleanLiteral == 0 {
+		return nil, false
+	}
+	if v, ok := literalNodeValue(t); ok {
+		return &TypeNode{Kind: TypeNodeLiteral, Literal: v}, true
+	}
+	if flags&shimchecker.TypeFlagsUnion != 0 {
+		members := t.Types()
+		nodes := make([]*TypeNode, 0, len(members))
+		for _, member := range members {
+			v, ok := literalNodeValue(member)
+			if !ok {
+				return nil, false
+			}
+			nodes = append(nodes, &TypeNode{Kind: TypeNodeLiteral, Literal: v})
+		}
+		if len(nodes) == 0 {
+			return nil, false
+		}
+		return &TypeNode{Kind: TypeNodeUnion, Members: nodes}, true
+	}
+	return nil, false
+}
+
+// renderLiteral reproduces literalText's exact spelling from a LiteralValue: a
+// JSON-quoted string, a number/bigint with the sign reattached, or the
+// "true"/"false" boolean text. Null/Undefined never reach here — literalNodeValue
+// excludes them.
+func renderLiteral(v LiteralValue) string {
+	switch v.Kind {
+	case LiteralString:
+		return strconv.Quote(v.Str)
+	case LiteralNumber:
+		if v.Negated {
+			return "-" + v.Text
+		}
+		return v.Text
+	case LiteralBigInt:
+		if v.Negated {
+			return "-" + v.Text + "n"
+		}
+		return v.Text + "n"
+	case LiteralBoolean:
+		return strconv.FormatBool(v.Bool)
+	default:
+		return ""
+	}
+}
+
+// renderTypeNode renders a TypeNode back into DeriveTokenF's flat token string —
+// byte-identical to what the pre-split walk produced for the same input, since
+// this is that walk's join step read off the tree instead of built inline.
+func renderTypeNode(n *TypeNode) string {
+	switch n.Kind {
+	case TypeNodeLiteral:
+		return renderLiteral(n.Literal)
+	case TypeNodeUnion:
+		parts := make([]string, len(n.Members))
+		for i, m := range n.Members {
+			parts[i] = renderLiteral(m.Literal)
+		}
+		sort.Strings(parts)
+		return strings.Join(parts, " | ")
+	case TypeNodePlaceholder:
+		return "$" + n.Label
+	case TypeNodeNamed:
+		base := renderNamedBase(n.From, n.Name)
+		if len(n.Args) == 0 {
+			return base
+		}
+		parts := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			parts[i] = renderTypeNode(a)
+		}
+		return base + "<" + strings.Join(parts, ",") + ">"
+	default:
+		return ""
+	}
+}
