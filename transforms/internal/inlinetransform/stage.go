@@ -8,6 +8,7 @@ package inlinetransform
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -304,11 +305,31 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		}
 	}
 
+	// A trailing rest parameter stands for every argument from its position on, so
+	// it is split off here: the leading parameters bind positionally as usual, and
+	// the rest is expanded where the body spreads it.
+	names := strippedParamNames(body.Params)
+	args := callArguments(call)
+	restParam := ""
+	var restArgs []*shimast.Node
+	if n := len(body.Params); n > 0 && strings.HasPrefix(body.Params[n-1], "...") {
+		restParam = names[n-1]
+		names = names[:n-1]
+		if len(args) > n-1 {
+			restArgs = args[n-1:]
+			args = args[:n-1]
+		} else {
+			args = args[:min(len(args), n-1)]
+		}
+	}
+
 	in := Inlining{
 		Body:          body.Body,
-		Params:        strippedParamNames(body.Params),
-		Args:          callArguments(call),
+		Params:        names,
+		Args:          args,
 		ReceiverParam: body.ReceiverParam,
+		RestParam:     restParam,
+		RestArgs:      restArgs,
 	}
 	// The arguments SPLICED into the body come from the CURRENT tree (above), so
 	// they carry whatever earlier passes lowered. The arguments the checker is
