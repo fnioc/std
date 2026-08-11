@@ -4,11 +4,11 @@
 // the same token). The MetricsOptions-targeted mutators of the same names are
 // the sibling ./MetricsOptions-augmentations set.
 
-import type { Ctor, DepSignatures, Token } from '@rhombus-std/di2.core';
+import type { Signatures } from '@rhombus-std/di2.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from '../tokens';
 import type { IMetricsBuilder } from './IMetricsBuilder';
@@ -26,7 +26,7 @@ interface IMetricsBuilderAugmentations {
    * dependency slots -- required, like every di.core `addClass`: a
    * dependency-free ctor states `[[]]` explicitly.
    */
-  addMetricsListenerType(ctor: Ctor, signatures: DepSignatures): this;
+  addMetricsListenerType(ctor: Ctor, signatures: Signatures): this;
   /** Removes all {@link IMetricsListener} registrations from the builder. */
   clearMetricsListeners(): this;
   /**
@@ -52,7 +52,7 @@ function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: Metric
   const step: IConfigureOptions<MetricsOptions> = { configure(options: MetricsOptions): void {
     apply(options);
   } };
-  const token: Token = METRICS_CONFIGURE_TOKEN;
+  const token: string = METRICS_CONFIGURE_TOKEN;
   builder.services = builder.services.addValue(token, step);
   return builder;
 }

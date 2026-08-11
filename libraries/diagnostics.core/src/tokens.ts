@@ -8,36 +8,34 @@
 // `Array<...>`-wrapper collection-resolution convention @rhombus-std/options.augmentations
 // uses to aggregate every registration of a slot.
 
-import type { Token } from '@rhombus-std/di2.core';
-
 const NAMESPACE = '@rhombus-std/diagnostics';
 
 /** Collection slot: every registered {@link IMetricsListener}. */
-export const METRICS_LISTENER_TOKEN: Token = `${NAMESPACE}/metrics-listener`;
+export const METRICS_LISTENER_TOKEN: string = `${NAMESPACE}/metrics-listener`;
 /** Collection slot: every `IConfigureOptions<MetricsOptions>` step. */
-export const METRICS_CONFIGURE_TOKEN: Token = `${NAMESPACE}/metrics-configure`;
+export const METRICS_CONFIGURE_TOKEN: string = `${NAMESPACE}/metrics-configure`;
 /** Collection slot: every change-token source feeding the reactive `IOptions<MetricsOptions>`. */
-export const METRICS_CHANGE_TOKEN_SOURCE_TOKEN: Token = `${NAMESPACE}/metrics-change-token-source`;
+export const METRICS_CHANGE_TOKEN_SOURCE_TOKEN: string = `${NAMESPACE}/metrics-change-token-source`;
 /** The resolvable `IOptions<MetricsOptions>` the metrics assembly is registered at. */
-export const METRICS_OPTIONS_TOKEN: Token = `${NAMESPACE}/metrics-options`;
+export const METRICS_OPTIONS_TOKEN: string = `${NAMESPACE}/metrics-options`;
 /** Collection slot: every `MetricsConfig` marker `addMetricsConfig` registers. */
-export const METRICS_CONFIGURATION_TOKEN: Token = `${NAMESPACE}/metrics-configuration`;
+export const METRICS_CONFIGURATION_TOKEN: string = `${NAMESPACE}/metrics-configuration`;
 /** The resolvable `IMetricListenerConfigFactory` `addMetrics` registers. */
-export const METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN: Token =
+export const METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN: string =
   `${NAMESPACE}/metrics-listener-configuration-factory`;
 
 /** Collection slot: every registered tracing `ActivityListenerBuilder`. */
-export const TRACING_LISTENER_TOKEN: Token = `${NAMESPACE}/tracing-listener`;
+export const TRACING_LISTENER_TOKEN: string = `${NAMESPACE}/tracing-listener`;
 /** Collection slot: every `IConfigureOptions<TracingOptions>` step. */
-export const TRACING_CONFIGURE_TOKEN: Token = `${NAMESPACE}/tracing-configure`;
+export const TRACING_CONFIGURE_TOKEN: string = `${NAMESPACE}/tracing-configure`;
 /** Collection slot: every change-token source feeding the reactive `IOptions<TracingOptions>`. */
-export const TRACING_CHANGE_TOKEN_SOURCE_TOKEN: Token = `${NAMESPACE}/tracing-change-token-source`;
+export const TRACING_CHANGE_TOKEN_SOURCE_TOKEN: string = `${NAMESPACE}/tracing-change-token-source`;
 /** The resolvable `IOptions<TracingOptions>` the tracing assembly is registered at. */
-export const TRACING_OPTIONS_TOKEN: Token = `${NAMESPACE}/tracing-options`;
+export const TRACING_OPTIONS_TOKEN: string = `${NAMESPACE}/tracing-options`;
 /** Collection slot: every `TracingConfig` marker `addTracingConfig` registers. */
-export const TRACING_CONFIGURATION_TOKEN: Token = `${NAMESPACE}/tracing-configuration`;
+export const TRACING_CONFIGURATION_TOKEN: string = `${NAMESPACE}/tracing-configuration`;
 /** The resolvable `ActivityListenerConfigFactory` `addTracing` registers. */
-export const TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN: Token =
+export const TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN: string =
   `${NAMESPACE}/tracing-listener-configuration-factory`;
 
 /**
@@ -45,6 +43,6 @@ export const TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN: Token =
  * recognizes as a collection request and aggregates every registration of the
  * element into.
  */
-export function collectionToken(elementToken: Token): Token {
+export function collectionToken(elementToken: string): string {
   return `Array<${elementToken}>`;
 }
