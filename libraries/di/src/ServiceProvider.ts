@@ -1,5 +1,6 @@
-import { Manifest } from '@rhombus-std/di.core';
-import { type IServiceProvider, type Token, Type } from '@rhombus-std/primitives';
+import { Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { augment, type IServiceProvider, type Token, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -8,6 +9,7 @@ import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 export interface ServiceProvider extends IServiceProvider {}
 
 /** The user-facing door: a manifest sealed into a resolvable provider. */
+@augment(typefor<IServiceProvider>())
 export class ServiceProvider {
   readonly #engine: Engine;
 
@@ -19,9 +21,24 @@ export class ServiceProvider {
     }
   }
 
+  /**
+   * The value registered for `type`, or `undefined` when nothing is registered for it.
+   *
+   * @remarks
+   * Absence is an answer here, which is what makes this the optional lookup a caller reaches for
+   * when a dependency may legitimately not be there. A registration that exists but cannot be
+   * built still throws — that is a broken graph, not an absent service.
+   */
   getService(type: Type | Token): any {
     const target = typeof type === 'string' ? Type.from(type) : type;
-    return this.#engine.resolve(target, { serviceProvider: this });
+    try {
+      return this.#engine.resolve(target, { serviceProvider: this });
+    } catch (error) {
+      if (error instanceof UnsatisfiableError && error.type === target) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   /** @throws always — see {@link notImplemented}. */
