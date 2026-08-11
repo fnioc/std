@@ -92,6 +92,9 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };
  * and is refused where it is written rather than arriving as an `undefined` name. The refusal is
  * type-level because it has to hold for a caller who never runs the transformer.
  *
+ * Witnesses for different types do not interchange, so a swapped one is refused where it is passed.
+ * Two structurally identical types are one type here as everywhere, and share a witness.
+ *
  * @example
  * ```ts
  * class Logger<T> {
@@ -101,6 +104,8 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };
  * }
  * ```
  */
+declare const WITNESS: unique symbol;
+
 export type Typeof<T> = IsUnion<T> extends true ? never
   : [T] extends [Func<never[], unknown>] ? never
-  : NamedType;
+  : NamedType & { readonly [WITNESS]?: T; };
