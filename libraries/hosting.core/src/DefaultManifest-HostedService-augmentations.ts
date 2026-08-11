@@ -10,10 +10,10 @@
 // whole set via the collection wrapper token.
 
 // Named imports: unqualified names in a `declare module` body resolve in THIS
-// file's scope, so `DepSlot`/`IServiceManifest`/`ServiceManifestClass` must be
+// file's scope, so `Signatures`/`Manifest`/`DefaultManifest` must be
 // importable here.
-import { type DefaultManifest, type DepSlot, type IServiceProvider, type Manifest,
-  RESOLVER_TYPE } from '@rhombus-std/di2.core';
+import { type DefaultManifest, type IServiceProvider, type Manifest, RESOLVER_TYPE,
+  type Signatures } from '@rhombus-std/di2.core';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -37,7 +37,7 @@ type IServiceManifestHostedServiceAugmentations<Scopes extends string> = {
    * stop alongside its lifetime. `signatures` carries the ctor's dep
    * signatures; omitted, a dependency-free ctor is assumed.
    */
-  addHostedService(ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>): Manifest<Scopes>;
+  addHostedService(ctor: Ctor, signatures?: Signatures): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge's type-parameter list matches the
@@ -59,7 +59,7 @@ export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<Default
     // The ctor form carries optional dep signatures; the factory form is a
     // lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
-    ...rest: [ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>] | [
+    ...rest: [ctor: Ctor, signatures?: Signatures] | [
       implementationFactory: Func<[IServiceProvider], IHostedService>,
     ]
   ): Manifest<string> {
