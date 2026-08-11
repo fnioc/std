@@ -1,12 +1,15 @@
 import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
+import { describe, type IComplete, type Unstarted } from '../builder';
 import { type Manifest } from '../Manifest';
-import { ServiceDescriptor } from '../ServiceDescriptor';
-import { keyedType, Signatures, TypeSignatures } from '../types';
-import { Unstarted } from './builder.ts';
+import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 interface IManifestDescriptorAugmentations<Scopes extends string> {
+  add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  add(type: Type | string, configure: Func<[Unstarted<Scopes>], IComplete>): Manifest<Scopes>;
+  remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
@@ -32,37 +35,62 @@ declare module '@rhombus-std/di2.core' {
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
   Flatten<IManifestDescriptorAugmentations<any>>> = {
-    addMany(manifest, descriptors) {
-      return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), manifest);
+    add(manifest, descriptorOrType: any, configure?: any) {
+      return manifest._add(
+        configure === undefined ? descriptorOrType : describe<any>(descriptorOrType, configure),
+      );
     },
-    tryAdd(manifest: Manifest, ...descriptors: ReadonlyArray<ServiceDescriptor<any>>) {
+    remove(manifest, descriptor) {
+      return manifest._remove(descriptor);
+    },
+    replace(manifest, descriptor) {
+      return manifest._replace(descriptor);
+    },
+    addMany(manifest, descriptors) {
+      return Iterator.from(descriptors).reduce((man, descriptor) => man._add(descriptor), manifest);
+    },
+    tryAdd(manifest: Manifest, ...args: any[]) {
+      const descriptors: ReadonlyArray<ServiceDescriptor<any>> = typeof args[1] === 'function'
+        ? [describe(args[0], args[1])]
+        : args;
       return Iterator.from(descriptors)
         .filter(newDesc =>
           !Iterator.from(manifest).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc))
         )
-        .reduce((man, descriptor) => man.add(descriptor), manifest);
+        .reduce((man, descriptor) => man._add(descriptor), manifest);
     },
     tryAddClass(manifest, token, ctor, signatures, scope, key) {
       if (typeof token === 'string') {
         return manifest.tryAddClass(Type.from(token), ctor, signatures, scope, key);
       }
+      if (key !== undefined && token.kind === 'tag') {
+        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
+      }
       return manifest.tryAdd(
-        ServiceDescriptor.ctor(keyedType(token, key), ctor, TypeSignatures.from(signatures), scope),
+        ServiceDescriptor.ctor(key === undefined ? token : Type.tag(token, key), ctor, TypeSignatures.from(signatures),
+          scope),
       );
     },
     tryAddFactory(manifest, token, factory, signatures, scope, key) {
       if (typeof token === 'string') {
         return manifest.tryAddFactory(Type.from(token), factory, signatures, scope, key);
       }
+      if (key !== undefined && token.kind === 'tag') {
+        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
+      }
       return manifest.tryAdd(
-        ServiceDescriptor.factory(keyedType(token, key), factory, TypeSignatures.from(signatures), scope),
+        ServiceDescriptor.factory(key === undefined ? token : Type.tag(token, key), factory,
+          TypeSignatures.from(signatures), scope),
       );
     },
     tryAddValue(manifest, token, value, key) {
       if (typeof token === 'string') {
         return manifest.tryAddValue(Type.from(token), value, key);
       }
-      return manifest.tryAdd(ServiceDescriptor.value(keyedType(token, key), value));
+      if (key !== undefined && token.kind === 'tag') {
+        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
+      }
+      return manifest.tryAdd(ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), value));
     },
 
     replaceClass(manifest, token, ctor, signatures, scope, key) {
@@ -80,11 +108,14 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
       if (typeof token === 'string') {
         return manifest.removeAll(Type.from(token), key);
       }
-      const target = ServiceDescriptor.value(keyedType(token, key), undefined);
+      if (key !== undefined && token.kind === 'tag') {
+        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
+      }
+      const target = ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), undefined);
       return Iterator.from(manifest)
         .filter(descriptor => ServiceDescriptor.matches(descriptor, target))
-        .reduce((man, descriptor) => man.remove(descriptor), manifest);
+        .reduce((man, descriptor) => man._remove(descriptor), manifest);
     },
   };
 
-registerAugmentations(tokenfor<Manifest>(), ManifestDescriptorAugmentations);
+registerAugmentations(typefor<Manifest>(), ManifestDescriptorAugmentations);

@@ -1,8 +1,11 @@
-import { Dec } from '../utilities';
+import { Dec } from './counters';
+import type { Flatten } from './Flatten';
+import type { UnionToTuple } from './union-vs-tuple';
 
 export type Entry<Key extends PropertyKey = PropertyKey, Value = any> = readonly [Key, Value];
 
-export type keys<T extends {}> = keyof T;
+/** The string keys `Object.keys` yields. */
+export type keys<T extends {}> = UnionToTuple<Extract<keyof T, string>>;
 
 export type values<T extends {}> = T[keyof T];
 
@@ -30,7 +33,7 @@ declare global {
       ...sources: Sources): assign<[Target, ...Sources]>;
     fromEntries<TEntry extends Entry>(entries: TEntry[]): fromEntries<TEntry>;
     values<T extends {}>(obj: T): Array<values<T>>;
-    keys<T extends {}>(obj: T): Array<keys<T>>;
+    keys<T extends {}>(obj: T): keys<T>;
   }
 }
 

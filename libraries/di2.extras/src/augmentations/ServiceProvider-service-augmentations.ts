@@ -1,4 +1,5 @@
-import { AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type IServiceProvider, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 type IServiceProviderServiceAugmentations = {
   getService<T>(): T | undefined;
@@ -8,16 +9,17 @@ type IServiceProviderServiceAugmentations = {
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider extends IServiceProviderServiceAugmentations {}
 }
-const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider, IServiceProviderServiceAugmentations> = {
-  getService<T>(provider: IServiceProvider): T | undefined {
-    return provider.getService(tokenfor<T>());
-  },
-  getRequiredService<T>(provider: IServiceProvider): T {
-    return provider.getRequiredService(tokenfor<T>());
-  },
-  getServices<T>(provider: IServiceProvider): Iterable<T> {
-    return provider.getServices(tokenfor<T>());
-  },
-};
+export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
+  IServiceProviderServiceAugmentations> = {
+    getService<T>(provider: IServiceProvider): T | undefined {
+      return provider.getService(typefor<T>());
+    },
+    getRequiredService<T>(provider: IServiceProvider): T {
+      return provider.getRequiredService(typefor<T>());
+    },
+    getServices<T>(provider: IServiceProvider): Iterable<T> {
+      return provider.getServices(typefor<T>());
+    },
+  };
 
-registerAugmentations(tokenfor<IServiceProvider>(), ServiceProviderServiceAugmentations);
+registerAugmentations(typefor<IServiceProvider>(), ServiceProviderServiceAugmentations);

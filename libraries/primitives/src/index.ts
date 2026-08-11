@@ -24,4 +24,4 @@ export { Type } from './Type/Type.js';
 export type { ConstructableType, CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType,
   TagType, TokenType, TupleType, TypeLiteralType, UnionType } from './Type/Type.js';
 export { TypeVisitor } from './Type/TypeVisitor.js';
-export * from './utils.js';
+export * from './utils/index.js';

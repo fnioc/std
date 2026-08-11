@@ -354,6 +354,8 @@
       "name": "@rhombus-std/di2.extras",
       "version": "10.1.0",
       "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.5.3",
       },
       "devDependencies": {
@@ -634,6 +636,10 @@
     "libraries/primitives.extras": {
       "name": "@rhombus-std/primitives.extras",
       "version": "10.1.0",
+      "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-toolkit/func": "3.5.3",
+      },
     },
     "tests/augmentations.test": {
       "name": "@rhombus-std/augmentations.test",

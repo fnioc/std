@@ -36,14 +36,14 @@ function manifestWith(...caches: readonly ('memory' | 'redis')[]) {
 
 describe('one suppliable member', () => {
   test('answers the union', () => {
-    const report = new ServiceProvider(manifestWith('memory')).resolve(REPORT) as Report;
+    const report = new ServiceProvider(manifestWith('memory')).getService(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(MemoryCache);
   });
 
   test('answers it whichever way the union was spelled', () => {
     // The two spellings are one interned object, so the engine cannot see a difference.
     expect(Type.union(REDIS, CACHE)).toBe(Type.union(CACHE, REDIS));
-    const report = new ServiceProvider(manifestWith('redis')).resolve(REPORT) as Report;
+    const report = new ServiceProvider(manifestWith('redis')).getService(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(RedisCache);
   });
 });
@@ -51,9 +51,9 @@ describe('one suppliable member', () => {
 describe('several suppliable members', () => {
   test('raise, naming the members that compete', () => {
     const provider = new ServiceProvider(manifestWith('memory', 'redis'));
-    expect(() => provider.resolve(REPORT)).toThrow(AmbiguousUnionError);
+    expect(() => provider.getService(REPORT)).toThrow(AmbiguousUnionError);
     try {
-      provider.resolve(REPORT);
+      provider.getService(REPORT);
     } catch (error) {
       expect(error).toBeInstanceOf(AmbiguousUnionError);
       expect((error as AmbiguousUnionError).members).toEqual([CACHE, REDIS]);
@@ -69,7 +69,7 @@ describe('several suppliable members', () => {
 
   test('settle on the newest registration when asked to', () => {
     const provider = new ServiceProvider(manifestWith('memory', 'redis'), { unionAmbiguity: 'newest' });
-    const report = provider.resolve(REPORT) as Report;
+    const report = provider.getService(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(RedisCache);
   });
 });
@@ -84,18 +84,18 @@ describe('a self-supplying member is the fallback', () => {
   }
 
   test('yields the service when one is registered', () => {
-    const report = new ServiceProvider(optionalManifest(true)).resolve(REPORT) as Report;
+    const report = new ServiceProvider(optionalManifest(true)).getService(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(MemoryCache);
   });
 
   test('yields the literal when none is', () => {
-    const report = new ServiceProvider(optionalManifest(false)).resolve(REPORT) as Report;
+    const report = new ServiceProvider(optionalManifest(false)).getService(REPORT) as Report;
     expect(report.cache).toBeUndefined();
   });
 
   test('never competes, so it cannot make a union ambiguous', () => {
     const report = new ServiceProvider(optionalManifest(true), { validateOnBuild: true })
-      .resolve(REPORT) as Report;
+      .getService(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(MemoryCache);
   });
 });
@@ -103,6 +103,6 @@ describe('a self-supplying member is the fallback', () => {
 describe('the cycle guard', () => {
   test('still closes a loop after the move to identity comparison', () => {
     const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, [[LOOP]]));
-    expect(() => new ServiceProvider(manifest).resolve(LOOP)).toThrow(CycleError);
+    expect(() => new ServiceProvider(manifest).getService(LOOP)).toThrow(CycleError);
   });
 });

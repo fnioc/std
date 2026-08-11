@@ -14,3 +14,8 @@ export interface IServiceScope {
 export interface IServiceScopeFactory {
   createScope(): IServiceScope;
 }
+
+/** Scaffold: the async face of a scope, pending the scope model. */
+export class AsyncServiceScope {
+  constructor(readonly scope: IServiceScope) {}
+}

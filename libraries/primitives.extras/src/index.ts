@@ -17,3 +17,4 @@ export { RETURN_TOKENFOR_NAME, returntokenfor } from './returntokenfor.js';
 export { SINGULAR_VALUE_NAME, singularValue } from './singularValue.js';
 export { tokenfor, TOKENFOR_NAME } from './tokenfor.js';
 export { tokenof, TOKENOF_NAME } from './tokenof.js';
+export { type TypeFor, typefor, TYPEFOR_NAME } from './typefor.js';

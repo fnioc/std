@@ -1,24 +1,24 @@
 // DO NOT ADD MEMBERS TO THE TYPES IN THIS FILE
 
 import { augment, IterableObject } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { ServiceDescriptor } from './ServiceDescriptor';
 
 export interface Manifest<Scopes extends string = any> extends Iterable<ServiceDescriptor<Scopes>> {
-  add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
-  remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
-  replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  _add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  _remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  _replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 }
 
 export interface DefaultManifest<Scopes extends string> extends Manifest<Scopes> {}
 
-@augment(tokenfor<Manifest>())
-export class DefaultManifest<Scopes extends string> implements Manifest<Scopes> {
+@augment(typefor<Manifest>())
+export class DefaultManifest<Scopes extends string> {
   #descriptors: Iterable<ServiceDescriptor<Scopes>>;
   constructor(descriptors?: Iterable<ServiceDescriptor<Scopes>>) {
     this.#descriptors = descriptors ?? [];
   }
-  add(descriptor: ServiceDescriptor<Scopes>) {
+  _add(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* added(this: DefaultManifest<Scopes>) {
         // INTENTIONAL: newest first.
@@ -28,7 +28,7 @@ export class DefaultManifest<Scopes extends string> implements Manifest<Scopes> 
     });
   }
 
-  remove(descriptor: ServiceDescriptor<Scopes>) {
+  _remove(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* removed(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);
@@ -43,7 +43,7 @@ export class DefaultManifest<Scopes extends string> implements Manifest<Scopes> 
     });
   }
 
-  replace(descriptor: ServiceDescriptor<Scopes>) {
+  _replace(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);

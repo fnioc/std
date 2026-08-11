@@ -1,4 +1,6 @@
-import { AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type IServiceProvider, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
+import { AsyncServiceScope, type IServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
 type IServiceProviderServiceScopeAugmentations = {
   createScope(): IServiceScope;
@@ -7,15 +9,16 @@ type IServiceProviderServiceScopeAugmentations = {
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider extends IServiceProviderServiceScopeAugmentations {}
 }
-const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IServiceProvider,
+export const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IServiceProvider,
   IServiceProviderServiceScopeAugmentations> = {
     createScope(provider: IServiceProvider): IServiceScope {
-      return provider.getRequiredService<IServiceScopeFactory>().createScope();
+      return (provider.getRequiredService(typefor<IServiceScopeFactory>()) as IServiceScopeFactory)
+        .createScope();
     },
     createAsyncScope(provider: IServiceProvider): AsyncServiceScope {
-      throw 'not implemented';
-      return new AsyncServiceScope(provider.CreateScope());
+      throw new Error('createAsyncScope is not implemented.');
+      return new AsyncServiceScope(provider.createScope());
     },
   };
 
-registerAugmentations(tokenfor<IServiceProvider>(), ServiceProviderServiceScopeAugmentations);
+registerAugmentations(typefor<IServiceProvider>(), ServiceProviderServiceScopeAugmentations);

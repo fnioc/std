@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di2.extras",
   "version": "10.1.0",
-  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
+  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package \u2014 the lowering runs in the shared owner binary.",
   "keywords": [
     "dependency-injection",
     "di",
@@ -17,6 +17,86 @@
     "directory": "libraries/di2.extras"
   },
   "type": "module",
+  "//rhombus.inline": "The type-driven sugar publish list. Every member takes its service type as a type argument and no token argument, and forwards to the same-named member with `tokenfor<T>()` in front \u2014 the inline stage substitutes that body at the consumer call site. The `type` ANCHOR names the interface the member is declared on, which is the augmentation target rather than this package; `impl` names the augmentation set here that carries the body.",
+  "rhombus.inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestServiceAugmentations",
+        "member": "add"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestServiceAugmentations",
+        "member": "addClass"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestServiceAugmentations",
+        "member": "addFactory"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestServiceAugmentations",
+        "member": "addValue"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "tryAdd"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "tryAddClass"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "tryAddFactory"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "tryAddValue"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "replaceClass"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "replaceFactory"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "replaceValue"
+      },
+      {
+        "type": "@rhombus-std/di2.core:Manifest",
+        "impl": "ManifestDescriptorAugmentations",
+        "member": "removeAll"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "ServiceProviderServiceAugmentations",
+        "member": "getService"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "ServiceProviderServiceAugmentations",
+        "member": "getRequiredService"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "ServiceProviderServiceAugmentations",
+        "member": "getServices"
+      }
+    ]
+  },
   "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
@@ -47,6 +127,8 @@
     "lint": "tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*",
     "@rhombus-toolkit/func": "3.5.3"
   },
   "peerDependencies": {

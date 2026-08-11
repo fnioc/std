@@ -1,5 +1,4 @@
 import { type Token, Type } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 export type TokenSignatures = ReadonlyArray<readonly Token[]>;
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
@@ -18,20 +17,6 @@ export namespace TypeSignatures {
     placeholders: ReadonlyMap<string, Type>): TypeSignatures {
     return signatures.map(signature => signature.map(param => Type.substitute(param, placeholders)));
   }
-}
-
-/**
- * @obselete use Type.tag instead. beware that one doesn't validate like this one does.
- * @depricated use Type.tag instead. beware that one doesn't validate like this one does.
- */
-export function keyed(type: Type, key: string | undefined): Type {
-  if (key === undefined) {
-    return type;
-  }
-  if (type.kind === 'tag') {
-    throw 'wtf mate';
-  }
-  return Type.tag(type, key);
 }
 
 /** A signatures array whose entries may be a mix of resolved `Type`s and unnormalized `Token` strings. */

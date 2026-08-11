@@ -1,12 +1,10 @@
 // Logger<T> — delegates to an inner `ILogger` created by the injected
 // `ILoggerFactory`, categorized by `T`.
 //
-// `T` is erased at runtime, so the di engine supplies the closing type's
-// token as a `Typeof<T>` constructor parameter (see `@rhombus-std/logging`'s
-// `addLogging`). The category is the token's type-name segment
-// (`"@pkg/x:HomeController"` → `"HomeController"`).
+// `T` is erased at runtime, so the engine supplies the closing type itself as a constructor
+// parameter (see `@rhombus-std/logging`'s `addLogging`), and the category is its name.
 
-import type { Typeof } from '@rhombus-std/di2.core';
+import type { NamedType } from '@rhombus-std/di2.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -14,12 +12,6 @@ import type { EventId } from './EventId';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
 import type { LogLevel } from './LogLevel';
-
-/** The category name carried by a di token — the segment after the first `:`. */
-function categoryFromToken(token: string): string {
-  const separator = token.indexOf(':');
-  return separator === -1 ? token : token.slice(separator + 1);
-}
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto `Logger<T>`, present and
@@ -35,8 +27,8 @@ export interface Logger<T> extends ILogger<T> {}
 export class Logger<T> implements ILogger<T> {
   readonly #logger: ILogger;
 
-  public constructor(factory: ILoggerFactory, categoryType: Typeof<T>) {
-    this.#logger = factory.createLogger(categoryFromToken(categoryType as unknown as string));
+  public constructor(factory: ILoggerFactory, categoryType: NamedType) {
+    this.#logger = factory.createLogger(categoryType.name);
   }
 
   public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,

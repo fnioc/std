@@ -1,5 +1,8 @@
-import { CtorServiceDescriptor, FactoryServiceDescriptor, ServiceDescriptor,
+import { Type } from '@rhombus-std/primitives';
+import { assertNever } from '@rhombus-toolkit/type-guards';
+import type { CtorServiceDescriptor, FactoryServiceDescriptor, ServiceDescriptor,
   ValuedServiceDescriptor } from './expressions';
+import { TypeSignatures } from './Signature';
 
 /**
  * Closes an open registration against the placeholders a `Type.satisfies` match captured,
@@ -15,9 +18,17 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
     case 'value':
       return { ...descriptor, serviceType };
     case 'ctor':
-      return { ...descriptor, serviceType, signatures: substituteSignatures(descriptor.signatures, placeholders) };
+      return {
+        ...descriptor,
+        serviceType,
+        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, placeholders),
+      };
     case 'factory':
-      return { ...descriptor, serviceType, signatures: substituteSignatures(descriptor.signatures, placeholders) };
+      return {
+        ...descriptor,
+        serviceType,
+        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, placeholders),
+      };
     default:
       return assertNever(descriptor);
   }
@@ -34,12 +45,12 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
     case 'ctor': {
       const other = right as CtorServiceDescriptor<string>;
       return left.ctor === other.ctor && left.scope === other.scope
-        && signaturesEqual(left.signatures, other.signatures);
+        && TypeSignatures.signaturesEqual(left.signatures, other.signatures);
     }
     case 'factory': {
       const other = right as FactoryServiceDescriptor<string>;
       return left.factory === other.factory && left.scope === other.scope
-        && signaturesEqual(left.signatures, other.signatures);
+        && TypeSignatures.signaturesEqual(left.signatures, other.signatures);
     }
     case 'value':
       return left.value === (right as ValuedServiceDescriptor<string>).value;
@@ -47,6 +58,7 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
       return assertNever(left);
   }
 }
+
 /**
  * Do the two occupy the same registration slot? The service type is the whole of a
  * registration's identity — a keyed registration carries its key inside that type, as a tag.
