@@ -17,7 +17,8 @@
 import type { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
-import { loggerProviderConfigToken } from './ILoggerProviderConfig';
+import { Type } from '@rhombus-std/primitives';
+import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
 import { LoggerProviderOptionsChangeTokenSource } from './LoggerProviderOptionsChangeTokenSource';
 
@@ -33,15 +34,18 @@ export const LoggerProviderOptions = {
    * @param services The registration builder to register on.
    * @param optionsToken The `IOptions<TOptions>` token the steps attach to —
    * the same token the `addOptions`/`configure` pipeline uses.
-   * @param providerType The provider type's token (`tokenfor<TProvider>()`).
+   * @param providerType The provider type. A type token naming it is read
+   * into one.
    * @returns The manifest carrying both registrations. The chain is immutable,
    * so the caller MUST keep it (`services = LoggerProviderOptions
    * .registerProviderOptions(services, …)`) — the `services` passed in is
    * unchanged.
    */
   registerProviderOptions<TOptions, TProvider>(services: Manifest, optionsToken: string,
-    providerType: string): Manifest {
-    const providerConfig: string = loggerProviderConfigToken(providerType);
+    providerType: Type | string): Manifest {
+    const providerConfig = loggerProviderConfigType(
+      typeof providerType === 'string' ? Type.from(providerType) : providerType,
+    );
     return services.addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]],
       'singleton').addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[
         providerConfig,

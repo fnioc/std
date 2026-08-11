@@ -1,15 +1,15 @@
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig } from '@rhombus-std/config.core';
+import { Type } from '@rhombus-std/primitives';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import type { LoggingConfig } from './LoggingConfig';
 
 /**
- * The token's TypeName component — the flat section key the lookup uses.
- * The full token can't serve as a section key directly since `:` is the
- * configuration path delimiter.
+ * The provider type's name — the flat section key the lookup uses. A qualified
+ * spelling can't serve as one, since `:` is the configuration path delimiter.
  */
-function sectionKeyFor(providerType: string): string {
-  return providerType.slice(providerType.indexOf(':') + 1);
+function sectionKeyFor(providerType: Type): string {
+  return providerType.kind === 'named' ? providerType.name : Type.stringify(providerType);
 }
 
 /**
@@ -29,8 +29,8 @@ export class LoggerProviderConfigFactory implements ILoggerProviderConfigFactory
     this.#configs = configs;
   }
 
-  public getConfig(providerType: string): IConfig {
-    const sectionKey = sectionKeyFor(providerType);
+  public getConfig(providerType: Type | string): IConfig {
+    const sectionKey = sectionKeyFor(typeof providerType === 'string' ? Type.from(providerType) : providerType);
     const builder = new ConfigBuilder();
     for (const config of this.#configs) {
       builder.addConfig(config.config.getSection(sectionKey));

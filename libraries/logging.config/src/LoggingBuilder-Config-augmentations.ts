@@ -13,8 +13,8 @@ import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigChangeTokenSource,
   configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import { openLoggerProviderConfigType } from './ILoggerProviderConfig';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
 import { LoggerProviderConfig } from './LoggerProviderConfig';
@@ -59,12 +59,11 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       // is immutable: each step below reassigns it to the manifest its own
       // registration produced, so the final value is what the caller reads
       // back through `builder.services`.
-      builder.services = builder.services.addClass(tokenfor<ILoggerProviderConfigFactory>(),
-        LoggerProviderConfigFactory, [[Type.named('Array', 'global', [Type.from(tokenfor<LoggingConfig>())])]],
-        'singleton');
+      builder.services = builder.services.addClass(typefor<ILoggerProviderConfigFactory>(), LoggerProviderConfigFactory,
+        [[Type.named('Array', 'global', [typefor<LoggingConfig>()])]], 'singleton');
       const hole = Type.placeholder('$1');
-      builder.services = builder.services.addClass(openLoggerProviderConfigType(hole), LoggerProviderConfig, [[
-        tokenfor<ILoggerProviderConfigFactory>(),
+      builder.services = builder.services.addClass(loggerProviderConfigType(hole), LoggerProviderConfig, [[
+        typefor<ILoggerProviderConfigFactory>(),
         hole,
       ]], 'singleton');
 
@@ -83,9 +82,9 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       builder.services = builder.services.addValue(changeTokenSourceToken(optionsToken),
         new ConfigChangeTokenSource(config));
 
-      builder.services = builder.services.addValue(tokenfor<LoggingConfig>(), new LoggingConfig(config));
+      builder.services = builder.services.addValue(typefor<LoggingConfig>(), new LoggingConfig(config));
       return builder;
     },
   };
 
-registerAugmentations(tokenfor<ILoggingBuilder>(), LoggingBuilderConfigAugmentations);
+registerAugmentations(typefor<ILoggingBuilder>(), LoggingBuilderConfigAugmentations);
