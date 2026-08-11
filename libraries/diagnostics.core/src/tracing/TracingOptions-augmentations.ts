@@ -1,7 +1,5 @@
 // The TracingOptions-targeted rule mutators: the value-object counterparts of
-// the same-named ITracingBuilder methods, distinguished only by receiver. A
-// CLOSED set -- TracingOptions is this package's own concrete class -- so the
-// install is a direct applyAugmentations, in ../options-install.
+// the same-named ITracingBuilder methods, distinguished only by receiver.
 
 import type { AugmentationSet } from '@rhombus-std/primitives';
 
