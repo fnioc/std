@@ -9,15 +9,15 @@
 
 // A named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
-import type { AddChain } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown> {
+  interface Manifest<Scopes extends string = any> {
     /**
      * Registers an `IOptions<T>` wrapping the resolved `T`. Returns a NEW
      * manifest carrying the registration, still open at the `scope` and `key`
      * slots — the result must be kept.
      */
-    addOptions<T>(): AddChain<Scopes, 'scope' | 'key', false>;
+    addOptions<T>(): Manifest<Scopes>;
   }
 }

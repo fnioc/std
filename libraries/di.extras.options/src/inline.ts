@@ -2,13 +2,13 @@
 // build, not executed at runtime. Not re-exported by ./index.ts — kept out
 // of the bundle deliberately.
 
-import type { Manifest, Token } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { IOptions } from '@rhombus-std/options';
 import { registerInlineBodies, tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 
 /** Receiver shape the sugar body is compiled against. */
 interface IInlineOptionsTarget {
-  addOptions(token: Token, tToken: Token): Manifest;
+  addOptions(token: string, tToken: string): Manifest;
 }
 
 /**
