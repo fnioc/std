@@ -324,6 +324,11 @@ func (b *bodyExtractor) locateImpl(packageDir, implName string) (string, *shimas
 // is the defense-in-depth twin of the authoring lint's freeIdentifier rule.
 func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 	allowed := map[string]bool{}
+	// A receiver named as a leading parameter is a value reference like any other;
+	// it is simply bound to the receiver rather than to an argument.
+	if rb.ReceiverParam != "" {
+		allowed[rb.ReceiverParam] = true
+	}
 	for _, p := range rb.Params {
 		allowed[strings.TrimPrefix(p, "...")] = true
 	}
