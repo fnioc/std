@@ -80,7 +80,7 @@ export namespace Type {
    * this, so they cannot drift.
    */
   export function collection(element: Type): NamedType {
-    return factory.named('Array', 'global', [element]);
+    return factory.named('Iterable', 'global', [element]);
   }
 
   /**
