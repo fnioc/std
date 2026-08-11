@@ -3,7 +3,7 @@
 //
 // Dual export: the receiver-first functions are exported plain (the standalone
 // surface) and also registered against the `ILogger` token as one set, so every
-// concrete logger decorated with `@augment(tokenfor<ILogger>())` gains them as
+// concrete logger decorated with `@augment(typefor<ILogger>())` gains them as
 // methods.
 //
 // Each level collapses to two call forms — `(logger, message, ...args)` and
@@ -14,7 +14,7 @@
 
 import { type AugmentationSet2, type Flatten, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
 import type { ILogger } from './ILogger';
@@ -125,7 +125,7 @@ declare module '@rhombus-std/logging.core' {
 /**
  * Registered against the `ILogger` token below and reachable standalone as
  * `LoggerAugmentations.logInformation(logger, ...)`; a concrete logger class
- * decorated with `@augment(tokenfor<ILogger>())` gains the members as methods.
+ * decorated with `@augment(typefor<ILogger>())` gains the members as methods.
  */
 export const LoggerAugmentations: AugmentationSet2<ILogger, Flatten<ILoggerAugmentations & ILoggerStandaloneWrappers>> =
   { log, beginScope, logTrace, logDebug, logInformation, logWarning, logError, logCritical };
@@ -162,4 +162,4 @@ const loggerMerge = {
   },
 } satisfies MergeStrategies;
 
-registerAugmentations(tokenfor<ILogger>(), LoggerAugmentations, loggerMerge);
+registerAugmentations(typefor<ILogger>(), LoggerAugmentations, loggerMerge);

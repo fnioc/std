@@ -4,7 +4,7 @@
 
 import type { EventId, ILogger, ILoggerFactory, ILoggerProvider, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
@@ -12,7 +12,7 @@ const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
 // Binds the `ILogger` interface onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto `NullLogger<T>`, beside the
-// `@augment(tokenfor<ILogger>())` install below.
+// `@augment(typefor<ILogger>())` install below.
 export interface NullLogger<T = unknown> extends ILogger<T> {}
 
 /**
@@ -26,7 +26,7 @@ export interface NullLogger<T = unknown> extends ILogger<T> {}
  * every `ILogger<T>` slot; `new NullLogger<Foo>()` hands a freshly-typed no-op
  * to callers that want one.
  */
-@augment(tokenfor<ILogger>())
+@augment(typefor<ILogger>())
 export class NullLogger<T = unknown> implements ILogger<T> {
   /** The shared no-op logger instance, typed `NullLogger<unknown>`. */
   public static readonly instance: NullLogger = new NullLogger();
@@ -62,7 +62,7 @@ export class NullLoggerProvider implements ILoggerProvider {
 /** An {@link ILoggerFactory} that creates {@link NullLogger} instances. */
 // `@augment` installs the runtime `createLogger(type)` dispatcher — see
 // ./LoggerFactory.ts; not visible in the static type.
-@augment(tokenfor<ILoggerFactory>())
+@augment(typefor<ILoggerFactory>())
 export class NullLoggerFactory implements ILoggerFactory {
   /** The shared no-op factory instance. */
   public static readonly instance: NullLoggerFactory = new NullLoggerFactory();

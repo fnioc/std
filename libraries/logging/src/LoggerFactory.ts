@@ -16,7 +16,7 @@ import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type IL
 import { type IOptions, Options } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
@@ -36,7 +36,7 @@ interface ProviderRegistration {
 // `@augment` installs the registry's `createLogger(type)` dispatcher onto this
 // factory's prototype at runtime (see logging.core's logger-factory-augmentations.ts) —
 // not visible in the static type.
-@augment(tokenfor<ILoggerFactory>())
+@augment(typefor<ILoggerFactory>())
 export class LoggerFactory implements ILoggerFactory {
   readonly #loggers = new Map<string, Logger>();
   readonly #providerRegistrations: ProviderRegistration[] = [];
@@ -184,7 +184,7 @@ export class LoggerFactory implements ILoggerFactory {
 }
 
 /** Wraps a container-resolved {@link ILoggerFactory} so disposing the factory disposes the owning container scope. */
-@augment(tokenfor<ILoggerFactory>())
+@augment(typefor<ILoggerFactory>())
 class DisposingLoggerFactory implements ILoggerFactory {
   public constructor(private readonly factory: ILoggerFactory, private readonly provider: ServiceProvider) {}
 

@@ -6,7 +6,7 @@
 
 import type { NamedType } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { EventId } from './EventId';
 import type { ILogger } from './ILogger';
@@ -15,7 +15,7 @@ import type { LogLevel } from './LogLevel';
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto `Logger<T>`, present and
-// future, beside the `@augment(tokenfor<ILogger>())` install below.
+// future, beside the `@augment(typefor<ILogger>())` install below.
 export interface Logger<T> extends ILogger<T> {}
 
 /**
@@ -23,7 +23,7 @@ export interface Logger<T> extends ILogger<T> {}
  * {@link ILoggerFactory}. Injected as `ILogger<T>` so a service gets a logger
  * categorized by its own type without spelling the category string.
  */
-@augment(tokenfor<ILogger>())
+@augment(typefor<ILogger>())
 export class Logger<T> implements ILogger<T> {
   readonly #logger: ILogger;
 

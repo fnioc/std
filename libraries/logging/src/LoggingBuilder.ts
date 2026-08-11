@@ -12,7 +12,7 @@
 import type { Manifest } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 
 // Binding the ILoggingBuilder interface onto the class flows every
 // augmentation of the interface — this package's `addProvider`/`addFilter`/…,
@@ -24,7 +24,7 @@ export interface LoggingBuilder extends ILoggingBuilder {}
 // set registered against it — this package's `LoggingBuilderProviderAugmentations`, plus
 // downstream `addConfig`/`addConsole` — is (re)installed onto the prototype,
 // whatever the import order.
-@augment(tokenfor<ILoggingBuilder>())
+@augment(typefor<ILoggingBuilder>())
 export class LoggingBuilder implements ILoggingBuilder {
   readonly #slot: ManifestSlot;
 

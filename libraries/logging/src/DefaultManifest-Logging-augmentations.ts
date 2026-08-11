@@ -32,7 +32,7 @@ import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, type NamedType, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
@@ -67,7 +67,7 @@ declare module '@rhombus-std/di.core' {
 }
 
 // Registered against the `ServiceManifest` augmentation token — the concrete
-// `ServiceManifestClass`, decorated with `@augment(tokenfor<IServiceManifest>())`
+// `ServiceManifestClass`, decorated with `@augment(typefor<IServiceManifest>())`
 // in di.core, pulls the member onto its prototype — and exported so the member
 // is also the standalone call form.
 export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManifest<string>,
@@ -112,4 +112,4 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
     },
   };
 
-registerAugmentations(tokenfor<Manifest>(), ServiceManifestLoggingAugmentations);
+registerAugmentations(typefor<Manifest>(), ServiceManifestLoggingAugmentations);

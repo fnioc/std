@@ -15,7 +15,7 @@
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
 // Keyed by the BUILDER, not by `builder.services`: the manifest chain is
@@ -58,4 +58,4 @@ export const BrowserConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder
     },
   };
 
-registerAugmentations(tokenfor<ILoggingBuilder>(), BrowserConsoleLoggerAugmentations);
+registerAugmentations(typefor<ILoggingBuilder>(), BrowserConsoleLoggerAugmentations);

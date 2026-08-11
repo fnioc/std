@@ -8,7 +8,7 @@
 
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleLike } from './ConsoleLike';
 
@@ -45,11 +45,11 @@ export function consoleMethodFor(logLevel: LogLevel): ConsoleMethod {
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto `BrowserConsoleLogger`, beside
-// the `@augment(tokenfor<ILogger>())` install below.
+// the `@augment(typefor<ILogger>())` install below.
 export interface BrowserConsoleLogger extends ILogger {}
 
 /** An {@link ILogger} that writes through the browser console global. */
-@augment(tokenfor<ILogger>())
+@augment(typefor<ILogger>())
 export class BrowserConsoleLogger implements ILogger {
   readonly #name: string;
   readonly #console: ConsoleLike;
