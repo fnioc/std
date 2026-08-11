@@ -9,7 +9,8 @@
 // Exercised through the public authoring surface only (black-box).
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory,
   MetricListenerConfigFactory, MetricsConfig, TracingConfig } from '@rhombus-std/diagnostics';
 import { METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
@@ -71,7 +72,7 @@ describe('DefaultActivityListenerConfigFactory', () => {
 
 describe('addMetrics registers the metrics factory', () => {
   test('resolves as a singleton fed by every addMetricsConfig call', () => {
-    let manifest = new ServiceManifest();
+    let manifest: Manifest = new DefaultManifest();
     manifest = manifest.addMetrics((metrics) => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
@@ -79,20 +80,25 @@ describe('addMetrics registers the metrics factory', () => {
     // Singletons cache only inside an open scope frame; the frameless provider
     // `build()` returns resolves everything transiently (di.core §"frameless").
     const provider = manifest.build().createScope('singleton');
-    const factory = provider.resolve<IMetricListenerConfigFactory>(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN);
+    const factory: IMetricListenerConfigFactory = provider.getRequiredService(
+      Type.from(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN),
+    );
     expect(factory).toBeInstanceOf(MetricListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
 
     // Singleton: repeated resolution yields the same instance.
-    expect(provider.resolve<IMetricListenerConfigFactory>(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN)).toBe(factory);
+    const factoryAgain: IMetricListenerConfigFactory = provider.getRequiredService(
+      Type.from(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN),
+    );
+    expect(factoryAgain).toBe(factory);
   });
 
   test('with no bound configuration the factory yields empty views', () => {
-    let manifest = new ServiceManifest();
+    let manifest: Manifest = new DefaultManifest();
     manifest = manifest.addMetrics();
 
-    const factory = manifest.build().createScope('singleton').resolve<IMetricListenerConfigFactory>(
-      METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
+    const factory: IMetricListenerConfigFactory = manifest.build().createScope('singleton').getRequiredService(
+      Type.from(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN),
     );
     expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
   });
@@ -100,15 +106,20 @@ describe('addMetrics registers the metrics factory', () => {
 
 describe('addTracing registers the tracing factory', () => {
   test('resolves as a singleton fed by every addTracingConfig call', () => {
-    let manifest = new ServiceManifest();
+    let manifest: Manifest = new DefaultManifest();
     manifest = manifest.addTracing((tracing) => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 
     const provider = manifest.build().createScope('singleton');
-    const factory = provider.resolve<ActivityListenerConfigFactory>(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN);
+    const factory: ActivityListenerConfigFactory = provider.getRequiredService(
+      Type.from(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN),
+    );
     expect(factory).toBeInstanceOf(DefaultActivityListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
-    expect(provider.resolve<ActivityListenerConfigFactory>(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN)).toBe(factory);
+    const factoryAgain: ActivityListenerConfigFactory = provider.getRequiredService(
+      Type.from(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN),
+    );
+    expect(factoryAgain).toBe(factory);
   });
 });

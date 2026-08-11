@@ -1,4 +1,5 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/di.core';
 import { Host } from '@rhombus-std/hosting/private/index';
 import { expect, test } from 'bun:test';
 
@@ -27,7 +28,7 @@ test('asHostBuilder replays accumulated configureServices onto the application b
 
   const host = appBuilder.build();
   expect(replayed).toBe(true);
-  expect(host.services.resolve<string>('test:Marker')).toBe('present');
+  expect(host.services.getRequiredService(Type.from('test:Marker'))).toBe('present');
 
   host[Symbol.dispose]();
 });

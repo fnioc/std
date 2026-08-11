@@ -12,7 +12,8 @@
 //     reaches every subscribed prototype -- the decorator's listener stays
 //     subscribed, so the bag re-installs on each later registerAugmentations.
 
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
 import { METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
 // The IMetricsBuilder augmentation-registry token is derived by `tokenfor<IMetricsBuilder>()`
@@ -34,12 +35,14 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // The call registered a IConfigureOptions<MetricsOptions> step on the
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
-    const configureSteps = builder.services.build().resolve<unknown[]>(`Array<${METRICS_CONFIGURE_TOKEN}>`);
+    const configureSteps: unknown[] = builder.services.build().getRequiredService(
+      Type.from(`Array<${METRICS_CONFIGURE_TOKEN}>`),
+    );
     expect(configureSteps).toHaveLength(1);
   });
 
   test('the config-binding member registered downstream reaches it too', () => {
-    const metrics = new HostingMetricsBuilder(new ServiceManifest());
+    const metrics = new HostingMetricsBuilder(new DefaultManifest());
     expect(metrics.addMetricsConfig).toBeInstanceOf(Function);
   });
 });
@@ -53,8 +56,8 @@ describe('late registration reaches every decorated class sharing the token', ()
     } });
 
     type Probed = { lateRegisteredProbe(): unknown; };
-    const hosting = new HostingMetricsBuilder(new ServiceManifest()) as unknown as Probed;
-    const diagnostics = new DiagnosticsMetricsBuilder(new ServiceManifest()) as unknown as Probed;
+    const hosting = new HostingMetricsBuilder(new DefaultManifest()) as unknown as Probed;
+    const diagnostics = new DiagnosticsMetricsBuilder(new DefaultManifest()) as unknown as Probed;
 
     expect(hosting.lateRegisteredProbe).toBeInstanceOf(Function);
     expect(diagnostics.lateRegisteredProbe).toBeInstanceOf(Function);

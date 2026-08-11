@@ -1,9 +1,21 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/di.core';
 import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TOKEN, HOST_ENVIRONMENT_TOKEN, HostBuilder,
   type IHostApplicationLifetime, type IHostedLifecycleService,
   type IHostEnvironment } from '@rhombus-std/hosting/private/index';
 import { HOSTED_SERVICE_TOKEN } from '@rhombus-std/hosting/private/internal/Host';
+import type { Func } from '@rhombus-toolkit/func';
 import { expect, test } from 'bun:test';
+
+async function waitUntil(condition: Func<[], boolean>, description: string): Promise<void> {
+  for (let spins = 0; spins < 100_000; spins++) {
+    if (condition()) {
+      return;
+    }
+    await Promise.resolve();
+  }
+  throw new Error(`Timed out waiting for ${description}.`);
+}
 
 test('Host.createDefaultBuilder returns a configured builder', () => {
   const builder = Host.createDefaultBuilder();
@@ -66,7 +78,9 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   builder.configureServices((_context, services) => services.addHostedService(Recorder, [[]]));
 
   const host = builder.build();
-  const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
+  const lifetime: IHostApplicationLifetime = host.services.getRequiredService(
+    Type.from(HOST_APPLICATION_LIFETIME_TOKEN),
+  );
   lifetime.applicationStarted.addEventListener('abort', () => events.push('applicationStarted'), { once: true });
   lifetime.applicationStopping.addEventListener('abort', () => events.push('applicationStopping'), { once: true });
   lifetime.applicationStopped.addEventListener('abort', () => events.push('applicationStopped'), { once: true });
@@ -83,7 +97,9 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
 test('IHostApplicationLifetime.stopApplication triggers applicationStopping directly', () => {
   const builder = new HostBuilder();
   const host = builder.build();
-  const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
+  const lifetime: IHostApplicationLifetime = host.services.getRequiredService(
+    Type.from(HOST_APPLICATION_LIFETIME_TOKEN),
+  );
 
   expect(lifetime.applicationStopping.aborted).toBe(false);
   lifetime.stopApplication();
@@ -119,9 +135,7 @@ test('BackgroundService: execute runs on start; stop aborts its stopping signal'
   await host.start();
 
   // start() kicks execute() without awaiting; wait for it to actually begin.
-  while (!executing) {
-    await Promise.resolve();
-  }
+  await waitUntil(() => executing, 'the background service to begin executing');
   expect(stoppingAborted).toBe(false);
 
   await host.stop();
@@ -177,7 +191,7 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
   });
 
   const host = builder.build();
-  const environment = host.services.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN);
+  const environment: IHostEnvironment = host.services.getRequiredService(Type.from(HOST_ENVIRONMENT_TOKEN));
 
   expect(environment.environmentName).toBe('Development');
   // The fluent method form is installed onto HostingEnvironment by @rhombus-std/hosting.

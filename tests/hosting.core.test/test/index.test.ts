@@ -1,11 +1,24 @@
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TOKEN,
   hostedServiceCollectionToken, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
-// Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
+// Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
-import { ServiceManifest } from '@rhombus-std/di';
+// Side-effect: installs `build` onto di.core's Manifest.
+import '@rhombus-std/di';
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
+import type { Func } from '@rhombus-toolkit/func';
 import { expect, test } from 'bun:test';
+
+async function waitUntil(condition: Func<[], boolean>, description: string): Promise<void> {
+  for (let spins = 0; spins < 100_000; spins++) {
+    if (condition()) {
+      return;
+    }
+    await Promise.resolve();
+  }
+  throw new Error(`Timed out waiting for ${description}.`);
+}
 
 test('entry point loads and exposes the abstractions surface', () => {
   expect(Environments.Development).toBe('Development');
@@ -83,9 +96,7 @@ test('BackgroundService[Symbol.dispose] unconditionally aborts the executing ope
   await worker.start(new AbortController().signal);
   // start() defers execute() through a microtask; wait for it to actually begin
   // running (and register its abort listener) before disposing.
-  while (!executing) {
-    await Promise.resolve();
-  }
+  await waitUntil(() => executing, 'the background service to begin executing');
   worker[Symbol.dispose]();
   await worker.executeTask;
   expect(aborted).toBe(true);
@@ -107,13 +118,13 @@ test('addHostedService registers many under one token; the collection resolves a
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new ServiceManifest();
+  let manifest = new DefaultManifest();
   manifest = manifest.addHostedService(A, [[]]);
   manifest = manifest.addHostedService(B, [[]]);
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services = scope.resolve<IHostedService[]>(hostedServiceCollectionToken());
+  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
 
   expect(services).toHaveLength(2);
   for (const service of services) {
@@ -125,9 +136,9 @@ test('addHostedService registers many under one token; the collection resolves a
 });
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
-  let manifest = new ServiceManifest();
+  let manifest = new DefaultManifest();
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services = scope.resolve<IHostedService[]>(hostedServiceCollectionToken());
+  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
   expect(services).toEqual([]);
 });

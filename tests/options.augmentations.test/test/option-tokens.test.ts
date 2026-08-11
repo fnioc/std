@@ -5,7 +5,8 @@
 // assembly picks it up like any other.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigChangeTokenSource, configureStepToken, postConfigureStepToken,
   validateStepToken } from '@rhombus-std/options.augmentations';
@@ -30,7 +31,7 @@ describe('the public slot-token grammar', () => {
     const config = new ConfigBuilder().addInMemoryCollection({ 'Widget:Url': 'http://first' })
       .build() as unknown as IConfigRoot;
 
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
     // What `configure(TOKEN, section)` does internally, spelled through the
     // public grammar: a custom configure step plus a bare change-token source.
@@ -40,7 +41,7 @@ describe('the public slot-token grammar', () => {
     services = services.addValue(changeTokenSourceToken(TOKEN), new ConfigChangeTokenSource(config));
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(TOKEN));
     expect(options.value).toEqual({ Url: 'http://first' });
 
     const seen: WidgetOptions[] = [];

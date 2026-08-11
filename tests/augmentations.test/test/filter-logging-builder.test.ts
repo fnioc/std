@@ -7,7 +7,8 @@
 // and resolves it. Covers both dual-export forms, both overload shapes, rule
 // accumulation across calls, and chaining.
 
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_TOKEN, LoggerFilterOptions,
   LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
@@ -30,12 +31,13 @@ function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
     'singleton',
   );
   const provider = services.build().createScope('singleton');
-  return provider.resolve<IOptions<LoggerFilterOptions>>(LOGGER_FILTER_OPTIONS_TOKEN).value;
+  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(LOGGER_FILTER_OPTIONS_TOKEN));
+  return options.value;
 }
 
 describe('builder-level addFilter — configure-step bridge into IOptions<LoggerFilterOptions>', () => {
   test('a (category, level) rule flows through the pipeline into the resolved options', () => {
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addFilter('Cat', LogLevel.Warning); // method form
 
     const options = resolveFilterOptions(builder);
@@ -47,7 +49,7 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
   });
 
   test('a raw (provider, category, level) => boolean filter flows through as a filter rule', () => {
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     const filter = (_provider: string | undefined, _category: string | undefined, level: LogLevel): boolean =>
       level >= LogLevel.Error;
     builder.addFilter(filter);
@@ -66,10 +68,10 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
   test('method form and standalone member form register the same rule', () => {
     const filter = (): boolean => true;
 
-    const viaMethodBuilder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const viaMethodBuilder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     viaMethodBuilder.addFilter(filter); // method form
 
-    const viaMemberBuilder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const viaMemberBuilder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     FilterLoggingBuilderExtensions.addFilter(viaMemberBuilder, filter); // standalone member form
 
     const viaMethod = resolveFilterOptions(viaMethodBuilder);
@@ -80,7 +82,7 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
   });
 
   test('repeated addFilter calls accumulate rules in call order', () => {
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addFilter('First', LogLevel.Debug).addFilter('Second', LogLevel.Error);
 
     const options = resolveFilterOptions(builder);
@@ -89,7 +91,7 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
   });
 
   test('both forms return the builder for chaining', () => {
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
 
     expect(builder.addFilter('Cat', LogLevel.Information)).toBe(builder);
     expect(FilterLoggingBuilderExtensions.addFilter(builder, (_p, _c, _l) => true)).toBe(builder);

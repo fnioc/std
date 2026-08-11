@@ -1,3 +1,4 @@
+import { Type } from '@rhombus-std/di.core';
 // The application builder's services slot (§114). `HostApplicationBuilder`
 // exposes `services` as ONE mutable slot over an immutable manifest chain, and
 // hands that same slot to its `logging` and `metrics` sub-builders. This suite
@@ -34,7 +35,9 @@ test('builder.logging registrations reach the manifest build() reads', () => {
 
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
-  const providers = builder.services.build().resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
+  const providers: ILoggerProvider[] = builder.services.build().getRequiredService(
+    Type.from(`Array<${LOGGER_PROVIDER_TOKEN}>`),
+  );
   expect(providers).toContain(marker);
 });
 
@@ -48,9 +51,9 @@ test('builder.services and builder.logging registrations both survive into the h
   builder.services = builder.services.addValue('test:Second', 'second');
 
   const host = builder.build();
-  expect(host.services.resolve<string>('test:First')).toBe('first');
-  expect(host.services.resolve<string>('test:Second')).toBe('second');
-  expect(host.services.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`)).toContain(marker);
+  expect(host.services.getRequiredService(Type.from('test:First'))).toBe('first');
+  expect(host.services.getRequiredService(Type.from('test:Second'))).toBe('second');
+  expect(host.services.getRequiredService(Type.from(`Array<${LOGGER_PROVIDER_TOKEN}>`))).toContain(marker);
 
   host[Symbol.dispose]();
 });
@@ -62,7 +65,7 @@ test('builder.metrics shares the same slot as builder.services', () => {
   builder.metrics.services = builder.metrics.services.addValue('test:ViaMetrics', 'yes');
 
   expect(builder.services).not.toBe(before);
-  expect(builder.services.build().resolve<string>('test:ViaMetrics')).toBe('yes');
+  expect(builder.services.build().getRequiredService(Type.from('test:ViaMetrics'))).toBe('yes');
 });
 
 test('asHostBuilder() replays its delegates into the live slot, not a snapshot', () => {
@@ -75,8 +78,8 @@ test('asHostBuilder() replays its delegates into the live slot, not a snapshot',
   builder.services = builder.services.addValue('test:Early', 'early');
 
   const host = builder.build();
-  expect(host.services.resolve<string>('test:Early')).toBe('early');
-  expect(host.services.resolve<string>('test:Late')).toBe('late');
+  expect(host.services.getRequiredService(Type.from('test:Early'))).toBe('early');
+  expect(host.services.getRequiredService(Type.from('test:Late'))).toBe('late');
 
   host[Symbol.dispose]();
 });

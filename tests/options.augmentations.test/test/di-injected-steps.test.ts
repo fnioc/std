@@ -5,7 +5,8 @@
 // (no transformer) -- the caller supplies <T, Deps> explicitly, since the token
 // array alone (all strings) can't recover the Deps tuple by inference.
 
-import { type IServiceManifest, ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { type IOptions, OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -31,7 +32,7 @@ function baseOptions(): WidgetOptions {
 
 describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
     services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
@@ -40,13 +41,13 @@ describe('configure — DI-injected', () => {
       });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value.url).toBe('http://svc');
   });
 
   test('resolves several deps, injected positionally in token order', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
     services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
@@ -59,13 +60,13 @@ describe('configure — DI-injected', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value).toEqual({ url: 'http://svc', retries: 4, note: '' });
   });
 
   test('a DI configure composes with a plain configure delegate', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
@@ -77,7 +78,7 @@ describe('configure — DI-injected', () => {
       });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value.url).toBe('http://svc');
     expect(options.value.note).toBe('plain');
@@ -86,7 +87,7 @@ describe('configure — DI-injected', () => {
 
 describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addValue(SUFFIX_TOKEN, { text: '!' });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
@@ -98,7 +99,7 @@ describe('postConfigure — DI-injected', () => {
       });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value.note).toBe('base!');
   });
@@ -107,8 +108,8 @@ describe('postConfigure — DI-injected', () => {
 describe('validate — DI-injected', () => {
   const LIMIT_TOKEN = 'test:Limit';
 
-  function servicesWithLimit(size: number, max: number): IServiceManifest<'singleton'> {
-    let services = new ServiceManifest<'singleton'>();
+  function servicesWithLimit(size: number, max: number): Manifest<'singleton'> {
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addValue(LIMIT_TOKEN, { max });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size })).as(
       'singleton',
@@ -123,7 +124,10 @@ describe('validate — DI-injected', () => {
 
     const provider = services.build().createScope('singleton');
 
-    expect(() => provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN)).not.toThrow();
+    expect(() => {
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      return options;
+    }).not.toThrow();
   });
 
   test('a failing predicate surfaces the failure message', () => {
@@ -133,8 +137,14 @@ describe('validate — DI-injected', () => {
 
     const provider = services.build().createScope('singleton');
 
-    expect(() => provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN)).toThrow(OptionsValidationError);
-    expect(() => provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN)).toThrow('retries over limit');
+    expect(() => {
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      return options;
+    }).toThrow(OptionsValidationError);
+    expect(() => {
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      return options;
+    }).toThrow('retries over limit');
   });
 
   test('a failing predicate with no message uses the default', () => {
@@ -144,6 +154,9 @@ describe('validate — DI-injected', () => {
 
     const provider = services.build().createScope('singleton');
 
-    expect(() => provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN)).toThrow('A validation error has occurred.');
+    expect(() => {
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      return options;
+    }).toThrow('A validation error has occurred.');
   });
 });

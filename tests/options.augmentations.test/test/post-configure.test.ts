@@ -7,7 +7,8 @@
 // DI-injected form is covered in di-injected-steps.test.ts; this closes the
 // bare form, which was implemented but had no manifest-surface caller (#128).
 
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions, IPostConfigureOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -20,7 +21,7 @@ const OPTIONS_TOKEN = 'test:WidgetOptions';
 
 describe('postConfigure — bare form', () => {
   test('a plain delegate runs after configure, seeing the configured value', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' })).as('singleton');
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix = 'base';
@@ -30,7 +31,7 @@ describe('postConfigure — bare form', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     // 'base!' proves ordering: the post-configure ran after the configure and
     // appended to its result, not before it.
@@ -38,7 +39,7 @@ describe('postConfigure — bare form', () => {
   });
 
   test('a pre-built IPostConfigureOptions object runs after configure', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' })).as('singleton');
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix = 'base';
@@ -49,13 +50,13 @@ describe('postConfigure — bare form', () => {
     services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, step);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value.suffix).toBe('base!');
   });
 
   test('every registered post-configure step runs, in registration order', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: 'base' })).as('singleton');
     services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix += '-a';
@@ -65,7 +66,7 @@ describe('postConfigure — bare form', () => {
     } });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value.suffix).toBe('base-a-b');
   });

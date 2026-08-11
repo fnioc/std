@@ -7,8 +7,8 @@
 // merge makes the augmented members part of IMetricsBuilder/ITracingBuilder,
 // so a bare `{ services }` literal no longer satisfies the interfaces).
 
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest as Manifest, IServiceManifestBase } from '@rhombus-std/di.core';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TOKEN,
   METRICS_LISTENER_TOKEN, MetricsBuilderAugmentations, TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN,
@@ -27,13 +27,14 @@ function listener(name: string): IMetricsListener {
  * immutable, so the manifest each builder was constructed with never sees a
  * single one of these registrations — only the one the builder now holds does.
  */
-function registered(builder: { services: IServiceManifestBase; }, token: string): unknown[] {
-  return (builder.services as Manifest).build().resolve<unknown[]>(`Array<${token}>`);
+function registered(builder: { services: Manifest; }, token: string): unknown[] {
+  const results: unknown[] = builder.services.build().getRequiredService(Type.from(`Array<${token}>`));
+  return results;
 }
 
 describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   test('removes every IMetricsListener registration', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
     MetricsBuilderAugmentations.addMetricsListener(builder, listener('a'));
@@ -45,7 +46,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   });
 
   test('listeners added AFTER a clear survive', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
     MetricsBuilderAugmentations.addMetricsListener(builder, listener('stale'));
@@ -57,7 +58,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   });
 
   test('only the listener slot is cleared -- other registrations survive', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
     MetricsBuilderAugmentations.addMetricsListener(builder, listener('a'));
@@ -68,7 +69,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   });
 
   test('the method form reaches the concrete MetricsBuilder through the registry', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder = new MetricsBuilder(manifest);
 
     expect(builder.clearMetricsListeners).toBeInstanceOf(Function);
@@ -80,7 +81,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
 
 describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   test('removes every ActivityListenerBuilder registration', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
     TracingBuilderAugmentations.addTracingListener(builder, 'L1', () => {});
@@ -92,7 +93,7 @@ describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   });
 
   test('listeners added AFTER a clear survive; rules are untouched', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
     TracingBuilderAugmentations.addTracingListener(builder, 'stale', () => {});
@@ -108,7 +109,7 @@ describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   });
 
   test('the method form reaches the concrete TracingBuilder through the registry', () => {
-    const manifest = new ServiceManifest();
+    const manifest = new DefaultManifest();
     const builder = new TracingBuilder(manifest);
 
     expect(builder.clearTracingListeners).toBeInstanceOf(Function);

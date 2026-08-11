@@ -10,7 +10,9 @@
 // to the inline `tokenfor<IOptions<LoggerFilterOptions>>()` the library derives.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { ServiceManifest } from '@rhombus-std/di';
+// Side-effect: installs `build` onto di.core's Manifest.
+import '@rhombus-std/di';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import '@rhombus-std/logging.config';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -28,10 +30,11 @@ function rootWith(data: Record<string, string>): IConfigRoot {
 function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   // The chain is immutable, so the manifest handed to the builder never sees
   // `addConfig`'s registrations — build the one the BUILDER holds afterwards.
-  const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+  const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
   builder.addConfig(config);
   const provider = builder.services.build().createScope('singleton');
-  return provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);
+  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(FILTER_OPTIONS_TOKEN));
+  return options;
 }
 
 describe('addConfig — the LoggerFilterOptions pipeline', () => {
@@ -63,7 +66,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
   test('the bind is LAZY — a write after registration but before first resolve is seen', () => {
     const config = rootWith({ 'LogLevel:Default': 'Information' });
 
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addConfig(config);
 
     // Mutate AFTER registration: an eager bind would have snapshotted
@@ -71,7 +74,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     config.set('LogLevel:Default', 'Error');
 
     const provider = builder.services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);
+    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(FILTER_OPTIONS_TOKEN));
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Error);
   });
 
@@ -106,11 +109,11 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     const { LoggingBuilderConfigAugmentations } = await import('@rhombus-std/logging.config');
     const config = rootWith({ 'LogLevel:Default': 'Debug' });
 
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     LoggingBuilderConfigAugmentations.addConfig(builder, config);
 
     const provider = builder.services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<LoggerFilterOptions>>(FILTER_OPTIONS_TOKEN);
+    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(FILTER_OPTIONS_TOKEN));
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Debug);
   });
 });

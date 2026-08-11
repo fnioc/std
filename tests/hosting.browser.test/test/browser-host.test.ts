@@ -1,3 +1,4 @@
+import { Type } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import { BROWSER_LIFETIME_OPTIONS_TOKEN, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
   createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TOKEN, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
@@ -40,20 +41,20 @@ test('the facade composes settings config, browser environment, console logging,
   const host = builder.build();
 
   // Logging: the browser console provider is registered.
-  const providers = host.services.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
+  const providers: ILoggerProvider[] = host.services.getRequiredService(Type.from(`Array<${LOGGER_PROVIDER_TOKEN}>`));
   expect(providers.some((provider) => {
     return provider instanceof BrowserConsoleLoggerProvider;
   })).toBe(true);
 
   // Lifetime: the BrowserLifetime registration wins over the NullLifetime
   // default (last registration wins), with the configured options.
-  const lifetime = host.services.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
+  const lifetime: IHostLifetime = host.services.getRequiredService(Type.from(HOST_LIFETIME_TOKEN));
   expect(lifetime).toBeInstanceOf(BrowserLifetime);
-  const options = host.services.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN);
+  const options: BrowserLifetimeOptions = host.services.getRequiredService(Type.from(BROWSER_LIFETIME_OPTIONS_TOKEN));
   expect(options.stopOnPagehide).toBe(false);
 
   // The bridge: registered as a value, eagerly attached to the page context.
-  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  const bridge: PageLifecycleEvents = host.services.getRequiredService(Type.from(PAGE_LIFECYCLE_EVENTS_TOKEN));
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.registeredTypes).toContain('visibilitychange');
 
@@ -68,7 +69,7 @@ test('host stop disposes the single bridge listener set — no leak across host 
 
   // The bridge — the single DOM-listening component — attaches its five
   // listeners eagerly at composition.
-  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  const bridge: PageLifecycleEvents = host.services.getRequiredService(Type.from(PAGE_LIFECYCLE_EVENTS_TOKEN));
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 

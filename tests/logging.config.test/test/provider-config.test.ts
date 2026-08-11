@@ -7,7 +7,9 @@
 // (`"<declaring-package>:<TypeName>"` and its closed-generic form).
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { ServiceManifest } from '@rhombus-std/di';
+// Side-effect: installs `build` onto di.core's Manifest.
+import '@rhombus-std/di';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory,
   loggerProviderConfigToken } from '@rhombus-std/logging.config';
@@ -30,7 +32,7 @@ describe('addConfig() — provider-configuration services', () => {
   test('the factory chains the provider-named section of every registered configuration', () => {
     // The chain is immutable, so build the manifest the BUILDER holds after
     // both addConfig calls — not the one it was constructed with.
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addConfig(rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3' }));
     builder.addConfig(rootWith({
       'FakeProvider:Format': 'text', // later configuration wins on conflict
@@ -38,7 +40,7 @@ describe('addConfig() — provider-configuration services', () => {
     }));
 
     const provider = builder.services.build().createScope('singleton');
-    const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
+    const factory: ILoggerProviderConfigFactory = provider.getRequiredService(Type.from(FACTORY_TOKEN));
     const config = factory.getConfig(FAKE_PROVIDER_TOKEN);
 
     expect(config.get('Format')).toBe('text');
@@ -50,11 +52,11 @@ describe('addConfig() — provider-configuration services', () => {
 
   test('the chained provider configuration is LIVE across a reload', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addConfig(config);
 
     const provider = builder.services.build().createScope('singleton');
-    const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
+    const factory: ILoggerProviderConfigFactory = provider.getRequiredService(Type.from(FACTORY_TOKEN));
     const providerConfig = factory.getConfig(FAKE_PROVIDER_TOKEN);
     expect(providerConfig.get('Format')).toBe('json');
 
@@ -70,24 +72,25 @@ describe('addConfig() — provider-configuration services', () => {
   });
 
   test('the open ILoggerProviderConfig<$1> registration closes per provider', () => {
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
 
     const provider = builder.services.build().createScope('singleton');
     const token = loggerProviderConfigToken(FAKE_PROVIDER_TOKEN);
-    const providerConfig = provider.resolve<ILoggerProviderConfig<unknown>>(token);
+    const providerConfig: ILoggerProviderConfig<unknown> = provider.getRequiredService(Type.from(token));
 
     expect(providerConfig.config.get('Format')).toBe('json');
     // Singleton-tagged: the closing caches per closed token.
-    expect(provider.resolve<ILoggerProviderConfig<unknown>>(token)).toBe(providerConfig);
+    const providerConfigAgain: ILoggerProviderConfig<unknown> = provider.getRequiredService(Type.from(token));
+    expect(providerConfigAgain).toBe(providerConfig);
   });
 
   test('the no-arg method form registers the services without a filter pipeline', () => {
-    const builder = new LoggingBuilder(new ServiceManifest<'singleton'>());
+    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
     builder.addConfig();
 
     const provider = builder.services.build().createScope('singleton');
-    const factory = provider.resolve<ILoggerProviderConfigFactory>(FACTORY_TOKEN);
+    const factory: ILoggerProviderConfigFactory = provider.getRequiredService(Type.from(FACTORY_TOKEN));
     // No LoggingConfig registered yet: every provider section is empty.
     expect(factory.getConfig(FAKE_PROVIDER_TOKEN).get('Format')).toBeUndefined();
   });

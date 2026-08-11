@@ -3,7 +3,8 @@
 // Exercised through the authoring surface with hand-written tokens (no
 // transformer), the way the host resolves the validator at boot.
 
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { type IStartupValidator, OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -20,43 +21,43 @@ const STARTUP_VALIDATOR_TOKEN = '@rhombus-std/options:IStartupValidator';
 
 describe('validateOnStart', () => {
   test('registers a resolvable IStartupValidator', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 })).as('singleton');
     services = services.validateOnStart(OPTIONS_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator = provider.resolve<IStartupValidator>(STARTUP_VALIDATOR_TOKEN);
+    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
 
     expect(typeof validator.validate).toBe('function');
   });
 
   test('valid options -> validate() does not throw', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 })).as('singleton');
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator = provider.resolve<IStartupValidator>(STARTUP_VALIDATOR_TOKEN);
+    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
 
     expect(() => validator.validate()).not.toThrow();
   });
 
   test('a failing validate step surfaces as OptionsValidationError', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 })).as('singleton');
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator = provider.resolve<IStartupValidator>(STARTUP_VALIDATOR_TOKEN);
+    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
 
     expect(() => validator.validate()).toThrow(OptionsValidationError);
     expect(() => validator.validate()).toThrow('port must be positive');
   });
 
   test('two failing registrations aggregate into one AggregateError', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 })).as('singleton');
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'first bad');
     services = services.validateOnStart(OPTIONS_TOKEN);
@@ -66,7 +67,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OTHER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator = provider.resolve<IStartupValidator>(STARTUP_VALIDATOR_TOKEN);
+    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
 
     try {
       validator.validate();

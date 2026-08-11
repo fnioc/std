@@ -663,6 +663,7 @@
         "@rhombus-std/caching.core": "workspace:*",
         "@rhombus-std/caching.memory": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
@@ -821,6 +822,7 @@
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/diagnostics": "workspace:*",
         "@rhombus-std/diagnostics.core": "workspace:*",
       },
@@ -870,6 +872,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/hosting.core": "workspace:*",
       },
@@ -879,6 +882,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
@@ -926,6 +930,7 @@
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.config": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
@@ -983,6 +988,7 @@
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
@@ -992,6 +998,7 @@
       "name": "@rhombus-std/options.test",
       "version": "0.0.0",
       "devDependencies": {
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
       },

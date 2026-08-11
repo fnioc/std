@@ -1,4 +1,4 @@
-import type { IServiceManifest, Token } from '@rhombus-std/di.core';
+import type { Manifest, Token } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike,
   consoleMethodFor } from '@rhombus-std/logging.browserconsole';
@@ -11,13 +11,13 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
+function fakeServices(): { services: Manifest; values: Array<[Token, unknown]>; } {
   const values: Array<[Token, unknown]> = [];
-  const make = (): IServiceManifest => {
-    return { addValue(token: Token, value: unknown): IServiceManifest {
+  const make = (): Manifest => {
+    return { addValue(token: Token, value: unknown): Manifest {
       values.push([token, value]);
       return make();
-    } } as unknown as IServiceManifest;
+    } } as unknown as Manifest;
   };
   return { services: make(), values };
 }
