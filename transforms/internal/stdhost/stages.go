@@ -15,6 +15,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
@@ -39,17 +40,20 @@ const stagePrefix = "rhombusstd_"
 // call — it runs before nameof so nameof still lowers the call's token argument,
 // and later stages leave the synthesized object untouched), then nameof (its
 // token lowering and import elision, including the inline stage's synthetic
-// nameof calls), then signatureof (the dependency-signature array lowering — the
-// value-argument `signatureof(ctor)` AND its type-argument minting siblings
-// `signaturefor<T>()` / `signaturesfor<T>()`, including the inline stage's
-// synthetic calls), then keyof (the keyed-registration KEY lowering, including
-// the inline stage's synthetic keyof calls), then valueof (the literal-value
-// lowering of `valueof<Scope>()` — the `.as<Scope>()` sugar's scope half), then
-// singular / factory (the resolve-family predicate + value primitives), then fold
-// (dead-branch pruning of the boolean-literal ternaries singular/factory produce),
-// then schemaof (the config `.withType<T>()` sugar's schema-literal lowering). All
-// stages own DISJOINT match sets, so correctness never depends on this order — it
-// is fixed only for reproducible output.
+// nameof calls), then typefor (the structured `Type.*` lowering of
+// `typefor<T>()` / `typefor(value)` — the runtime-`Type` sibling of nameof's flat
+// string token, disjoint from it by callee), then signatureof (the
+// dependency-signature array lowering — the value-argument `signatureof(ctor)`
+// AND its type-argument minting siblings `signaturefor<T>()` /
+// `signaturesfor<T>()`, including the inline stage's synthetic calls), then keyof
+// (the keyed-registration KEY lowering, including the inline stage's synthetic
+// keyof calls), then valueof (the literal-value lowering of `valueof<Scope>()` —
+// the `.as<Scope>()` sugar's scope half), then singular / factory (the
+// resolve-family predicate + value primitives), then fold (dead-branch pruning of
+// the boolean-literal ternaries singular/factory produce), then schemaof (the
+// config `.withType<T>()` sugar's schema-literal lowering). All stages own
+// DISJOINT match sets, so correctness never depends on this order — it is fixed
+// only for reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
 // without mutating shared state.
@@ -58,6 +62,7 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "inline", Build: buildInline},
 		{Name: stagePrefix + "mergesynth", Build: buildMergesynth},
 		{Name: stagePrefix + "nameof", Build: buildNameof},
+		{Name: stagePrefix + "typefor", Build: buildTypefor},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "keyof", Build: buildKeyof},
 		{Name: stagePrefix + "valueof", Build: buildValueof},
@@ -106,6 +111,18 @@ func buildMergesynth(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink)
 // its own today; any it did raise would be hard errors.
 func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return nameoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
+// buildTypefor activates the typefor primitive stage. It lowers each
+// `typefor<T>()` / `typefor(value)` to the `Type.*` factory tree its argument
+// derives, folding an immediate known-accessor property access (`.instanceType`,
+// `.returnType`, `.args`, `.value`, `.tag`, `.type`, `.kind`) through to the
+// surviving sub-tree. It raises no diagnostics of its own; any it did raise
+// would be hard errors.
+func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return typefortransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

@@ -55,6 +55,11 @@ import (
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
 // family's `@rhombus-std/config.extras` (a body imports it via a
 // package-relative specifier from within that package).
+// `typefor<T>()` / `typefor(value)` bind a TYPE or VALUE argument and lower to a
+// structured runtime `Type` value (the `Type.*` factory tree the argument
+// spells) — the sibling of `tokenfor` that derives the runtime shape instead of
+// the flat string token. It homes beside `tokenfor` / `tokenof` in
+// `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
 	"tokenfor":       "@rhombus-std/primitives.extras",
 	"tokenof":        "@rhombus-std/primitives.extras",
@@ -70,6 +75,7 @@ var knownPrimitives = map[string]string{
 	"returntokenfor": "@rhombus-std/primitives.extras",
 	"paramtokensfor": "@rhombus-std/primitives.extras",
 	"schemaof":       "@rhombus-std/config.extras",
+	"typefor":        "@rhombus-std/primitives.extras",
 }
 
 // knownRuntimeCallees maps each RUNTIME helper a certified body may CALL — as
