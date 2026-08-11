@@ -1,4 +1,4 @@
-import { Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Manifest, NotImplementedError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { augment, type IServiceProvider, type Token, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { Engine } from './internal/Engine.js';
@@ -68,5 +68,5 @@ export class ServiceProvider {
  * so it is a plain error rather than anything the container taxonomy would invite you to catch.
  */
 function notImplemented(member: string): never {
-  throw new Error(`ServiceProvider.${member} is not implemented.`);
+  throw new NotImplementedError(`ServiceProvider.${member}`);
 }

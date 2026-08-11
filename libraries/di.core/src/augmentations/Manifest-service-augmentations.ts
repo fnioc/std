@@ -2,6 +2,7 @@ import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } fr
 import { typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { describe, type IComplete, type Unstarted } from '../builder';
+import { NotImplementedError } from '../Errors';
 import { Manifest } from '../Manifest';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 
@@ -10,6 +11,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
   addFactory(type: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
     key?: string): this;
   addValue(type: Token | Type, value: unknown, key?: string): this;
+  as(scope: Scopes): this;
 }
 
 declare module '@rhombus-std/di.core' {
@@ -50,6 +52,9 @@ export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IM
         throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
       }
       return manifest._add(ServiceDescriptor.value(key === undefined ? type : Type.tag(type, key), value));
+    },
+    as(_manifest, _scope) {
+      throw new NotImplementedError('Manifest.as');
     },
   };
 

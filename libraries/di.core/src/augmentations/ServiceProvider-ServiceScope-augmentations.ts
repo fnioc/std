@@ -1,9 +1,10 @@
 import { type AugmentationSet2, type IServiceProvider, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import { NotImplementedError } from '../Errors';
 import { AsyncServiceScope, type IServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
 type IServiceProviderServiceScopeAugmentations = {
-  createScope(): IServiceScope;
+  createScope(name?: string): IServiceScope;
   createAsyncScope(): AsyncServiceScope;
 };
 declare module '@rhombus-std/primitives' {
@@ -11,12 +12,12 @@ declare module '@rhombus-std/primitives' {
 }
 export const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IServiceProvider,
   IServiceProviderServiceScopeAugmentations> = {
-    createScope(provider: IServiceProvider): IServiceScope {
+    createScope(provider: IServiceProvider, name?: string): IServiceScope {
       return (provider.getRequiredService(typefor<IServiceScopeFactory>()) as IServiceScopeFactory)
-        .createScope();
+        .createScope(name);
     },
     createAsyncScope(provider: IServiceProvider): AsyncServiceScope {
-      throw new Error('createAsyncScope is not implemented.');
+      throw new NotImplementedError('IServiceProvider.createAsyncScope');
       return new AsyncServiceScope(provider.createScope());
     },
   };

@@ -10,9 +10,13 @@ export interface ScopeCache {
 
 export interface IServiceScope {
   readonly cache: ScopeCache;
+  /** The value registered for `type`, resolved against this scope. */
+  getRequiredService(type: Type): any;
+  /** Whether anything is registered for `type` in this scope. */
+  isService(type: Type): boolean;
 }
 export interface IServiceScopeFactory {
-  createScope(): IServiceScope;
+  createScope(name?: string): IServiceScope;
 }
 
 /** Scaffold: the async face of a scope, pending the scope model. */

@@ -22,9 +22,21 @@ export interface ServiceProviderOptions {
    * self-supplying member such as `undefined`.
    */
   readonly unionAmbiguity?: 'error' | 'newest';
+
+  /**
+   * Check that a scoped registration is never taken from the root, so a scoped service cannot be
+   * captured for the provider's whole lifetime by a singleton that resolved it.
+   *
+   * Declared ahead of the lifetime model it describes; nothing reads it yet.
+   */
+  readonly validateScopes?: boolean;
 }
 
 export namespace ServiceProviderOptions {
   /** What a provider built without options gets. */
-  export const defaults: ServiceProviderOptions = { validateOnBuild: false, unionAmbiguity: 'error' };
+  export const defaults: ServiceProviderOptions = {
+    validateOnBuild: false,
+    unionAmbiguity: 'error',
+    validateScopes: false,
+  };
 }

@@ -23,6 +23,21 @@ import { Type } from '@rhombus-std/primitives';
 export abstract class DiError extends Error {}
 
 /**
+ * A member declared so callers can be written against it, which has no behaviour yet.
+ *
+ * @remarks
+ * Reaching one is a gap in what the container implements rather than anything wrong with the
+ * request, so it is not a resolution failure to fall back from. The stack trace names the call
+ * site; `member` only has to name what was reached.
+ */
+export class NotImplementedError extends DiError {
+  constructor(member?: string) {
+    super(member ? `${member} is not implemented.` : 'not implemented.');
+    this.name = 'NotImplementedError';
+  }
+}
+
+/**
  * Nothing in the manifest can produce a value for {@link type}.
  *
  * @remarks
