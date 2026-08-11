@@ -69,14 +69,3 @@ export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from '
 // registration-time failures throw from the registration call itself and need
 // nothing built, so they are staged here.
 export { demonstrateRegistrationErrors, describeDiError, diagnose, stagedFailure } from './errors-demo.js';
-
-// The manifest as a value: the augmentation receiver, the standalone call
-// surface, the intrinsic primitives, and the manifest-to-manifest half of a test
-// host. The tour takes a composed manifest, since a library cannot make one.
-// `forTests` plus the three capability-narrowed helpers are the rest of that test
-// host — the app builds a container and drives them, which is the only part a
-// library could not write.
-export { addShopServices, asSingleton, auditToken, authoringMintsIn, demonstrateManifestSurface, describeSeal, forTests,
-  inScope, isRegistrationBuilder, missingFrom, repointFirstSlot, requireCheckout, SHOP_SELF_CHECK_TOKENS,
-  withoutToken } from './manifest-surface-demo.js';
-export type { AuthoringSurface, IChainFaces, NormalisedProducer, Registerable } from './manifest-surface-demo.js';
