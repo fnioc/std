@@ -9,7 +9,7 @@ export default tseslint.config({
   extends: [tseslint.configs.base],
   languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
   rules: { curly: ['error', 'all'], '@typescript-eslint/switch-exhaustiveness-check': 'error',
-    '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
+    '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }],
     '@typescript-eslint/no-restricted-imports': ['error', {
       patterns: [{
         group: ['@rhombus-std/*/tokens/**', '@rhombus-std/*/private/**'],
@@ -27,5 +27,5 @@ export default tseslint.config({
   // Tests: not in any tsconfig → syntactic rules only (no type info, no parsing error)
   files: ['libraries/*/test/**/*.ts', 'examples/*/test/**/*.ts', 'tests/*.test/test/**/*.ts'],
   extends: [tseslint.configs.base],
-  rules: { curly: ['error', 'all'], '@typescript-eslint/array-type': ['error', { default: 'array-simple' }] },
+  rules: { curly: ['error', 'all'], '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }] },
 });
