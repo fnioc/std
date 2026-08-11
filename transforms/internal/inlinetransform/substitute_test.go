@@ -359,3 +359,52 @@ const after = 2;
 		t.Errorf("reprint produced no statements:\n%s", out)
 	}
 }
+
+// A rest parameter stands for every argument from its position on, so it binds
+// to the argument LIST and is spliced where the body spreads it — never bound as
+// a single value with the spread left behind. Driven at all three arities,
+// because the interesting boundaries are "one" and "none".
+func TestSubstituteRestParameterSplices(t *testing.T) {
+	cases := []struct {
+		name string
+		call string
+		want string
+	}{
+		{"multiple arguments", `reg.addClass(Foo, sigs, scope);`, `reg.register(tok, Foo, sigs, scope)`},
+		{"a single argument", `reg.addClass(Foo);`, `reg.register(tok, Foo)`},
+		{"no arguments at all", `reg.addClass();`, `reg.register(tok)`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ec := shimprinter.NewEmitContext()
+
+			decl := parse(t, "declaring.ts", `
+export function addClass(manifest, ...rest) {
+	return manifest.register(tok, ...rest);
+}
+`)
+			body := returnExpr(t, decl)
+
+			consumer := parse(t, "consumer.ts", "const answer = "+c.call+"\n")
+			call, receiver, args := findCall(t, consumer, "addClass")
+
+			res := Substitute(ec, Inlining{
+				Body:          body,
+				Receiver:      receiver,
+				Params:        nil,
+				Args:          nil,
+				ReceiverParam: "manifest",
+				RestParam:     "rest",
+				RestArgs:      args,
+			})
+
+			out := reprint(ec, splice(ec, consumer, call, res.Expr))
+			if !strings.Contains(out, c.want) {
+				t.Errorf("expected %q, got:\n%s", c.want, out)
+			}
+			if strings.Contains(out, "...") {
+				t.Errorf("the spread must not survive substitution, got:\n%s", out)
+			}
+		})
+	}
+}
