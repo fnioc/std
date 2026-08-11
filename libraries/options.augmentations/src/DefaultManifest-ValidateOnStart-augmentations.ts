@@ -8,9 +8,10 @@
 // `tokenfor<IStartupValidator>()`. The host resolves that (optionally) and
 // calls `validate()`.
 
-import { DefaultManifest, type IResolver, type Manifest, RESOLVER_TOKEN, type Token } from '@rhombus-std/di2.core';
+import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di2.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+import type { IServiceProvider } from '@rhombus-std/primitives';
+import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
@@ -25,14 +26,13 @@ type IServiceManifestValidateOnStartAugmentations<Scopes extends string> = {
    * built-in `IStartupValidator`. Returns the manifest produced by its
    * registrations (the manifest chain is immutable -- never `this`).
    */
-  validateOnStart(token: Token): Manifest<Scopes>;
+  validateOnStart(token: string): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the member does not name it.
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
-    extends IServiceManifestValidateOnStartAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IServiceManifestValidateOnStartAugmentations<Scopes> {}
 }
 
 // Registered against the `ServiceManifest` augmentation token -- the concrete
@@ -51,9 +51,9 @@ export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<Defau
       // registration's factory reads the SAME full target list from the
       // resolver at start time.
       m = m.addFactory(tokenfor<IStartupValidator>(),
-        (resolver: IResolver): IStartupValidator =>
+        (resolver: IServiceProvider): IStartupValidator =>
           new StartupValidator(resolver,
-            resolver.resolve<readonly Token[]>(collectionToken(startupValidationTargetToken()))), [[RESOLVER_TOKEN]]);
+            resolver.getService(Type.from(collectionToken(startupValidationTargetToken())))), [[RESOLVER_TYPE]]);
       return m;
     },
   };

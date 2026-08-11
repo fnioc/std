@@ -5,29 +5,27 @@
 // the append side (`configure`) and the read side (`assembleOptions`) agree
 // without sharing state.
 
-import type { Token } from '@rhombus-std/di2.core';
-
 // Namespaced so a derived slot token can never collide with a consumer's own
 // registration token, whatever the options token happens to be.
 const NAMESPACE = '@rhombus-std/options.augmentations';
 
 /** The slot token whose collection holds the {@link IConfigureOptions} steps for `optionsToken`. */
-export function configureStepToken(optionsToken: Token): Token {
+export function configureStepToken(optionsToken: string): string {
   return `${NAMESPACE}/configure/${optionsToken}`;
 }
 
 /** The slot token whose collection holds the {@link IPostConfigureOptions} steps for `optionsToken`. */
-export function postConfigureStepToken(optionsToken: Token): Token {
+export function postConfigureStepToken(optionsToken: string): string {
   return `${NAMESPACE}/post-configure/${optionsToken}`;
 }
 
 /** The slot token whose collection holds the {@link IValidateOptions} steps for `optionsToken`. */
-export function validateStepToken(optionsToken: Token): Token {
+export function validateStepToken(optionsToken: string): string {
   return `${NAMESPACE}/validate/${optionsToken}`;
 }
 
 /** The slot token whose collection holds the change-token sources for `optionsToken`. */
-export function changeTokenSourceToken(optionsToken: Token): Token {
+export function changeTokenSourceToken(optionsToken: string): string {
   return `${NAMESPACE}/change-token-source/${optionsToken}`;
 }
 
@@ -37,7 +35,7 @@ export function changeTokenSourceToken(optionsToken: Token): Token {
  * StartupValidator resolves the whole list to force each. Unlike the per-options
  * slots above this takes NO argument -- one flat list serves the whole container.
  */
-export function startupValidationTargetToken(): Token {
+export function startupValidationTargetToken(): string {
   return `${NAMESPACE}/startup-validation-target`;
 }
 
@@ -45,6 +43,6 @@ export function startupValidationTargetToken(): Token {
  * The collection wrapper token for `elementToken` — the string the resolver
  * recognizes as a request to aggregate every registration of the element.
  */
-export function collectionToken(elementToken: Token): Token {
+export function collectionToken(elementToken: string): string {
   return `Array<${elementToken}>`;
 }

@@ -6,7 +6,7 @@
 // cannot take two contributions of one name from a single registration.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { DefaultManifest, type Manifest, type Token } from '@rhombus-std/di2.core';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di2.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -24,32 +24,31 @@ type IServiceManifestOptionsConfigAugmentations<Scopes extends string> = {
    * change-token source wired to the section's reload token. Requires a prior
    * {@link addOptions} for the same `token`.
    */
-  configure(token: Token, section: IConfig): Manifest<Scopes>; /**
+  configure(token: string, section: IConfig): Manifest<Scopes>; /**
    * Registers a code configure step for `token`: `configureOptions` runs
    * against the value as one configure source among several (no config
    * section, so no change-token source). Distinguished from the
    * config-section overload of {@link configure} by its function argument.
    */
-  configure<T>(token: Token, configureOptions: Func<[T], void>): Manifest<Scopes>; /**
+  configure<T>(token: string, configureOptions: Func<[T], void>): Manifest<Scopes>; /**
    * The DI-injected configure step: resolves each token in `depTokens` from
    * the provider at materialization time and passes the instances to
    * `configureOptions` after the options value. A typed caller writes each
    * token as `tokenfor<Dep>()`.
    */
-  configure<T, Deps extends readonly unknown[]>(token: Token, depTokens: DepTokens<Deps>,
+  configure<T, Deps extends readonly unknown[]>(token: string, depTokens: DepTokens<Deps>,
     configureOptions: (options: T, ...deps: Deps) => void): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
-    extends IServiceManifestOptionsConfigAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IServiceManifestOptionsConfigAugmentations<Scopes> {}
 }
 
 export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<DefaultManifest<string>,
   IServiceManifestOptionsConfigAugmentations<string>> = {
-    configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: Token,
+    configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: string,
       source: IConfig | Func<[T], void> | DepTokens<Deps>,
       configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
       // DI-injected form: `source` is the dep-token tuple and
@@ -62,7 +61,7 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Default
         return manifest.addFactory(configureStepToken(token),
           (...deps: Deps): IConfigureOptions<T> => ({ configure(options: T): void {
             callback(options, ...deps);
-          } }), [source as readonly Token[]]);
+          } }), [source as readonly string[]]);
       }
       // A bare delegate is a pure code configure step: registers only the
       // configure slot, no change-token source. The registry's flat bag
