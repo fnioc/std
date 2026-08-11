@@ -5,10 +5,12 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { type Manifest } from '../Manifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 import { keyedType, Signatures, TypeSignatures } from '../types';
-
+import { Unstarted } from './builder.ts';
 interface IManifestDescriptorAugmentations<Scopes extends string> {
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+
+  tryAdd(type: Type | string, configure: Func<[Unstarted<Scopes>], IComplete>): this;
 
   tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,

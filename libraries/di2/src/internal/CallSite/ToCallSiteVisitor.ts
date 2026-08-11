@@ -1,9 +1,8 @@
 import { AmbiguousUnionError, CycleError, Manifest, ServiceDescriptor } from '@rhombus-std/di2.core';
-import { type CtorType, type FunctionType, type IntersectionType, type NamedType, type ObjectType, type PlaceholderType,
-  type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
+import { type CtorType, first, type FunctionType, type IntersectionType, isAllThere, type NamedType, type ObjectType,
+  type PlaceholderType, type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
   type UnionType } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite.js';
-import { first, isAllThere } from './utils.js';
 
 export interface CallSiteContext {
   readonly manifest: Manifest;

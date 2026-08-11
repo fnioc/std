@@ -1,5 +1,5 @@
-import { Type } from './Type/Type';
+import { type Type } from './Type';
 
 export interface IServiceProvider {
-  resolve(type: Type): any;
+  getService(type: Type): any;
 }
