@@ -9,11 +9,12 @@
 // it is reactive, the factory re-runs `applyFilters` for every existing logger
 // on each change, so a configuration reload re-filters live loggers.
 
-import { DefaultManifest } from '@rhombus-std/di2';
-import type { IServiceProvider } from '@rhombus-std/di2.core';
+import type { ServiceProvider } from '@rhombus-std/di2';
+import { DefaultManifest } from '@rhombus-std/di2.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
+import { Type } from '@rhombus-std/primitives';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -169,24 +170,23 @@ export class LoggerFactory implements ILoggerFactory {
 
   /**
    * Creates a configured {@link ILoggerFactory} from an {@link ILoggingBuilder}
-   * delegate. Spins up a {@link ServiceManifest}, runs `addLogging(configure)`,
-   * builds the container, opens the singleton scope, and resolves the factory.
-   * The returned {@link ILoggerFactory} owns the container: disposing it
-   * disposes the scope (and everything it built, the factory included).
+   * delegate. Spins up a {@link DefaultManifest}, runs `addLogging(configure)`,
+   * builds the container, and resolves the factory. The returned
+   * {@link ILoggerFactory} owns the container: disposing it disposes the
+   * provider (and everything it built, the factory included).
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
     const services = new DefaultManifest().addLogging(configure);
     const provider = services.build();
-    const singletonScope = provider.createScope('singleton');
-    const factory = singletonScope.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
-    return new DisposingLoggerFactory(factory, singletonScope);
+    const factory = provider.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
+    return new DisposingLoggerFactory(factory, provider);
   }
 }
 
 /** Wraps a container-resolved {@link ILoggerFactory} so disposing the factory disposes the owning container scope. */
 @augment(tokenfor<ILoggerFactory>())
 class DisposingLoggerFactory implements ILoggerFactory {
-  public constructor(private readonly factory: ILoggerFactory, private readonly scope: IServiceProvider) {}
+  public constructor(private readonly factory: ILoggerFactory, private readonly provider: ServiceProvider) {}
 
   public createLogger(categoryName: string): ILogger {
     return this.factory.createLogger(categoryName);
@@ -197,6 +197,6 @@ class DisposingLoggerFactory implements ILoggerFactory {
   }
 
   public [Symbol.dispose](): void {
-    this.scope[Symbol.dispose]();
+    this.provider.dispose();
   }
 }

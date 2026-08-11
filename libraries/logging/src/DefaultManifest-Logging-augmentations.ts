@@ -28,10 +28,10 @@
 // types `manifest.addOptions(...)` below into the program.
 import '@rhombus-std/options.augmentations';
 
-import { closeToken, type DefaultManifest, type Manifest, typeArg } from '@rhombus-std/di2.core';
+import type { DefaultManifest, Manifest } from '@rhombus-std/di2.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type NamedType, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
@@ -81,12 +81,16 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
 
       // ILoggerFactory, injected with the enumerable provider set and the
       // assembled IOptions<LoggerFilterOptions>.
-      m = m.addClass(LOGGER_FACTORY_TOKEN, LoggerFactory, [[closeToken('Array', LOGGER_PROVIDER_TOKEN),
-        LOGGER_FILTER_OPTIONS_TOKEN]], 'singleton');
+      m = m.addClass(LOGGER_FACTORY_TOKEN, LoggerFactory, [[
+        Type.named('Array', 'global', [Type.from(LOGGER_PROVIDER_TOKEN)]),
+        LOGGER_FILTER_OPTIONS_TOKEN,
+      ]], 'singleton');
 
-      // The open ILogger<$1> -> Logger<$1> registration: the closing type's token
-      // flows in through typeArg(1), from which Logger<T> derives its category.
-      m = m.addClass(closeToken(ILOGGER_TOKEN_BASE, '$1'), LoggerOfT, [[LOGGER_FACTORY_TOKEN, typeArg(1)]],
+      // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
+      // in through the `$1` placeholder, from which Logger<T> derives its category.
+      const iLoggerBase = Type.from(ILOGGER_TOKEN_BASE) as NamedType;
+      const hole = Type.placeholder('$1');
+      m = m.addClass(Type.named(iLoggerBase.name, iLoggerBase.from, [hole]), LoggerOfT, [[LOGGER_FACTORY_TOKEN, hole]],
         'singleton');
 
       // `m` is the widened IServiceManifest<string>, whereas

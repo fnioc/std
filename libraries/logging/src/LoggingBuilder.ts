@@ -2,14 +2,14 @@
 // registration builder as `.services`, handed to the `configure` delegate by
 // `addLogging`.
 //
-// `.services` is an ACCESSOR over a holder, not a field of its own, so the
+// `.services` is an ACCESSOR over a slot, not a field of its own, so the
 // builder can be pointed at a slot that something ELSE also writes. `addLogging`
-// hands it a private holder (nobody else is looking at that chain); a host
+// hands it a private slot (nobody else is looking at that chain); a host
 // application builder hands it ITSELF, so `builder.logging.addProvider(...)` and
 // `builder.services = builder.services.addClass(...)` stay on one chain instead of
 // forking into two and dropping whichever one `build()` did not read.
 
-import type { IServiceManifestHolder, Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -26,33 +26,36 @@ export interface LoggingBuilder extends ILoggingBuilder {}
 // whatever the import order.
 @augment(tokenfor<ILoggingBuilder>())
 export class LoggingBuilder implements ILoggingBuilder {
-  readonly #holder: IServiceManifestHolder;
+  readonly #slot: ManifestSlot;
 
   /**
-   * Wraps either a bare manifest (a private holder is allocated for it) or an
-   * existing {@link IServiceManifestHolder} whose slot this builder then SHARES.
+   * Wraps either a bare manifest (a private slot is allocated for it) or an
+   * existing {@link ManifestSlot} this builder then SHARES.
    */
-  public constructor(services: Manifest | IServiceManifestHolder) {
-    this.#holder = isHolder(services) ? services : { services };
+  public constructor(services: Manifest | ManifestSlot) {
+    this.#slot = isSlot(services) ? services : { services };
   }
 
-  /** The current manifest — read through the shared holder. */
+  /** The current manifest — read through the shared slot. */
   public get services(): Manifest {
-    return this.#holder.services;
+    return this.#slot.services;
   }
 
   /**
-   * Rebinds the shared holder's manifest. The chain is immutable, so every
+   * Rebinds the shared slot's manifest. The chain is immutable, so every
    * builder augmentation (`addProvider`/`setMinimumLevel`/`clearProviders`, plus
    * downstream `addConfig`/`addConsole`) threads by assigning here and handing
    * the same builder back.
    */
   public set services(value: Manifest) {
-    this.#holder.services = value;
+    this.#slot.services = value;
   }
 }
 
-/** A manifest is never itself a holder: only a holder carries a `services` slot. */
-function isHolder(value: Manifest | IServiceManifestHolder): value is IServiceManifestHolder {
+/** A writable manifest slot two builders can share, so both write one chain. */
+export type ManifestSlot = { services: Manifest; };
+
+/** A manifest is never itself a slot: only a slot carries a `services` member. */
+function isSlot(value: Manifest | ManifestSlot): value is ManifestSlot {
   return 'services' in value;
 }
