@@ -14,7 +14,7 @@
 // the same (options, provider) pair appends the pipeline step twice --
 // an idempotent re-bind, but not deduped.
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
 import { loggerProviderConfigToken } from './ILoggerProviderConfig';

@@ -11,7 +11,7 @@
     "declarationMap": false,
     "sourceMap": false,
     "composite": false,
-    "types": ["@rhombus-std/di2.extras"]
+    "types": ["@rhombus-std/di.extras"]
   },
   "include": ["src/**/*"]
 }

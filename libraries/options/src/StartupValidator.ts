@@ -1,4 +1,4 @@
-import type { IServiceProvider, Type } from '@rhombus-std/di2.core';
+import type { IServiceProvider, Type } from '@rhombus-std/di.core';
 
 import type { IOptions } from './IOptions.js';
 import type { IStartupValidator } from './IStartupValidator.js';

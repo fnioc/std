@@ -5,8 +5,8 @@
 // imported HOST_LIFETIME_TOKEN — di.core is append-only last-wins, so this
 // overrides the default NullLifetime registered by the host composition.
 
-import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di2.core';
-import type { Manifest } from '@rhombus-std/di2.core';
+import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';

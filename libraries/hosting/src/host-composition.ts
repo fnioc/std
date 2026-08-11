@@ -17,8 +17,8 @@
 //     loggers -- and any composite logger already handed out -- light up.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { ServiceProviderOptions } from '@rhombus-std/di2';
-import type { Manifest } from '@rhombus-std/di2.core';
+import { ServiceProviderOptions } from '@rhombus-std/di';
+import type { Manifest } from '@rhombus-std/di.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
   type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rhombus-std/logging';

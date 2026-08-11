@@ -1,4 +1,4 @@
-import type { IServiceProvider } from '@rhombus-std/di2.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
 
 /**

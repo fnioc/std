@@ -11,9 +11,9 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
-import type { ServiceProviderOptions } from '@rhombus-std/di2';
-import { DefaultManifest } from '@rhombus-std/di2.core';
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { ServiceProviderOptions } from '@rhombus-std/di';
+import { DefaultManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
   type IHostEnvironment } from '@rhombus-std/hosting.core';

@@ -9,7 +9,7 @@
 // `builder.services = builder.services.addClass(...)` stay on one chain instead of
 // forking into two and dropping whichever one `build()` did not read.
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

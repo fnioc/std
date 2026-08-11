@@ -28,7 +28,7 @@
 // types `manifest.addOptions(...)` below into the program.
 import '@rhombus-std/options.augmentations';
 
-import type { DefaultManifest, Manifest } from '@rhombus-std/di2.core';
+import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepToken } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, type NamedType, registerAugmentations, Type } from '@rhombus-std/primitives';
@@ -62,7 +62,7 @@ type IServiceManifestLoggingAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge's type-parameter list matches the
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
-declare module '@rhombus-std/di2.core' {
+declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestLoggingAugmentations<Scopes> {}
 }
 

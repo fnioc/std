@@ -4,7 +4,7 @@
 // `T` is erased at runtime, so the engine supplies the closing type itself as a constructor
 // parameter (see `@rhombus-std/logging`'s `addLogging`), and the category is its name.
 
-import type { NamedType } from '@rhombus-std/di2.core';
+import type { NamedType } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';

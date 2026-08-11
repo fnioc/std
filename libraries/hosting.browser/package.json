@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@rhombus-std/config": "workspace:*",
-    "@rhombus-std/di2.core": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/hosting": "workspace:*",
     "@rhombus-std/hosting.core": "workspace:*",

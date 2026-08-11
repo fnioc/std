@@ -11,7 +11,7 @@
 // unsupported; the adapter only mutates the application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

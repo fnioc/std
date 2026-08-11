@@ -1,0 +1,65 @@
+{
+  "name": "@rhombus-std/di",
+  "version": "10.1.0",
+  "description": "The ioc runtime engine: DiBuilder, scopes, resolution, captive-dependency protection, factories, and native disposal.",
+  "keywords": [
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "scope",
+    "container"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fnioc/std.git",
+    "directory": "libraries/di"
+  },
+  "type": "module",
+  "sideEffects": true,
+  "main": "./dist/bundle/index.js",
+  "types": "./dist/bundle/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "bun": "./dist/bundle/index.js",
+      "types": "./dist/bundle/index.d.ts",
+      "import": "./dist/bundle/index.js",
+      "default": "./dist/bundle/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/stage"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-lib.ts",
+    "lint": "eslint ."
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "./dist/bundle/index.js",
+    "types": "./dist/bundle/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/bundle/index.d.ts",
+        "import": "./dist/bundle/index.js",
+        "default": "./dist/bundle/index.js"
+      }
+    }
+  },
+  "dependencies": {
+    "@rhombus-std/di.core": "workspace:^",
+    "@rhombus-std/primitives": "workspace:^",
+    "@rhombus-toolkit/type-guards": "^1.3.4"
+  },
+  "devDependencies": {
+    "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-toolkit/func": "3.5.3",
+    "@ttsc/unplugin": "^0.18.1",
+    "ttsc": "^0.18.1",
+    "typescript": "^5.9.0"
+  }
+}

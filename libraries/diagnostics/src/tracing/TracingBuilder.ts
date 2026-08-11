@@ -1,7 +1,7 @@
 // TracingBuilder -- the concrete ITracingBuilder the addTracing augmentation hands
 // to a consumer's configure callback.
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

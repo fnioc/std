@@ -10,8 +10,8 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import { DefaultManifest } from '@rhombus-std/di2.core';
-import type { Manifest } from '@rhombus-std/di2.core';
+import { DefaultManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

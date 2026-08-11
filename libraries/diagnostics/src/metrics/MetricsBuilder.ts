@@ -4,7 +4,7 @@
 // (@rhombus-std/diagnostics.core's addMetricsListener/enableMetrics/... and this
 // package's addMetricsConfig).
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

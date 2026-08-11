@@ -13,7 +13,7 @@
 // file's scope, so `Signatures`/`Manifest`/`DefaultManifest` must be
 // importable here.
 import { type DefaultManifest, type IServiceProvider, type Manifest, RESOLVER_TYPE,
-  type Signatures } from '@rhombus-std/di2.core';
+  type Signatures } from '@rhombus-std/di.core';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -43,7 +43,7 @@ type IServiceManifestHostedServiceAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge's type-parameter list matches the
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
-declare module '@rhombus-std/di2.core' {
+declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestHostedServiceAugmentations<Scopes> {}
 }
 

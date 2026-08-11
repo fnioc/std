@@ -6,7 +6,7 @@
 // cannot take two contributions of one name from a single registration.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { DefaultManifest, type Manifest } from '@rhombus-std/di2.core';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -42,7 +42,7 @@ type IServiceManifestOptionsConfigAugmentations<Scopes extends string> = {
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
-declare module '@rhombus-std/di2.core' {
+declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestOptionsConfigAugmentations<Scopes> {}
 }
 

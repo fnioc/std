@@ -11,7 +11,7 @@
 // class satisfying `IMetricsBuilder` once diagnostics.core merges those members
 // onto the interface.
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';

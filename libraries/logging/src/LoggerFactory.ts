@@ -9,8 +9,8 @@
 // it is reactive, the factory re-runs `applyFilters` for every existing logger
 // on each change, so a configuration reload re-filters live loggers.
 
-import type { ServiceProvider } from '@rhombus-std/di2';
-import { DefaultManifest } from '@rhombus-std/di2.core';
+import type { ServiceProvider } from '@rhombus-std/di';
+import { DefaultManifest } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.lib.json",
+  "compilerOptions": {
+    // §72 self-reference shim: di.core self-augments `@rhombus-std/di.core`
+    // (IServiceManifestBase / ServiceManifestClass). With the `.` export's `types`
+    // flipped to the not-yet-built dist `.d.ts`, that self-directed `declare module`
+    // resolves to a missing file (TS2664). The package-unique `di-core-source`
+    // condition -- listed FIRST in the `.` export so it wins over `types` -- routes
+    // di.core's OWN program back to src, while every external consumer (which does
+    // not set this condition) resolves the built dist. Dev-only: absent from
+    // publishConfig, so published consumers never see it.
+    "customConditions": ["di-core-source"]
+  },
+  "include": ["src/**/*"]
+}

@@ -2,7 +2,7 @@
 // build, not executed at runtime. Not re-exported by ./index.ts — kept out
 // of the bundle deliberately.
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { registerInlineBodies, tokenfor, tokenof } from '@rhombus-std/primitives.extras';
 

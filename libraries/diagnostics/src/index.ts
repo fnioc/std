@@ -23,7 +23,7 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di2.core';
+import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
   METRICS_CONFIGURATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
   METRICS_OPTIONS_TOKEN, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
@@ -68,7 +68,7 @@ type IServiceManifestDiagnosticsAugmentations<Scopes extends string> = {
 // `Provider`/`Scopes` are defaulted so the merge matches its target's
 // type-parameter list (TS2428 requires identical parameters), even though the
 // members do not name `Provider`.
-declare module '@rhombus-std/di2.core' {
+declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestDiagnosticsAugmentations<Scopes> {}
 }
 

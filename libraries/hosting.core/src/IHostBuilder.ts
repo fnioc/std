@@ -1,5 +1,5 @@
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { Action, Func } from '@rhombus-toolkit/func';
 import type { HostBuilderContext } from './HostBuilderContext';
 import type { IHost } from './IHost';

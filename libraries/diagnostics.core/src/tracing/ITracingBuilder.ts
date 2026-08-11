@@ -6,7 +6,7 @@
 // augmentation function that registers something reassigns
 // `builder.services = builder.services.addClass(...)` rather than mutating in place.
 
-import type { Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 /** Configures the tracing system by registering listeners and rules. */
 export interface ITracingBuilder {

@@ -8,7 +8,7 @@
 // `tokenfor<IStartupValidator>()`. The host resolves that (optionally) and
 // calls `validate()`.
 
-import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di2.core';
+import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
@@ -31,7 +31,7 @@ type IServiceManifestValidateOnStartAugmentations<Scopes extends string> = {
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the member does not name it.
-declare module '@rhombus-std/di2.core' {
+declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestValidateOnStartAugmentations<Scopes> {}
 }
 

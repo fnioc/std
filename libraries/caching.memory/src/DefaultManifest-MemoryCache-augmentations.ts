@@ -17,8 +17,8 @@
 // ServiceManifest and brings their interface merges into the program.
 import '@rhombus-std/options.augmentations';
 
-import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di2.core';
-import { RESOLVER_TYPE } from '@rhombus-std/di2.core';
+import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
@@ -67,7 +67,7 @@ type IServiceManifestMemoryCacheAugmentations<Scopes extends string> = {
 
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
-declare module '@rhombus-std/di2.core' {
+declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestMemoryCacheAugmentations<Scopes> {}
 }
 
