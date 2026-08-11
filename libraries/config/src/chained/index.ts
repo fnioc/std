@@ -3,7 +3,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig, IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { ChainedConfigSource } from './ChainedConfigSource';
 
 export { ChainedConfigProvider } from './ChainedConfigProvider';
@@ -34,4 +34,4 @@ export const ChainedBuilderAugmentations: AugmentationSet2<IConfigBuilder,
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ChainedBuilderAugmentations);
+registerAugmentations(typefor<IConfigBuilder>(), ChainedBuilderAugmentations);

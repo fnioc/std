@@ -3,7 +3,7 @@
 import type { ConfigBuilder, StreamPayload } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { XmlConfigSource, type XmlConfigSourceOptions } from './XmlConfigSource';
 import { XmlStreamConfigSource } from './XmlStreamConfigSource';
 
@@ -37,4 +37,4 @@ export const ConfigBuilderXmlAugmentations: AugmentationSet2<IConfigBuilder, Fla
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderXmlAugmentations);
+registerAugmentations(typefor<IConfigBuilder>(), ConfigBuilderXmlAugmentations);

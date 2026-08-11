@@ -7,7 +7,7 @@
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { type ConfigData, MemoryConfigSource } from './MemoryConfigSource';
 
 export { MemoryConfigProvider } from './MemoryConfigProvider';
@@ -38,4 +38,4 @@ export const MemoryConfigBuilderAugmentations: AugmentationSet2<IConfigBuilder,
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), MemoryConfigBuilderAugmentations);
+registerAugmentations(typefor<IConfigBuilder>(), MemoryConfigBuilderAugmentations);

@@ -4,7 +4,7 @@ import type { StreamPayload } from '@rhombus-std/config';
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { JsonConfigSource, type JsonConfigSourceOptions } from './JsonConfigSource';
 import { JsonStreamConfigSource } from './JsonStreamConfigSource';
 
@@ -38,4 +38,4 @@ export const ConfigBuilderJsonAugmentations: AugmentationSet2<IConfigBuilder,
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderJsonAugmentations);
+registerAugmentations(typefor<IConfigBuilder>(), ConfigBuilderJsonAugmentations);

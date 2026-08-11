@@ -8,7 +8,7 @@ import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import { type AugmentationSet2, type Flatten, process, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 
@@ -75,4 +75,4 @@ export const ConfigBuilderFileAugmentations: AugmentationSet2<IConfigBuilder,
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderFileAugmentations);
+registerAugmentations(typefor<IConfigBuilder>(), ConfigBuilderFileAugmentations);
