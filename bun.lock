@@ -875,6 +875,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
       },
     },
     "tests/hosting.test": {
@@ -887,6 +888,7 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-toolkit/func": "^3.5.3",
       },
     },
     "tests/inline.authoring-lint.test": {

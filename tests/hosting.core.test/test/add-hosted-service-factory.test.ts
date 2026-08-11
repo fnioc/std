@@ -1,4 +1,4 @@
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { hostedServiceCollectionToken, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
@@ -16,7 +16,7 @@ test("addHostedService(factory) registers the factory's result under the hosted-
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new DefaultManifest();
+  let manifest: Manifest<string> = new DefaultManifest();
   const singleton = new Worker();
   // The factory form surfaces an already-constructed instance as a hosted service.
   manifest = manifest.addHostedService(() => singleton);
@@ -38,7 +38,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new DefaultManifest();
+  let manifest: Manifest<string> = new DefaultManifest();
   manifest = manifest.addClass('test:Dependency', Dependency, [[]]);
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
@@ -71,7 +71,7 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new DefaultManifest();
+  let manifest: Manifest<string> = new DefaultManifest();
   manifest = manifest.addHostedService(CtorWorker, [[]]);
   manifest = manifest.addHostedService(() => new FactoryWorker());
 

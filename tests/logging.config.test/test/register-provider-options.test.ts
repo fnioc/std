@@ -12,7 +12,7 @@
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
@@ -36,7 +36,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3',
       'OtherProvider:Format': 'xml' });
 
-    let services = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
@@ -54,7 +54,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test('a reload re-binds and notifies subscribers (the change-token source)', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
@@ -80,7 +80,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test("composes with a consumer's own configure step for the same token", () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;

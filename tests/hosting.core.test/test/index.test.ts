@@ -1,4 +1,4 @@
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TOKEN,
   hostedServiceCollectionToken, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
@@ -118,7 +118,7 @@ test('addHostedService registers many under one token; the collection resolves a
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new DefaultManifest();
+  let manifest: Manifest<string> = new DefaultManifest();
   manifest = manifest.addHostedService(A, [[]]);
   manifest = manifest.addHostedService(B, [[]]);
 
@@ -136,7 +136,7 @@ test('addHostedService registers many under one token; the collection resolves a
 });
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
-  let manifest = new DefaultManifest();
+  let manifest: Manifest<string> = new DefaultManifest();
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
   const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
