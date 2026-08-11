@@ -5,7 +5,7 @@
 // constructs a `LoggerProviderConfig` for that provider.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { closeToken, type Token } from '@rhombus-std/di2.core';
+import { type NamedType, type PlaceholderType, Type } from '@rhombus-std/primitives';
 
 /**
  * Allows access to the configuration section associated with a logger
@@ -24,7 +24,7 @@ export interface ILoggerProviderConfig<T> {
 // the generic's base for this declaring package. Kept module-local; every
 // external use site goes through the closing helper below (or derives the
 // closed token inline with `tokenfor`).
-const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.config:ILoggerProviderConfig';
+const LOGGER_PROVIDER_CONFIGURATION_BASE: string = '@rhombus-std/logging.config:ILoggerProviderConfig';
 
 /**
  * The closed di token for {@link ILoggerProviderConfig}`<providerType>`
@@ -32,6 +32,17 @@ const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.config:I
  * derives for that provider type. Pass `"$1"` to spell the open
  * registration template.
  */
-export function loggerProviderConfigToken(providerType: Token): Token {
-  return closeToken(LOGGER_PROVIDER_CONFIGURATION_BASE, providerType);
+export function loggerProviderConfigToken(providerType: string): string {
+  return `${LOGGER_PROVIDER_CONFIGURATION_BASE}<${providerType}>`;
+}
+
+/**
+ * The OPEN `ILoggerProviderConfig<$1>` service type -- the template a
+ * per-provider registration closes, with `hole` standing in for the closing
+ * provider type. Built structurally because the token grammar reads `$1` as an
+ * ordinary name, not as a placeholder.
+ */
+export function openLoggerProviderConfigType(hole: PlaceholderType): NamedType {
+  const base = Type.from(LOGGER_PROVIDER_CONFIGURATION_BASE) as NamedType;
+  return Type.named(base.name, base.from, [hole]);
 }

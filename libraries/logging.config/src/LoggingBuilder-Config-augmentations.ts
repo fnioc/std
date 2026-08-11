@@ -7,15 +7,14 @@
 // reload re-runs the bind.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { closeToken, typeArg } from '@rhombus-std/di2.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, ConfigChangeTokenSource,
   configureStepToken } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
-import { loggerProviderConfigToken } from './ILoggerProviderConfig';
+import { openLoggerProviderConfigType } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
 import { LoggerProviderConfig } from './LoggerProviderConfig';
@@ -61,10 +60,12 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       // registration produced, so the final value is what the caller reads
       // back through `builder.services`.
       builder.services = builder.services.addClass(tokenfor<ILoggerProviderConfigFactory>(),
-        LoggerProviderConfigFactory, [[closeToken('Array', tokenfor<LoggingConfig>())]], 'singleton');
-      builder.services = builder.services.addClass(loggerProviderConfigToken('$1'), LoggerProviderConfig, [[
+        LoggerProviderConfigFactory, [[Type.named('Array', 'global', [Type.from(tokenfor<LoggingConfig>())])]],
+        'singleton');
+      const hole = Type.placeholder('$1');
+      builder.services = builder.services.addClass(openLoggerProviderConfigType(hole), LoggerProviderConfig, [[
         tokenfor<ILoggerProviderConfigFactory>(),
-        typeArg(1),
+        hole,
       ]], 'singleton');
 
       if (!rest.length) {

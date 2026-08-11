@@ -14,7 +14,7 @@
 // the same (options, provider) pair appends the pipeline step twice --
 // an idempotent re-bind, but not deduped.
 
-import type { Manifest, Token, Typeof } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
 import { loggerProviderConfigToken } from './ILoggerProviderConfig';
@@ -39,9 +39,9 @@ export const LoggerProviderOptions = {
    * .registerProviderOptions(services, …)`) — the `services` passed in is
    * unchanged.
    */
-  registerProviderOptions<TOptions, TProvider>(services: Manifest, optionsToken: Typeof<IOptions<TOptions>>,
-    providerType: Typeof<TProvider>): Manifest {
-    const providerConfig: Token = loggerProviderConfigToken(providerType);
+  registerProviderOptions<TOptions, TProvider>(services: Manifest, optionsToken: string,
+    providerType: string): Manifest {
+    const providerConfig: string = loggerProviderConfigToken(providerType);
     return services.addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]],
       'singleton').addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[
         providerConfig,

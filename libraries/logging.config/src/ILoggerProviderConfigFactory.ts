@@ -3,7 +3,6 @@
 // TS erases generics at runtime.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import type { Token } from '@rhombus-std/di2.core';
 
 /** Allows access to the configuration section associated with a logger provider. */
 export interface ILoggerProviderConfigFactory {
@@ -13,5 +12,5 @@ export interface ILoggerProviderConfigFactory {
    * @param providerType The logger provider type's token
    * (`tokenfor<TProvider>()`).
    */
-  getConfig(providerType: Token): IConfig;
+  getConfig(providerType: string): IConfig;
 }

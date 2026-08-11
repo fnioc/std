@@ -1,6 +1,5 @@
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig } from '@rhombus-std/config.core';
-import type { Token } from '@rhombus-std/di2.core';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import type { LoggingConfig } from './LoggingConfig';
 
@@ -9,7 +8,7 @@ import type { LoggingConfig } from './LoggingConfig';
  * The full token can't serve as a section key directly since `:` is the
  * configuration path delimiter.
  */
-function sectionKeyFor(providerType: Token): string {
+function sectionKeyFor(providerType: string): string {
   return providerType.slice(providerType.indexOf(':') + 1);
 }
 
@@ -30,7 +29,7 @@ export class LoggerProviderConfigFactory implements ILoggerProviderConfigFactory
     this.#configs = configs;
   }
 
-  public getConfig(providerType: Token): IConfig {
+  public getConfig(providerType: string): IConfig {
     const sectionKey = sectionKeyFor(providerType);
     const builder = new ConfigBuilder();
     for (const config of this.#configs) {
