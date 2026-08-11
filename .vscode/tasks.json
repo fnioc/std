@@ -6,7 +6,14 @@
       "type": "shell",
       "command": "bun run build",
       "group": { "kind": "build", "isDefault": true },
-      "problemMatcher": []
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "build di",
+      "type": "shell",
+      "command": "bun run --cwd libraries/primitives build && bun run --cwd libraries/primitives.extras build && bun run --cwd libraries/di.core build && bun run --cwd libraries/di build",
+      "group": { "kind": "build", "isDefault": false}, 
+      "problemMatcher": ["$tsc"]
     },
     {
       "label": "test",
