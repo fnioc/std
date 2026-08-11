@@ -1,6 +1,28 @@
 import { Type } from '@rhombus-std/primitives';
 
 /**
+ * The root every error the container raises extends.
+ *
+ * @remarks
+ * A library holding only the abstractions can tell a container failure from anything else with
+ * one check, without naming the engine or knowing which failure it was:
+ *
+ * ```ts
+ * catch (error) {
+ *   if (error instanceof DiError) {
+ *     return fallback;
+ *   }
+ *   throw error;
+ * }
+ * ```
+ *
+ * Reach for a leaf type when the distinction matters — {@link UnsatisfiableError} is a candidate
+ * to fall back from, while {@link CycleError} and {@link AmbiguousUnionError} are faults in the
+ * registrations that a fall-back handler should let through.
+ */
+export abstract class DiError extends Error {}
+
+/**
  * Nothing in the manifest can produce a value for {@link type}.
  *
  * @remarks
@@ -17,7 +39,7 @@ import { Type } from '@rhombus-std/primitives';
  * }
  * ```
  */
-export class UnsatisfiableError extends Error {
+export class UnsatisfiableError extends DiError {
   /** The type that could not be resolved. */
   readonly type: Type;
 
@@ -37,7 +59,7 @@ export class UnsatisfiableError extends Error {
  * than a candidate to fall back from, so a handler swallowing unsatisfiable requests lets this
  * through.
  */
-export class CycleError extends Error {
+export class CycleError extends DiError {
   /** The path that closed the loop, outermost first, ending in the repeat. */
   readonly chain: readonly Type[];
 
@@ -59,7 +81,7 @@ export class CycleError extends Error {
  * A provider built with `unionAmbiguity: 'newest'` takes the most recently registered member
  * instead of raising.
  */
-export class AmbiguousUnionError extends Error {
+export class AmbiguousUnionError extends DiError {
   /** The union that could not be decided. */
   readonly type: Type;
   /** The members competing to supply it, in the union's own order. */
@@ -89,17 +111,19 @@ export interface ValidationFailure {
  * surfaces the whole broken graph instead of its first fault. {@link errors} carries the failures
  * themselves, positionally matching {@link failures}.
  */
-export class ManifestValidationError extends AggregateError {
+export class ManifestValidationError extends DiError {
   /** Each failure paired with the registration it came from. */
   readonly failures: readonly ValidationFailure[];
+  /** The failures themselves, positionally matching {@link failures}. */
+  readonly errors: readonly Error[];
 
   constructor(failures: readonly ValidationFailure[]) {
     super(
-      failures.map(failure => failure.error),
       `cannot satisfy every registration:\n`
         + failures.map(failure => `  ${Type.stringify(failure.type)} — ${failure.error.message}`).join('\n'),
     );
     this.name = 'ManifestValidationError';
     this.failures = failures;
+    this.errors = failures.map(failure => failure.error);
   }
 }
