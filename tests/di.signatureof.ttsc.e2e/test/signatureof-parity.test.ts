@@ -215,17 +215,24 @@ beforeAll(() => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
-  test('the sugar is lowered: string token (+ signature array where deps exist), no generics or primitives survive', () => {
-    // addClass / addFactory lowered to a 3-arg call carrying a token and a signature
-    // array; addValue lowered to a bare 2-arg token + value call (no deps).
-    expect(withInline).toContain('.addClass("');
-    expect(withInline).toContain('.addFactory("');
-    expect(withInline).toContain('.addValue("');
+  test('the sugar is lowered to a Type the caller could have written by hand, with no generics or primitives left', () => {
+    // Each verb takes the service type as its first argument, built through the
+    // Type factories -- which is what a caller writing this without the transform
+    // would reach for, since `Type.from` parses a token string and hands back the
+    // whole union rather than the named type these read as.
+    expect(withInline).toContain('.addClass(Type.named(');
+    expect(withInline).toContain('.addFactory(Type.named(');
+    expect(withInline).toContain('.addValue(Type.named(');
+    // And the factories are reachable: a hand author importing Type needs this
+    // line too, so its absence would mean the emitted file does not stand alone.
+    expect(withInline).toContain(`from "@rhombus-std/primitives"`);
     expect(withInline).not.toContain('addClass<');
     expect(withInline).not.toContain('addFactory<');
     expect(withInline).not.toContain('addValue<');
     // No un-lowered primitive CALL survives (assert the call form, not a bare
     // substring, which could appear inside a derived token string).
+    expect(withInline).not.toContain('typefor<');
+    expect(withInline).not.toContain('typefor(');
     expect(withInline).not.toContain('tokenfor<');
     expect(withInline).not.toContain('tokenfor(');
     expect(withInline).not.toContain('signatureof(');
