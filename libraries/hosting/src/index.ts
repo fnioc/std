@@ -24,9 +24,9 @@ export { MetricsBuilder } from './MetricsBuilder';
 
 export { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentations';
 
-// Re-exported from di.core, which owns it; this is the type
+// Re-exported from the engine, which owns it; this is the type
 // `useDefaultServiceProvider` configures.
-export type { ServiceProviderOptions } from '@rhombus-std/di2.core';
+export type { ServiceProviderOptions } from '@rhombus-std/di2';
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-config';

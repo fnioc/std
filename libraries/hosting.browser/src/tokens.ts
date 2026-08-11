@@ -4,17 +4,16 @@
 // HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, RESOLVER_TYPE) are
 // imported from their owning packages — never restated.
 
-import type { Token } from '@rhombus-std/di2.core';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageLifecycleEvents } from './PageLifecycleEvents';
 
-/** Token the {@link import("./BrowserLifetimeOptions").BrowserLifetimeOptions} value is registered under. */
-export const BROWSER_LIFETIME_OPTIONS_TOKEN: Token = tokenfor<BrowserLifetimeOptions>();
+/** string the {@link import("./BrowserLifetimeOptions").BrowserLifetimeOptions} value is registered under. */
+export const BROWSER_LIFETIME_OPTIONS_TOKEN: string = tokenfor<BrowserLifetimeOptions>();
 
 /**
- * Token the {@link import("./PageLifecycleEvents").PageLifecycleEvents} bridge
+ * string the {@link import("./PageLifecycleEvents").PageLifecycleEvents} bridge
  * is registered under (a VALUE registration by the BrowserHost facade, so
  * every consumer resolves the SAME eagerly-attached instance).
  */
-export const PAGE_LIFECYCLE_EVENTS_TOKEN: Token = tokenfor<PageLifecycleEvents>();
+export const PAGE_LIFECYCLE_EVENTS_TOKEN: string = tokenfor<PageLifecycleEvents>();

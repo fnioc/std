@@ -11,7 +11,7 @@
 // default (which depends on the resolved hosting environment) can be computed
 // once the context exists. Last write wins.
 
-import type { ServiceProviderOptions } from '@rhombus-std/di2.core';
+import type { ServiceProviderOptions } from '@rhombus-std/di2';
 import type { HostBuilderContext, IHostBuilder } from '@rhombus-std/hosting.core';
 
 /** Produces the {@link ServiceProviderOptions} from the fully-resolved build context. */

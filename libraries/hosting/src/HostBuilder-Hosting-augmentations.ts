@@ -10,12 +10,14 @@
 // class itself is decorated with `@augment(tokenfor<IHostBuilder>())`.
 
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { type IServiceProvider, RESOLVER_TYPE, type ServiceProviderOptions } from '@rhombus-std/di2.core';
+import type { ServiceProviderOptions } from '@rhombus-std/di2';
+import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
   type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';

@@ -10,11 +10,12 @@
 // THAT scope, and `stop` disposes it -- that scope is what gives singleton
 // semantics and deterministic disposal.
 
-import type { IServiceProvider, IServiceProvider } from '@rhombus-std/di2.core';
+import type { ServiceProvider } from '@rhombus-std/di2';
 import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
   type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
+import { Type } from '@rhombus-std/primitives';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -94,20 +95,19 @@ export interface Host extends IHost {}
 /** The internal {@link IHost} implementation. */
 @augment(tokenfor<IHost>())
 export class Host implements IHost, AsyncDisposable {
-  readonly #services: IServiceProvider;
+  readonly #services: ServiceProvider;
   readonly #applicationLifetime: ApplicationLifetime;
   readonly #logger: ILogger;
   readonly #hostLifetime: IHostLifetime;
   readonly #options: HostOptions;
 
-  #singletonScope?: IServiceProvider;
   #hostedServices?: IHostedService[];
   #hostedLifecycleServices?: IHostedLifecycleService[];
   #hostStarting = false;
   #backgroundServiceTasks?: Array<Promise<void>>;
   #backgroundServiceErrors?: unknown[];
 
-  public constructor(services: IServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger,
+  public constructor(services: ServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger,
     hostLifetime: IHostLifetime, options: HostOptions) {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
       throw new Error('Replacing IHostApplicationLifetime is not supported.');
@@ -120,13 +120,13 @@ export class Host implements IHost, AsyncDisposable {
   }
 
   /** The services configured for the program (the non-generic resolver view). */
-  public get services(): IServiceProvider {
+  public get services(): ServiceProvider {
     return this.#services;
   }
 
   /**
-   * Starts the hosted services. Order: host lifetime wait -> open the singleton
-   * scope + resolve hosted services -> `starting` -> `start` -> `started` ->
+   * Starts the hosted services. Order: host lifetime wait -> resolve hosted
+   * services -> `starting` -> `start` -> `started` ->
    * fire `applicationStarted`.
    */
   public async start(abortSignal?: AbortSignal): Promise<void> {
@@ -156,17 +156,19 @@ export class Host implements IHost, AsyncDisposable {
         throw error;
       };
 
-      // Open the singleton scope and resolve the hosted services from it.
-      this.#singletonScope = this.#services.createScope('singleton');
-      const singletonScope = this.#singletonScope;
-      this.#hostedServices = singletonScope.resolve<IHostedService[]>(hostedServiceCollectionToken());
-      this.#hostedLifecycleServices = getHostLifecycles(this.#hostedServices);
+      const hostedServices: IHostedService[] = this.#services.getRequiredService(
+        Type.from(hostedServiceCollectionToken()),
+      );
+      this.#hostedServices = hostedServices;
+      this.#hostedLifecycleServices = getHostLifecycles(hostedServices);
 
       // Force eager validation of any options marked with `validateOnStart`,
       // after resolving hosted services and before starting(). The validator is
       // registered only when `validateOnStart` ran, so resolve it optionally; a
       // validation failure throws out of start.
-      const startupValidator = singletonScope.tryResolve<IStartupValidator>(tokenfor<IStartupValidator>());
+      const startupValidator: IStartupValidator | undefined = this.#services.getService(
+        Type.from(tokenfor<IStartupValidator>()),
+      );
       startupValidator?.validate();
 
       // starting()
@@ -177,7 +179,7 @@ export class Host implements IHost, AsyncDisposable {
       }
 
       // start()
-      await foreachService(this.#hostedServices, signal, concurrent, abortOnFirstError, errors,
+      await foreachService(hostedServices, signal, concurrent, abortOnFirstError, errors,
         async (service, innerSignal) => {
           await service.start(innerSignal);
           if (service instanceof BackgroundService) {
@@ -265,12 +267,6 @@ export class Host implements IHost, AsyncDisposable {
         errors.push(...this.#backgroundServiceErrors);
       }
 
-      // Dispose the singleton scope opened in start().
-      if (this.#singletonScope) {
-        await this.#singletonScope.disposeAsync();
-        this.#singletonScope = undefined;
-      }
-
       if (errors.length) {
         const error = aggregate(errors,
           'One or more hosted services failed to stop, or a background service threw an error.');
@@ -312,21 +308,13 @@ export class Host implements IHost, AsyncDisposable {
     }
   }
 
-  /** Disposes the host synchronously: the singleton scope, then the root provider. */
+  /** Disposes the host synchronously, and with it the provider it runs against. */
   public [Symbol.dispose](): void {
-    if (this.#singletonScope) {
-      this.#singletonScope.dispose();
-      this.#singletonScope = undefined;
-    }
     this.#services.dispose();
   }
 
-  /** Disposes the host asynchronously: the singleton scope, then the root provider. */
+  /** Disposes the host asynchronously, and with it the provider it runs against. */
   public async [Symbol.asyncDispose](): Promise<void> {
-    if (this.#singletonScope) {
-      await this.#singletonScope.disposeAsync();
-      this.#singletonScope = undefined;
-    }
     await this.#services.disposeAsync();
   }
 }

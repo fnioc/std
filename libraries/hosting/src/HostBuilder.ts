@@ -10,7 +10,7 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import { DefaultManifest } from '@rhombus-std/di2';
+import { DefaultManifest } from '@rhombus-std/di2.core';
 import type { Manifest } from '@rhombus-std/di2.core';
 import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';

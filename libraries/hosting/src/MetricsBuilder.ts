@@ -11,7 +11,7 @@
 // class satisfying `IMetricsBuilder` once diagnostics.core merges those members
 // onto the interface.
 
-import type { IServiceManifestHolder, Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -26,15 +26,15 @@ export interface MetricsBuilder extends IMetricsBuilder {}
 /** Carries the service-registration surface the metrics augmentation functions register against. */
 @augment(tokenfor<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
-  readonly #holder: IServiceManifestHolder;
+  readonly #holder: ManifestSlot;
 
   /**
    * Wraps either a bare manifest (a private holder is allocated for it) or an
-   * existing {@link IServiceManifestHolder} whose slot this builder then SHARES
+   * existing {@link ManifestSlot} whose slot this builder then SHARES
    * -- the host application builder passes ITSELF, so `builder.metrics`
    * registrations and `builder.services` registrations stay on one chain.
    */
-  public constructor(services: Manifest | IServiceManifestHolder) {
+  public constructor(services: Manifest | ManifestSlot) {
     this.#holder = isHolder(services) ? services : { services };
   }
 
@@ -53,6 +53,9 @@ export class MetricsBuilder implements IMetricsBuilder {
 }
 
 /** A manifest is never itself a holder: only a holder carries a `services` slot. */
-function isHolder(value: Manifest | IServiceManifestHolder): value is IServiceManifestHolder {
+function isHolder(value: Manifest | ManifestSlot): value is ManifestSlot {
   return 'services' in value;
 }
+
+/** A writable manifest slot two builders can share, so both write one chain. */
+export type ManifestSlot = { services: Manifest; };

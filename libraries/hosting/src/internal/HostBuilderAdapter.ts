@@ -11,13 +11,14 @@
 // unsupported; the adapter only mutates the application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifestHolder, Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Action, Func } from '@rhombus-toolkit/func';
 import { resolveContentRootPath } from '../host-composition';
+import type { ManifestSlot } from '../MetricsBuilder';
 
 /** Ordinal case-insensitive comparison, treating an absent value as the empty string. */
 function equalsIgnoreCase(left: string | undefined, right: string | undefined): boolean {
@@ -38,14 +39,14 @@ export class HostBuilderAdapter implements IHostBuilder {
   // snapshot of the manifest. The chain is immutable, so `applyChanges` has to
   // write each delegate's returned manifest back into the live slot; a captured
   // manifest would replay the delegates onto a chain nobody builds from.
-  readonly #holder: IServiceManifestHolder;
+  readonly #holder: ManifestSlot;
   readonly #context: HostBuilderContext;
 
   readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
   readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest], Manifest>> = [];
 
-  public constructor(config: IConfigManager, holder: IServiceManifestHolder, context: HostBuilderContext) {
+  public constructor(config: IConfigManager, holder: ManifestSlot, context: HostBuilderContext) {
     this.#config = config;
     this.#holder = holder;
     this.#context = context;

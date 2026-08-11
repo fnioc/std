@@ -17,9 +17,9 @@ import { CommandLineConfigSource } from '@rhombus-std/config.commandline';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
 import { EnvironmentVariablesConfigSource } from '@rhombus-std/config.env';
 import { JsonConfigSource } from '@rhombus-std/config.json';
-import { DefaultManifest } from '@rhombus-std/di2';
+import type { ServiceProviderOptions } from '@rhombus-std/di2';
+import { DefaultManifest } from '@rhombus-std/di2.core';
 import type { Manifest } from '@rhombus-std/di2.core';
-import type { ServiceProviderOptions } from '@rhombus-std/di2.core';
 import { HostDefaults, HostEnvironmentEnvAugmentations, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder, LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import { ConsoleLoggerProvider } from '@rhombus-std/logging.console';
@@ -79,5 +79,5 @@ export function addDefaultServices(services: Manifest): Manifest {
  */
 export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
   const isDevelopment = HostEnvironmentEnvAugmentations.isDevelopment(environment);
-  return { validateScopes: isDevelopment, validateOnBuild: isDevelopment };
+  return { validateOnBuild: isDevelopment };
 }

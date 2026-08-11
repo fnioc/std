@@ -17,12 +17,13 @@
 //     loggers -- and any composite logger already handed out -- light up.
 
 import type { IConfig } from '@rhombus-std/config.core';
+import { ServiceProviderOptions } from '@rhombus-std/di2';
 import type { Manifest } from '@rhombus-std/di2.core';
-import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di2.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
   type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { process } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { CONFIG_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
@@ -186,9 +187,11 @@ export function populateFrameworkServices(services: Manifest, context: HostBuild
  */
 export function resolveHost(services: Manifest, framework: FrameworkServices, config: IConfig,
   serviceProviderOptions?: ServiceProviderOptions): IHost {
-  const provider: IServiceProvider = services.build(serviceProviderOptions);
+  const provider = services.build(serviceProviderOptions ?? ServiceProviderOptions.defaults);
 
-  const loggerProviders = provider.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
+  const loggerProviders: ILoggerProvider[] = provider.getRequiredService(
+    Type.from(`Array<${LOGGER_PROVIDER_TOKEN}>`),
+  );
   for (const loggerProvider of loggerProviders) {
     framework.loggerFactory.addProvider(loggerProvider);
   }
@@ -198,7 +201,9 @@ export function resolveHost(services: Manifest, framework: FrameworkServices, co
   // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TOKEN sees
   // the same mutated instance).
   framework.hostOptions.initialize(config);
-  const configureSteps = provider.resolve<Array<Func<[HostOptions], void>>>(`Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`);
+  const configureSteps: Array<Func<[HostOptions], void>> = provider.getRequiredService(
+    Type.from(`Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`),
+  );
   for (const configureStep of configureSteps) {
     configureStep(framework.hostOptions);
   }
