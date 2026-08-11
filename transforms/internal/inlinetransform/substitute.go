@@ -28,6 +28,11 @@ type Inlining struct {
 	Receiver *shimast.Node
 	Params   []string
 	Args     []*shimast.Node
+	// ReceiverParam is the body's name for its receiver when it takes one as a
+	// leading parameter rather than as `this`. The two shapes are otherwise
+	// identical here: the receiver is bound once, and the same single-evaluation
+	// rules apply to it.
+	ReceiverParam string
 }
 
 // Result is Substitute's output. Expr is the rewritten expression to splice in
@@ -81,13 +86,19 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		return Result{Expr: substituteInto(ec, body, params, nil)}
 	}
 
-	thisCount := countThis(body)
+	receiverCount := countThis(body)
+	if in.ReceiverParam != "" {
+		receiverCount = countIdentifier(body, in.ReceiverParam)
+	}
 	simple := isSimpleReceiver(in.Receiver)
 
-	if thisCount >= 2 && !simple {
+	if receiverCount >= 2 && !simple {
 		// Effectful receiver used more than once: bind it once to a temp in
 		// expression position and reference the temp at every `this` site.
 		temp := ec.Factory.NewTempVariable()
+		if in.ReceiverParam != "" {
+			params[in.ReceiverParam] = temp
+		}
 		substituted := substituteInto(ec, body, params, temp)
 		assign := factory.NewBinaryExpression(
 			nil,
@@ -110,7 +121,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		}
 	}
 
-	if thisCount == 0 && !simple {
+	if receiverCount == 0 && !simple {
 		// Receiver's value is never read, but its side effect must still run
 		// exactly once. Keep it as the left of a comma sequence.
 		substituted := substituteInto(ec, body, params, nil)
@@ -124,10 +135,38 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		return Result{Expr: factory.NewParenthesizedExpression(sequence)}
 	}
 
-	// `this` used 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
-	// of the receiver at each `this` site. thisRepl == nil below means "clone
-	// the receiver"; a non-nil node (the temp branch above) means "reference it".
+	// Receiver read 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
+	// of it at each site. thisRepl == nil below means "clone the receiver"; a
+	// non-nil node (the temp branch above) means "reference it".
+	if in.ReceiverParam != "" {
+		params[in.ReceiverParam] = in.Receiver
+	}
 	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver)}
+}
+
+// countIdentifier counts references to name in body, skipping the member side of
+// a property access so `x.name` never counts as a read of `name`.
+func countIdentifier(body *shimast.Node, name string) int {
+	count := 0
+	var walk func(*shimast.Node) bool
+	walk = func(node *shimast.Node) bool {
+		if node == nil {
+			return false
+		}
+		if node.Kind == shimast.KindIdentifier && node.Text() == name {
+			count++
+			return false
+		}
+		if node.Kind == shimast.KindPropertyAccessExpression {
+			access := node.AsPropertyAccessExpression()
+			walk(access.Expression)
+			return false
+		}
+		node.ForEachChild(walk)
+		return false
+	}
+	walk(body)
+	return count
 }
 
 // substituteInto rewrites body in place of a clone: every `this` becomes temp

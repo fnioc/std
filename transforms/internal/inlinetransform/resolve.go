@@ -90,7 +90,21 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 		}
 	}
 	if len(declMap) == 0 {
-		return nil, true, nil // inert: sugar overload not present in this program
+		// Two very different situations reach here. If no declaration even carries
+		// the body's type-parameter count, the sugar overload is simply not loaded
+		// in this program — a consumer that never pulls in the augmentation — and
+		// skipping is correct. If one does, the sugar overload IS present and only
+		// its value parameters disagree with the body's: an authoring fault, never
+		// a configuration, and staying silent about it is how a whole authoring
+		// surface can do nothing without anyone noticing.
+		if !anyDeclarationTakes(memberSym.Declarations, body.Discriminator.TypeParamCount) {
+			return nil, true, nil
+		}
+		return nil, false, fmt.Errorf(
+			"INLINE_DISCRIMINATOR_MISMATCH: %s:%s member %q — impl %q body takes value parameters %v, "+
+				"but no declaration of that member takes the same ones; a receiver belongs in `this` or "+
+				"as the leading parameter, and every other parameter must match the declaration's by name",
+			pkg, typeName, e.Member, e.Impl, body.Discriminator.Params)
 	}
 
 	return &Resolved{
@@ -103,6 +117,18 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 		DeclMap:   declMap,
 		MemberSet: memberSet,
 	}, false, nil
+}
+
+// anyDeclarationTakes reports whether any declaration carries exactly count type
+// parameters — the signal that the sugar overload is loaded, whatever its value
+// parameters turn out to be.
+func anyDeclarationTakes(decls []*shimast.Node, count int) bool {
+	for _, d := range decls {
+		if len(typeParamNames(d)) == count {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveFunction resolves a free-function entry (impl only). There is no
