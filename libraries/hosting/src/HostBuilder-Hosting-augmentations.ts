@@ -10,7 +10,7 @@
 // class itself is decorated with `@augment(tokenfor<IHostBuilder>())`.
 
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { type IResolver, RESOLVER_TOKEN, type ServiceProviderOptions } from '@rhombus-std/di2.core';
+import { type IServiceProvider, RESOLVER_TYPE, type ServiceProviderOptions } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
   type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
@@ -188,11 +188,11 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
       return hostBuilder.configureServices((_context, services) => {
         const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
         return withOptions.addFactory(HOST_LIFETIME_TOKEN,
-          (resolver: IResolver) =>
-            new ConsoleLifetime(resolver.resolve<ConsoleLifetimeOptions>(CONSOLE_LIFETIME_OPTIONS_TOKEN),
-              resolver.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN),
-              resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
-              resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN)), [[RESOLVER_TOKEN]]);
+          (resolver: IServiceProvider) =>
+            new ConsoleLifetime(resolver.getRequiredService(Type.from(CONSOLE_LIFETIME_OPTIONS_TOKEN)),
+              resolver.getRequiredService(Type.from(HOST_ENVIRONMENT_TOKEN)),
+              resolver.getRequiredService(Type.from(HOST_APPLICATION_LIFETIME_TOKEN)),
+              resolver.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN))), [[RESOLVER_TYPE]]);
       });
     },
 

@@ -17,11 +17,11 @@
 // ServiceManifest and brings their interface merges into the program.
 import '@rhombus-std/options.augmentations';
 
-import type { DefaultManifest, IResolver, Manifest } from '@rhombus-std/di2.core';
-import { RESOLVER_TOKEN } from '@rhombus-std/di2.core';
+import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di2.core';
+import { RESOLVER_TYPE } from '@rhombus-std/di2.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TOKEN } from './distributed-cache-token';
@@ -68,15 +68,13 @@ type IServiceManifestMemoryCacheAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
-    extends IServiceManifestMemoryCacheAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IServiceManifestMemoryCacheAugmentations<Scopes> {}
 }
 
 export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultManifest<string>,
   IServiceManifestMemoryCacheAugmentations<string>> = {
     addMemoryCache(manifest, setup) {
-      let m: Manifest<string> = manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions())
-        .as('singleton');
+      let m: Manifest<string> = manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions());
       if (setup !== undefined) {
         // `setup` joins the options pipeline as a configure step: it runs
         // lazily, when the options first resolve, not at registration.
@@ -93,9 +91,9 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
       // sides are the same type (see diagnostics.core's
       // `clearMetricsListeners` for the full explanation).
       m = m.tryAddFactory(MEMORY_CACHE_TOKEN,
-        (resolver: IResolver) =>
-          new MemoryCache(resolver.resolve<IOptions<MemoryCacheOptions>>(MEMORY_CACHE_OPTIONS_TOKEN),
-            resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN)), [[RESOLVER_TOKEN]], 'singleton') as Manifest<
+        (resolver: IServiceProvider) =>
+          new MemoryCache(resolver.getRequiredService(Type.from(MEMORY_CACHE_OPTIONS_TOKEN)),
+            resolver.getService(Type.from(LOGGER_FACTORY_TOKEN))), [[RESOLVER_TYPE]], 'singleton') as Manifest<
           string
         >;
       return m;
@@ -106,16 +104,16 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
       // cache is REGISTERED here but built lazily on first resolve, over its
       // own private MemoryCache.
       let m: Manifest<string> = manifest.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN,
-        () => new MemoryDistributedCacheOptions()).as('singleton');
+        () => new MemoryDistributedCacheOptions());
       if (setup !== undefined) {
         m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN, setup);
       }
       // See addMemoryCache's cast above for why this is needed.
-      m = m.tryAddFactory(DISTRIBUTED_CACHE_TOKEN, (resolver: IResolver) =>
+      m = m.tryAddFactory(DISTRIBUTED_CACHE_TOKEN, (resolver: IServiceProvider) =>
         new MemoryDistributedCache(
-          resolver.resolve<IOptions<MemoryDistributedCacheOptions>>(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN),
-          resolver.tryResolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN),
-        ), [[RESOLVER_TOKEN]], 'singleton') as Manifest<string>;
+          resolver.getRequiredService(Type.from(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN)),
+          resolver.getService(Type.from(LOGGER_FACTORY_TOKEN)),
+        ), [[RESOLVER_TYPE]], 'singleton') as Manifest<string>;
       return m;
     },
   };

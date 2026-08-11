@@ -1,4 +1,4 @@
-import type { IResolver, Token } from '@rhombus-std/di2.core';
+import type { IServiceProvider, Token } from '@rhombus-std/di2.core';
 import { collectionToken } from '@rhombus-std/diagnostics.core';
 import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
@@ -13,12 +13,12 @@ import { CompositeChangeToken } from './CompositeChangeToken';
  * base, and returns a reactive `IOptions<T>` that re-runs the build whenever a
  * source reports a change — or a static snapshot if no source is registered.
  *
- * @param resolver The live provider view (injected as the factory's `IResolver`).
+ * @param resolver The live provider view (injected as the factory's `IServiceProvider`).
  * @param configureToken The collection slot holding the `IConfigureOptions<T>` steps.
  * @param sourceToken The collection slot holding the change-token sources.
  * @param makeBase Produces the base instance each build starts from.
  */
-export function assembleDiagnosticsOptions<T>(resolver: IResolver, configureToken: Token, sourceToken: Token,
+export function assembleDiagnosticsOptions<T>(resolver: IServiceProvider, configureToken: Token, sourceToken: Token,
   makeBase: Func<[], T>): IOptions<T> {
   const steps = resolver.resolve<ReadonlyArray<IConfigureOptions<T>>>(collectionToken(configureToken));
   const sources = resolver.resolve<readonly IOptionsChangeTokenSource[]>(collectionToken(sourceToken));

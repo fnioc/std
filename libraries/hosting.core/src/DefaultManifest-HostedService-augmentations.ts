@@ -12,8 +12,8 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `DepSlot`/`IServiceManifest`/`ServiceManifestClass` must be
 // importable here.
-import { type DefaultManifest, type DepSlot, type IResolver, type Manifest,
-  RESOLVER_TOKEN } from '@rhombus-std/di2.core';
+import { type DefaultManifest, type DepSlot, type IServiceProvider, type Manifest,
+  RESOLVER_TYPE } from '@rhombus-std/di2.core';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -31,7 +31,7 @@ type IServiceManifestHostedServiceAugmentations<Scopes extends string> = {
    * its resolver parameter; a class value is disambiguated by type (not
    * arity) and still resolves to the ctor overload below.
    */
-  addHostedService(implementationFactory: Func<[IResolver], IHostedService>): Manifest<Scopes>;
+  addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
    * stop alongside its lifetime. `signatures` carries the ctor's dep
@@ -44,13 +44,12 @@ type IServiceManifestHostedServiceAugmentations<Scopes extends string> = {
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
-    extends IServiceManifestHostedServiceAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IServiceManifestHostedServiceAugmentations<Scopes> {}
 }
 
 // An ES class stringifies to a `class …` head; a factory (arrow or plain
 // function) does not.
-function isConstructor(target: Ctor | Func<[IResolver], IHostedService>): target is Ctor {
+function isConstructor(target: Ctor | Func<[IServiceProvider], IHostedService>): target is Ctor {
   return /^class[\s{]/.test(Function.prototype.toString.call(target));
 }
 
@@ -61,17 +60,17 @@ export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<Default
     // lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
     ...rest: [ctor: Ctor, signatures?: ReadonlyArray<readonly DepSlot[]>] | [
-      implementationFactory: Func<[IResolver], IHostedService>,
+      implementationFactory: Func<[IServiceProvider], IHostedService>,
     ]
   ): Manifest<string> {
     const [target, signatures] = rest;
-    // The factory form injects the live resolver (via the `[[RESOLVER_TOKEN]]`
+    // The factory form injects the live resolver (via the `[[RESOLVER_TYPE]]`
     // dep signature) so the delegate receives it. A ctor form with no
     // `signatures` is a dependency-free ctor, stated explicitly as `[[]]`
     // (`addClass` has no overload that omits it).
     return isConstructor(target)
       ? manifest.addClass(HOSTED_SERVICE_TOKEN, target, signatures ?? [[]], 'singleton')
-      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TOKEN]], 'singleton');
+      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TYPE]], 'singleton');
   } };
 
 registerAugmentations(tokenfor<Manifest>(), ServiceManifestHostedServiceAugmentations);

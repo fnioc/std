@@ -178,7 +178,7 @@ export class LoggerFactory implements ILoggerFactory {
     const services = new DefaultManifest().addLogging(configure);
     const provider = services.build();
     const singletonScope = provider.createScope('singleton');
-    const factory = singletonScope.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN);
+    const factory = singletonScope.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
     return new DisposingLoggerFactory(factory, singletonScope);
   }
 }

@@ -1,4 +1,4 @@
-import type { IResolver } from '@rhombus-std/di2.core';
+import type { IServiceProvider } from '@rhombus-std/di2.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
 
 /**
@@ -6,12 +6,12 @@ import type { AbortSignal } from '@rhombus-std/primitives';
  * the service container and its lifetime.
  *
  * @remarks
- * `services` is the non-generic {@link IResolver} view: a caller resolves
+ * `services` is the non-generic {@link IServiceProvider} view: a caller resolves
  * through it, but cannot open new scopes off the root handle.
  */
 export interface IHost extends Disposable {
   /** The services configured for the program. */
-  readonly services: IResolver;
+  readonly services: IServiceProvider;
 
   /**
    * Starts the {@link IHostedService} objects configured for the program. The

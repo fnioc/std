@@ -10,7 +10,7 @@
 // THAT scope, and `stop` disposes it -- that scope is what gives singleton
 // semantics and deterministic disposal.
 
-import type { IResolver, IServiceProvider } from '@rhombus-std/di2.core';
+import type { IServiceProvider, IServiceProvider } from '@rhombus-std/di2.core';
 import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
   type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
@@ -120,7 +120,7 @@ export class Host implements IHost, AsyncDisposable {
   }
 
   /** The services configured for the program (the non-generic resolver view). */
-  public get services(): IResolver {
+  public get services(): IServiceProvider {
     return this.#services;
   }
 

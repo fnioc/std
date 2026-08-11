@@ -23,7 +23,7 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { DefaultManifest, type Manifest, type Manifest, RESOLVER_TOKEN } from '@rhombus-std/di2.core';
+import { DefaultManifest, type Manifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di2.core';
 import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
   METRICS_CONFIGURATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
   METRICS_OPTIONS_TOKEN, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
@@ -69,8 +69,7 @@ type IServiceManifestDiagnosticsAugmentations<Scopes extends string> = {
 // type-parameter list (TS2428 requires identical parameters), even though the
 // members do not name `Provider`.
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
-    extends IServiceManifestDiagnosticsAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IServiceManifestDiagnosticsAugmentations<Scopes> {}
 }
 
 // `addMetrics` and `addTracing` are two separate object literals -- one member
@@ -83,11 +82,11 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
       // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
       // scope. Calling addMetrics twice re-registers the (identical) factory --
       // last-wins bare-token resolution keeps that correct. The factory takes the
-      // live provider view via a RESOLVER_TOKEN slot, exactly like assembleOptions.
+      // live provider view via a RESOLVER_TYPE slot, exactly like assembleOptions.
       let m: Manifest<string> = manifest.addFactory(METRICS_OPTIONS_TOKEN,
         (resolver) =>
           assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TOKEN, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, () =>
-            new MetricsOptions()), [[RESOLVER_TOKEN]], 'singleton');
+            new MetricsOptions()), [[RESOLVER_TYPE]], 'singleton');
       // The per-listener configuration factory, ctor-injected with the collection
       // of every MetricsConfig marker addMetricsConfig registered.
       m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN, MetricListenerConfigFactory, [[
@@ -116,7 +115,7 @@ export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManife
       let m: Manifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN,
         (resolver) =>
           assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TOKEN, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, () =>
-            new TracingOptions()), [[RESOLVER_TOKEN]], 'singleton');
+            new TracingOptions()), [[RESOLVER_TYPE]], 'singleton');
       // The per-listener configuration factory, ctor-injected with the collection
       // of every TracingConfig marker addTracingConfig registered.
       m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, DefaultActivityListenerConfigFactory, [[

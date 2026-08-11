@@ -63,7 +63,7 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
   },
 
   async waitForShutdownAsync(host, abortSignal) {
-    const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
+    const lifetime = host.services.getRequiredService(Type.from(HOST_APPLICATION_LIFETIME_TOKEN));
 
     const requestStop = (): void => lifetime.stopApplication();
     if (abortSignal !== undefined) {

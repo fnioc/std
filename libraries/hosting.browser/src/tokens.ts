@@ -1,7 +1,7 @@
 // The DI-slot tokens this package's registrations bind to, in the di.core
 // "<package>:<TypeName>" convention (the production tokenfor lowering). The
 // hosting-family tokens this package RESOLVES (HOST_LIFETIME_TOKEN,
-// HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, RESOLVER_TOKEN) are
+// HOST_APPLICATION_LIFETIME_TOKEN, LOGGER_FACTORY_TOKEN, RESOLVER_TYPE) are
 // imported from their owning packages — never restated.
 
 import type { Token } from '@rhombus-std/di2.core';

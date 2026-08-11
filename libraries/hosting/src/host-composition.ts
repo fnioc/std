@@ -203,7 +203,7 @@ export function resolveHost(services: Manifest, framework: FrameworkServices, co
     configureStep(framework.hostOptions);
   }
 
-  const hostLifetime = provider.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
+  const hostLifetime = provider.getRequiredService(Type.from(HOST_LIFETIME_TOKEN));
   const logger = framework.loggerFactory.createLogger(HOST_LOGGER_CATEGORY);
 
   return new Host(provider, framework.applicationLifetime, logger, hostLifetime, framework.hostOptions);

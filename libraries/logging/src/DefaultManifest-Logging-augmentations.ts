@@ -63,8 +63,7 @@ type IServiceManifestLoggingAugmentations<Scopes extends string> = {
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
 declare module '@rhombus-std/di2.core' {
-  interface Manifest<Scopes extends string = 'singleton', Provider = unknown>
-    extends IServiceManifestLoggingAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IServiceManifestLoggingAugmentations<Scopes> {}
 }
 
 // Registered against the `ServiceManifest` augmentation token — the concrete
@@ -76,7 +75,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
     addLogging(manifest, configure) {
       // The LoggerFilterOptions assembly + its default (Information) min level.
       let m: Manifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN,
-        () => new LoggerFilterOptions()).as('singleton');
+        () => new LoggerFilterOptions());
       m = m.addValue(configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
         new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 

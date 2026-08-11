@@ -75,8 +75,8 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       // The LoggerFilterOptions pipeline: assembly + custom configure step +
       // reload change-token source.
       const optionsToken = tokenfor<IOptions<LoggerFilterOptions>>();
-      builder.services = builder.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions())
-        .as('singleton');
+      builder.services = builder.services.addOptions<LoggerFilterOptions>(optionsToken,
+        () => new LoggerFilterOptions());
       builder.services = builder.services.addValue(configureStepToken(optionsToken),
         new LoggerFilterConfigureOptions(config));
       builder.services = builder.services.addValue(changeTokenSourceToken(optionsToken),
