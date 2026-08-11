@@ -18,11 +18,11 @@
     "directory": "libraries/di.extras.options"
   },
   "type": "module",
-  "//rhombus.inline": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core IServiceManifestBase interface (the augmentation target); `impl` (ServiceOptionsInline) resolves in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
+  "//rhombus.inline": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core Manifest interface (the augmentation target); `impl` (ServiceOptionsInline) resolves in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
   "rhombus.inline": {
     "entries": [
       {
-        "type": "@rhombus-std/di.core:IServiceManifestBase",
+        "type": "@rhombus-std/di.core:Manifest",
         "impl": "ServiceOptionsInline",
         "member": "addOptions"
       }

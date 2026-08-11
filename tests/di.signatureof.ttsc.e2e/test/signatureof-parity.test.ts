@@ -96,13 +96,13 @@ function goEnv(): NodeJS.ProcessEnv {
 // The type-driven sugar overloads are hand-declared here (as the inline.ttsc.e2e
 // pilot hand-declares isService<T>) so the program carries them without wiring
 // the transformer's own types — the merge target is the real di.core
-// IServiceManifestBase, and the parameter NAMES (ctor / factory) match the inline
+// Manifest, and the parameter NAMES (ctor / factory) match the inline
 // bodies' so the structural overload discriminator resolves each call to the
 // sugar overload. A class with a real constructor dependency (IDep) and a factory
 // with a real parameter dependency give a NON-TRIVIAL signature array, so parity
 // pins the actual slot derivation, not just an empty `[[]]`.
 const APP_SOURCE = `
-import type { IAsBuilder, IServiceManifest } from "@rhombus-std/di.core";
+import type { Manifest } from "@rhombus-std/di.core";
 
 // Minimal local constructor / factory types, so the source is self-contained
 // (no @rhombus-toolkit/func resolution needed). The overload discriminator reads
@@ -111,9 +111,9 @@ type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
 type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
 
 declare module "@rhombus-std/di.core" {
-  interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
-    addClass<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
-    addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
+  interface Manifest<Scopes extends string = "singleton"> {
+    addClass<I>(ctor: Ctor<any[], I>): Manifest<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): Manifest<Scopes>;
     addValue<I>(value: I): void;
   }
 }
@@ -130,7 +130,7 @@ class BarImpl implements IBar {
   constructor(dep: IDep) { void dep; }
 }
 
-declare const services: IServiceManifest<"singleton">;
+declare const services: Manifest<"singleton">;
 declare const bazValue: IBaz;
 
 // Top-level registration statements: the inline stage substitutes the sugar
