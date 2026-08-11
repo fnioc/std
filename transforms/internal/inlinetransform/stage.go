@@ -53,6 +53,10 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		}
 		resolvedList = append(resolvedList, resolved)
 		for decl, body := range resolved.DeclMap {
+			if prev, taken := inlineByDecl[decl]; taken &&
+				!supersedes(declarationDiscriminator(decl), prev.body.Discriminator, body.Discriminator) {
+				continue
+			}
 			inlineByDecl[decl] = &matchTarget{resolved: resolved, body: body}
 		}
 		if resolved.Kind == KindFunction {
@@ -705,6 +709,14 @@ func (st *fileState) isRogueDuplicate(decl *shimast.Node, calleeName string) boo
 		}
 	}
 	return false
+}
+
+// supersedes reports whether a candidate body should displace one already chosen
+// for the same declaration. A body that names the declaration's parameters
+// exactly beats one that only absorbed them into a rest; at equal specificity the
+// incumbent stays, so the owned-entry order decides and map iteration never does.
+func supersedes(decl, incumbent, candidate Discriminator) bool {
+	return decl.Equal(candidate) && !decl.Equal(incumbent)
 }
 
 // hoistTemps prepends a `var <temp>;` declaration for every single-eval temp the

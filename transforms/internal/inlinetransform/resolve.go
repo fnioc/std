@@ -85,7 +85,7 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 	declMap := map[*shimast.Node]*ResolvedBody{}
 	for _, d := range memberSym.Declarations {
 		memberSet[d] = true
-		if declarationDiscriminator(d).Equal(body.Discriminator) {
+		if body.Discriminator.Matches(declarationDiscriminator(d)) {
 			declMap[d] = body
 		}
 	}

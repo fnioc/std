@@ -502,6 +502,36 @@ func hasThisParameter(node *shimast.Node) bool {
 	return false
 }
 
+// Matches reports whether a body's discriminator can serve the declaration's.
+//
+// An exact match is the ordinary case. A body whose last value parameter is a
+// REST parameter forwards whatever follows it verbatim, so it is overload-
+// agnostic by construction: it also serves any declaration whose leading
+// parameters agree by name and which carries at least as many. Where both a rest
+// body and an exactly-named one could serve the same declaration, the caller
+// prefers the exact one — the rest body is the fallback, never the winner.
+func (d Discriminator) Matches(decl Discriminator) bool {
+	if d.TypeParamCount != decl.TypeParamCount {
+		return false
+	}
+	if d.Equal(decl) {
+		return true
+	}
+	lead := len(d.Params) - 1
+	if lead < 0 || !strings.HasPrefix(d.Params[lead], "...") {
+		return false
+	}
+	if len(decl.Params) < lead {
+		return false
+	}
+	for i := 0; i < lead; i++ {
+		if decl.Params[i] != d.Params[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // declarationDiscriminator computes the structural discriminator of a merged
 // declaration node (a method signature, method, or function declaration).
 func declarationDiscriminator(node *shimast.Node) Discriminator {
