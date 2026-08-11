@@ -1,8 +1,8 @@
-import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
+import { AugmentationSet2, type Flatten, NotImplementedError, registerAugmentations, Token,
+  Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { describe, type IComplete, type Unstarted } from '../builder';
-import { NotImplementedError } from '../Errors';
 import { Manifest } from '../Manifest';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 

@@ -13,6 +13,7 @@ export type { IChangeToken } from './IChangeToken.js';
 export type { IServiceProvider } from './IServiceProvider.js';
 export type { IterableObject } from './IterableObject.js';
 export { Multimap } from './Multimap.js';
+export { NotImplementedError } from './NotImplementedError.js';
 export { process } from './process.js';
 export type { ProcessLike } from './process.js';
 export type { ReadableStream } from './ReadableStream.js';
