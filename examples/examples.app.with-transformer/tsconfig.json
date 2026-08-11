@@ -11,7 +11,7 @@
     "declarationMap": false,
     "sourceMap": false,
     "composite": false,
-    "types": ["@rhombus-std/di.extras", "@rhombus-std/di.extras.options", "@types/bun"]
+    "types": ["@rhombus-std/di2.extras", "@rhombus-std/di.extras.options", "@types/bun"]
   },
   "include": ["src/**/*"]
 }

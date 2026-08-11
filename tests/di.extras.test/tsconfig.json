@@ -4,7 +4,7 @@
   "compilerOptions": {
     "noEmit": true,
     "composite": false,
-    "types": ["bun", "@rhombus-std/di.extras"]
+    "types": ["bun", "@rhombus-std/di2.extras"]
   },
   "include": ["test/**/*"]
 }

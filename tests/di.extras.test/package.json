@@ -12,6 +12,6 @@
   "devDependencies": {
     "@rhombus-std/di2": "workspace:*",
     "@rhombus-std/di2.core": "workspace:*",
-    "@rhombus-std/di.extras": "workspace:*"
+    "@rhombus-std/di2.extras": "workspace:*"
   }
 }
