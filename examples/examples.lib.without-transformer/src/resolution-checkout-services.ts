@@ -22,8 +22,8 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { RESOLVER_TOKEN } from '@rhombus-std/di.core';
-import type { Inject, IResolver, IServiceManifest, Typeof } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE } from '@rhombus-std/di.core';
+import type { Inject, IServiceProvider, Manifest, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt,
   IReceiptNumbering } from '@rhombus-std/examples.contracts';
 
@@ -67,10 +67,10 @@ export const CHECKOUT_TOKENS = {
    * di's INTRINSIC provider token — the ONE token in this bag that is not
    * hand-written, because di.core exports the constant. Reach for the constant
    * rather than the string: it is the token the transformer derives for
-   * `IResolver`, the engine recognises it without any registration existing for
+   * `IServiceProvider`, the engine recognises it without any registration existing for
    * it, and a hand-written copy is one more place for the two to drift apart.
    */
-  resolver: RESOLVER_TOKEN,
+  resolver: RESOLVER_TYPE,
 } as const;
 
 /** The separator between a base token and a resolution key — `base#key`. */
@@ -142,10 +142,10 @@ export class AmountIsPositive implements IOrderValidator {
  */
 export class MethodIsConfigured implements IOrderValidator {
   public readonly name = 'method-is-configured';
-  readonly #resolver: IResolver;
+  readonly #resolver: IServiceProvider;
   readonly #gatewayToken: Typeof<IPaymentGateway>;
 
-  public constructor(resolver: IResolver, gatewayToken: Typeof<IPaymentGateway>) {
+  public constructor(resolver: IServiceProvider, gatewayToken: Typeof<IPaymentGateway>) {
     this.#resolver = resolver;
     this.#gatewayToken = gatewayToken;
   }
@@ -277,11 +277,11 @@ export async function fetchExchangeRates(): Promise<IExchangeRates> {
  * be derived as an ordinary token instead.
  */
 export class PaymentRouter implements IPaymentRouter {
-  readonly #resolver: IResolver;
+  readonly #resolver: IServiceProvider;
   readonly #gatewayToken: Typeof<IPaymentGateway>;
   readonly #mintReceipt: (order: CheckoutOrder) => IReceipt;
 
-  public constructor(resolver: IResolver, gatewayToken: Typeof<IPaymentGateway>,
+  public constructor(resolver: IServiceProvider, gatewayToken: Typeof<IPaymentGateway>,
     mintReceipt: (order: CheckoutOrder) => IReceipt) {
     this.#resolver = resolver;
     this.#gatewayToken = gatewayToken;
@@ -327,8 +327,8 @@ export class PaymentRouter implements IPaymentRouter {
  * @param services The application's registration builder.
  */
 export function addCheckoutServices<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-): IServiceManifest<S | 'singleton'> {
+  services: Manifest<S | 'singleton'>,
+): Manifest<S | 'singleton'> {
   const t = CHECKOUT_TOKENS;
 
   // The pinned spend limit `TotalWithinLimit` brands its parameter with.

@@ -70,13 +70,6 @@ export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from '
 // nothing built, so they are staged here.
 export { demonstrateRegistrationErrors, describeDiError, diagnose, stagedFailure } from './errors-demo.js';
 
-// The token/slot ABI, exercised as a container-diagnostics tool would: classify,
-// parse, walk, rewrite, match, rank, and close a template. The fixture it reports
-// on is an `add*` contribution like any other; the tour itself only READS.
-export { addReportingFixture, classify, closeAgainst, demonstrateTokenAbi, describeNode, describeRegistrations,
-  describeSlot, describeTree, explainMatch, isResolvableSlot, PackageCollector, PackageRenamer, rankBySpecificity,
-  slotRoundTrips } from './token-abi-demo.js';
-
 // The manifest as a value: the augmentation receiver, the standalone call
 // surface, the intrinsic primitives, and the manifest-to-manifest half of a test
 // host. The tour takes a composed manifest, since a library cannot make one.

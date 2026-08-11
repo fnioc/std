@@ -12,7 +12,7 @@
 //
 // What each piece is here to teach:
 //
-//   - `IServiceManifestHolder` — the mutable-slot seam that makes a
+//   - `ManifestSlot` — the mutable-slot seam that makes a
 //     `configure(builder)` callback API possible at all (see the builder below).
 //   - THE AD-HOC FACTORY PARAMETER — a library needing to build something on
 //     demand asks for a CALLABLE in its constructor, not for the container. The
@@ -26,11 +26,16 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { RESOLVER_TOKEN, union } from '@rhombus-std/di.core';
-import type { IResolver, IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE, union } from '@rhombus-std/di.core';
+import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
 import { GREETING_TOKEN } from './tokens.js';
+
+/** The mutable slot a builder exposes so siblings share one manifest. */
+interface ManifestSlot<S extends string> {
+  services: Manifest<S>;
+}
 
 // ── tokens ───────────────────────────────────────────────────────────────────
 
@@ -187,7 +192,7 @@ export class GreetingWorkshop {
  * answer; do not copy this shape into a library.
  *
  * Everything it does, the class above does better. Read the two constructors
- * together and the cost is plain: this one declares a single `IResolver`
+ * together and the cost is plain: this one declares a single `IServiceProvider`
  * parameter, so its REAL dependencies — a card factory and some stationery — are
  * invisible to anyone reading the signature, invisible to the container's
  * validation, and discoverable only by reading the method bodies. A test cannot
@@ -207,7 +212,7 @@ export class GreetingWorkshop {
  * empty provider, which is the good failure, at the honest moment.
  */
 export class LocatorGreetingWorkshop {
-  readonly #resolver: IResolver;
+  readonly #resolver: IServiceProvider;
 
   /**
    * The card factory, built on FIRST USE and then reused. `resolveFactory` works
@@ -226,7 +231,7 @@ export class LocatorGreetingWorkshop {
    */
   public readonly stationery: ICardStationery;
 
-  public constructor(resolver: IResolver) {
+  public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
     this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN) ?? new PlainStationery();
   }
@@ -258,7 +263,7 @@ export class LocatorGreetingWorkshop {
  * What a consuming application sees inside `addGreetingWorkshop(services, …)`.
  * A fluent, ORDINARY object — no manifest threading, no return value to
  * remember. That ergonomics is bought entirely by
- * {@link IServiceManifestHolder}; see {@link GreetingWorkshopBuilder}.
+ * {@link ManifestSlot}; see {@link GreetingWorkshopBuilder}.
  */
 export interface IGreetingWorkshopBuilder {
   /** Chooses the greeting implementation every card is rendered with. */
@@ -268,7 +273,7 @@ export interface IGreetingWorkshopBuilder {
 }
 
 /**
- * The builder — and the reason `IServiceManifestHolder` exists.
+ * The builder — and the reason `ManifestSlot` exists.
  *
  * A manifest is IMMUTABLE: every verb returns a NEW manifest and leaves the
  * receiver alone. So a builder cannot hold a manifest and register "into" it;
@@ -278,7 +283,7 @@ export interface IGreetingWorkshopBuilder {
  * registers NOTHING the one time they forget, or have every builder method
  * return the manifest and give up the fluent chain.
  *
- * `IServiceManifestHolder` is the third option: ONE mutable slot over the
+ * `ManifestSlot` is the third option: ONE mutable slot over the
  * immutable chain. The builder reassigns `holder.services` on each call, and the
  * function that owns the holder reads the final chain out at the end. That is
  * how `ILoggingBuilder`, `IMetricsBuilder` and `IHostApplicationBuilder` all
@@ -286,9 +291,9 @@ export interface IGreetingWorkshopBuilder {
  * one chain instead of silently dropping each other's registrations.
  */
 export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorkshopBuilder {
-  readonly #holder: IServiceManifestHolder<S | 'singleton'>;
+  readonly #holder: ManifestSlot<S | 'singleton'>;
 
-  public constructor(holder: IServiceManifestHolder<S | 'singleton'>) {
+  public constructor(holder: ManifestSlot<S | 'singleton'>) {
     this.#holder = holder;
   }
 
@@ -317,9 +322,9 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S extends string>(services: IServiceManifest<S | 'singleton'>,
-  configure: (builder: IGreetingWorkshopBuilder) => void): IServiceManifest<S | 'singleton'> {
-  const holder: IServiceManifestHolder<S | 'singleton'> = { services };
+export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'singleton'>,
+  configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
+  const holder: ManifestSlot<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
   // The card, registered with NO lifetime — transient, the honest tag for
@@ -338,12 +343,12 @@ export function addGreetingWorkshop<S extends string>(services: IServiceManifest
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
-  // intrinsic RESOLVER_TOKEN slot is how a plugin-less author asks for the live
+  // intrinsic RESOLVER_TYPE slot is how a plugin-less author asks for the live
   // provider — "I want the provider" is plain DI, not a special slot kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
   holder.services = holder.services.addClass(LOCATOR_GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop, [[
-    RESOLVER_TOKEN,
+    RESOLVER_TYPE,
   ]], 'singleton');
   return holder.services;
 }

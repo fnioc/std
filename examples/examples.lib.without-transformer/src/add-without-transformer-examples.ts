@@ -22,7 +22,7 @@
 // nothing has to be lowered for it to run, so the raw source is already usable.
 // This is the manual dialect's producer half of the interop matrix.
 
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 import { CasualGreeting } from './casual-greeting.js';
 import { HealthCheck } from './health-check.js';
@@ -48,8 +48,8 @@ import { GREETING_TOKEN, HEALTH_CHECK_TOKEN } from './tokens.js';
  * @param services The application's registration builder.
  */
 export function addWithoutTransformerExamples<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-): IServiceManifest<S | 'singleton'> {
+  services: Manifest<S | 'singleton'>,
+): Manifest<S | 'singleton'> {
   // Contributes a greeting to the shared IGreeting collection at the hand-written
   // token — the same one the with-transformer side derives. Zero-dep ctor, so the
   // signature list is empty.
