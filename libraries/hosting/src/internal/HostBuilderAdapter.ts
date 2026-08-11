@@ -5,14 +5,13 @@
 // application builder's live configuration / services when the host is built
 // (`applyChanges`, invoked from `HostApplicationBuilder.build()`).
 //
-// Container customization (`useServiceProviderFactory` / `configureContainer`)
-// is a no-op, matching this repo's single-container design -- the application
-// builder's own `configureContainer` is likewise a no-op. `build()` is
+// Container customization (`configureContainer`) is a no-op, matching this
+// repo's single-container design -- the application builder's own
+// `configureContainer` is likewise a no-op. `build()` is
 // unsupported; the adapter only mutates the application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
 import type { Manifest } from '@rhombus-std/di2.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -69,11 +68,6 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this {
     this.#configureServicesActions.push(configureDelegate);
-    return this;
-  }
-
-  /** No-op single-container hook, mirroring the application builder. */
-  public useServiceProviderFactory<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>): this {
     return this;
   }
 

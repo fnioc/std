@@ -12,7 +12,6 @@ import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
 import { DefaultManifest } from '@rhombus-std/di2.core';
 import type { Manifest } from '@rhombus-std/di2.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { tokenfor } from '@rhombus-std/primitives.extras';
@@ -58,15 +57,6 @@ export class HostBuilder implements IHostBuilder {
   /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
   public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this {
     this.#configureServicesActions.push(configureDelegate);
-    return this;
-  }
-
-  /**
-   * Overrides the factory used to create the service provider. This repo has a
-   * SINGLE container type, so this is a minimal no-op single-container hook: the
-   * default `ServiceManifest` build path is always used to produce the provider.
-   */
-  public useServiceProviderFactory<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>): this {
     return this;
   }
 

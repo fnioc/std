@@ -14,7 +14,6 @@ import type { IConfigManager } from '@rhombus-std/config.core';
 import type { ServiceProviderOptions } from '@rhombus-std/di2';
 import { DefaultManifest } from '@rhombus-std/di2.core';
 import type { Manifest } from '@rhombus-std/di2.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
   type IHostEnvironment } from '@rhombus-std/hosting.core';
@@ -157,12 +156,11 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /**
-   * Registers a factory used to create the service provider. This repo has a
-   * SINGLE container type, so this is a minimal no-op single-container hook: the
-   * default `ServiceManifest` build path is always used.
+   * Configures the instantiated dependency container. This repo has a SINGLE
+   * container type, so this is a minimal no-op single-container hook: the
+   * default build path is always used.
    */
-  public configureContainer<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>,
-    _configure?: Action<[TContainerBuilder]>): void {}
+  public configureContainer<TContainerBuilder>(_configure?: Action<[TContainerBuilder]>): void {}
 
   /**
    * Returns a classic {@link IHostBuilder} view over this builder. Lazily

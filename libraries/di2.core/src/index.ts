@@ -4,7 +4,6 @@ export type { ConstructableType, CtorType, FunctionType, IntersectionType, IServ
 
 export * from './builder';
 export * from './Errors';
-export * from './IServiceProviderFactory';
 export * from './Manifest';
 export * from './resolver';
 export * from './ServiceDescriptor';

@@ -1,5 +1,5 @@
 import type { IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceProviderFactory, Manifest } from '@rhombus-std/di2.core';
+import type { Manifest } from '@rhombus-std/di2.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { Action } from '@rhombus-toolkit/func';
@@ -41,15 +41,12 @@ export interface IHostApplicationBuilder {
   services: Manifest;
 
   /**
-   * Registers a factory used to create the service provider. The `configure`
-   * delegate runs after all other services have been registered. Multiple calls
-   * replace the previously stored factory and delegate.
+   * Configures the instantiated dependency container. The `configure` delegate
+   * runs after all other services have been registered. Multiple calls replace
+   * the previously stored delegate.
    *
    * @remarks
-   * `factory`'s type matches {@link IHostBuilder.useServiceProviderFactory}, but
-   * `TContainerBuilder` has no effect here — this always builds through the one
-   * real service provider.
+   * `TContainerBuilder` is always the {@link Manifest} this host builds.
    */
-  configureContainer<TContainerBuilder>(factory: IServiceProviderFactory<TContainerBuilder>,
-    configure?: Action<[TContainerBuilder]>): void;
+  configureContainer<TContainerBuilder>(configure?: Action<[TContainerBuilder]>): void;
 }
