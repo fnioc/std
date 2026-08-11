@@ -1,5 +1,6 @@
 import { Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ServiceDescriptor, TypeSignatures } from './ServiceDescriptor';
 
 type Slot = 'impl' | 'signature' | 'signatures' | 'lifetime' | 'tag';
@@ -103,15 +104,19 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
     }
     const serviceType = this.tag === undefined ? type : Type.tag(type, this.tag);
     const signatures = TypeSignatures.from(this.signatures);
-    switch (this.impl?.kind) {
+    const impl = this.impl;
+    if (impl === undefined) {
+      throw new Error(`no implementation was chosen for ${Type.stringify(type)}.`);
+    }
+    switch (impl.kind) {
       case 'ctor':
-        return ServiceDescriptor.ctor(serviceType, this.impl.ctor, signatures, this.scope);
+        return ServiceDescriptor.ctor(serviceType, impl.ctor, signatures, this.scope);
       case 'factory':
-        return ServiceDescriptor.factory(serviceType, this.impl.fn, signatures, this.scope);
+        return ServiceDescriptor.factory(serviceType, impl.fn, signatures, this.scope);
       case 'value':
-        return ServiceDescriptor.value(serviceType, this.impl.value);
+        return ServiceDescriptor.value(serviceType, impl.value);
       default:
-        throw new Error(`no implementation was chosen for ${Type.stringify(type)}.`);
+        return assertNever(impl);
     }
   }
 }
