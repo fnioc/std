@@ -121,15 +121,15 @@ type fileState struct {
 	emit          func(plugin.Diagnostic)
 	temps         []*shimast.Node // temps needing a hoisted `var` declaration
 	elideFns      map[string]bool // free-function local names now unreferenced
-	// runtimeCallees collects the (module, export) of every RUNTIME callee a
-	// substituted body referenced in this file (§99 `overrideSignatures`), so their
-	// imports are materialized once after the pass.
-	runtimeCallees map[valueimport.Ref]bool
+	// valueImports collects the (module, export) of every RUNTIME value a
+	// substituted body referenced in this file, so their imports are materialized
+	// once after the pass.
+	valueImports map[valueimport.Ref]bool
 }
 
 func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	st.elideFns = map[string]bool{}
-	st.runtimeCallees = map[valueimport.Ref]bool{}
+	st.valueImports = map[valueimport.Ref]bool{}
 	var visitor *shimast.NodeVisitor
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
@@ -150,21 +150,22 @@ func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	result := out.AsSourceFile()
 	result = st.hoistTemps(result)
 	result = st.elideFunctionImports(result)
-	result = st.materializeRuntimeCallees(result)
+	result = st.materializeValueImports(result)
 	return result
 }
 
-// materializeRuntimeCallees injects an import for every RUNTIME callee a
-// substituted body referenced in this file (§99 `overrideSignatures`), reusing an
-// existing binding when present. It returns sf unchanged when nothing was recorded
-// (or every callee was already imported), preserving the loop's pointer identity.
-// Refs are ordered deterministically so the injected import order is stable.
-func (st *fileState) materializeRuntimeCallees(sf *shimast.SourceFile) *shimast.SourceFile {
-	if len(st.runtimeCallees) == 0 {
+// materializeValueImports injects an import for every RUNTIME value a substituted
+// body referenced in this file, reusing an existing binding when present — the
+// body's own import declaration, carried across to the call site. It returns sf
+// unchanged when nothing was recorded (or every value was already imported),
+// preserving the loop's pointer identity. Refs are ordered deterministically so the
+// injected import order is stable.
+func (st *fileState) materializeValueImports(sf *shimast.SourceFile) *shimast.SourceFile {
+	if len(st.valueImports) == 0 {
 		return sf
 	}
-	refs := make([]valueimport.Ref, 0, len(st.runtimeCallees))
-	for ref := range st.runtimeCallees {
+	refs := make([]valueimport.Ref, 0, len(st.valueImports))
+	for ref := range st.valueImports {
 		refs = append(refs, ref)
 	}
 	sort.Slice(refs, func(i, j int) bool {
@@ -260,10 +261,10 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 	if !ok {
 		return nil, false
 	}
-	// A matched body always references its runtime callees (single-expression form),
+	// A matched body always references its imported values (single-expression form),
 	// so record them for import materialization once the pass completes.
-	for _, ref := range target.body.RuntimeCallees {
-		st.runtimeCallees[ref] = true
+	for _, ref := range target.body.ValueImports {
+		st.valueImports[ref] = true
 	}
 	return replacement, true
 }

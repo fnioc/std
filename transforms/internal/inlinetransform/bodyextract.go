@@ -78,24 +78,9 @@ var knownPrimitives = map[string]string{
 	"typefor":        "@rhombus-std/primitives.extras",
 }
 
-// knownRuntimeCallees maps each RUNTIME helper a certified body may CALL — as
-// opposed to a compile-time primitive it composes — to its HOME module. Unlike a
-// primitive (which the token/signatureof/… stages LOWER away), a runtime callee
-// SURVIVES lowering as an ordinary function call in the shipped output, and the
-// inline stage MATERIALIZES its import into the consumer file (via the valueimport
-// engine). It is the one bounded escape from §101's "primitives + verbs only" body
-// grammar (§99, option B): a body may call an imported value, but ONLY in callee
-// position and ONLY a value on this allowlist — never an arbitrary expression, a
-// global, or an arrow. `overrideSignatures` (di.core, §99) merges a sparse
-// registration-override array at runtime.
-var knownRuntimeCallees = map[string]string{
-	"overrideSignatures": "@rhombus-std/di.core",
-}
-
 // knownAuthoringMarkers maps each MODULE-LEVEL authoring marker an impl file may
-// import to its HOME module. A marker is the third category alongside the
-// compile-time primitives and the runtime callees above, and the only one that
-// never appears INSIDE a body: it is a no-op call placed BESIDE a body set
+// import to its HOME module. A marker is the one import category that never
+// appears INSIDE a body: it is a no-op call placed BESIDE a body set
 // (`registerInlineBodies(ManifestChainInline)`) stating in code that the set is
 // published in its package's package.json "rhombus.inline" list — the one
 // relationship a reader would otherwise have to open the manifest to discover.
@@ -153,12 +138,12 @@ type ResolvedBody struct {
 	Discriminator    Discriminator
 	PrimitiveImports map[string]string
 	TypeImports      map[string]TypeImportRef
-	// RuntimeCallees maps each body-local name of a RUNTIME callee import
-	// (knownRuntimeCallees) to the (module, export) its import materializes to. A
-	// body may call these; they survive lowering and the inline stage injects their
-	// imports into the consumer file.
-	RuntimeCallees map[string]valueimport.Ref
-	File           string
+	// ValueImports maps each body-local name of a RUNTIME value the body references
+	// to the (module, export) its import materializes to. These survive lowering as
+	// ordinary references, and the inline stage injects the same imports into the
+	// consumer file so each one resolves there as it does here.
+	ValueImports map[string]valueimport.Ref
+	File         string
 }
 
 // TypeImportRef is a body-external TYPE import a sugar body references in a
@@ -245,11 +230,6 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 	}
 	primImports := primitiveImports(implSF, packageName(packageDir))
 	typeImports := bodyTypeImports(implSF)
-	// The impl file's runtime-callee imports are file-wide (every body in inline.ts
-	// shares them), so keep only the ones THIS body's expression actually calls —
-	// otherwise a body that never references `overrideSignatures` would still
-	// materialize its import at its call sites.
-	runtimeCallees := usedRuntimeCallees(expr, runtimeCalleeImports(implSF))
 
 	rb := &ResolvedBody{
 		Body:             expr,
@@ -259,10 +239,13 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 		Discriminator:    disc,
 		PrimitiveImports: primImports,
 		TypeImports:      typeImports,
-		RuntimeCallees:   runtimeCallees,
+		ValueImports:     map[string]valueimport.Ref{},
 		File:             implFile,
 	}
-	if err := b.checkFreeIdentifiers(rb, e); err != nil {
+	// The impl file's value imports are file-wide (every body in inline.ts shares
+	// them), so the walk below records only the ones THIS body references — a body
+	// materializes an import for a value it names, never for a sibling body's.
+	if err := b.checkFreeIdentifiers(rb, e, valueImports(implSF)); err != nil {
 		return nil, err
 	}
 	return rb, nil
@@ -320,9 +303,14 @@ func (b *bodyExtractor) locateImpl(packageDir, implName string) (string, *shimas
 
 // checkFreeIdentifiers rejects a body whose returned expression references any
 // identifier that is not a value param, `this`, an impl type param (in a
-// primitive-call type-argument position), or a recorded primitive import. This
-// is the defense-in-depth twin of the authoring lint's freeIdentifier rule.
-func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
+// primitive-call type-argument position), a recorded primitive import, or a bare
+// reference to a value the impl file imports. This is the defense-in-depth twin of
+// the authoring lint's freeIdentifier rule.
+//
+// fileValueImports is the impl file's whole value-import map; each one the body
+// names is recorded into rb.ValueImports as the walk reaches it, so the recorded
+// set is exactly the referenced set.
+func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry, fileValueImports map[string]valueimport.Ref) error {
 	allowed := map[string]bool{}
 	// A receiver named as a leading parameter is a value reference like any other;
 	// it is simply bound to the receiver rather than to an argument.
@@ -337,14 +325,6 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 	}
 	for local := range rb.PrimitiveImports {
 		allowed[local] = true
-	}
-	// Runtime-callee imports (§99, option B) are allowed ONLY in callee position —
-	// a body may CALL them, never reference them as a bare value — so they are kept
-	// OUT of `allowed` (which would permit any position) and checked at the call
-	// site below.
-	runtimeCallees := map[string]bool{}
-	for local := range rb.RuntimeCallees {
-		runtimeCallees[local] = true
 	}
 	// A dedicated value-position walk. It flags any identifier that is not an
 	// allowed value reference, descending into every VALUE child so a free
@@ -364,22 +344,34 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 		}
 		switch n.Kind {
 		case shimast.KindIdentifier:
-			if !allowed[n.Text()] {
-				bad = n.Text()
+			name := n.Text()
+			if allowed[name] {
+				return
 			}
+			// The file's import declares the value: record it so the inline stage
+			// materializes the same import into the consumer.
+			if ref, imported := fileValueImports[name]; imported {
+				rb.ValueImports[name] = ref
+				return
+			}
+			bad = name
 			return
 		case shimast.KindPropertyAccessExpression:
-			check(n.AsPropertyAccessExpression().Expression)
+			base := n.AsPropertyAccessExpression().Expression
+			if base.Kind == shimast.KindIdentifier {
+				// The head of a property chain is the body's receiver or one of its
+				// parameters. An imported value is reachable as a bare identifier only,
+				// so it never satisfies this position.
+				if !allowed[base.Text()] {
+					bad = base.Text()
+				}
+				return
+			}
+			check(base)
 			return
 		case shimast.KindCallExpression:
 			call := n.AsCallExpression()
-			// A runtime-callee import is valid HERE (callee position) and nowhere
-			// else: skip checking such a callee, but still check every argument.
-			if callee := call.Expression; callee.Kind == shimast.KindIdentifier && runtimeCallees[callee.Text()] {
-				// valid runtime callee — fall through to the argument walk
-			} else {
-				check(call.Expression)
-			}
+			check(call.Expression)
 			if call.Arguments != nil {
 				for _, arg := range call.Arguments.Nodes {
 					check(arg)
@@ -404,7 +396,7 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry) error {
 	check(rb.Body)
 
 	if bad != "" {
-		return fmt.Errorf("INLINE_BODY_FREE_IDENTIFIER: %s impl %q member %q references %q, which is neither a parameter, type parameter, nor a known primitive import", rb.File, e.Impl, e.Member, bad)
+		return fmt.Errorf("INLINE_BODY_FREE_IDENTIFIER: %s impl %q member %q references %q, which is neither a parameter, type parameter, primitive import, nor a value the file imports", rb.File, e.Impl, e.Member, bad)
 	}
 	return nil
 }
@@ -610,10 +602,9 @@ func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]st
 // a type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
 // used as `tokenfor<IOptions<T>>()`). Primitives are excluded (they are recorded
 // separately by primitiveImports as CALLEES, never composed-generic bases), as are
-// runtime callees and the module-level authoring markers (all three are VALUE
-// imports, never types), and relative specifiers are excluded (a body-external base
-// is always a package the consumer program can resolve by name). Aliasing is
-// honored: the recorded Export is the specifier's property name.
+// the module-level authoring markers, and relative specifiers are excluded (a
+// body-external base is always a package the consumer program can resolve by name).
+// Aliasing is honored: the recorded Export is the specifier's property name.
 func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
 	out := map[string]TypeImportRef{}
 	if sf == nil {
@@ -645,9 +636,6 @@ func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
 			if _, isPrimitive := knownPrimitives[exported]; isPrimitive {
 				continue
 			}
-			if _, isRuntimeCallee := knownRuntimeCallees[exported]; isRuntimeCallee {
-				continue
-			}
 			if _, isMarker := knownAuthoringMarkers[exported]; isMarker {
 				continue
 			}
@@ -657,14 +645,31 @@ func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
 	return out
 }
 
-// runtimeCalleeImports reads sf's top-level named imports and returns a local-name
-// -> (module, export) map for every binding that is a known RUNTIME callee
-// (knownRuntimeCallees) imported unaliased from its HOME module. A body may CALL
-// these — they survive lowering and the inline stage materializes their import
-// into the consumer via the valueimport engine. Aliasing is rejected (the local
-// name must equal the export, mirroring primitiveImports), and a callee imported
-// from any other module is ignored.
-func runtimeCalleeImports(sf *shimast.SourceFile) map[string]valueimport.Ref {
+// valueImports reads sf's top-level named imports and returns a local-name ->
+// (module, export) map of the RUNTIME values a body authored in sf may reference.
+// The import declaration IS the declaration: a free identifier in a body is legal
+// exactly when the file imports it, and the inline stage materializes the same
+// (module, export) into the consumer file through the valueimport engine, so the
+// reference resolves at the call site as it does at the authoring site.
+//
+// A binding qualifies when it is a NAMED import from a BARE package specifier that
+// carries a runtime value. Three kinds are excluded:
+//
+//   - a type-only clause or specifier — it has no runtime value to reference;
+//   - a compile-time primitive (knownPrimitives), recorded separately by
+//     primitiveImports and lowered away rather than materialized. Excluding it by
+//     NAME, not by module, keeps a primitive imported from the wrong module an
+//     authoring error instead of quietly becoming a materialized runtime call;
+//   - a module-level authoring marker (knownAuthoringMarkers), which is a no-op
+//     placed BESIDE a body set and never inside a body.
+//
+// A relative specifier is excluded too: it addresses a file inside the declaring
+// package, which a consumer's program cannot resolve.
+//
+// Aliasing is honored — `import { overrideSignatures as merge }` binds the local
+// name `merge` to the export `overrideSignatures`, and the consumer's injected
+// import names `overrideSignatures`.
+func valueImports(sf *shimast.SourceFile) map[string]valueimport.Ref {
 	out := map[string]valueimport.Ref{}
 	if sf == nil {
 		return out
@@ -679,49 +684,36 @@ func runtimeCalleeImports(sf *shimast.SourceFile) map[string]valueimport.Ref {
 			continue
 		}
 		module := spec.Text()
-		clause := decl.ImportClause
-		if clause == nil {
+		if isRelativeSpecifier(module) {
 			continue
 		}
-		bindings := clause.AsImportClause().NamedBindings
+		clauseNode := decl.ImportClause
+		if clauseNode == nil {
+			continue
+		}
+		clause := clauseNode.AsImportClause()
+		if clause.PhaseModifier == shimast.KindTypeKeyword {
+			continue
+		}
+		bindings := clause.NamedBindings
 		if bindings == nil || bindings.Kind != shimast.KindNamedImports {
 			continue
 		}
 		for _, el := range bindings.AsNamedImports().Elements.Nodes {
-			exported := importSpecifierExportedName(el)
-			local := el.Name().Text()
-			home, known := knownRuntimeCallees[exported]
-			if !known || exported != local || module != home {
+			if el.AsImportSpecifier().IsTypeOnly {
 				continue
 			}
-			out[local] = valueimport.Ref{Module: home, Export: exported}
+			exported := importSpecifierExportedName(el)
+			if _, isPrimitive := knownPrimitives[exported]; isPrimitive {
+				continue
+			}
+			if _, isMarker := knownAuthoringMarkers[exported]; isMarker {
+				continue
+			}
+			out[el.Name().Text()] = valueimport.Ref{Module: module, Export: exported}
 		}
 	}
 	return out
-}
-
-// usedRuntimeCallees narrows the impl file's runtime-callee imports to the subset
-// THIS body's return expression actually calls (an identifier callee that is one of
-// fileCallees). Since every body in a shared impl file (inline.ts) sees the same
-// file-wide imports, this per-body walk is what stops a body from materializing an
-// import for a callee it never uses.
-func usedRuntimeCallees(expr *shimast.Node, fileCallees map[string]valueimport.Ref) map[string]valueimport.Ref {
-	used := map[string]valueimport.Ref{}
-	if expr == nil || len(fileCallees) == 0 {
-		return used
-	}
-	walk(expr, func(n *shimast.Node) bool {
-		if n.Kind == shimast.KindCallExpression {
-			callee := n.AsCallExpression().Expression
-			if callee.Kind == shimast.KindIdentifier {
-				if ref, ok := fileCallees[callee.Text()]; ok {
-					used[callee.Text()] = ref
-				}
-			}
-		}
-		return false
-	})
-	return used
 }
 
 // isRelativeSpecifier reports whether an import specifier is package-relative
