@@ -77,9 +77,13 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   const audit = provider.getService(t.audit) as IAuditTrail | undefined;
   lines.push(`  getService(IAuditTrail): ${audit ? 'present' : 'absent'}`);
   lines.push(`  getService(IFraudScreen): ${provider.getService(t.fraudScreen)}`);
-  // `isService` answers the same question WITHOUT constructing anything, which is
-  // what would make it safe on a hot path or in a startup self-check.
-  lines.push(`  isService(IFraudScreen): ${attempted(() => String(provider.isService(t.fraudScreen)))}`);
+  // A presence question is exactly `getService` compared against `undefined`:
+  // absence answers `undefined` instead of throwing, so there is no member of its
+  // own to reach for. Unlike a pure existence check, this DOES resolve the
+  // service when one exists — cheap here, since IFraudScreen is never registered
+  // at all, but worth naming: a presence probe on something expensive to build is
+  // no longer free.
+  lines.push(`  getService(IFraudScreen) !== undefined: ${provider.getService(t.fraudScreen) !== undefined}`);
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
@@ -138,13 +142,13 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   lines.push('factory slots — the caller supplies what the container cannot know');
   lines.push(`  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`);
   // The same slot asked for from OUTSIDE a constructor, rather than injected
-  // into one.
-  lines.push(`  asking the provider for one: ${
-    attempted(() => {
-      const mint = provider.resolveFactory(t.receipt, [t.order]);
-      return (mint(ORDER_C) as IReceipt).text;
-    })
-  }`);
+  // into one: `getRequiredService` over the callable's own `Type.func` type hands
+  // back the identical factory `PaymentRouter` receives as a constructor
+  // parameter.
+  const mintReceipt = provider.getRequiredService(Type.func(t.receipt, t.order)) as (
+    order: CheckoutOrder,
+  ) => IReceipt;
+  lines.push(`  asking the provider for one: ${mintReceipt(ORDER_C).text}`);
 
   // ── async registrations ────────────────────────────────────────────────────
   //

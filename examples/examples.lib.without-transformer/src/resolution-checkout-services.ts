@@ -142,8 +142,10 @@ export class AmountIsPositive implements IOrderValidator {
  * factory or otherwise — could express it. A `FactoryRef`'s target Type is fixed
  * at registration time; this one is not.
  *
- * Note what it does NOT do: it never resolves a gateway, only probes for one, so
- * it cannot quietly become a service locator for the rest of the checkout.
+ * It resolves the gateway only to confirm one exists for the order's method, and
+ * discards the result immediately — checkout still reaches the gateway itself
+ * through `PaymentRouter`'s own keyed lookup, so this validator never becomes the
+ * checkout's service locator.
  *
  * The gateway BASE arrives as a `Typeof<IPaymentGateway>` parameter — a brand
  * that means "inject the TYPE of this service, not an instance of it". A manual
@@ -162,10 +164,12 @@ export class MethodIsConfigured implements IOrderValidator {
 
   public check(order: CheckoutOrder): string {
     // A key is a TAG on the service type rather than an argument beside it, so a
-    // keyed probe tags the base and asks the ordinary question. It never
-    // constructs anything — a registered service whose own dependencies are
-    // missing still answers `true`.
-    if (this.#resolver.isService(Type.tag(this.#gatewayType, order.method))) {
+    // keyed probe tags the base and asks the ordinary question: `getService`
+    // misses cleanly with `undefined` instead of throwing, so presence is exactly
+    // a `getService` that came back non-`undefined`. Every gateway below is a
+    // stateless value object with no dependencies of its own, so resolving one to
+    // answer the question is free.
+    if (this.#resolver.getService(Type.tag(this.#gatewayType, order.method)) !== undefined) {
       return 'ok';
     }
     return `no gateway for "${order.method}"`;

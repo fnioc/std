@@ -116,8 +116,8 @@ export function demonstrateInfrastructure(): readonly string[] {
   // Which is also where the two shapes stop being interchangeable in practice.
   // The parameter form asked for its card factory in a constructor slot and
   // already holds it; the locator asks the provider for one at the moment it
-  // renders, and that lookup is declared but has no behaviour yet — so the
-  // discouraged shape is the one that cannot run.
+  // renders, so the identical card costs one extra lookup on every call the
+  // parameter form paid for exactly once.
   lines.push('the same card, two ways to reach its dependencies:');
   lines.push(`  parameters (GreetingWorkshop): ${defaultWorkshop.card('Linus')}`);
   lines.push(`  injected provider (LocatorGreetingWorkshop): ${attempted(() => locatorWorkshop.card('Linus'))}`);

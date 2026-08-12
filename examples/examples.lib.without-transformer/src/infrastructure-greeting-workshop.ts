@@ -203,9 +203,9 @@ export class GreetingWorkshop {
  * on the request that happened to need one.
  *
  * The verbs it uses are all perfectly good verbs — this is not a lesson about
- * `resolveFactory` or `getService` being wrong. It is a lesson about WHERE they
- * belong: at a composition root, which knows what it is composing, rather than
- * inside a library, which does not.
+ * `getRequiredService` or `getService` being wrong. It is a lesson about WHERE
+ * they belong: at a composition root, which knows what it is composing, rather
+ * than inside a library, which does not.
  *
  * There is exactly one thing it can do that the class above cannot: it
  * CONSTRUCTS against a provider that holds no cards at all, because it defers
@@ -217,11 +217,11 @@ export class LocatorGreetingWorkshop {
   readonly #resolver: IServiceProvider;
 
   /**
-   * The card factory, built on FIRST USE and then reused. `resolveFactory` works
-   * the slot plan out once — which slot the caller fills, which the container
-   * resolves — so paying for that per card would be waste. The memo is pure
-   * overhead the injected-callable version does not have: the container already
-   * did this work.
+   * The card factory, built on FIRST USE and then reused. Resolving
+   * `Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE)` works the slot plan out
+   * once — which slot the caller fills, which the container resolves — so paying
+   * for that per card would be waste. The memo is pure overhead the
+   * injected-callable version does not have: the container already did this work.
    */
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
@@ -240,23 +240,23 @@ export class LocatorGreetingWorkshop {
   }
 
   /**
-   * `resolveFactory(type, params)` IS the partition, done imperatively: `params`
-   * names the types the CALLER supplies, and every other slot in the target's
-   * signature resolves from the container. Call arguments line up with the
-   * `params` list in order, so `[CARD_RECIPIENT_TYPE]` means "argument 1 is the
-   * recipient" — the same plan the good class receives as a constructor
-   * parameter, except stated here in a method body where nothing can check it.
+   * `Type.func(result, ...args)` IS the partition, spelled as a type: the listed
+   * arguments are the ones the CALLER supplies, and every other slot in the
+   * target's signature resolves from the container. `Type.func(GREETING_CARD_TYPE,
+   * CARD_RECIPIENT_TYPE)` means "a callable producing a card, whose one argument
+   * is the recipient" — the same plan the good class receives as a constructor
+   * parameter, except asked for here in a method body where nothing can check it.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.resolveFactory(GREETING_CARD_TYPE, [CARD_RECIPIENT_TYPE]) as (
-      recipient: ICardRecipient,
-    ) => GreetingCard;
+    this.#mintCard ??= this.#resolver.getRequiredService(
+      Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE),
+    ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
   /** Whether the app registered its own stationery, asked of the container rather than known. */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.isService(CARD_STATIONERY_TYPE);
+    return this.#resolver.getService(CARD_STATIONERY_TYPE) !== undefined;
   }
 }
 

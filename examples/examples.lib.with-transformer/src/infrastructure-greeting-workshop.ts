@@ -219,7 +219,7 @@ export class GreetingWorkshop {
  * below has a parameter form sitting above it — which is what makes it the
  * counter-example.
  *
- * As a side effect it keeps `resolveFactory` / `tryResolve` / `isService` and the
+ * As a side effect it keeps `getRequiredService`, `getService`, and the
  * intrinsic provider slot demonstrated from inside a library, in the tokenless
  * dialect, which is where a reader is most likely to meet them.
  */
@@ -242,16 +242,16 @@ export class LocatorGreetingWorkshop {
   }
 
   /**
-   * `resolveFactory(type, params)` IS the caller/container partition, done
-   * imperatively: `params` names the types the CALLER supplies, and every other
+   * `Type.func(result, ...args)` IS the caller/container partition, spelled as a
+   * type: the listed arguments are the ones the CALLER supplies, and every other
    * slot in the target's signature resolves from the container. It is the SAME
    * partition {@link GreetingWorkshop} states as a constructor parameter — the
    * only difference is whether the container is asked for it or hands it over.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.resolveFactory(typefor<GreetingCard>(), [typefor<ICardRecipient>()]) as (
-      recipient: ICardRecipient,
-    ) => GreetingCard;
+    this.#mintCard ??= this.#resolver.getRequiredService(
+      Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
+    ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
@@ -260,7 +260,7 @@ export class LocatorGreetingWorkshop {
    * know. The good class answers the same question from a field it was handed.
    */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.isService(typefor<ICardStationery>());
+    return this.#resolver.getService(typefor<ICardStationery>()) !== undefined;
   }
 }
 
