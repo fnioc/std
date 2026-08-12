@@ -555,8 +555,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // fold parity).
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
-    expect(line).toContain('addClass("');
-    expect(line).toContain('.as("singleton")');
+    expect(line).toContain('addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger)');
+    expect(line).toContain('.withSignature()');
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -565,7 +565,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(line).toBeDefined();
     // The service token is the open template IRepo<$1> and the ctor dep carries
     // the same hole (IStore<$1>) — the load-bearing "$1" text the derivation mints.
-    expect(line).toContain('$1');
+    expect(line).toContain('Type.named("IRepo", "chain-app/tokens/chain", [Type.placeholder("1")])');
     expect(chainInline).toContain('IRepo<$1>');
     expect(chainInline).toContain('IStore<$1>');
   });
@@ -616,7 +616,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // Inline keeps the halves split: bare base in arg0, key literal "redis" in the
     // arg-5 KEY slot behind the scope placeholder. ttsc emits the placeholder as
     // `void 0`; Bun.Transpiler normalizes it to `undefined` in the readback.
-    expect(keyedInline).toContain(', undefined, "redis")');
+    expect(keyedInline).toContain('Type.tag(Type.named("ICache", "chain-app/tokens/keyed"), "redis")');
     const inlineBase = /addClass\("([^"]*)"/.exec(inlineLine as string)?.[1];
     expect(inlineBase).toBeDefined();
     expect(inlineBase).not.toContain('#');
@@ -650,7 +650,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // ordinary call, and the inline stage MATERIALIZES its di.core import.
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
-    expect(line).toContain('.addClass("');
+    expect(line).toContain('.addClass(Type.named("IHandler", "chain-app/tokens/override"), Handler)');
     // The runtime merge helper survives, applied to the derived signature array and
     // the authored overrides array (quote/spacing normalized by Bun.Transpiler).
     expect(line).toContain('overrideSignatures(');
@@ -684,9 +684,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // zero-arg call. (Go-level pin: TestEmptyTupleWithSignatureDoesNotReMatchOwnOutput.)
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
-    expect(line).toContain('addClass("');
+    expect(line).toContain('addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger)');
     expect(line).toContain('.withSignature()');
-    expect(line).toContain('.as("singleton")');
     assertNoAuthoringSurvivors(chainInline);
   });
 });
