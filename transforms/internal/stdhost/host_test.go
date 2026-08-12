@@ -37,7 +37,6 @@ func TestBaseStagesCanonicalOrder(t *testing.T) {
 		stagePrefix + "keyof",
 		stagePrefix + "valueof",
 		stagePrefix + "singular",
-		stagePrefix + "factory",
 		stagePrefix + "fold",
 		stagePrefix + "schemaof",
 	}

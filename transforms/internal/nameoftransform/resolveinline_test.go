@@ -8,7 +8,6 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/factorytransform"
 	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
@@ -63,16 +62,15 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 	// singularValue from the token-grammar transformer. Each verb calls ITSELF with the
 	// derived token; a SINGULAR T folds to its value.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenof } from '@rhombus-std/primitives.extras';
-import { isFactory, isSingular, paramtokensfor, returntokenfor, singularValue } from '@rhombus-std/primitives.extras';
+import { isSingular, singularValue } from '@rhombus-std/primitives.extras';
 interface IInlineResolveTarget {
   resolve(token: string): any;
   resolveAsync(token: string): any;
   tryResolve(token: string): any;
-  resolveFactory(type: string, params?: readonly string[]): any;
 }
 export const ResolverInline = {
   resolve<T>(this: IInlineResolveTarget): T {
-    return isSingular<T>() ? singularValue<T>() : isFactory<T>() ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>()) : this.resolve(tokenof<T>());
+    return isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>());
   },
   resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
     return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenof<T>());
@@ -147,12 +145,11 @@ func lowerResolveInlinePipeline(t *testing.T, prog *driver.Program, app string) 
 	keyofT := keyoftransform.New(prog, ctx, artifacts, sink)
 	valueofT := valueoftransform.New(prog, ctx, artifacts, sink)
 	singularT := singulartransform.New(prog, ctx, artifacts, sink)
-	factoryT := factorytransform.New(prog, ctx, artifacts, sink)
 	foldT := foldtransform.New(prog, sink)
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the resolve entries did not resolve")
 	}
-	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, factoryT, foldT}
+	stages := []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, foldT}
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
 	if exhausted {
@@ -263,47 +260,6 @@ export const b = provider.resolve<'dev'>();
 	_, diags := lowerResolveInlinePipeline(t, prog, app)
 	if len(diags) != 0 {
 		t.Fatalf("unexpected diagnostics: %+v", diags)
-	}
-}
-
-// TestResolveInlineFactoryFormLowers pins the FACTORY form (§94 factory half, W6p2
-// item 3): a `resolve<(a: IA) => IThing>()` lowers through the inline pipeline —
-// isSingular false, isFactory TRUE, the fold keeps the factory arm — to
-// `resolveFactory("<returnToken>", ["<paramToken>", ...])`, byte-identical to the di
-// DIRECT stage's `resolveFactory` rename + param-token array. A ZERO-parameter
-// factory drops the trailing array, matching di-direct's bare `resolveFactory(token)`.
-func TestResolveInlineFactoryFormLowers(t *testing.T) {
-	src := `import { provider } from '@rhombus-std/di.core';
-interface IA { id: number }
-interface IThing { id: number }
-export const withParam = provider.resolve<(a: IA) => IThing>();
-export const noParam = provider.resolve<() => IThing>();
-`
-	prog, app := buildResolveInlineWorkspace(t, src)
-	defer func() { _ = prog.Close() }()
-
-	inlineOut, diags := lowerResolveInlinePipeline(t, prog, app)
-	if len(diags) != 0 {
-		t.Fatalf("unexpected diagnostics from the inline pipeline: %+v", diags)
-	}
-	diOut := lowerDi(t, prog, app)
-
-	for _, name := range []string{"withParam", "noParam"} {
-		inlineVal := exportConstValue(t, inlineOut, name)
-		diVal := exportConstValue(t, diOut, name)
-		if inlineVal != diVal {
-			t.Fatalf("factory resolve `%s` divergence:\n inline = %q\n di     = %q", name, inlineVal, diVal)
-		}
-		if !strings.Contains(inlineVal, "resolveFactory(") {
-			t.Fatalf("factory resolve `%s` must lower to resolveFactory, got %q", name, inlineVal)
-		}
-	}
-	// The param-carrying factory keeps the param-token array; the no-arg one drops it.
-	if v := exportConstValue(t, inlineOut, "withParam"); !strings.Contains(v, "[") {
-		t.Fatalf("param-carrying factory must carry a param-token array, got %q", v)
-	}
-	if v := exportConstValue(t, inlineOut, "noParam"); strings.Contains(v, "[") {
-		t.Fatalf("no-arg factory must ELIDE the param-token array, got %q", v)
 	}
 }
 
