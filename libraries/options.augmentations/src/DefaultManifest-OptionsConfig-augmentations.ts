@@ -8,35 +8,35 @@
 import type { IConfig } from '@rhombus-std/config.core';
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
 import { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
 import type { DepTokens } from './dep-tokens.js';
-import { changeTokenSourceToken, configureStepToken } from './option-tokens.js';
+import { changeTokenSourceType, configureStepType } from './option-types.js';
 
 type IManifestOptionsConfigAugmentations<Scopes extends string> = {
   /**
    * Registers a configuration `section` to bind against the options
-   * identified by `token`: adds a config-bind configure step and a
+   * identified by `optionsType`: adds a config-bind configure step and a
    * change-token source wired to the section's reload token. Requires a prior
-   * {@link addOptions} for the same `token`.
+   * {@link addOptions} for the same `optionsType`.
    */
-  configure(token: string, section: IConfig): Manifest<Scopes>; /**
-   * Registers a code configure step for `token`: `configureOptions` runs
-   * against the value as one configure source among several (no config
+  configure(optionsType: Type | string, section: IConfig): Manifest<Scopes>; /**
+   * Registers a code configure step for `optionsType`: `configureOptions`
+   * runs against the value as one configure source among several (no config
    * section, so no change-token source). Distinguished from the
    * config-section overload of {@link configure} by its function argument.
    */
-  configure<T>(token: string, configureOptions: Func<[T], void>): Manifest<Scopes>; /**
+  configure<T>(optionsType: Type | string, configureOptions: Func<[T], void>): Manifest<Scopes>; /**
    * The DI-injected configure step: resolves each token in `depTokens` from
    * the provider at materialization time and passes the instances to
    * `configureOptions` after the options value. A typed caller writes each
    * token as `typefor<Dep>()`.
    */
-  configure<T, Deps extends readonly unknown[]>(token: string, depTokens: DepTokens<Deps>,
+  configure<T, Deps extends readonly unknown[]>(optionsType: Type | string, depTokens: DepTokens<Deps>,
     configureOptions: (options: T, ...deps: Deps) => void): Manifest<Scopes>;
 };
 
@@ -48,9 +48,10 @@ declare module '@rhombus-std/di.core' {
 
 export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestOptionsConfigAugmentations<string>> = {
-    configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: string,
+    configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, optionsType: Type | string,
       source: IConfig | Func<[T], void> | DepTokens<Deps>,
       configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
+      const type = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
       // DI-injected form: `source` is the dep-token tuple and
       // `configureWithDeps` the callback. Registers a factory for the configure
       // slot whose injected params are the resolved deps; it produces an
@@ -58,24 +59,24 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Default
       // resolve once, when the assembly reads the slot.
       if (Array.isArray(source)) {
         const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
-        return manifest.addFactory(configureStepToken(token),
+        return manifest.addFactory(configureStepType(type),
           (...deps: Deps): IConfigureOptions<T> => ({ configure(options: T): void {
             callback(options, ...deps);
-          } }), [source as readonly string[]]);
+          } }), [source as readonly (Type | string)[]]);
       }
       // A bare delegate is a pure code configure step: registers only the
       // configure slot, no change-token source. The registry's flat bag
-      // namespace forbids a second `configure` member on the token, so the
+      // namespace forbids a second `configure` member on the type, so the
       // config-section member absorbs the delegate by arg type — the same
       // disambiguation `addOptions` uses.
       const configSource = source as IConfig | Func<[T], void>;
       if (typeof configSource === 'function') {
-        return manifest.addValue(configureStepToken(token), { configure: configSource });
+        return manifest.addValue(configureStepType(type), { configure: configSource });
       }
-      let m: Manifest<string> = manifest.addValue(configureStepToken(token), new ConfigConfigureOptions(configSource));
-      m = m.addValue(changeTokenSourceToken(token), new ConfigChangeTokenSource(configSource));
+      let m: Manifest<string> = manifest.addValue(configureStepType(type), new ConfigConfigureOptions(configSource));
+      m = m.addValue(changeTokenSourceType(type), new ConfigChangeTokenSource(configSource));
       return m;
     },
   };
 
-registerAugmentations(tokenfor<Manifest>(), ServiceManifestOptionsConfigAugmentations);
+registerAugmentations(typefor<Manifest>(), ServiceManifestOptionsConfigAugmentations);

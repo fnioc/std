@@ -5,28 +5,29 @@ import type { Func } from '@rhombus-toolkit/func';
 
 import { CompositeChangeToken } from './CompositeChangeToken.js';
 import type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
-import { changeTokenSourceToken, collectionToken, configureStepToken, postConfigureStepToken,
-  validateStepToken } from './option-tokens.js';
+import { changeTokenSourceType, collectionType, configureStepType, postConfigureStepType,
+  validateStepType } from './option-types.js';
 
 /**
- * Assembles the `IOptions<T>` for `optionsToken` from the pipeline steps
+ * Assembles the `IOptions<T>` for `optionsType` from the pipeline steps
  * registered against its derived slots. `resolver` is the live provider view
  * (injected as the factory's `IServiceProvider` parameter); `makeBase` produces the
  * base instance every pipeline run starts from.
  */
-export function assembleOptions<T>(resolver: IServiceProvider, optionsToken: string,
+export function assembleOptions<T>(resolver: IServiceProvider, optionsType: Type | string,
   makeBase: Func<[], T>): IOptions<T> {
+  const type = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
   const configures: ReadonlyArray<IConfigureOptions<T>> = resolver.getService(
-    Type.from(collectionToken(configureStepToken(optionsToken))),
+    collectionType(configureStepType(type)),
   );
   const postConfigures: ReadonlyArray<IPostConfigureOptions<T>> = resolver.getService(
-    Type.from(collectionToken(postConfigureStepToken(optionsToken))),
+    collectionType(postConfigureStepType(type)),
   );
   const validates: ReadonlyArray<IValidateOptions<T>> = resolver.getService(
-    Type.from(collectionToken(validateStepToken(optionsToken))),
+    collectionType(validateStepType(type)),
   );
   const sources: ReadonlyArray<IOptionsChangeTokenSource> = resolver.getService(
-    Type.from(collectionToken(changeTokenSourceToken(optionsToken))),
+    collectionType(changeTokenSourceType(type)),
   );
 
   const build = (): T => new OptionsFactory<T>(makeBase, configures, postConfigures, validates).create();
