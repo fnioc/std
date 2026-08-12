@@ -19,7 +19,7 @@ type OwnedEntry struct {
 }
 
 // ProjectScan is the result of ONE workspace dependency walk (§100): the inline
-// BODIES every reachable package declares (its package.json "rhombus.inline").
+// BODIES every reachable package declares (its package.json "rhombus-std" marker).
 // Stage selection is retired (W7 — every stage is always on), so the scan no
 // longer collects stage ids; body substitution is its sole remaining face.
 type ProjectScan struct {

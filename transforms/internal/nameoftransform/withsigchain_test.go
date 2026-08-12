@@ -34,11 +34,11 @@ func buildWithSigChainWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ChainInline", "member": "addClass" },
-      { "type": "@rhombus-std/di.core:IWithSignatureBuilder", "impl": "ChainInline", "member": "withSignature" },
-      { "type": "@rhombus-std/di.core:IAsBuilder", "impl": "ChainInline", "member": "as" }
+  "rhombus-std": {
+    "inline": [
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ChainInline", "member": "addClass" },
+      { "type": "@rhombus-std/di.core:IWithSignatureBuilder", "impl": "@rhombus-std/di.core:ChainInline", "member": "withSignature" },
+      { "type": "@rhombus-std/di.core:IAsBuilder", "impl": "@rhombus-std/di.core:ChainInline", "member": "as" }
     ]
   }
 }`)

@@ -31,7 +31,7 @@ const indexStub = `export {};
 // Each case is a one-package fixture whose impl violates one rule; Extract must
 // reject it with the matching INLINE_* code.
 func TestExtractRejects(t *testing.T) {
-	member := Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"}
+	member := Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"}
 
 	cases := []struct {
 		name    string
@@ -72,7 +72,7 @@ func TestExtractRejects(t *testing.T) {
   bar<T>(this: any): boolean { return this.isService(); },
 };
 `,
-			entry:   Entry{Type: "p:Foo", Impl: "QueryInline", Member: "nonexistent"},
+			entry:   Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "nonexistent"},
 			wantErr: "INLINE_IMPL_NOT_FOUND",
 		},
 		{
@@ -134,7 +134,7 @@ func TestLocateImplFollowsReExports(t *testing.T) {
 };
 `)
 
-	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 	if err != nil {
 		t.Fatalf("Extract should follow the re-export hop: %v", err)
 	}
@@ -162,7 +162,7 @@ export const QueryInline = {
 
 	for _, member := range []string{"bar", "baz"} {
 		t.Run(member+" extracts", func(t *testing.T) {
-			rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: member})
+			rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: member})
 			if err != nil {
 				t.Fatalf("Extract(%s): %v", member, err)
 			}
@@ -173,7 +173,7 @@ export const QueryInline = {
 	}
 
 	t.Run("qux arrow-expression-body is rejected", func(t *testing.T) {
-		_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "qux"})
+		_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "qux"})
 		if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_SHAPE") {
 			t.Fatalf("want INLINE_BODY_SHAPE for an arrow with an expression body, got %v", err)
 		}
@@ -182,7 +182,7 @@ export const QueryInline = {
 
 // TestExtractIgnoresAuthoringMarker: an impl file carrying the module-level
 // `registerInlineBodies(QueryInline)` marker (the in-code statement of the
-// package.json "rhombus.inline" registration) extracts exactly as it would without
+// package.json "rhombus-std" inline registration) extracts exactly as it would without
 // it. The extra import must not land in the body-external TYPE-import map — it is a
 // VALUE — and the extra top-level statement must not disturb the declaration lookup
 // or the free-identifier walk, which read only the impl's own declaration.
@@ -195,7 +195,7 @@ registerInlineBodies(QueryInline);
 `
 	dir := oneImplPackage(t, indexStub, inline)
 
-	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 	if err != nil {
 		t.Fatalf("Extract with an authoring marker present: %v", err)
 	}
@@ -218,7 +218,7 @@ export const QueryInline = {
 `
 	dir := oneImplPackage(t, indexStub, inline)
 
-	_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 	if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_FREE_IDENTIFIER") {
 		t.Fatalf("want INLINE_BODY_FREE_IDENTIFIER for a marker reference inside a body, got %v", err)
 	}
@@ -237,7 +237,7 @@ export const QueryInline = {
 `
 	dir := oneImplPackage(t, indexStub, inline)
 
-	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 	if err != nil {
 		t.Fatalf("a body calling an imported value must extract: %v", err)
 	}
@@ -258,7 +258,7 @@ export const QueryInline = {
 `
 	dir := oneImplPackage(t, indexStub, inline)
 
-	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 	if err != nil {
 		t.Fatalf("an aliased imported value must extract: %v", err)
 	}
@@ -280,7 +280,7 @@ export const QueryInline = {
 `
 	dir := oneImplPackage(t, indexStub, inline)
 
-	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
@@ -350,7 +350,7 @@ export const QueryInline = {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			dir := oneImplPackage(t, indexStub, c.inline)
-			_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+			_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
 			if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_FREE_IDENTIFIER") {
 				t.Fatalf("want INLINE_BODY_FREE_IDENTIFIER, got %v", err)
 			}

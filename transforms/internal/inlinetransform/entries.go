@@ -8,104 +8,119 @@ import (
 	"strings"
 )
 
-// EntryKind classifies a publish-list entry by the TS namespace it anchors to.
-// Field names map to namespaces: type is a type-namespace export (a token
-// string "@pkg:Name"); impl is a value-namespace export (self-relative to the
-// declaring package); member is shared.
+// EntryKind classifies a publish-list entry by field KIND, not just presence:
+// type names a TYPE (a TypeIdentifier reference — an interface/class the
+// member is declared on); impl names a VALUE (a fully-qualified export); member
+// is the member name, shared by both member shapes.
 type EntryKind int
 
 const (
-	// KindMember is an interface-member sugar entry: type + impl + member. The
-	// body lives on the impl export's member of the same name. CERTIFIED.
+	// KindMember is an instance-member sugar entry: type + member, with impl
+	// present when the member's declaration is ambient (a bodyless interface
+	// member — the body lives on impl's member-named property; every member
+	// entry in the workspace today is this shape, CERTIFIED) or absent when the
+	// declaration IS its own body (a class method; recognized, not yet
+	// certified — no current entry is this shape).
 	KindMember EntryKind = iota
-	// KindFunction is a free-function sugar entry: impl only. There is no
-	// type-side anchor; the module specifier is the owning package's own name
-	// and the export is impl. CERTIFIED.
-	KindFunction
-	// KindClassMember is a class-member sugar entry: type + member. SPECCED but
-	// NOT CERTIFIED — recognized only so it can be rejected distinctly.
-	KindClassMember
-	// KindObjectLiteralMember is an object-literal-member sugar entry: impl +
-	// member. SPECCED but NOT CERTIFIED — recognized for a distinct rejection.
-	KindObjectLiteralMember
+	// KindFloater is a free-standing sugar entry: impl only, no type, no
+	// member — the impl function's own source is the body. CERTIFIED.
+	KindFloater
+	// KindStaticMember is a static / namespace-const member sugar entry: impl +
+	// member, no type — the impl value is both the call-base anchor and the
+	// body holder. SPECCED but NOT CERTIFIED — recognized only so it can be
+	// rejected distinctly; no current entry is this shape.
+	KindStaticMember
 )
 
 // KindStatus is the certification verdict for an entry's recognized shape.
 type KindStatus int
 
 const (
-	// StatusMalformed: the field-presence pattern matches none of the four
-	// grammar rows (a both+neither mixture, a lone/paired field that fits no
-	// row, or a member==impl / malformed-token violation of an otherwise
-	// certified row). The caller raises INLINE_ENTRY_SHAPE.
+	// StatusMalformed: the field-presence pattern fits no shape (type without
+	// member, member without type or impl, the empty entry), or a present
+	// type/impl reference fails to deserialize. The caller raises
+	// INLINE_ENTRY_SHAPE.
 	StatusMalformed KindStatus = iota
-	// StatusCertified: an inlineable shape — interface-member or free-function.
+	// StatusCertified: an inlineable shape — an ambient instance member or a
+	// floater.
 	StatusCertified
 	// StatusUncertified: a recognized shape that is specced but not yet
-	// certified — class-member or object-literal-member. The caller raises
-	// INLINE_KIND_UNCERTIFIED.
+	// certified — an own-body instance member or a static member. The caller
+	// raises INLINE_KIND_UNCERTIFIED.
 	StatusUncertified
 )
 
-// Kind classifies e by field presence into one of the four grammar rows and
+// Kind classifies e by field KIND and presence into one of four rows and
 // returns the row's kind plus its certification status:
 //
-//	type + impl + member  → interface member        (certified)
-//	impl only             → free function            (certified)
-//	type + member         → class member             (uncertified)
-//	impl + member         → object-literal member    (uncertified)
+//	type + member + impl  → instance member, ambient   (certified)
+//	type + member         → instance member, own body  (uncertified)
+//	impl  + member         → static member              (uncertified)
+//	impl only              → floater                    (certified)
 //
-// Any other field-presence pattern — a type+impl pair, a lone type/impl/member,
-// the empty entry, or a member==impl / malformed-type-token violation of the
-// interface-member row — is StatusMalformed. Uncertified rows are recognized by
-// presence alone; their finer fields are not validated (they are rejected
-// regardless).
+// type is present only paired with member (a lone type is malformed); every
+// other combination requires member alongside type or impl (a lone member, or
+// the empty entry, is malformed). A present type or impl must deserialize
+// through ParseTypeRef — an absent package qualifier or any other malformed
+// reference is malformed, loudly, never a silent skip.
 func (e Entry) Kind() (EntryKind, KindStatus) {
 	hasType := e.Type != ""
 	hasImpl := e.Impl != ""
 	hasMember := e.Member != ""
+
 	switch {
-	case hasType && hasImpl && hasMember:
-		// interface member: member must differ from impl, and type must be a
-		// well-formed "<package>:<TypeName>" token.
-		if e.Member == e.Impl {
-			return 0, StatusMalformed
-		}
-		if _, _, ok := splitTypeToken(e.Type); !ok {
+	case hasType && hasMember && hasImpl:
+		if !parsesCleanly(e.Type) || !parsesCleanly(e.Impl) {
 			return 0, StatusMalformed
 		}
 		return KindMember, StatusCertified
-	case hasImpl && !hasType && !hasMember:
-		// free function: no type-side anchor exists.
-		return KindFunction, StatusCertified
 	case hasType && hasMember && !hasImpl:
-		// class member: recognized, not yet certified.
-		return KindClassMember, StatusUncertified
+		if !parsesCleanly(e.Type) {
+			return 0, StatusMalformed
+		}
+		return KindMember, StatusUncertified
 	case hasImpl && hasMember && !hasType:
-		// object-literal member: recognized, not yet certified.
-		return KindObjectLiteralMember, StatusUncertified
+		if !parsesCleanly(e.Impl) {
+			return 0, StatusMalformed
+		}
+		return KindStaticMember, StatusUncertified
+	case hasImpl && !hasMember && !hasType:
+		if !parsesCleanly(e.Impl) {
+			return 0, StatusMalformed
+		}
+		return KindFloater, StatusCertified
 	default:
+		// type without member, member without type or impl, or the empty entry.
 		return 0, StatusMalformed
 	}
 }
 
-// rawInlineConfig is the "rhombus.inline" object literal in a package.json.
+// parsesCleanly reports whether ref deserializes through ParseTypeRef — the
+// grammar-row certification gate every present type/impl reference must clear.
+func parsesCleanly(ref string) bool {
+	_, err := ParseTypeRef(ref)
+	return err == nil
+}
+
+// rawInlineConfig is the "rhombus-std" marker's "inline" object in a
+// package.json.
 type rawInlineConfig struct {
-	Entries []Entry         `json:"entries"`
-	Import  json.RawMessage `json:"import"` // string | []string | absent
+	Inline []Entry         `json:"inline"`
+	Import json.RawMessage `json:"import"` // string | []string | absent
 }
 
-// pkgJSONInline is a minimal package.json view exposing only the inline key.
+// pkgJSONInline is a minimal package.json view exposing only the marker key.
 type pkgJSONInline struct {
-	Inline *rawInlineConfig `json:"rhombus.inline"`
+	RhombusStd *rawInlineConfig `json:"rhombus-std"`
 }
 
-// LoadInlineEntries reads packageDir/package.json's "rhombus.inline" key,
-// composes any imported JSON files (recursively, file-relative, package-scoped,
-// cycle-guarded), validates every entry's shape, and returns the concatenated
-// entry list in encounter order. A package with no "rhombus.inline" key returns
-// (nil, nil) — absence is not an error. Malformed JSON, an out-of-package import,
-// an import cycle, or a non-certified entry shape are all hard errors.
+// LoadInlineEntries reads packageDir/package.json's "rhombus-std" marker's
+// "inline" list, composes any imported JSON files (recursively, file-relative,
+// package-scoped, cycle-guarded), validates every entry's shape, and returns
+// the concatenated entry list in encounter order. A package with no
+// "rhombus-std" key returns (nil, nil) — absence is not an error. Malformed
+// JSON, an out-of-package import, an import cycle, or a non-certified entry
+// shape are all hard errors.
 func LoadInlineEntries(packageDir string) ([]Entry, error) {
 	packageDir = filepath.Clean(packageDir)
 	seen := map[string]bool{}
@@ -125,22 +140,35 @@ func loadFromPackageJSON(packageDir, rootDir string, seen map[string]bool) ([]En
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return nil, fmt.Errorf("inline: malformed package.json %s: %w", path, err)
 	}
-	if pkg.Inline == nil {
+	if pkg.RhombusStd == nil {
 		return nil, nil
 	}
-	return composeInline(pkg.Inline, rootDir, seen, path)
+	return composeInline(pkg.RhombusStd, rootDir, seen, path)
 }
 
 // composeInline validates cfg's own entries and appends any imported files'
-// entries. from names the file cfg came from, for cycle diagnostics.
+// entries. from names the file cfg came from, for cycle diagnostics; rootDir
+// is the declaring package's own root, which every entry's impl (when present)
+// must self-reference — the side-parser only ever reads files inside rootDir,
+// so an impl naming any other package cannot resolve and is rejected here,
+// loudly, at load time rather than as a confusing not-found later.
 func composeInline(cfg *rawInlineConfig, rootDir string, seen map[string]bool, from string) ([]Entry, error) {
-	out := make([]Entry, 0, len(cfg.Entries))
-	for i, e := range cfg.Entries {
+	out := make([]Entry, 0, len(cfg.Inline))
+	for i, e := range cfg.Inline {
 		switch _, status := e.Kind(); status {
 		case StatusMalformed:
 			return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d matches no grammar row (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
 		case StatusUncertified:
-			return nil, fmt.Errorf("INLINE_KIND_UNCERTIFIED: %s entry %d is a specced-but-not-yet-certified shape (class-member and object-literal-member are not certified) (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
+			return nil, fmt.Errorf("INLINE_KIND_UNCERTIFIED: %s entry %d is a specced-but-not-yet-certified shape (own-body instance members and static members are not certified) (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
+		}
+		if e.Impl != "" {
+			implRef, err := ParseTypeRef(e.Impl)
+			if err != nil {
+				return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d has a malformed impl %q: %w", from, i, e.Impl, err)
+			}
+			if declaringPkg := packageName(rootDir); implRef.From != declaringPkg {
+				return nil, fmt.Errorf("INLINE_ENTRY_IMPL_FOREIGN: %s entry %d impl %q names package %q, but must self-reference the declaring package %q — the side-parser only reads files inside it", from, i, e.Impl, implRef.From, declaringPkg)
+			}
 		}
 		out = append(out, e)
 	}

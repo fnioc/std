@@ -73,9 +73,11 @@ type Artifacts struct {
 	// SugarMembers maps a certified member name to its sugar call shape, for the
 	// emit sweep's member-sugar residue check.
 	SugarMembers map[string]MemberShape
-	// SugarFunctions maps a certified free-function name to its declaring package,
-	// for the emit sweep's free-function residue check.
-	SugarFunctions map[string]string
+	// FunctionSugars holds every certified, active free-function entry resolved
+	// against this program, for the emit sweep's free-function residue check —
+	// the entry's own resolution (Module/Member) IS the check's data, so no
+	// separate name-keyed registry is built alongside it.
+	FunctionSugars []*Resolved
 	// Active is set once the inline stage is selected AND at least one entry
 	// resolved non-inert; the sweep and the nameof handoff key off it.
 	Active bool
@@ -86,6 +88,5 @@ func NewArtifacts() *Artifacts {
 	return &Artifacts{
 		PrimitiveCalls: map[*shimast.Node]PrimitiveUse{},
 		SugarMembers:   map[string]MemberShape{},
-		SugarFunctions: map[string]string{},
 	}
 }

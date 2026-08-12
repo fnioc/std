@@ -15,7 +15,7 @@ import (
 func pilotMemberEntry(app string) OwnedEntry {
 	core := filepath.Join(filepath.Dir(app), "core")
 	return OwnedEntry{
-		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "QueryInline", Member: "isService"},
+		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "isService"},
 		PackageDir: core,
 	}
 }
@@ -115,7 +115,7 @@ export const known = provider.isService<Foo>();
 	core := filepath.Join(filepath.Dir(app), "core")
 
 	t.Run("unresolved type", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "QueryInline", Member: "isService"}, PackageDir: core}
+		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/core:QueryInline", Member: "isService"}, PackageDir: core}
 		_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if inert {
 			t.Fatal("a misspelled type must be a hard error, not inert")
@@ -126,7 +126,7 @@ export const known = provider.isService<Foo>();
 	})
 
 	t.Run("unresolved member", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "QueryInline", Member: "missing"}, PackageDir: core}
+		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "missing"}, PackageDir: core}
 		_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if inert {
 			t.Fatal("a member absent from the interface must be a hard error, not inert")
@@ -137,7 +137,7 @@ export const known = provider.isService<Foo>();
 	})
 }
 
-// setupOverloadedFunctionWorkspace lays out an impl-only free-function whose
+// setupOverloadedFunctionWorkspace lays out an impl-only floater whose
 // export is OVERLOADED (a signature declaration plus its implementation).
 func setupOverloadedFunctionWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
@@ -149,7 +149,7 @@ func setupOverloadedFunctionWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": { "entries": [ { "impl": "identity" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/prims:identity" } ] }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T;
 export function identity<T>(value: T): T {
@@ -185,10 +185,10 @@ export const x = identity<number>(1);
 	return prog, app
 }
 
-// TestResolveFreeFunctionOverloadedRejected: an overloaded free function is not
+// TestResolveFreeFunctionOverloadedRejected: an overloaded floater is not
 // certified. The rejection surfaces as INLINE_BODY_SHAPE, because Extract runs
 // first and the first-found declaration is the bodyless overload signature — the
-// fnDecls!=1 (INLINE_ENTRY_SHAPE) guard in resolveFunction sits behind it as
+// fnDecls!=1 (INLINE_ENTRY_SHAPE) guard in resolveFloater sits behind it as
 // defense in depth. This pins the reachable behavior.
 //
 // Spec deviation: the gap named the fnDecls!=1 / INLINE_ENTRY_SHAPE branch; that
@@ -201,19 +201,19 @@ func TestResolveFreeFunctionOverloadedRejected(t *testing.T) {
 	e := collectFreeFunction(t, app)
 	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 	if inert {
-		t.Fatal("an overloaded free function must be a hard error, not inert")
+		t.Fatal("an overloaded floater must be a hard error, not inert")
 	}
 	if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_SHAPE") {
 		t.Fatalf("want INLINE_BODY_SHAPE (Extract sees the bodyless overload signature first), got %v", err)
 	}
 }
 
-// setupFunctionWorkspace lays out a two-package workspace for the impl-only
-// free-function grammar row: a scoped-name `@scope/prims` package that exports a
-// function and declares it inlineable with an `{ "impl": "identity" }` entry (no
-// type — no type-side anchor exists), plus an `app` consumer that imports and
-// calls it (the witness). importsPrims toggles whether the app imports the
-// package, exercising the witness/inert branch.
+// setupFunctionWorkspace lays out a two-package workspace for the floater
+// grammar row: a scoped-name `@scope/prims` package that exports a function
+// and declares it inlineable with an `{ "impl": "@scope/prims:identity" }`
+// entry (no type — no type-side anchor exists), plus an `app` consumer that
+// imports and calls it (the witness). importsPrims toggles whether the app
+// imports the package, exercising the witness/inert branch.
 func setupFunctionWorkspace(t *testing.T, importsPrims bool) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -224,8 +224,8 @@ func setupFunctionWorkspace(t *testing.T, importsPrims bool) (*driver.Program, s
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "impl": "identity" } ]
+  "rhombus-std": {
+    "inline": [ { "impl": "@scope/prims:identity" } ]
   }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T {
@@ -280,11 +280,11 @@ func collectFreeFunction(t *testing.T, app string) OwnedEntry {
 		t.Fatalf("Collect: %v", err)
 	}
 	for _, oe := range owned {
-		if oe.Entry.Impl == "identity" && oe.Entry.Type == "" && oe.Entry.Member == "" {
+		if oe.Entry.Impl == "@scope/prims:identity" && oe.Entry.Type == "" && oe.Entry.Member == "" {
 			return oe
 		}
 	}
-	t.Fatalf("free-function entry not collected: %+v", owned)
+	t.Fatalf("floater entry not collected: %+v", owned)
 	return OwnedEntry{}
 }
 
@@ -301,10 +301,10 @@ func TestResolveFreeFunctionAgainstOwningPackage(t *testing.T) {
 		t.Fatalf("Resolve: %v", rerr)
 	}
 	if inert {
-		t.Fatal("free-function entry resolved inert — the owning package name did not anchor a witness")
+		t.Fatal("floater entry resolved inert — the owning package name did not anchor a witness")
 	}
-	if resolved.Kind != KindFunction {
-		t.Fatalf("Kind = %v, want KindFunction", resolved.Kind)
+	if resolved.Kind != KindFloater {
+		t.Fatalf("Kind = %v, want KindFloater", resolved.Kind)
 	}
 	if resolved.Module != "@scope/prims" {
 		t.Fatalf("Module = %q, want @scope/prims (the owning package name)", resolved.Module)
@@ -339,8 +339,8 @@ func TestResolveRejectsUncertifiedKinds(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	cases := map[string]Entry{
-		"class member":          {Type: "@scope/prims:Foo", Member: "bar"},
-		"object-literal member": {Impl: "FooLiteral", Member: "bar"},
+		"own-body member": {Type: "@scope/prims:Foo", Member: "bar"},
+		"static member":   {Impl: "@scope/prims:FooBase", Member: "bar"},
 	}
 	for name, e := range cases {
 		t.Run(name, func(t *testing.T) {

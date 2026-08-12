@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus.inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(tokenfor(IOptions<T>), tokenfor(T))) and lowered by the shared owner binary's inline + tokenfor stages.",
+  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(tokenfor(IOptions<T>), tokenfor(T))) and lowered by the shared owner binary's inline + tokenfor stages.",
   "keywords": [
     "options",
     "dependency-injection",
@@ -18,12 +18,12 @@
     "directory": "libraries/di.extras.options"
   },
   "type": "module",
-  "//rhombus.inline": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core Manifest interface (the augmentation target); `impl` (ServiceOptionsInline) resolves in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
-  "rhombus.inline": {
-    "entries": [
+  "//rhombus-std": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core Manifest interface (the augmentation target); `impl` (ServiceOptionsInline) is a fully-qualified reference resolving in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
+  "rhombus-std": {
+    "inline": [
       {
         "type": "@rhombus-std/di.core:Manifest",
-        "impl": "ServiceOptionsInline",
+        "impl": "@rhombus-std/di.extras.options:ServiceOptionsInline",
         "member": "addOptions"
       }
     ]

@@ -60,8 +60,8 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 			}
 			inlineByDecl[decl] = &matchTarget{resolved: resolved, body: body}
 		}
-		if resolved.Kind == KindFunction {
-			artifacts.SugarFunctions[resolved.Member] = resolved.Module
+		if resolved.Kind == KindFloater {
+			artifacts.FunctionSugars = append(artifacts.FunctionSugars, resolved)
 		} else {
 			artifacts.SugarMembers[resolved.Member] = MemberShape{
 				TypeArgCount:  resolved.Body.Discriminator.TypeParamCount,
@@ -78,7 +78,7 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 	memberNames := map[string]bool{}
 	functionNames := map[string]bool{}
 	for _, r := range resolvedList {
-		if r.Kind == KindFunction {
+		if r.Kind == KindFloater {
 			functionNames[r.Member] = true
 		} else {
 			memberNames[r.Member] = true
@@ -367,7 +367,7 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	// See anchorValueArg for why the pairing is positional rather than a walk back
 	// up the Original chain.
 	argAnchors := positionalArgAnchors(in.Args, callArguments(anchored.AsCallExpression()))
-	if target.resolved.Kind != KindFunction {
+	if target.resolved.Kind != KindFloater {
 		in.Receiver = call.Expression.AsPropertyAccessExpression().Expression
 	} else {
 		st.elideFns[target.resolved.Member] = true

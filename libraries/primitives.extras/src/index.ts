@@ -6,7 +6,7 @@
 // `registerInlineBodies` is the one export that isn't resolved at compile
 // time — a runtime no-op marker placed beside an inline sugar body set to
 // state, in code, that the set is published in its package's `package.json`
-// "rhombus.inline" list.
+// "rhombus-std" marker "inline" list.
 
 export { IS_SINGULAR_NAME, isSingular } from './isSingular.js';
 export { REGISTER_AUGMENTATIONS_NAME, registerAugmentations } from './registerAugmentations.js';

@@ -30,7 +30,7 @@ import '@rhombus-std/options.augmentations';
 // reclaim). One shared, content-keyed cache → the sidecar builds once cold per
 // machine and every later compilation is warm.
 //
-// The inline stage reads di.core's REAL src (its rhombus.inline entry + the
+// The inline stage reads di.core's REAL src (its rhombus-std inline entry + the
 // out-of-barrel src/inline.ts body), so the real di.core is symlinked, not mocked.
 
 const goToolchain = spawnSync('mise', ['which', 'go'], { encoding: 'utf8' });
@@ -583,7 +583,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 // W4 — addOptions<T>() options witness.
 //
 // The addOptions<T>() sugar is no longer a bespoke stage: it is a
-// di.extras.options rhombus.inline body substituted by the inline stage, its
+// di.extras.options rhombus-std inline body substituted by the inline stage, its
 // composed `IOptions<T>` wrapper token + bare `T` element token lowered by the
 // tokenfor (nameof) stage's composed-generic derivation. This witness compiles a
 // lone `addOptions<UserOptions>()` through the REAL ttsc and asserts the two-token

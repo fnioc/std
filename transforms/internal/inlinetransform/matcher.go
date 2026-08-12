@@ -1,7 +1,8 @@
 // Package inlinetransform holds the matching and side-parse foundations for the
 // generic single-expression function-inlining transform stage. It carries no
-// per-library semantic knowledge: a hand-authored `rhombus.inline` publish-list
-// entry names an interface member (or free function), and this package resolves
+// per-library semantic knowledge: a hand-authored `rhombus-std` marker `inline`
+// publish-list entry names an interface member (or free function), and this
+// package resolves
 // that entry ONCE per program to a member symbol and its full declaration set,
 // then decides — per call site, by symbol/declaration IDENTITY, never by string
 // key — whether a call is an inlineable one.
@@ -35,19 +36,23 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
-// Entry is one hand-authored `rhombus.inline` publish-list entry. Field presence
-// distinguishes the kinds: an interface-member entry carries Type + Member (Impl
-// names the declaring export); a free-function entry omits Member. Only the
-// interface-member shape is exercised by the pilot.
+// Entry is one hand-authored `rhombus-std` marker `inline` publish-list entry.
+// Field KIND distinguishes the shapes: type names a TYPE (the interface an
+// instance member is declared on); impl names a VALUE (a fully-qualified
+// export — the body holder for an ambient member, or a floater's own
+// function); member is the member name, shared by both member shapes. See
+// Entry.Kind (entries.go) for the full grammar.
 type Entry struct {
-	// Type is a nameof token, "<package>:<TypeName>", identifying the interface
-	// whose member is inlineable. It is the match anchor.
+	// Type is a "<package>:<TypeName>" reference identifying the interface an
+	// instance member is declared on — the match anchor. Absent for a floater
+	// or a static member.
 	Type string
-	// Impl is the export name (within the declaring package) that holds the
-	// inlineable body. Self-relative, resolved through the workspace.
+	// Impl is a "<package>:<Name>" reference to the export holding the
+	// inlineable body: an ambient member's body-holder value, or a floater's
+	// own function. Absent for an own-body instance member.
 	Impl string
-	// Member is the member name, shared by the interface side and the impl side
-	// (structurally identical by the registry-install mechanism).
+	// Member is the member name, shared by both member shapes (instance and
+	// static). Absent for a floater.
 	Member string
 }
 
@@ -68,10 +73,11 @@ type ResolvedEntry struct {
 // set. It returns an error (never a silent miss) when any leg fails to resolve,
 // so a malformed or dist-skewed publish list is a loud build failure.
 func ResolveEntry(prog *driver.Program, checker *shimchecker.Checker, e Entry) (*ResolvedEntry, error) {
-	pkg, typeName, ok := splitTypeToken(e.Type)
-	if !ok {
-		return nil, fmt.Errorf("inline: malformed type token %q (want \"<package>:<TypeName>\")", e.Type)
+	typeRef, err := ParseTypeRef(e.Type)
+	if err != nil {
+		return nil, fmt.Errorf("inline: %w", err)
 	}
+	pkg, typeName := typeRef.From, typeRef.Name
 
 	moduleSym := resolveModuleSymbol(prog, checker, pkg)
 	if moduleSym == nil {

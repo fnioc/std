@@ -8,10 +8,12 @@ import rhombusInline from '../../../scripts/eslint/rhombus-inline.mjs';
 
 // Drives the inline-authoring rule with ESLint's programmatic Linter over a
 // fixture source written into a temp package whose package.json carries the
-// matching rhombus.inline entries (the rule loads entries from the file's
+// matching rhombus-std inline entries (the rule loads entries from the file's
 // nearest package.json). One fixture per messageId (invalid) plus valid bodies.
 
-const DEFAULT_ENTRIES = { entries: [{ type: 'p:Foo', impl: 'Foo', member: 'bar' }, { impl: 'tokenOf' }] };
+const DEFAULT_ENTRIES = {
+  inline: [{ type: 'p:Foo', impl: 'fixture:Foo', member: 'bar' }, { impl: 'fixture:tokenOf' }],
+};
 
 // Fixtures live UNDER cwd: ESLint flat-config's `files` glob matches relative to
 // the working directory, so a file outside it yields "no matching config".
@@ -22,7 +24,7 @@ afterAll(() => rmSync(FIXTURE_BASE, { recursive: true, force: true }));
 /** Lints a src/inline.ts body in a temp package, returning the reported messageIds. */
 function lintInline(source: string, inlineConfig: unknown = DEFAULT_ENTRIES): string[] {
   const dir = mkdtempSync(join(FIXTURE_BASE, 'f-'));
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'fixture', 'rhombus.inline': inlineConfig }));
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'fixture', 'rhombus-std': inlineConfig }));
   mkdirSync(join(dir, 'src'), { recursive: true });
   const file = resolve(dir, 'src', 'inline.ts');
   writeFileSync(file, source);
@@ -118,7 +120,7 @@ describe('inline-authoring rule', () => {
 
   test('module-level registerInlineBodies marker reports nothing', () => {
     // The marker states in code that the set is published in package.json's
-    // "rhombus.inline" list. It sits BESIDE the set, at module level, so the rule —
+    // "rhombus-std" marker "inline" list. It sits BESIDE the set, at module level, so the rule —
     // which only walks listed bodies — must leave both it and its import alone.
     const src = PRIMITIVE_IMPORT
       + `import { registerInlineBodies } from '@rhombus-std/primitives.extras';\n`
@@ -136,10 +138,11 @@ describe('inline-authoring rule', () => {
   });
 
   test('malformed publish list → entryShape at Program', () => {
-    // A type-only entry is malformed; loadInlineEntries throws and the rule
-    // reports entryShape once at the Program node, regardless of the body.
+    // A type-only entry (no member) is malformed; loadInlineEntries throws and
+    // the rule reports entryShape once at the Program node, regardless of the
+    // body.
     const src = `export const Foo = {\n  bar<T>(this: any): boolean { return true; },\n};\n`;
-    expect(lintInline(src, { entries: [{ type: 'p:X' }] })).toContain('entryShape');
+    expect(lintInline(src, { inline: [{ type: 'p:X' }] })).toContain('entryShape');
   });
 
   test('concrete-type primitive body passes the lint (gap 19 mirror)', () => {

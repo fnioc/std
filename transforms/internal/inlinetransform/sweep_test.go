@@ -22,7 +22,7 @@ func activeResidueArtifacts() *Artifacts {
 	a := NewArtifacts()
 	a.Active = true
 	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
-	a.SugarFunctions["tokenOf"] = "p"
+	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 	return a
 }
 
@@ -112,7 +112,7 @@ const b = x.isService<Foo>('token');
 		shimast.SetParentInChildrenUnset(sf.AsNode())
 		a := NewArtifacts()
 		a.Active = true
-		a.SugarFunctions["tokenOf"] = "p"
+		a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 		if diags := Sweep(sf, a); len(diags) != 0 {
 			t.Fatalf("a free-function call whose import was elided must not be flagged, got %+v", diags)
 		}
@@ -167,5 +167,24 @@ export const v = tokenOf(1);
 	diags := Sweep(sf, activeResidueArtifacts())
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
 		t.Fatalf("want one INLINE_UNLOWERED_SUGAR, got %+v", diags)
+	}
+}
+
+// TestSweepIgnoresRuntimeForwardingTarget: a floater's body may forward its
+// calls to a same-named runtime function in another package (the substitution
+// mechanism materializes an import from that package). A surviving call to
+// THAT target is never mistaken for sugar residue — only a call importing the
+// name from the floater's OWN declaring package (Module) is.
+func TestSweepIgnoresRuntimeForwardingTarget(t *testing.T) {
+	sf := parse(t, "/sweep/forward-target.ts", `import { tokenOf } from 'runtime-pkg';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a call to the runtime forwarding target must not be flagged, got %+v", diags)
 	}
 }

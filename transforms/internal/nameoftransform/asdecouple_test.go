@@ -34,10 +34,10 @@ func buildAsDecoupleWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" },
-      { "type": "@rhombus-std/di.core:IAsBuilder", "impl": "ManifestInline", "member": "as" }
+  "rhombus-std": {
+    "inline": [
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" },
+      { "type": "@rhombus-std/di.core:IAsBuilder", "impl": "@rhombus-std/di.core:ManifestInline", "member": "as" }
     ]
   }
 }`)
