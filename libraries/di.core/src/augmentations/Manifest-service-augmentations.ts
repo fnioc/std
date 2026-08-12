@@ -18,38 +18,38 @@ declare module '@rhombus-std/di.core' {
 
 export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =
   {
-    addClass(manifest, type, ctor, signatures, scope, key) {
+    addClass(type, ctor, signatures, scope, key) {
       if (typeof type === 'string') {
-        return manifest.addClass(Type.from(type), ctor, signatures, scope, key);
+        return this.addClass(Type.from(type), ctor, signatures, scope, key);
       }
       if (key !== undefined && type.kind === 'tag') {
         throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
       }
-      return manifest.add(
+      return this.add(
         ServiceDescriptor.ctor(key === undefined ? type : Type.tag(type, key), ctor, TypeSignatures.from(signatures),
           scope),
       );
     },
-    addFactory(manifest, type, factory, signatures, scope, key) {
+    addFactory(type, factory, signatures, scope, key) {
       if (typeof type === 'string') {
-        return manifest.addFactory(Type.from(type), factory, signatures, scope, key);
+        return this.addFactory(Type.from(type), factory, signatures, scope, key);
       }
       if (key !== undefined && type.kind === 'tag') {
         throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
       }
-      return manifest.add(
+      return this.add(
         ServiceDescriptor.factory(key === undefined ? type : Type.tag(type, key), factory,
           TypeSignatures.from(signatures), scope),
       );
     },
-    addValue(manifest, type, value, key) {
+    addValue(type, value, key) {
       if (typeof type === 'string') {
-        return manifest.addValue(Type.from(type), value, key);
+        return this.addValue(Type.from(type), value, key);
       }
       if (key !== undefined && type.kind === 'tag') {
         throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
       }
-      return manifest._add(ServiceDescriptor.value(key === undefined ? type : Type.tag(type, key), value));
+      return this._add(ServiceDescriptor.value(key === undefined ? type : Type.tag(type, key), value));
     },
   };
 

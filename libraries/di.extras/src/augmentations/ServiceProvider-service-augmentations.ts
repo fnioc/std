@@ -11,14 +11,14 @@ declare module '@rhombus-std/primitives' {
 }
 export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
   IServiceProviderServiceAugmentations> = {
-    getService<T>(provider: IServiceProvider): T | undefined {
-      return provider.getService(typefor<T>());
+    getService<T>(): T | undefined {
+      return this.getService(typefor<T>());
     },
-    getRequiredService<T>(provider: IServiceProvider): T {
-      return provider.getRequiredService(typefor<T>());
+    getRequiredService<T>(): T {
+      return this.getRequiredService(typefor<T>());
     },
-    getServices<T>(provider: IServiceProvider): Iterable<T> {
-      return provider.getServices(typefor<T>());
+    getServices<T>(): Iterable<T> {
+      return this.getServices(typefor<T>());
     },
   };
 

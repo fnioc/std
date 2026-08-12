@@ -10,15 +10,15 @@ declare module '@rhombus-std/primitives' {
 }
 export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
   IServiceProviderServiceAugmentations> = {
-    getRequiredService(provider: IServiceProvider, serviceType: Type): any {
-      const service = provider.getService(serviceType);
+    getRequiredService(serviceType: Type): any {
+      const service = this.getService(serviceType);
       if (!service) {
         throw new Error(`nothing is registered for ${Type.stringify(serviceType)}.`);
       }
       return service;
     },
-    getServices(provider: IServiceProvider, serviceType: Type): Iterable<any> {
-      return provider.getRequiredService(Type.named('Iterable', 'global', [serviceType]));
+    getServices(serviceType: Type): Iterable<any> {
+      return this.getRequiredService(Type.named('Iterable', 'global', [serviceType]));
     },
   };
 

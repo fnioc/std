@@ -25,32 +25,32 @@ declare module '@rhombus-std/di.core' {
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
   Flatten<IManifestDescriptorAugmentations<any>>> = {
-    tryAdd<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).tryAdd(typefor<T>(), ...rest);
+    tryAdd<T>(...rest: any[]) {
+      return (this as any).tryAdd(typefor<T>(), ...rest);
     },
-    tryAddClass<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).tryAddClass(typefor<T>(), ...rest);
+    tryAddClass<T>(...rest: any[]) {
+      return (this as any).tryAddClass(typefor<T>(), ...rest);
     },
-    tryAddFactory<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).tryAddFactory(typefor<T>(), ...rest);
+    tryAddFactory<T>(...rest: any[]) {
+      return (this as any).tryAddFactory(typefor<T>(), ...rest);
     },
-    tryAddValue<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).tryAddValue(typefor<T>(), ...rest);
-    },
-
-    replaceClass<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).replaceClass(typefor<T>(), ...rest);
+    tryAddValue<T>(...rest: any[]) {
+      return (this as any).tryAddValue(typefor<T>(), ...rest);
     },
 
-    replaceFactory<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).replaceFactory(typefor<T>(), ...rest);
-    },
-    replaceValue<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).replaceValue(typefor<T>(), ...rest);
+    replaceClass<T>(...rest: any[]) {
+      return (this as any).replaceClass(typefor<T>(), ...rest);
     },
 
-    removeAll<T>(manifest: Manifest, ...rest: any[]) {
-      return (manifest as any).removeAll(typefor<T>(), ...rest);
+    replaceFactory<T>(...rest: any[]) {
+      return (this as any).replaceFactory(typefor<T>(), ...rest);
+    },
+    replaceValue<T>(...rest: any[]) {
+      return (this as any).replaceValue(typefor<T>(), ...rest);
+    },
+
+    removeAll<T>(...rest: any[]) {
+      return (this as any).removeAll(typefor<T>(), ...rest);
     },
   };
 

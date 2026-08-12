@@ -35,86 +35,84 @@ declare module '@rhombus-std/di.core' {
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
   Flatten<IManifestDescriptorAugmentations<any>>> = {
-    add(manifest, descriptorOrType: any, configure?: any) {
-      return manifest._add(
+    add(descriptorOrType: any, configure?: any) {
+      return this._add(
         configure === undefined ? descriptorOrType : describe<any>(descriptorOrType, configure),
       );
     },
-    remove(manifest, descriptor) {
-      return manifest._remove(descriptor);
+    remove(descriptor) {
+      return this._remove(descriptor);
     },
-    replace(manifest, descriptor) {
-      return manifest._replace(descriptor);
+    replace(descriptor) {
+      return this._replace(descriptor);
     },
-    addMany(manifest, descriptors) {
-      return Iterator.from(descriptors).reduce((man, descriptor) => man._add(descriptor), manifest);
+    addMany(descriptors) {
+      return Iterator.from(descriptors).reduce((man, descriptor) => man._add(descriptor), this);
     },
-    tryAdd(manifest: Manifest, ...args: any[]) {
+    tryAdd(...args: any[]) {
       const descriptors: ReadonlyArray<ServiceDescriptor<any>> = typeof args[1] === 'function'
         ? [describe(args[0], args[1])]
         : args;
       return Iterator.from(descriptors)
-        .filter(newDesc =>
-          !Iterator.from(manifest).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc))
-        )
-        .reduce((man, descriptor) => man._add(descriptor), manifest);
+        .filter(newDesc => !Iterator.from(this).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc)))
+        .reduce((man, descriptor) => man._add(descriptor), this);
     },
-    tryAddClass(manifest, token, ctor, signatures, scope, key) {
+    tryAddClass(token, ctor, signatures, scope, key) {
       if (typeof token === 'string') {
-        return manifest.tryAddClass(Type.from(token), ctor, signatures, scope, key);
+        return this.tryAddClass(Type.from(token), ctor, signatures, scope, key);
       }
       if (key !== undefined && token.kind === 'tag') {
         throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
       }
-      return manifest.tryAdd(
+      return this.tryAdd(
         ServiceDescriptor.ctor(key === undefined ? token : Type.tag(token, key), ctor, TypeSignatures.from(signatures),
           scope),
       );
     },
-    tryAddFactory(manifest, token, factory, signatures, scope, key) {
+    tryAddFactory(token, factory, signatures, scope, key) {
       if (typeof token === 'string') {
-        return manifest.tryAddFactory(Type.from(token), factory, signatures, scope, key);
+        return this.tryAddFactory(Type.from(token), factory, signatures, scope, key);
       }
       if (key !== undefined && token.kind === 'tag') {
         throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
       }
-      return manifest.tryAdd(
+      return this.tryAdd(
         ServiceDescriptor.factory(key === undefined ? token : Type.tag(token, key), factory,
           TypeSignatures.from(signatures), scope),
       );
     },
-    tryAddValue(manifest, token, value, key) {
+    tryAddValue(token, value, key) {
       if (typeof token === 'string') {
-        return manifest.tryAddValue(Type.from(token), value, key);
+        return this.tryAddValue(Type.from(token), value, key);
       }
       if (key !== undefined && token.kind === 'tag') {
         throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
       }
-      return manifest.tryAdd(ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), value));
+      return this.tryAdd(ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), value));
     },
 
-    replaceClass(manifest, token, ctor, signatures, scope, key) {
-      return manifest.removeAll(token, key).addClass(token, ctor, signatures, scope, key);
+    replaceClass(token, ctor, signatures, scope, key) {
+      return this.removeAll(token, key).addClass(token, ctor, signatures, scope, key);
     },
 
-    replaceFactory(manifest, token, factory, signatures, scope, key) {
-      return manifest.removeAll(token, key).addFactory(token, factory, signatures, scope, key);
+    replaceFactory(token, factory, signatures, scope, key) {
+      return this.removeAll(token, key).addFactory(token, factory, signatures, scope, key);
     },
-    replaceValue(manifest, token, value, key) {
-      return manifest.removeAll(token, key).addValue(token, value, key);
+    replaceValue(token, value, key) {
+      return this.removeAll(token, key).addValue(token, value, key);
     },
 
-    removeAll(manifest, token, key) {
+    removeAll(token, key) {
       if (typeof token === 'string') {
-        return manifest.removeAll(Type.from(token), key);
+        return this.removeAll(Type.from(token), key);
       }
       if (key !== undefined && token.kind === 'tag') {
         throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
       }
       const target = ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), undefined);
-      return Iterator.from(manifest)
+      return Iterator.from(this)
         .filter(descriptor => ServiceDescriptor.matches(descriptor, target))
-        .reduce((man, descriptor) => man._remove(descriptor), manifest);
+        .reduce((man, descriptor) => man._remove(descriptor), this);
     },
   };
 

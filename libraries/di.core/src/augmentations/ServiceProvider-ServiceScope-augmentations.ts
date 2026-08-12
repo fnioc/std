@@ -11,13 +11,13 @@ declare module '@rhombus-std/primitives' {
 }
 export const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IServiceProvider,
   IServiceProviderServiceScopeAugmentations> = {
-    createScope(provider: IServiceProvider, name?: string): IServiceScope {
-      return (provider.getRequiredService(typefor<IServiceScopeFactory>()) as IServiceScopeFactory)
+    createScope(name?: string): IServiceScope {
+      return (this.getRequiredService(typefor<IServiceScopeFactory>()) as IServiceScopeFactory)
         .createScope(name);
     },
-    createAsyncScope(provider: IServiceProvider): AsyncServiceScope {
+    createAsyncScope(): AsyncServiceScope {
       throw new NotImplementedError('IServiceProvider.createAsyncScope');
-      return new AsyncServiceScope(provider.createScope());
+      return new AsyncServiceScope(this.createScope());
     },
   };
 
