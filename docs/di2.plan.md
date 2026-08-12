@@ -1,6 +1,6 @@
 # di2 plan — desired endgame
 
-The target end-state for di2 / di2.core / primitives. Audience is a fable agent (possibly not this
+The target end-state for di / di.core / primitives. Audience is a fable agent (possibly not this
 session); instructions density, no over-explaining. NOT a decision record and NOT a sequence —
 implementation order is directed by the owner separately. Scope design is deliberately absent
 (§Held; parked research in `docs/di2.scope-notes.md`). Items tagged **(proposed)** are Claude's,
@@ -11,11 +11,11 @@ shown to the owner and not overruled; everything untagged is owner-set.
 - **primitives** owns the Type algebra (`src/Type/`: Type + kind interfaces, TypeVisitor,
   Equals/ToString/Substitute/Satisfies/Validator/ExpandUnions visitors) and `IServiceProvider`.
   Zero-dep leaf holds — trivial helpers inlined, never imported.
-- **di2.core** owns registration: ServiceDescriptor (+`op`), IManifest/Manifest, both augmentation
+- **di.core** owns registration: ServiceDescriptor (+`op`), Manifest/DefaultManifest, both augmentation
   sets, the error taxonomy. Re-exports Type + IServiceProvider from primitives (Token replacement
   is a later, separate effort). ScopeCache placeholder parks here pending scope design.
-- **di2** owns resolution: CallSite (engine IR), ToCallSiteVisitor (lowering), RealizeVisitor, the
-  Engine, ServiceProvider. Engine internals stay out of di2's public barrel.
+- **di** owns resolution: CallSite (engine IR), ToCallSiteVisitor (lowering), RealizeVisitor, the
+  Engine, ServiceProvider. Engine internals stay out of di's public barrel.
 - **Engine**: ONE per manifest, stateless per-resolution; internal context-taking
   `resolve(type, context)` plus the async sibling. `IServiceProvider` stays single-arg FOREVER —
   the user door. `ServiceProvider` is a thin (engine, scope-binding) facade.
@@ -111,9 +111,9 @@ owner positions on record: `docs/di2.scope-notes.md`.
 ## Status (bookkeeping, not sequencing)
 
 union+namespace shape + `serviceType: Type`-only — done. FunctionType rename — done. Package moves
-— done, direct-repoint shape (no shims: di2.core imports Type/IServiceProvider straight from
+— done, direct-repoint shape (no shims: di.core imports Type/IServiceProvider straight from
 primitives; utils split — memo/UnionToTuple → primitives-internal, isAllThere/first →
-di2/CallSite/utils.ts; primitives rebuilt clean; di2.core barrel re-exports the Type surface +
+di/CallSite/utils.ts; primitives rebuilt clean; di.core barrel re-exports the Type surface +
 IServiceProvider and now ScopeCache). Handoff snapshot committed + pushed as tag `di2-handoff`
 (9aa32c9).
 
@@ -133,7 +133,7 @@ union request (and correctly refuses a lone member). Lowering failure is `undefi
 with `UnsatisfiableError` thrown at the engine boundary (`'failzor'` gone).
 Manifest verbs now hand each new Manifest a re-iterable (`{ [Symbol.iterator]: gen.bind(this) }`) —
 a stored generator OBJECT is one-shot, and the old shape emptied the manifest after its first full
-iteration. Smoke green, 16 checks (`libraries/di2/smoke.ts`, throwaway): value / ctor /
+iteration. Smoke green, 16 checks (`libraries/di/smoke.ts`, throwaway): value / ctor /
 deps+literal / factory / tuple / union member fallback / open-generic close / SP injection /
 latebound with call args / UnsatisfiableError / literal-serves-base / union-registration
 refuses-lone-member + serves-exact-union / open-function capture through a contravariant position.
@@ -141,7 +141,7 @@ refuses-lone-member + serves-exact-union / open-function capture through a contr
 Residual owner WIP, untouched: the four token-based manifest verbs (`addClass`/`addFactory`/
 `tryAddClass`/`tryAddFactory`) pass `DepSignatures` (Token strings) where `Type[][]` is now
 required — unfixable until `Type.parse` exists or `DepSignatures` changes shape; the
-`addMany`/`AugmentationSet2` variance error (blocks di2.core's gated build — verification bypasses
-it with a scratchpad no-gate driver; zero repo edits); `isString2d` in di2.core/utils.ts is now
+`addMany`/`AugmentationSet2` variance error (blocks di.core's gated build — verification bypasses
+it with a scratchpad no-gate driver; zero repo edits); `isString2d` in di.core/utils.ts is now
 dead code (owner's factory-signature change removed its last caller). Owner directs what comes
 next.

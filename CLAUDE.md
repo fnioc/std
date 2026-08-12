@@ -100,13 +100,13 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
 
 - **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
   `ChangeToken.onChange` — the async-consumer forms real, via a runtime thenable check, §58 — plus
-  `CompositeChangeToken` merging N tokens into one, §58) that underpins live-reload (§8), **and**
-  the augmentation infra:
+  `CompositeChangeToken` merging N tokens into one, §58) that underpins live-reload (§8), the
+  `IServiceProvider` interface every resolution consumer holds, **and** the augmentation infra:
   one named exported object literal per ME static extension class — `satisfies AugmentationSet<R>`
   for a CLOSED receiver, or typed `AugmentationSet2<R, MemberMap>` against a named member-map type
   for OPEN (§28) — installed either directly via `applyAugmentations` (CLOSED receivers) or through the
-  **augmentation registry** (§38) for OPEN receivers — `Token` (hoisted from di.core, which
-  re-exports it), `registerAugmentations(token, set, merge?)` (per-token bag = a
+  **augmentation registry** (§38) for OPEN receivers — `Token` (native to `primitives`),
+  `registerAugmentations(token, set, merge?)` (per-token bag = a
   `Multimap<string, [fn, merge?]>` holding a per-name LIST of contributions, each pairing the fn
   with its own strategy — a second same-name registration ACCUMULATES, never throws at registration;
   notifies a per-token SYNCHRONOUS subscriber list, deliberately NOT an `EventTarget` bus — a
@@ -119,12 +119,13 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   member identity): a name already taken on the prototype with NO `merge` strategy THROWS (never a
   silent clobber), and with a `MergeStrategy` (per member name, §79) installs a dispatcher chaining the
   incoming over the existing — letting an augmentation share a name with the class's own primitive
-  (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger`, and `di`'s
-  `build`-over-stub — dot-callable at runtime; not statically typed, TS2430). It lives here
+  (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger` — dot-callable
+  at runtime; not statically typed, TS2430). It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
   `primitives.extras` (the sugar-only authoring package, née `primitives.transformer`) hosts the
   `tokenfor<T>()`/`tokenof()` token primitives — moved here out of this runtime leaf (§121:
-  pure transformables, elided after lowering) — and the token-derivation machinery,
+  pure transformables, elided after lowering) — plus `typefor<T>()`, the `Type`-based authoring
+  primitive `di` draws its tokenless sugar from, and the token-derivation machinery,
   di-independent so any family can mint augmentation tokens from types. The runtime leaf itself owns
   the structural
   platform typings (§39/§44): `AbortSignal`/`AbortController` (+ the inert `neverSignal`
@@ -133,22 +134,42 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   lib.dom/`@types/node`/bun-types to touch the platform. That zero-ambient-types program is
   pinned by `types: []` in `/tsconfig.lib.json`; `node:fs`/`node:path` imports get per-package
   compile-scope `node-builtins.d.ts` files (§44).
-- **`di`** — `di.core` (the abstractions **and** the concrete `ServiceManifest` registration
-  builder + the WHOLE error taxonomy, resolution-time errors included so a library can classify a
-  container failure without referencing the engine (§130) — it ships runtime, §9 — plus the
-  `ServiceCollectionDescriptorExtensions.removeAll`/`tryAdd*`/`replace*` descriptor verbs (§38, §56)
-  and the `EmptyServiceProvider` null-object singleton, §56 — but NOT `ActivatorUtilities`, which
-  §128 removed as porting noise) ← `di` (the resolution engine: scopes,
-  resolution, captive-dependency protection, `ServiceProviderOptions`-gated `validateScopes` /
-  `validateOnBuild` (§57), and aggregated — not abort-on-first-throw — disposal, §57; it re-exports
-  the taxonomy, so both imports name the same class and `instanceof` holds either way).
-  `di.extras` (the Go/ttsc authoring surface: the `declare module` for the tokenless
-  registration forms, the inline sugar bodies, and the `signatureof` primitive) depends on
-  **`di.core` types only, never the `di` runtime** (§2 — hard invariant). `di.extras.options` is a satellite lowering the `addOptions<T>()`
-  sugar (§15). di.core's public type surface also ships `IServiceProviderFactory` — the reference
-  `IServiceProviderFactory` analog, shared by the hosting builders (§24) — and the capability
-  interfaces `IRequiredResolver` / `IServiceQuery` that `IResolver` composes (the reference
-  `ISupportRequiredService` / `IServiceProviderIsService` analogs, §27).
+- **`di`** — `di.core` (the abstractions: `Manifest<Scopes>` the interface, `DefaultManifest<Scopes>`
+  its concrete class — an iterable decorator chain whose own body declares only `_add`/`_remove`/
+  `_replace`; every public verb arrives through augmentation sets, so a discarded verb result
+  registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
+  `typefor<T>()`); public parameters take `Type | string` and normalize through `Type.from`,
+  everything internal is `Type` only. A keyed registration composes the key into the type —
+  `Type.tag(base, key)`, never a separate argument or a `base#key` string — and an open template is
+  built structurally, `Type.named(name, from, [Type.placeholder(label)])`, the placeholder object
+  shared between the service type and the signature slot. The WHOLE error taxonomy ships here:
+  `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/`AmbiguousUnionError`/
+  `ManifestValidationError` extending it so one `instanceof` classifies any container failure —
+  `ManifestValidationError` carries its own readonly `errors` array positionally matching
+  `failures` — it ships runtime) ← `di` (the resolution engine: `ServiceProvider` seals a manifest
+  through the manifest's `build()` verb; `getRequiredService(type)` throws when nothing is
+  registered, `getService(type)` returns `undefined`, `getServices(type)` yields the collection; it
+  re-exports the taxonomy, so both imports name the same class and `instanceof` holds either way —
+  di.core stays external in di's bundle so the `Manifest` cross-package augmentations install onto
+  is the same object everywhere). Several members are declared and throw `NotImplementedError`, so
+  a caller compiles and fails at the point of use, gated on the still-undecided lifetime and
+  disposal model: on the provider `tryResolve`/`resolveAsync`/`resolveFactory`/`isService`/
+  `dispose`/`disposeAsync`/`createAsyncScope`, on the manifest `as(scope)`/`withSignature(...types)`
+  — `createScope(name?)` itself is real and takes an optional name, `IServiceScope` declares
+  `getRequiredService`/`isService`, and `ServiceProviderOptions.validateScopes` is declared and read
+  by nothing. A builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an
+  all-in-one verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives
+  in `primitives` and extends `Error` directly, since not-implemented is not a container concept.
+  `di.extras` (the Go/ttsc authoring surface, depending on **`di.core` types only, never the `di`
+  runtime** — hard invariant) carries `rhombus.inline` entries for the twelve manifest verbs
+  (`add`/`addClass`/`addFactory`/`addValue`, `tryAdd`/`tryAddClass`/`tryAddFactory`/`tryAddValue`,
+  `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll`) plus the three `get*` provider
+  members (`getService`/`getRequiredService`/`getServices`) — fifteen entries total, each entry's
+  `impl` resolved by walking `src/index.ts`'s re-export graph. Whether `as`, `withSignature`,
+  `isService`, `resolveFactory`, and the value-derived self-registration forms get tokenless sugar
+  is undecided and gated. `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
+  The live parity suites under `tests/*.ttsc.e2e` are the test oracle, each asserting the emission
+  an author would have written by hand.
 - **`options`** — the collapsed `IOptions<T>` accessor + the configure / post-configure / validate
   `OptionsFactory` pipeline (§4), **plus** startup validation (`IStartupValidator`/`StartupValidator`,
   forced by `Host.start`, §55) and `ValidateOptionsResultBuilder` for multi-failure aggregation
@@ -234,8 +255,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   through `ConfigChangeTokenSource` for reload-reactive `IOptions<T>`, the per-listener
   `IMetricListenerConfigFactory`/`ActivityListenerConfigFactory` merged-configuration
   views `addMetricsConfiguration`/`addTracingConfiguration` register (§66), and the
-  `addMetrics`/`addTracing` declaration-merging augmentations onto `di.core`'s
-  `ServiceManifestClass`; ← `diagnostics.core` + `config` + `options` + `options.augmentations`
+  `addMetrics`/`addTracing` declaration-merging augmentations onto `di.core`'s `Manifest`; ←
+  `diagnostics.core` + `config` + `options` + `options.augmentations`
   - `primitives`, `di.core` as peer). The metrics/tracing **listener runtime** (no `Meter`/
     `Instrument`/`Activity`/`ActivitySource` analog) is intentionally not ported — `IMetricsListener`
     collapses to its rule-matching `name`, `ActivityListenerBuilder`'s delegate params collapse to
@@ -254,7 +275,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ILogger<$1> → Logger<$1>` registration, `ISupportExternalScope` +
   `LoggerExternalScopeProvider` (`AsyncLocalStorage`-backed), the `LoggerRuleSelector`
   filter-selection engine actually consulted at log time, and the `addLogging` augmentation onto
-  `di.core`'s `ServiceManifestClass`; ← `logging.core` + `options` + `options.augmentations` + `di`,
+  `di.core`'s `Manifest`; ← `logging.core` + `options` + `options.augmentations` + `di`,
   with `di.core` as its peer — `setMinimumLevel` and `LoggerFactory.create` are real, no longer
   stubs, §62) ← `logging.config` (config-tree → `LoggerFilterOptions` binding via a lazy
   `addOptions`/`ConfigChangeTokenSource` pipeline, `addConfiguration`, and the full
@@ -306,25 +327,25 @@ before touching):
 - **di ⊥ config** — neither imports the other; the only bridge is `options.augmentations` (§4.3).
 - **A library references the abstractions package; only an entry point references the engine**
   (§130) — repo-wide, not an examples-only convention. Everything a library needs (authoring
-  registrations, holding an `IResolver`, classifying a container failure) is reachable from
+  registrations, holding an `IServiceProvider`, classifying a container failure) is reachable from
   `di.core` alone; `examples.lib.*` are the existence proof.
 - **Interface-first; no concrete leaks** — public signatures use the `di.core` interfaces
-  (`IServiceProvider`, `IResolver`, `ServiceManifest`); the concrete `*Class` impls never appear in
-  a public type (§1, §10).
-- **The manifest is IMMUTABLE** — `ServiceManifest` is an iterable decorator chain: every verb
+  (`IServiceProvider`, `Manifest`); a concrete implementation (`DefaultManifest`, `ServiceProvider`)
+  never appears in a public type (§1, §10).
+- **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. `signatures` is a
   required arg 3; `scope` is arg 4 and `key` arg 5. A builder that wraps a manifest
   (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot
-  (di.core's `IServiceManifestHolder`) and siblings over one manifest share ONE holder;
+  (a local structural `ManifestSlot`) and siblings over one manifest share ONE holder;
   `IHostBuilder.configureServices` takes a RETURNING delegate (§114).
 - **Runtime identity is load-bearing** — `di` keeps `di.core` _external_ in its bundle so the
-  `ServiceManifestClass` cross-package augmentations install onto is the same object everywhere;
+  `Manifest` cross-package augmentations install onto is the same object everywhere;
   a private inlined copy forks identity and breaks the install (§9). config keeps providers
   external for the same reason. **Every bundling package keeps `@rhombus-std/primitives`
   external** — an inlined copy forks the augmentation registry's Map + subscriber list (§38). The same
   holds for the rolled `.d.ts`: a package that inlines di.core's types forks
-  `IServiceManifestBase`, so every di.core dependent keeps it external in `rollup.dts.mjs` (§114).
+  `Manifest`, so every di.core dependent keeps it external in `rollup.dts.mjs` (§114).
 - **Augmentations** — file `<Receiver>-<Topic>-augmentations.ts` (receiver's leading `I` dropped); a
   named member-map type `I<Receiver><Topic>Augmentations` merges onto the receiver via `declare
   module … extends`, and the exported const `<Receiver><Topic>Augmentations` is typed
