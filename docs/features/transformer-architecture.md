@@ -355,17 +355,18 @@ build time, in this repo, in this build. There is no published/carrier form of a
 function, no shipped src, no dist-JS resolution path for it — external consumption of the sugar
 forms stays a deliberately parked follow-up.
 
-### The publish list — `"rhombus.inline"`
+### The publish list — the `"rhombus-std"` marker's `"inline"` list
 
-A library declares its inlineable members in a `"rhombus.inline"` key in `package.json`:
+A library declares its inlineable members in a `"rhombus-std"` marker's `"inline"` list in
+`package.json`:
 
 ```jsonc
 {
-  "rhombus.inline": {
-    "entries": [
+  "rhombus-std": {
+    "inline": [
       {
         "type": "@rhombus-std/di.core:IServiceQuery",
-        "impl": "ServiceQueryInline",
+        "impl": "@rhombus-std/di.extras:ServiceQueryInline",
         "member": "isService",
       },
     ],
@@ -373,11 +374,27 @@ A library declares its inlineable members in a `"rhombus.inline"` key in `packag
 }
 ```
 
-The three fields map to TypeScript namespaces: `type` is a **type-namespace** export written as a
-tokenfor-shaped token (`<package>:<TypeName>`) — the match anchor; `impl` is a **value-namespace**
-export in the declaring package holding the body; `member` is the member name, shared by the
-interface side and the impl side. A free function (no interface receiver) declares `impl` only,
-with no `type`/`member`.
+Fields are partitioned by KIND, not just presence: `type` names a TYPE — a `TypeIdentifier`
+reference (`NamedType`; never a signature-shaped `Type` like `FunctionType`/`CtorType`), the
+interface an instance member is declared on; `impl` names a VALUE — a fully-qualified
+`<package>:<Name>` export; `member` is the member name, shared by both member shapes. Both `type`
+and `impl` deserialize through the same strict reference grammar (a Go mirror of the TS `Type`
+model's `NamedType` shape — `name`/`from`/generic `typeArgs`); a missing package qualifier or any
+other malformed reference is a loud load-time failure, never a silent skip.
+
+There are three shapes:
+
+- **Instance member** — `type` + `member`, with `impl` present when the member's declaration is
+  ambient (a bodyless interface member — the body lives on `impl`'s `member`-named property; this
+  is every member entry in the workspace today) or absent when the declaration IS its own body (a
+  class method).
+- **Static / namespace-const member** — `impl` + `member`, no `type` — the `impl` value is both the
+  call-base anchor and the body holder.
+- **Floater** — `impl` only, no `type`, no `member` — the `impl` function's own source is the body.
+  `impl` is fully qualified even though it always self-references the declaring package
+  (`"@rhombus-std/primitives.extras:registerAugmentations"` for the `registerAugmentations<R>()`
+  sugar) — the side-parser only ever reads files inside that package, and a foreign `impl` is
+  rejected at load time.
 
 ### How matching works
 

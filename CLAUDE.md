@@ -161,7 +161,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   all-in-one verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives
   in `primitives` and extends `Error` directly, since not-implemented is not a container concept.
   `di.extras` (the Go/ttsc authoring surface, depending on **`di.core` types only, never the `di`
-  runtime** — hard invariant) carries `rhombus.inline` entries for the twelve manifest verbs
+  runtime** — hard invariant) carries `rhombus-std` marker `inline` entries for the twelve manifest verbs
   (`add`/`addClass`/`addFactory`/`addValue`, `tryAdd`/`tryAddClass`/`tryAddFactory`/`tryAddValue`,
   `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll`) plus the three `get*` provider
   members (`getService`/`getRequiredService`/`getServices`) — fifteen entries total, each entry's
@@ -370,7 +370,7 @@ Architecture section above. The decisions docs are the full record; this file is
   - `.core` — the abstractions/contracts layer for a family.
   - `.augmentations` — a side-effect declaration-merging extension package.
   - `.extras` — a sugar-only authoring package for a family (declare-module typings +
-    `rhombus.inline` bodies + one ttsc spawn descriptor). The old `.transformer` qualifier
+    `rhombus-std` marker `inline` bodies + one ttsc spawn descriptor). The old `.transformer` qualifier
     was renamed to `.extras` (§121): `primitives.extras`, `di.extras`,
     `di.extras.options`, `config.extras`. `primitives.extras` also homes the shared
     authoring-time token primitives (`tokenfor`/`tokenof` moved out of the runtime
@@ -495,7 +495,7 @@ The authoring-time sugar lowers on ONE engine: a Go/`ttsc` port under the root `
 module (`go.mod` `github.com/fnioc/std/transforms`, ONE owner binary `cmd/ttsc-std` linking every
 stage, shared `internal/`). One always-on set of domain-agnostic primitive stages runs to a fixed
 point per file (§115); the authoring surfaces (`add`/`addOptions`/`withType`/resolve-family) lower
-as `rhombus.inline` sugar bodies the inline stage substitutes and the primitives lower — no bespoke
+as `rhombus-std` marker `inline` sugar bodies the inline stage substitutes and the primitives lower — no bespoke
 per-family Go stage (§117). The lowered output equals what a no-transformer author would hand-write
 (the parity invariant, token strings byte-for-byte). The **ts-patch/TS5 track is gone** (restore
 tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only**, never
@@ -511,7 +511,7 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
   (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
   di.core's preset `./ttsc` descriptor are all GONE — the authoring forms (`add`/`addOptions`/
-  `withType`/resolve-family) lower as `rhombus.inline` sugar bodies the inline stage substitutes and
+  `withType`/resolve-family) lower as `rhombus-std` marker `inline` sugar bodies the inline stage substitutes and
   the primitives lower. What a dependency governs is **spawning + which bodies are in play**: ttsc's
   direct-only auto-discovery spawns the one host from a consumer's direct `*.extras` dep (its
   `ttsc.plugin` marker), and the host's single `CollectProject` scan gathers the inline BODIES from
@@ -523,7 +523,7 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
   resolve-family stubs `isSingular`/`singularValue`) plus its `./ttsc` descriptor. `di.extras` /
   `di.extras.options` keep a barrel shipping only the `declare module` authoring augmentation;
   di.extras also holds the single-expression `inline.ts` sugar bodies (side-parsed from src, never
-  bundled) + the `rhombus.inline` markers + the `signatureof`/`keyof`/`valueof` throwing stubs.
+  bundled) + the `rhombus-std` `inline` markers + the `signatureof`/`keyof`/`valueof` throwing stubs.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`
