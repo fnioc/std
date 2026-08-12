@@ -50,9 +50,9 @@ export const CHECKOUT_TYPES = {
   /** Caller-supplied at factory-call time — deliberately never registered. */
   order: Type.named('CheckoutOrder', '@rhombus-std/examples.contracts'),
   audit: Type.named('IAuditTrail', '@rhombus-std/examples.contracts'),
-  /** Registered ONLY in its promise wrapper, so `resolveAsync` is the only way in. */
+  /** Registered ONLY in its promise wrapper, so the caller awaits what comes back for it. */
   ratesPromise: Type.named('Promise', 'global', [Type.named('IExchangeRates', '@rhombus-std/examples.contracts')]),
-  /** The bare rates Type a caller ASKS for; the promise registration satisfies it. */
+  /** The bare rates Type — nothing registers it, so asking for it misses. */
   rates: Type.named('IExchangeRates', '@rhombus-std/examples.contracts'),
   /** Never registered by anyone — the deliberate miss the demos probe for. */
   fraudScreen: Type.named('IFraudScreen', '@rhombus-std/examples.contracts'),
@@ -250,9 +250,9 @@ export class AuditTrail implements IAuditTrail {
 
 /**
  * Stands in for a startup fetch of exchange rates. Registered under the PROMISE
- * Type, so a synchronous `resolve` for the bare rates type misses and only
- * `resolveAsync` — which is allowed to satisfy `T` from a `Promise<T>`
- * registration — delivers it.
+ * Type — the registration IS the promise, so the caller awaits what
+ * `getRequiredService` hands back for it. The bare rates type has no
+ * registration of its own.
  */
 export async function fetchExchangeRates(): Promise<IExchangeRates> {
   await Promise.resolve(); // stand-in for a real network round-trip
@@ -375,7 +375,8 @@ export function addCheckoutServices<S extends string>(
 
   services = services.addClass(t.audit, AuditTrail, [[]], 'singleton');
 
-  // Registered under the PROMISE Type — `resolveAsync` is the only door in.
+  // Registered under the PROMISE Type — the caller awaits what
+  // `getRequiredService` hands back for it; the bare type has no registration.
   services = services.addFactory(t.ratesPromise, fetchExchangeRates, [[]], 'singleton');
 
   services = services.addClass(

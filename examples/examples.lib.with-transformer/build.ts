@@ -3,10 +3,10 @@
 // This example library is authored in the tokenless di dialect and consumed
 // only as its BUILD (every exports condition resolves to dist), so the
 // transformer MUST run: the tokenless registration forms, the signaturefor /
-// signaturesfor mints, the typefor calls in types.ts and the resolve<T>() /
-// tryResolve<T>() calls in infrastructure-greeting-workshop.ts all have to be
-// lowered before anything can execute. The Go engine runs during the Bun.build
-// emit:
+// signaturesfor mints, and the typefor<T>() calls in types.ts and
+// infrastructure-greeting-workshop.ts — naming service types and dependency
+// slots, including inside `Type.func(...)` — all have to be lowered before
+// anything can execute. The Go engine runs during the Bun.build emit:
 //
 //   - dist/*.js  — Bun.build bundles the barrel, with @ttsc/unplugin/bun running
 //     the di.extras Go plugin as an onLoad transform so each tokenless call

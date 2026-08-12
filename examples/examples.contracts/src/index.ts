@@ -58,8 +58,8 @@ export interface IHealthCheck {
 
 /**
  * A startup banner fetched asynchronously — registered ONLY as
- * `Promise<IBanner>`, never bare. An app reaches it with `resolveAsync<IBanner>`
- * (#45), which awaits the honest `Promise<T>` fallback before delivering it.
+ * `Promise<IBanner>`, never bare. The registration IS the promise, so an app
+ * awaits what `getRequiredService` hands back for that token before using it.
  */
 export interface IBanner {
   readonly text: string;
