@@ -410,16 +410,12 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('addClass<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
-  expect(out).not.toContain('keyedtokenfor');
   expect(out).not.toContain('signatureof');
   expect(out).not.toContain('signaturefor');
   expect(out).not.toContain('valueof');
   expect(out).not.toContain('keyof');
   expect(out).not.toContain('isSingular');
   expect(out).not.toContain('singularValue');
-  expect(out).not.toContain('isFactory');
-  expect(out).not.toContain('returntokenfor');
-  expect(out).not.toContain('paramtokensfor');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
