@@ -22,10 +22,9 @@ import { basename, join, resolve } from 'node:path';
 // The load-bearing guarantee is descriptor independence: the whole always-on stage
 // table runs regardless of which descriptor spawned the host, so the two lowerings
 // are byte-identical — the derived signatureof array, the bare addValue token, and
-// import elision all pinned. This mirrors the inline.ttsc.e2e isService pilot,
-// extended to the value-argument signatureof primitive and a non-trivial
-// (dependency-carrying) signature, plus the deps-free addValue form. The bespoke di
-// domain stage that once provided the comparison oracle is DELETED (W6p3).
+// import elision all pinned. The sibling inline.ttsc.e2e suite covers the token
+// derivation itself; this one covers the value-argument signatureof primitive over
+// a non-trivial (dependency-carrying) signature, plus the deps-free addValue form.
 //
 // Toolchain pinning, the single shared plugin cache, and the one-project-dir /
 // two-tsconfig layout all mirror the inline.ttsc.e2e harness; see its header.
@@ -93,9 +92,8 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-// The type-driven sugar overloads are hand-declared here (as the inline.ttsc.e2e
-// pilot hand-declares isService<T>) so the program carries them without wiring
-// the transformer's own types — the merge target is the real di.core
+// The type-driven sugar overloads are hand-declared here so the program carries
+// them without wiring the transformer's own types — the merge target is the real di.core
 // Manifest, and the parameter NAMES (ctor / factory) match the inline
 // bodies' so the structural overload discriminator resolves each call to the
 // sugar overload. A class with a real constructor dependency (IDep) and a factory

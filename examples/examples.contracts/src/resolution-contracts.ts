@@ -69,8 +69,8 @@ export interface IReceiptNumbering {
 /**
  * An OPTIONAL cross-cutting service. It happens to be registered here, but the
  * point of the type is that consumers must not ASSUME it: they reach it with
- * `tryResolve` / `isService` so the same code runs in a deployment that never
- * wired an audit sink.
+ * `getService`, so the same code runs in a deployment that never wired an audit
+ * sink.
  */
 export interface IAuditTrail {
   readonly entries: readonly string[];

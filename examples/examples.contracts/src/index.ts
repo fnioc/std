@@ -49,7 +49,7 @@ export interface GreetingPolicy {
 /**
  * An optional health probe. Only the without-transformer library registers one;
  * the with-transformer library does not — so an app probes for it with
- * `isService` / `tryResolve` (#23/#25) and finds it present when that library
+ * `getService`, whose miss is `undefined`, and finds it present when that library
  * was wired in, absent otherwise, without a throw.
  */
 export interface IHealthCheck {

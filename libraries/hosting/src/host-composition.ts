@@ -6,9 +6,9 @@
 //   - The framework singletons (`ApplicationLifetime`, the `LoggerFactory`, the
 //     resolved `HostOptions`) are constructed eagerly and registered as VALUES,
 //     so `IHost.services` hands the SAME instance back to a consumer that
-//     resolves them (a `.as("singleton")` registration would resolve
-//     transiently off the frameless root). This is what keeps
-//     `waitForShutdownAsync`'s `resolve(HOST_APPLICATION_LIFETIME_TYPE)`
+//     resolves them (a class or factory registration would build afresh off the
+//     frameless root). This is what keeps
+//     `waitForShutdownAsync`'s `HOST_APPLICATION_LIFETIME_TYPE` lookup
 //     returning the very lifetime the host drives.
 //   - Logging: the hosting layer OWNS one `LoggerFactory` and threads it,
 //     because a `LoggerFactory` built by `addLogging` does not yet inject the
