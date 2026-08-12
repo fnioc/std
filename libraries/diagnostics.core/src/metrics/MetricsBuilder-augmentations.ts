@@ -6,8 +6,8 @@
 
 import type { Signatures } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { METRICS_CONFIGURE_TYPE, METRICS_LISTENER_TYPE } from '../types';
@@ -89,4 +89,4 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
   },
 };
 
-registerAugmentations(typefor<IMetricsBuilder>(), MetricsBuilderAugmentations);
+registerAugmentations<IMetricsBuilder>(MetricsBuilderAugmentations);

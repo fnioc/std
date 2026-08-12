@@ -12,9 +12,8 @@
 // event-id overload: a caller that needs one calls
 // `logger.log(level, EventId.from(n), …)` directly.
 
-import { type AugmentationSet2, type Flatten, type MergeStrategies,
-  registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten, MergeStrategies } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
 import type { ILogger } from './ILogger';
@@ -162,4 +161,4 @@ const loggerMerge = {
   },
 } satisfies MergeStrategies;
 
-registerAugmentations(typefor<ILogger>(), LoggerAugmentations, loggerMerge);
+registerAugmentations<ILogger>(LoggerAugmentations, loggerMerge);

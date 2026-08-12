@@ -1,5 +1,5 @@
-import { type AugmentationSet2, type IServiceProvider, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type AugmentationSet2, type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 type IServiceProviderServiceAugmentations = {
   getRequiredService(serviceType: Type): any;
@@ -22,4 +22,4 @@ export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvi
     },
   };
 
-registerAugmentations(typefor<IServiceProvider>(), ServiceProviderServiceAugmentations);
+registerAugmentations<IServiceProvider>(ServiceProviderServiceAugmentations);

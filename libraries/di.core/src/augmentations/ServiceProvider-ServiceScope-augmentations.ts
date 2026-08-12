@@ -1,6 +1,5 @@
-import { type AugmentationSet2, type IServiceProvider, NotImplementedError, registerAugmentations,
-  Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type AugmentationSet2, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { AsyncServiceScope, type IServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
 type IServiceProviderServiceScopeAugmentations = {
@@ -22,4 +21,4 @@ export const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IService
     },
   };
 
-registerAugmentations(typefor<IServiceProvider>(), ServiceProviderServiceScopeAugmentations);
+registerAugmentations<IServiceProvider>(ServiceProviderServiceScopeAugmentations);

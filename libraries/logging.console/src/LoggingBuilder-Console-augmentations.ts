@@ -26,8 +26,8 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
@@ -178,4 +178,4 @@ export const ConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,
     },
   };
 
-registerAugmentations(typefor<ILoggingBuilder>(), ConsoleLoggerAugmentations);
+registerAugmentations<ILoggingBuilder>(ConsoleLoggerAugmentations);

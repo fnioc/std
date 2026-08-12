@@ -8,9 +8,8 @@
 // own member names (`setWithOptions`, `getOrCreateWithOptions`,
 // `getOrCreateAsyncWithOptions`) rather than a further argument shape.
 
-import { type AugmentationSet2, type Flatten, type IChangeToken, type MergeStrategies,
-  registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten, IChangeToken, MergeStrategies } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
@@ -212,4 +211,4 @@ const cacheMerge = { tryGetValue(original, _incoming) {
   };
 } } satisfies MergeStrategies;
 
-registerAugmentations(typefor<IMemoryCache>(), MemoryCacheSugarAugmentations, cacheMerge);
+registerAugmentations<IMemoryCache>(MemoryCacheSugarAugmentations, cacheMerge);

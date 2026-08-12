@@ -9,8 +9,8 @@
 // any consumer that enumerates the listener builders.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE } from '../types';
@@ -83,4 +83,4 @@ export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flat
   },
 };
 
-registerAugmentations(typefor<ITracingBuilder>(), TracingBuilderAugmentations);
+registerAugmentations<ITracingBuilder>(TracingBuilderAugmentations);

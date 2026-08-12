@@ -1,6 +1,6 @@
 import type { IComplete, Manifest, ServiceDescriptor, Signatures, Unstarted } from '@rhombus-std/di.core';
-import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { AugmentationSet2, type Flatten, Token, Type } from '@rhombus-std/primitives';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 
 interface IManifestServiceAugmentations<Scopes extends string> {
@@ -30,4 +30,4 @@ export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IM
     },
   };
 
-registerAugmentations(typefor<Manifest>(), ManifestServiceAugmentations);
+registerAugmentations<Manifest>(ManifestServiceAugmentations);

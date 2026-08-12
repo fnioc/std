@@ -1,5 +1,5 @@
-import { AugmentationSet2, type Flatten, registerAugmentations, Token, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { AugmentationSet2, type Flatten, Token, Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { describe, type IComplete, type Unstarted } from '../builder';
@@ -118,4 +118,4 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
     },
   };
 
-registerAugmentations(typefor<Manifest>(), ManifestDescriptorAugmentations);
+registerAugmentations<Manifest>(ManifestDescriptorAugmentations);

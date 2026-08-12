@@ -11,8 +11,8 @@ import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type AugmentationSet2, type Flatten, Type } from '@rhombus-std/primitives';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
@@ -86,4 +86,4 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
     },
   };
 
-registerAugmentations(typefor<ILoggingBuilder>(), LoggingBuilderConfigAugmentations);
+registerAugmentations<ILoggingBuilder>(LoggingBuilderConfigAugmentations);

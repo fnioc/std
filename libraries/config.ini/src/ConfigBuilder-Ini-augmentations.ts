@@ -2,8 +2,8 @@
 
 import type { StreamPayload } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { IniConfigSource, type IniConfigSourceOptions } from './IniConfigSource';
 import { IniStreamConfigSource } from './IniStreamConfigSource';
 
@@ -37,4 +37,4 @@ export const ConfigBuilderIniAugmentations: AugmentationSet2<IConfigBuilder, Fla
     },
   };
 
-registerAugmentations(typefor<IConfigBuilder>(), ConfigBuilderIniAugmentations);
+registerAugmentations<IConfigBuilder>(ConfigBuilderIniAugmentations);
