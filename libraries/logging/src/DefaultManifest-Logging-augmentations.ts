@@ -63,9 +63,9 @@ declare module '@rhombus-std/di.core' {
 // is also the standalone call form.
 export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestLoggingAugmentations<string>> = {
-    addLogging(manifest, configure) {
+    addLogging(configure) {
       // The LoggerFilterOptions assembly + its default (Information) min level.
-      let m: Manifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
+      let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
         () => new LoggerFilterOptions());
       m = m.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
         new DefaultLoggerLevelConfigureOptions(LogLevel.Information));

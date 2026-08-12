@@ -29,11 +29,11 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderJsonAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderJsonAugmentations>> = {
-    addJsonFile(builder, path, opts) {
-      return builder.add(new JsonConfigSource(path, opts));
+    addJsonFile(path, opts) {
+      return this.add(new JsonConfigSource(path, opts));
     },
-    addJsonStream(builder, stream) {
-      return builder.add(new JsonStreamConfigSource(stream));
+    addJsonStream(stream) {
+      return this.add(new JsonStreamConfigSource(stream));
     },
   };
 

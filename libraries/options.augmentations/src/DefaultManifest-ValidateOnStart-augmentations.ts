@@ -41,10 +41,10 @@ declare module '@rhombus-std/di.core' {
 // member is also the standalone form.
 export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestValidateOnStartAugmentations<string>> = {
-    validateOnStart(manifest, optionsType) {
+    validateOnStart(optionsType) {
       const type = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
       // Accumulate the target in the flat startup-validation slot.
-      let m: Manifest<string> = manifest.addValue(startupValidationTargetType(), type);
+      let m: Manifest<string> = this.addValue(startupValidationTargetType(), type);
       // Registers the built-in validator under `IStartupValidator`. di.core has
       // no TryAdd surface (registrations are append-only, last-wins), so a
       // repeated `validateOnStart` appends an equivalent transient registration

@@ -29,8 +29,8 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderCommandLineAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderCommandLineAugmentations>> = {
-    addCommandLine(builder, args, switchMappings) {
-      return builder.add(new CommandLineConfigSource(args, { switchMappings }));
+    addCommandLine(args, switchMappings) {
+      return this.add(new CommandLineConfigSource(args, { switchMappings }));
     },
   };
 

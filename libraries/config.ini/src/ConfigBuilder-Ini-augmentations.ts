@@ -29,11 +29,11 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderIniAugmentations: AugmentationSet2<IConfigBuilder, Flatten<IConfigBuilderIniAugmentations>> =
   {
-    addIniFile(builder, path, opts) {
-      return builder.add(new IniConfigSource(path, opts));
+    addIniFile(path, opts) {
+      return this.add(new IniConfigSource(path, opts));
     },
-    addIniStream(builder, stream) {
-      return builder.add(new IniStreamConfigSource(stream));
+    addIniStream(stream) {
+      return this.add(new IniStreamConfigSource(stream));
     },
   };
 

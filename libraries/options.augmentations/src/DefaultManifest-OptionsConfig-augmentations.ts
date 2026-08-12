@@ -48,7 +48,7 @@ declare module '@rhombus-std/di.core' {
 
 export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestOptionsConfigAugmentations<string>> = {
-    configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, optionsType: Type | string,
+    configure<T, Deps extends readonly unknown[]>(this: DefaultManifest<string>, optionsType: Type | string,
       source: IConfig | Func<[T], void> | DepTokens<Deps>,
       configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
       const type = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
@@ -59,7 +59,7 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Default
       // resolve once, when the assembly reads the slot.
       if (Array.isArray(source)) {
         const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
-        return manifest.addFactory(configureStepType(type),
+        return this.addFactory(configureStepType(type),
           (...deps: Deps): IConfigureOptions<T> => ({ configure(options: T): void {
             callback(options, ...deps);
           } }), [source as readonly (Type | string)[]]);
@@ -71,9 +71,9 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Default
       // disambiguation `addOptions` uses.
       const configSource = source as IConfig | Func<[T], void>;
       if (typeof configSource === 'function') {
-        return manifest.addValue(configureStepType(type), { configure: configSource });
+        return this.addValue(configureStepType(type), { configure: configSource });
       }
-      let m: Manifest<string> = manifest.addValue(configureStepType(type), new ConfigConfigureOptions(configSource));
+      let m: Manifest<string> = this.addValue(configureStepType(type), new ConfigConfigureOptions(configSource));
       m = m.addValue(changeTokenSourceType(type), new ConfigChangeTokenSource(configSource));
       return m;
     },

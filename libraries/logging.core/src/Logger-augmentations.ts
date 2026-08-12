@@ -1,10 +1,10 @@
 // The convenience logging wrappers: `logTrace`/`logDebug`/`logInformation`/
 // `logWarning`/`logError`/`logCritical`, plus the level-parameterized `log`.
 //
-// Dual export: the receiver-first functions are exported plain (the standalone
-// surface) and also registered against the `ILogger` token as one set, so every
-// concrete logger decorated with `@augment(typefor<ILogger>())` gains them as
-// methods.
+// Dual export: the receiver-first functions are exported plain as the
+// standalone surface, and equivalent `this`-based methods are registered
+// against the `ILogger` token as one set, so every concrete logger decorated
+// with `@augment(typefor<ILogger>())` gains them as methods.
 //
 // Each level collapses to two call forms — `(logger, message, ...args)` and
 // `(logger, error, message, ...args)` — disambiguated at runtime by whether
@@ -123,11 +123,36 @@ declare module '@rhombus-std/logging.core' {
 
 /**
  * Registered against the `ILogger` token below and reachable standalone as
- * `LoggerAugmentations.logInformation(logger, ...)`; a concrete logger class
+ * `LoggerAugmentations.logInformation.call(logger, ...)`; a concrete logger class
  * decorated with `@augment(typefor<ILogger>())` gains the members as methods.
  */
 export const LoggerAugmentations: AugmentationSet2<ILogger, Flatten<ILoggerAugmentations & ILoggerStandaloneWrappers>> =
-  { log, beginScope, logTrace, logDebug, logInformation, logWarning, logError, logCritical };
+  {
+    log(logLevel: LogLevel, first: string | Error, ...rest: unknown[]): void {
+      emit(this, logLevel, first, rest);
+    },
+    beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined {
+      return this.beginScope(new FormattedLogValues(messageFormat, args));
+    },
+    logTrace(first: string | Error, ...rest: unknown[]): void {
+      emit(this, LogLevel.Trace, first, rest);
+    },
+    logDebug(first: string | Error, ...rest: unknown[]): void {
+      emit(this, LogLevel.Debug, first, rest);
+    },
+    logInformation(first: string | Error, ...rest: unknown[]): void {
+      emit(this, LogLevel.Information, first, rest);
+    },
+    logWarning(first: string | Error, ...rest: unknown[]): void {
+      emit(this, LogLevel.Warning, first, rest);
+    },
+    logError(first: string | Error, ...rest: unknown[]): void {
+      emit(this, LogLevel.Error, first, rest);
+    },
+    logCritical(first: string | Error, ...rest: unknown[]): void {
+      emit(this, LogLevel.Critical, first, rest);
+    },
+  };
 
 // `log` and `beginScope` share names with `ILogger`'s own primitives, so each
 // is installed with a merge strategy (below) that routes a primitive-shaped
@@ -143,7 +168,7 @@ const loggerMerge = {
       if (second instanceof EventId) {
         return original.call(this, logLevel, second, ...rest);
       }
-      return incoming(this, logLevel, second, ...rest);
+      return incoming.call(this, logLevel, second, ...rest);
     };
   },
   // `beginScope`: the convenience wrapper formats a message template with
@@ -154,7 +179,7 @@ const loggerMerge = {
   beginScope(original, incoming) {
     return function(this: ILogger, first: unknown, ...rest: unknown[]) {
       if (typeof first === 'string' && rest.length > 0) {
-        return incoming(this, first, ...rest);
+        return incoming.call(this, first, ...rest);
       }
       return original.call(this, first, ...rest);
     };

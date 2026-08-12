@@ -16,16 +16,16 @@ declare module '@rhombus-std/di.core' {
 
 export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =
   {
-    add<T>(...rest: any[]) {
+    add<T>(this: Manifest, ...rest: any[]) {
       return (this as any).add(typefor<T>(), ...rest);
     },
-    addClass<T>(...rest: any[]) {
+    addClass<T>(this: Manifest, ...rest: any[]) {
       return (this as any).addClass(typefor<T>(), ...rest);
     },
-    addFactory<T>(...rest: any[]) {
+    addFactory<T>(this: Manifest, ...rest: any[]) {
       return (this as any).addFactory(typefor<T>(), ...rest);
     },
-    addValue<T>(...rest: any[]) {
+    addValue<T>(this: Manifest, ...rest: any[]) {
       return (this as any).addValue(typefor<T>(), ...rest);
     },
   };

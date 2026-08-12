@@ -57,15 +57,15 @@ function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: Metric
 }
 
 export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flatten<IMetricsBuilderAugmentations>> = {
-  addMetricsListener(builder, listener) {
-    builder.services = builder.services.addValue(METRICS_LISTENER_TYPE, listener);
-    return builder;
+  addMetricsListener(listener) {
+    this.services = this.services.addValue(METRICS_LISTENER_TYPE, listener);
+    return this;
   },
-  addMetricsListenerType(builder, ctor, signatures) {
-    builder.services = builder.services.addClass(METRICS_LISTENER_TYPE, ctor, signatures);
-    return builder;
+  addMetricsListenerType(ctor, signatures) {
+    this.services = this.services.addClass(METRICS_LISTENER_TYPE, ctor, signatures);
+    return this;
   },
-  clearMetricsListeners(builder) {
+  clearMetricsListeners() {
     // The cast works around a TS structural-comparison depth limit: `services`'s
     // declared type (`Manifest`, Scopes defaulted) and
     // `removeAll`'s return (`Manifest<Scopes>`, Scopes bound to
@@ -74,17 +74,17 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
     // overload surface `Manifest` carries pushes TS's relationship
     // check past its recursion budget, which it resolves as "not assignable"
     // rather than re-deriving the true relationship.
-    builder.services = builder.services.removeAll(METRICS_LISTENER_TYPE) as typeof builder.services;
-    return builder;
+    this.services = this.services.removeAll(METRICS_LISTENER_TYPE) as typeof this.services;
+    return this;
   },
-  enableMetrics(builder, meterName, instrumentName, listenerName, scopes = METER_SCOPE_ALL) {
-    return configureMetrics(builder, (options) => {
-      MetricsOptionsAugmentations.enableMetrics(options, meterName, instrumentName, listenerName, scopes);
+  enableMetrics(meterName, instrumentName, listenerName, scopes = METER_SCOPE_ALL) {
+    return configureMetrics(this, (options) => {
+      MetricsOptionsAugmentations.enableMetrics.call(options, meterName, instrumentName, listenerName, scopes);
     });
   },
-  disableMetrics(builder, meterName, instrumentName, listenerName, scopes = METER_SCOPE_ALL) {
-    return configureMetrics(builder, (options) => {
-      MetricsOptionsAugmentations.disableMetrics(options, meterName, instrumentName, listenerName, scopes);
+  disableMetrics(meterName, instrumentName, listenerName, scopes = METER_SCOPE_ALL) {
+    return configureMetrics(this, (options) => {
+      MetricsOptionsAugmentations.disableMetrics.call(options, meterName, instrumentName, listenerName, scopes);
     });
   },
 };

@@ -1,4 +1,4 @@
-// The `ILoggerFactory` convenience wrapper `createLogger(factory, type)`, which
+// The `ILoggerFactory` convenience wrapper `createLogger(type)`, which
 // names a logger after a constructor.
 //
 // Its name collides with `ILoggerFactory`'s own `createLogger` primitive, so it
@@ -6,7 +6,7 @@
 // runtime as `factory.createLogger(MyService)`, routing a constructor to this
 // wrapper and a category string to the primitive. It is not typed as a method
 // overload (TS2430) -- hence no interface-side merge -- and the typed path is
-// the standalone `LoggerFactoryAugmentations.createLogger(factory, MyService)`.
+// the standalone `LoggerFactoryAugmentations.createLogger.call(factory, MyService)`.
 
 import type { AugmentationSet2, Flatten, MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
@@ -24,13 +24,13 @@ interface ILoggerFactoryAugmentations {
 
 /**
  * The `createLogger` wrapper as an augmentation set for {@link ILoggerFactory}:
- * reached standalone as `LoggerFactoryAugmentations.createLogger(factory, MyService)`,
+ * reached standalone as `LoggerFactoryAugmentations.createLogger.call(factory, MyService)`,
  * and dot-callable at runtime on a decorated factory as
  * `factory.createLogger(MyService)`.
  */
 export const LoggerFactoryAugmentations: AugmentationSet2<ILoggerFactory, Flatten<ILoggerFactoryAugmentations>> = {
-  createLogger(factory, type) {
-    return factory.createLogger(type.name);
+  createLogger(type) {
+    return this.createLogger(type.name);
   },
 };
 
@@ -39,7 +39,7 @@ export const LoggerFactoryAugmentations: AugmentationSet2<ILoggerFactory, Flatte
 const factoryMerge = { createLogger(original, incoming) {
   return function(this: ILoggerFactory, first: unknown, ...rest: unknown[]) {
     if (typeof first === 'function') {
-      return incoming(this, first, ...rest);
+      return incoming.call(this, first, ...rest);
     }
     return original.call(this, first, ...rest);
   };

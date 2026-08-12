@@ -32,8 +32,8 @@ declare module '@rhombus-std/config' {
 
 export const MemoryConfigBuilderAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderMemoryAugmentations>> = {
-    addInMemoryCollection(builder, initialData) {
-      return builder.add(new MemoryConfigSource({ initialData }));
+    addInMemoryCollection(initialData) {
+      return this.add(new MemoryConfigSource({ initialData }));
     },
   };
 

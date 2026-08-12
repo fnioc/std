@@ -55,30 +55,30 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
 }
 
 export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flatten<ITracingBuilderAugmentations>> = {
-  addTracingListener(builder, name, configure) {
+  addTracingListener(name, configure) {
     if (!name) {
       throw new Error('A tracing listener name must be a non-empty string.');
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    builder.services = builder.services.addValue(TRACING_LISTENER_TYPE, listenerBuilder);
-    return builder;
+    this.services = this.services.addValue(TRACING_LISTENER_TYPE, listenerBuilder);
+    return this;
   },
-  clearTracingListeners(builder) {
+  clearTracingListeners() {
     // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
     // comment: the cast works around a TS structural-comparison depth limit on
     // `Manifest`'s large overload surface, not a real type error.
-    builder.services = builder.services.removeAll(TRACING_LISTENER_TYPE) as typeof builder.services;
-    return builder;
+    this.services = this.services.removeAll(TRACING_LISTENER_TYPE) as typeof this.services;
+    return this;
   },
-  enableTracing(builder, sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
-    return configureTracing(builder, (options) => {
-      TracingOptionsAugmentations.enableTracing(options, sourceName, operationName, listenerName, scopes);
+  enableTracing(sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
+    return configureTracing(this, (options) => {
+      TracingOptionsAugmentations.enableTracing.call(options, sourceName, operationName, listenerName, scopes);
     });
   },
-  disableTracing(builder, sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
-    return configureTracing(builder, (options) => {
-      TracingOptionsAugmentations.disableTracing(options, sourceName, operationName, listenerName, scopes);
+  disableTracing(sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
+    return configureTracing(this, (options) => {
+      TracingOptionsAugmentations.disableTracing.call(options, sourceName, operationName, listenerName, scopes);
     });
   },
 };

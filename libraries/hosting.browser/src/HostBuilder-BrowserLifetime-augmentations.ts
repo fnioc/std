@@ -43,10 +43,10 @@ declare module '@rhombus-std/hosting.core' {
  */
 export const HostBuilderBrowserLifetimeAugmentations: AugmentationSet2<IHostBuilder,
   Flatten<IHostBuilderBrowserLifetimeAugmentations>> = {
-    useBrowserLifetime(hostBuilder, configureOptions) {
+    useBrowserLifetime(configureOptions) {
       const options = new BrowserLifetimeOptions();
       configureOptions?.(options);
-      return hostBuilder.configureServices((_context, services) => registerBrowserLifetime(services, options));
+      return this.configureServices((_context, services) => registerBrowserLifetime(services, options));
     },
   };
 

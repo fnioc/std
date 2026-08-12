@@ -55,7 +55,6 @@ function isConstructor(target: Ctor | Func<[IServiceProvider], IHostedService>):
 
 export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestHostedServiceAugmentations<string>> = { addHostedService(
-    manifest: DefaultManifest<string>,
     // The ctor form carries optional dep signatures; the factory form is a
     // lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
@@ -69,8 +68,8 @@ export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<Default
     // `signatures` is a dependency-free ctor, stated explicitly as `[[]]`
     // (`addClass` has no overload that omits it).
     return isConstructor(target)
-      ? manifest.addClass(HOSTED_SERVICE_TYPE, target, signatures ?? [[]], 'singleton')
-      : manifest.addFactory(HOSTED_SERVICE_TYPE, target, [[RESOLVER_TYPE]], 'singleton');
+      ? this.addClass(HOSTED_SERVICE_TYPE, target, signatures ?? [[]], 'singleton')
+      : this.addFactory(HOSTED_SERVICE_TYPE, target, [[RESOLVER_TYPE]], 'singleton');
   } };
 
 registerAugmentations(typefor<Manifest>(), ServiceManifestHostedServiceAugmentations);

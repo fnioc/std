@@ -65,7 +65,7 @@ export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHos
 /** Registers the default framework services: currently just the console logging provider. */
 export function addDefaultServices(services: Manifest): Manifest {
   const builder = new LoggingBuilder(services);
-  LoggingBuilderProviderAugmentations.addProvider(builder, new ConsoleLoggerProvider());
+  LoggingBuilderProviderAugmentations.addProvider.call(builder, new ConsoleLoggerProvider());
   // The chain is immutable, so the registration lives on the manifest the
   // builder now holds -- not on the one that was passed in.
   return builder.services;
@@ -77,6 +77,6 @@ export function addDefaultServices(services: Manifest): Manifest {
  * host pays no validation cost while a developer catches lifetime mistakes early.
  */
 export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
-  const isDevelopment = HostEnvironmentEnvAugmentations.isDevelopment(environment);
+  const isDevelopment = HostEnvironmentEnvAugmentations.isDevelopment.call(environment);
   return { validateOnBuild: isDevelopment };
 }

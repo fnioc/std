@@ -20,17 +20,17 @@ declare module '@rhombus-std/hosting.core' {
 
 /** Augmentation set for {@link IHostEnvironment}; each member is also directly callable. */
 export const HostEnvironmentEnvAugmentations: AugmentationSet2<IHostEnvironment, IHostEnvironmentEnvAugmentations> = {
-  isEnvironment(hostEnvironment, environmentName) {
-    return hostEnvironment.environmentName.toLowerCase() === environmentName.toLowerCase();
+  isEnvironment(environmentName) {
+    return this.environmentName.toLowerCase() === environmentName.toLowerCase();
   },
-  isDevelopment(hostEnvironment) {
-    return HostEnvironmentEnvAugmentations.isEnvironment(hostEnvironment, Environments.Development);
+  isDevelopment() {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Development);
   },
-  isStaging(hostEnvironment) {
-    return HostEnvironmentEnvAugmentations.isEnvironment(hostEnvironment, Environments.Staging);
+  isStaging() {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Staging);
   },
-  isProduction(hostEnvironment) {
-    return HostEnvironmentEnvAugmentations.isEnvironment(hostEnvironment, Environments.Production);
+  isProduction() {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Production);
   },
 };
 

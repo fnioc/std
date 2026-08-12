@@ -72,8 +72,8 @@ declare module '@rhombus-std/di.core' {
 
 export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestMemoryCacheAugmentations<string>> = {
-    addMemoryCache(manifest, setup) {
-      let m: Manifest<string> = manifest.addOptions(MEMORY_CACHE_OPTIONS_TYPE, () => new MemoryCacheOptions());
+    addMemoryCache(setup) {
+      let m: Manifest<string> = this.addOptions(MEMORY_CACHE_OPTIONS_TYPE, () => new MemoryCacheOptions());
       if (setup !== undefined) {
         // `setup` joins the options pipeline as a configure step: it runs
         // lazily, when the options first resolve, not at registration.
@@ -98,11 +98,11 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
       return m;
     },
 
-    addDistributedMemoryCache(manifest, setup) {
+    addDistributedMemoryCache(setup) {
       // Same shape as addMemoryCache, over the distributed options token. The
       // cache is REGISTERED here but built lazily on first resolve, over its
       // own private MemoryCache.
-      let m: Manifest<string> = manifest.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE,
+      let m: Manifest<string> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE,
         () => new MemoryDistributedCacheOptions());
       if (setup !== undefined) {
         m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup);

@@ -25,7 +25,7 @@ const registrations = new WeakMap<ILoggingBuilder, BrowserConsoleLoggerProvider>
 
 /**
  * Registered against `typefor<ILoggingBuilder>()` below and reachable as
- * the standalone `BrowserConsoleLoggerAugmentations.addBrowserConsole(builder)`.
+ * the standalone `BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder)`.
  */
 interface ILoggingBuilderBrowserConsoleAugmentations {
   /** Adds a browser-console logger provider to the builder. */
@@ -47,14 +47,14 @@ export const BrowserConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder
      * {@link BrowserConsoleLoggerProvider} per builder, writing through the
      * platform console global.
      */
-    addBrowserConsole(builder: ILoggingBuilder): ILoggingBuilder {
-      let provider = registrations.get(builder);
+    addBrowserConsole(): ILoggingBuilder {
+      let provider = registrations.get(this);
       if (provider === undefined) {
         provider = new BrowserConsoleLoggerProvider();
-        registrations.set(builder, provider);
-        LoggingBuilderProviderAugmentations.addProvider(builder, provider);
+        registrations.set(this, provider);
+        LoggingBuilderProviderAugmentations.addProvider.call(this, provider);
       }
-      return builder;
+      return this;
     },
   };
 

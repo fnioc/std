@@ -30,8 +30,8 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderEnvAugmentations: AugmentationSet2<IConfigBuilder, Flatten<IConfigBuilderEnvAugmentations>> =
   {
-    addEnvironmentVariables(builder, options) {
-      return builder.add(new EnvironmentVariablesConfigSource(options));
+    addEnvironmentVariables(options) {
+      return this.add(new EnvironmentVariablesConfigSource(options));
     },
   };
 

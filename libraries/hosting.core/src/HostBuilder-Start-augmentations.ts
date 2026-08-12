@@ -22,8 +22,8 @@ declare module '@rhombus-std/hosting.core' {
 
 /** Augmentation set for {@link IHostBuilder}; the member is also directly callable. */
 export const HostBuilderStartAugmentations: AugmentationSet2<IHostBuilder, IHostBuilderStartAugmentations> = {
-  async startHost(hostBuilder, abortSignal) {
-    const host = hostBuilder.build();
+  async startHost(abortSignal) {
+    const host = this.build();
     await host.start(abortSignal);
     return host;
   },

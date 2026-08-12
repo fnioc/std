@@ -78,12 +78,12 @@ declare module '@rhombus-std/di.core' {
 // half of the member map it carries.
 export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManifest<string>,
   Pick<IManifestDiagnosticsAugmentations<string>, 'addMetrics'>> = {
-    addMetrics(manifest: DefaultManifest<string>, configure?: Func<[IMetricsBuilder], void>): Manifest<string> {
+    addMetrics(configure?: Func<[IMetricsBuilder], void>): Manifest<string> {
       // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
       // scope. Calling addMetrics twice re-registers the (identical) factory --
       // last-wins bare-token resolution keeps that correct. The factory takes the
       // live provider view via a RESOLVER_TYPE slot, exactly like assembleOptions.
-      let m: Manifest<string> = manifest.addFactory(METRICS_OPTIONS_TYPE,
+      let m: Manifest<string> = this.addFactory(METRICS_OPTIONS_TYPE,
         (resolver) =>
           assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TYPE, METRICS_CHANGE_TOKEN_SOURCE_TYPE, () =>
             new MetricsOptions()), [[RESOLVER_TYPE]], 'singleton');
@@ -111,8 +111,8 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
 
 export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManifest<string>,
   Pick<IManifestDiagnosticsAugmentations<string>, 'addTracing'>> = {
-    addTracing(manifest: DefaultManifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<string> {
-      let m: Manifest<string> = manifest.addFactory(TRACING_OPTIONS_TYPE,
+    addTracing(configure?: Func<[ITracingBuilder], void>): Manifest<string> {
+      let m: Manifest<string> = this.addFactory(TRACING_OPTIONS_TYPE,
         (resolver) =>
           assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TYPE, TRACING_CHANGE_TOKEN_SOURCE_TYPE, () =>
             new TracingOptions()), [[RESOLVER_TYPE]], 'singleton');

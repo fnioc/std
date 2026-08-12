@@ -74,30 +74,30 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * content root = cwd, host config from prefixed env vars + args, app config from
      * `appsettings(.{env}).json` + env vars + args, and the console logging provider.
      */
-    configureDefaults(hostBuilder: IHostBuilder, args?: readonly string[]): IHostBuilder {
-      hostBuilder.configureHostConfig((configBuilder) => applyDefaultHostConfig(configBuilder, args));
-      hostBuilder.configureAppConfig((context, configBuilder) =>
+    configureDefaults(args?: readonly string[]): IHostBuilder {
+      this.configureHostConfig((configBuilder) => applyDefaultHostConfig(configBuilder, args));
+      this.configureAppConfig((context, configBuilder) =>
         applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args)
       );
-      hostBuilder.configureServices((_context, services) => addDefaultServices(services));
+      this.configureServices((_context, services) => addDefaultServices(services));
       // The single-container `build()` reads the service-provider options from a
       // side channel; the factory computes them at build time, once the hosting
       // environment is resolved.
-      setServiceProviderOptionsFactory(hostBuilder,
+      setServiceProviderOptionsFactory(this,
         (context) => createDefaultServiceProviderOptions(context.hostingEnvironment));
-      return hostBuilder;
+      return this;
     },
 
     /** Specifies the environment. Call after {@link configureDefaults} to avoid being overwritten. */
-    useEnvironment(hostBuilder: IHostBuilder, environment: string): IHostBuilder {
-      return hostBuilder.configureHostConfig((configBuilder) => {
+    useEnvironment(environment: string): IHostBuilder {
+      return this.configureHostConfig((configBuilder) => {
         configBuilder.add(new MemoryConfigSource({ initialData: { [HostDefaults.environmentKey]: environment } }));
       });
     },
 
     /** Specifies the content root directory. Call after {@link configureDefaults} to avoid being overwritten. */
-    useContentRoot(hostBuilder: IHostBuilder, contentRoot: string): IHostBuilder {
-      return hostBuilder.configureHostConfig((configBuilder) => {
+    useContentRoot(contentRoot: string): IHostBuilder {
+      return this.configureHostConfig((configBuilder) => {
         configBuilder.add(new MemoryConfigSource({ initialData: { [HostDefaults.contentRootKey]: contentRoot } }));
       });
     },
@@ -107,9 +107,10 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * across calls. The no-context form (a one-parameter delegate) is a
      * convenience overload; the two are told apart by declared arity.
      */
-    configureHostOptions(hostBuilder: IHostBuilder,
-      configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): IHostBuilder {
-      return hostBuilder.configureServices((context, services) =>
+    configureHostOptions(
+      configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>,
+    ): IHostBuilder {
+      return this.configureServices((context, services) =>
         services.addValue(HOST_OPTIONS_CONFIGURE_TYPE, (options: HostOptions) => {
           if (configureOptions.length >= 2) {
             (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
@@ -125,10 +126,10 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * calls. The one-parameter no-context form is a convenience overload,
      * distinguished by declared arity.
      */
-    configureLogging(hostBuilder: IHostBuilder,
-      configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder],
-        void>): IHostBuilder {
-      return hostBuilder.configureServices((context, services) => {
+    configureLogging(
+      configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder], void>,
+    ): IHostBuilder {
+      return this.configureServices((context, services) => {
         const builder = new LoggingBuilder(services);
         if (configureLoggingDelegate.length >= 2) {
           (configureLoggingDelegate as Func<[HostBuilderContext, ILoggingBuilder], void>)(context, builder);
@@ -146,10 +147,10 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * calls. The one-parameter no-context form is a convenience overload,
      * distinguished by declared arity.
      */
-    configureMetrics(hostBuilder: IHostBuilder,
-      configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder],
-        void>): IHostBuilder {
-      return hostBuilder.configureServices((context, services) => {
+    configureMetrics(
+      configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder], void>,
+    ): IHostBuilder {
+      return this.configureServices((context, services) => {
         const builder = new MetricsBuilder(services);
         if (configureMetricsDelegate.length >= 2) {
           (configureMetricsDelegate as Func<[HostBuilderContext, IMetricsBuilder], void>)(context, builder);
@@ -169,12 +170,13 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * `ServiceManifest.build(options)`. Overrides any options set by an earlier
      * `configureDefaults`.
      */
-    useDefaultServiceProvider(hostBuilder: IHostBuilder,
-      configure: Func<[ServiceProviderOptions], void>): IHostBuilder {
+    useDefaultServiceProvider(
+      configure: Func<[ServiceProviderOptions], void>,
+    ): IHostBuilder {
       const options: ServiceProviderOptions = {};
       configure(options);
-      setServiceProviderOptionsFactory(hostBuilder, () => options);
-      return hostBuilder;
+      setServiceProviderOptionsFactory(this, () => options);
+      return this;
     },
 
     /**
@@ -182,11 +184,12 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
      * default {@link import("./internal/NullLifetime").NullLifetime}).
      */
-    useConsoleLifetime(hostBuilder: IHostBuilder,
-      configureOptions?: Func<[ConsoleLifetimeOptions], void>): IHostBuilder {
+    useConsoleLifetime(
+      configureOptions?: Func<[ConsoleLifetimeOptions], void>,
+    ): IHostBuilder {
       const options = new ConsoleLifetimeOptions();
       configureOptions?.(options);
-      return hostBuilder.configureServices((_context, services) => {
+      return this.configureServices((_context, services) => {
         const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TYPE, options);
         return withOptions.addFactory(HOST_LIFETIME_TYPE,
           (resolver: IServiceProvider) =>
@@ -203,9 +206,10 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
      * {@link ConsoleLifetimeOptions} before the console lifetime is registered;
      * the two forms are told apart by whether the first argument is a function.
      */
-    runConsoleAsync(hostBuilder: IHostBuilder,
+    runConsoleAsync(
       ...args: [abortSignal?: AbortSignal] | [configureOptions: Func<[ConsoleLifetimeOptions], void>,
-        abortSignal?: AbortSignal]): Promise<void> {
+        abortSignal?: AbortSignal]
+    ): Promise<void> {
       let configureOptions: Func<[ConsoleLifetimeOptions], void> | undefined;
       let abortSignal: AbortSignal | undefined;
       if (typeof args[0] === 'function') {
@@ -214,8 +218,8 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
       } else {
         abortSignal = args[0];
       }
-      return HostLifecycleAugmentations.runAsync(
-        HostBuilderHostingAugmentations.useConsoleLifetime(hostBuilder, configureOptions).build(),
+      return HostLifecycleAugmentations.runAsync.call(
+        HostBuilderHostingAugmentations.useConsoleLifetime.call(this, configureOptions).build(),
         abortSignal,
       );
     },
