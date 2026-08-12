@@ -20,7 +20,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TOKEN } from './tokens';
 
-type IServiceManifestHostedServiceAugmentations<Scopes extends string> = {
+type IManifestHostedServiceAugmentations<Scopes extends string> = {
   /**
    * Registers a factory as an {@link IHostedService}. Use it to surface an
    * instance already registered under a different token as a hosted service
@@ -44,7 +44,7 @@ type IServiceManifestHostedServiceAugmentations<Scopes extends string> = {
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestHostedServiceAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestHostedServiceAugmentations<Scopes> {}
 }
 
 // An ES class stringifies to a `class …` head; a factory (arrow or plain
@@ -54,7 +54,7 @@ function isConstructor(target: Ctor | Func<[IServiceProvider], IHostedService>):
 }
 
 export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IServiceManifestHostedServiceAugmentations<string>> = { addHostedService(
+  IManifestHostedServiceAugmentations<string>> = { addHostedService(
     manifest: DefaultManifest<string>,
     // The ctor form carries optional dep signatures; the factory form is a
     // lone provider-taking function. A class value matches the

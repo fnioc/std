@@ -40,7 +40,7 @@ import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 // two never desync.
 const LOGGER_FACTORY_TOKEN = tokenfor<ILoggerFactory>();
 
-type IServiceManifestMemoryCacheAugmentations<Scopes extends string> = {
+type IManifestMemoryCacheAugmentations<Scopes extends string> = {
   /**
    * Registers a singleton {@link MemoryCache} as `IMemoryCache` (resolvable
    * at {@link MEMORY_CACHE_TOKEN}), assembled from the
@@ -68,11 +68,11 @@ type IServiceManifestMemoryCacheAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestMemoryCacheAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestMemoryCacheAugmentations<Scopes> {}
 }
 
 export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IServiceManifestMemoryCacheAugmentations<string>> = {
+  IManifestMemoryCacheAugmentations<string>> = {
     addMemoryCache(manifest, setup) {
       let m: Manifest<string> = manifest.addOptions(MEMORY_CACHE_OPTIONS_TOKEN, () => new MemoryCacheOptions());
       if (setup !== undefined) {

@@ -16,7 +16,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 
 import { collectionToken, startupValidationTargetToken } from './option-tokens.js';
 
-type IServiceManifestValidateOnStartAugmentations<Scopes extends string> = {
+type IManifestValidateOnStartAugmentations<Scopes extends string> = {
   /**
    * Marks the options registered at `token` for eager validation at host
    * startup: the host forces the registration's evaluation (running its
@@ -32,7 +32,7 @@ type IServiceManifestValidateOnStartAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the member does not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestValidateOnStartAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestValidateOnStartAugmentations<Scopes> {}
 }
 
 // Registered against the `Manifest` augmentation type -- the concrete
@@ -40,7 +40,7 @@ declare module '@rhombus-std/di.core' {
 // in di.core, pulls the member onto its prototype -- and exported so the
 // member is also the standalone form.
 export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IServiceManifestValidateOnStartAugmentations<string>> = {
+  IManifestValidateOnStartAugmentations<string>> = {
     validateOnStart(manifest, token) {
       // Accumulate the target in the flat startup-validation slot.
       let m: Manifest<string> = manifest.addValue(startupValidationTargetToken(), token);

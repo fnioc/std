@@ -46,7 +46,7 @@ import { MetricsBuilder } from './metrics/MetricsBuilder';
 import { DefaultActivityListenerConfigFactory } from './tracing/config/DefaultActivityListenerConfigFactory';
 import { TracingBuilder } from './tracing/TracingBuilder';
 
-type IServiceManifestDiagnosticsAugmentations<Scopes extends string> = {
+type IManifestDiagnosticsAugmentations<Scopes extends string> = {
   /**
    * Registers the metrics options assembly and, if `configure` is supplied,
    * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
@@ -69,7 +69,7 @@ type IServiceManifestDiagnosticsAugmentations<Scopes extends string> = {
 // type-parameter list (TS2428 requires identical parameters), even though the
 // members do not name `Provider`.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestDiagnosticsAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestDiagnosticsAugmentations<Scopes> {}
 }
 
 // `addMetrics` and `addTracing` are two separate object literals -- one member
@@ -77,7 +77,7 @@ declare module '@rhombus-std/di.core' {
 // installs independently and a consumer may pull in only one. Each names the
 // half of the member map it carries.
 export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManifest<string>,
-  Pick<IServiceManifestDiagnosticsAugmentations<string>, 'addMetrics'>> = {
+  Pick<IManifestDiagnosticsAugmentations<string>, 'addMetrics'>> = {
     addMetrics(manifest: DefaultManifest<string>, configure?: Func<[IMetricsBuilder], void>): Manifest<string> {
       // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
       // scope. Calling addMetrics twice re-registers the (identical) factory --
@@ -110,7 +110,7 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
   };
 
 export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManifest<string>,
-  Pick<IServiceManifestDiagnosticsAugmentations<string>, 'addTracing'>> = {
+  Pick<IManifestDiagnosticsAugmentations<string>, 'addTracing'>> = {
     addTracing(manifest: DefaultManifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<string> {
       let m: Manifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN,
         (resolver) =>

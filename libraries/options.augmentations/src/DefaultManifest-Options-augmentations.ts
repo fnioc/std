@@ -18,7 +18,7 @@ import { postConfigureStepToken, validateStepToken } from './option-tokens.js';
 // Default message used when a `validate` caller supplies none.
 const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
-type IServiceManifestOptionsAugmentations<Scopes extends string> = {
+type IManifestOptionsAugmentations<Scopes extends string> = {
   /**
    * Registers an `IOptions<T>` at `token` that wraps the `T` resolved from
    * `tToken`.
@@ -67,13 +67,13 @@ type IServiceManifestOptionsAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestOptionsAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestOptionsAugmentations<Scopes> {}
 }
 
 // The overloads live on the member map above -- the signature's source of truth;
 // the impls below carry the disambiguating unions.
 export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IServiceManifestOptionsAugmentations<string>> = {
+  IManifestOptionsAugmentations<string>> = {
     addOptions<T>(manifest: DefaultManifest<string>, token: string, source: string | Func<[], T>): Manifest<string> {
       // Two verbs share the name, disambiguated by the second argument:
       //   - a `string` (string)      → wrap the already-bound `T` resolved from it.

@@ -17,7 +17,7 @@ import { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
 import type { DepTokens } from './dep-tokens.js';
 import { changeTokenSourceToken, configureStepToken } from './option-tokens.js';
 
-type IServiceManifestOptionsConfigAugmentations<Scopes extends string> = {
+type IManifestOptionsConfigAugmentations<Scopes extends string> = {
   /**
    * Registers a configuration `section` to bind against the options
    * identified by `token`: adds a config-bind configure step and a
@@ -43,11 +43,11 @@ type IServiceManifestOptionsConfigAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestOptionsConfigAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestOptionsConfigAugmentations<Scopes> {}
 }
 
 export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IServiceManifestOptionsConfigAugmentations<string>> = {
+  IManifestOptionsConfigAugmentations<string>> = {
     configure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, token: string,
       source: IConfig | Func<[T], void> | DepTokens<Deps>,
       configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {

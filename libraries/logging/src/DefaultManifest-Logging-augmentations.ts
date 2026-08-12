@@ -49,7 +49,7 @@ import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKE
 // `LOGGER_PROVIDER_CONFIGURATION_BASE`.
 const ILOGGER_TOKEN_BASE = '@rhombus-std/logging.core:ILogger';
 
-type IServiceManifestLoggingAugmentations<Scopes extends string> = {
+type IManifestLoggingAugmentations<Scopes extends string> = {
   /**
    * Registers the logging services and runs the optional {@link ILoggingBuilder}
    * configuration delegate. Returns the manifest produced by every
@@ -63,7 +63,7 @@ type IServiceManifestLoggingAugmentations<Scopes extends string> = {
 // target's (TS2428 requires identical parameters), even though the member does
 // not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IServiceManifestLoggingAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestLoggingAugmentations<Scopes> {}
 }
 
 // Registered against the `ServiceManifest` augmentation token — the concrete
@@ -71,7 +71,7 @@ declare module '@rhombus-std/di.core' {
 // in di.core, pulls the member onto its prototype — and exported so the member
 // is also the standalone call form.
 export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IServiceManifestLoggingAugmentations<string>> = {
+  IManifestLoggingAugmentations<string>> = {
     addLogging(manifest, configure) {
       // The LoggerFilterOptions assembly + its default (Information) min level.
       let m: Manifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN,
