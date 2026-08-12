@@ -3,9 +3,9 @@
 //
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
 // — a class this package does NOT own — so it follows the augmentation-registry
-// path: register the set against the shared `tokenfor<IServiceManifest>()`
-// token and declaration-merge the method onto di.core's `IServiceManifestBase`
-// interface; the `@augment`-decorated `ServiceManifestClass` (in di.core) pulls
+// path: register the set against the shared `typefor<Manifest>()`
+// token and declaration-merge the method onto di.core's `Manifest`
+// interface; the `@augment`-decorated `DefaultManifest` (in di.core) pulls
 // the member onto its prototype. This is why the package sets
 // `"sideEffects": true` — a consumer who only wants the sugar writes a bare
 // `import "@rhombus-std/logging";`.
@@ -41,10 +41,10 @@ import { LoggingBuilder } from './LoggingBuilder';
 import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
 
 // The base of the open `ILogger<$1>` service token. Hardcoded (not
-// `closeToken(tokenfor<ILogger>(), "$1")`) because `ILogger` is a defaulted
-// generic: a bare `tokenfor<ILogger>()` records the default type argument and
+// `closeToken(typefor<ILogger>(), "$1")`) because `ILogger` is a defaulted
+// generic: a bare `typefor<ILogger>()` records the default type argument and
 // produces `"…:ILogger<unknown>"`, not the clean service-token base. An
-// explicit `tokenfor<ILogger<Foo>>()` derives `"…:ILogger<pkg:Foo>"` off this
+// explicit `typefor<ILogger<Foo>>()` derives `"…:ILogger<pkg:Foo>"` off this
 // same base, so the open template matches. Mirrors logging.config's
 // `LOGGER_PROVIDER_CONFIGURATION_BASE`.
 const ILOGGER_TOKEN_BASE = '@rhombus-std/logging.core:ILogger';
@@ -67,7 +67,7 @@ declare module '@rhombus-std/di.core' {
 }
 
 // Registered against the `ServiceManifest` augmentation token — the concrete
-// `ServiceManifestClass`, decorated with `@augment(typefor<IServiceManifest>())`
+// `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
 // in di.core, pulls the member onto its prototype — and exported so the member
 // is also the standalone call form.
 export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManifest<string>,
@@ -93,7 +93,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
       m = m.addClass(Type.named(iLoggerBase.name, iLoggerBase.from, [hole]), LoggerOfT, [[LOGGER_FACTORY_TOKEN, hole]],
         'singleton');
 
-      // `m` is the widened IServiceManifest<string>, whereas
+      // `m` is the widened Manifest<string>, whereas
       // ILoggingBuilder.services is the singleton-default `ServiceManifest` --
       // logging services are singleton-only. Narrow the scope phantom here:
       // LoggingBuilder merely stores the manifest and never calls the

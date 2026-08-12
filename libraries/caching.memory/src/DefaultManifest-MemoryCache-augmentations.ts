@@ -14,7 +14,7 @@
 // equivalent.)
 
 // Installs the options-pipeline verbs (`addOptions`/`configure`) onto di.core's
-// ServiceManifest and brings their interface merges into the program.
+// Manifest and brings their interface merges into the program.
 import '@rhombus-std/options.augmentations';
 
 import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
@@ -33,7 +33,7 @@ import { MemoryDistributedCache } from './MemoryDistributedCache';
 import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // The token `@rhombus-std/logging`'s `addLogging` binds `ILoggerFactory` at --
-// derived here via `tokenfor<ILoggerFactory>()` rather than importing
+// derived here via `typefor<ILoggerFactory>()` rather than importing
 // logging's const, so the dependency on `ILoggerFactory` stays type-only and
 // this package never drags in logging's side-effect registrations. Deriving
 // off the same type keeps the token byte-identical to logging's own, so the
@@ -81,12 +81,12 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
         m = m.configure(MEMORY_CACHE_OPTIONS_TOKEN, setup);
       }
       // `tryAddFactory` only registers if the token is still free, keeping any
-      // earlier registration. `tryResolve` returns `undefined` when no
+      // earlier registration. `getService` returns `undefined` when no
       // `ILoggerFactory` is registered, so the factory falls to a logger-less
       // construction.
       // The cast works around a TS structural-comparison depth limit: the
-      // `IServiceManifestBase`/`IServiceManifest` overload surface (di.core's
-      // ServiceManifestDescriptorAugmentations merge) is large enough that TS's
+      // `Manifest` overload surface (di.core's descriptor augmentation merge) is
+      // large enough that TS's
       // relationship check bails out on this self-assignment even though the two
       // sides are the same type (see diagnostics.core's
       // `clearMetricsListeners` for the full explanation).

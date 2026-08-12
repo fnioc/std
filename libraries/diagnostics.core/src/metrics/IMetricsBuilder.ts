@@ -1,7 +1,7 @@
 // IMetricsBuilder carries the DI registration surface that metrics augmentation
 // functions (addListener/enableMetrics et al.) register services against.
 //
-// `services` is WRITABLE (not `readonly`): di.core's `ServiceManifest` chain is
+// `services` is WRITABLE (not `readonly`): di.core's `Manifest` chain is
 // immutable -- every registration verb returns a NEW manifest -- so an
 // augmentation function that registers something reassigns
 // `builder.services = builder.services.addClass(...)` rather than mutating in place.

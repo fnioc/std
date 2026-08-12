@@ -42,7 +42,7 @@ export interface InlineBodySet {
  * @example
  * ```ts
  * export const ManifestChainInline = {
- *   as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
+ *   as<Scope extends string>(this: IInlineChainTarget): Manifest {
  *     return this.as(valueof<Scope>());
  *   },
  * };

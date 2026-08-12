@@ -5,7 +5,7 @@
 //
 // `validateOnStart(token)` appends `token` to the startup-validation target
 // slot and registers the built-in {@link StartupValidator} under
-// `tokenfor<IStartupValidator>()`. The host resolves that (optionally) and
+// `typefor<IStartupValidator>()`. The host resolves that (optionally) and
 // calls `validate()`.
 
 import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
@@ -35,8 +35,8 @@ declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = any> extends IServiceManifestValidateOnStartAugmentations<Scopes> {}
 }
 
-// Registered against the `ServiceManifest` augmentation token -- the concrete
-// `ServiceManifestClass`, decorated with `@augment(tokenfor<IServiceManifest>())`
+// Registered against the `Manifest` augmentation type -- the concrete
+// `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
 // in di.core, pulls the member onto its prototype -- and exported so the
 // member is also the standalone form.
 export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<DefaultManifest<string>,

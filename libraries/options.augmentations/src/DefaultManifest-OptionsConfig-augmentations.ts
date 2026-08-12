@@ -34,7 +34,7 @@ type IServiceManifestOptionsConfigAugmentations<Scopes extends string> = {
    * The DI-injected configure step: resolves each token in `depTokens` from
    * the provider at materialization time and passes the instances to
    * `configureOptions` after the options value. A typed caller writes each
-   * token as `tokenfor<Dep>()`.
+   * token as `typefor<Dep>()`.
    */
   configure<T, Deps extends readonly unknown[]>(token: string, depTokens: DepTokens<Deps>,
     configureOptions: (options: T, ...deps: Deps) => void): Manifest<Scopes>;

@@ -68,11 +68,11 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
   },
   clearMetricsListeners(builder) {
     // The cast works around a TS structural-comparison depth limit: `services`'s
-    // declared type (`IServiceManifestBase`, Provider defaulted to `unknown`) and
-    // `removeAll`'s return (`IServiceManifest<Scopes>`, Provider bound to
+    // declared type (`Manifest`, Scopes defaulted) and
+    // `removeAll`'s return (`Manifest<Scopes>`, Scopes bound to
     // `IServiceProvider<Scopes>`) are the same interface at two instantiations
     // that differ only in a covariant position -- genuinely assignable -- but the
-    // overload surface `IServiceManifestBase` carries pushes TS's relationship
+    // overload surface `Manifest` carries pushes TS's relationship
     // check past its recursion budget, which it resolves as "not assignable"
     // rather than re-deriving the true relationship.
     builder.services = builder.services.removeAll(METRICS_LISTENER_TOKEN) as typeof builder.services;

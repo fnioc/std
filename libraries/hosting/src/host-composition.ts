@@ -177,7 +177,7 @@ export function populateFrameworkServices(services: Manifest, context: HostBuild
  * hands the internal host its dependencies directly.
  *
  * `@rhombus-std/di` MUST be imported by the caller before this runs so
- * `IServiceManifest.build()` is patched on (di.core alone throws in `build()`).
+ * `Manifest.build()` is patched on (di.core alone throws in `build()`).
  *
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.

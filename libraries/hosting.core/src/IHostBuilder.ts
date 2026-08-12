@@ -7,7 +7,7 @@ import type { IHost } from './IHost';
 /**
  * A program initialization abstraction. The primary API surface for assembling
  * a host: configuration wiring (`@rhombus-std/config`) and service registration
- * (`@rhombus-std/di`'s {@link IServiceManifest}) are threaded through the
+ * (`@rhombus-std/di`'s {@link Manifest}) are threaded through the
  * configure delegates.
  */
 export interface IHostBuilder {

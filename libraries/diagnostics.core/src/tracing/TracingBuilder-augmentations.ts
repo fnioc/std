@@ -67,7 +67,7 @@ export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flat
   clearTracingListeners(builder) {
     // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
     // comment: the cast works around a TS structural-comparison depth limit on
-    // `IServiceManifestBase`'s large overload surface, not a real type error.
+    // `Manifest`'s large overload surface, not a real type error.
     builder.services = builder.services.removeAll(TRACING_LISTENER_TOKEN) as typeof builder.services;
     return builder;
   },

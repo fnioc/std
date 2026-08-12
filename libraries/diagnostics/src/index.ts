@@ -96,8 +96,8 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
         // The cast works around a TS structural-comparison depth limit -- see
         // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
         // explanation. `MetricsBuilder`'s ctor takes the Scopes-erased
-        // `IServiceManifestBase`; `m`'s huge `addClass`/`addFactory` overload surface
-        // (di.core's ServiceManifestDescriptorAugmentations merge) pushes the
+        // `Manifest`; `m`'s huge `addClass`/`addFactory` overload surface
+        // (di.core's descriptor augmentation merge) pushes the
         // direct-assignment check past TS's recursion budget.
         const builder = new MetricsBuilder(m as Manifest);
         configure(builder);
@@ -132,9 +132,9 @@ export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManife
     },
   };
 
-// OPEN receiver: register both sets against di.core's ServiceManifest token.
-// The `ServiceManifestClass` decorated `@augment(tokenfor<IServiceManifest>())`
-// in di.core pulls `addMetrics`/`addTracing` onto its prototype.
+// OPEN receiver: register both sets against di.core's `Manifest` type. The
+// `DefaultManifest` decorated `@augment(typefor<Manifest>())` in di.core pulls
+// `addMetrics`/`addTracing` onto its prototype.
 registerAugmentations(tokenfor<Manifest>(), ServiceManifestMetricsAugmentations);
 registerAugmentations(tokenfor<Manifest>(), ServiceManifestTracingAugmentations);
 

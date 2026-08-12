@@ -1,8 +1,8 @@
-// Adds `addHostedService` onto `IServiceManifest` via declaration merging on
+// Adds `addHostedService` onto `Manifest` via declaration merging on
 // the interface plus a runtime install through the augmentation registry.
-// `IServiceManifest` is extended by many downstream packages, so this
-// registers against `tokenfor<IServiceManifest>()` rather than installing
-// directly; `ServiceManifestClass` picks it up through its own `@augment`
+// `Manifest` is extended by many downstream packages, so this
+// registers against `typefor<Manifest>()` rather than installing
+// directly; `DefaultManifest` picks it up through its own `@augment`
 // decorator in `@rhombus-std/di.core`.
 //
 // Every hosted service registers under the one shared

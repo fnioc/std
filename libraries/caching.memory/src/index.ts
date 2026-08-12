@@ -2,7 +2,7 @@
 // (`MemoryCacheEntryOptions` lives in caching.core, re-exported here), the
 // memory-backed MemoryDistributedCache (+ MemoryDistributedCacheOptions), and
 // -- as a side effect -- registers `addMemoryCache` and
-// `addDistributedMemoryCache` against di.core's `ServiceManifest`
+// `addDistributedMemoryCache` against di.core's `Manifest`
 // augmentation token.
 //
 // A consumer who only wants the sugar takes a bare side-effect import:
