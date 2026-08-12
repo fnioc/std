@@ -214,11 +214,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
     expect(withInline).not.toContain('isService<');
     expect(withInline).not.toContain('tokenfor');
   });
-
-  test('byte parity: inline path vs di semantic path emit the identical output', () => {
-    const line = (src: string) => src.split('\n').find((l) => l.includes('isService('))?.trim();
-    expect(line(withInline)).toBeDefined();
-  });
 });
 
 // ===========================================================================
@@ -570,7 +565,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(chainInline).toContain('IStore<$1>');
   });
 
-  test('self-registration: addClass(SelfRepo) derives the token from the value, byte-parity with di-direct', () => {
+  test('self-registration: addClass(SelfRepo) derives the token from the value', () => {
     const line = lineWith(chainInline, 'self =');
     expect(line).toBeDefined();
     expect(line).toContain('addClass("');
@@ -622,7 +617,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(inlineBase).not.toContain('#');
   });
 
-  test("value self-registration: addValue(fn) tokenizes the fn's OWN type via tokenof, byte-parity with di-direct", () => {
+  test("value self-registration: addValue(fn) tokenizes the fn's OWN type via tokenof", () => {
     // W3 value-argument self-registration through the REAL ServiceManifestSelfInline
     // body (end-to-end, unlike the Go tier's fixture body). addValue registers an
     // already-built value under its OWN type, so a CALLABLE value (makeThing) must
@@ -691,7 +686,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
 });
 
 describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity (W5)', () => {
-  test('tokenful resolve<I>() lowers to resolve("<token>"), inline ≡ di-direct', () => {
+  test('tokenful resolve<I>() lowers to resolve("<token>")', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
     expect(line).toContain('.resolve("');
@@ -700,7 +695,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('resolveAsync<I>() / tryResolve<I>() keep their method name, inline ≡ di-direct', () => {
+  test('resolveAsync<I>() / tryResolve<I>() keep their method name', () => {
     const asyncLine = lineWith(resolveInline, 'asyncTok =');
     expect(asyncLine).toBeDefined();
     expect(asyncLine).toContain('.resolveAsync("');
@@ -710,7 +705,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(tryLine).toContain('.tryResolve("');
   });
 
-  test('singular resolve<"dev">() short-circuits to the value literal (Rule-2), inline ≡ di-direct', () => {
+  test('singular resolve<"dev">() short-circuits to the value literal (Rule-2)', () => {
     const line = lineWith(resolveInline, 'singular =');
     expect(line).toBeDefined();
     // The whole resolve call collapses to the value itself — no resolve call, no
@@ -721,7 +716,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(line).not.toContain('singularValue');
   });
 
-  test('factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]), inline ≡ di-direct (§94)', () => {
+  test('factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]) (§94)', () => {
     // A function-type argument is not singular and IS a factory, so the nested body
     // ternary folds to `this.resolveFactory(returntokenfor<F>(), paramtokensfor<F>())`.
     // The param-carrying factory keeps the param-token array; the no-arg factory
