@@ -49,7 +49,7 @@ describe('addMemoryCache', () => {
     // carrying the registrations -- build from `returned`, not `services`.
     // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
     // resolve off `any` cannot take an explicit type argument.
-    const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache(
+    const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache.call(
       services,
       (options) => {
         ran++;

@@ -68,7 +68,7 @@ describe('LoggerAugmentations.beginScope', () => {
   test('formats the template into a FormattedLogValues state and opens the scope', () => {
     const { logger, scopes } = recordingLogger();
 
-    const scope = LoggerAugmentations.beginScope(logger, 'Processing request {Id} from {Address}', 42, '10.0.0.1');
+    const scope = LoggerAugmentations.beginScope.call(logger, 'Processing request {Id} from {Address}', 42, '10.0.0.1');
 
     expect(scope).toBeDefined();
     expect(scopes).toHaveLength(1);

@@ -23,22 +23,22 @@ describe('LoggerFactoryAugmentations.createLogger', () => {
       return NullLogger.instance;
     }, addProvider(): void {}, [Symbol.dispose](): void {} };
 
-    LoggerFactoryAugmentations.createLogger(recording, OrderProcessor);
+    LoggerFactoryAugmentations.createLogger.call(recording, OrderProcessor);
     // Abstract constructors are accepted — only the name is read.
-    LoggerFactoryAugmentations.createLogger(recording, PaymentGateway);
+    LoggerFactoryAugmentations.createLogger.call(recording, PaymentGateway);
 
     expect(categories).toEqual(['OrderProcessor', 'PaymentGateway']);
   });
 
   test('delegates to the factory: the type form and the string form return the same cached logger', () => {
     const factory = new LoggerFactory();
-    const viaType = LoggerFactoryAugmentations.createLogger(factory, OrderProcessor);
+    const viaType = LoggerFactoryAugmentations.createLogger.call(factory, OrderProcessor);
     const viaName = factory.createLogger('OrderProcessor');
     expect(viaType).toBe(viaName);
   });
 
   test('NullLoggerFactory yields the shared no-op logger', () => {
-    const logger = LoggerFactoryAugmentations.createLogger(NullLoggerFactory.instance, OrderProcessor);
+    const logger = LoggerFactoryAugmentations.createLogger.call(NullLoggerFactory.instance, OrderProcessor);
     expect(logger).toBe(NullLogger.instance);
   });
 

@@ -37,10 +37,10 @@ test('environment predicates compare case-insensitively', () => {
   // its receiver.
   const env = { environmentName: 'development', applicationName: 'app', contentRootPath: '/',
     contentRootFileProvider: new NullFileProvider() } as IHostEnvironment;
-  expect(HostEnvironmentEnvAugmentations.isEnvironment(env, 'Development')).toBe(true);
-  expect(HostEnvironmentEnvAugmentations.isDevelopment(env)).toBe(true);
-  expect(HostEnvironmentEnvAugmentations.isProduction(env)).toBe(false);
-  expect(HostEnvironmentEnvAugmentations.isStaging(env)).toBe(false);
+  expect(HostEnvironmentEnvAugmentations.isEnvironment.call(env, 'Development')).toBe(true);
+  expect(HostEnvironmentEnvAugmentations.isDevelopment.call(env)).toBe(true);
+  expect(HostEnvironmentEnvAugmentations.isProduction.call(env)).toBe(false);
+  expect(HostEnvironmentEnvAugmentations.isStaging.call(env)).toBe(false);
 });
 
 test('BackgroundService.start kicks execute without awaiting; stop aborts the stopping signal', async () => {
