@@ -22,11 +22,9 @@ import { typefor } from './typefor.js';
  * // → registerAugmentations(Type.named('IConfigBuilder', '@rhombus-std/config.core'), ConfigBuilderJsonAugmentations)
  * ```
  */
-export function registerAugmentations<R, I extends Record<PropertyKey, Func> = Record<PropertyKey, Func>>(
-  set: AugmentationSet2<R, I>,
-  ...rest: [merge?: MergeStrategies]
-): void {
-  return register<R, I>(typefor<R>(), set, ...rest);
+export function registerAugmentations<R>(set: AugmentationSet2<R, Record<PropertyKey, Func>>,
+  ...rest: [merge?: MergeStrategies]): void {
+  return register<R, Record<PropertyKey, Func>>(typefor<R>(), set, ...rest);
 }
 
 export const REGISTER_AUGMENTATIONS_NAME = 'registerAugmentations';
