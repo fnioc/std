@@ -20,7 +20,7 @@ export class Opts {
   private tsPriv: number = 1;
 }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: Opts | number): void {},
+  setOptions(o: Opts | number): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `
@@ -72,7 +72,7 @@ export class AccessorOnly {
   public get b(): string { return "x"; }
 }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: AccessorOnly): void {},
+  setOptions(o: AccessorOnly): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -94,7 +94,7 @@ export class Opts {
 }
 export interface Wrapper { opts: Opts; label: string; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, w: Wrapper): void {},
+  setOptions(w: Wrapper): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -116,7 +116,7 @@ export class Opts {
   public get value(): number { return this.#value; }
 }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, all: Opts[]): void {},
+  setOptions(all: Opts[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -142,7 +142,7 @@ export class Sealed {
   #b: string = "";
 }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: Sealed): void {},
+  setOptions(o: Sealed): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -162,7 +162,7 @@ export class Opts {
   public get value(): number { return this.#value; }
 }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, all: Map<string, Opts>): void {},
+  setOptions(all: Map<string, Opts>): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -188,7 +188,7 @@ export class Plain {
   public port: number = 0;
 }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: Plain): void {},
+  setOptions(o: Plain): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -250,7 +250,7 @@ func TestStringComputedNameKeepsItsClause(t *testing.T) {
 	out, diags := run(t, `
 export class CK { ["a-b"]: string = ""; tag: string = ""; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: CK): void {},
+  setOptions(o: CK): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -273,7 +273,7 @@ func TestSymbolComputedNameIsStillRefused(t *testing.T) {
 const MARK: unique symbol = Symbol("m");
 export class SK { [MARK]: string = ""; tag: string = ""; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: SK): void {},
+  setOptions(o: SK): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)

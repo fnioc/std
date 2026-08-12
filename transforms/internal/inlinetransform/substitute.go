@@ -28,11 +28,6 @@ type Inlining struct {
 	Receiver *shimast.Node
 	Params   []string
 	Args     []*shimast.Node
-	// ReceiverParam is the body's name for its receiver when it takes one as a
-	// leading parameter rather than as `this`. The two shapes are otherwise
-	// identical here: the receiver is bound once, and the same single-evaluation
-	// rules apply to it.
-	ReceiverParam string
 	// RestParam is the body's trailing rest parameter, if it has one, and RestArgs
 	// are the call arguments it stands for. A rest binds to the argument LIST, so
 	// it is expanded where the body spreads it rather than substituted as a value.
@@ -101,18 +96,12 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	}
 
 	receiverCount := countThis(body)
-	if in.ReceiverParam != "" {
-		receiverCount = countIdentifier(body, in.ReceiverParam)
-	}
 	simple := isSimpleReceiver(in.Receiver)
 
 	if receiverCount >= 2 && !simple {
 		// Effectful receiver used more than once: bind it once to a temp in
 		// expression position and reference the temp at every `this` site.
 		temp := ec.Factory.NewTempVariable()
-		if in.ReceiverParam != "" {
-			params[in.ReceiverParam] = temp
-		}
 		substituted := substituteInto(ec, body, params, temp, r)
 		assign := factory.NewBinaryExpression(
 			nil,
@@ -152,35 +141,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	// Receiver read 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
 	// of it at each site. thisRepl == nil below means "clone the receiver"; a
 	// non-nil node (the temp branch above) means "reference it".
-	if in.ReceiverParam != "" {
-		params[in.ReceiverParam] = in.Receiver
-	}
 	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver, r)}
-}
-
-// countIdentifier counts references to name in body, skipping the member side of
-// a property access so `x.name` never counts as a read of `name`.
-func countIdentifier(body *shimast.Node, name string) int {
-	count := 0
-	var walk func(*shimast.Node) bool
-	walk = func(node *shimast.Node) bool {
-		if node == nil {
-			return false
-		}
-		if node.Kind == shimast.KindIdentifier && node.Text() == name {
-			count++
-			return false
-		}
-		if node.Kind == shimast.KindPropertyAccessExpression {
-			access := node.AsPropertyAccessExpression()
-			walk(access.Expression)
-			return false
-		}
-		node.ForEachChild(walk)
-		return false
-	}
-	walk(body)
-	return count
 }
 
 // substituteInto rewrites body in place of a clone: every `this` becomes temp
@@ -242,16 +203,29 @@ func (r rest) expand(visitor *shimast.NodeVisitor, args []*shimast.Node) ([]*shi
 // rewrite walks body substituting `this` (via thisNode, called once per site so
 // each site can get its own clone) and value-parameter identifiers (via params).
 // It descends manually through property-access objects so the member name — an
-// identifier that is NOT a value reference — is preserved verbatim.
+// identifier that is NOT a value reference — is preserved verbatim. A `this`
+// inside a nested non-arrow function or class is that scope's own receiver, so
+// substitution stops at those boundaries; value parameters are still rewritten
+// there, since a closure captures them like any other outer binding.
 func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node, r rest) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	var visitor *shimast.NodeVisitor
+	ownThisDepth := 0
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
 			return nil
 		}
+		if establishesThis(node) {
+			ownThisDepth++
+			result := visitor.VisitEachChild(node)
+			ownThisDepth--
+			return result
+		}
 		switch node.Kind {
 		case shimast.KindThisKeyword:
+			if ownThisDepth > 0 {
+				return node
+			}
 			if repl := thisNode(); repl != nil {
 				return repl
 			}
@@ -291,12 +265,15 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 	return visitor.VisitNode(body)
 }
 
-// countThis reports how many `this` keywords appear anywhere in node.
+// countThis reports how many substitutable `this` keywords appear in node —
+// the same sites rewrite replaces, so the two agree on the receiver's use
+// count. A `this` behind a nested non-arrow function or class boundary belongs
+// to that scope and is not counted.
 func countThis(node *shimast.Node) int {
 	count := 0
 	var walk func(n *shimast.Node)
 	walk = func(n *shimast.Node) {
-		if n == nil {
+		if n == nil || establishesThis(n) {
 			return
 		}
 		if n.Kind == shimast.KindThisKeyword {
@@ -309,6 +286,25 @@ func countThis(node *shimast.Node) int {
 	}
 	walk(node)
 	return count
+}
+
+// establishesThis reports whether node introduces its own `this` scope — a
+// non-arrow function, method, accessor, constructor, class, or class static
+// block. Arrows inherit the enclosing `this` and are never boundaries.
+func establishesThis(node *shimast.Node) bool {
+	switch node.Kind {
+	case shimast.KindFunctionExpression,
+		shimast.KindFunctionDeclaration,
+		shimast.KindMethodDeclaration,
+		shimast.KindGetAccessor,
+		shimast.KindSetAccessor,
+		shimast.KindConstructor,
+		shimast.KindClassDeclaration,
+		shimast.KindClassExpression,
+		shimast.KindClassStaticBlockDeclaration:
+		return true
+	}
+	return false
 }
 
 // isSimpleReceiver reports whether a receiver expression may be duplicated

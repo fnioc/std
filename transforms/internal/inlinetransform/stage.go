@@ -352,13 +352,12 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	}
 
 	in := Inlining{
-		Body:          body.Body,
-		Params:        names,
-		Args:          args,
-		ReceiverParam: body.ReceiverParam,
-		RestParam:     restParam,
-		RestArgs:      restArgs,
-		Bindings:      st.importedValueBindings(body),
+		Body:      body.Body,
+		Params:    names,
+		Args:      args,
+		RestParam: restParam,
+		RestArgs:  restArgs,
+		Bindings:  st.importedValueBindings(body),
 	}
 	// The arguments SPLICED into the body come from the CURRENT tree (above), so
 	// they carry whatever earlier passes lowered. The arguments the checker is
