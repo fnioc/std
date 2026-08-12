@@ -22,7 +22,7 @@ export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';
 export { TypeParseError } from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
-export type { ConstructableType, CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType,
-  TagType, TokenType, TupleType, TypeLiteralType, UnionType } from './Type/Type.js';
+export type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+  TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
 export { TypeVisitor } from './Type/TypeVisitor.js';
 export * from './utils/index.js';
