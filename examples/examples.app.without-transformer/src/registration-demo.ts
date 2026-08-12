@@ -203,10 +203,10 @@ function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAu
 
 // ── the service types ────────────────────────────────────────────────────────
 
-// A hand author picks the token strings; they only have to be stable and unique.
-// These are short for readability. When you need to INTEROPERATE with
-// registrations the transformer produced, spell the token exactly as it derives
-// it instead — see examples.lib.without-transformer/src/tokens.ts.
+// A hand author picks these token strings; they only have to be stable and
+// unique. These are short for readability. When you need to INTEROPERATE with
+// registrations the transformer produced, compose the same Type it derives
+// instead — see examples.lib.without-transformer/src/types.ts.
 const CLOCK_TYPE = Type.from('orders:IClock');
 const SINK_TYPE = Type.from('orders:IMessageSink');
 const EMAIL_OPTIONS_TYPE = Type.from('orders:IEmailOptions');

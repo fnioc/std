@@ -1,11 +1,11 @@
 // Build @rhombus-std/examples.app.with-transformer via the ttsc/Go engine.
 //
 // The with-transformer composition root: its src is authored in the type-driven
-// dialect, where every service type is minted by `typefor<T>()` and every
-// published token by `tokenfor<T>()`. Both are primitives the Go engine folds at
-// build time — `@ttsc/unplugin/bun` runs it as an onLoad transform while
-// Bun.build emits dist/main.js — so what ships is exactly what the
-// without-transformer twin wrote out by hand.
+// dialect, where every service Type — registered, looked up, or published — is
+// minted by `typefor<T>()`. It is a primitive the Go engine folds at build time
+// — `@ttsc/unplugin/bun` runs it as an onLoad transform while Bun.build emits
+// dist/main.js — so what ships is exactly what the without-transformer twin
+// wrote out by hand.
 //
 // Every workspace dependency stays EXTERNAL so main.js imports the SAME
 // @rhombus-std/* runtime a published consumer would — the augmentation registry

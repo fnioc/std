@@ -2,7 +2,7 @@
 // `services.configure(MEMORY_CACHE_OPTIONS_TYPE, section)` to bind a
 // configuration section.
 
-import type { Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { MemoryCacheOptions } from './MemoryCacheOptions';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';

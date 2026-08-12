@@ -3,7 +3,7 @@
 //
 // Open generics answer a question every persistence layer eventually asks: you
 // have N entity types and you do NOT want N copies of the same repository
-// registration. So you register the repository ONCE against a template token
+// registration. So you register the repository ONCE against a template Type
 // carrying a HOLE — `IRepository<$1>` — and the container mints a closed
 // registration on demand for whichever closing you ask for
 // (`IRepository<User>`, `IRepository<Order>`, …). One registration, unbounded
@@ -19,15 +19,15 @@
 // Resolving `IRepository<User>` therefore closes `ITable<$1>` to `ITable<User>`
 // on the way down and lands on the concrete `Seed<User>` value. That chain is
 // the whole point: a hole in a dependency slot is substituted with the SAME
-// argument the service token was closed with, so one template registration
+// argument the service Type was closed with, so one template registration
 // reaches per-entity data without ever naming an entity.
 //
 // These types are exported through this package's public barrel on purpose: the
-// token a transformer derives is `<import-specifier>:<exported-name>`, so
+// Type a transformer derives is `Type.named(exportedName, importSpecifier)`, so
 // `IRepository<User>` derives
 // `@rhombus-std/examples.contracts:IRepository<@rhombus-std/examples.contracts:User>`
-// — exactly the string the without-transformer app hand-writes. The two apps
-// print the same tokens because they mean the same thing.
+// — exactly the Type the without-transformer app composes by hand. The two apps
+// print the same Types because they mean the same thing.
 
 /**
  * The shared shape every stored entity has. It exists so an implementation can
@@ -51,7 +51,7 @@ export interface Order extends Entity {
 
 /**
  * An audit record. Deliberately the ODD ONE OUT: the demonstration registers a
- * dedicated `IRepository<AuditEvent>` implementation at the CLOSED token, which
+ * dedicated `IRepository<AuditEvent>` implementation at the CLOSED Type, which
  * takes precedence over the template — the escape hatch for the one entity whose
  * behaviour differs.
  */
@@ -76,10 +76,11 @@ export interface Seed<TEntity> {
  */
 export interface ITable<TEntity> {
   /**
-   * The token string of `TEntity`, delivered by the container itself: the
-   * implementation declares a `Typeof<TEntity>` parameter (or, hand-written, a
-   * `typeArg(1)` slot) and the engine substitutes the argument the token was
-   * closed with. It is how a generic implementation learns WHICH closing it is.
+   * The rendered form of `TEntity`'s Type, delivered by the container itself:
+   * the implementation declares a `Typeof<TEntity>` parameter (or, hand-composed,
+   * a `typeArg(1)` slot) and the engine substitutes the Type argument the
+   * request was closed with. It is how a generic implementation learns WHICH
+   * closing it is.
    */
   readonly entityToken: string;
   rows(): readonly TEntity[];

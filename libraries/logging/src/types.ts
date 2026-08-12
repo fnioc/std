@@ -2,7 +2,7 @@
 
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
-import type { Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { LoggerFilterOptions } from './LoggerFilterOptions';
 

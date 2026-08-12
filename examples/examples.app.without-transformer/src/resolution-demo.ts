@@ -1,6 +1,6 @@
 // THE RESOLUTION SURFACE, authored by hand — every way to ask the container for
-// something, with an explicit token at every call site and no transformer
-// anywhere.
+// something, with an explicit, hand-composed `Type` at every call site and no
+// transformer anywhere.
 //
 // This file is the twin of ../../examples.app.with-transformer/src/resolution-demo.ts.
 // The two register the SAME container (both call `addCheckoutServices`) and print
@@ -9,9 +9,10 @@
 // are the primary, complete API, and the type-driven forms in the twin are sugar
 // for exactly this.
 //
-// The tokens come from the library that registered the services, because a token
-// is a shared name — the consumer and the producer must agree on the string, and
-// exporting it from the producer is how a plugin-less codebase keeps them in step.
+// The Types come from the library that registered the services, because a
+// service Type is a shared identity — the consumer and the producer must
+// resolve to the SAME interned `Type` object, and exporting it from the
+// producer is how a plugin-less codebase keeps them in step.
 
 import { DefaultManifest, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
@@ -19,7 +20,7 @@ import '@rhombus-std/di';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter,
   IReceipt } from '@rhombus-std/examples.contracts';
-import { addCheckoutServices, CHECKOUT_TOKENS } from '@rhombus-std/examples.lib.without-transformer';
+import { addCheckoutServices, CHECKOUT_TYPES } from '@rhombus-std/examples.lib.without-transformer';
 
 // Fixed orders — no clock, no randomness, so the output is byte-stable.
 const ORDER_A: CheckoutOrder = { reference: 'A-1001', amountMinor: 4250, method: 'wallet' };
@@ -48,7 +49,7 @@ function attempted(attempt: () => string): string {
  * provider.
  */
 async function tour(provider: IServiceProvider): Promise<string[]> {
-  const t = CHECKOUT_TOKENS;
+  const t = CHECKOUT_TYPES;
   const lines: string[] = ['=== di resolution — without transformer ==='];
 
   // ── required vs optional ───────────────────────────────────────────────────
@@ -65,20 +66,20 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // itself unsatisfiable, so it too answers with absence rather than a
   // half-built object.
   lines.push('required vs optional lookup');
-  const router = provider.getRequiredService(Type.from(t.router)) as IPaymentRouter;
+  const router = provider.getRequiredService(t.router) as IPaymentRouter;
   lines.push(`  getRequiredService(IPaymentRouter): resolved ${router.constructor.name}`);
   try {
-    provider.getRequiredService(Type.from(t.fraudScreen));
+    provider.getRequiredService(t.fraudScreen);
     lines.push('  getRequiredService(IFraudScreen): UNREACHABLE');
   } catch (error) {
     lines.push(`  getRequiredService(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
   }
-  const audit = provider.getService(Type.from(t.audit)) as IAuditTrail | undefined;
+  const audit = provider.getService(t.audit) as IAuditTrail | undefined;
   lines.push(`  getService(IAuditTrail): ${audit ? 'present' : 'absent'}`);
-  lines.push(`  getService(IFraudScreen): ${provider.getService(Type.from(t.fraudScreen))}`);
+  lines.push(`  getService(IFraudScreen): ${provider.getService(t.fraudScreen)}`);
   // `isService` answers the same question WITHOUT constructing anything, which is
   // what would make it safe on a hot path or in a startup self-check.
-  lines.push(`  isService(IFraudScreen): ${attempted(() => String(provider.isService(Type.from(t.fraudScreen))))}`);
+  lines.push(`  isService(IFraudScreen): ${attempted(() => String(provider.isService(t.fraudScreen)))}`);
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
@@ -93,14 +94,14 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // `Type.collection(element)` spells that type, and either request reaches the
   // same aggregation.
   lines.push('collection resolution — 3 registrations share one type, all of them run');
-  const validators = [...provider.getServices(Type.from(t.validator))] as IOrderValidator[];
+  const validators = [...provider.getServices(t.validator)] as IOrderValidator[];
   for (const order of [ORDER_A, ORDER_X]) {
     for (const validator of validators) {
       lines.push(`  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`);
     }
   }
   const asCollectionType = [
-    ...(provider.getRequiredService(Type.collection(Type.from(t.validator))) as Iterable<IOrderValidator>),
+    ...(provider.getRequiredService(Type.collection(t.validator)) as Iterable<IOrderValidator>),
   ];
   lines.push(`  the same aggregation asked for as a type: ${asCollectionType.length} validators`);
 
@@ -117,10 +118,10 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
-  const crypto = provider.getService(Type.tag(Type.from(t.gateway), 'crypto')) as IPaymentGateway | undefined;
+  const crypto = provider.getService(Type.tag(t.gateway, 'crypto')) as IPaymentGateway | undefined;
   lines.push(`  getService at key "crypto": ${crypto?.label}`);
   lines.push(`  a keyed registration is not in the bare base's collection: `
-    + `${[...provider.getServices(Type.from(t.gateway))].length} gateways`);
+    + `${[...provider.getServices(t.gateway)].length} gateways`);
 
   // ── factory slots ──────────────────────────────────────────────────────────
   //
@@ -140,7 +141,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // into one.
   lines.push(`  asking the provider for one: ${
     attempted(() => {
-      const mint = provider.resolveFactory(Type.from(t.receipt), [Type.from(t.order)]);
+      const mint = provider.resolveFactory(t.receipt, [t.order]);
       return (mint(ORDER_C) as IReceipt).text;
     })
   }`);
@@ -152,9 +153,9 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // later". The container hands back the promise it was told about and the
   // caller awaits it — no half-built value ever appears.
   lines.push('async registrations — the promise is the registration');
-  const rates = await (provider.getRequiredService(Type.from(t.ratesPromise)) as Promise<IExchangeRates>);
+  const rates = await (provider.getRequiredService(t.ratesPromise) as Promise<IExchangeRates>);
   lines.push(`  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`);
-  lines.push(`  the bare type has no registration: ${provider.getService(Type.from(t.rates))}`);
+  lines.push(`  the bare type has no registration: ${provider.getService(t.rates)}`);
 
   // ── the provider as a service ──────────────────────────────────────────────
   //

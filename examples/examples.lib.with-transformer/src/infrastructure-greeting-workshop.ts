@@ -1,21 +1,21 @@
 // The INFRASTRUCTURE surface of `@rhombus-std/di.core` — the parts a LIBRARY
 // AUTHOR reaches for, rather than the registration/resolution verbs an
-// application composition root uses. Authored in the TOKENLESS dialect: types
-// drive the tokens and the dependency signatures, and the Go/ttsc engine lowers
-// them during this package's build.
+// application composition root uses. Authored in the TOKENLESS dialect: source
+// types drive the service Types and the dependency signatures, and the Go/ttsc
+// engine lowers them during this package's build.
 //
 // The mirror of this file is `../../examples.lib.without-transformer/src/
 // infrastructure-greeting-workshop.ts` — the same scenario, the same output,
-// hand-written tokens. Diff them and the difference is exactly two things:
+// hand-composed Types. Diff them and the difference is exactly two things:
 //
 //   - the workshop's own registration + lookup are TOKENLESS here
 //     (`typefor<GreetingWorkshop>()` on both the registration and the lookup),
-//     because both sides derive the same type from the same declaration; and
+//     because both sides derive the same Type from the same declaration; and
 //   - every dependency slot is named by its TYPE — `typefor<IGreeting>()` —
-//     instead of by a hand-written token string.
+//     instead of by a hand-composed `Type`.
 //
-// Everything else is identical, and deliberately so. Where a token names
-// something that has no type to derive from — a ctor arriving as a runtime
+// Everything else is identical, and deliberately so. Where a slot names a
+// service with no type to derive a `Type` from — a ctor arriving as a runtime
 // parameter, a slot the CALLER fills rather than the container — the explicit
 // form is the only form, in both dialects. That is the no-transformer-first
 // doctrine working as intended: the explicit form is the real API, and the sugar
@@ -49,17 +49,17 @@ interface ManifestSlot<S extends string> {
   services: Manifest<S>;
 }
 
-// ── tokens ───────────────────────────────────────────────────────────────────
+// ── types ────────────────────────────────────────────────────────────────────
 
 /**
- * `token(IGreeting)` — the contract the workshop registers a greeting under.
+ * The contract the workshop registers a greeting under.
  *
- * Spelled out because the implementation arrives as a runtime parameter, so
- * there is no type at the call site to derive from (see the header). It is
- * written in the same `<import-specifier>:<exported-name>` form the transformer
- * derives, so a reader can check it against what the sugar would produce.
+ * Composed by hand because the implementation arrives as a runtime parameter,
+ * so there is no type at the call site for `typefor` to derive from (see the
+ * header). It is composed exactly as `typefor<IGreeting>()` would derive it, so
+ * a reader can check it against what the sugar would produce.
  */
-const GREETING_TOKEN = '@rhombus-std/examples.contracts:IGreeting';
+const GREETING_TYPE: Type = Type.named('IGreeting', '@rhombus-std/examples.contracts');
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -308,7 +308,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
     // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
     // there is no class type for the transformer to derive a signature — or a
     // service type — from.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TOKEN, greeting, [[]], 'singleton');
+    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, [[]], 'singleton');
     return this;
   }
 

@@ -4,15 +4,14 @@
 // a runtime dependency on this package.
 //
 // This is the "cross-lib contract flow" the interop matrix turns on: the
-// with-transformer lib and app derive tokens from these package-public types
+// with-transformer lib and app derive `Type`s from these package-public types
 // (`@rhombus-std/examples.contracts:IGreeting`, …); the without-transformer lib
-// and app hand-write those SAME token strings. Both dialects register `IGreeting`
-// implementations against the one derived token, so an app resolving the
-// `IGreeting` collection aggregates a greeting from EACH library. The token a
-// manual author writes is exactly the one the transformer derives — that
-// agreement is what makes the two dialects interoperate. The manual side keeps
-// its token constants local (they are runtime values; this package stays
-// type-only) — see each without-transformer package's `tokens.ts`.
+// and app compose those SAME Types by hand. Both dialects register `IGreeting`
+// implementations against the one derived Type — INTERNED, so both sides land
+// on the identical object — so an app resolving the `IGreeting` collection
+// aggregates a greeting from EACH library. The manual side keeps its Type
+// constants local (they are runtime values; this package stays type-only) —
+// see each without-transformer package's `types.ts`.
 
 /**
  * A greeting strategy. BOTH libraries register an implementation against this
@@ -88,13 +87,13 @@ export interface IServerReport {
 // The types above belong to the interop scenario the two apps boot through the
 // Generic Host. The two modules below belong to the guided di tour those apps
 // run afterwards, and they are re-exported HERE rather than declared inside an
-// app for one load-bearing reason: a transformer derives a token from a type's
+// app for one load-bearing reason: a transformer derives a `Type` from a type's
 // PACKAGE-PUBLIC path, so `IRepository<User>` reached through this barrel derives
 // `@rhombus-std/examples.contracts:IRepository<@rhombus-std/examples.contracts:User>`
-// — the exact string the without-transformer app hand-writes. Declared inside an
-// app they would derive an app-private token instead, the two dialects would
-// stop meeting on the string, and the pair could no longer be diffed line for
-// line.
+// — the exact Type the without-transformer app composes by hand. Declared inside
+// an app they would derive an app-private Type instead, the two dialects would
+// stop meeting on one interned object, and the pair could no longer be diffed
+// line for line.
 
 // The checkout pipeline the RESOLUTION demonstration is built on.
 export type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway,

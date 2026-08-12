@@ -23,12 +23,12 @@
 //                                file resolves anything, and nothing in either
 //                                library resolves anything at all.
 //
-// Every registration and resolution below names a TYPE; the build derives the
-// token from it. That derivation is the same one the without-transformer app
-// spells out by hand, which is what lets THIS app consume the manually-authored
-// library at all — its hand-written tokens agree with these. Diff this file
-// against the without-transformer app's `main.ts` and the only difference is the
-// authoring dialect; the scenario, and the output, are the same.
+// Every registration and resolution below names a source TYPE; the build derives
+// the service `Type` from it. That derivation produces the identical, INTERNED
+// object the without-transformer app composes by hand, which is what lets THIS
+// app consume the manually-authored library at all. Diff this file against the
+// without-transformer app's `main.ts` and the only difference is the authoring
+// dialect; the scenario, and the output, are the same.
 //
 // The interop matrix in one file: this derived root composes the
 // with-transformer library's contributions AND the without-transformer
@@ -52,11 +52,10 @@ import { logInformation } from '@rhombus-std/logging.core';
 import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
 import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@rhombus-std/options';
 import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
-// The two type-driven MINT primitives. `typefor<T>()` becomes the `Type` a slot
-// or a lookup names; `tokenfor<T>()` becomes its rendered STRING, which is what
-// the options pipeline's verb takes. Both fold at build time and this import is
-// elided with them.
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+// The type-driven MINT primitive: `typefor<T>()` becomes the `Type` a slot, a
+// lookup, or an options-pipeline verb names. It folds at build time and this
+// import is elided with it.
+import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
 import { addWithTransformerExamples } from '@rhombus-std/examples.lib.with-transformer';
@@ -155,7 +154,7 @@ class InteropWorker implements IHostedLifecycleService {
   public async start(): Promise<void> {
     logInformation(this.#logger, 'start');
 
-    // The two tokens the with-transformer library exports, because ASKING for
+    // The two Types the with-transformer library exports, because ASKING for
     // its services is the one thing the library cannot do on this root's behalf.
     // The banner is registered in its `Promise<…>` wrapper, so the container
     // hands back the promise and the caller awaits it.
@@ -243,10 +242,10 @@ services = addWithoutTransformerExamples(services);
 services = services.addValue(typefor<IOptions<ServerOptions>>(), serverOptions);
 
 // A config-independent policy, wrapped as a static IOptions<GreetingPolicy> via
-// the augmentation's addOptions(token, tToken) verb. It takes RENDERED tokens
-// rather than types, so these two are minted with `tokenfor<T>()`.
+// the augmentation's addOptions(token, tToken) verb — both minted with
+// `typefor<T>()`, the same as every other slot below.
 services = services.addValue(typefor<GreetingPolicy>(), { excitement: '!' } satisfies GreetingPolicy);
-services = services.addOptions(tokenfor<IOptions<GreetingPolicy>>(), tokenfor<GreetingPolicy>());
+services = services.addOptions(typefor<IOptions<GreetingPolicy>>(), typefor<GreetingPolicy>());
 
 // The live config root, so the hosted worker can drive the reload demo.
 services = services.addValue(typefor<ConfigRoot>(), config);

@@ -3,7 +3,7 @@
 // LOGGER_FACTORY_TYPE, RESOLVER_TYPE) are imported from their owning packages —
 // never restated.
 
-import type { Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageLifecycleEvents } from './PageLifecycleEvents';
