@@ -48,7 +48,8 @@ const js = await Bun.build({
   outdir: dist,
   target: 'node',
   format: 'esm',
-  external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts'],
+  external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts',
+    '@rhombus-std/primitives'],
   // ttscTransforms is undefined, so @ttsc/unplugin/bun runs auto-discovery (the
   // one owner host, deduped to a single spawn); the host self-selects the stages.
   plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],

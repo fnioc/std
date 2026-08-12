@@ -23,15 +23,19 @@
 // build. Nothing else about the shape changes — which is the point of the
 // no-transformer-first rule, and the reason both apps can call either library.
 //
-// Registrations used to live in the APPS: both `main.ts` files hand-registered
-// these three services themselves, and the manual one had to hand-guess this
-// package's derived token strings to do it. That was the same rule violation
-// read backwards — an application wiring another package's classes. Now the
-// token agreement is this library's own business, and `./tokens.ts` publishes
-// the two strings a manual consumer still needs in order to RESOLVE.
+// Registering this library's own classes is this library's business rather than
+// an app's — an application wiring another package's internals is the same rule
+// violation read backwards. What a consumer still needs in order to RESOLVE is
+// the token agreement, and `./tokens.ts` publishes that.
 
-import type { IServiceManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+// The type-driven MINT primitives, and the whole of what this dialect is:
+// `typefor<T>()` becomes the service type a hand author writes out, and
+// `signatureof(F)` becomes the slot arrays. Neither has a runtime footprint —
+// the build folds both and elides these imports along with them.
+import { signatureof } from '@rhombus-std/di.extras';
 import type { IBanner, IGreeting, IServerReport } from '@rhombus-std/examples.contracts';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 import { fetchBanner } from './fetch-banner.js';
 import { FormalGreeting } from './formal-greeting.js';
@@ -56,26 +60,28 @@ import { makeServerReport } from './server-report.js';
  * @param services The application's registration builder.
  */
 export function addWithTransformerExamples<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-): IServiceManifest<S | 'singleton'> {
+  services: Manifest<S | 'singleton'>,
+): Manifest<S | 'singleton'> {
   // The greeting, registered against the CONTRACT interface rather than the
-  // class: `addClass<IGreeting>(FormalGreeting)` derives the token from `IGreeting`
-  // — the same string the manual library writes out — so both libraries' greetings
-  // land on one element token and a consumer asking for the collection gets both.
-  services = services.addClass<IGreeting>(FormalGreeting).as<'singleton'>();
+  // class: `typefor<IGreeting>()` derives the service type from
+  // `IGreeting` — the same string the manual library writes out — so both
+  // libraries' greetings land on one element type and a consumer asking for the
+  // collection gets both.
+  services = services.addClass(typefor<IGreeting>(), FormalGreeting, signatureof(FormalGreeting), 'singleton');
 
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
-  // is what makes `resolveAsync<IBanner>()` work and a plain `resolve<IBanner>()`
-  // fail loudly — the container never silently hands back an unsettled value.
-  services = services.addFactory<Promise<IBanner>>(fetchBanner).as<'singleton'>();
+  // is what makes an awaited resolution work and a plain one fail loudly — the
+  // container never silently hands back an unsettled value.
+  services = services.addFactory(typefor<Promise<IBanner>>(), fetchBanner, signatureof(fetchBanner), 'singleton');
 
   // The report factory. Its four dependency slots are DERIVED from the function's
   // parameter types — a collection, two closed generics and an optional union —
   // which is the single densest piece of boilerplate the sugar removes anywhere
   // in these examples. Compare `./server-report.ts`'s parameter list with what the
   // manual dialect has to spell out slot by slot.
-  services = services.addFactory<IServerReport>(makeServerReport).as<'singleton'>();
+  services = services.addFactory(typefor<IServerReport>(), makeServerReport, signatureof(makeServerReport),
+    'singleton');
 
   return services;
 }
